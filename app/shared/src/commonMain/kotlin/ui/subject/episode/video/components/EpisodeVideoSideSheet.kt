@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.subject.episode.video.components
 
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
@@ -20,12 +19,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.ui.subject.episode.EpisodeVideoDefaults
 import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettings
 import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettingsViewModel
-import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetFullScreenLayout
 import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.VideoSideSheetScope
@@ -46,6 +43,7 @@ fun EpisodeVideoDefaults.SideSheets(
     playerControllerState: PlayerControllerState,
     playerSettingsPage: @Composable VideoSideSheetScope.() -> Unit,
     editDanmakuRegexFilterPage: @Composable VideoSideSheetScope.() -> Unit,
+    mediaSelectorPage: @Composable VideoSideSheetScope.() -> Unit,
     episodeSelectorPage: @Composable VideoSideSheetScope.() -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -56,6 +54,7 @@ fun EpisodeVideoDefaults.SideSheets(
         when (page) {
             EpisodeVideoSideSheetPage.PLAYER_SETTINGS -> playerSettingsPage()
             EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER -> editDanmakuRegexFilterPage()
+            EpisodeVideoSideSheetPage.MEDIA_SELECTOR -> mediaSelectorPage()
             EpisodeVideoSideSheetPage.EPISODE_SELECTOR -> episodeSelectorPage()
         }
     }
@@ -77,6 +76,7 @@ fun EpisodeVideoDefaults.SideSheets(
 enum class EpisodeVideoSideSheetPage {
     PLAYER_SETTINGS,
     EDIT_DANMAKU_REGEX_FILTER,
+    MEDIA_SELECTOR,
     EPISODE_SELECTOR,
 }
 
@@ -89,7 +89,7 @@ fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
     onNavigateToFilterSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SideSheetFullScreenLayout(
+    SideSheetLayout(
         title = { Text(text = "弹幕设置") },
         onDismissRequest = onDismissRequest,
         modifier,
@@ -119,7 +119,7 @@ fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SideSheetFullScreenLayout(
+    SideSheetLayout(
         title = { Text(text = "弹幕设置") },
         onDismissRequest = onDismissRequest,
         modifier,

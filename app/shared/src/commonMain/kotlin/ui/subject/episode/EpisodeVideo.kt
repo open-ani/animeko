@@ -14,7 +14,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.offset
@@ -120,7 +119,6 @@ internal fun EpisodeVideoImpl(
     onExitFullscreen: () -> Unit,
     danmakuEditor: @Composable() (RowScope.() -> Unit),
     onClickScreenshot: () -> Unit,
-    onRequestSelectMedia: () -> Unit,
     detachedProgressSlider: @Composable () -> Unit,
     sidebarVisible: Boolean,
     onToggleSidebar: (isCollapsed: Boolean) -> Unit,
@@ -179,7 +177,7 @@ internal fun EpisodeVideoImpl(
                             }
                             if (expanded) {
                                 IconButton(
-                                    onRequestSelectMedia,
+                                    { sheetsController.navigateTo(EpisodeVideoSideSheetPage.MEDIA_SELECTOR) },
                                     Modifier.testTag(TAG_SHOW_MEDIA_SELECTOR),
                                 ) {
                                     Icon(Icons.Rounded.DisplaySettings, contentDescription = "数据源")

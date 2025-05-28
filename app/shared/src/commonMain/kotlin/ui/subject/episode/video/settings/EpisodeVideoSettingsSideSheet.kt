@@ -38,6 +38,7 @@ import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 @Composable
 fun SideSheetLayout(
     title: @Composable () -> Unit,
+    onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     navigationButton: @Composable () -> Unit = { },
@@ -47,63 +48,8 @@ fun SideSheetLayout(
     // Compose does not yet support side sheets
     // https://m3.material.io/components/side-sheets/overview
 
-    // Layout guideline:
-    // https://m3.material.io/components/side-sheets/guidelines#96245186-bae4-4a33-b41f-17833bb2e2d7
-
-    Surface(
-        Modifier
-            .fillMaxHeight()
-            .clickable(
-                onClick = { }, // just to intercept clicks
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-            ),
-        color = containerColor,
-    ) {
-        Column(modifier) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Row(
-                    Modifier.padding(start = 24.dp).padding(vertical = 16.dp).weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.outline) {
-                        navigationButton()
-                    }
-
-                    Row(Modifier.weight(1f)) {
-                        ProvideTextStyleContentColor(
-                            MaterialTheme.typography.titleLarge,
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                        ) {
-                            title()
-                        }
-                    }
-                }
-
-                Box(Modifier.padding(end = 12.dp)) {
-                    closeButton()
-                }
-            }
-
-            content()
-        }
-    }
-}
-
-@Composable
-fun SideSheetFullScreenLayout(
-    title: @Composable () -> Unit,
-    onDismissRequest: () -> Unit,
-    modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    navigationButton: @Composable () -> Unit = { },
-    closeButton: @Composable () -> Unit = {},
-    content: @Composable () -> Unit,
-) {
     BoxWithConstraints(
-        modifier
-            .fillMaxSize()
+        Modifier.fillMaxSize()
             .windowInsetsPadding(BottomSheetDefaults.windowInsets)
             .clickable(
                 onClick = onDismissRequest,
@@ -112,16 +58,49 @@ fun SideSheetFullScreenLayout(
             ),
         contentAlignment = Alignment.TopEnd,
     ) {
-        SideSheetLayout(
-            title = title,
-            modifier = Modifier
+        // Layout guideline:
+        // https://m3.material.io/components/side-sheets/guidelines#96245186-bae4-4a33-b41f-17833bb2e2d7
+
+        Surface(
+            modifier
+                .clickable(
+                    onClick = { }, // just to intercept clicks
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                )
+                .fillMaxHeight()
                 .widthIn(min = 300.dp, max = 400.dp)
-                .width(maxWidth * 0.28f)
-                .fillMaxHeight(),
-            containerColor = containerColor,
-            navigationButton = navigationButton,
-            closeButton = closeButton,
-            content = content,
-        )
+                .width((this.maxWidth * 0.28f)),
+            color = containerColor,
+        ) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        Modifier.padding(start = 16.dp, end = 12.dp).padding(vertical = 16.dp).weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.outline) {
+                            navigationButton()
+                        }
+
+                        Row(Modifier.weight(1f)) {
+                            ProvideTextStyleContentColor(
+                                MaterialTheme.typography.titleLarge,
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            ) {
+                                title()
+                            }
+                        }
+                    }
+
+                    Box(Modifier.padding(start = 12.dp)) {
+                        closeButton()
+                    }
+                }
+
+                content()
+            }
+        }
     }
 }

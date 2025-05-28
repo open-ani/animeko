@@ -12,7 +12,6 @@ package me.him188.ani.app.ui.subject.episode.video.sidesheet
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -52,7 +51,6 @@ import me.him188.ani.app.ui.settings.danmaku.RegexFilterItem
 import me.him188.ani.app.ui.settings.danmaku.isValidRegex
 import me.him188.ani.app.ui.settings.framework.components.SettingsDefaults
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
-import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetFullScreenLayout
 import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
 import me.him188.ani.utils.platform.Uuid
 
@@ -90,7 +88,7 @@ fun EpisodeVideoSideSheets.DanmakuRegexFilterSettings(
         focusManager.clearFocus()
     }
 
-    SideSheetFullScreenLayout(
+    SideSheetLayout(
         title = { Text(text = "正则弹幕过滤管理") },
         onDismissRequest = onDismissRequest,
         closeButton = {

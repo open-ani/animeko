@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,7 +30,6 @@ import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -40,11 +38,8 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -56,7 +51,6 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -81,8 +75,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.window.core.layout.WindowSizeClass
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -102,7 +96,6 @@ import me.him188.ani.app.ui.danmaku.PlayerDanmakuEditor
 import me.him188.ani.app.ui.danmaku.PlayerDanmakuHost
 import me.him188.ani.app.ui.episode.danmaku.MatchingDanmakuDialog
 import me.him188.ani.app.ui.external.placeholder.placeholder
-import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.ImageViewer
 import me.him188.ani.app.ui.foundation.LocalImageViewerHandler
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
@@ -113,7 +106,6 @@ import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
 import me.him188.ani.app.ui.foundation.effects.OverrideCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.effects.ScreenOnEffect
 import me.him188.ani.app.ui.foundation.effects.ScreenRotationEffect
-import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
@@ -131,12 +123,8 @@ import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.foundation.theme.weaken
-import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
-import me.him188.ani.app.ui.foundation.widgets.ModalSideSheet
-import me.him188.ani.app.ui.foundation.widgets.rememberModalSideSheetState
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
-import me.him188.ani.app.ui.mediafetch.MediaSelectorView
 import me.him188.ani.app.ui.richtext.RichTextDefaults
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeCommentColumn
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeEditCommentSheet
@@ -147,9 +135,9 @@ import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideShe
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
 import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.ui.subject.episode.video.components.SideSheets
-import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSettings
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
+import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
@@ -163,6 +151,7 @@ import me.him188.ani.danmaku.api.DanmakuContent
 import me.him188.ani.danmaku.api.DanmakuLocation
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
+import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
 import org.openani.mediamp.features.AudioLevelController
@@ -227,7 +216,6 @@ private fun EpisodeScreenContent(
 
     var showEditCommentSheet by rememberSaveable { mutableStateOf(false) }
     var didSetPaused by rememberSaveable { mutableStateOf(false) }
-    var showMediaSelectorSheet by rememberSaveable { mutableStateOf(false) }
 
     val pauseOnPlaying: () -> Unit = {
         if (vm.player.playbackState.value.isPlaying) {
@@ -277,8 +265,6 @@ private fun EpisodeScreenContent(
         }
     }
 
-    val page = vm.pageState.collectAsStateWithLifecycle().value
-
     BoxWithConstraints(modifier) {
         val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
 
@@ -295,7 +281,9 @@ private fun EpisodeScreenContent(
             OverrideCaptionButtonAppearance(isDark = true)
         }
 
-        when (page) {
+        val pageState = vm.pageState.collectAsStateWithLifecycle()
+
+        when (val page = pageState.value) {
             null -> {
                 // TODO: EpisodePage loading
             }
@@ -349,10 +337,11 @@ private fun EpisodeScreenContent(
                                 page,
                                 vm.danmakuHostState,
                                 danmakuEditorState,
+                                page.fetchRequest,
+                                { vm.updateFetchRequest(it) },
                                 pauseOnPlaying = pauseOnPlaying,
                                 tryUnpause = tryUnpause,
                                 setShowEditCommentSheet = { showEditCommentSheet = it },
-                                onRequestManualSelectMedia = { showMediaSelectorSheet = true },
                                 modifier = Modifier.fillMaxSize(),
                                 windowInsets = windowInsets,
                             )
@@ -366,7 +355,6 @@ private fun EpisodeScreenContent(
                             pauseOnPlaying = pauseOnPlaying,
                             tryUnpause = tryUnpause,
                             setShowEditCommentSheet = { showEditCommentSheet = it },
-                            onRequestManualSelectMedia = { showMediaSelectorSheet = true },
                             windowInsets,
                         )
                     }
@@ -374,32 +362,6 @@ private fun EpisodeScreenContent(
             }
         }
         ImageViewer(imageViewer) { imageViewer.clear() }
-    }
-
-    if (showMediaSelectorSheet && page != null) {
-        EpisodeMediaSelectorDialog(
-            { showMediaSelectorSheet = false },
-        ) { surfaceColor, requestDismiss ->
-            val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(page.initialMediaSelectorViewKind) }
-
-            MediaSelectorView(
-                page.mediaSelectorState,
-                viewKind,
-                onViewKindChange,
-                page.fetchRequest,
-                { vm.updateFetchRequest(it) },
-                page.mediaSourceResultListPresentation,
-                modifier = Modifier.padding(horizontal = 16.dp),
-                onRefresh = { vm.refreshFetch() },
-                onRestartSource = { vm.restartSource(it) },
-                stickyHeaderBackgroundColor = surfaceColor,
-                onClickItem = {
-                    page.mediaSelectorState.select(it)
-                    requestDismiss()
-                },
-                scrollable = true,
-            )
-        }
     }
 
     if (showEditCommentSheet) {
@@ -429,9 +391,10 @@ private fun EpisodeScreenTabletVeryWide(
     page: EpisodePageState,
     danmakuHostState: DanmakuHostState,
     danmakuEditorState: DanmakuEditorState,
+    fetchRequest: MediaFetchRequest?,
+    onFetchRequestChange: (MediaFetchRequest) -> Unit,
     pauseOnPlaying: () -> Unit,
     tryUnpause: () -> Unit,
-    onRequestManualSelectMedia: () -> Unit,
     setShowEditCommentSheet: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
@@ -455,7 +418,6 @@ private fun EpisodeScreenTabletVeryWide(
                 expanded = true,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 maintainAspectRatio = false,
-                onRequestSelectMedia = onRequestManualSelectMedia,
                 windowInsets = if (vm.isFullscreen) {
                     windowInsets
                 } else {
@@ -508,45 +470,53 @@ private fun EpisodeScreenTabletVeryWide(
                     when (index) {
                         0 -> Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                             val navigator = LocalNavigator.current
+                            val pageState by vm.pageState.collectAsStateWithLifecycle()
                             val toaster = LocalToaster.current
-
-                            EpisodeDetails(
-                                page.mediaSelectorSummary,
-                                vm.episodeDetailsState,
-                                vm.episodeCarouselState,
-                                vm.editableSubjectCollectionTypeState,
-                                page.danmakuStatistics,
-                                vm.videoStatisticsFlow,
-                                page.authState,
-                                onSwitchEpisode = { episodeId ->
-                                    if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
-                                        navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
-                                    }
-                                },
-                                onSetDanmakuSourceEnabled = { providerId, enabled ->
-                                    vm.setDanmakuSourceEnabled(providerId, enabled)
-                                },
-                                onClickLogin = { navigator.navigateBangumiAuthorize() },
-                                onClickTag = { navigator.navigateSubjectSearch(it.name) },
-                                onManualMatchDanmaku = {
-                                    vm.startMatchingDanmaku(it)
-                                },
-                                onEpisodeCollectionUpdate = { request ->
-                                    scope.launch {
-                                        vm.setEpisodeCollectionType.invokeSafe(request)?.let {
-                                            toaster.showLoadError(it)
+                            pageState?.let { page ->
+                                EpisodeDetails(
+                                    page.mediaSelectorSummary,
+                                    vm.episodeDetailsState,
+                                    page.initialMediaSelectorViewKind,
+                                    fetchRequest,
+                                    onFetchRequestChange,
+                                    vm.episodeCarouselState,
+                                    vm.editableSubjectCollectionTypeState,
+                                    page.danmakuStatistics,
+                                    vm.videoStatisticsFlow,
+                                    page.mediaSelectorState,
+                                    { page.mediaSourceResultListPresentation },
+                                    page.authState,
+                                    onSwitchEpisode = { episodeId ->
+                                        if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
+                                            navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
                                         }
-                                    }
-                                },
-                                shareData = page.shareData,
-                                loadError = page.loadError,
-                                onRequestManualSelectMedia = onRequestManualSelectMedia,
-                                onRetryLoad = {
-                                    page.loadError?.let {
-                                        vm.retryLoad(it)
-                                    }
-                                },
-                            )
+                                    },
+                                    onRefreshMediaSources = { vm.refreshFetch() },
+                                    onRestartSource = { vm.restartSource(it) },
+                                    onSetDanmakuSourceEnabled = { providerId, enabled ->
+                                        vm.setDanmakuSourceEnabled(providerId, enabled)
+                                    },
+                                    onClickLogin = { navigator.navigateBangumiAuthorize() },
+                                    onClickTag = { navigator.navigateSubjectSearch(it.name) },
+                                    onManualMatchDanmaku = {
+                                        vm.startMatchingDanmaku(it)
+                                    },
+                                    onEpisodeCollectionUpdate = { request ->
+                                        scope.launch {
+                                            vm.setEpisodeCollectionType.invokeSafe(request)?.let {
+                                                toaster.showLoadError(it)
+                                            }
+                                        }
+                                    },
+                                    shareData = page.shareData,
+                                    page.loadError,
+                                    onRetryLoad = {
+                                        page.loadError?.let {
+                                            vm.retryLoad(it)
+                                        }
+                                    },
+                                )
+                            }
                         }
 
                         1 -> {
@@ -623,7 +593,6 @@ private fun EpisodeScreenContentPhone(
     pauseOnPlaying: () -> Unit,
     tryUnpause: () -> Unit,
     setShowEditCommentSheet: (Boolean) -> Unit,
-    onRequestManualSelectMedia: () -> Unit,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
     var showDanmakuEditor by rememberSaveable { mutableStateOf(false) }
@@ -637,50 +606,58 @@ private fun EpisodeScreenContentPhone(
                 vm, page,
                 danmakuHostState,
                 danmakuEditorState, vm.playerControllerState, vm.isFullscreen,
-                onRequestSelectMedia = onRequestManualSelectMedia,
                 windowInsets = ScaffoldDefaults.contentWindowInsets.union(WindowInsets.desktopTitleBar),
             )
         },
         episodeDetails = {
             val navigator = LocalNavigator.current
+            val pageState by vm.pageState.collectAsStateWithLifecycle()
             val scope = rememberCoroutineScope()
 
-            EpisodeDetails(
-                page.mediaSelectorSummary,
-                vm.episodeDetailsState,
-                vm.episodeCarouselState,
-                vm.editableSubjectCollectionTypeState,
-                page.danmakuStatistics,
-                vm.videoStatisticsFlow,
-                page.authState,
-                onSwitchEpisode = { episodeId ->
-                    if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
-                        navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
-                    }
-                },
-                onSetDanmakuSourceEnabled = { providerId, enabled ->
-                    vm.setDanmakuSourceEnabled(providerId, enabled)
-                },
-                onClickLogin = { navigator.navigateBangumiAuthorize() },
-                onClickTag = { navigator.navigateSubjectSearch(it.name) },
-                onManualMatchDanmaku = {
-                    vm.startMatchingDanmaku(it)
-                },
-                onEpisodeCollectionUpdate = { request ->
-                    scope.launch {
-                        vm.setEpisodeCollectionType.invokeSafe(request)?.let {
-                            toaster.showLoadError(it)
+            pageState?.let { page ->
+                EpisodeDetails(
+                    page.mediaSelectorSummary,
+                    vm.episodeDetailsState,
+                    page.initialMediaSelectorViewKind,
+                    page.fetchRequest,
+                    { vm.updateFetchRequest(it) },
+                    vm.episodeCarouselState,
+                    vm.editableSubjectCollectionTypeState,
+                    page.danmakuStatistics,
+                    vm.videoStatisticsFlow,
+                    page.mediaSelectorState,
+                    { page.mediaSourceResultListPresentation },
+                    page.authState,
+                    onSwitchEpisode = { episodeId ->
+                        if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
+                            navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
                         }
-                    }
-                },
-                shareData = page.shareData,
-                loadError = page.loadError,
-                onRetryLoad = {
-                    page.loadError?.let { vm.retryLoad(it) }
-                },
-                onRequestManualSelectMedia = onRequestManualSelectMedia,
-                modifier = Modifier.fillMaxSize(),
-            )
+                    },
+                    onRefreshMediaSources = { vm.refreshFetch() },
+                    onRestartSource = { vm.restartSource(it) },
+                    onSetDanmakuSourceEnabled = { providerId, enabled ->
+                        vm.setDanmakuSourceEnabled(providerId, enabled)
+                    },
+                    onClickLogin = { navigator.navigateBangumiAuthorize() },
+                    onClickTag = { navigator.navigateSubjectSearch(it.name) },
+                    onManualMatchDanmaku = {
+                        vm.startMatchingDanmaku(it)
+                    },
+                    onEpisodeCollectionUpdate = { request ->
+                        scope.launch {
+                            vm.setEpisodeCollectionType.invokeSafe(request)?.let {
+                                toaster.showLoadError(it)
+                            }
+                        }
+                    },
+                    shareData = page.shareData,
+                    loadError = page.loadError,
+                    onRetryLoad = {
+                        page.loadError?.let { vm.retryLoad(it) }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         },
         commentColumn = {
             EpisodeCommentColumn(
@@ -826,7 +803,6 @@ private fun EpisodeVideo(
     danmakuEditorState: DanmakuEditorState,
     playerControllerState: PlayerControllerState,
     expanded: Boolean,
-    onRequestSelectMedia: () -> Unit,
     modifier: Modifier = Modifier,
     maintainAspectRatio: Boolean = !expanded,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
@@ -927,7 +903,6 @@ private fun EpisodeVideo(
                 vm.player.features[Screenshots]?.takeScreenshot(filename)
             }
         },
-        onRequestSelectMedia = onRequestSelectMedia,
         detachedProgressSlider = {
             PlayerControllerDefaults.MediaProgressSlider(
                 progressSliderState,
@@ -994,6 +969,23 @@ private fun EpisodeVideo(
                         expanded = expanded,
                     )
                 },
+                mediaSelectorPage = {
+                    val pageState by vm.pageState.collectAsStateWithLifecycle()
+                    pageState?.let { page ->
+                        val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(page.initialMediaSelectorViewKind) }
+                        EpisodeVideoSideSheets.MediaSelectorSheet(
+                            page.mediaSelectorState,
+                            page.mediaSourceResultListPresentation,
+                            viewKind,
+                            onViewKindChange,
+                            page.fetchRequest,
+                            { vm.updateFetchRequest(it) },
+                            onDismissRequest = { goBack() },
+                            onRefresh = { vm.refreshFetch() },
+                            onRestartSource = { vm.restartSource(it) },
+                        )
+                    }
+                },
                 episodeSelectorPage = {
                     EpisodeVideoSideSheets.EpisodeSelectorSheet(
                         vm.episodeSelectorState,
@@ -1009,65 +1001,6 @@ private fun EpisodeVideo(
         contentWindowInsets = windowInsets,
         fastForwardSpeed = vm.videoScaffoldConfig.fastForwardSpeed,
     )
-}
-
-@Composable
-private fun EpisodeMediaSelectorDialog(
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-    windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass,
-    content: @Composable (
-        surfaceColor: Color,
-        requestDismiss: () -> Unit,
-    ) -> Unit,
-) {
-    if (windowSizeClass.isWidthAtLeastMedium) {
-        val sideSheetState = rememberModalSideSheetState()
-        ModalSideSheet(
-            onDismiss,
-            state = sideSheetState,
-            modifier = modifier,
-            content = {
-                BoxWithConstraints {
-                    SideSheetLayout(
-                        title = { Text("选择数据源") },
-                        closeButton = {
-                            IconButton({ sideSheetState.close() }) {
-                                Icon(Icons.Rounded.Close, contentDescription = "关闭")
-                            }
-                        },
-                        modifier = Modifier
-                            .windowInsetsPadding(
-                                AniWindowInsets.safeDrawing
-                                    .only(WindowInsetsSides.Vertical + WindowInsetsSides.End),
-                            )
-                            .widthIn(300.dp, 400.dp)
-                            .width(maxWidth * 0.28f),
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                    ) {
-                        content(MaterialTheme.colorScheme.surfaceContainerLow) { sideSheetState.close() }
-                    }
-                }
-            },
-        )
-    } else {
-        val bottomSheetState = rememberModalBottomSheetState()
-        val scope = rememberCoroutineScope()
-        ModalBottomSheet(
-            onDismiss,
-            sheetState = bottomSheetState,
-            modifier = modifier.desktopTitleBarPadding().statusBarsPadding(),
-            contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
-            content = {
-                content(MaterialTheme.colorScheme.surfaceContainerLow) {
-                    scope.launch {
-                        bottomSheetState.hide()
-                        onDismiss()
-                    }
-                }
-            },
-        )
-    }
 }
 
 @Composable

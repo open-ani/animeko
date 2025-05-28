@@ -10,7 +10,6 @@
 package me.him188.ani.app.ui.subject.episode.video.sidesheet
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -47,7 +46,6 @@ import me.him188.ani.app.ui.subject.cache.contentColorForWatchStatus
 import me.him188.ani.app.ui.subject.episode.EpisodePresentation
 import me.him188.ani.app.ui.subject.episode.TAG_EPISODE_SELECTOR_SHEET
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
-import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetFullScreenLayout
 import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -125,7 +123,7 @@ fun EpisodeVideoSideSheets.EpisodeSelectorSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SideSheetFullScreenLayout(
+    SideSheetLayout(
         onDismissRequest = onDismissRequest,
         modifier = modifier.testTag(TAG_EPISODE_SELECTOR_SHEET),
         title = { Text(text = "选择剧集") },

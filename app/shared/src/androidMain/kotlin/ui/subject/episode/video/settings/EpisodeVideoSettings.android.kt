@@ -48,7 +48,7 @@ private fun PreviewEpisodeVideoSettingsSmall() {
 private fun PreviewEpisodeVideoSettingsSideSheet() = ProvideCompositionLocalsForPreview {
     var showSettings by remember { mutableStateOf(true) }
     if (showSettings) {
-        SideSheetFullScreenLayout(
+        SideSheetLayout(
             title = {},
             onDismissRequest = { showSettings = false },
         ) {
