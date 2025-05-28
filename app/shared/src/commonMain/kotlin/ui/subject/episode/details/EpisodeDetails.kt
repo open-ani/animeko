@@ -298,9 +298,17 @@ fun EpisodeDetails(
                                 .windowInsetsPadding(AniWindowInsets.safeDrawing),
                         ) {
                             TopAppBar(
-                                title = { Text("选择数据源") },
+                                title = {
+                                    Text(
+                                        "选择数据源",
+                                        modifier = Modifier.padding(start = 8.dp),
+                                    )
+                                },
                                 actions = {
-                                    IconButton(onClick = { sheetState.close() }) {
+                                    IconButton(
+                                        onClick = { sheetState.close() },
+                                        modifier = Modifier.padding(end = 8.dp),
+                                    ) {
                                         Icon(Icons.Outlined.Close, contentDescription = "关闭选择器")
                                     }
                                 },
