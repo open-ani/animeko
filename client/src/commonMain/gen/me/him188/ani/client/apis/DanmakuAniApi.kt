@@ -1,12 +1,4 @@
-/*
- * Copyright (C) 2024-2025 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,24 +11,22 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.apis
 
-import me.him188.ani.client.models.AniDanmakuGetResponse
-import me.him188.ani.client.models.AniDanmakuPostRequest
-
-import me.him188.ani.client.infrastructure.*
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
 import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import me.him188.ani.client.infrastructure.ApiClient
+import me.him188.ani.client.infrastructure.HttpResponse
+import me.him188.ani.client.infrastructure.RequestConfig
+import me.him188.ani.client.infrastructure.RequestMethod
+import me.him188.ani.client.infrastructure.wrap
+import me.him188.ani.client.models.AniDanmakuGetResponse
+import me.him188.ani.client.models.AniDanmakuPostRequest
 
 open class DanmakuAniApi : ApiClient {
 
@@ -45,17 +35,12 @@ open class DanmakuAniApi : ApiClient {
         httpClientEngine: HttpClientEngine? = null,
         httpClientConfig: ((HttpClientConfig<*>) -> Unit)? = null,
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
-    ) : super(
-        baseUrl = baseUrl,
-        httpClientEngine = httpClientEngine,
-        httpClientConfig = httpClientConfig,
-        jsonBlock = jsonSerializer,
-    )
+    ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ) : super(baseUrl = baseUrl, httpClient = httpClient)
+    ): super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * 获取弹幕
@@ -67,12 +52,7 @@ open class DanmakuAniApi : ApiClient {
      * @return AniDanmakuGetResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getDanmaku(
-        episodeId: kotlin.String,
-        maxCount: kotlin.Int? = null,
-        fromTime: kotlin.Long? = null,
-        toTime: kotlin.Long? = null
-    ): HttpResponse<AniDanmakuGetResponse> {
+    open suspend fun getDanmaku(episodeId: kotlin.String, maxCount: kotlin.Int? = null, fromTime: kotlin.Long? = null, toTime: kotlin.Long? = null): HttpResponse<AniDanmakuGetResponse> {
 
         val localVariableAuthNames = listOf<String>()
 
@@ -96,7 +76,7 @@ open class DanmakuAniApi : ApiClient {
         return request(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 
@@ -108,10 +88,7 @@ open class DanmakuAniApi : ApiClient {
      * @param aniDanmakuPostRequest 弹幕信息 (optional)
      * @return void
      */
-    open suspend fun postDanmaku(
-        episodeId: kotlin.String,
-        aniDanmakuPostRequest: AniDanmakuPostRequest? = null
-    ): HttpResponse<Unit> {
+    open suspend fun postDanmaku(episodeId: kotlin.String, aniDanmakuPostRequest: AniDanmakuPostRequest? = null): HttpResponse<Unit> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -131,9 +108,12 @@ open class DanmakuAniApi : ApiClient {
         return jsonRequest(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 
 
+
 }
+
+// @formatter:on

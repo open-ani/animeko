@@ -30,8 +30,6 @@ import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.player.VideoLoadingState
-import me.him188.ani.app.domain.session.AuthState
-import me.him188.ani.app.domain.session.TestAuthState
 import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState
@@ -44,6 +42,8 @@ import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsLoader
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.createTestDanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.testPlayerStatisticsState
+import me.him188.ani.app.ui.user.SelfInfoUiState
+import me.him188.ani.app.ui.user.TestSelfInfoUiState
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -124,7 +124,7 @@ fun PreviewEpisodeDetailsNotAuthorized() = ProvideCompositionLocalsForPreview {
     val state = rememberTestEpisodeDetailsState()
     PreviewEpisodeDetailsImpl(
         state,
-        authState = TestAuthState,
+        selfInfo = TestSelfInfoUiState,
     )
 }
 
@@ -179,7 +179,7 @@ private fun PreviewEpisodeDetailsImpl(
     editableSubjectCollectionTypeState: EditableSubjectCollectionTypeState = rememberTestEditableSubjectCollectionTypeState(),
     mediaSelectorState: MediaSelectorState = rememberTestMediaSelectorState(),
     playingMedia: Media? = TestMediaList.first(),
-    authState: AuthState = TestAuthState,
+    selfInfo: SelfInfoUiState = TestSelfInfoUiState,
 ) {
     Scaffold {
         EpisodeDetails(
@@ -206,7 +206,7 @@ private fun PreviewEpisodeDetailsImpl(
                     ),
                 )
             },
-            authState = authState,
+            selfInfo = selfInfo,
             onSwitchEpisode = {},
             onSetDanmakuSourceEnabled = { _, _ -> },
             onClickLogin = { },

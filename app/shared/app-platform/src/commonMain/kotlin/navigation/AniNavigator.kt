@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.navigation
 
+import androidx.annotation.MainThread
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisallowComposableCalls
@@ -123,6 +124,16 @@ interface AniNavigator {
         }
     }
 
+    @MainThread
+    fun navigateEmailLoginStart() {
+        currentNavigator.navigate(NavRoutes.EmailLoginStart)
+    }
+
+    @MainThread
+    fun navigateEmailLoginVerify() {
+        currentNavigator.navigate(NavRoutes.EmailLoginVerify)
+    }
+
     /**
      * 返回到第一个 [NavRoutes.Main], 根据当前的 back stack 进行不同的操作:
      *
@@ -141,6 +152,10 @@ interface AniNavigator {
     /**
      * 登录页面
      */
+    fun navigateLogin() {
+        currentNavigator.navigate(NavRoutes.EmailLoginStart)
+    }
+
     fun navigateBangumiAuthorize() {
         currentNavigator.navigate(NavRoutes.BangumiAuthorize)
     }

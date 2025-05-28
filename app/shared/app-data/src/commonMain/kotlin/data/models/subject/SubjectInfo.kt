@@ -77,6 +77,7 @@ data class SubjectInfo(
     /**
      * 完成日期. 时区为条目所在地区的时区, 即一般为 UTC+9.
      */
+    @Deprecated("Removed, because we always have episodes now")
     val completeDate: PackedDate,
 ) {
     override fun toString(): String {

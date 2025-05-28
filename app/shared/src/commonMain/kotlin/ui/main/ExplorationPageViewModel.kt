@@ -14,20 +14,16 @@ import androidx.paging.cachedIn
 import androidx.paging.compose.launchAsLazyPagingItemsIn
 import androidx.paging.filter
 import androidx.paging.flatMap
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.app.data.network.RecommendationRepository
 import me.him188.ani.app.data.network.TrendsRepository
 import me.him188.ani.app.data.repository.subject.FollowedSubjectsRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionManager
-import me.him188.ani.app.domain.session.userInfo
 import me.him188.ani.app.ui.exploration.ExplorationPageState
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import org.koin.core.component.KoinComponent
@@ -41,15 +37,11 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
     private val followedSubjectsRepository: FollowedSubjectsRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
 
-    @OptIn(OpaqueSession::class)
-    private val selfInfoState = sessionManager.userInfo.produceState(null)
-
     private val nsfwSettingFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
     private val horizontalScrollTipFlow =
         settingsRepository.oneshotActionConfig.flow.map { it.horizontalScrollTip }
 
     val explorationPageState: ExplorationPageState = ExplorationPageState(
-        selfInfoState,
         trendingSubjectInfoPager = trendsRepository.trendsInfoPager()
             .map { pagingData ->
                 pagingData.flatMap { it.subjects.take(10) }
@@ -81,10 +73,4 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
 //                emit(arrayOfNulls<FollowedSubjectInfo>(10).toList())
 //            }
     )
-
-    suspend fun refreshLoginSession() {
-        withContext(Dispatchers.Default) {
-            sessionManager.retry()
-        }
-    }
 }

@@ -517,7 +517,7 @@ private fun EpisodeScreenTabletVeryWide(
                                 vm.editableSubjectCollectionTypeState,
                                 page.danmakuStatistics,
                                 vm.videoStatisticsFlow,
-                                page.authState,
+                                page.selfInfo,
                                 onSwitchEpisode = { episodeId ->
                                     if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
                                         navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
@@ -526,7 +526,7 @@ private fun EpisodeScreenTabletVeryWide(
                                 onSetDanmakuSourceEnabled = { providerId, enabled ->
                                     vm.setDanmakuSourceEnabled(providerId, enabled)
                                 },
-                                onClickLogin = { navigator.navigateBangumiAuthorize() },
+                                onClickLogin = { navigator.navigateLogin() },
                                 onClickTag = { navigator.navigateSubjectSearch(it.name) },
                                 onManualMatchDanmaku = {
                                     vm.startMatchingDanmaku(it)
@@ -652,7 +652,7 @@ private fun EpisodeScreenContentPhone(
                 vm.editableSubjectCollectionTypeState,
                 page.danmakuStatistics,
                 vm.videoStatisticsFlow,
-                page.authState,
+                page.selfInfo,
                 onSwitchEpisode = { episodeId ->
                     if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
                         navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
@@ -661,7 +661,7 @@ private fun EpisodeScreenContentPhone(
                 onSetDanmakuSourceEnabled = { providerId, enabled ->
                     vm.setDanmakuSourceEnabled(providerId, enabled)
                 },
-                onClickLogin = { navigator.navigateBangumiAuthorize() },
+                onClickLogin = { navigator.navigateLogin() },
                 onClickTag = { navigator.navigateSubjectSearch(it.name) },
                 onManualMatchDanmaku = {
                     vm.startMatchingDanmaku(it)

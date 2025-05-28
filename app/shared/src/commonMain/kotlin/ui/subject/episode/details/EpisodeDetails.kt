@@ -64,7 +64,6 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeRequest
-import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.LocalPlatform
@@ -90,6 +89,7 @@ import me.him188.ani.app.ui.subject.episode.details.components.PlayingEpisodeIte
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuMatchInfoSummaryRow
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
+import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -125,7 +125,7 @@ fun EpisodeDetails(
     editableSubjectCollectionTypeState: EditableSubjectCollectionTypeState,
     danmakuStatistics: DanmakuStatistics,
     videoStatisticsFlow: Flow<VideoStatistics>,
-    authState: AuthState,
+    selfInfo: SelfInfoUiState,
     onSwitchEpisode: (Int) -> Unit,
     onSetDanmakuSourceEnabled: (DanmakuServiceId, Boolean) -> Unit,
     onClickLogin: () -> Unit,
@@ -155,7 +155,7 @@ fun EpisodeDetails(
             ) {
                 SubjectDetailsScreen(
                     subjectDetailsState,
-                    authState,
+                    selfInfo,
                     onPlay = onSwitchEpisode,
                     onLoadErrorRetry = { state.subjectDetailsStateLoader.reload(state.subjectId) },
                     onClickTag = onClickTag,
@@ -229,7 +229,7 @@ fun EpisodeDetails(
         subjectSuggestions = {
             // 推荐一些状态修改操作
 
-            if (authState.isKnownLoggedIn) {
+            if (selfInfo.isSessionValid == true) {
                 val editableSubjectCollectionTypePresentation by editableSubjectCollectionTypeState.presentationFlow.collectAsStateWithLifecycle()
                 when (editableSubjectCollectionTypePresentation.selfCollectionType) {
                     UnifiedCollectionType.NOT_COLLECTED -> {

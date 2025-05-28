@@ -1,3 +1,4 @@
+// @formatter:off
 package me.him188.ani.client.infrastructure
 
 /**
@@ -17,3 +18,5 @@ data class RequestConfig<T>(
     val requiresAuthentication: Boolean,
     val body: T? = null
 )
+
+// @formatter:on

@@ -7,11 +7,15 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+@file:OptIn(TestOnly::class)
+
 package me.him188.ani.app.ui.onboarding
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.user.TestSelfInfoUiState
+import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp", showSystemUi = false)
 @Preview(
@@ -23,7 +27,7 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 fun PreviewOnboardingCompleteScene() {
     ProvideCompositionLocalsForPreview {
         OnboardingCompleteScreen(
-            state = OnboardingCompleteState("SG", ""),
+            state = TestSelfInfoUiState,
             onClickContinue = { },
             backNavigation = { },
         )
@@ -40,7 +44,7 @@ fun PreviewOnboardingCompleteScene() {
 fun PreviewOnboardingCompleteSceneLongUsername() {
     ProvideCompositionLocalsForPreview {
         OnboardingCompleteScreen(
-            state = OnboardingCompleteState("SG has long username12312321321321321", ""),
+            state = TestSelfInfoUiState,
             onClickContinue = { },
             backNavigation = { },
         )
