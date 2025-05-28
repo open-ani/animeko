@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.FlowRowScope
@@ -22,13 +23,17 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Dataset
 import androidx.compose.material.icons.outlined.ExpandCircleDown
 import androidx.compose.material3.BottomSheetDefaults
@@ -42,6 +47,9 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -70,9 +78,14 @@ import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
+import me.him188.ani.app.ui.foundation.widgets.ModalSideSheet
+import me.him188.ani.app.ui.foundation.widgets.rememberModalSideSheetState
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState
 import me.him188.ani.app.ui.mediafetch.MediaSelectorView
 import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresentation
@@ -268,34 +281,83 @@ fun EpisodeDetails(
         exposedEpisodeItem = { innerPadding ->
             var showMediaSelector by rememberSaveable { mutableStateOf(false) }
             if (showMediaSelector) {
-                val sheetState =
-                    rememberModalBottomSheetState(skipPartiallyExpanded = LocalPlatform.current.isDesktop())
-                ModalBottomSheet(
-                    { showMediaSelector = false },
-                    sheetState = sheetState,
-                    modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
-                    contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
-                ) {
-                    val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(initialMediaSelectorViewKind) }
-                    MediaSelectorView(
-                        mediaSelectorState,
-                        viewKind,
-                        onViewKindChange,
-                        fetchRequest,
-                        onFetchRequestChange,
-                        mediaSourceResultListPresentation(),
-                        onRestartSource = onRestartSource,
-                        onRefresh = onRefreshMediaSources,
-                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp)
-                            .fillMaxWidth()
-                            .navigationBarsPadding(),
-                        stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,
-                        onClickItem = {
-                            mediaSelectorState.select(it)
-                            showMediaSelector = false
-                        },
-                        scrollable = sheetState.targetValue == SheetValue.Expanded,
-                    )
+                val platform = LocalPlatform.current
+                val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(initialMediaSelectorViewKind) }
+
+                if (platform.isDesktop() && currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
+                    val sheetState = rememberModalSideSheetState()
+                    ModalSideSheet(
+                        { showMediaSelector = false },
+                        state = sheetState,
+                        containerColor = BottomSheetDefaults.ContainerColor,
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .widthIn(300.dp, 400.dp)
+                                .windowInsetsPadding(AniWindowInsets.safeDrawing),
+                        ) {
+                            TopAppBar(
+                                title = { Text("选择数据源") },
+                                actions = {
+                                    IconButton(onClick = { sheetState.close() }) {
+                                        Icon(Icons.Outlined.Close, contentDescription = "关闭选择器")
+                                    }
+                                },
+                                colors = TopAppBarDefaults.topAppBarColors(
+                                    containerColor = BottomSheetDefaults.ContainerColor,
+                                ),
+                            )
+                            MediaSelectorView(
+                                mediaSelectorState,
+                                viewKind,
+                                onViewKindChange,
+                                fetchRequest,
+                                onFetchRequestChange,
+                                mediaSourceResultListPresentation(),
+                                onRestartSource = onRestartSource,
+                                onRefresh = onRefreshMediaSources,
+                                modifier = Modifier
+                                    .padding(vertical = 12.dp, horizontal = 16.dp)
+                                    .fillMaxWidth(),
+                                stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,
+                                onClickItem = {
+                                    mediaSelectorState.select(it)
+                                    showMediaSelector = false
+                                },
+                                scrollable = true,
+                            )
+                        }
+                    }
+                } else {
+                    val sheetState =
+                        rememberModalBottomSheetState(skipPartiallyExpanded = platform.isDesktop())
+                    ModalBottomSheet(
+                        { showMediaSelector = false },
+                        sheetState = sheetState,
+                        modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
+                        contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
+                    ) {
+                        MediaSelectorView(
+                            mediaSelectorState,
+                            viewKind,
+                            onViewKindChange,
+                            fetchRequest,
+                            onFetchRequestChange,
+                            mediaSourceResultListPresentation(),
+                            onRestartSource = onRestartSource,
+                            onRefresh = onRefreshMediaSources,
+                            modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp)
+                                .fillMaxWidth()
+                                .navigationBarsPadding(),
+                            stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,
+                            onClickItem = {
+                                mediaSelectorState.select(it)
+                                showMediaSelector = false
+                            },
+                            scrollable = sheetState.targetValue == SheetValue.Expanded,
+                        )
+                    }
                 }
             }
 
