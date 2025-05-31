@@ -1,42 +1,24 @@
-/*
- * Copyright (C) 2024-2025 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 package me.him188.ani.datasources.bangumi.next.infrastructure
 
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.*
 import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.forms.MultiPartFormDataContent
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
-import io.ktor.client.request.request
-import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpMethod
-import io.ktor.http.Parameters
-import io.ktor.http.URLBuilder
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.http.*
 import io.ktor.http.content.PartData
 import io.ktor.http.contentType
-import io.ktor.http.encodeURLQueryComponent
-import io.ktor.http.encodedPath
-import io.ktor.http.takeFrom
-import io.ktor.serialization.kotlinx.json.json
+import kotlin.Unit
 import kotlinx.serialization.json.Json
-import me.him188.ani.datasources.bangumi.next.auth.ApiKeyAuth
-import me.him188.ani.datasources.bangumi.next.auth.Authentication
-import me.him188.ani.datasources.bangumi.next.auth.HttpBasicAuth
-import me.him188.ani.datasources.bangumi.next.auth.HttpBearerAuth
-import me.him188.ani.datasources.bangumi.next.auth.OAuth
+
+import me.him188.ani.datasources.bangumi.next.auth.*
 
 open class ApiClient(
         private val baseUrl: String
