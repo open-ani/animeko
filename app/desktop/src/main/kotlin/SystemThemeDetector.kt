@@ -16,22 +16,23 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class SystemThemeDetector {
+    private val isLinux = System.getProperty("os.name").lowercase().contains("linux")
     private val detector = OsThemeDetector.getDetector()
 
-    private val _current = MutableStateFlow(isDarkToTheme(detector.isDark))
+    private val _current = MutableStateFlow(
+        if (isLinux) SystemTheme.Light else isDarkToTheme(detector.isDark)
+    )
     val current: StateFlow<SystemTheme> = _current.asStateFlow()
 
     init {
-        detector.registerListener {
-            _current.value = isDarkToTheme(it)
+        if (!isLinux) {
+            detector.registerListener {
+                _current.value = isDarkToTheme(it)
+            }
         }
     }
 
     private fun isDarkToTheme(isDark: Boolean): SystemTheme {
-        return if (isDark) {
-            SystemTheme.Dark
-        } else {
-            SystemTheme.Light
-        }
+        return if (isDark) SystemTheme.Dark else SystemTheme.Light
     }
 }
