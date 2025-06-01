@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -231,6 +231,15 @@ private class AstToRichElementVisitor(
     }
 
     override fun visitImg(ctx: BBCodeParser.ImgContext) {
-        builder.emitImage(ctx.content?.text.orEmpty())
+        val full = ctx.text
+        val firstClose = full.indexOf(']').takeIf { it >= 0 } ?: 0
+        val lastOpen = full.lastIndexOf('[').takeIf { it >= 0 } ?: full.length
+        val inner = if (firstClose < lastOpen) {
+            full.substring(firstClose + 1, lastOpen)
+        } else {
+            ""
+        }
+        builder.emitImage(inner)
     }
+
 }
