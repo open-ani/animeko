@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 // @formatter:off
 @file:Suppress("RedundantVisibilityModifier")
 
@@ -596,6 +605,198 @@ public class GenBBSpacesTest : BBCodeParserTestHelper() {
         BBCode.parse("[MASK] /[][/]Hello [/MASK]")
         .run {
             assertText(elements.at(0), value=" /[][/]Hello ", mask=true)
+        }
+    }
+
+    @Test
+    public fun parse1308903400() {
+        BBCode.parse("[img=300,200]Hello World![/img=300,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl="Hello World!")
+        }
+    }
+
+    @Test
+    public fun parse314635787() {
+        BBCode.parse("[img=300,200][/img=300,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl="")
+        }
+    }
+
+    @Test
+    public fun parse743621543() {
+        BBCode.parse("[img=300,200] [/img=300,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" ")
+        }
+    }
+
+    @Test
+    public fun parse50537791() {
+        BBCode.parse("[img=300,200] /[][/]Hello [/img=300,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" /[][/]Hello ")
+        }
+    }
+
+    @Test
+    public fun parse181801000() {
+        BBCode.parse("[IMG=300,200]Hello World![/IMG=300,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl="Hello World!")
+        }
+    }
+
+    @Test
+    public fun parse1251873205() {
+        BBCode.parse("[IMG=300,200][/IMG=300,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl="")
+        }
+    }
+
+    @Test
+    public fun parse866256807() {
+        BBCode.parse("[IMG=300,200] [/IMG=300,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" ")
+        }
+    }
+
+    @Test
+    public fun parse664604991() {
+        BBCode.parse("[IMG=300,200] /[][/]Hello [/IMG=300,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" /[][/]Hello ")
+        }
+    }
+
+    @Test
+    public fun parse1205296268() {
+        BBCode.parse("[img=300]Hello World![/img=300]")
+        .run {
+            assertImage(elements.at(0), imageUrl="Hello World!")
+        }
+    }
+
+    @Test
+    public fun parse1645990935() {
+        BBCode.parse("[img=300][/img=300]")
+        .run {
+            assertImage(elements.at(0), imageUrl="")
+        }
+    }
+
+    @Test
+    public fun parse605928295() {
+        BBCode.parse("[img=300] [/img=300]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" ")
+        }
+    }
+
+    @Test
+    public fun parse485058943() {
+        BBCode.parse("[img=300] /[][/]Hello [/img=300]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" /[][/]Hello ")
+        }
+    }
+
+    @Test
+    public fun parse1897030732() {
+        BBCode.parse("[IMG=300]Hello World![/IMG=300]")
+        .run {
+            assertImage(elements.at(0), imageUrl="Hello World!")
+        }
+    }
+
+    @Test
+    public fun parse1193280425() {
+        BBCode.parse("[IMG=300][/IMG=300]")
+        .run {
+            assertImage(elements.at(0), imageUrl="")
+        }
+    }
+
+    @Test
+    public fun parse1349128039() {
+        BBCode.parse("[IMG=300] [/IMG=300]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" ")
+        }
+    }
+
+    @Test
+    public fun parse1890993535() {
+        BBCode.parse("[IMG=300] /[][/]Hello [/IMG=300]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" /[][/]Hello ")
+        }
+    }
+
+    @Test
+    public fun parse869897014() {
+        BBCode.parse("[img=,200]Hello World![/img=,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl="Hello World!")
+        }
+    }
+
+    @Test
+    public fun parse285905927() {
+        BBCode.parse("[img=,200][/img=,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl="")
+        }
+    }
+
+    @Test
+    public fun parse1907075883() {
+        BBCode.parse("[img=,200] [/img=,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" ")
+        }
+    }
+
+    @Test
+    public fun parse204343675() {
+        BBCode.parse("[img=,200] /[][/]Hello [/img=,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" /[][/]Hello ")
+        }
+    }
+
+    @Test
+    public fun parse235597622() {
+        BBCode.parse("[IMG=,200]Hello World![/IMG=,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl="Hello World!")
+        }
+    }
+
+    @Test
+    public fun parse1278449657() {
+        BBCode.parse("[IMG=,200][/IMG=,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl="")
+        }
+    }
+
+    @Test
+    public fun parse327881451() {
+        BBCode.parse("[IMG=,200] [/IMG=,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" ")
+        }
+    }
+
+    @Test
+    public fun parse1950256709() {
+        BBCode.parse("[IMG=,200] /[][/]Hello [/IMG=,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" /[][/]Hello ")
         }
     }
 }

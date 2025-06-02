@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 // @formatter:off
 @file:Suppress("RedundantVisibilityModifier")
 
@@ -152,6 +161,54 @@ public class GenBBSpecialsTest : BBCodeParserTestHelper() {
         BBCode.parse("[MASK] /[][/]Hello [/MASK]")
         .run {
             assertText(elements.at(0), value=" /[][/]Hello ", mask=true)
+        }
+    }
+
+    @Test
+    public fun parse50537791() {
+        BBCode.parse("[img=300,200] /[][/]Hello [/img=300,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" /[][/]Hello ")
+        }
+    }
+
+    @Test
+    public fun parse664604991() {
+        BBCode.parse("[IMG=300,200] /[][/]Hello [/IMG=300,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" /[][/]Hello ")
+        }
+    }
+
+    @Test
+    public fun parse485058943() {
+        BBCode.parse("[img=300] /[][/]Hello [/img=300]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" /[][/]Hello ")
+        }
+    }
+
+    @Test
+    public fun parse1890993535() {
+        BBCode.parse("[IMG=300] /[][/]Hello [/IMG=300]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" /[][/]Hello ")
+        }
+    }
+
+    @Test
+    public fun parse204343675() {
+        BBCode.parse("[img=,200] /[][/]Hello [/img=,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" /[][/]Hello ")
+        }
+    }
+
+    @Test
+    public fun parse1950256709() {
+        BBCode.parse("[IMG=,200] /[][/]Hello [/IMG=,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" /[][/]Hello ")
         }
     }
 }

@@ -231,15 +231,12 @@ private class AstToRichElementVisitor(
     }
 
     override fun visitImg(ctx: BBCodeParser.ImgContext) {
-        val full = ctx.text
-        val firstClose = full.indexOf(']').takeIf { it >= 0 } ?: 0
-        val lastOpen = full.lastIndexOf('[').takeIf { it >= 0 } ?: full.length
-        val inner = if (firstClose < lastOpen) {
-            full.substring(firstClose + 1, lastOpen)
-        } else {
-            ""
-        }
-        builder.emitImage(inner)
+        val text = ctx.text
+        val content = text.substringAfter(']').substringBeforeLast('[')
+        val (w, h) = Regex("""\[img=(\d+),(\d+)]""").find(text)
+            ?.destructured?.let { it.component1().toIntOrNull() to it.component2().toIntOrNull() } ?: (null to null)
+
+        builder.emitImage(content /*, w, h */)
     }
 
 }

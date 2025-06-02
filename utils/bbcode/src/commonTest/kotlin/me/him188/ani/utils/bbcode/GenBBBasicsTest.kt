@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 // @formatter:off
 @file:Suppress("RedundantVisibilityModifier")
 
@@ -100,6 +109,70 @@ public class GenBBBasicsTest : BBCodeParserTestHelper() {
         BBCode.parse("[IMG]http://example.com[/IMG]")
         .run {
             assertImage(elements.at(0), imageUrl="http://example.com")
+        }
+    }
+
+    @Test
+    public fun parse1432337066() {
+        BBCode.parse("[img=300,200]https://example.com/image.png[/img]")
+        .run {
+            assertImage(elements.at(0), imageUrl="https://example.com/image.png")
+        }
+    }
+
+    @Test
+    public fun parse321382346() {
+        BBCode.parse("[IMG=640,480]https://example.com/pic.jpg[/IMG]")
+        .run {
+            assertImage(elements.at(0), imageUrl="https://example.com/pic.jpg")
+        }
+    }
+
+    @Test
+    public fun parse732922532() {
+        BBCode.parse("[img=300]https://example.com/image.png[/img]")
+        .run {
+            assertImage(elements.at(0), imageUrl="https://example.com/image.png")
+        }
+    }
+
+    @Test
+    public fun parse1876696639() {
+        BBCode.parse("[img=,200]https://example.com/image.png[/img]")
+        .run {
+            assertImage(elements.at(0), imageUrl="https://example.com/image.png")
+        }
+    }
+
+    @Test
+    public fun parse1264724581() {
+        BBCode.parse("[img=0,0]https://example.com/image.png[/img]")
+        .run {
+            assertImage(elements.at(0), imageUrl="https://example.com/image.png")
+        }
+    }
+
+    @Test
+    public fun parse47556228() {
+        BBCode.parse("[IMG=300]https://example.com/image.png[/img]")
+        .run {
+            assertImage(elements.at(0), imageUrl="https://example.com/image.png")
+        }
+    }
+
+    @Test
+    public fun parse1648215583() {
+        BBCode.parse("[IMG=,200]https://example.com/image.png[/img]")
+        .run {
+            assertImage(elements.at(0), imageUrl="https://example.com/image.png")
+        }
+    }
+
+    @Test
+    public fun parse579358277() {
+        BBCode.parse("[IMG=0,0]https://example.com/image.png[/img]")
+        .run {
+            assertImage(elements.at(0), imageUrl="https://example.com/image.png")
         }
     }
 

@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.utils.bbcode
 
 import com.squareup.kotlinpoet.ClassName
@@ -17,7 +26,7 @@ fun main() {
 
 
     val contextTags =
-        listOf("b", "i", "u", "s", "url", "img", "quote", "code", "mask")
+        listOf("b", "i", "u", "s", "url", "img", "quote", "code", "mask", "img=300,200", "img=300", "img=,200")
             .flatMap {
                 listOf(it, it.uppercase())
             }
@@ -35,6 +44,14 @@ fun main() {
         case("[URL=invalidurl]Hello World![/URL]")
         case("[img]http://example.com[/img]")
         case("[IMG]http://example.com[/IMG]")
+        case("[img=300,200]https://example.com/image.png[/img]")
+        case("[IMG=640,480]https://example.com/pic.jpg[/IMG]")
+        case("[img=300]https://example.com/image.png[/img]")
+        case("[img=,200]https://example.com/image.png[/img]")
+        case("[img=0,0]https://example.com/image.png[/img]")
+        case("[IMG=300]https://example.com/image.png[/img]")
+        case("[IMG=,200]https://example.com/image.png[/img]")
+        case("[IMG=0,0]https://example.com/image.png[/img]")
         case("[size=1]Hello World![/size]")
         case("[color=red]Hello World![/color]")
         case("[color=#AFAFAF]Hello World![/color]")
