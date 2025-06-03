@@ -30,6 +30,7 @@ import org.antlr.v4.kotlinruntime.dfa.DFA
 import org.antlr.v4.kotlinruntime.tree.ParseTreeListener
 import org.antlr.v4.kotlinruntime.tree.ParseTreeVisitor
 import org.antlr.v4.kotlinruntime.tree.TerminalNode
+import kotlin.jvm.JvmField
 
 @Suppress(
     // This is required as we are using a custom JsName alias that is not recognized by the IDE.
