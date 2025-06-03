@@ -86,6 +86,9 @@ fun main() {
 
     BBCodeTestGenerator("Specials").apply {
         for (contextTag in contextTags) {
+            if (contextTag.startsWith("img=")) {
+                case("[$contextTag] /[][/]Hello [/img]")
+            }
             case("[$contextTag] /[][/]Hello [/$contextTag]")
         }
     }.writeTo(dir)
@@ -150,6 +153,8 @@ class BBCodeTestGenerator(
 
                     is RichElement.Image -> {
                         addCode("assertImage(elements.at($index), imageUrl=%S", element.imageUrl)
+                        element.width?.let { addCode(", width=%L", it) }
+                        element.height?.let { addCode(", height=%L", it) }
                         element.jumpUrl?.let { addCode(", jumpUrl=%S", it) }
                         addStatement(")")
                     }

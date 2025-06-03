@@ -165,16 +165,32 @@ public class GenBBSpecialsTest : BBCodeParserTestHelper() {
     }
 
     @Test
+    public fun parse1613175077() {
+        BBCode.parse("[img=300,200] /[][/]Hello [/img]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" /[][/]Hello ", width=300, height=200)
+        }
+    }
+
+    @Test
     public fun parse50537791() {
         BBCode.parse("[img=300,200] /[][/]Hello [/img=300,200]")
         .run {
-            assertImage(elements.at(0), imageUrl=" /[][/]Hello ")
+            assertImage(elements.at(0), imageUrl=" /[][/]Hello ", width=300, height=200)
         }
     }
 
     @Test
     public fun parse664604991() {
         BBCode.parse("[IMG=300,200] /[][/]Hello [/IMG=300,200]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" /[][/]Hello ", width=300, height=200)
+        }
+    }
+
+    @Test
+    public fun parse409214251() {
+        BBCode.parse("[img=300] /[][/]Hello [/img]")
         .run {
             assertImage(elements.at(0), imageUrl=" /[][/]Hello ")
         }
@@ -191,6 +207,14 @@ public class GenBBSpecialsTest : BBCodeParserTestHelper() {
     @Test
     public fun parse1890993535() {
         BBCode.parse("[IMG=300] /[][/]Hello [/IMG=300]")
+        .run {
+            assertImage(elements.at(0), imageUrl=" /[][/]Hello ")
+        }
+    }
+
+    @Test
+    public fun parse429646862() {
+        BBCode.parse("[img=,200] /[][/]Hello [/img]")
         .run {
             assertImage(elements.at(0), imageUrl=" /[][/]Hello ")
         }

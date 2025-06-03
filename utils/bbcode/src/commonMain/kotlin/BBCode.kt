@@ -121,11 +121,13 @@ private class ElementBuilder(
         )
     }
 
-    fun emitImage(url: String) {
+    fun emitImage(url: String, width: Int? = null, height: Int? = null) {
         val context = context
         elements.add(
             RichElement.Image(
                 url,
+                width,
+                height,
                 jumpUrl = context.jumpUrl,
             ),
         )
@@ -233,10 +235,10 @@ private class AstToRichElementVisitor(
     override fun visitImg(ctx: BBCodeParser.ImgContext) {
         val text = ctx.text
         val content = text.substringAfter(']').substringBeforeLast('[')
-        val (w, h) = Regex("""\[img=(\d+),(\d+)]""").find(text)
+        val (w, h) = Regex("""(?i)\[img=(\d+),(\d+)]""").find(text)
             ?.destructured?.let { it.component1().toIntOrNull() to it.component2().toIntOrNull() } ?: (null to null)
 
-        builder.emitImage(content /*, w, h */)
+        builder.emitImage(content, w, h)
     }
 
 }

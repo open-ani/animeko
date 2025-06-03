@@ -116,7 +116,8 @@ public class GenBBBasicsTest : BBCodeParserTestHelper() {
     public fun parse1432337066() {
         BBCode.parse("[img=300,200]https://example.com/image.png[/img]")
         .run {
-            assertImage(elements.at(0), imageUrl="https://example.com/image.png")
+            assertImage(elements.at(0), imageUrl="https://example.com/image.png", width=300,
+                    height=200)
         }
     }
 
@@ -124,7 +125,8 @@ public class GenBBBasicsTest : BBCodeParserTestHelper() {
     public fun parse321382346() {
         BBCode.parse("[IMG=640,480]https://example.com/pic.jpg[/IMG]")
         .run {
-            assertImage(elements.at(0), imageUrl="https://example.com/pic.jpg")
+            assertImage(elements.at(0), imageUrl="https://example.com/pic.jpg", width=640,
+                    height=480)
         }
     }
 
@@ -148,7 +150,7 @@ public class GenBBBasicsTest : BBCodeParserTestHelper() {
     public fun parse1264724581() {
         BBCode.parse("[img=0,0]https://example.com/image.png[/img]")
         .run {
-            assertImage(elements.at(0), imageUrl="https://example.com/image.png")
+            assertImage(elements.at(0), imageUrl="https://example.com/image.png", width=0, height=0)
         }
     }
 
@@ -172,7 +174,7 @@ public class GenBBBasicsTest : BBCodeParserTestHelper() {
     public fun parse579358277() {
         BBCode.parse("[IMG=0,0]https://example.com/image.png[/img]")
         .run {
-            assertImage(elements.at(0), imageUrl="https://example.com/image.png")
+            assertImage(elements.at(0), imageUrl="https://example.com/image.png", width=0, height=0)
         }
     }
 

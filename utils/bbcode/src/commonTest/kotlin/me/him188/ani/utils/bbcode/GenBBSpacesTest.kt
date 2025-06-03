@@ -612,7 +612,7 @@ public class GenBBSpacesTest : BBCodeParserTestHelper() {
     public fun parse1308903400() {
         BBCode.parse("[img=300,200]Hello World![/img=300,200]")
         .run {
-            assertImage(elements.at(0), imageUrl="Hello World!")
+            assertImage(elements.at(0), imageUrl="Hello World!", width=300, height=200)
         }
     }
 
@@ -620,7 +620,7 @@ public class GenBBSpacesTest : BBCodeParserTestHelper() {
     public fun parse314635787() {
         BBCode.parse("[img=300,200][/img=300,200]")
         .run {
-            assertImage(elements.at(0), imageUrl="")
+            assertImage(elements.at(0), imageUrl="", width=300, height=200)
         }
     }
 
@@ -628,7 +628,7 @@ public class GenBBSpacesTest : BBCodeParserTestHelper() {
     public fun parse743621543() {
         BBCode.parse("[img=300,200] [/img=300,200]")
         .run {
-            assertImage(elements.at(0), imageUrl=" ")
+            assertImage(elements.at(0), imageUrl=" ", width=300, height=200)
         }
     }
 
@@ -636,7 +636,7 @@ public class GenBBSpacesTest : BBCodeParserTestHelper() {
     public fun parse50537791() {
         BBCode.parse("[img=300,200] /[][/]Hello [/img=300,200]")
         .run {
-            assertImage(elements.at(0), imageUrl=" /[][/]Hello ")
+            assertImage(elements.at(0), imageUrl=" /[][/]Hello ", width=300, height=200)
         }
     }
 
@@ -644,7 +644,7 @@ public class GenBBSpacesTest : BBCodeParserTestHelper() {
     public fun parse181801000() {
         BBCode.parse("[IMG=300,200]Hello World![/IMG=300,200]")
         .run {
-            assertImage(elements.at(0), imageUrl="Hello World!")
+            assertImage(elements.at(0), imageUrl="Hello World!", width=300, height=200)
         }
     }
 
@@ -652,7 +652,7 @@ public class GenBBSpacesTest : BBCodeParserTestHelper() {
     public fun parse1251873205() {
         BBCode.parse("[IMG=300,200][/IMG=300,200]")
         .run {
-            assertImage(elements.at(0), imageUrl="")
+            assertImage(elements.at(0), imageUrl="", width=300, height=200)
         }
     }
 
@@ -660,7 +660,7 @@ public class GenBBSpacesTest : BBCodeParserTestHelper() {
     public fun parse866256807() {
         BBCode.parse("[IMG=300,200] [/IMG=300,200]")
         .run {
-            assertImage(elements.at(0), imageUrl=" ")
+            assertImage(elements.at(0), imageUrl=" ", width=300, height=200)
         }
     }
 
@@ -668,7 +668,7 @@ public class GenBBSpacesTest : BBCodeParserTestHelper() {
     public fun parse664604991() {
         BBCode.parse("[IMG=300,200] /[][/]Hello [/IMG=300,200]")
         .run {
-            assertImage(elements.at(0), imageUrl=" /[][/]Hello ")
+            assertImage(elements.at(0), imageUrl=" /[][/]Hello ", width=300, height=200)
         }
     }
 
