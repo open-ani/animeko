@@ -165,9 +165,9 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
     }
 
     single<MediampPlayerFactory<*>> {
-        MediampPlayerFactoryLoader.register(MpvMediampPlayerFactory())
+        // MediampPlayerFactoryLoader.register(MpvMediampPlayerFactory())
         // MediampPlayerSurfaceProviderLoader.register(MpvMediampPlayerSurfaceProvider())
-        MediampPlayerFactoryLoader.first()
+        MpvMediampPlayerFactory()
     }
     single<BrowserNavigator> { DesktopBrowserNavigator() }
     factory<MediaResolver> {
