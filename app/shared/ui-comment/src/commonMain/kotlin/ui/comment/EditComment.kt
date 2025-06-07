@@ -23,8 +23,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloseFullscreen
+import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -68,6 +69,7 @@ fun EditComment(
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester = remember { FocusRequester() },
     stickerPanelHeight: Dp = EditCommentDefaults.MinStickerHeight.dp,
+    onCloseRequest: () -> Unit = {},
     onSendComplete: () -> Unit = { },
 ) {
     val scope = rememberCoroutineScope()
@@ -137,6 +139,7 @@ fun EditComment(
         },
         expanded = state.expandButtonState,
         onClickExpand = { state.editExpanded = it },
+        onClickClose = onCloseRequest,
     ) { previewing ->
         Column {
             ProvideContentColor(MaterialTheme.colorScheme.onSurface) {
@@ -151,18 +154,37 @@ fun EditComment(
                         contentPadding = OutlinedTextFieldDefaults.contentPadding(),
                     )
                 } else {
-                    EditCommentDefaults.CommentTextField(
-                        value = state.content,
-                        enabled = !sendingComment,
-                        maxLines = if (state.editExpanded) Int.MAX_VALUE else 3,
+                    Box(
                         modifier = Modifier
-                            .focusRequester(focusRequester)
                             .fillMaxWidth()
                             .ifThen(state.editExpanded) { fillMaxHeight() }
                             .animateContentSize(),
-                        onValueChange = { state.setContent(it) },
-                        interactionSource = remember { MutableInteractionSource() },
-                    )
+                    ) {
+                        EditCommentDefaults.CommentTextField(
+                            value = state.content,
+                            enabled = !sendingComment,
+                            maxLines = if (state.editExpanded) Int.MAX_VALUE else 3,
+                            modifier = Modifier
+                                .focusRequester(focusRequester)
+                                .fillMaxWidth()
+                                .ifThen(state.editExpanded) { fillMaxHeight() },
+                            onValueChange = { state.setContent(it) },
+                            interactionSource = remember { MutableInteractionSource() },
+                        )
+
+                        EditCommentDefaults.ActionButton(
+                            imageVector = if (state.editExpanded)
+                                Icons.Default.CloseFullscreen
+                            else
+                                Icons.Default.OpenInFull,
+                            enabled = true,
+                            onClick = { state.editExpanded = !state.editExpanded },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp),
+                        )
+                    }
+
                     LaunchedEffect(Unit) {
                         focusRequester.requestFocus()
                     }
@@ -212,6 +234,7 @@ fun EditCommentScaffold(
     previewing: Boolean,
     actionRow: @Composable ColumnScope.() -> Unit,
     onClickExpand: (Boolean) -> Unit,
+    onClickClose: () -> Unit = {},
     modifier: Modifier = Modifier,
     expanded: Boolean? = null,
     title: (@Composable () -> Unit)? = null,
@@ -235,9 +258,9 @@ fun EditCommentScaffold(
             }
             if (expanded != null) {
                 EditCommentDefaults.ActionButton(
-                    imageVector = if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                    imageVector = Icons.Default.Close,
                     enabled = true,
-                    onClick = { onClickExpand(!expanded) },
+                    onClick = onClickClose,
                 )
             }
         }
