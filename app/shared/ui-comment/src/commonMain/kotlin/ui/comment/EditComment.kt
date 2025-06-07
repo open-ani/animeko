@@ -69,8 +69,8 @@ fun EditComment(
     modifier: Modifier = Modifier,
     focusRequester: FocusRequester = remember { FocusRequester() },
     stickerPanelHeight: Dp = EditCommentDefaults.MinStickerHeight.dp,
-    onCloseRequest: () -> Unit = {},
     onSendComplete: () -> Unit = { },
+    onCloseRequest: () -> Unit = { },
 ) {
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
@@ -234,7 +234,7 @@ fun EditCommentScaffold(
     previewing: Boolean,
     actionRow: @Composable ColumnScope.() -> Unit,
     onClickExpand: (Boolean) -> Unit,
-    onClickClose: () -> Unit = {},
+    onClickClose: () -> Unit,
     modifier: Modifier = Modifier,
     expanded: Boolean? = null,
     title: (@Composable () -> Unit)? = null,

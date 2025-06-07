@@ -53,6 +53,7 @@ fun EpisodeEditCommentSheet(
         EditComment(
             state = state,
             turnstileState = turnstileState,
+            onCloseRequest = onDismiss,
             modifier = modifier
                 .ifThen(state.editExpanded) { statusBarsPadding() }
                 .ifThen(!state.editExpanded) { padding(top = contentPadding) }
@@ -63,7 +64,6 @@ fun EpisodeEditCommentSheet(
                 sheetState.close()
                 onSendComplete()
             },
-            onCloseRequest = onDismiss,
         )
     }
 }
