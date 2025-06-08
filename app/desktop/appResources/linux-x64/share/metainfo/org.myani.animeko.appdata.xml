@@ -9,10 +9,10 @@
 		<p>Animeko 是一个集找番、追番、看番于一体的弹幕追番平台。</p>
 	</description>
 	<launchable type="desktop-id">org.myani.animeko.desktop</launchable>
-	<url type="homepage">https://myani.org/</url>
+	<url type="homepage">https://animeko.org/</url>
 	<screenshots>
 		<screenshot type="default">
-			<image>https://myani.org/showcase/pc/1.jpg</image>
+			<image>https://animeko.org/showcase/pc/1.jpg</image>
 		</screenshot>
 	</screenshots>
 	<provides>
