@@ -130,7 +130,6 @@ import me.him188.ani.app.ui.subject.episode.comments.EpisodeCommentColumn
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeEditCommentSheet
 import me.him188.ani.app.ui.subject.episode.details.EpisodeDetails
 import me.him188.ani.app.ui.subject.episode.notif.VideoNotifEffect
-import me.him188.ani.app.ui.subject.episode.video.components.DanmakuSettingsSheet
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
 import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
@@ -955,8 +954,10 @@ private fun EpisodeVideo(
                 sheetsController,
                 playerControllerState,
                 playerSettingsPage = {
-                    EpisodeVideoSideSheets.DanmakuSettingsSheet(
+                    EpisodeVideoSideSheets.DanmakuSettingsNavigatorSheet(
+                        state = vm.danmakuRegexFilterState,
                         onDismissRequest = { goBack() },
+                        expanded = expanded,
                         onNavigateToFilterSettings = {
                             sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
                         },

@@ -9,21 +9,32 @@
 
 package me.him188.ani.app.ui.subject.episode.video.components
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import kotlinx.serialization.Serializable
+import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
+import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.EpisodeVideoDefaults
 import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettings
 import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettingsViewModel
 import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
+import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSettings
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.VideoSideSheetScope
 import me.him188.ani.app.videoplayer.ui.VideoSideSheets
@@ -80,31 +91,93 @@ enum class EpisodeVideoSideSheetPage {
     EPISODE_SELECTOR,
 }
 
-object EpisodeVideoSideSheets
+@Serializable
+enum class DanmakuSettingsPage {
+    MAIN,
+    REGEX_FILTER
+}
 
-@Suppress("UnusedReceiverParameter")
-@Composable
-fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
-    onDismissRequest: () -> Unit,
-    onNavigateToFilterSettings: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    SideSheetLayout(
-        title = { Text(text = "弹幕设置") },
-        onDismissRequest = onDismissRequest,
-        modifier,
-        closeButton = {
-            IconButton(onClick = onDismissRequest) {
-                Icon(Icons.Rounded.Close, contentDescription = "关闭")
-            }
-        },
+object EpisodeVideoSideSheets {
+
+    private val sheetModifier = Modifier
+        .desktopTitleBarPadding()
+        .statusBarsPadding()
+
+    @Composable
+    fun DanmakuSettingsSheet(
+
+        onDismissRequest: () -> Unit,
+        onNavigateToFilterSettings: () -> Unit,
+        modifier: Modifier = Modifier,
     ) {
-        EpisodeVideoSettings(
-            remember { EpisodeVideoSettingsViewModel() }, // TODO: Extract EpisodeVideoSettingsViewModel from DanmakuSettingsSheet
-            onNavigateToFilterSettings = onNavigateToFilterSettings,
-        )
+        val viewModel = remember { EpisodeVideoSettingsViewModel() }
+
+        SideSheetLayout(
+            title = { Text(text = "弹幕设置") },
+            onDismissRequest = onDismissRequest,
+            modifier = modifier,
+            closeButton = {
+                IconButton(onClick = onDismissRequest) {
+                    Icon(Icons.Rounded.Close, contentDescription = "关闭")
+                }
+            },
+        ) {
+            EpisodeVideoSettings(
+                viewModel,
+                onNavigateToFilterSettings,
+            ) // TODO: Extract EpisodeVideoSettingsViewModel from DanmakuSettingsSheet
+        }
+    }
+
+    @Composable
+    fun DanmakuSettingsNavigatorSheet(
+        expanded: Boolean,
+        state: DanmakuRegexFilterState,
+        onDismissRequest: () -> Unit,
+        onNavigateToFilterSettings: () -> Unit,
+    ) {
+        if (expanded) {
+            DanmakuSettingsSheet(
+                onDismissRequest = onDismissRequest,
+                onNavigateToFilterSettings = onNavigateToFilterSettings,
+            )
+            return
+        }
+
+        var currentPage by remember { mutableStateOf(DanmakuSettingsPage.MAIN) }
+
+        ModalBottomSheet(
+            onDismissRequest = onDismissRequest,
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
+            modifier = sheetModifier,
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.6f),
+            ) {
+                when (currentPage) {
+                    DanmakuSettingsPage.MAIN -> {
+                        val viewModel = remember { EpisodeVideoSettingsViewModel() }
+                        EpisodeVideoSettings(
+                            viewModel,
+                            onNavigateToFilterSettings = { currentPage = DanmakuSettingsPage.REGEX_FILTER },
+                        )
+                    }
+
+                    DanmakuSettingsPage.REGEX_FILTER -> {
+                        DanmakuRegexFilterSettings(
+                            state = state,
+                            onDismissRequest = { currentPage = DanmakuSettingsPage.MAIN },
+                            expanded = false,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
+
 
 // todo: shit
 @Suppress("UnusedReceiverParameter")

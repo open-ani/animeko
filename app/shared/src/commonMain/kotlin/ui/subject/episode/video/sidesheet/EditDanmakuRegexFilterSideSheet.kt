@@ -71,7 +71,7 @@ fun EpisodeVideoSideSheets.DanmakuRegexFilterSettings(
     var isError by remember { mutableStateOf(false) }
 
     fun handleAdd(): Unit {
-        if (!isBlank && validRegex && expanded) {
+        if (!isBlank && validRegex /*&& expanded*/) {
             isError = false
             state.add(
                 DanmakuRegexFilter(
@@ -122,12 +122,13 @@ fun EpisodeVideoSideSheets.DanmakuRegexFilterSettings(
                                 isError = false
                             },
                             supportingText = {
-                                if (!expanded) {
+                                /*if (!expanded) {
                                     Text(
                                         modifier = Modifier.fillMaxWidth(),
                                         text = "竖屏状态下禁用编辑。",
                                     )
-                                } else if (isError) {
+                                } else */
+                                if (isError) {
                                     Text(
                                         modifier = Modifier.fillMaxWidth(),
                                         text = "正则表达式语法不正确。",
@@ -154,7 +155,7 @@ fun EpisodeVideoSideSheets.DanmakuRegexFilterSettings(
                                         false // Pass the event to other handlers
                                     }
                                 },
-                            enabled = expanded,  // Disable the text field if expanded is false
+                            // enabled = expanded,  // Disable the text field if expanded is false
                             keyboardOptions = KeyboardOptions.Default.copy(
                                 imeAction = ImeAction.Done,
                             ),
@@ -167,7 +168,7 @@ fun EpisodeVideoSideSheets.DanmakuRegexFilterSettings(
 
                         IconButton(
                             onClick = { handleAdd() },
-                            enabled = expanded && !isBlank,
+                            enabled = /*expanded && */!isBlank,
                             modifier = Modifier.align(Alignment.Bottom),
                         ) {
                             Icon(Icons.Rounded.Add, contentDescription = "添加")
