@@ -1653,7 +1653,7 @@ class WithMatrix(
                         cp -r app/desktop/build/compose/binaries/main-release/app/Ani/* AppDir/usr
                         
                         cp app/desktop/appResources/linux-x64/AppRun AppDir/AppRun
-                        cp app/desktop/appResources/linux-x64/org.myani.animeko.desktop AppDir/org.myani.animeko.desktop
+                        cp app/desktop/appResources/linux-x64/org.openani.animeko.desktop AppDir/org.openani.animeko.desktop
                         cp app/desktop/appResources/linux-x64/icon.png AppDir/icon.png
                         cp -r app/desktop/appResources/linux-x64/share AppDir/usr/
                         
