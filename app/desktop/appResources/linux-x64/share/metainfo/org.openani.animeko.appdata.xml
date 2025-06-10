@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-	<id>org.myani.animeko</id>
+	<id>org.openani.animeko</id>
 	<metadata_license>CC0-1.0</metadata_license>
 	<project_license>AGPL-3.0</project_license>
 	<name>Animeko</name>
@@ -8,7 +8,7 @@
 	<description>
 		<p>Animeko 是一个集找番、追番、看番于一体的弹幕追番平台。</p>
 	</description>
-	<launchable type="desktop-id">org.myani.animeko.desktop</launchable>
+	<launchable type="desktop-id">org.openani.animeko.desktop</launchable>
 	<url type="homepage">https://animeko.org/</url>
 	<screenshots>
 		<screenshot type="default">
@@ -16,6 +16,6 @@
 		</screenshot>
 	</screenshots>
 	<provides>
-		<id>org.myani.animeko.desktop</id>
+		<id>org.openani.animeko.desktop</id>
 	</provides>
 </component>
