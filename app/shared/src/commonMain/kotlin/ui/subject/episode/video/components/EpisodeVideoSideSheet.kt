@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
@@ -99,57 +100,39 @@ enum class DanmakuSettingsPage {
 
 object EpisodeVideoSideSheets {
 
-    private val sheetModifier = Modifier
-        .desktopTitleBarPadding()
-        .statusBarsPadding()
-
-    @Composable
-    fun DanmakuSettingsSheet(
-
-        onDismissRequest: () -> Unit,
-        onNavigateToFilterSettings: () -> Unit,
-        modifier: Modifier = Modifier,
-    ) {
-        val viewModel = remember { EpisodeVideoSettingsViewModel() }
-
-        SideSheetLayout(
-            title = { Text(text = "弹幕设置") },
-            onDismissRequest = onDismissRequest,
-            modifier = modifier,
-            closeButton = {
-                IconButton(onClick = onDismissRequest) {
-                    Icon(Icons.Rounded.Close, contentDescription = "关闭")
-                }
-            },
-        ) {
-            EpisodeVideoSettings(
-                viewModel,
-                onNavigateToFilterSettings,
-            ) // TODO: Extract EpisodeVideoSettingsViewModel from DanmakuSettingsSheet
-        }
-    }
-
     @Composable
     fun DanmakuSettingsNavigatorSheet(
         expanded: Boolean,
         state: DanmakuRegexFilterState,
         onDismissRequest: () -> Unit,
-        onNavigateToFilterSettings: () -> Unit,
+        onNavigateToFilterSettings: () -> Unit
     ) {
+        // 全屏：直接展示主设置 SideSheet
         if (expanded) {
-            DanmakuSettingsSheet(
+            val viewModel = remember { EpisodeVideoSettingsViewModel() }
+            SideSheetLayout(
+                title = { Text("弹幕设置") },
                 onDismissRequest = onDismissRequest,
-                onNavigateToFilterSettings = onNavigateToFilterSettings,
-            )
+                modifier = Modifier,
+                closeButton = {
+                    IconButton(onClick = onDismissRequest) {
+                        Icon(Icons.Rounded.Close, contentDescription = "关闭")
+                    }
+                },
+            ) {
+                EpisodeVideoSettings(viewModel, onNavigateToFilterSettings)
+            }
             return
         }
 
-        var currentPage by remember { mutableStateOf(DanmakuSettingsPage.MAIN) }
-
+        // 竖屏：主设置 & 正则过滤二级导航
+        var currentPage by rememberSaveable { mutableStateOf(DanmakuSettingsPage.MAIN) }
         ModalBottomSheet(
             onDismissRequest = onDismissRequest,
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
-            modifier = sheetModifier,
+            modifier = Modifier
+                .desktopTitleBarPadding()
+                .statusBarsPadding(),
         ) {
             Box(
                 modifier = Modifier

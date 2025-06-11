@@ -955,16 +955,16 @@ private fun EpisodeVideo(
                 playerControllerState,
                 playerSettingsPage = {
                     EpisodeVideoSideSheets.DanmakuSettingsNavigatorSheet(
+                        expanded = expanded,
                         state = vm.danmakuRegexFilterState,
                         onDismissRequest = { goBack() },
-                        expanded = expanded,
                         onNavigateToFilterSettings = {
                             sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
                         },
                     )
                 },
                 editDanmakuRegexFilterPage = {
-                    EpisodeVideoSideSheets.DanmakuRegexFilterSettings(
+                    DanmakuRegexFilterSettings(
                         state = vm.danmakuRegexFilterState,
                         onDismissRequest = { goBack() },
                         expanded = expanded,

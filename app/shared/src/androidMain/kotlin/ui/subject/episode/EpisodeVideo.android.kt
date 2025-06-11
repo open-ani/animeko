@@ -169,7 +169,9 @@ private fun PreviewVideoScaffoldImpl(
                 sheetsController,
                 controllerState,
                 playerSettingsPage = {
-                    EpisodeVideoSideSheets.DanmakuSettingsSheet(
+                    EpisodeVideoSideSheets.DanmakuSettingsNavigatorSheet(
+                        expanded = expanded,
+                        state = createTestDanmakuRegexFilterState(),
                         onDismissRequest = { goBack() },
                         onNavigateToFilterSettings = {
                             sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
@@ -177,7 +179,7 @@ private fun PreviewVideoScaffoldImpl(
                     )
                 },
                 editDanmakuRegexFilterPage = {
-                    EpisodeVideoSideSheets.DanmakuRegexFilterSettings(
+                    DanmakuRegexFilterSettings(
                         state = createTestDanmakuRegexFilterState(),
                         onDismissRequest = { goBack() },
                         expanded = expanded,

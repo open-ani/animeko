@@ -50,144 +50,115 @@ import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.settings.danmaku.RegexFilterItem
 import me.him188.ani.app.ui.settings.danmaku.isValidRegex
 import me.him188.ani.app.ui.settings.framework.components.SettingsDefaults
-import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
 import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
 import me.him188.ani.utils.platform.Uuid
 
 
 @Suppress("UnusedReceiverParameter")
 @Composable
-fun EpisodeVideoSideSheets.DanmakuRegexFilterSettings(
+fun DanmakuRegexFilterContent(
     state: DanmakuRegexFilterState,
-    onDismissRequest: () -> Unit,
-    modifier: Modifier = Modifier,
-    expanded: Boolean = true,  // Use the expanded parameter
+    onAdd: (String) -> Unit,
+    onDelete: (DanmakuRegexFilter) -> Unit,
+    onToggle: (DanmakuRegexFilter) -> Unit
 ) {
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
-    var regexTextFieldValue by rememberSaveable { mutableStateOf("") }
-    val isBlank by remember { derivedStateOf { regexTextFieldValue.isBlank() } }
-    val validRegex by remember { derivedStateOf { isValidRegex(regexTextFieldValue) } }
+    var input by rememberSaveable { mutableStateOf("") }
+    val isBlank by remember { derivedStateOf { input.isBlank() } }
+    val valid by remember { derivedStateOf { isValidRegex(input) } }
     var isError by remember { mutableStateOf(false) }
 
-    fun handleAdd(): Unit {
-        if (!isBlank && validRegex /*&& expanded*/) {
+    fun add() {
+        if (!isBlank && valid) {
             isError = false
-            state.add(
-                DanmakuRegexFilter(
-                    id = Uuid.randomString(),
-                    name = "",
-                    regex = regexTextFieldValue,
-                    enabled = true,
-                ),
-            )
-            regexTextFieldValue = "" // Clear the text field after adding
+            onAdd(input)
+            input = ""
         } else {
             isError = true
         }
         focusManager.clearFocus()
     }
 
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .verticalScroll(scrollState)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedTextField(
+                value = input,
+                onValueChange = { input = it; isError = false },
+                label = { Text("正则表达式") },
+                supportingText = {
+                    if (isError) Text("正则表达式语法不正确。")
+                    else Text("例如：‘签’ 会屏蔽含文字‘签’的弹幕。")
+                },
+                isError = isError,
+                singleLine = true,
+                modifier = Modifier
+                    .weight(1f)
+                    .onKeyEvent { e: KeyEvent ->
+                        if (e.key == Key.Enter) {
+                            add(); true
+                        } else false
+                    },
+                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { add() }),
+            )
+            IconButton(onClick = { add() }, enabled = !isBlank) {
+                Icon(Icons.Rounded.Add, contentDescription = "添加")
+            }
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            state.list.forEach { item ->
+                RegexFilterItem(
+                    item,
+                    onDelete = { onDelete(item) },
+                    onDisable = { onToggle(item) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DanmakuRegexFilterSettings(
+    state: DanmakuRegexFilterState,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    expanded: Boolean,
+) {
+
+    val layoutModifier = if (!expanded) modifier.fillMaxWidth() else modifier
+
     SideSheetLayout(
-        title = { Text(text = "正则弹幕过滤管理") },
+        title = { Text("正则弹幕过滤管理") },
         onDismissRequest = onDismissRequest,
+        modifier = layoutModifier,
         closeButton = {
             IconButton(onClick = onDismissRequest) {
                 Icon(Icons.Rounded.Close, contentDescription = "关闭")
             }
         },
     ) {
-        Surface(Modifier.fillMaxSize(), color = SettingsDefaults.groupBackgroundColor) {
-            Column(
-                modifier.padding(horizontal = 16.dp)
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .verticalScroll(scrollState),
-            ) {
-                // 输入框
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .padding(vertical = 16.dp)
-                            .fillMaxWidth(),
-                        verticalAlignment = Alignment.Bottom,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        OutlinedTextField(
-                            value = regexTextFieldValue,
-                            onValueChange = {
-                                regexTextFieldValue = it
-                                isError = false
-                            },
-                            supportingText = {
-                                /*if (!expanded) {
-                                    Text(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        text = "竖屏状态下禁用编辑。",
-                                    )
-                                } else */
-                                if (isError) {
-                                    Text(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        text = "正则表达式语法不正确。",
-                                    )
-                                } else {
-                                    Text(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        text = "填写用于屏蔽的正则表达式，例如：‘签’ 会屏蔽所有含有文字‘签’的弹幕。",
-                                    )
-                                }
-                            },
-                            label = {
-                                Text(
-                                    text = "正则表达式",
-                                )
-                            },
-                            modifier = Modifier
-                                .weight(1f) // Make the text field take up the remaining space
-                                .onKeyEvent { event: KeyEvent ->
-                                    if (event.key == Key.Enter) {
-                                        handleAdd()
-                                        true // Consume the event
-                                    } else {
-                                        false // Pass the event to other handlers
-                                    }
-                                },
-                            // enabled = expanded,  // Disable the text field if expanded is false
-                            keyboardOptions = KeyboardOptions.Default.copy(
-                                imeAction = ImeAction.Done,
-                            ),
-                            keyboardActions = KeyboardActions(
-                                onDone = { handleAdd() },
-                            ),
-                            isError = isError,
-                            singleLine = true,
-                        )
-
-                        IconButton(
-                            onClick = { handleAdd() },
-                            enabled = /*expanded && */!isBlank,
-                            modifier = Modifier.align(Alignment.Bottom),
-                        ) {
-                            Icon(Icons.Rounded.Add, contentDescription = "添加")
-                        }
-                    }
-                }
-
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    state.list.forEach { item ->
-                        RegexFilterItem(
-                            item,
-                            onDelete = { state.remove(item) },
-                            onDisable = { state.switch(item) },
-                        )
-                    }
-                }
-            }
+        Surface(
+            Modifier.fillMaxSize(),
+            color = SettingsDefaults.groupBackgroundColor,
+        ) {
+            DanmakuRegexFilterContent(
+                state = state,
+                onAdd = { regex -> state.add(DanmakuRegexFilter(Uuid.randomString(), "", regex, true)) },
+                onDelete = { state.remove(it) },
+                onToggle = { state.switch(it) },
+            )
         }
     }
 }
+
