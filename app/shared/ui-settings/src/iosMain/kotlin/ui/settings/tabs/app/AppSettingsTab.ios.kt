@@ -35,7 +35,13 @@ internal actual fun SettingsScope.IosLanguageSettings() {
             val url = NSURL.URLWithString(UIApplicationOpenSettingsURLString)!!
             val app = UIApplication.sharedApplication
             if (app.canOpenURL(url)) {
-                app.openURL(url)
+                app.openURL(
+                    url,
+                    options = emptyMap<_, Any?>(),
+                    completionHandler = { _ ->
+                        // ignored
+                    },
+                )
             }
         },
         title = { Text(stringResource(Lang.settings_app_language)) },

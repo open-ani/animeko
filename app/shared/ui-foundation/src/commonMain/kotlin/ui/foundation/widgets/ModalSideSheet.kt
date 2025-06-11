@@ -6,9 +6,11 @@
  *
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
+@file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
 
 package me.him188.ani.app.ui.foundation.widgets
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -18,12 +20,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material3.DrawerDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.contentColorFor
+import androidx.compose.material3.ModalBottomSheetDialog
+import androidx.compose.material3.ModalBottomSheetProperties
+import androidx.compose.material3.isDark
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -44,14 +49,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntRect
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.PopupPositionProvider
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
-import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 
 @Composable
 fun rememberModalSideSheetState(): ModalSideSheetState {
@@ -127,26 +127,15 @@ fun ModalSideSheet(
             .collect { if (it) animateToDismiss() }
     }
 
-    ModalSideSheetPopup(
-        popupPositionProvider = remember {
-            object : PopupPositionProvider {
-                override fun calculatePosition(
-                    anchorBounds: IntRect,
-                    windowSize: IntSize,
-                    layoutDirection: androidx.compose.ui.unit.LayoutDirection,
-                    popupContentSize: IntSize
-                ): IntOffset = IntOffset.Zero
-            }
-        },
+    ModalBottomSheetDialog(
         onDismissRequest = animateToDismiss,
-        properties = PlatformPopupProperties(
-            focusable = true,
-            usePlatformDefaultWidth = false,
-            excludeFromSystemGesture = false,
-            clippingEnabled = false,
+        properties = ModalBottomSheetProperties(
+            isAppearanceLightStatusBars = contentColor.isDark(),
+            isAppearanceLightNavigationBars = contentColor.isDark(),
         ),
+        predictiveBackProgress = remember { Animatable(initialValue = 0f) },
     ) {
-        BoxWithConstraints {
+        Box(Modifier.fillMaxSize().imePadding()) {
             Canvas(
                 modifier = Modifier.fillMaxSize().clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -159,7 +148,6 @@ fun ModalSideSheet(
             Surface(
                 modifier = modifier
                     .fillMaxHeight()
-                    .widthIn(min = 300.dp, max = 400.dp)
                     .align(if (side == SheetSide.End) Alignment.CenterEnd else Alignment.CenterStart)
                     .graphicsLayer { translationX = sheetOffset }
                     .onSizeChanged { sheetWidth = it.width },

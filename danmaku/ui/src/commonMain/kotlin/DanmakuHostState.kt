@@ -148,7 +148,13 @@ class DanmakuHostState(
     /**
      * Tracks for TOP (fixed) danmakus.
      */
-    internal val fixedTrack = mutableListOf<FixedDanmakuTrack<StyledDanmaku>>()
+    internal val topTrack = mutableListOf<FixedDanmakuTrack<StyledDanmaku>>()
+
+    /**
+     * Tracks for BOTTOM (fixed) danmakus.
+     */
+    internal val bottomTrack = mutableListOf<FixedDanmakuTrack<StyledDanmaku>>()
+
 
     private val danmakuRepopulator = DanmakuRepopulator(
         currentFrameTimeNanosState = elapsedFrameTimeNanoState,
@@ -295,12 +301,9 @@ class DanmakuHostState(
                             )
                         }
 
-                        for (danmaku in DanmakuCollectionIterator(floatingTrack)) {
-                            danmaku.danmaku = danmaku.danmaku.transform()
-                        }
-                        for (danmaku in DanmakuCollectionIterator(fixedTrack)) {
-                            danmaku.danmaku = danmaku.danmaku.transform()
-                        }
+                        forEachFloatingDanmaku { it.danmaku = it.danmaku.transform() }
+                        forEachFixedDanmaku { it.danmaku = it.danmaku.transform() }
+
                         danmakuUpdateSubscription++ // update subscription manually
                     }
             }
@@ -310,9 +313,7 @@ class DanmakuHostState(
             launch {
                 snapshotFlow { hostHeight }.collect {
                     if (!paused) return@collect
-                    for (danmaku in DanmakuCollectionIterator(fixedTrack)) {
-                        if (danmaku.fromBottom) danmaku.y = danmaku.calculatePosY()
-                    }
+                    forEachFixedDanmaku { if (it.fromBottom) it.y = it.calculatePosY() }
                     danmakuUpdateSubscription++ // update subscription manually
                 }
             }
@@ -346,13 +347,24 @@ class DanmakuHostState(
             )
         }
 
-        fixedTrack.setTrackCountImpl(if (config.enableTop) count * 2 else 0) { index ->
+        topTrack.setTrackCountImpl(count * config.enableTop.int) { index ->
             FixedDanmakuTrack(
-                trackIndex = if (index % 2 == 0) index / 2 else (index - 1) / 2,
+                trackIndex = index,
                 frameTimeNanosState = elapsedFrameTimeNanoState,
                 trackHeight = trackHeightState,
                 hostHeight = hostHeightState,
-                fromBottom = index % 2 == 0,
+                fromBottom = false,
+                durationMillis = fixedDanmakuPresentDuration,
+            )
+        }
+
+        bottomTrack.setTrackCountImpl(count * config.enableBottom.int) { index ->
+            FixedDanmakuTrack(
+                trackIndex = index,
+                frameTimeNanosState = elapsedFrameTimeNanoState,
+                trackHeight = trackHeightState,
+                hostHeight = hostHeightState,
+                fromBottom = true,
                 durationMillis = fixedDanmakuPresentDuration,
             )
         }
@@ -393,7 +405,7 @@ class DanmakuHostState(
     private suspend fun repopulatePresentDanmaku(currentElapsedFrameTimeNanos: Long) {
         uiContext.await()
         val presentFloatingDanmakuCopied = DanmakuCollectionIterator(floatingTrack).toList()
-        val presentFixedDanmakuCopied = DanmakuCollectionIterator(fixedTrack).toList()
+        val presentFixedDanmakuCopied = DanmakuCollectionIterator(listOf(topTrack, bottomTrack).flatten()).toList()
 
         val floatingTrackSpeed = with(uiContext.density) { danmakuConfig.speed.dp.toPx() }
 
@@ -482,12 +494,12 @@ class DanmakuHostState(
             // always calculate distance x
             danmaku.distanceX += appendedFrameTime / 1_000_000_000f * (floatingTrackSpeed * danmaku.speedMultiplier)
         }
-        for (danmaku in DanmakuCollectionIterator(fixedTrack)) {
-            if (danmaku.placeFrameTimeNanos == DanmakuTrack.NOT_PLACED) {
-                danmaku.placeFrameTimeNanos = elapsedFrameTimeNanos
+        forEachFixedDanmaku {
+            if (it.placeFrameTimeNanos == DanmakuTrack.NOT_PLACED) {
+                it.placeFrameTimeNanos = elapsedFrameTimeNanos
             }
             // calculate y once
-            if (danmaku.y.isNaN()) danmaku.y = danmaku.calculatePosY()
+            if (it.y.isNaN()) it.y = it.calculatePosY()
         }
     }
 
@@ -497,7 +509,8 @@ class DanmakuHostState(
      */
     internal fun tick() {
         floatingTrack.forEach { it.tick() }
-        fixedTrack.forEach { it.tick() }
+        topTrack.forEach { it.tick() }
+        bottomTrack.forEach { it.tick() }
     }
 
     /**
@@ -538,16 +551,14 @@ class DanmakuHostState(
                 }
 
                 DanmakuLocation.TOP -> {
-                    val floatingDanmaku = fixedTrack.firstNotNullOfOrNull {
-                        if (it.fromBottom) return@firstNotNullOfOrNull null
+                    val floatingDanmaku = topTrack.firstNotNullOfOrNull {
                         it.tryPlace(styledDanmaku, placeFrameTimeNanos)
                     }
                     floatingDanmaku != null
                 }
 
                 DanmakuLocation.BOTTOM -> {
-                    val floatingDanmaku = fixedTrack.firstNotNullOfOrNull {
-                        if (!it.fromBottom) return@firstNotNullOfOrNull null
+                    val floatingDanmaku = bottomTrack.firstNotNullOfOrNull {
                         it.tryPlace(styledDanmaku, placeFrameTimeNanos)
                     }
                     floatingDanmaku != null
@@ -613,11 +624,11 @@ class DanmakuHostState(
                 val tracks = if (danmaku.danmaku.location == DanmakuLocation.TOP) {
                     // 没开启就没办法发送, 因为轨道数量为 0
                     if (!danmakuConfig.enableTop) return@withContext
-                    fixedTrack.filterNot { it.fromBottom }
+                    topTrack
                 } else {
                     // 没开启就没办法发送, 因为轨道数量为 0
                     if (!danmakuConfig.enableBottom) return@withContext
-                    fixedTrack.filter { it.fromBottom }
+                    bottomTrack
                 }
                 var sendTrack: FixedDanmakuTrack<StyledDanmaku>? = null
                 var minDanmakuTime = Long.MAX_VALUE
@@ -686,7 +697,8 @@ class DanmakuHostState(
      */
     private fun clearPresentDanmaku() {
         floatingTrack.forEach { it.clearAll() }
-        fixedTrack.forEach { it.clearAll() }
+        topTrack.forEach { it.clearAll() }
+        bottomTrack.forEach { it.clearAll() }
 
         // We expect presentFloatingDanmaku.size and presentFixedDanmaku.size to be zero, but we don't crash UI here if they are not the case.
         // It's possible some thread
@@ -698,6 +710,16 @@ class DanmakuHostState(
 //            "presentFloatingDanmaku is not totally cleared after releasing track."
 //        }
     }
+
+    internal fun forEachFixedDanmaku(block: (FixedDanmaku<StyledDanmaku>) -> Unit) {
+        DanmakuCollectionIterator(topTrack).forEach { block(it) }
+        DanmakuCollectionIterator(bottomTrack).forEach { block(it) }
+    }
+
+    internal fun forEachFloatingDanmaku(block: (FloatingDanmaku<StyledDanmaku>) -> Unit) {
+        DanmakuCollectionIterator(floatingTrack).forEach { block(it) }
+    }
+
 
     /**
      * Toggles the paused state of the danmaku system. While paused:
@@ -804,11 +826,16 @@ internal class DanmakuRepopulator(
 }
 
 private fun <D : SizeSpecifiedDanmaku, DT, T : DanmakuTrack<D, DT>>
-        MutableList<T>.setTrackCountImpl(count: Int, newInstance: (index: Int) -> T) {
+        MutableList<T>.setTrackCountImpl(count: Int, newInstance: List<T>.(index: Int) -> T) {
     when {
         size == count -> return
         // 清除 track 的同时要把 track 里的 danmaku 也要清除
         count < size -> repeat(size - count) { removeLastOrNull()?.clearAll() }
-        else -> addAll(List(count - size) { newInstance(size + it) })
+        else -> addAll(
+            List(count - size) { newInstance(this@setTrackCountImpl, size + it) },
+        )
     }
 }
+
+private val Boolean.int: Int
+    get() = if (this) 1 else 0

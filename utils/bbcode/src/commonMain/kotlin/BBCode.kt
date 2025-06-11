@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -121,11 +121,13 @@ private class ElementBuilder(
         )
     }
 
-    fun emitImage(url: String) {
+    fun emitImage(url: String, width: Int? = null, height: Int? = null) {
         val context = context
         elements.add(
             RichElement.Image(
                 url,
+                width,
+                height,
                 jumpUrl = context.jumpUrl,
             ),
         )
@@ -231,6 +233,12 @@ private class AstToRichElementVisitor(
     }
 
     override fun visitImg(ctx: BBCodeParser.ImgContext) {
-        builder.emitImage(ctx.content?.text.orEmpty())
+        val text = ctx.text
+        val content = text.substringAfter(']').substringBeforeLast('[')
+        val (w, h) = Regex("""(?i)\[img=(\d+),(\d+)]""").find(text)
+            ?.destructured?.let { it.component1().toIntOrNull() to it.component2().toIntOrNull() } ?: (null to null)
+
+        builder.emitImage(content, w, h)
     }
+
 }

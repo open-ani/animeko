@@ -44,7 +44,7 @@ text_stiker:
 
 url: ('[url]' | '[URL]') href=plain? ('[/url]' | '[/URL]');
 url_named: ('[url=' | '[URL=') href=attribute_value ']' content=section? ('[/url]' | '[/URL]');
-img: ('[img]'| '[IMG]') content=section? ('[/img]' | '[/IMG]');
+img: ('[img' | '[IMG') ']' content=plain+ ('[/img]' | '[/IMG]');
 
 attribute_value: quoted=QUOTED | unquoted=TEXT;
 

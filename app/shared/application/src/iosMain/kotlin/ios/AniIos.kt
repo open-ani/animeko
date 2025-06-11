@@ -32,10 +32,11 @@ import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
-import me.him188.ani.app.domain.media.cache.MediaCacheManager
+import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.IosWebMediaResolver
@@ -51,7 +52,6 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.platform.AniHostingUIViewController
 import me.him188.ani.app.platform.AppStartupTasks
 import me.him188.ani.app.platform.GrantedPermissionManager
-import me.him188.ani.app.platform.files
 import me.him188.ani.app.platform.IosContext
 import me.him188.ani.app.platform.IosContextFiles
 import me.him188.ani.app.platform.LocalContext
@@ -80,10 +80,10 @@ import me.him188.ani.app.ui.main.AniAppContent
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsConfig
 import me.him188.ani.utils.httpdownloader.HttpDownloader
-import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.SystemCacheDir
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.SystemSupportDir
+import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.createDirectories
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.logging.IosLoggingConfigurator
@@ -273,6 +273,12 @@ fun getIosModules(
     }
     single<MediampPlayerFactory<*>> {
         AVKitMediampPlayerFactory()
+    }
+    single<MediaSaveDirProvider> {
+        object : MediaSaveDirProvider {
+            override val saveDir: String
+                get() = context.files.defaultBaseMediaCacheDir.absolutePath
+        }
     }
 
 

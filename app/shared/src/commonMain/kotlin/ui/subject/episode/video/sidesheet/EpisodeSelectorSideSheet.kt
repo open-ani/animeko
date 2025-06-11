@@ -10,7 +10,6 @@
 package me.him188.ani.app.ui.subject.episode.video.sidesheet
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -123,12 +122,10 @@ fun EpisodeVideoSideSheets.EpisodeSelectorSheet(
     state: EpisodeSelectorState,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     SideSheetLayout(
         onDismissRequest = onDismissRequest,
         modifier = modifier.testTag(TAG_EPISODE_SELECTOR_SHEET),
-        contentPadding = contentPadding,
         title = { Text(text = "选择剧集") },
         closeButton = {
             IconButton(onClick = onDismissRequest) {

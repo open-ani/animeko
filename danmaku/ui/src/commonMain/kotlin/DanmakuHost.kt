@@ -72,25 +72,25 @@ fun DanmakuHost(
         ) {
             state.danmakuUpdateSubscription // subscribe changes
 
-            for (danmaku in DanmakuCollectionIterator(state.floatingTrack)) {
+            state.forEachFloatingDanmaku {
                 // don't draw uninitialized danmaku
-                if (danmaku.y.isNaN()) continue
+                if (it.y.isNaN()) return@forEachFloatingDanmaku
 
-                with(danmaku.danmaku) {
+                with(it.danmaku) {
                     draw(
-                        screenPosX = hostWidth - danmaku.distanceX,
-                        screenPosY = danmaku.y,
+                        screenPosX = hostWidth - it.distanceX,
+                        screenPosY = it.y,
                     )
                 }
             }
-            for (danmaku in DanmakuCollectionIterator(state.fixedTrack)) {
+            state.forEachFixedDanmaku {
                 // don't draw uninitialized danmaku
-                if (danmaku.y.isNaN()) continue
+                if (it.y.isNaN()) return@forEachFixedDanmaku
 
-                with(danmaku.danmaku) {
+                with(it.danmaku) {
                     draw(
-                        screenPosX = (hostWidth - danmaku.danmaku.danmakuWidth) / 2f,
-                        screenPosY = danmaku.y,
+                        screenPosX = (hostWidth - danmakuWidth) / 2f,
+                        screenPosY = it.y,
                     )
                 }
             }
@@ -105,7 +105,8 @@ fun DanmakuHost(
                     Text(
                         "  presentDanmakuCount: ${
                             DanmakuCollectionIterator(state.floatingTrack).toList().size +
-                                    DanmakuCollectionIterator(state.fixedTrack).toList().size
+                                    DanmakuCollectionIterator(state.topTrack).toList().size +
+                                    DanmakuCollectionIterator(state.bottomTrack).toList().size
                         }",
                     )
                     HorizontalDivider()
@@ -114,11 +115,11 @@ fun DanmakuHost(
                         Text("    $track")
                     }
                     Text("  top tracks: ")
-                    for (track in state.fixedTrack.filterNot { it.fromBottom }) {
+                    for (track in state.topTrack) {
                         Text("    $track")
                     }
                     Text("  bottom tracks: ")
-                    for (track in state.fixedTrack.filter { it.fromBottom }) {
+                    for (track in state.bottomTrack) {
                         Text("    $track")
                     }
                 }
