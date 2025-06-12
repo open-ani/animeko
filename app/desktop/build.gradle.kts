@@ -332,6 +332,7 @@ tasks.register<ComposeHotRun>("runHot") {
 afterEvaluate {
     tasks.named("run", JavaExec::class) {
         configureDevProperties()
+        environment("SKIKO_RENDER_API", "OPENGL")
     }
 }
 
