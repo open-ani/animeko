@@ -240,7 +240,7 @@ class EpisodeVideoControllerTest {
                             )
                         },
                         editDanmakuRegexFilterPage = {
-                            EpisodeVideoSideSheets.DanmakuRegexFilterSettings(
+                            DanmakuRegexFilterSettings(
                                 state = createTestDanmakuRegexFilterState(),
                                 onDismissRequest = { goBack() },
                                 expanded = expanded,

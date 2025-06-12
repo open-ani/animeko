@@ -34,7 +34,6 @@ import me.him188.ani.app.ui.mediafetch.ViewKind
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
 import me.him188.ani.app.ui.mediafetch.request.TestMediaFetchRequest
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
-import me.him188.ani.app.ui.subject.episode.video.components.DanmakuSettingsSheet
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
 import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
@@ -170,7 +169,9 @@ private fun PreviewVideoScaffoldImpl(
                 sheetsController,
                 controllerState,
                 playerSettingsPage = {
-                    EpisodeVideoSideSheets.DanmakuSettingsSheet(
+                    EpisodeVideoSideSheets.DanmakuSettingsNavigatorSheet(
+                        expanded = expanded,
+                        state = createTestDanmakuRegexFilterState(),
                         onDismissRequest = { goBack() },
                         onNavigateToFilterSettings = {
                             sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
@@ -178,7 +179,7 @@ private fun PreviewVideoScaffoldImpl(
                     )
                 },
                 editDanmakuRegexFilterPage = {
-                    EpisodeVideoSideSheets.DanmakuRegexFilterSettings(
+                    DanmakuRegexFilterSettings(
                         state = createTestDanmakuRegexFilterState(),
                         onDismissRequest = { goBack() },
                         expanded = expanded,
