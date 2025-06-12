@@ -12,11 +12,9 @@ package me.him188.ani.app.ui.subject.episode.video.sidesheet
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,10 +22,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -36,20 +37,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
-import me.him188.ani.app.ui.settings.danmaku.RegexFilterItem
 import me.him188.ani.app.ui.settings.danmaku.isValidRegex
-import me.him188.ani.app.ui.settings.framework.components.SettingsDefaults
 import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
 import me.him188.ani.utils.platform.Uuid
 
@@ -60,7 +61,8 @@ fun DanmakuRegexFilterContent(
     state: DanmakuRegexFilterState,
     onAdd: (String) -> Unit,
     onDelete: (DanmakuRegexFilter) -> Unit,
-    onToggle: (DanmakuRegexFilter) -> Unit
+    onToggle: (DanmakuRegexFilter) -> Unit,
+    expanded: Boolean
 ) {
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
@@ -68,6 +70,8 @@ fun DanmakuRegexFilterContent(
     val isBlank by remember { derivedStateOf { input.isBlank() } }
     val valid by remember { derivedStateOf { isValidRegex(input) } }
     var isError by remember { mutableStateOf(false) }
+
+    val isPortrait = !expanded
 
     fun add() {
         if (!isBlank && valid) {
@@ -83,50 +87,75 @@ fun DanmakuRegexFilterContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
             .verticalScroll(scrollState)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(horizontal = if (isPortrait) 12.dp else 16.dp)
+            .padding(top = if (isPortrait) 8.dp else 16.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(if (isPortrait) 12.dp else 16.dp),
     ) {
-        Row(
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            OutlinedTextField(
-                value = input,
-                onValueChange = { input = it; isError = false },
-                label = { Text("正则表达式") },
-                supportingText = {
-                    if (isError) Text("正则表达式语法不正确。")
-                    else Text("例如：‘签’ 会屏蔽含文字‘签’的弹幕。")
+        OutlinedTextField(
+            value = input,
+            onValueChange = { input = it; isError = false },
+            placeholder = { Text("输入要屏蔽的弹幕关键词（正则）") },
+            label = { Text("正则表达式") },
+            supportingText = {
+                if (isError) Text("正则表达式语法不正确。")
+                else Text("例如：‘签’ 会屏蔽含文字‘签’的弹幕。")
+            },
+            isError = isError,
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .onPreviewKeyEvent {
+                    if (it.key == Key.Enter && it.type == KeyEventType.KeyUp) {
+                        add(); true
+                    } else false
                 },
-                isError = isError,
-                singleLine = true,
-                modifier = Modifier
-                    .weight(1f)
-                    .onKeyEvent { e: KeyEvent ->
-                        if (e.key == Key.Enter) {
-                            add(); true
-                        } else false
-                    },
-                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { add() }),
-            )
-            IconButton(onClick = { add() }, enabled = !isBlank) {
-                Icon(Icons.Rounded.Add, contentDescription = "添加")
-            }
-        }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            trailingIcon = {
+                IconButton(onClick = { add() }, enabled = !isBlank && valid) {
+                    Icon(Icons.Rounded.Add, contentDescription = "添加")
+                }
+            },
+            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { add() }),
+        )
+
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             state.list.forEach { item ->
-                RegexFilterItem(
-                    item,
-                    onDelete = { onDelete(item) },
-                    onDisable = { onToggle(item) },
+                AssistChip(
+                    onClick = { onToggle(item) },
+                    label = {
+                        Text(
+                            item.regex,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    leadingIcon = {
+                        if (!item.enabled) {
+                            Icon(Icons.Rounded.VisibilityOff, contentDescription = null)
+                        }
+                    },
+                    trailingIcon = {
+                        IconButton(
+                            onClick = { onDelete(item) },
+                            modifier = Modifier.size(24.dp),
+                        ) {
+                            Icon(Icons.Rounded.Close, contentDescription = "删除", modifier = Modifier.size(16.dp))
+                        }
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = if (item.enabled) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                        labelColor = if (item.enabled) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
                 )
             }
         }
     }
 }
+
 
 @Composable
 fun DanmakuRegexFilterSettings(
@@ -135,30 +164,30 @@ fun DanmakuRegexFilterSettings(
     modifier: Modifier = Modifier,
     expanded: Boolean,
 ) {
-
-    val layoutModifier = if (!expanded) modifier.fillMaxWidth() else modifier
-
+    val isPortrait = !expanded
+    val backgroundColor = if (isPortrait) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh
+    val layoutModifier = if (isPortrait) modifier.fillMaxWidth() else modifier
+    
     SideSheetLayout(
         title = { Text("正则弹幕过滤管理") },
         onDismissRequest = onDismissRequest,
         modifier = layoutModifier,
+        containerColor = backgroundColor,
         closeButton = {
-            IconButton(onClick = onDismissRequest) {
-                Icon(Icons.Rounded.Close, contentDescription = "关闭")
+            if (expanded) {
+                IconButton(onClick = onDismissRequest) {
+                    Icon(Icons.Rounded.Close, contentDescription = "关闭")
+                }
             }
         },
     ) {
-        Surface(
-            Modifier.fillMaxSize(),
-            color = SettingsDefaults.groupBackgroundColor,
-        ) {
-            DanmakuRegexFilterContent(
-                state = state,
-                onAdd = { regex -> state.add(DanmakuRegexFilter(Uuid.randomString(), "", regex, true)) },
-                onDelete = { state.remove(it) },
-                onToggle = { state.switch(it) },
-            )
-        }
+        DanmakuRegexFilterContent(
+            state = state,
+            expanded = expanded,
+            onAdd = { regex -> state.add(DanmakuRegexFilter(Uuid.randomString(), "", regex, true)) },
+            onDelete = { state.remove(it) },
+            onToggle = { state.switch(it) },
+        )
     }
 }
 
