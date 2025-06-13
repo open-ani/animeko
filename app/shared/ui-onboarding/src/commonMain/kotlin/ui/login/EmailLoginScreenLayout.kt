@@ -48,20 +48,18 @@ import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 internal fun EmailLoginScreenLayout(
     onBangumiLoginClick: () -> Unit,
     onNavigateSettings: () -> Unit,
-    onNavigateBack: () -> Unit,
+    navigationIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     title: @Composable () -> Unit = { Text("登录") },
     showThirdPartyLogin: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     Scaffold(
         modifier,
         topBar = {
             TopAppBar(
                 title = title,
-                navigationIcon = { BackNavigationIconButton(onNavigateBack) },
-                scrollBehavior = scrollBehavior,
+                navigationIcon = navigationIcon,
                 actions = { IconButton(onNavigateSettings) { Icon(Icons.Outlined.Settings, "设置") } },
                 windowInsets = AniWindowInsets.forPageContent(),
             )
@@ -76,8 +74,7 @@ internal fun EmailLoginScreenLayout(
                     widthIn(max = 480.dp)
                 }
                 .padding(contentPadding)
-                .padding(horizontal = 24.dp)
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .padding(horizontal = 24.dp),
         ) {
             Column(
                 Modifier

@@ -189,8 +189,12 @@ private fun AniAppContentImpl(
                     onNavigateSettings = {
                         aniNavigator.navigateSettings()
                     },
-                    onNavigateBack = {
-                        aniNavigator.popBackStack(NavRoutes.EmailLoginStart, true)
+                    navigationIcon = {
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popBackStack()
+                            },
+                        )
                     },
                     vm = emailLoginViewModel,
                 )
@@ -211,8 +215,12 @@ private fun AniAppContentImpl(
                     onNavigateSettings = {
                         aniNavigator.navigateSettings()
                     },
-                    onNavigateBack = {
-                        aniNavigator.popBackStack(NavRoutes.EmailLoginVerify, true)
+                    navigationIcon = {
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popBackStack()
+                            },
+                        )
                     },
                     vm = emailLoginViewModel,
                 )
@@ -226,8 +234,15 @@ private fun AniAppContentImpl(
                 val vm = viewModel<BangumiAuthorizeViewModel> { BangumiAuthorizeViewModel() }
                 BangumiAuthorizeScreen(
                     vm,
-                    onNavigateBack = {
-                        aniNavigator.popBackStack(NavRoutes.BangumiAuthorize, true)
+                    onSuccess = {
+                        aniNavigator.popBackOrNavigateToMain(mainSceneInitialPage)
+                    },
+                    navigationIcon = {
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popBackStack()
+                            },
+                        )
                     },
                     onNavigateSettings = {
                         aniNavigator.navigateSettings()

@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.login
 
 import androidx.compose.foundation.layout.Spacer
@@ -33,7 +42,7 @@ fun EmailLoginStartScreen(
     onOtpSent: () -> Unit,
     onBangumiLoginClick: () -> Unit,
     onNavigateSettings: () -> Unit,
-    onNavigateBack: () -> Unit,
+    navigationIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     vm: EmailLoginViewModel = viewModel<EmailLoginViewModel> { EmailLoginViewModel() },
 ) {
@@ -50,7 +59,7 @@ fun EmailLoginStartScreen(
         },
         onBangumiLoginClick,
         onNavigateSettings,
-        onNavigateBack,
+        navigationIcon,
         enabled = !asyncHandler.isWorking,
         modifier = modifier,
     )
@@ -64,14 +73,14 @@ internal fun EmailLoginStartScreenImpl(
     onContinueClick: () -> Unit,
     onBangumiLoginClick: () -> Unit,
     onNavigateSettings: () -> Unit,
-    onNavigateBack: () -> Unit,
+    navigationIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
     EmailLoginScreenLayout(
         onBangumiLoginClick,
         onNavigateSettings,
-        onNavigateBack,
+        navigationIcon,
         modifier,
     ) {
         CenteredSectionHeader(
