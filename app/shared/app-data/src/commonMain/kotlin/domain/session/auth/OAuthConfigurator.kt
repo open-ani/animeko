@@ -71,7 +71,8 @@ class OAuthConfigurator(
             while (oAuthResult == null) {
                 delay(1.seconds)
                 oAuthResult = client.getResult(requestId)
-                logger.info { "Check oauth result of request id $requestId: ${oAuthResult != null}" }
+                // 日志里已经有 HTTP 日志了, 可以看到 425, 不需要这个
+//                logger.info { "Check oauth result of request id $requestId: ${oAuthResult != null}" }
             }
 
             _state.value = State.Success(requestId, oAuthResult)
