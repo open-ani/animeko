@@ -51,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.AniMotionScheme
 import me.him188.ani.app.ui.foundation.animation.AnimatedVisibilityMotionScheme
@@ -60,6 +61,7 @@ import me.him188.ani.app.ui.foundation.icons.BangumiNextIconColor
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
 import me.him188.ani.app.ui.onboarding.WizardLayoutParams
+import me.him188.ani.app.ui.search.renderLoadErrorMessage
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
@@ -74,12 +76,7 @@ sealed interface AuthState {
     data object AwaitingResult : AuthState
 
     data object Success : AuthState
-
-    data class UnknownError(val cause: Throwable? = null) : Error
-
-    class KnownError(val type: ErrorType) : Error
-
-    sealed interface Error : AuthState
+    class Failed(val error: LoadError) : AuthState
 
     enum class ErrorType {
         NotSupportedForRegistration,
@@ -171,7 +168,7 @@ private fun AuthorizeButton(
                 transitionSpec = LocalAniMotionScheme.current.animatedContent.standard,
             ) {
                 when (it) {
-                    is AuthState.Idle, is AuthState.Error -> {
+                    is AuthState.Idle, is AuthState.Failed -> {
                         if (authorizeState is AuthState.LoggedInAni) {
                             if (authorizeState.bound) {
                                 Text("不可重复绑定")
@@ -245,21 +242,20 @@ private fun AuthorizeStateText(
 ) {
 
     AnimatedVisibility(
-        visible = authorizeState is AuthState.Success || authorizeState is AuthState.Error,
+        visible = authorizeState is AuthState.Success || authorizeState is AuthState.Failed,
         enter = animatedVisibilityMotionScheme.columnEnter,
         exit = animatedVisibilityMotionScheme.columnExit,
         modifier = modifier,
     ) {
         Text(
             when (authorizeState) {
-                is AuthState.KnownError -> renderKnownError(authorizeState.type)
-                is AuthState.UnknownError -> "未知错误：${authorizeState.cause}"
+                is AuthState.Failed -> renderLoadErrorMessage(authorizeState.error)
                 else -> ""
             },
             style = MaterialTheme.typography.bodyMedium,
             color = when (authorizeState) {
                 is AuthState.Success -> MaterialTheme.colorScheme.primary
-                is AuthState.Error -> MaterialTheme.colorScheme.error
+                is AuthState.Failed -> MaterialTheme.colorScheme.error
                 else -> MaterialTheme.colorScheme.onSurface
             },
         )
@@ -287,15 +283,6 @@ private fun renderHelpOptionTitle(option: HelpOption): String {
         HelpOption.CANT_RECEIVE_REGISTER_EMAIL -> "无法收到邮箱验证码"
         HelpOption.REGISTER_ACTIVATION_FAILED -> "注册时一直激活失败"
         HelpOption.OTHERS -> "其他问题"
-    }
-}
-
-@Composable
-private fun renderKnownError(type: AuthState.ErrorType): String {
-    return when (type) {
-        AuthState.ErrorType.NotSupportedForRegistration -> "此 oAuth 方式不支持注册 Ani 账号，请使用其他方式注册"
-        AuthState.ErrorType.InvalidBangumiToken -> "无效的 Bangumi 令牌 (token)"
-        AuthState.ErrorType.NetworkError -> "网络错误，请稍后再试"
     }
 }
 

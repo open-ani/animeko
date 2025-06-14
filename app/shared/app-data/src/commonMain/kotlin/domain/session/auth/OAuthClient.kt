@@ -10,8 +10,8 @@
 package me.him188.ani.app.domain.session.auth
 
 import io.ktor.client.plugins.ClientRequestException
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
+import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.session.AccessTokenPair
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.session.canAccessAniApiNow
@@ -25,14 +25,9 @@ import kotlin.time.Duration.Companion.milliseconds
 
 interface OAuthClient {
     /**
-     * 此 OAuth 方式是否支持注册 Ani 用户, 如果不支持, [getOAuthRegisterLink] 应该抛出 [NotSupportedForRegistration]
-     */
-    val supportRegistration: Boolean
-
-    /**
      * 获取 OAuth 注册链接, 通过此链接完成的 OAuth 授权将会自动注册一个新的 Ani 用户.
-     * 如果 [supportRegistration] 为 false, 则抛出 [NotSupportedForRegistration] 异常.
      *
+     * @throws me.him188.ani.app.data.repository.RepositoryException
      * @throws IllegalArgumentException requestId 为空
      */
     suspend fun getOAuthRegisterLink(requestId: String): String
@@ -40,7 +35,7 @@ interface OAuthClient {
     /**
      * 获取 OAuth 绑定链接, 通过此链接完成的 OAuth 授权将会绑定到已有的 Ani 用户.
      *
-     * @throws IllegalStateException 当前 Ani 账户未登录或无效
+     * @throws me.him188.ani.app.data.repository.RepositoryException
      * @throws IllegalArgumentException requestId 为空
      *
      */
@@ -50,8 +45,8 @@ interface OAuthClient {
      * 获取 OAuth 绑定或登录结果, 此结果将直接用于登录 ani 用户.
      *
      * @return null 表示还没有结果.
+     * @throws me.him188.ani.app.data.repository.RepositoryException
      * @throws IllegalArgumentException requestId 为空
-     * @throws OAuthException 服务端返回的 4xx 结果, 例如 bangumi oauth token 无效或 Ani 账号已绑定了一个 bangumi 账号.
      */
     suspend fun getResult(requestId: String): OAuthResult?
 }
@@ -62,26 +57,19 @@ data class OAuthResult(
     val refreshToken: String,
 )
 
-class NotSupportedForRegistration(override val message: String? = null) : IllegalStateException(message)
-
-sealed class OAuthException : Exception()
-
-/**
- * 当回调的 Bangumi token 无效时抛出此异常.
- */
-class InvalidTokenException(override val message: String? = null) : OAuthException()
-
 class BangumiOAuthClient(
     private val bangumiApi: ApiInvoker<BangumiAniApi>,
     private val sessionStateProvider: SessionStateProvider,
     private val platform: Platform = currentPlatform(),
 ) : OAuthClient {
-    override val supportRegistration: Boolean = true
-
     override suspend fun getOAuthRegisterLink(requestId: String): String {
         require(requestId.isNotBlank()) { "requestId must not be blank or empty" }
-        val resp = bangumiApi.invoke {
-            oauth(requestId, platform.name.lowercase(), platform.arch.displayName.lowercase()).body()
+        val resp = try {
+            bangumiApi.invoke {
+                oauth(requestId, platform.name.lowercase(), platform.arch.displayName.lowercase()).body()
+            }
+        } catch (e: Throwable) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
         }
         return resp.url
     }
@@ -92,8 +80,12 @@ class BangumiOAuthClient(
         check(!sessionStateProvider.canAccessBangumiApiNow()) { "Bind operation requires !canAccessBangumiApiNow" }
         check(sessionStateProvider.canAccessAniApiNow()) { "Bind operation requires canAccessAniApiNow" }
 
-        val resp = bangumiApi.invoke {
-            bind(requestId, platform.name.lowercase(), platform.arch.displayName.lowercase()).body()
+        val resp = try {
+            bangumiApi.invoke {
+                bind(requestId, platform.name.lowercase(), platform.arch.displayName.lowercase()).body()
+            }
+        } catch (e: Throwable) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
         }
         return resp.url
     }
@@ -119,9 +111,10 @@ class BangumiOAuthClient(
         } catch (ex: ClientRequestException) {
             when (ex.response.status) {
                 HttpStatusCode.TooEarly -> return null
-                HttpStatusCode.BadRequest -> throw InvalidTokenException(ex.response.bodyAsText())
-                else -> throw ex
+                else -> throw RepositoryException.wrapOrThrowCancellation(ex)
             }
+        } catch (e: Throwable) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
         }
     }
 }

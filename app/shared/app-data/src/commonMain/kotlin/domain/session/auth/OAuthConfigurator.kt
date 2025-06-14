@@ -14,11 +14,12 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.io.IOException
+import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.user.AccessTokenSession
+import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionStateProvider
-import me.him188.ani.app.domain.session.canAccessAniApiNow
+import me.him188.ani.app.domain.session.checkAccessAniApiNow
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -43,9 +44,11 @@ class OAuthConfigurator(
     val state: StateFlow<State> = _state
 
     /**
-     * 启动 oAuth 验证
+     * 进行 OAuth 验证, 操作时会更新 [state]. 这个函数可能会持续很久, 直到用户完成 OAuth 授权并返回结果.
+     *
+     * does not throw
      */
-    suspend fun start(isRegister: Boolean) {
+    suspend fun auth(isRegister: Boolean) {
         val requestId = Uuid.random(random).toString()
         val tokenDeferred = CompletableDeferred<OAuthResult>()
 
@@ -55,9 +58,7 @@ class OAuthConfigurator(
         try {
             val externalUrl = if (!isRegister) {
                 logger.info { "Request bind, request id: $requestId" }
-                check(sessionStateProvider.canAccessAniApiNow()) {
-                    "Cannot bind account because ani account is not logged in."
-                }
+                sessionStateProvider.checkAccessAniApiNow()
                 client.getOAuthBindLink(requestId)
             } else {
                 logger.info { "Request register, request id: $requestId" }
@@ -87,23 +88,14 @@ class OAuthConfigurator(
             _state.value = State.Idle
             throw ex
         } catch (ex: Exception) {
-            logger.warn { "OAuth failed, request id: $requestId" }
-
-            when (ex) {
-                is InvalidTokenException ->
-                    _state.value = State.KnownError(State.ErrorType.InvalidBangumiToken, ex)
-
-                is NotSupportedForRegistration ->
-                    _state.value = State.KnownError(State.ErrorType.NotSupportedForRegistration, ex)
-
-                is IOException ->
-                    _state.value = State.KnownError(State.ErrorType.NetworkError, ex)
-
-                else -> {
-                    _state.value = State.UnknownError(ex)
-                    logger.error(ex) { "OAuth failed with unknown error, request id: $requestId" }
-                }
+            val re = RepositoryException.wrapOrThrowCancellation(ex)
+            val loadError = LoadError.fromException(re)
+            if (loadError is LoadError.UnknownError) {
+                logger.error(re) { "OAuth failed with unknown error, request id: $requestId" }
+            } else {
+                logger.warn { "OAuth failed, request id: $requestId, $loadError" }
             }
+            _state.value = State.Failed(loadError)
         }
     }
 
@@ -111,16 +103,6 @@ class OAuthConfigurator(
         data object Idle : State
         class AwaitingResult(val requestId: String, val deferred: CompletableDeferred<OAuthResult>) : State
         class Success(val requestId: String, val result: OAuthResult) : State
-
-        sealed interface Error : State
-        data class UnknownError(val exception: Throwable) : State
-
-        class KnownError(val type: ErrorType, val exception: Throwable) : State
-
-        enum class ErrorType {
-            NotSupportedForRegistration, // 不支持注册
-            InvalidBangumiToken,
-            NetworkError,
-        }
+        class Failed(val error: LoadError) : State
     }
 }

@@ -12,12 +12,10 @@ package me.him188.ani.app.ui.oauth
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import me.him188.ani.app.data.network.AniApiProvider
-import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.session.auth.BangumiOAuthClient
-import me.him188.ani.app.domain.session.auth.OAuthClient
 import me.him188.ani.app.domain.session.auth.OAuthConfigurator
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.ContextMP
@@ -59,8 +57,7 @@ class BangumiAuthorizeViewModel : AbstractViewModel(), KoinComponent {
                 }
 
                 is OAuthConfigurator.State.AwaitingResult -> AuthState.AwaitingResult
-                is OAuthConfigurator.State.UnknownError -> AuthState.UnknownError(authState.exception)
-                is OAuthConfigurator.State.KnownError -> AuthState.KnownError(authState.type.toUIErrorType())
+                is OAuthConfigurator.State.Failed -> AuthState.Failed(authState.error)
                 is OAuthConfigurator.State.Success -> {
                     if (sessionState is SessionState.Valid) {
                         AuthState.Success
@@ -79,19 +76,11 @@ class BangumiAuthorizeViewModel : AbstractViewModel(), KoinComponent {
                 return@invoke
             }
 
-            configurator.start(isRegister)
+            configurator.auth(isRegister)
         }
     }
 
     fun cancelCurrentOAuth() {
         tasker.cancelCurrent()
-    }
-}
-
-private fun OAuthConfigurator.State.ErrorType.toUIErrorType(): AuthState.ErrorType {
-    return when (this) {
-        OAuthConfigurator.State.ErrorType.NotSupportedForRegistration -> AuthState.ErrorType.NotSupportedForRegistration
-        OAuthConfigurator.State.ErrorType.InvalidBangumiToken -> AuthState.ErrorType.InvalidBangumiToken
-        OAuthConfigurator.State.ErrorType.NetworkError -> AuthState.ErrorType.NetworkError
     }
 }
