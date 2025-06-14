@@ -11,7 +11,6 @@ package me.him188.ani.app.ui.oauth
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,20 +24,13 @@ import me.him188.ani.app.ui.login.EmailLoginScreenLayout
 @Composable
 fun BangumiAuthorizeScreen(
     vm: BangumiAuthorizeViewModel,
+    onNavigateBack: () -> Unit,
     onNavigateSettings: () -> Unit,
-    onSuccess: () -> Unit,
-    navigationIcon: @Composable () -> Unit,
     contactActions: @Composable () -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle(AuthState.NoAniAccount)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-
-    LaunchedEffect(Unit) {
-        vm.collectNewLoginEvent {
-            onSuccess()
-        }
-    }
 
     BangumiAuthorizeScreen(
         state = state,
@@ -54,7 +46,7 @@ fun BangumiAuthorizeScreen(
         },
         onCancelAuthorize = { vm.cancelCurrentOAuth() },
         onNavigateSettings = onNavigateSettings,
-        navigationIcon = navigationIcon,
+        onNavigateBack = onNavigateBack,
         contactActions = contactActions,
     )
 }
@@ -65,13 +57,13 @@ internal fun BangumiAuthorizeScreen(
     onClickAuthorize: () -> Unit,
     onCancelAuthorize: () -> Unit,
     onNavigateSettings: () -> Unit,
-    navigationIcon: @Composable () -> Unit,
+    onNavigateBack: () -> Unit,
     contactActions: @Composable () -> Unit,
 ) {
     EmailLoginScreenLayout(
         onBangumiLoginClick = {},
         onNavigateSettings = onNavigateSettings,
-        navigationIcon = navigationIcon,
+        onNavigateBack = onNavigateBack,
         title = { Text("授权 Bangumi 登录") },
         showThirdPartyLogin = false,
     ) {

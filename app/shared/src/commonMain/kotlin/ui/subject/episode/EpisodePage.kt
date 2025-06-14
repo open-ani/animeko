@@ -485,7 +485,7 @@ private fun EpisodeScreenTabletVeryWide(
                                     vm.videoStatisticsFlow,
                                     page.mediaSelectorState,
                                     { page.mediaSourceResultListPresentation },
-                                    page.selfInfo,
+                                    page.authState,
                                     onSwitchEpisode = { episodeId ->
                                         if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
                                             navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
