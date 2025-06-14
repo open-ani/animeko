@@ -32,6 +32,7 @@ plugins {
     id("de.mannodermaus.android-junit5") version "1.11.2.0" apply false
     id("io.sentry.kotlin.multiplatform.gradle") version libs.versions.sentry.kmp apply false
     alias(libs.plugins.compose.hot.reload) apply false
+    id("de.undercouch.download") version "5.6.0" apply false // HTTP download task
     kotlin("native.cocoapods") apply false
     idea
 }

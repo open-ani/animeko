@@ -17,6 +17,7 @@ import androidx.datastore.preferences.core.mutablePreferencesOf
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.nullable
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
+import me.him188.ani.app.data.models.user.SelfInfo
 import me.him188.ani.app.data.repository.SavedWindowState
 import me.him188.ani.app.data.repository.media.MediaSourceSaves
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionsSaveData
@@ -124,6 +125,14 @@ abstract class PlatformDataStoreManager {
             serializer = TokenSave.serializer().asDataStoreSerializer({ TokenSave.Initial }),
             produceFile = { resolveDataStoreFile("authSession") },
             corruptionHandler = ReplaceFileCorruptionHandler { TokenSave.Initial },
+        )
+    }
+
+    val selfInfoStore by lazy {
+        DataStoreFactory.create(
+            serializer = SelfInfo.serializer().nullable.asDataStoreSerializer({ null }),
+            produceFile = { resolveDataStoreFile("selfInfo") },
+            corruptionHandler = ReplaceFileCorruptionHandler { null },
         )
     }
 

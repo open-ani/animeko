@@ -12,7 +12,6 @@ package me.him188.ani.app.data.network
 import androidx.collection.IntList
 import androidx.collection.IntObjectMap
 import androidx.collection.IntSet
-import androidx.collection.intListOf
 import androidx.collection.mutableIntObjectMapOf
 import androidx.collection.mutableIntSetOf
 import io.ktor.client.plugins.ClientRequestException
@@ -21,11 +20,9 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
@@ -42,15 +39,13 @@ import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.data.repository.RepositoryUsernameProvider
-import me.him188.ani.app.data.repository.getOrThrow
 import me.him188.ani.app.domain.search.SubjectType
-import me.him188.ani.app.domain.session.OpaqueSession
-import me.him188.ani.app.domain.session.SessionManager
-import me.him188.ani.app.domain.session.checkTokenNow
-import me.him188.ani.app.domain.session.username
-import me.him188.ani.app.domain.session.verifiedAccessToken
-import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.app.domain.session.SessionStateProvider
+import me.him188.ani.app.domain.session.checkAccessAniApiNow
+import me.him188.ani.client.apis.SubjectsAniApi
+import me.him188.ani.client.models.AniCollectionType
+import me.him188.ani.client.models.AniSubjectCollection
+import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.apis.DefaultApi
 import me.him188.ani.datasources.bangumi.models.BangumiCount
@@ -58,16 +53,12 @@ import me.him188.ani.datasources.bangumi.models.BangumiPerson
 import me.him188.ani.datasources.bangumi.models.BangumiRating
 import me.him188.ani.datasources.bangumi.models.BangumiSubject
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectCollectionType
-import me.him188.ani.datasources.bangumi.models.BangumiSubjectType
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollection
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollectionModifyPayload
-import me.him188.ani.datasources.bangumi.processing.toCollectionType
-import me.him188.ani.datasources.bangumi.processing.toSubjectCollectionType
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.collections.associateWithTo
-import me.him188.ani.utils.platform.collections.mapToIntList
 import org.koin.core.component.KoinComponent
 import kotlin.coroutines.CoroutineContext
 
@@ -82,9 +73,12 @@ interface BangumiSubjectService {
         type: BangumiSubjectCollectionType?,
         offset: Int,
         limit: Int
-    ): List<BatchSubjectCollection>
+    ): List<AniSubjectCollection>
 
-    suspend fun getSubjectCollection(subjectId: Int): BatchSubjectCollection
+    /**
+     * 当 [subjectId] 不存在时, 返回 `null`.
+     */
+    suspend fun getSubjectCollection(subjectId: Int): AniSubjectCollection?
 
     suspend fun batchGetSubjectDetails(
         ids: IntList,
@@ -103,9 +97,7 @@ interface BangumiSubjectService {
     /**
      * 获取用户对这个条目的收藏状态. flow 一定会 emit 至少一个值或抛出异常. 当用户没有收藏这个条目时 emit `null`. 当没有登录时 emit `null`.
      */
-    fun subjectCollectionById(subjectId: Int): Flow<BangumiUserSubjectCollection?>
-
-    fun subjectCollectionTypeById(subjectId: Int): Flow<UnifiedCollectionType>
+    fun subjectCollectionById(subjectId: Int): Flow<AniSubjectCollection?>
 
     suspend fun patchSubjectCollection(subjectId: Int, payload: BangumiUserSubjectCollectionModifyPayload)
     suspend fun deleteSubjectCollection(subjectId: Int)
@@ -138,8 +130,8 @@ suspend inline fun BangumiSubjectService.setSubjectCollectionTypeOrDelete(
 class RemoteBangumiSubjectService(
     private val client: BangumiClient,
     private val api: ApiInvoker<DefaultApi>,
-    private val sessionManager: SessionManager,
-    private val usernameProvider: RepositoryUsernameProvider,
+    private val subjectApi: ApiInvoker<SubjectsAniApi>,
+    private val sessionManager: SessionStateProvider,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : BangumiSubjectService, KoinComponent {
     private val logger = logger<RemoteBangumiSubjectService>()
@@ -152,18 +144,15 @@ class RemoteBangumiSubjectService(
         type: BangumiSubjectCollectionType?,
         offset: Int,
         limit: Int
-    ): List<BatchSubjectCollection> = withContext(ioDispatcher) {
-        sessionManager.checkTokenNow()
-        val username = usernameProvider.getOrThrow()
+    ): List<AniSubjectCollection> = withContext(ioDispatcher) {
+        sessionManager.checkAccessAniApiNow()
         val collections = try {
-            api {
-                getUserCollectionsByUsername(
-                    username,
-                    subjectType = BangumiSubjectType.Anime,
-                    type = type,
+            subjectApi {
+                getSubjectCollections(
+                    type = type?.toAniCollectionType(),
                     limit = limit,
                     offset = offset,
-                ).body().data.orEmpty()
+                ).body().items
             }
         } catch (e: ClientRequestException) {
             // invalid: 400 . Text: "{"title":"Bad Request","details":{"path":"/v0/users/him188/collections","method":"GET","query_string":"subject_type=2&type=1&limit=30&offset=35"},"request_id":".","description":"offset should be less than or equal to 34"}
@@ -173,26 +162,11 @@ class RemoteBangumiSubjectService(
                 throw e
             }
         }
-
-        val list = batchGetSubjectDetails(collections.mapToIntList { it.subjectId })
-
-        list.map {
-            val subjectId = it.subjectInfo.subjectId
-            val dto = collections.firstOrNull { it.subjectId == subjectId }
-                ?: error("Subject $subjectId not found in collections")
-            BatchSubjectCollection(
-                batchSubjectDetails = it,
-                collection = dto,
-            )
-        }
+        return@withContext collections
     }
 
-    override suspend fun getSubjectCollection(subjectId: Int): BatchSubjectCollection {
-        val collection = subjectCollectionById(subjectId).first()
-        return BatchSubjectCollection(
-            batchGetSubjectDetails(intListOf(subjectId)).first(),
-            collection,
-        )
+    override suspend fun getSubjectCollection(subjectId: Int): AniSubjectCollection? {
+        return subjectCollectionById(subjectId).first()
     }
 
     override suspend fun batchGetSubjectDetails(
@@ -385,75 +359,66 @@ class RemoteBangumiSubjectService(
 
 
     override suspend fun patchSubjectCollection(subjectId: Int, payload: BangumiUserSubjectCollectionModifyPayload) {
-        sessionManager.checkTokenNow()
+        sessionManager.checkAccessAniApiNow()
         withContext(ioDispatcher) {
-            api { postUserCollection(subjectId, payload) }
+            subjectApi {
+                this.updateSubjectCollection(
+                    subjectId.toLong(),
+                    AniUpdateSubjectCollectionRequest(
+                        collectionType = payload.type?.toAniCollectionType(),
+                    ),
+                )
+                Unit
+            }
         }
     }
 
     override suspend fun deleteSubjectCollection(subjectId: Int) {
-        sessionManager.checkTokenNow()
-        // TODO:  deleteSubjectCollection
+        sessionManager.checkAccessAniApiNow()
+        subjectApi {
+            this.deleteSubjectCollection(subjectId.toLong()).body()
+        }
     }
 
-    @OptIn(OpaqueSession::class)
     override fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts> {
-        return sessionManager.username.filterNotNull().map { username ->
-            sessionManager.checkTokenNow()
-            val types = UnifiedCollectionType.entries - UnifiedCollectionType.NOT_COLLECTED
-            val totals = IntArray(types.size) { type ->
-                api {
-                    getUserCollectionsByUsername(
-                        username,
-                        subjectType = BangumiSubjectType.Anime,
-                        type = types[type].toSubjectCollectionType(),
-                        limit = 1, // we only need the total count. API requires at least 1
-                    ).body().total ?: 0
-                }
-            }
-            SubjectCollectionCounts(
-                wish = totals[UnifiedCollectionType.WISH.ordinal],
-                doing = totals[UnifiedCollectionType.DOING.ordinal],
-                done = totals[UnifiedCollectionType.DONE.ordinal],
-                onHold = totals[UnifiedCollectionType.ON_HOLD.ordinal],
-                dropped = totals[UnifiedCollectionType.DROPPED.ordinal],
-                total = totals.sum(),
-            )
-        }.flowOn(ioDispatcher)
+        // TODO("subjectCollectionCountsFlow")
+        return flow {
+            SubjectCollectionCounts(0, 0, 0, 0, 0, 0)
+        }
+//        return sessionManager.username.filterNotNull().map { username ->
+//            sessionManager.checkTokenNow()
+//            val types = UnifiedCollectionType.entries - UnifiedCollectionType.NOT_COLLECTED
+//            val totals = IntArray(types.size) { type ->
+//                api {
+//                    getUserCollectionsByUsername(
+//                        username,
+//                        subjectType = BangumiSubjectType.Anime,
+//                        type = types[type].toSubjectCollectionType(),
+//                        limit = 1, // we only need the total count. API requires at least 1
+//                    ).body().total ?: 0
+//                }
+//            }
+//            SubjectCollectionCounts(
+//                wish = totals[UnifiedCollectionType.WISH.ordinal],
+//                doing = totals[UnifiedCollectionType.DOING.ordinal],
+//                done = totals[UnifiedCollectionType.DONE.ordinal],
+//                onHold = totals[UnifiedCollectionType.ON_HOLD.ordinal],
+//                dropped = totals[UnifiedCollectionType.DROPPED.ordinal],
+//                total = totals.sum(),
+//            )
+//        }.flowOn(ioDispatcher)
     }
 
-    @OptIn(OpaqueSession::class)
-    override fun subjectCollectionById(subjectId: Int): Flow<BangumiUserSubjectCollection?> {
+    override fun subjectCollectionById(subjectId: Int): Flow<AniSubjectCollection?> {
         return flow {
             emit(
                 try {
-                    if (sessionManager.verifiedAccessToken.first() == null) {
-                        emit(null)
-                        return@flow
+                    subjectApi {
+                        this.getSubject(subjectId.toLong()).body()
                     }
-                    @OptIn(OpaqueSession::class)
-                    api { getUserCollection(sessionManager.username.first() ?: "-", subjectId).body() }
                 } catch (e: ResponseException) {
                     if (e.response.status == HttpStatusCode.NotFound) {
                         null
-                    } else {
-                        throw e
-                    }
-                },
-            )
-        }.flowOn(ioDispatcher)
-    }
-
-    override fun subjectCollectionTypeById(subjectId: Int): Flow<UnifiedCollectionType> {
-        return flow {
-            emit(
-                try {
-                    @OptIn(OpaqueSession::class)
-                    val username = sessionManager.username.first() ?: "-"
-                    api { getUserCollection(username, subjectId).body().type.toCollectionType() }
-                } catch (e: ResponseException) {
-                    if (e.response.status == HttpStatusCode.NotFound) {
-                        UnifiedCollectionType.NOT_COLLECTED
                     } else {
                         throw e
                     }
@@ -528,4 +493,14 @@ internal fun BangumiUserSubjectCollection?.toSelfRatingInfo(): SelfRatingInfo {
         tags = tags,
         isPrivate = private,
     )
+}
+
+private fun BangumiSubjectCollectionType.toAniCollectionType(): AniCollectionType {
+    return when (this) {
+        BangumiSubjectCollectionType.Wish -> AniCollectionType.WISH
+        BangumiSubjectCollectionType.Done -> AniCollectionType.DONE
+        BangumiSubjectCollectionType.Doing -> AniCollectionType.DOING
+        BangumiSubjectCollectionType.OnHold -> AniCollectionType.ON_HOLD
+        BangumiSubjectCollectionType.Dropped -> AniCollectionType.DROPPED
+    }
 }

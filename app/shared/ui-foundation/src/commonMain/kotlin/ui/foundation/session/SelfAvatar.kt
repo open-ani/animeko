@@ -16,7 +16,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -32,65 +31,48 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.DpSize
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.data.models.UserInfo
-import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.app.ui.user.SelfInfoUiState
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.coroutines.CoroutineContext
 
 @Composable
 fun SelfAvatar(
-    authState: AuthState,
-    selfInfo: UserInfo?,
+    state: SelfInfoUiState,
     size: DpSize, // = DpSize(48.dp, 48.dp)
-    onClickLogin: () -> Unit,
-    onClickRetryRefreshSession: () -> Unit,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    handler: SelfAvatarActionHandler = rememberSelfAvatarActionHandler(),
 ) {
-    var showMenu by rememberSaveable { mutableStateOf(false) }
     Box {
-        Surface({ showMenu = true }, modifier, shape = CircleShape) {
-            if (authState.isLoading || authState.isKnownLoggedIn) {
+        Surface(onClick, modifier, shape = CircleShape) {
+            if (state.isLoading) {
                 // 加载中时展示 placeholder
                 AvatarImage(
-                    url = selfInfo?.avatarUrl,
-                    Modifier.size(size).clip(CircleShape).placeholder(selfInfo == null),
+                    url = state.selfInfo?.avatarUrl,
+                    Modifier.size(size).clip(CircleShape).placeholder(state.selfInfo == null),
                 )
             } else {
-                if (authState.isKnownGuest) {
-                    TextButton(onClickLogin) {
+                if (state.isSessionValid == false || state.selfInfo == null) {
+                    TextButton(onClick) {
                         Text("登录")
                     }
                 } else {
-                    SessionTipsIcon(
-                        state = authState,
-                        onLogin = onClickLogin,
-                        onRetry = onClickRetryRefreshSession,
-                        showLabel = false,
+                    AvatarImage(
+                        url = state.selfInfo.avatarUrl,
+                        modifier = Modifier.size(size).clip(CircleShape),
                     )
                 }
             }
-        }
-
-        DropdownMenu(
-            showMenu,
-            offset = DpOffset(x = 0.dp, y = 8.dp),
-            onDismissRequest = { showMenu = false },
-        ) {
-            SelfAvatarMenus(handler, onClickAny = { showMenu = false })
         }
     }
 }
