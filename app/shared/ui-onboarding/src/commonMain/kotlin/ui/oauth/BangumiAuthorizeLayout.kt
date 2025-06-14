@@ -77,12 +77,6 @@ sealed interface AuthState {
 
     data object Success : AuthState
     class Failed(val error: LoadError) : AuthState
-
-    enum class ErrorType {
-        NotSupportedForRegistration,
-        InvalidBangumiToken,
-        NetworkError
-    }
 }
 
 @Composable
@@ -206,20 +200,22 @@ private fun AuthorizeButton(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         val awaitingResult = authorizeState is AuthState.AwaitingResult
-        if (authorizeState is AuthState.Success ||
-            (authorizeState is AuthState.LoggedInAni && authorizeState.bound)
-        ) OutlinedButton(
-            onClick = onClick,
-            enabled = false,
-            modifier = Modifier.weight(1f),
-            content = content,
-        ) else Button(
-            onClick = onClick,
-            enabled = !awaitingResult,
-            modifier = Modifier.weight(1f),
-            content = content,
-            shape = if (awaitingResult) SplitButtonDefaults.leadingButtonShapes().shape else ButtonDefaults.shape,
-        )
+        if (authorizeState is AuthState.Success) {
+            OutlinedButton(
+                onClick = onClick,
+                enabled = false,
+                modifier = Modifier.weight(1f),
+                content = content,
+            )
+        } else {
+            Button(
+                onClick = onClick,
+                enabled = !awaitingResult,
+                modifier = Modifier.weight(1f),
+                content = content,
+                shape = if (awaitingResult) SplitButtonDefaults.leadingButtonShapes().shape else ButtonDefaults.shape,
+            )
+        }
         AniAnimatedVisibility(
             visible = awaitingResult,
             enter = LocalAniMotionScheme.current.animatedVisibility.rowEnter,

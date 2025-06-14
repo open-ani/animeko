@@ -12,10 +12,7 @@ package me.him188.ani.app.ui.oauth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.LocalContext
@@ -38,7 +35,7 @@ fun BangumiAuthorizeScreen(
             scope.launch {
                 val currentState = state
                 if (currentState is AuthState.AwaitingResult ||
-                    (currentState is AuthState.LoggedInAni && currentState.bound)
+                    (currentState is AuthState.LoggedInAni)
                 ) return@launch
 
                 vm.startOAuth(context, state is AuthState.NoAniAccount)
