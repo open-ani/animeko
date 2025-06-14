@@ -45,6 +45,7 @@ import me.him188.ani.app.domain.session.checkAccessAniApiNow
 import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.client.models.AniCollectionType
 import me.him188.ani.client.models.AniSubjectCollection
+import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.apis.DefaultApi
 import me.him188.ani.datasources.bangumi.models.BangumiCount
@@ -360,8 +361,13 @@ class RemoteBangumiSubjectService(
     override suspend fun patchSubjectCollection(subjectId: Int, payload: BangumiUserSubjectCollectionModifyPayload) {
         sessionManager.checkAccessAniApiNow()
         withContext(ioDispatcher) {
-            api {
-                postUserCollection(subjectId, payload)
+            subjectApi {
+                this.updateSubjectCollection(
+                    subjectId.toLong(),
+                    AniUpdateSubjectCollectionRequest(
+                        collectionType = payload.type?.toAniCollectionType(),
+                    ),
+                )
                 Unit
             }
         }

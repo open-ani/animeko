@@ -563,10 +563,7 @@ class SubjectCollectionRepositoryImpl(
         payload: BangumiUserSubjectCollectionModifyPayload,
     ) {
         withContext(defaultDispatcher) {
-            api {
-                postUserCollection(subjectId, payload)
-                Unit
-            }
+            bangumiSubjectService.patchSubjectCollection(subjectId, payload)
             subjectCollectionDao.updateType(subjectId, payload.type.toCollectionType())
         }
     }
