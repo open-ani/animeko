@@ -12,13 +12,10 @@ package me.him188.ani.app.domain.session.auth
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
-import kotlinx.coroutines.flow.first
 import me.him188.ani.app.domain.session.AccessTokenPair
-import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.session.canAccessAniApiNow
 import me.him188.ani.app.domain.session.canAccessBangumiApiNow
-import me.him188.ani.app.domain.session.checkAccessBangumiApiNow
 import me.him188.ani.client.apis.BangumiAniApi
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.platform.Platform
@@ -84,9 +81,9 @@ class BangumiOAuthClient(
     override suspend fun getOAuthRegisterLink(requestId: String): String {
         require(requestId.isNotBlank()) { "requestId must not be blank or empty" }
         val resp = bangumiApi.invoke {
-            oauth(requestId, platform.name.lowercase(), platform.arch.displayName.lowercase())
+            oauth(requestId, platform.name.lowercase(), platform.arch.displayName.lowercase()).body()
         }
-        return resp.body().url
+        return resp.url
     }
 
     override suspend fun getOAuthBindLink(requestId: String): String {
@@ -96,9 +93,9 @@ class BangumiOAuthClient(
         check(sessionStateProvider.canAccessAniApiNow()) { "Bind operation requires canAccessAniApiNow" }
 
         val resp = bangumiApi.invoke {
-            bind(requestId, platform.name.lowercase(), platform.arch.displayName.lowercase())
+            bind(requestId, platform.name.lowercase(), platform.arch.displayName.lowercase()).body()
         }
-        return resp.body().url
+        return resp.url
     }
 
     override suspend fun getResult(requestId: String): OAuthResult? {
@@ -106,9 +103,9 @@ class BangumiOAuthClient(
 
         try {
             val resp = bangumiApi.invoke {
-                getToken(requestId)
+                getToken(requestId).body()
             }
-            val result = resp.body()
+            val result = resp
 
             return OAuthResult(
                 tokens = AccessTokenPair(
