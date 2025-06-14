@@ -20,8 +20,9 @@ import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.session.canAccessAniApiNow
 import me.him188.ani.utils.logging.error
-import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.info
+import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.Uuid
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
@@ -86,7 +87,7 @@ class OAuthConfigurator(
             _state.value = State.Idle
             throw ex
         } catch (ex: Exception) {
-            logger.error(ex) { "OAuth failed, request id: $requestId" }
+            logger.warn { "OAuth failed, request id: $requestId" }
 
             when (ex) {
                 is InvalidTokenException ->
@@ -98,7 +99,10 @@ class OAuthConfigurator(
                 is IOException ->
                     _state.value = State.KnownError(State.ErrorType.NetworkError, ex)
 
-                else -> _state.value = State.UnknownError(ex)
+                else -> {
+                    _state.value = State.UnknownError(ex)
+                    logger.error(ex) { "OAuth failed with unknown error, request id: $requestId" }
+                }
             }
         }
     }
