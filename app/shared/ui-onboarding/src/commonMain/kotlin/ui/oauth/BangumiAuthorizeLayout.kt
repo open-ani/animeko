@@ -162,7 +162,7 @@ private fun AuthorizeButton(
                 transitionSpec = LocalAniMotionScheme.current.animatedContent.standard,
             ) {
                 when (it) {
-                    is AuthState.Idle, is AuthState.Failed -> {
+                    is AuthState.Idle, is AuthState.Failed -> { 
                         if (authorizeState is AuthState.LoggedInAni) {
                             if (authorizeState.bound) {
                                 Text("不可重复绑定")
