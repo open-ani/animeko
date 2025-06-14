@@ -251,7 +251,9 @@ data class ServerListFeatureHandler(
         for (serverUrl in urls) {
             replaceUrl(request.url, serverUrl)
 
-            logger.debug { "Trying server $serverUrl for request ${request.url}" }
+            if (lastCall != null) { // 第二个请求了, 就开始打日志
+                logger.debug { "Trying alternative server $serverUrl for request ${request.url}" }
+            }
             val thisCall = try {
                 execute(request) // if `expectSuccess` is true, this will throw on failure, otherwise return the call
             } catch (e: CancellationException) {
