@@ -44,6 +44,7 @@ import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.properties.Delegates
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -83,7 +84,7 @@ class SessionManager(
          *
          * 刷新失败会在一段时间后自动重试. [refreshTokenBefore] 时间长一点可以增加更多重试机会.
          */
-        val refreshTokenBefore: Duration = 24.hours, // 注意, Ani 服务器会至少给 31 天 accessToken.
+        val refreshTokenBefore: Duration = 7.days, // 注意, Ani 服务器会至少给 31 天 accessToken.
         /**
          * 在刷新失败后, 等待多久再尝试刷新.
          */
