@@ -80,7 +80,7 @@ import me.him188.ani.app.data.repository.episode.toEpisodeCollectionInfo
 import me.him188.ani.app.data.repository.shouldRetry
 import me.him188.ani.app.domain.search.SubjectType
 import me.him188.ani.app.domain.session.SessionStateProvider
-import me.him188.ani.app.domain.session.checkAccessBangumiApiNow
+import me.him188.ani.app.domain.session.checkAccessAniApiNow
 import me.him188.ani.app.domain.session.restartOnNewLogin
 import me.him188.ani.client.models.AniAnimeRecurrence
 import me.him188.ani.client.models.AniCollectionType
@@ -538,7 +538,7 @@ class SubjectCollectionRepositoryImpl(
         type: UnifiedCollectionType?,
     ) {
         return withContext(defaultDispatcher) {
-            sessionManager.checkAccessBangumiApiNow()
+            sessionManager.checkAccessAniApiNow()
             if (type == null) {
                 deleteSubjectCollection(subjectId)
             } else {
