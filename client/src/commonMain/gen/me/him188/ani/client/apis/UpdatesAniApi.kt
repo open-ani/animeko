@@ -1,12 +1,4 @@
-/*
- * Copyright (C) 2024-2025 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +11,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.apis
@@ -44,17 +36,12 @@ open class UpdatesAniApi : ApiClient {
         httpClientEngine: HttpClientEngine? = null,
         httpClientConfig: ((HttpClientConfig<*>) -> Unit)? = null,
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
-    ) : super(
-        baseUrl = baseUrl,
-        httpClientEngine = httpClientEngine,
-        httpClientConfig = httpClientConfig,
-        jsonBlock = jsonSerializer,
-    )
+    ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ) : super(baseUrl = baseUrl, httpClient = httpClient)
+    ): super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * 获取可更新的版本详情
@@ -66,12 +53,7 @@ open class UpdatesAniApi : ApiClient {
      * @return AniReleaseUpdatesDetailedResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getDetailedUpdates(
-        clientVersion: kotlin.String,
-        clientPlatform: kotlin.String,
-        clientArch: kotlin.String,
-        releaseClass: kotlin.String
-    ): HttpResponse<AniReleaseUpdatesDetailedResponse> {
+    open suspend fun getDetailedUpdates(clientVersion: kotlin.String, clientPlatform: kotlin.String, clientArch: kotlin.String, releaseClass: kotlin.String): HttpResponse<AniReleaseUpdatesDetailedResponse> {
 
         val localVariableAuthNames = listOf<String>()
 
@@ -96,7 +78,7 @@ open class UpdatesAniApi : ApiClient {
         return request(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 
@@ -130,7 +112,7 @@ open class UpdatesAniApi : ApiClient {
         return request(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 
@@ -145,12 +127,7 @@ open class UpdatesAniApi : ApiClient {
      * @return AniReleaseUpdatesResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getUpdates(
-        clientVersion: kotlin.String,
-        clientPlatform: kotlin.String,
-        clientArch: kotlin.String,
-        releaseClass: kotlin.String
-    ): HttpResponse<AniReleaseUpdatesResponse> {
+    open suspend fun getUpdates(clientVersion: kotlin.String, clientPlatform: kotlin.String, clientArch: kotlin.String, releaseClass: kotlin.String): HttpResponse<AniReleaseUpdatesResponse> {
 
         val localVariableAuthNames = listOf<String>()
 
@@ -175,9 +152,11 @@ open class UpdatesAniApi : ApiClient {
         return request(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 
 
 }
+
+// @formatter:on

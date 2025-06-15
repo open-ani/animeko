@@ -76,7 +76,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -484,7 +483,7 @@ private fun EpisodeScreenTabletVeryWide(
                                     vm.videoStatisticsFlow,
                                     page.mediaSelectorState,
                                     { page.mediaSourceResultListPresentation },
-                                    page.authState,
+                                    page.selfInfo,
                                     onSwitchEpisode = { episodeId ->
                                         if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
                                             navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
@@ -626,7 +625,7 @@ private fun EpisodeScreenContentPhone(
                     vm.videoStatisticsFlow,
                     page.mediaSelectorState,
                     { page.mediaSourceResultListPresentation },
-                    page.authState,
+                    page.selfInfo,
                     onSwitchEpisode = { episodeId ->
                         if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
                             navigator.navigateEpisodeDetails(vm.subjectId, episodeId)

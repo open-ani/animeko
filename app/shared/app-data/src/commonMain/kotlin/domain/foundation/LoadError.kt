@@ -23,7 +23,7 @@ import kotlin.coroutines.cancellation.CancellationException
  * 加载时遇到的问题.
  *
  * @see FlowLoadErrorObserver
- */
+ */ // UI: renderLoadErrorMessage
 sealed class LoadError {
     data object NoResults : LoadError()
     data object RequiresLogin : LoadError()

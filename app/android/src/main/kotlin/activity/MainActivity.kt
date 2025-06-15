@@ -24,9 +24,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
-import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.navigation.AniNavigator
-import me.him188.ani.app.platform.AppStartupTasks
 import me.him188.ani.app.platform.rememberPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.theme.SystemBarColorEffect
@@ -40,8 +38,6 @@ import me.him188.ani.utils.logging.logger
 import org.koin.android.ext.android.inject
 
 class MainActivity : AniComponentActivity() {
-    private val sessionManager: SessionManager by inject()
-
     private val logger = logger<MainActivity>()
     private val aniNavigator = AniNavigator()
 
@@ -113,10 +109,6 @@ class MainActivity : AniComponentActivity() {
                 val migrationStatus by migrationStatus.collectAsStateWithLifecycle()
                 migrationStatus?.let { MediaCacheMigrationDialog(status = it) }
             }
-        }
-
-        lifecycleScope.launch {
-            AppStartupTasks.verifySession(sessionManager)
         }
     }
 }

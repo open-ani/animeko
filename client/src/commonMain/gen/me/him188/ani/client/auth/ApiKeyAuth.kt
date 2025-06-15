@@ -1,3 +1,4 @@
+// @formatter:off
 package me.him188.ani.client.auth
 
 class ApiKeyAuth(private val location: String, val paramName: String) : Authentication {
@@ -14,3 +15,5 @@ class ApiKeyAuth(private val location: String, val paramName: String) : Authenti
         }
     }
 }
+
+// @formatter:on

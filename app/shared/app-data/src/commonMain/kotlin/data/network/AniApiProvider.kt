@@ -17,6 +17,7 @@ import me.him188.ani.client.apis.PeerFilterRuleAniApi
 import me.him188.ani.client.apis.ScheduleAniApi
 import me.him188.ani.client.apis.SubjectRelationsAniApi
 import me.him188.ani.client.apis.SubjectsAniApi
+import me.him188.ani.client.apis.SubscriptionsAniApi
 import me.him188.ani.client.apis.TrendsAniApi
 import me.him188.ani.client.apis.UpdatesAniApi
 import me.him188.ani.client.apis.UserAniApi
@@ -40,6 +41,7 @@ class AniApiProvider(
     val updateApi = ApiInvoker(client) { UpdatesAniApi(baseurl, it) }
     val userApi = ApiInvoker(client) { UserAniApi(baseurl, it) }
     val userAuthApi = ApiInvoker(client) { UserAuthenticationAniApi(baseurl, it) }
+    val subscriptionApi = ApiInvoker(client) { SubscriptionsAniApi(baseurl, it) }
 
     private inline val baseurl get() = ServerListFeatureConfig.Companion.MAGIC_ANI_SERVER
 }
