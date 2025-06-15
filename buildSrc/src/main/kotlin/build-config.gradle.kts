@@ -1,6 +1,6 @@
 import org.gradle.plugins.ide.idea.model.IdeaModel
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.tasks.KotlinNativeCompile
 import java.io.Serializable
 
 /**
@@ -223,8 +223,14 @@ class BuildConfigPlugin : Plugin<Project> {
 
         // Also configure KotlinCompile tasks specifically for iOS
         if (platformName.lowercase() == "ios") {
-            project.tasks.withType(KotlinCompile::class.java) {
-                if (name.contains("ios", ignoreCase = true)) {
+            project.tasks.matching {
+                // iosSimulatorArm64MetadataElements
+                it.name.contains("ios", ignoreCase = true) && it.name.contains("MetadataElements", ignoreCase = true)
+            }.configureEach {
+                dependsOn(generateTaskName)
+            }
+            project.tasks.withType(KotlinNativeCompile::class.java) {
+                if (this.target.contains("ios", ignoreCase = true)) {
                     dependsOn(generateTaskName)
                 }
             }
