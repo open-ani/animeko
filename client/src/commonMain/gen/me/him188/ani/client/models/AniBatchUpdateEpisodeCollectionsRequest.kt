@@ -16,7 +16,6 @@
 
 package me.him188.ani.client.models
 
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -24,13 +23,16 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param url 
+ * @param episodeIds 
+ * @param episodeCollectionType 
  */
 @Serializable
 
-data class AniOAuthRedirectResponse (
+data class AniBatchUpdateEpisodeCollectionsRequest (
 
-    @SerialName(value = "url") @Required val url: kotlin.String
+    @SerialName(value = "episodeIds") @Required val episodeIds: kotlin.collections.List<kotlin.Long>,
+
+    @SerialName(value = "episodeCollectionType") @Required val episodeCollectionType: AniEpisodeCollectionType
 
 ) {
 
