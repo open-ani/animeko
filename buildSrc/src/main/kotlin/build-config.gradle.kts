@@ -223,6 +223,12 @@ class BuildConfigPlugin : Plugin<Project> {
 
         // Also configure KotlinCompile tasks specifically for iOS
         if (platformName.lowercase() == "ios") {
+            project.tasks.matching { 
+                // iosSimulatorArm64MetadataElements
+                it.name.contains("ios") && it.name.contains("MetadataElements")
+            }.configureEach { 
+                dependsOn(generateTaskName)
+            }
             project.tasks.withType(KotlinCompile::class.java) {
                 if (name.contains("ios", ignoreCase = true)) {
                     dependsOn(generateTaskName)
