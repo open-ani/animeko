@@ -25,9 +25,11 @@ import me.him188.ani.client.infrastructure.HttpResponse
 import me.him188.ani.client.infrastructure.RequestConfig
 import me.him188.ani.client.infrastructure.RequestMethod
 import me.him188.ani.client.infrastructure.wrap
+import me.him188.ani.client.models.AniBatchUpdateEpisodeCollectionsRequest
 import me.him188.ani.client.models.AniCollectionType
 import me.him188.ani.client.models.AniPaginatedResponse
 import me.him188.ani.client.models.AniSubjectCollection
+import me.him188.ani.client.models.AniUpdateEpisodeCollectionRequest
 import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 
 open class SubjectsAniApi : ApiClient {
@@ -74,6 +76,40 @@ open class SubjectsAniApi : ApiClient {
             localVariableAuthNames
         ).wrap()
     }
+
+
+    /**
+     * 批量编辑自己的条目收藏中的剧集进度
+     * 批量编辑自己的条目收藏中的剧集进度
+     * @param subjectId 
+     * @param aniBatchUpdateEpisodeCollectionsRequest 
+     * @return kotlin.Any
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun batchUpdateEpisodeCollections(subjectId: kotlin.Long, aniBatchUpdateEpisodeCollectionsRequest: AniBatchUpdateEpisodeCollectionsRequest): HttpResponse<kotlin.Any> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = aniBatchUpdateEpisodeCollectionsRequest
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.PATCH,
+            "/v2/subjects/{subjectId}/episodes/batchUpdate".replace("{" + "subjectId" + "}", "$subjectId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
 
 
     /**
@@ -178,6 +214,41 @@ open class SubjectsAniApi : ApiClient {
             localVariableAuthNames
         ).wrap()
     }
+
+
+    /**
+     * 编辑自己的条目收藏中的单个剧集进度
+     * 编辑自己的条目收藏中的单个剧集进度
+     * @param subjectId 
+     * @param episodeId 
+     * @param aniUpdateEpisodeCollectionRequest 
+     * @return kotlin.Any
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun updateEpisodeCollection(subjectId: kotlin.Long, episodeId: kotlin.Long, aniUpdateEpisodeCollectionRequest: AniUpdateEpisodeCollectionRequest): HttpResponse<kotlin.Any> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = aniUpdateEpisodeCollectionRequest
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.PATCH,
+            "/v2/subjects/{subjectId}/episodes/{episodeId}".replace("{" + "subjectId" + "}", "$subjectId").replace("{" + "episodeId" + "}", "$episodeId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
 
 
     /**

@@ -13,13 +13,19 @@ import io.ktor.client.plugins.ClientRequestException
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.app.data.repository.episode.toEpisodeCollectionInfo
+import me.him188.ani.app.data.repository.subject.toEntity1
 import me.him188.ani.app.domain.session.SessionStateProvider
-import me.him188.ani.app.domain.session.canAccessBangumiApiNow
+import me.him188.ani.app.domain.session.canAccessAniApiNow
+import me.him188.ani.client.apis.SubjectsAniApi
+import me.him188.ani.client.models.AniBatchUpdateEpisodeCollectionsRequest
+import me.him188.ani.client.models.AniEpisodeCollectionType
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.EpisodeType.ED
@@ -31,19 +37,18 @@ import me.him188.ani.datasources.api.EpisodeType.SP
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.paging.PageBasedPagedSource
 import me.him188.ani.datasources.api.paging.Paged
-import me.him188.ani.datasources.api.paging.map
 import me.him188.ani.datasources.api.paging.processPagedResponse
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.models.BangumiEpType
 import me.him188.ani.datasources.bangumi.models.BangumiEpisode
 import me.him188.ani.datasources.bangumi.models.BangumiEpisodeDetail
-import me.him188.ani.datasources.bangumi.models.BangumiPatchUserSubjectEpisodeCollectionRequest
 import me.him188.ani.datasources.bangumi.models.BangumiUserEpisodeCollection
 import me.him188.ani.datasources.bangumi.processing.toCollectionType
-import me.him188.ani.datasources.bangumi.processing.toEpisodeCollectionType
 import me.him188.ani.utils.coroutines.IO_
+import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.platform.currentTimeMillis
 import me.him188.ani.utils.serialization.BigNum
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -92,21 +97,21 @@ sealed interface BangumiEpisodeService {
 }
 
 class BangumiEpisodeServiceImpl(
+    private val subjectApi: ApiInvoker<SubjectsAniApi>,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : BangumiEpisodeService, KoinComponent {
     private val client by inject<BangumiClient>()
     private val logger = logger<BangumiEpisodeServiceImpl>()
     private val sessionManager: SessionStateProvider by inject()
 
+    // TODO: 2025/6/15 当 subjectId 无效时, 这个 flow 会 silently 不 emit 
     override suspend fun getEpisodeCollectionInfosBySubjectId(
         subjectId: Int,
         epType: EpisodeType?
     ): Flow<EpisodeCollectionInfo> = withContext(ioDispatcher) {
         getSubjectEpisodeCollections(subjectId, epType?.toBangumiEpType())?.map {
             it.toEpisodeCollectionInfo()
-        } ?: getEpisodesBySubjectId(subjectId, epType?.toBangumiEpType()).map {
-            it.toEpisodeInfo().createNotCollected()
-        }
+        } ?: emptyFlow()
     }.flowOn(ioDispatcher)
 
     override suspend fun getEpisodeCollectionInfosPaged(
@@ -116,24 +121,22 @@ class BangumiEpisodeServiceImpl(
         episodeType: BangumiEpType?
     ): Paged<EpisodeCollectionInfo> {
         return withContext(ioDispatcher) {
-            if (sessionManager.canAccessBangumiApiNow()) {
-                client.api {
-                    getUserSubjectEpisodeCollection(
-                        subjectId,
-                        episodeType = episodeType,
-                        offset = offset,
-                        limit = limit,
-                    ).body()
-                }.run {
-                    Paged.processPagedResponse(total, limit ?: 100, data)
-                }.map {
-                    it.toEpisodeCollectionInfo()
-                }
-            } else {
-                getEpisodesBySubjectIdPage(subjectId, episodeType, offset = offset ?: 0, limit = limit ?: 100).map {
-                    it.toEpisodeInfo().createNotCollected()
-                }
+
+            subjectApi.invoke {
+                this.getSubject(subjectId.toLong()).body() // TODO: 2025/6/15 API 不支持 paging 
+            }.let { subjectCollection ->
+                Paged(
+                    subjectCollection.episodes.map {
+                        it.toEntity1(subjectId, lastFetched = currentTimeMillis())
+                            .toEpisodeCollectionInfo()
+                    },
+                )
             }
+//                .run {
+////                    Paged.processPagedResponse(total, limit ?: 100, data)
+////                }.map {
+////                    it.toEpisodeCollectionInfo()
+////                }
         }
     }
 
@@ -168,10 +171,7 @@ class BangumiEpisodeServiceImpl(
         subjectId: Int,
         type: BangumiEpType?
     ): Flow<BangumiUserEpisodeCollection>? {
-        if (!sessionManager.canAccessBangumiApiNow()) {
-            return null
-        }
-
+        // TODO: 2025/6/15 
         val firstPage = try {
             withContext(ioDispatcher) {
                 client.api {
@@ -226,7 +226,7 @@ class BangumiEpisodeServiceImpl(
     }
 
     override suspend fun getEpisodeCollectionById(episodeId: Int): EpisodeCollectionInfo? = withContext(ioDispatcher) {
-        if (sessionManager.isLoggedInNow()) {
+        if (sessionManager.canAccessAniApiNow()) {
             try {
                 return@withContext client.api { getUserEpisodeCollection(episodeId).body().toEpisodeCollectionInfo() }
             } catch (e: ClientRequestException) {
@@ -251,16 +251,16 @@ class BangumiEpisodeServiceImpl(
         episodeId: List<Int>,
         type: UnifiedCollectionType
     ): Boolean = withContext(ioDispatcher) {
-        if (!sessionManager.isLoggedInNow()) {
+        if (!sessionManager.canAccessAniApiNow()) {
             return@withContext false
         }
         try {
-            client.api {
-                patchUserSubjectEpisodeCollection(
-                    subjectId,
-                    BangumiPatchUserSubjectEpisodeCollectionRequest(
-                        episodeId,
-                        type.toEpisodeCollectionType(),
+            subjectApi {
+                batchUpdateEpisodeCollections(
+                    subjectId.toLong(),
+                    AniBatchUpdateEpisodeCollectionsRequest(
+                        episodeIds = episodeId.map { it.toLong() },
+                        episodeCollectionType = type.toAniEpisodeCollectionType(),
                     ),
                 ).body()
             }
@@ -362,5 +362,16 @@ private fun getEpisodeTypeByBangumiCode(code: Int): EpisodeType? {
         4 -> PV
         5 -> MAD
         else -> null
+    }
+}
+
+fun UnifiedCollectionType.toAniEpisodeCollectionType(): AniEpisodeCollectionType {
+    return when (this) {
+        UnifiedCollectionType.NOT_COLLECTED -> AniEpisodeCollectionType.WISH
+        UnifiedCollectionType.WISH -> AniEpisodeCollectionType.WISH
+        UnifiedCollectionType.DOING -> AniEpisodeCollectionType.WISH
+        UnifiedCollectionType.DONE -> AniEpisodeCollectionType.DONE
+        UnifiedCollectionType.ON_HOLD -> AniEpisodeCollectionType.WISH
+        UnifiedCollectionType.DROPPED -> AniEpisodeCollectionType.WISH
     }
 }

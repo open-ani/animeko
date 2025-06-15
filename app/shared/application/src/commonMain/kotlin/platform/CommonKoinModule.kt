@@ -107,8 +107,6 @@ import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscription
 import me.him188.ani.app.domain.session.AniSessionRefresher
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionStateProvider
-import me.him188.ani.app.domain.session.auth.BangumiOAuthClient
-import me.him188.ani.app.domain.session.auth.OAuthClient
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.settings.SettingsBasedProxyProvider
 import me.him188.ani.app.domain.torrent.TorrentManager
@@ -271,7 +269,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             sessionManager = get(),
         )
     }
-    single<BangumiEpisodeService> { BangumiEpisodeServiceImpl() }
+    single<BangumiEpisodeService> { BangumiEpisodeServiceImpl(aniApiProvider.subjectApi) }
 
     single<BangumiRelatedPeopleService> { BangumiRelatedPeopleService(get()) }
     single<AnimeScheduleRepository> { AnimeScheduleRepository(get()) }

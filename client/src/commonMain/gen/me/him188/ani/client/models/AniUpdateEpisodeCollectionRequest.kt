@@ -1,5 +1,4 @@
 // @formatter:off
-// @formatter:off
 /**
  *
  * Please note:
@@ -17,29 +16,25 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniCollectionType
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * 
  *
- * @param collectionType 
+ * @param episodeCollectionType 
  */
 @Serializable
 
 data class AniUpdateEpisodeCollectionRequest (
 
-    @SerialName(value = "collectionType") val collectionType: AniCollectionType? = null
+    @SerialName(value = "episodeCollectionType") @Required val episodeCollectionType: AniEpisodeCollectionType
 
 ) {
 
 
 }
 
-
-// @formatter:on
 
 // @formatter:on
