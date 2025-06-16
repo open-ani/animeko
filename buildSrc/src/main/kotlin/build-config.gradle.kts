@@ -135,7 +135,7 @@ class BuildConfigPlugin : Plugin<Project> {
             platformConfigs.forEach { (platformName, platformConfig) ->
                 val taskName = "generate${extension.className.get()}${platformName.replaceFirstChar { it.uppercase() }}"
 
-                val generateTask = project.tasks.register<GenerateBuildConfigTask>(taskName) {
+                project.tasks.register<GenerateBuildConfigTask>(taskName) {
                     group = "build"
                     description = "Generates BuildConfig for $platformName platform"
 
