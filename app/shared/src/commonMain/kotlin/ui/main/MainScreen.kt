@@ -46,6 +46,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import kotlinx.coroutines.launch
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
+import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.getIcon
 import me.him188.ani.app.navigation.getText
 import me.him188.ani.app.platform.LocalContext
@@ -84,7 +85,7 @@ fun MainScreen(
     selfInfo: SelfInfoUiState,
     modifier: Modifier = Modifier,
     onNavigateToPage: (MainScreenPage) -> Unit,
-    onNavigateToSettings: () -> Unit,
+    onNavigateToSettings: (tab: SettingsTab?) -> Unit,
     onNavigateToSearch: () -> Unit,
     navigationLayoutType: NavigationSuiteType = AniNavigationSuiteDefaults.calculateLayoutType(
         currentWindowAdaptiveInfo1(),
@@ -114,7 +115,7 @@ private fun MainScreenContent(
     page: MainScreenPage,
     selfInfo: SelfInfoUiState,
     onNavigateToPage: (MainScreenPage) -> Unit,
-    onNavigateToSettings: () -> Unit,
+    onNavigateToSettings: (tab: SettingsTab?) -> Unit,
     onNavigateToSearch: () -> Unit,
     modifier: Modifier = Modifier,
     navigationLayoutType: NavigationSuiteType = AniNavigationSuiteDefaults.calculateLayoutType(
@@ -163,7 +164,7 @@ private fun MainScreenContent(
                                 padding(vertical = 16.dp)
                             },
                         selected = false,
-                        onClick = onNavigateToSettings,
+                        onClick = { onNavigateToSettings(null) },
                         icon = { Icon(Icons.Rounded.Settings, null) },
                         enabled = true,
                         label = { Text("设置") },
@@ -276,7 +277,11 @@ private fun MainScreenContent(
             onDismiss = { showAccountSettingsPopup = false },
             onNavigateToSettings = {
                 showAccountSettingsPopup = false
-                onNavigateToSettings()
+                onNavigateToSettings(null)
+            },
+            onNavigateToAccountSettings = {
+                showAccountSettingsPopup = false
+                onNavigateToSettings(SettingsTab.ACCOUNT)
             },
             onNavigateToLogin = {
                 showAccountSettingsPopup = false

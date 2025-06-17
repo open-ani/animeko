@@ -78,6 +78,7 @@ fun AccountSettingsPopup(
     onDismiss: () -> Unit,
     onNavigateToLogin: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToAccountSettings: () -> Unit,
     modifier: Modifier = Modifier,
     shape: Shape = MaterialTheme.shapes.extraLarge,
     containerColor: Color = BottomSheetDefaults.ContainerColor,
@@ -139,8 +140,8 @@ fun AccountSettingsPopup(
                         AccountSettingsPopupLayout(
                             state,
                             onClickLogin = onNavigateToLogin,
-                            { },
-                            { },
+                            onClickEditAvatar = onNavigateToAccountSettings,
+                            onClickEditProfile = onNavigateToAccountSettings,
                             onClickSettings = onNavigateToSettings,
                             { showLogoutDialog = true },
                             modifier,
@@ -152,30 +153,40 @@ fun AccountSettingsPopup(
     }
 
     if (showLogoutDialog) {
-        AlertDialog(
-            { showLogoutDialog = false },
-            text = { Text("确定要退出登录吗?") },
-            confirmButton = {
-                TextButton(
-                    {
-                        vm.logout()
-                        showLogoutDialog = false
-                    },
-                ) {
-                    Text("确定", color = MaterialTheme.colorScheme.error)
-                }
+        AccountLogoutDialog(
+            {
+                vm.logout()
+                showLogoutDialog = false
             },
-            dismissButton = {
-                TextButton({ showLogoutDialog = false }) {
-                    Text("取消")
-                }
-            },
+            onCancel = { showLogoutDialog = false },
         )
     }
 }
 
 @Composable
-fun AccountSettingsPopupLayout(
+fun AccountLogoutDialog(
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    AlertDialog(
+        onCancel,
+        icon = { Icon(Icons.AutoMirrored.Outlined.Logout, "Logout dialog icon") },
+        text = { Text("确定要退出登录吗?") },
+        confirmButton = {
+            TextButton(onConfirm) {
+                Text("确定", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onCancel) {
+                Text("取消")
+            }
+        },
+    )
+}
+
+@Composable
+private fun AccountSettingsPopupLayout(
     state: AccountSettingsState,
     onClickLogin: () -> Unit,
     onClickEditAvatar: () -> Unit,

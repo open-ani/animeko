@@ -334,7 +334,7 @@ private fun AniAppContentImpl(
                             page = currentPage,
                             selfInfo = selfInfo,
                             onNavigateToPage = { currentPage = it },
-                            onNavigateToSettings = { aniNavigator.navigateSettings() },
+                            onNavigateToSettings = { aniNavigator.navigateSettings(it) },
                             onNavigateToSearch = { aniNavigator.navigateSubjectSearch() },
                             navigationLayoutType = navigationLayoutType,
                         )
@@ -445,6 +445,7 @@ private fun AniAppContentImpl(
                     viewModel {
                         SettingsViewModel()
                     },
+                    onNavigateToLogin = { aniNavigator.navigateLogin() },
                     Modifier.fillMaxSize(),
                     route.tab,
                     navigationIcon = {

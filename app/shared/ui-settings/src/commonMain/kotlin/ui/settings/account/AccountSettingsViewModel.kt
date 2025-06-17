@@ -12,8 +12,8 @@ package me.him188.ani.app.ui.settings.account
 import androidx.compose.runtime.Stable
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.domain.session.SessionManager
+import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
@@ -31,9 +31,13 @@ class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
     private val selfStateProvider = SelfInfoStateProducer(koin = getKoin())
     private val logoutTasker = MonoTasker(backgroundScope)
 
-    val state = combine(selfStateProvider.flow, flowOf(1)) { selfInfo, _ ->
+    val state = combine(
+        selfStateProvider.flow,
+        sessionManager.stateProvider.stateFlow,
+    ) { selfInfo, sessionState ->
         AccountSettingsState(
             selfInfo = selfInfo,
+            boundBangumi = sessionState is SessionState.Valid && sessionState.bangumiConnected,
         )
     }
         .stateInBackground(
@@ -50,11 +54,13 @@ class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
 
 @Stable
 class AccountSettingsState(
-    val selfInfo: SelfInfoUiState
+    val selfInfo: SelfInfoUiState,
+    val boundBangumi: Boolean,
 ) {
     companion object {
         val Empty = AccountSettingsState(
             selfInfo = SelfInfoUiState(null, true, null),
+            boundBangumi = false,
         )
     }
 }
@@ -63,4 +69,5 @@ class AccountSettingsState(
 val TestAccountSettingsState
     get() = AccountSettingsState(
         TestSelfInfoUiState,
+        false,
     )
