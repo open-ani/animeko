@@ -69,7 +69,7 @@ sealed interface SessionEvent {
     data object NewLogin : SessionEvent
 
     /**
-     * 用户主动退出登录, 或者我们发现 token 过期了.
+     * 用户主动退出登录.
      */
     data object Logout : SessionEvent
 }

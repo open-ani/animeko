@@ -235,6 +235,11 @@ private fun AniAppContentImpl(
                     contactActions = {
                         AniContactList()
                     },
+                    onAuthorizeSuccess = {
+                        aniNavigator.popBackStack(NavRoutes.BangumiAuthorize, true)
+                        aniNavigator.popBackStack(NavRoutes.EmailLoginVerify, true)
+                        aniNavigator.popBackStack(NavRoutes.EmailLoginStart, true)
+                    },
                 )
             }
             composable<NavRoutes.Onboarding>(

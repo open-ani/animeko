@@ -11,7 +11,9 @@ package me.him188.ani.app.ui.oauth
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterIsInstance
 import me.him188.ani.app.data.network.AniApiProvider
+import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
@@ -78,6 +80,13 @@ class BangumiAuthorizeViewModel : AbstractViewModel(), KoinComponent {
 
             configurator.auth(isRegister)
         }
+    }
+
+    suspend fun collectNewLoginEvent(block: () -> Unit) {
+        sessionManager.stateProvider
+            .eventFlow
+            .filterIsInstance<SessionEvent.NewLogin>()
+            .collect { block() }
     }
 
     fun cancelCurrentOAuth() {
