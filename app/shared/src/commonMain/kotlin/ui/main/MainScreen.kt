@@ -32,8 +32,11 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
@@ -66,6 +69,8 @@ import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
+import me.him188.ani.app.ui.settings.account.AccountSettingsPopup
+import me.him188.ani.app.ui.settings.account.AccountSettingsViewModel
 import me.him188.ani.app.ui.subject.collection.CollectionPage
 import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
 import me.him188.ani.app.ui.update.UpdateNotifier
@@ -120,6 +125,12 @@ private fun MainScreenContent(
     val userCollectionsViewModel = viewModel<UserCollectionsViewModel> { UserCollectionsViewModel() }
     val cacheManagementViewModel = viewModel { CacheManagementViewModel() }
     val scope = rememberCoroutineScope()
+
+    var showAccountSettingsPopup: Boolean by remember { mutableStateOf(false) }
+    val accountSettingsViewModel = viewModel { AccountSettingsViewModel() }
+
+    val navigatorState = rememberUpdatedState(LocalNavigator.current)
+    val navigator by navigatorState
 
     AniNavigationSuiteLayout(
         navigationSuite = {
@@ -192,8 +203,6 @@ private fun MainScreenContent(
         layoutType = navigationLayoutType,
     ) {
         val coroutineScope = rememberCoroutineScope()
-        val navigatorState = rememberUpdatedState(LocalNavigator.current)
-        val navigator by navigatorState
         // Windows caption button 在右侧, 没有足够空间放置按钮, 需要保留 title bar insets
         val isRightCaptionButton = WindowInsets.desktopCaptionButton.isTopRight()
         val toaster = LocalToaster.current
@@ -220,7 +229,7 @@ private fun MainScreenContent(
                             selfInfo,
                             onSearch = onNavigateToSearch,
                             onClickSettings = { navigator.navigateSettings() },
-                            onClickLogin = { navigator.navigateLogin() },
+                            onClickLogin = { showAccountSettingsPopup = true },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -231,7 +240,7 @@ private fun MainScreenContent(
                             selfInfo = selfInfo,
                             items = userCollectionsViewModel.items.collectAsLazyPagingItems(),
                             onClickSearch = onNavigateToSearch,
-                            onClickLogin = { navigator.navigateLogin() },
+                            onClickLogin = { showAccountSettingsPopup = true },
                             onClickSettings = { navigator.navigateSettings() },
                             onCollectionUpdate = { subjectId, episode ->
                                 coroutineScope.launch {
@@ -259,6 +268,21 @@ private fun MainScreenContent(
                 }
             }
         }
+    }
+
+    if (showAccountSettingsPopup) {
+        AccountSettingsPopup(
+            vm = accountSettingsViewModel,
+            onDismiss = { showAccountSettingsPopup = false },
+            onNavigateToSettings = {
+                showAccountSettingsPopup = false
+                onNavigateToSettings()
+            },
+            onNavigateToLogin = {
+                showAccountSettingsPopup = false
+                navigator.navigateLogin()
+            },
+        )
     }
 }
 
