@@ -45,6 +45,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -196,6 +197,11 @@ private fun AccountSettingsPopupLayout(
     modifier: Modifier = Modifier,
 ) {
     val isLogin = remember(state) { state.selfInfo.isSessionValid == true }
+    val showEmail by remember {
+        derivedStateOf {
+            isLogin && state.selfInfo.selfInfo?.email != null
+        }
+    }
     Column(modifier) {
         Box(
             modifier = Modifier
@@ -208,7 +214,7 @@ private fun AccountSettingsPopupLayout(
         }
         Text(
             if (isLogin) {
-                state.selfInfo.selfInfo?.nickname?.takeIf { it.isNotBlank() } ?: "无用户名"
+                state.selfInfo.selfInfo?.nickname?.takeIf { it.isNotBlank() } ?: "未设置昵称"
             } else {
                 "未登录"
             },
@@ -218,17 +224,17 @@ private fun AccountSettingsPopupLayout(
                 .padding(horizontal = 16.dp)
                 .padding(
                     top = 8.dp,
-                    bottom = if (isLogin) 2.dp else 8.dp,
+                    bottom = if (showEmail) 2.dp else 8.dp,
                 )
                 .fillMaxWidth(),
             maxLines = 1,
             textAlign = TextAlign.Center,
             overflow = TextOverflow.MiddleEllipsis,
         )
-        if (isLogin) {
+        if (showEmail) {
             Text(
                 remember(state) {
-                    state.selfInfo.selfInfo?.email ?: "NO EMAIL"
+                    state.selfInfo.selfInfo?.email ?: ""
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier
