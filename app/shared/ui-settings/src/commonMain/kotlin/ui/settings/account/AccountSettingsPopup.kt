@@ -187,7 +187,7 @@ fun AccountLogoutDialog(
 }
 
 @Composable
-private fun AccountSettingsPopupLayout(
+internal fun AccountSettingsPopupLayout(
     state: AccountSettingsState,
     onClickLogin: () -> Unit,
     onClickEditAvatar: () -> Unit,

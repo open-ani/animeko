@@ -152,6 +152,7 @@ typealias SettingsTab = me.him188.ani.app.navigation.SettingsTab
 fun SettingsScreen(
     vm: SettingsViewModel,
     onNavigateToLogin: () -> Unit,
+    onNavigateToBangumiOAuth: () -> Unit,
     modifier: Modifier = Modifier,
     initialTab: SettingsTab? = null,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
@@ -270,6 +271,7 @@ fun SettingsScreen(
                             SettingsTab.ACCOUNT -> AccountSettingsGroup(
                                 accountSettingsViewModel,
                                 onNavigateToLogin,
+                                onNavigateToBangumiOAuth,
                             )
 
                             SettingsTab.APPEARANCE -> AppearanceGroup(vm.uiSettings)

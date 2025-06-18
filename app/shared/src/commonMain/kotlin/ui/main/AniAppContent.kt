@@ -451,6 +451,7 @@ private fun AniAppContentImpl(
                         SettingsViewModel()
                     },
                     onNavigateToLogin = { aniNavigator.navigateLogin() },
+                    onNavigateToBangumiOAuth = { aniNavigator.navigateBangumiAuthorize() },
                     Modifier.fillMaxSize(),
                     route.tab,
                     navigationIcon = {

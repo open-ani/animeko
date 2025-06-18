@@ -25,14 +25,14 @@ kotlin {
         implementation(compose.components.resources)
         implementation(projects.app.shared.reorderable)
         implementation(projects.app.shared.placeholder)
+        implementation(libs.filekit.dialogs)
+        implementation(libs.filekit.dialogs.compose)
     }
     sourceSets.commonTest.dependencies {
     }
     sourceSets.androidMain.dependencies {
     }
     sourceSets.desktopMain.dependencies {
-        implementation(libs.filekit.core)
-        implementation(libs.filekit.compose)
     }
     sourceSets.getByName("jvmTest").dependencies {
         implementation(libs.slf4j.simple)

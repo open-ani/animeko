@@ -49,7 +49,7 @@ bytebuddy = "1.17.4" # https://github.com/raphw/byte-buddy/releases
 jna = "5.13.0" # 不要轻易改这个版本, 它可能导致 VLC 兼容性问题
 jsonpathkt-kotlinx = "3.0.2"
 ksoup = "0.2.2"
-filekit = "0.8.1" # https://github.com/vinceglb/FileKit/releases
+filekit = "0.10.0-beta04" # https://github.com/vinceglb/FileKit/releases
 kotlinpoet = "1.18.1" # https://github.com/square/kotlinpoet/releases
 log4j-core = "2.20.0"
 korlibs = "6.0.0"
@@ -251,8 +251,8 @@ ksoup-kotlinx = { module = "com.fleeksoft.ksoup:ksoup-kotlinx", version.ref = "k
 ksoup-network = { module = "com.fleeksoft.ksoup:ksoup-network", version.ref = "ksoup" }
 diamondedge-logging = { module = "com.diamondedge:logging", version.ref = "diamondedge-logging" }
 jsonpathkt-kotlinx = { module = "com.eygraber:jsonpathkt-kotlinx", version.ref = "jsonpathkt-kotlinx" }
-filekit-compose = { module = "io.github.vinceglb:filekit-compose", version.ref = "filekit" }
-filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekit" }
+filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs", version.ref = "filekit" }
+filekit-dialogs-compose = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
 # Workaround for Kotlin compiler bug
 stately-common = { module = "co.touchlab:stately-common", version.ref = "stately-common" }
 jsystemthemedetector = { module = "org.openani.jsystemthemedetector:jSystemThemeDetector", version.ref = "jsystemthemedetector" }
