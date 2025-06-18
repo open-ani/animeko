@@ -31,7 +31,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 /**
- * It is used on both [AccountSettingsPopup] and [AccountS].
+ * It is used on both [AccountSettingsPopupMedium] and [AccountS].
  */
 class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
     private val sessionManager: SessionManager by inject()
