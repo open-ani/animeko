@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -113,6 +114,7 @@ fun SettingsScope.AccountSettingsGroup(
                         onClickLogout = { showLogoutDialog = true },
                         onClickEditProfile = { editingProfile = true },
                         onClickBindBangumi = onNavigateToBangumiOAuth,
+                        onClickBindEmail = onNavigateToLogin,
                     )
                 } else {
                     EditProfile(
@@ -154,6 +156,7 @@ private fun SettingsScope.AccountInfo(
     onClickLogout: () -> Unit,
     onClickEditProfile: () -> Unit,
     onClickBindBangumi: () -> Unit,
+    onClickBindEmail: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val currentInfo = remember(selfInfo) { selfInfo.selfInfo }
@@ -203,18 +206,26 @@ private fun SettingsScope.AccountInfo(
                     Text("登录")
                 }
             } else {
-                Button(
+                FilledTonalButton(
                     onClick = onClickEditProfile,
                     modifier = Modifier,
                 ) {
                     Text("编辑资料")
                 }
                 if (!boundBangumi) {
-                    Button(
+                    FilledTonalButton(
                         onClick = onClickBindBangumi,
                         modifier = Modifier,
                     ) {
                         Text("绑定 Bangumi")
+                    }
+                }
+                if (selfInfo.selfInfo?.email == null) {
+                    FilledTonalButton(
+                        onClick = onClickBindEmail,
+                        modifier = Modifier,
+                    ) {
+                        Text("绑定邮箱")
                     }
                 }
                 Button(
@@ -225,7 +236,7 @@ private fun SettingsScope.AccountInfo(
                     ),
                     modifier = Modifier,
                 ) {
-                    Text("登出")
+                    Text("退出登录")
                 }
             }
         }
@@ -316,7 +327,7 @@ private fun SettingsScope.EditProfile(
             OutlinedButton(onCancel) {
                 Text("抛弃并返回")
             }
-            Button(
+            FilledTonalButton(
                 {
                     onSave(EditProfileState(initialUsername))
                 },
