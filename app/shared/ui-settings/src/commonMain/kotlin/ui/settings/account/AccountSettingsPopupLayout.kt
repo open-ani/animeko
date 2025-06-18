@@ -28,7 +28,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,11 +62,7 @@ internal fun AccountSettingsPopupLayout(
     modifier: Modifier = Modifier,
 ) {
     val isLogin = remember(state) { state.selfInfo.isSessionValid == true }
-    val showEmail by remember {
-        derivedStateOf {
-            isLogin && state.selfInfo.selfInfo?.email != null
-        }
-    }
+    val showEmail = isLogin && state.selfInfo.selfInfo?.email != null
     Column(modifier) {
         Box(
             modifier = Modifier
