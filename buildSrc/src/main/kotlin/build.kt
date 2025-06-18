@@ -152,7 +152,7 @@ val Project.DEFAULT_JVM_TOOLCHAIN_VENDOR
 
 private fun Project.getProjectPreferredJvmTargetVersion() = extra.runCatching { get("ani.jvm.target") }.fold(
     onSuccess = { JavaVersion.toVersion(it.toString()) },
-    onFailure = { JavaVersion.toVersion(getPropertyOrNull("jvm.toolchain.version")?.toInt() ?: 17) },
+    onFailure = { JavaVersion.toVersion(getPropertyOrNull("jvm.toolchain.version")?.toInt() ?: 21) },
 )
 
 fun Project.configureJvmTarget() {
