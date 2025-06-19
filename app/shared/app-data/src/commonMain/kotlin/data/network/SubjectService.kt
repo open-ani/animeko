@@ -101,6 +101,11 @@ interface SubjectService {
      * 获取各个收藏分类的数量.
      */
     fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts>
+
+    /**
+     * 执行 Bangumi 全量同步, 从 Bangumi 同步到 ani
+     */
+    suspend fun performBangumiFullSync()
 }
 
 data class BatchSubjectCollection(
@@ -416,6 +421,13 @@ class RemoteSubjectService(
                 },
             )
         }.flowOn(ioDispatcher)
+    }
+
+    override suspend fun performBangumiFullSync() {
+        sessionManager.checkAccessAniApiNow()
+        subjectApi.invoke {
+            bangumiFullSync().body()
+        }
     }
 }
 

@@ -14,11 +14,14 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -61,9 +64,11 @@ import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.LoadErrorCardLayout
 import me.him188.ani.app.ui.search.LoadErrorCardRole
+import me.him188.ani.app.ui.search.renderLoadErrorMessage
 import me.him188.ani.app.ui.settings.account.AccountLogoutDialog
 import me.him188.ani.app.ui.settings.account.AccountSettingsState
 import me.him188.ani.app.ui.settings.account.AccountSettingsViewModel
+import me.him188.ani.app.ui.settings.account.BangumiSyncState
 import me.him188.ani.app.ui.settings.account.EditProfileState
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextFieldItem
@@ -109,12 +114,14 @@ fun SettingsScope.AccountSettingsGroup(
                 if (!editing) {
                     AccountInfo(
                         state.selfInfo,
+                        state.bangumiSyncState,
                         state.boundBangumi,
                         onClickLogin = onNavigateToLogin,
                         onClickLogout = { showLogoutDialog = true },
                         onClickEditProfile = { editingProfile = true },
                         onClickBindBangumi = onNavigateToBangumiOAuth,
                         onClickBindEmail = onNavigateToLogin,
+                        onClickBangumiSync = { vm.bangumiFullSync() },
                     )
                 } else {
                     EditProfile(
@@ -151,12 +158,14 @@ fun SettingsScope.AccountSettingsGroup(
 @Composable
 private fun SettingsScope.AccountInfo(
     selfInfo: SelfInfoUiState,
+    bangumiSyncState: BangumiSyncState,
     boundBangumi: Boolean,
     onClickLogin: () -> Unit,
     onClickLogout: () -> Unit,
     onClickEditProfile: () -> Unit,
     onClickBindBangumi: () -> Unit,
     onClickBindEmail: () -> Unit,
+    onClickBangumiSync: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val currentInfo = remember(selfInfo) { selfInfo.selfInfo }
@@ -239,6 +248,38 @@ private fun SettingsScope.AccountInfo(
                     Text("退出登录")
                 }
             }
+        }
+
+        if (boundBangumi) {
+            TextItem(
+                icon = {
+                    when (bangumiSyncState) {
+                        BangumiSyncState.Idle -> Spacer(Modifier.width(24.dp))
+
+                        BangumiSyncState.Syncing -> CircularProgressIndicator(Modifier.size(24.dp))
+
+                        is BangumiSyncState.Failed ->
+                            Icon(Icons.Default.Warning, contentDescription = "Bangumi sync error")
+
+                        BangumiSyncState.Success ->
+                            Icon(Icons.Default.Check, contentDescription = "Bangumi sync success")
+                    }
+                },
+                title = { Text("同步 Bangumi 收藏数据至 Ani") },
+                description = {
+                    when (bangumiSyncState) {
+                        BangumiSyncState.Idle -> Text("注意: 你存储在 Ani 中的收藏数据将会被覆盖")
+
+                        BangumiSyncState.Syncing -> Text("正在同步...")
+
+                        is BangumiSyncState.Failed ->
+                            Text("同步失败: ${renderLoadErrorMessage(bangumiSyncState.loadError)}")
+
+                        BangumiSyncState.Success -> Text("同步成功")
+                    }
+                },
+                onClick = onClickBangumiSync,
+            )
         }
     }
 }

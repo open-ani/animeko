@@ -11,11 +11,13 @@ package me.him188.ani.app.ui.settings.account
 
 import androidx.compose.runtime.Immutable
 import io.github.vinceglb.filekit.PlatformFile
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionState
@@ -35,25 +37,31 @@ import org.koin.core.component.inject
  */
 class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
     private val sessionManager: SessionManager by inject()
+    private val subjectCollectionRepo: SubjectCollectionRepository by inject()
     private val selfStateFlow = SelfInfoStateProducer(koin = getKoin()).flow.stateInBackground()
 
     private val logoutTasker = MonoTasker(backgroundScope)
     private val avatarUploadTasker = MonoTasker(backgroundScope)
+    private val fullSyncTasker = MonoTasker(backgroundScope)
 
     private val stateRefresher = FlowRestarter()
 
     private val avatarUploadState =
         MutableStateFlow<EditProfileState.UploadAvatarState>(EditProfileState.UploadAvatarState.Default)
 
+    private val bangumiSyncState = MutableStateFlow<BangumiSyncState>(BangumiSyncState.Idle)
+
     val state = combine(
         selfStateFlow.filterNotNull(),
         sessionManager.stateProvider.stateFlow,
         avatarUploadState,
-    ) { selfInfo, sessionState, avatarState ->
+        bangumiSyncState,
+    ) { selfInfo, sessionState, avatarState, syncState ->
         AccountSettingsState(
             selfInfo = selfInfo,
             boundBangumi = sessionState is SessionState.Valid && sessionState.bangumiConnected,
             avatarUploadState = avatarState,
+            bangumiSyncState = syncState,
         )
     }
         .restartable(stateRefresher)
@@ -113,6 +121,22 @@ class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
         stateRefresher.restart()
     }
 
+    fun bangumiFullSync() {
+        if (fullSyncTasker.isRunning.value) return
+        fullSyncTasker.launch {
+            bangumiSyncState.value = BangumiSyncState.Syncing
+            subjectCollectionRepo.performBangumiFullSync()
+            bangumiSyncState.value = BangumiSyncState.Success
+        }.invokeOnCompletion {
+            if (it == null) return@invokeOnCompletion
+            if (it is CancellationException) {
+                bangumiSyncState.value = BangumiSyncState.Idle
+            } else {
+                bangumiSyncState.value = BangumiSyncState.Failed(LoadError.fromException(it))
+            }
+        }
+    }
+
     companion object {
         private val USERNAME_MATCHER = Regex("^[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FFa-zA-Z\\d_]+$")
     }
@@ -123,12 +147,14 @@ class AccountSettingsState(
     val selfInfo: SelfInfoUiState,
     val boundBangumi: Boolean,
     val avatarUploadState: EditProfileState.UploadAvatarState,
+    val bangumiSyncState: BangumiSyncState,
 ) {
     companion object {
         val Empty = AccountSettingsState(
             selfInfo = SelfInfoUiState(null, true, null),
             boundBangumi = false,
             avatarUploadState = EditProfileState.UploadAvatarState.Default,
+            bangumiSyncState = BangumiSyncState.Idle,
         )
     }
 }
@@ -144,15 +170,26 @@ class EditProfileState(
     }
 
     @Immutable
-    sealed class UploadAvatarState {
-        data object Default : UploadAvatarState()
+    sealed interface UploadAvatarState {
+        data object Default : UploadAvatarState
 
-        data object Uploading : UploadAvatarState()
+        data object Uploading : UploadAvatarState
 
-        data class Success(val url: String) : UploadAvatarState()
+        data class Success(val url: String) : UploadAvatarState
 
-        data class Failed(val file: PlatformFile, val loadError: LoadError) : UploadAvatarState()
+        data class Failed(val file: PlatformFile, val loadError: LoadError) : UploadAvatarState
     }
+}
+
+@Immutable
+sealed interface BangumiSyncState {
+    data object Idle : BangumiSyncState
+
+    data object Syncing : BangumiSyncState
+
+    data class Failed(val loadError: LoadError) : BangumiSyncState
+
+    data object Success : BangumiSyncState
 }
 
 @OptIn(TestOnly::class)
@@ -161,4 +198,5 @@ val TestAccountSettingsState
         TestSelfInfoUiState,
         false,
         EditProfileState.UploadAvatarState.Default,
+        BangumiSyncState.Idle,
     )
