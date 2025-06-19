@@ -63,7 +63,7 @@ fun EmailLoginVerifyScreen(
         nextResendTime = state.nextResendTime,
         onCodeSubmit = { otp ->
             asyncHandler.launch {
-                val result = if (state.isLoginMode) {
+                val result = if (state.mode == EmailLoginUiState.Mode.LOGIN) {
                     vm.submitEmailOtp(otp)
                 } else {
                     vm.bindOrRebind(otp)
@@ -86,14 +86,8 @@ fun EmailLoginVerifyScreen(
         onNavigateBack,
         modifier = modifier,
         enabled = !asyncHandler.isWorking,
-        showThirdPartyLogin = state.isLoginMode,
-        title = {
-            if (state.isLoginMode) {
-                Text("登录")
-            } else {
-                Text("绑定邮箱")
-            }
-        },
+        showThirdPartyLogin = state.mode == EmailLoginUiState.Mode.LOGIN,
+        title = { EmailPageTitle(state.mode) },
     )
 }
 

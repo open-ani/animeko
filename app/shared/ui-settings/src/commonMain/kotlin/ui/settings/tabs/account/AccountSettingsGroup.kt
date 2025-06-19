@@ -229,12 +229,14 @@ private fun SettingsScope.AccountInfo(
                         Text("绑定 Bangumi")
                     }
                 }
-                if (selfInfo.selfInfo?.email == null) {
-                    FilledTonalButton(
-                        onClick = onClickBindEmail,
-                        modifier = Modifier,
-                    ) {
+                FilledTonalButton(
+                    onClick = onClickBindEmail,
+                    modifier = Modifier,
+                ) {
+                    if (selfInfo.selfInfo?.email == null) {
                         Text("绑定邮箱")
+                    } else {
+                        Text("更改邮箱")
                     }
                 }
                 Button(

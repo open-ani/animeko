@@ -34,10 +34,17 @@ class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
 
     private val stateFields = MutableStateFlow(EmailLoginUiState.Initial)
 
-    val state = combine(stateFields, sessionManager.stateProvider.stateFlow) { state, sessionState ->
+    val state = combine(
+        stateFields,
+        sessionManager.stateProvider.stateFlow,
+        userRepository.selfInfoFlow(),
+    ) { state, sessionState, selfInfo ->
         state.copy(
-            isLoginMode =
-                sessionState is SessionState.Invalid && sessionState.reason == InvalidSessionReason.NO_TOKEN,
+            mode = when {
+                sessionState is SessionState.Invalid && sessionState.reason == InvalidSessionReason.NO_TOKEN -> EmailLoginUiState.Mode.LOGIN
+                sessionState is SessionState.Valid && selfInfo?.email.isNullOrEmpty() -> EmailLoginUiState.Mode.BIND
+                else -> EmailLoginUiState.Mode.REBIND
+            },
         )
     }.stateInBackground(EmailLoginUiState.Initial)
 
@@ -79,10 +86,15 @@ class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
 data class EmailLoginUiState(
     val email: String,
     val nextResendTime: Instant,
-    // true 表示当前没账户, 用户要通过邮箱登录或者注册, 否则表示用户要绑定邮箱或换绑
-    val isLoginMode: Boolean
+    val mode: Mode
 ) {
     companion object {
-        val Initial = EmailLoginUiState("", Instant.DISTANT_PAST, false)
+        val Initial = EmailLoginUiState(
+            "",
+            Instant.DISTANT_PAST,
+            Mode.LOGIN,
+        )
     }
+
+    enum class Mode { LOGIN, BIND, REBIND }
 }

@@ -63,14 +63,8 @@ fun EmailLoginStartScreen(
         onNavigateSettings,
         onNavigateBack,
         enabled = !asyncHandler.isWorking,
-        showThirdPartyLogin = state.isLoginMode,
-        title = {
-            if (state.isLoginMode) {
-                Text("登录")
-            } else {
-                Text("绑定邮箱")
-            }
-        },
+        showThirdPartyLogin = state.mode == EmailLoginUiState.Mode.LOGIN,
+        title = { EmailPageTitle(state.mode) },
         modifier = modifier,
     )
 }
@@ -143,6 +137,15 @@ internal fun EmailLoginStartScreenImpl(
             Spacer(Modifier.width(ButtonDefaults.IconSpacing))
             Text("继续")
         }
+    }
+}
+
+@Composable
+internal fun EmailPageTitle(mode: EmailLoginUiState.Mode) {
+    when (mode) {
+        EmailLoginUiState.Mode.LOGIN -> Text("登录")
+        EmailLoginUiState.Mode.BIND -> Text("绑定邮箱")
+        EmailLoginUiState.Mode.REBIND -> Text("更改邮箱")
     }
 }
 
