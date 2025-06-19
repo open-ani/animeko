@@ -375,7 +375,7 @@ private fun SettingsScope.EditProfile(
             }
             FilledTonalButton(
                 {
-                    onSave(EditProfileState(initialUsername))
+                    onSave(EditProfileState(username))
                 },
                 enabled = saveEnabled,
             ) {

@@ -15,15 +15,14 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
+import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
-import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
@@ -38,7 +37,7 @@ import org.koin.core.component.inject
 class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
     private val sessionManager: SessionManager by inject()
     private val subjectCollectionRepo: SubjectCollectionRepository by inject()
-    private val selfStateFlow = SelfInfoStateProducer(koin = getKoin()).flow.stateInBackground()
+    private val userRepo: UserRepository by inject()
 
     private val logoutTasker = MonoTasker(backgroundScope)
     private val avatarUploadTasker = MonoTasker(backgroundScope)
@@ -52,14 +51,19 @@ class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
     private val bangumiSyncState = MutableStateFlow<BangumiSyncState>(BangumiSyncState.Idle)
 
     val state = combine(
-        selfStateFlow.filterNotNull(),
         sessionManager.stateProvider.stateFlow,
+        userRepo.selfInfoFlow(),
         avatarUploadState,
         bangumiSyncState,
-    ) { selfInfo, sessionState, avatarState, syncState ->
+    ) { sessionState, selfInfo, avatarState, syncState ->
+        val isSessionValid = sessionState is SessionState.Valid
         AccountSettingsState(
-            selfInfo = selfInfo,
-            boundBangumi = sessionState is SessionState.Valid && sessionState.bangumiConnected,
+            selfInfo = SelfInfoUiState(
+                selfInfo = selfInfo,
+                isLoading = false,
+                isSessionValid = isSessionValid,
+            ),
+            boundBangumi = isSessionValid && sessionState.bangumiConnected,
             avatarUploadState = avatarState,
             bangumiSyncState = syncState,
         )
@@ -112,7 +116,10 @@ class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
 
     fun saveProfile(profile: EditProfileState) {
         backgroundScope.launch {
-
+            val selfInfo = state.value.selfInfo.selfInfo
+            userRepo.updateProfile(
+                nickname = profile.nickname.takeIf { it != selfInfo?.nickname },
+            )
             refreshState()
         }
     }
@@ -161,11 +168,11 @@ class AccountSettingsState(
 
 @Immutable
 class EditProfileState(
-    val username: String,
+    val nickname: String,
 ) {
     companion object {
         val Empty = EditProfileState(
-            username = "",
+            nickname = "",
         )
     }
 

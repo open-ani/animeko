@@ -26,11 +26,13 @@ import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.client.apis.UserAniApi
 import me.him188.ani.client.apis.UserAuthenticationAniApi
+import me.him188.ani.client.apis.UserProfileAniApi
 import me.him188.ani.client.models.AniAniSelfUser
 import me.him188.ani.client.models.AniAuthenticationResponse
 import me.him188.ani.client.models.AniEditEmailRequest
 import me.him188.ani.client.models.AniRegisterOrLoginByEmailOtpRequest
 import me.him188.ani.client.models.AniSendEmailOtpRequest
+import me.him188.ani.client.models.AniUpdateProfileRequest
 import me.him188.ani.utils.ktor.ApiInvoker
 import kotlin.coroutines.CoroutineContext
 import kotlin.uuid.Uuid
@@ -40,6 +42,7 @@ class UserRepository(
     private val sessionStateProvider: SessionStateProvider,
     private val userApi: ApiInvoker<UserAniApi>,
     private val authApi: ApiInvoker<UserAuthenticationAniApi>,
+    private val profileApi: ApiInvoker<UserProfileAniApi>,
     private val sessionManager: SessionManager,
     private val flowContext: CoroutineContext = Dispatchers.Default,
 ) {
@@ -145,6 +148,27 @@ class UserRepository(
                         email = email,
                     ),
                 ).body().otpId
+            } catch (e: Exception) {
+                throw RepositoryException.wrapOrThrowCancellation(e)
+            }
+        }
+    }
+
+    /**
+     * 所有参数都是 `nullable`, 传入 `null` 则表示不修改对应的字段.
+     */
+    suspend fun updateProfile(
+        nickname: String?
+    ) = withContext(Dispatchers.Default) {
+        // 所有参数为 null 表示什么也不更新
+        if (nickname == null) {
+            return@withContext
+        }
+        profileApi.invoke {
+            try {
+                this.updateProfile(
+                    AniUpdateProfileRequest(nickname),
+                ).body()
             } catch (e: Exception) {
                 throw RepositoryException.wrapOrThrowCancellation(e)
             }
