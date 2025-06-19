@@ -13,6 +13,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -203,7 +204,7 @@ private fun SettingsScope.AccountInfo(
             }
         }
 
-        Row(
+        FlowRow(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -253,35 +254,37 @@ private fun SettingsScope.AccountInfo(
         }
 
         if (boundBangumi) {
-            TextItem(
-                icon = {
-                    when (bangumiSyncState) {
-                        BangumiSyncState.Idle -> Spacer(Modifier.width(24.dp))
+            Group({ Text("同步") }) {
+                TextItem(
+                    icon = {
+                        when (bangumiSyncState) {
+                            BangumiSyncState.Idle -> Spacer(Modifier.width(24.dp))
 
-                        BangumiSyncState.Syncing -> CircularProgressIndicator(Modifier.size(24.dp))
+                            BangumiSyncState.Syncing -> CircularProgressIndicator(Modifier.size(24.dp))
 
-                        is BangumiSyncState.Failed ->
-                            Icon(Icons.Default.Warning, contentDescription = "Bangumi sync error")
+                            is BangumiSyncState.Failed ->
+                                Icon(Icons.Default.Warning, contentDescription = "Bangumi sync error")
 
-                        BangumiSyncState.Success ->
-                            Icon(Icons.Default.Check, contentDescription = "Bangumi sync success")
-                    }
-                },
-                title = { Text("同步 Bangumi 收藏数据至 Ani") },
-                description = {
-                    when (bangumiSyncState) {
-                        BangumiSyncState.Idle -> Text("注意: 你存储在 Ani 中的收藏数据将会被覆盖")
+                            BangumiSyncState.Success ->
+                                Icon(Icons.Default.Check, contentDescription = "Bangumi sync success")
+                        }
+                    },
+                    title = { Text("同步 Bangumi 收藏数据至 Ani") },
+                    description = {
+                        when (bangumiSyncState) {
+                            BangumiSyncState.Idle -> Text("注意: 你存储在 Ani 中的收藏数据将会被覆盖")
 
-                        BangumiSyncState.Syncing -> Text("正在同步...")
+                            BangumiSyncState.Syncing -> Text("正在同步...")
 
-                        is BangumiSyncState.Failed ->
-                            Text("同步失败: ${renderLoadErrorMessage(bangumiSyncState.loadError)}")
+                            is BangumiSyncState.Failed ->
+                                Text("同步失败: ${renderLoadErrorMessage(bangumiSyncState.loadError)}")
 
-                        BangumiSyncState.Success -> Text("同步成功")
-                    }
-                },
-                onClick = onClickBangumiSync,
-            )
+                            BangumiSyncState.Success -> Text("同步成功")
+                        }
+                    },
+                    onClick = onClickBangumiSync,
+                )
+            }
         }
     }
 }
