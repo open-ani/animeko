@@ -27,6 +27,8 @@ import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.client.apis.UserAniApi
 import me.him188.ani.client.apis.UserAuthenticationAniApi
 import me.him188.ani.client.models.AniAniSelfUser
+import me.him188.ani.client.models.AniAuthenticationResponse
+import me.him188.ani.client.models.AniEditEmailRequest
 import me.him188.ani.client.models.AniRegisterOrLoginByEmailOtpRequest
 import me.him188.ani.client.models.AniSendEmailOtpRequest
 import me.him188.ani.utils.ktor.ApiInvoker
@@ -79,14 +81,24 @@ class UserRepository(
         otpId: String,
         otp: String,
     ): SendOtpResult = withContext(Dispatchers.Default) {
-        authApi.invoke {
+        requestEmailOtpAuth {
+            registerOrLoginByEmailOtp(AniRegisterOrLoginByEmailOtpRequest(otpId = otpId, otpValue = otp)).body()
+        }
+    }
+
+    suspend fun bindOrReBindEmail(
+        otpId: String,
+        otp: String,
+    ): SendOtpResult = withContext(Dispatchers.Default) {
+        requestEmailOtpAuth {
+            editEmail(AniEditEmailRequest(otpId = otpId, otpValue = otp)).body()
+        }
+    }
+
+    private suspend fun requestEmailOtpAuth(block: suspend UserAuthenticationAniApi.() -> AniAuthenticationResponse): SendOtpResult {
+        return authApi.invoke {
             try {
-                val data = this.registerOrLoginByEmailOtp(
-                    AniRegisterOrLoginByEmailOtpRequest(
-                        otpId = otpId,
-                        otpValue = otp,
-                    ),
-                ).body()
+                val data = block()
 
                 sessionManager.setSession(
                     AccessTokenSession(
@@ -121,13 +133,6 @@ class UserRepository(
                 throw RepositoryException.wrapOrThrowCancellation(e)
             }
         }
-    }
-
-    suspend fun bindOrReBindEmail(
-        otpId: String,
-        otp: String,
-    ): SendOtpResult = withContext(Dispatchers.Default) {
-        TODO()
     }
 
     suspend fun sendEmailOtpForLogin(
