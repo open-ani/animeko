@@ -104,7 +104,7 @@ class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
             return true
         }
 
-        if (username.isBlank() || username.length > 20) {
+        if (username.isBlank() || username.length !in 6..20) {
             return false
         }
         return USERNAME_MATCHER.matches(username)

@@ -17,23 +17,19 @@
 package me.him188.ani.client.models
 
 
-import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
  * 
  *
- * @param otpId 
- * @param otpValue 
+ * @param newNickname 
  */
 @Serializable
 
-data class AniEditEmailRequest (
+data class AniUpdateProfileRequest (
 
-    @SerialName(value = "otpId") @Required val otpId: kotlin.String,
-
-    @SerialName(value = "otpValue") @Required val otpValue: kotlin.String
+    @SerialName(value = "newNickname") val newNickname: kotlin.String? = null
 
 ) {
 
