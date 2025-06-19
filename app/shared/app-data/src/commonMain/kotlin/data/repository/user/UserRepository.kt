@@ -123,6 +123,13 @@ class UserRepository(
         }
     }
 
+    suspend fun bindOrReBindEmail(
+        otpId: String,
+        otp: String,
+    ): SendOtpResult = withContext(Dispatchers.Default) {
+        TODO()
+    }
+
     suspend fun sendEmailOtpForLogin(
         email: String,
     ) = withContext(Dispatchers.Default) {

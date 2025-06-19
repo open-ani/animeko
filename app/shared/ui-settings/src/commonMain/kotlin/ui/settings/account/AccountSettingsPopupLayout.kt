@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Login
@@ -43,6 +44,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.IconButton
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
@@ -50,6 +52,7 @@ import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.user.SelfInfoUiState
+import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @Composable
 internal fun AccountSettingsPopupLayout(
@@ -205,5 +208,21 @@ private fun EditableSelfAvatar(
                 }
             }
         }
+    }
+}
+
+@Composable
+@Preview
+private fun PreviewAccountSettingsPopupLayout() {
+    ProvideCompositionLocalsForPreview {
+        AccountSettingsPopupLayout(
+            TestAccountSettingsState,
+            { },
+            { },
+            { },
+            { },
+            { },
+            modifier = Modifier.widthIn(max = 360.dp),
+        )
     }
 }

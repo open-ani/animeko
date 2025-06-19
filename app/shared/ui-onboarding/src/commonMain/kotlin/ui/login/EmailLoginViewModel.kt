@@ -1,16 +1,27 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.login
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
 import me.him188.ani.app.data.repository.user.UserRepository
+import me.him188.ani.app.domain.session.InvalidSessionReason
+import me.him188.ani.app.domain.session.SessionManager
+import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -19,14 +30,21 @@ import kotlin.time.Duration.Companion.seconds
 @Stable
 class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
     private val userRepository: UserRepository by inject()
+    private val sessionManager: SessionManager by inject()
 
-    var state by mutableStateOf(EmailLoginUiState.Initial)
-        private set
+    private val stateFields = MutableStateFlow(EmailLoginUiState.Initial)
+
+    val state = combine(stateFields, sessionManager.stateProvider.stateFlow) { state, sessionState ->
+        state.copy(
+            isLoginMode =
+                sessionState is SessionState.Invalid && sessionState.reason == InvalidSessionReason.NO_TOKEN,
+        )
+    }.stateInBackground(EmailLoginUiState.Initial)
 
     private var otpId = ""
 
     private inline fun updateState(block: EmailLoginUiState.() -> EmailLoginUiState) {
-        state = state.block()
+        stateFields.value = stateFields.value.block()
     }
 
     fun setEmail(email: String) {
@@ -34,12 +52,12 @@ class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
     }
 
     suspend fun sendEmailOtp() {
-        if (Clock.System.now() < state.nextResendTime) {
+        if (Clock.System.now() < stateFields.value.nextResendTime) {
             // fail fast
             throw RepositoryRateLimitedException()
         }
         otpId = withContext(Dispatchers.Default) {
-            userRepository.sendEmailOtpForLogin(state.email)
+            userRepository.sendEmailOtpForLogin(stateFields.value.email)
         }
         updateState {
             copy(
@@ -51,14 +69,20 @@ class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
     suspend fun submitEmailOtp(otp: String) = withContext(Dispatchers.Default) {
         userRepository.registerOrLoginByEmailOtp(otpId, otp)
     }
+
+    suspend fun bindOrRebind(otp: String) = withContext(Dispatchers.Default) {
+        userRepository.bindOrReBindEmail(otpId, otp)
+    }
 }
 
 @Immutable
 data class EmailLoginUiState(
     val email: String,
     val nextResendTime: Instant,
+    // true 表示当前没账户, 用户要通过邮箱登录或者注册, 否则表示用户要绑定邮箱或换绑
+    val isLoginMode: Boolean
 ) {
     companion object {
-        val Initial = EmailLoginUiState("", Instant.DISTANT_PAST)
+        val Initial = EmailLoginUiState("", Instant.DISTANT_PAST, false)
     }
 }
