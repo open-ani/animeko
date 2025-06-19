@@ -67,7 +67,7 @@ internal fun AccountSettingsPopupLayout(
         Box(
             modifier = Modifier
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 8.dp)
+                .padding(bottom = 12.dp)
                 .fillMaxWidth(),
             contentAlignment = Alignment.Center,
         ) {
@@ -164,7 +164,7 @@ private fun EditableSelfAvatar(
     selfInfo: SelfInfoUiState,
     onClickEditAvatar: () -> Unit,
     modifier: Modifier = Modifier,
-    size: DpSize = DpSize(80.dp, 80.dp),
+    size: DpSize = DpSize(96.dp, 96.dp),
 ) {
     var showEditAvatarScrim by remember { mutableStateOf(false) }
 

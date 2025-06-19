@@ -93,7 +93,7 @@ fun SettingsScope.AccountSettingsGroup(
             AvatarImage(
                 url = state.selfInfo.selfInfo?.avatarUrl,
                 Modifier
-                    .padding(vertical = 16.dp)
+                    .padding(vertical = 16.dp, horizontal = 8.dp)
                     .size(96.dp)
                     .clip(CircleShape)
                     .placeholder(state.selfInfo.isLoading),
