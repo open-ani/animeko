@@ -320,7 +320,7 @@ private fun SettingsScope.EditProfile(
     Column(modifier) {
         TextItem(
             title = { Text("选择头像") },
-            description = { Text("仅支持 jpg, png 和 webp 格式, 长宽限制 1000x1000") },
+            description = { Text("仅支持 jpeg 和 png 格式, 大小限制为 1MB") },
             onClick = {
                 onResetAvatarUploadState()
                 filePicker.launch()

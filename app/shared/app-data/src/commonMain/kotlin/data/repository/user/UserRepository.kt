@@ -12,6 +12,7 @@ package me.him188.ani.app.data.repository.user
 import androidx.datastore.core.DataStore
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.OutgoingContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -168,6 +169,24 @@ class UserRepository(
             try {
                 this.updateProfile(
                     AniUpdateProfileRequest(nickname),
+                ).body()
+            } catch (e: Exception) {
+                throw RepositoryException.wrapOrThrowCancellation(e)
+            }
+        }
+    }
+
+    suspend fun uploadAvatar(
+        avatar: ByteArray,
+    ) = withContext(Dispatchers.Default) {
+        profileApi.invoke {
+            try {
+                this.uploadAvatar(
+                    object : OutgoingContent.ByteArrayContent() {
+                        override fun bytes(): ByteArray {
+                            return avatar
+                        }
+                    },
                 ).body()
             } catch (e: Exception) {
                 throw RepositoryException.wrapOrThrowCancellation(e)

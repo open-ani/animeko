@@ -11,11 +11,15 @@ package me.him188.ani.app.ui.settings.account
 
 import androidx.compose.runtime.Immutable
 import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.readBytes
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.foundation.LoadError
@@ -88,16 +92,18 @@ class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
         avatarUploadTasker.launch {
             avatarUploadState.value = EditProfileState.UploadAvatarState.Uploading
 
-            /*delay(1.seconds)
-
-            if (Random.nextFloat() >= 0.5) {
+            try {
+                withContext(Dispatchers.IO) {
+                    val fileContent = file.readBytes()
+                    userRepo.uploadAvatar(fileContent)
+                }
                 avatarUploadState.value = EditProfileState.UploadAvatarState.Success("")
-            } else {
+            } catch (ex: Exception) {
                 avatarUploadState.value = EditProfileState.UploadAvatarState.Failed(
                     file = file,
-                    loadError = LoadError.fromException(IllegalStateException("Upload failed, this is a test error")),
+                    loadError = LoadError.fromException(ex),
                 )
-            }*/
+            }
 
             refreshState()
         }
