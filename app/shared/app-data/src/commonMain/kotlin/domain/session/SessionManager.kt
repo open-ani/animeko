@@ -27,6 +27,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import me.him188.ani.app.data.repository.RepositoryAuthorizationException
+import me.him188.ani.app.data.repository.RepositoryBadRequestException
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
@@ -162,6 +163,8 @@ class SessionManager(
 
                         // 服务器不太可能会返回 429, 就把它当做网络错误了
                         is RepositoryRateLimitedException -> InvalidSessionReason.NETWORK_ERROR
+                        // 服务器不会返回 413 和 422, 当作网络错误
+                        is RepositoryBadRequestException -> InvalidSessionReason.NETWORK_ERROR
 
                         is RepositoryServiceUnavailableException -> InvalidSessionReason.NO_TOKEN
                         is RepositoryUnknownException -> InvalidSessionReason.UNKNOWN

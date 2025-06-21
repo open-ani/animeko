@@ -38,6 +38,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.repository.RepositoryAuthorizationException
+import me.him188.ani.app.data.repository.RepositoryBadRequestException
 import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
@@ -134,7 +135,9 @@ object RefreshIndicationDefaults {
                     is RefreshResult.ApiError -> {
                         when (result.exception) {
                             is RepositoryAuthorizationException -> stringResource(Lang.settings_mediasource_unauthorized)
-                            is RepositoryNetworkException -> stringResource(Lang.settings_mediasource_network_error)
+                            is RepositoryNetworkException, is RepositoryBadRequestException
+                                -> stringResource(Lang.settings_mediasource_network_error)
+
                             is RepositoryRateLimitedException -> stringResource(Lang.settings_mediasource_rate_limited)
                             is RepositoryServiceUnavailableException -> stringResource(Lang.settings_mediasource_server_error)
                             is RepositoryUnknownException -> stringResource(

@@ -145,6 +145,15 @@ fun LoadErrorCard(
                 )
             }
 
+            is LoadError.BadRequest -> {
+                ListItem(
+                    leadingContent = { Icon(Icons.Rounded.ErrorOutline, null) },
+                    headlineContent = { Text(renderLoadErrorMessage(error)) },
+                    trailingContent = retryButton,
+                    colors = listItemColors,
+                )
+            }
+
             LoadError.RequiresLogin -> {
                 ListItem(
                     leadingContent = { Icon(Icons.Outlined.Passkey_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24, null) },
@@ -269,6 +278,7 @@ fun renderLoadErrorMessage(error: LoadError): String {
         LoadError.ServiceUnavailable -> "服务暂不可用"
         LoadError.NoResults -> "无搜索结果"
         LoadError.RequiresLogin -> "此功能需要登录"
+        is LoadError.BadRequest -> "请求错误: ${error.message}"
         is LoadError.UnknownError -> {
             error.throwable?.printStackTrace()
             "未知错误: ${error.throwable?.message ?: "无详细信息"}"

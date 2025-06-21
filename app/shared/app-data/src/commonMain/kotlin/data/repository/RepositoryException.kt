@@ -35,6 +35,9 @@ sealed class RepositoryException : Exception {
                     HttpStatusCode.Unauthorized -> RepositoryAuthorizationException(cause.response.status.description)
                     HttpStatusCode.Forbidden -> RepositoryAuthorizationException(cause.response.status.description)
                     HttpStatusCode.TooManyRequests -> RepositoryRateLimitedException(cause.response.status.description)
+                    HttpStatusCode.PayloadTooLarge, HttpStatusCode.UnprocessableEntity ->
+                        RepositoryBadRequestException(cause.response.status.description)
+
                     else -> {
                         createAndReportUnknownException(cause)
                     }
@@ -97,6 +100,12 @@ class RepositoryServiceUnavailableException(message: String? = null, cause: Thro
 class RepositoryRateLimitedException(message: String? = null, cause: Throwable? = null) :
     RepositoryException(message, cause)
 
+/**
+ * 请求不符合要求
+ */
+class RepositoryBadRequestException(message: String? = null, cause: Throwable? = null) :
+    RepositoryException(message, cause)
+
 class RepositoryUnknownException(throwable: Throwable) : RepositoryException(null, cause = throwable)
 
 val PagingSource.LoadResult.Error<*, *>.repositoryException: RepositoryException?
@@ -109,6 +118,7 @@ fun RepositoryException.shouldRetry() = when (this) {
     is RepositoryRateLimitedException -> false
     is RepositoryServiceUnavailableException -> false
     is RepositoryUnknownException -> false
+    is RepositoryBadRequestException -> true
 }
 
 fun RepositoryException.Companion.shouldRetry(throwable: Throwable): Boolean {
