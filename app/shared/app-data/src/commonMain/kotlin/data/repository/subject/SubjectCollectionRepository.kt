@@ -184,6 +184,8 @@ sealed class SubjectCollectionRepository(
     abstract suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>>
 
     abstract suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>>
+
+    abstract suspend fun performBangumiFullSync()
 }
 
 class SubjectCollectionRepositoryImpl(
@@ -541,6 +543,14 @@ class SubjectCollectionRepositoryImpl(
     private suspend fun deleteSubjectCollection(subjectId: Int) {
         withContext(defaultDispatcher) {
             subjectService.deleteSubjectCollection(subjectId)
+        }
+    }
+
+    override suspend fun performBangumiFullSync() {
+        try {
+            subjectService.performBangumiFullSync()
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
         }
     }
 

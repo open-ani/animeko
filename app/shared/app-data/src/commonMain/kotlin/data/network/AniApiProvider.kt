@@ -22,6 +22,7 @@ import me.him188.ani.client.apis.TrendsAniApi
 import me.him188.ani.client.apis.UpdatesAniApi
 import me.him188.ani.client.apis.UserAniApi
 import me.him188.ani.client.apis.UserAuthenticationAniApi
+import me.him188.ani.client.apis.UserProfileAniApi
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.ktor.ScopedHttpClient
 
@@ -41,6 +42,7 @@ class AniApiProvider(
     val updateApi = ApiInvoker(client) { UpdatesAniApi(baseurl, it) }
     val userApi = ApiInvoker(client) { UserAniApi(baseurl, it) }
     val userAuthApi = ApiInvoker(client) { UserAuthenticationAniApi(baseurl, it) }
+    val userProfileApi = ApiInvoker(client) { UserProfileAniApi(baseurl, it) }
     val subscriptionApi = ApiInvoker(client) { SubscriptionsAniApi(baseurl, it) }
 
     private inline val baseurl get() = ServerListFeatureConfig.Companion.MAGIC_ANI_SERVER

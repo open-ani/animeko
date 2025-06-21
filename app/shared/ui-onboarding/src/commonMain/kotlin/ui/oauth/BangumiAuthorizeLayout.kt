@@ -58,9 +58,7 @@ import me.him188.ani.app.ui.foundation.animation.AnimatedVisibilityMotionScheme
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import me.him188.ani.app.ui.foundation.icons.BangumiNextIconColor
-import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
-import me.him188.ani.app.ui.onboarding.WizardLayoutParams
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
@@ -86,7 +84,6 @@ fun BangumiAuthorizeLayout(
     onClickAuthorize: () -> Unit,
     onCancelAuthorize: () -> Unit,
     modifier: Modifier = Modifier,
-    layoutParams: WizardLayoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
 ) {
     SettingsTab(modifier) {
         val motionScheme = LocalAniMotionScheme.current
@@ -105,7 +102,6 @@ fun BangumiAuthorizeLayout(
             Column {
                 Column(
                     modifier = Modifier
-                        .padding(horizontal = layoutParams.horizontalPadding)
                         .fillMaxWidth(),
                 ) {
                     Text(
@@ -115,7 +111,6 @@ fun BangumiAuthorizeLayout(
                 }
                 Column(
                     modifier = Modifier
-                        .padding(horizontal = layoutParams.horizontalPadding)
                         .padding(top = 24.dp)
                         .fillMaxWidth(),
                 ) {
@@ -129,17 +124,13 @@ fun BangumiAuthorizeLayout(
                     )
                     AuthorizeStateText(
                         authorizeState,
-                        modifier = Modifier.padding(
-                            horizontal = layoutParams.descHorizontalPadding,
-                            vertical = 8.dp,
-                        ),
+                        modifier = Modifier.padding(vertical = 8.dp),
                         animatedVisibilityMotionScheme = motionScheme.animatedVisibility,
                     )
                 }
             }
             AuthorizeHelpQA(
                 contactActions = contactActions,
-                layoutParams = layoutParams,
                 Modifier.padding(top = 36.dp),
             )
         }
@@ -162,7 +153,7 @@ private fun AuthorizeButton(
                 transitionSpec = LocalAniMotionScheme.current.animatedContent.standard,
             ) {
                 when (it) {
-                    is AuthState.Idle, is AuthState.Failed -> { 
+                    is AuthState.Idle, is AuthState.Failed -> {
                         if (authorizeState is AuthState.LoggedInAni) {
                             if (authorizeState.bound) {
                                 Text("不可重复绑定")
@@ -333,16 +324,13 @@ private fun renderHelpOptionContent(
 @Composable
 private fun SettingsScope.AuthorizeHelpQA(
     contactActions: @Composable () -> Unit,
-    layoutParams: WizardLayoutParams,
     modifier: Modifier = Modifier,
 ) {
     var currentSelected by rememberSaveable { mutableStateOf<HelpOption?>(null) }
 
     Column(modifier = modifier) {
         Column(
-            modifier = Modifier
-                .padding(horizontal = layoutParams.horizontalPadding)
-                .padding(top = 8.dp),
+            modifier = Modifier.padding(top = 8.dp),
             horizontalAlignment = Alignment.Start,
         ) {
             Text(
@@ -378,7 +366,6 @@ fun SettingsScope.ExpandableHelpItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     motionScheme: AniMotionScheme = LocalAniMotionScheme.current,
-    layoutParams: WizardLayoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
 ) {
     Column(modifier) {
         TextItem(
@@ -398,16 +385,14 @@ fun SettingsScope.ExpandableHelpItem(
         )
         AnimatedVisibility(
             expanded,
-            modifier = Modifier
-                .padding(horizontal = layoutParams.horizontalPadding)
-                .fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             enter = motionScheme.animatedVisibility.columnEnter,
             exit = motionScheme.animatedVisibility.columnExit,
         ) {
             ProvideTextStyle(MaterialTheme.typography.bodyMedium, content)
         }
         if (showDivider) {
-            HorizontalDivider(modifier = Modifier.padding(horizontal = layoutParams.horizontalPadding))
+            HorizontalDivider()
         }
     }
 }

@@ -172,6 +172,8 @@ sealed class LoadErrorCardRole {
 
                 // Unimportant message
                 LoadError.NoResults -> Unimportant
+
+                is LoadError.BadRequest -> Important
             }
         }
     }

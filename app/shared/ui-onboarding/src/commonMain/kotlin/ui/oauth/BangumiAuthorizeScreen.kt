@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.oauth
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -23,11 +24,18 @@ fun BangumiAuthorizeScreen(
     vm: BangumiAuthorizeViewModel,
     onNavigateBack: () -> Unit,
     onNavigateSettings: () -> Unit,
+    onAuthorizeSuccess: () -> Unit,
     contactActions: @Composable () -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle(AuthState.NoAniAccount)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        vm.collectNewLoginEvent {
+            onAuthorizeSuccess()
+        }
+    }
 
     BangumiAuthorizeScreen(
         state = state,

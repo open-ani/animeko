@@ -34,6 +34,7 @@ import kotlinx.serialization.Serializable
  * @param registerTime 
  * @param lastLoginTime 
  * @param clientVersion 
+ * @param bangumiUsername 
  */
 @Serializable
 
@@ -57,7 +58,9 @@ data class AniAniSelfUser (
 
     @SerialName(value = "lastLoginTime") val lastLoginTime: kotlin.Long? = null,
 
-    @SerialName(value = "clientVersion") val clientVersion: kotlin.String? = null
+    @SerialName(value = "clientVersion") val clientVersion: kotlin.String? = null,
+
+    @SerialName(value = "bangumiUsername") val bangumiUsername: kotlin.String? = null
 
 ) {
 

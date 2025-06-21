@@ -26,6 +26,7 @@ import me.him188.ani.client.infrastructure.RequestConfig
 import me.him188.ani.client.infrastructure.RequestMethod
 import me.him188.ani.client.infrastructure.wrap
 import me.him188.ani.client.models.AniAuthenticationResponse
+import me.him188.ani.client.models.AniEditEmailRequest
 import me.him188.ani.client.models.AniLoginResponse
 import me.him188.ani.client.models.AniRefreshTokenRequest
 import me.him188.ani.client.models.AniRegisterOrLoginByEmailOtpRequest
@@ -46,6 +47,39 @@ open class UserAuthenticationAniApi : ApiClient {
         baseUrl: String,
         httpClient: HttpClient
     ): super(baseUrl = baseUrl, httpClient = httpClient)
+
+    /**
+     * 绑定或换绑邮箱
+     * 绑定或换绑邮箱
+     * @param aniEditEmailRequest 
+     * @return AniAuthenticationResponse
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun editEmail(aniEditEmailRequest: AniEditEmailRequest): HttpResponse<AniAuthenticationResponse> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = aniEditEmailRequest
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.PUT,
+            "/v2/users/auth/email",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
 
     /**
      * 刷新会话 token

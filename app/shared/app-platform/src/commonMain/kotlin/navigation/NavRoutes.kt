@@ -157,6 +157,8 @@ enum class MainScreenPage {
 @Immutable
 @Serializable
 enum class SettingsTab {
+    ACCOUNT,
+
     APPEARANCE,
     THEME,
     UPDATE,

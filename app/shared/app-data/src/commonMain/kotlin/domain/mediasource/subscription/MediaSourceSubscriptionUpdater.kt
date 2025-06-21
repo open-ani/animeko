@@ -12,6 +12,7 @@ package me.him188.ani.app.domain.mediasource.subscription
 import kotlinx.coroutines.flow.first
 import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.data.repository.RepositoryAuthorizationException
+import me.him188.ani.app.data.repository.RepositoryBadRequestException
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
@@ -96,6 +97,9 @@ class MediaSourceSubscriptionUpdater(
 
                     is RepositoryServiceUnavailableException ->
                         setResult(null, UpdateError(e.toString(), ApiFailure.ServiceUnavailable))
+
+                    is RepositoryBadRequestException ->
+                        setResult(null, UpdateError(e.toString(), ApiFailure.NetworkError))
 
                     is RepositoryUnknownException ->
                         setResult(null, UpdateError(e.toString(), null))

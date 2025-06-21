@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Feedback
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Info
@@ -67,6 +68,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -96,12 +98,14 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.acknowledgements
 import me.him188.ani.app.ui.lang.developer_list
 import me.him188.ani.app.ui.lang.settings
+import me.him188.ani.app.ui.lang.settings_category_account
 import me.him188.ani.app.ui.lang.settings_category_app_ui
 import me.him188.ani.app.ui.lang.settings_category_data_playback
 import me.him188.ani.app.ui.lang.settings_category_network_storage
 import me.him188.ani.app.ui.lang.settings_category_others
 import me.him188.ani.app.ui.lang.settings_debug_mode_enabled
 import me.him188.ani.app.ui.lang.settings_tab_about
+import me.him188.ani.app.ui.lang.settings_tab_account
 import me.him188.ani.app.ui.lang.settings_tab_appearance
 import me.him188.ani.app.ui.lang.settings_tab_bt
 import me.him188.ani.app.ui.lang.settings_tab_danmaku
@@ -114,6 +118,7 @@ import me.him188.ani.app.ui.lang.settings_tab_proxy
 import me.him188.ani.app.ui.lang.settings_tab_storage
 import me.him188.ani.app.ui.lang.settings_tab_theme
 import me.him188.ani.app.ui.lang.settings_tab_update
+import me.him188.ani.app.ui.settings.account.AccountSettingsViewModel
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.rendering.P2p
 import me.him188.ani.app.ui.settings.tabs.AniHelpNavigator
@@ -121,6 +126,7 @@ import me.him188.ani.app.ui.settings.tabs.DebugTab
 import me.him188.ani.app.ui.settings.tabs.about.AboutTab
 import me.him188.ani.app.ui.settings.tabs.about.AcknowledgementsTab
 import me.him188.ani.app.ui.settings.tabs.about.DevelopersTab
+import me.him188.ani.app.ui.settings.tabs.account.AccountSettingsGroup
 import me.him188.ani.app.ui.settings.tabs.app.AppearanceGroup
 import me.him188.ani.app.ui.settings.tabs.app.PlayerGroup
 import me.him188.ani.app.ui.settings.tabs.app.SoftwareUpdateGroup
@@ -145,6 +151,8 @@ typealias SettingsTab = me.him188.ani.app.navigation.SettingsTab
 @Composable
 fun SettingsScreen(
     vm: SettingsViewModel,
+    onNavigateToLogin: () -> Unit,
+    onNavigateToBangumiOAuth: () -> Unit,
     modifier: Modifier = Modifier,
     initialTab: SettingsTab? = null,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
@@ -164,6 +172,8 @@ fun SettingsScreen(
     val layoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective)
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    val accountSettingsViewModel = viewModel { AccountSettingsViewModel() }
 
     SettingsPageLayout(
         navigator,
@@ -186,7 +196,10 @@ fun SettingsScreen(
             }
         },
         navItems = {
-            Title(stringResource(Lang.settings_category_app_ui), paddingTop = 0.dp)
+            Title(stringResource(Lang.settings_category_account), paddingTop = 0.dp)
+            Item(SettingsTab.ACCOUNT)
+
+            Title(stringResource(Lang.settings_category_app_ui))
             Item(SettingsTab.APPEARANCE)
             Item(SettingsTab.THEME)
 
@@ -255,6 +268,12 @@ fun SettingsScreen(
                         tabModifier,
                     ) {
                         when (currentTab) {
+                            SettingsTab.ACCOUNT -> AccountSettingsGroup(
+                                accountSettingsViewModel,
+                                onNavigateToLogin,
+                                onNavigateToBangumiOAuth,
+                            )
+
                             SettingsTab.APPEARANCE -> AppearanceGroup(vm.uiSettings)
                             SettingsTab.THEME -> ThemeGroup(vm.themeSettings)
                             SettingsTab.UPDATE -> SoftwareUpdateGroup(vm.softwareUpdateGroupState)
@@ -617,6 +636,7 @@ abstract class SettingsDrawerScope internal constructor() : ColumnScope {
 @Stable
 private fun getIcon(tab: SettingsTab): ImageVector {
     return when (tab) {
+        SettingsTab.ACCOUNT -> Icons.Outlined.AccountCircle
         SettingsTab.APPEARANCE -> Icons.Outlined.SettingsApplications
         SettingsTab.THEME -> Icons.Outlined.Palette
         SettingsTab.UPDATE -> Icons.Outlined.Update
@@ -638,6 +658,7 @@ private fun getIcon(tab: SettingsTab): ImageVector {
 @Composable
 private fun getName(tab: SettingsTab): String {
     return when (tab) {
+        SettingsTab.ACCOUNT -> stringResource(Lang.settings_tab_account)
         SettingsTab.APPEARANCE -> stringResource(Lang.settings_tab_appearance)
         SettingsTab.THEME -> stringResource(Lang.settings_tab_theme)
         SettingsTab.PLAYER -> stringResource(Lang.settings_tab_player)

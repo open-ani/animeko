@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.login
 
 import androidx.compose.foundation.layout.Spacer
@@ -7,15 +16,25 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import kotlinx.datetime.Clock
@@ -36,7 +55,7 @@ fun EmailLoginVerifyScreen(
     modifier: Modifier = Modifier,
     vm: EmailLoginViewModel = viewModel<EmailLoginViewModel> { EmailLoginViewModel() },
 ) {
-    val state = vm.state
+    val state by vm.state.collectAsStateWithLifecycle(EmailLoginUiState.Initial)
     val asyncHandler = rememberAsyncHandler()
     val toaster = LocalToaster.current
     EmailLoginVerifyScreenImpl(
@@ -44,7 +63,12 @@ fun EmailLoginVerifyScreen(
         nextResendTime = state.nextResendTime,
         onCodeSubmit = { otp ->
             asyncHandler.launch {
-                val result = vm.submitEmailOtp(otp)
+                val result = if (state.mode == EmailLoginUiState.Mode.LOGIN) {
+                    vm.submitEmailOtp(otp)
+                } else {
+                    vm.bindOrRebind(otp)
+                }
+
                 when (result) {
                     SendOtpResult.EmailAlreadyExist -> toaster.show("该邮箱已被使用")
                     SendOtpResult.InvalidOtp -> toaster.show("验证码无效或已过期，请重新发送")
@@ -62,6 +86,8 @@ fun EmailLoginVerifyScreen(
         onNavigateBack,
         modifier = modifier,
         enabled = !asyncHandler.isWorking,
+        showThirdPartyLogin = state.mode == EmailLoginUiState.Mode.LOGIN,
+        title = { EmailPageTitle(state.mode) },
     )
 }
 
@@ -76,13 +102,17 @@ internal fun EmailLoginVerifyScreenImpl(
     onNavigateSettings: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
+    title: @Composable () -> Unit = { Text("登录") },
     enabled: Boolean = true,
+    showThirdPartyLogin: Boolean = true,
 ) {
     EmailLoginScreenLayout(
         onBangumiLoginClick,
         onNavigateSettings,
         onNavigateBack,
         modifier,
+        title = title,
+        showThirdPartyLogin = showThirdPartyLogin,
     ) {
         CenteredSectionHeader(
             title = { Text("输入验证码") },

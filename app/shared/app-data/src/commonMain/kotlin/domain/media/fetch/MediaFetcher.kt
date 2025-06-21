@@ -43,6 +43,7 @@ import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.nameCnOrName
 import me.him188.ani.app.data.repository.RepositoryAuthorizationException
+import me.him188.ani.app.data.repository.RepositoryBadRequestException
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
@@ -268,6 +269,10 @@ class MediaSourceMediaFetcher(
 
                         is RepositoryServiceUnavailableException -> {
                             logger.warn { "Failed to fetch media from ${sourceInfo.displayName} due to service unavailable" }
+                        }
+
+                        is RepositoryBadRequestException -> {
+                            logger.warn(exception) { "Failed to fetch media from ${sourceInfo.displayName} due to bad request" }
                         }
 
                         is RepositoryUnknownException -> {

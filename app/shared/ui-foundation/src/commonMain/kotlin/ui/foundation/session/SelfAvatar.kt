@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -50,28 +50,38 @@ import kotlin.coroutines.CoroutineContext
 fun SelfAvatar(
     state: SelfInfoUiState,
     size: DpSize, // = DpSize(48.dp, 48.dp)
-    onClick: () -> Unit,
+    onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    Box {
-        Surface(onClick, modifier, shape = CircleShape) {
-            if (state.isLoading) {
-                // 加载中时展示 placeholder
-                AvatarImage(
-                    url = state.selfInfo?.avatarUrl,
-                    Modifier.size(size).clip(CircleShape).placeholder(state.selfInfo == null),
-                )
-            } else {
-                if (state.isSessionValid == false || state.selfInfo == null) {
-                    TextButton(onClick) {
-                        Text("登录")
-                    }
-                } else {
-                    AvatarImage(
-                        url = state.selfInfo.avatarUrl,
-                        modifier = Modifier.size(size).clip(CircleShape),
-                    )
+    @Composable
+    fun Content(onClick: () -> Unit) {
+        if (state.isLoading) {
+            // 加载中时展示 placeholder
+            AvatarImage(
+                url = state.selfInfo?.avatarUrl,
+                Modifier.size(size).clip(CircleShape).placeholder(state.selfInfo == null),
+            )
+        } else {
+            if (state.isSessionValid == false || state.selfInfo == null) {
+                TextButton(onClick) {
+                    Text("登录")
                 }
+            } else {
+                AvatarImage(
+                    url = state.selfInfo.avatarUrl,
+                    modifier = Modifier.size(size).clip(CircleShape),
+                )
+            }
+        }
+    }
+    Box {
+        if (onClick != null) {
+            Surface(onClick, modifier, shape = CircleShape) {
+                Content(onClick)
+            }
+        } else {
+            Surface(modifier = modifier, shape = CircleShape) {
+                Content { }
             }
         }
     }

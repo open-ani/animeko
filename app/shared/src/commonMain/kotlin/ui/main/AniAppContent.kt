@@ -235,6 +235,11 @@ private fun AniAppContentImpl(
                     contactActions = {
                         AniContactList()
                     },
+                    onAuthorizeSuccess = {
+                        aniNavigator.popBackStack(NavRoutes.BangumiAuthorize, true)
+                        aniNavigator.popBackStack(NavRoutes.EmailLoginVerify, true)
+                        aniNavigator.popBackStack(NavRoutes.EmailLoginStart, true)
+                    },
                 )
             }
             composable<NavRoutes.Onboarding>(
@@ -334,7 +339,7 @@ private fun AniAppContentImpl(
                             page = currentPage,
                             selfInfo = selfInfo,
                             onNavigateToPage = { currentPage = it },
-                            onNavigateToSettings = { aniNavigator.navigateSettings() },
+                            onNavigateToSettings = { aniNavigator.navigateSettings(it) },
                             onNavigateToSearch = { aniNavigator.navigateSubjectSearch() },
                             navigationLayoutType = navigationLayoutType,
                         )
@@ -445,6 +450,8 @@ private fun AniAppContentImpl(
                     viewModel {
                         SettingsViewModel()
                     },
+                    onNavigateToLogin = { aniNavigator.navigateLogin() },
+                    onNavigateToBangumiOAuth = { aniNavigator.navigateBangumiAuthorize() },
                     Modifier.fillMaxSize(),
                     route.tab,
                     navigationIcon = {
