@@ -11,7 +11,6 @@ package me.him188.ani.app.domain.foundation
 
 import androidx.paging.CombinedLoadStates
 import me.him188.ani.app.data.repository.RepositoryAuthorizationException
-import me.him188.ani.app.data.repository.RepositoryBadRequestException
 import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
@@ -31,7 +30,6 @@ sealed class LoadError {
     data object NetworkError : LoadError()
     data object ServiceUnavailable : LoadError()
     data object RateLimited : LoadError()
-    data class BadRequest(val message: String) : LoadError()
     data class UnknownError(val throwable: Throwable?) : LoadError()
 
     companion object {
@@ -46,7 +44,6 @@ sealed class LoadError {
                     is RepositoryNetworkException -> return NetworkError
                     is RepositoryServiceUnavailableException -> return ServiceUnavailable
                     is RepositoryRateLimitedException -> return RateLimited
-                    is RepositoryBadRequestException -> return BadRequest(e.message ?: "unknown")
                 }
             }
             return UnknownError(exceptions.firstOrNull())
@@ -58,7 +55,6 @@ sealed class LoadError {
                 is RepositoryNetworkException -> NetworkError
                 is RepositoryServiceUnavailableException -> ServiceUnavailable
                 is RepositoryRateLimitedException -> RateLimited
-                is RepositoryBadRequestException -> return BadRequest(e.message ?: "unknown")
                 else -> UnknownError(e)
             }
         }

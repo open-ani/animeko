@@ -70,7 +70,6 @@ fun Toaster.showLoadError(error: LoadError) {
         LoadError.RateLimited -> show("请求过于频繁，请稍后再试")
         LoadError.RequiresLogin -> show("此功能需要登录")
         LoadError.ServiceUnavailable -> show("服务不可用，请稍后再试")
-        is LoadError.BadRequest -> show("请求错误: ${error.message}")
         is LoadError.UnknownError -> {
             show("发生未知错误，请在设置中反馈（附加日志）")
             logger.warn(error.throwable) {
