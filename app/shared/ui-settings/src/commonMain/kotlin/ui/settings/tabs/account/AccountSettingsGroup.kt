@@ -10,7 +10,11 @@
 package me.him188.ani.app.ui.settings.tabs.account
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -44,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
@@ -56,11 +61,15 @@ import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import me.him188.ani.app.ui.external.placeholder.placeholder
+import me.him188.ani.app.ui.foundation.DragAndDropContent
+import me.him188.ani.app.ui.foundation.DragAndDropHoverState
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthCompact
+import me.him188.ani.app.ui.foundation.navigation.BackHandler
+import me.him188.ani.app.ui.foundation.rememberDragAndDropState
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.search.LoadErrorCard
@@ -76,6 +85,8 @@ import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextFieldItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.user.SelfInfoUiState
+import me.him188.ani.utils.platform.Platform
+import me.him188.ani.utils.platform.currentPlatform
 
 @Composable
 fun SettingsScope.AccountSettingsGroup(
@@ -314,17 +325,49 @@ private fun SettingsScope.EditProfile(
         }
     }
 
+    val dndState = rememberDragAndDropState dnd@{
+        if (it !is DragAndDropContent.FileList || it.files.isEmpty()) return@dnd false
+
+        onUploadAvatar(PlatformFile(it.files.first()))
+        return@dnd true
+    }
+
+    val dndBorderColor by animateColorAsState(
+        when (dndState.hoverState) {
+            DragAndDropHoverState.ENTERED -> MaterialTheme.colorScheme.primary
+            DragAndDropHoverState.STARTED -> MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+            DragAndDropHoverState.NONE -> Color.Transparent
+        },
+    )
+
     val saveEnabled by remember {
         derivedStateOf {
             onCheckUsername(username)
         }
     }
 
+    BackHandler(true, onCancel)
+
     Column(modifier) {
         TextItem(
             title = { Text("选择头像") },
-            description = { Text("仅支持 jpeg 和 png 格式, 大小限制为 1MB") },
+            description = {
+                Text(
+                    buildString {
+                        if (currentPlatform() is Platform.Desktop) {
+                            append("或拖动文件到此处. ")
+                        }
+                        append("仅支持 jpeg 和 png 格式, 大小限制为 1MB")
+                    },
+                )
+            },
             onClickEnabled = !filePickerLaunched,
+            modifier = Modifier
+                .border(
+                    BorderStroke(2.dp, dndBorderColor),
+                    shape = MaterialTheme.shapes.small,
+                )
+                .dragAndDropTarget({ !filePickerLaunched }, dndState),
             onClick = {
                 onResetAvatarUploadState()
                 filePickerLaunched = true
