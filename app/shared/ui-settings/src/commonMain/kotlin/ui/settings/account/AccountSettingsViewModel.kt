@@ -12,6 +12,8 @@ package me.him188.ani.app.ui.settings.account
 import androidx.compose.runtime.Immutable
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.readBytes
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -20,6 +22,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.foundation.LoadError
@@ -29,6 +32,7 @@ import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
+import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -93,13 +97,40 @@ class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
             avatarUploadState.value = EditProfileState.UploadAvatarState.Uploading
 
             try {
-                withContext(Dispatchers.IO) {
-                    val fileContent = file.readBytes()
-                    userRepo.uploadAvatar(fileContent)
+                val fileContent = withContext(Dispatchers.IO) {
+                    file.readBytes()
                 }
+
+                if (!AvatarImageProcessor.checkImageFormat(fileContent)) {
+                    avatarUploadState.value = EditProfileState.UploadAvatarState.InvalidFormat
+                    return@launch
+                }
+                if (fileContent.size > 1.megaBytes.inBytes) {
+                    avatarUploadState.value = EditProfileState.UploadAvatarState.SizeExceeded
+                    return@launch
+                }
+
+                userRepo.uploadAvatar(fileContent)
                 avatarUploadState.value = EditProfileState.UploadAvatarState.Success("")
             } catch (ex: Exception) {
-                avatarUploadState.value = EditProfileState.UploadAvatarState.Failed(
+                val cause = ex.cause?.cause
+                if (ex is RepositoryUnknownException && cause is ClientRequestException) {
+                    when (cause.response.status) {
+                        HttpStatusCode.PayloadTooLarge -> {
+                            avatarUploadState.value = EditProfileState.UploadAvatarState.SizeExceeded
+                            return@launch
+                        }
+
+                        HttpStatusCode.UnprocessableEntity -> {
+                            avatarUploadState.value = EditProfileState.UploadAvatarState.InvalidFormat
+                            return@launch
+                        }
+
+                        else -> {}
+                    }
+                }
+
+                avatarUploadState.value = EditProfileState.UploadAvatarState.UnknownError(
                     file = file,
                     loadError = LoadError.fromException(ex),
                 )
@@ -190,7 +221,13 @@ class EditProfileState(
 
         data class Success(val url: String) : UploadAvatarState
 
-        data class Failed(val file: PlatformFile, val loadError: LoadError) : UploadAvatarState
+        sealed interface Failed : UploadAvatarState
+
+        data object InvalidFormat : Failed
+
+        data object SizeExceeded : Failed
+
+        data class UnknownError(val file: PlatformFile, val loadError: LoadError) : Failed
     }
 }
 
@@ -213,3 +250,40 @@ val TestAccountSettingsState
         EditProfileState.UploadAvatarState.Default,
         BangumiSyncState.Idle,
     )
+
+private object AvatarImageProcessor {
+    fun checkImageFormat(headBytes: ByteArray): Boolean {
+        return isJpeg(headBytes) || isPng(headBytes) || isWebp(headBytes)
+    }
+
+    private fun isPng(data: ByteArray): Boolean {
+        // PNG signature: 137 80 78 71 13 10 26 10
+        return data.size >= 8 && data[0] == 137.toByte() &&
+                data[1] == 'P'.code.toByte() &&
+                data[2] == 'N'.code.toByte() &&
+                data[3] == 'G'.code.toByte() &&
+                data[4] == 13.toByte() &&
+                data[5] == 10.toByte() &&
+                data[6] == 26.toByte() &&
+                data[7] == 10.toByte()
+    }
+
+    private fun isJpeg(data: ByteArray): Boolean {
+        // JPEG signature: 0xFF 0xD8 0xFF
+        return data.size >= 3 && data[0] == 0xFF.toByte() &&
+                data[1] == 0xD8.toByte() &&
+                data[2] == 0xFF.toByte()
+    }
+
+    private fun isWebp(data: ByteArray): Boolean {
+        // WebP signature: "RIFF" + 4 bytes + "WEBP"
+        return data.size >= 12 && data[0] == 'R'.code.toByte() &&
+                data[1] == 'I'.code.toByte() &&
+                data[2] == 'F'.code.toByte() &&
+                data[3] == 'F'.code.toByte() &&
+                data[8] == 'W'.code.toByte() &&
+                data[9] == 'E'.code.toByte() &&
+                data[10] == 'B'.code.toByte() &&
+                data[11] == 'P'.code.toByte()
+    }
+}

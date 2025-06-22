@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -302,10 +303,12 @@ private fun SettingsScope.EditProfile(
 ) {
     var username by rememberSaveable { mutableStateOf(initialUsername) }
 
+    var filePickerLaunched by rememberSaveable { mutableStateOf(false) }
     val filePicker = rememberFilePickerLauncher(
         type = FileKitType.Image,
         title = "选择头像",
     ) {
+        filePickerLaunched = false
         it?.let { file ->
             onUploadAvatar(file)
         }
@@ -321,8 +324,10 @@ private fun SettingsScope.EditProfile(
         TextItem(
             title = { Text("选择头像") },
             description = { Text("仅支持 jpeg 和 png 格式, 大小限制为 1MB") },
+            onClickEnabled = !filePickerLaunched,
             onClick = {
                 onResetAvatarUploadState()
+                filePickerLaunched = true
                 filePicker.launch()
             },
         )
@@ -337,17 +342,27 @@ private fun SettingsScope.EditProfile(
                     LoadErrorCardLayout(LoadErrorCardRole.Neural) {
                         ListItem(
                             leadingContent = { CircularProgressIndicator(Modifier.size(24.dp)) },
-                            headlineContent = { Text("上传中...") },
+                            headlineContent = { Text(renderAvatarUploadMessage(avatarUploadState)) },
                             colors = listItemColors,
                         )
                     }
                 }
 
                 is EditProfileState.UploadAvatarState.Failed -> {
-                    LoadErrorCard(
-                        avatarUploadState.loadError,
-                        onRetry = { onUploadAvatar(avatarUploadState.file) },
-                    )
+                    if (avatarUploadState is EditProfileState.UploadAvatarState.UnknownError) {
+                        LoadErrorCard(
+                            avatarUploadState.loadError,
+                            onRetry = { onUploadAvatar(avatarUploadState.file) },
+                        )
+                    } else {
+                        LoadErrorCardLayout(LoadErrorCardRole.Important) {
+                            ListItem(
+                                leadingContent = { Icon(Icons.Rounded.ErrorOutline, null) },
+                                headlineContent = { Text(renderAvatarUploadMessage(avatarUploadState)) },
+                                colors = listItemColors,
+                            )
+                        }
+                    }
                 }
 
                 else -> {}
@@ -382,6 +397,18 @@ private fun SettingsScope.EditProfile(
                 Text("保存")
             }
         }
+    }
+}
+
+private fun renderAvatarUploadMessage(
+    state: EditProfileState.UploadAvatarState,
+): String {
+    return when (state) {
+        is EditProfileState.UploadAvatarState.Uploading -> "正在上传..."
+        is EditProfileState.UploadAvatarState.SizeExceeded -> "图片大小超过 1MB"
+        is EditProfileState.UploadAvatarState.InvalidFormat -> "图片格式不支持"
+        is EditProfileState.UploadAvatarState.UnknownError -> renderLoadErrorMessage(state.loadError)
+        is EditProfileState.UploadAvatarState.Success, EditProfileState.UploadAvatarState.Default -> ""
     }
 }
 
