@@ -97,7 +97,7 @@ fun SettingsScope.AccountSettingsGroup(
     modifier: Modifier = Modifier,
     windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass,
 ) {
-    val state by vm.state.collectAsStateWithLifecycle(initialValue = AccountSettingsState.Empty)
+    val state by vm.stateFlow.collectAsStateWithLifecycle(initialValue = AccountSettingsState.Empty)
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     val motionScheme = LocalAniMotionScheme.current

@@ -55,7 +55,7 @@ class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
 
     private val bangumiSyncState = MutableStateFlow<BangumiSyncState>(BangumiSyncState.Idle)
 
-    val state = combine(
+    val stateFlow = combine(
         sessionManager.stateProvider.stateFlow,
         userRepo.selfInfoFlow(),
         avatarUploadState,
@@ -147,7 +147,7 @@ class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
     }
 
     suspend fun saveProfile(profile: EditProfileState) {
-        val selfInfo = state.value.selfInfo.selfInfo
+        val selfInfo = stateFlow.value.selfInfo.selfInfo
         userRepo.updateProfile(
             nickname = profile.nickname.takeIf { it != selfInfo?.nickname },
         )

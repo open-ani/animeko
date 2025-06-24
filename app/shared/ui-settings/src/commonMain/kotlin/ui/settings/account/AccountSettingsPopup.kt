@@ -74,7 +74,7 @@ fun AccountSettingsPopup(
     mediumSizeMaxWidth: Dp = 360.dp,
     windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
 ) {
-    val state by vm.state.collectAsStateWithLifecycle()
+    val state by vm.stateFlow.collectAsStateWithLifecycle()
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     if (windowSizeClass.isWidthAtLeastMedium) {
