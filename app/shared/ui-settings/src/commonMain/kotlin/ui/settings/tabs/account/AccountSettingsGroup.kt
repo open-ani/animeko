@@ -69,6 +69,7 @@ import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
+import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.rememberDragAndDropState
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
@@ -101,6 +102,8 @@ fun SettingsScope.AccountSettingsGroup(
 
     val motionScheme = LocalAniMotionScheme.current
     var editingProfile by rememberSaveable { mutableStateOf(false) }
+
+    val asyncHandler = rememberAsyncHandler()
 
     Column(modifier) {
         Column(
@@ -142,7 +145,9 @@ fun SettingsScope.AccountSettingsGroup(
                         avatarUploadState = state.avatarUploadState,
                         onSave = {
                             editingProfile = false
-                            vm.saveProfile(it)
+                            asyncHandler.launch {
+                                vm.saveProfile(it)
+                            }
                         },
                         onCancel = { editingProfile = false },
                         onCheckUsername = { vm.validateUsername(it) },

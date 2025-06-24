@@ -18,7 +18,6 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.UploadAvatarResult
@@ -145,14 +144,12 @@ class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
         return length in 6..20
     }
 
-    fun saveProfile(profile: EditProfileState) {
-        backgroundScope.launch {
-            val selfInfo = state.value.selfInfo.selfInfo
-            userRepo.updateProfile(
-                nickname = profile.nickname.takeIf { it != selfInfo?.nickname },
-            )
-            refreshState()
-        }
+    suspend fun saveProfile(profile: EditProfileState) {
+        val selfInfo = state.value.selfInfo.selfInfo
+        userRepo.updateProfile(
+            nickname = profile.nickname.takeIf { it != selfInfo?.nickname },
+        )
+        refreshState()
     }
 
     fun refreshState() {
