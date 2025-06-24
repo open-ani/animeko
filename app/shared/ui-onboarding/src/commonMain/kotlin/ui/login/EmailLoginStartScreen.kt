@@ -28,6 +28,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
@@ -52,9 +55,9 @@ fun EmailLoginStartScreen(
     val asyncHandler = rememberAsyncHandler()
     EmailLoginStartScreenImpl(
         state.email,
-        onEmailChange = { vm.setEmail(email = it) },
         onContinueClick = {
             asyncHandler.launch {
+                vm.setEmail(it)
                 vm.sendEmailOtp()
                 onOtpSent()
             }
@@ -73,8 +76,7 @@ fun EmailLoginStartScreen(
 @Composable
 internal fun EmailLoginStartScreenImpl(
     email: String,
-    onEmailChange: (String) -> Unit,
-    onContinueClick: () -> Unit,
+    onContinueClick: (currentEmail: String) -> Unit,
     onBangumiLoginClick: () -> Unit,
     onNavigateSettings: () -> Unit,
     onNavigateBack: () -> Unit,
@@ -98,14 +100,16 @@ internal fun EmailLoginStartScreenImpl(
 
         Spacer(Modifier.height(8.dp))
 
+        var currentEmailContent by rememberSaveable { mutableStateOf(email) }
         OutlinedTextField(
-            email,
-            { onEmailChange(it.trim()) },
+            currentEmailContent,
+            { currentEmailContent = it.trim() },
             Modifier.fillMaxWidth(),
             label = {
                 Text("邮箱")
             },
-            isError = email.isNotEmpty() && (!email.contains('@') || !email.contains('.')),
+            isError = currentEmailContent.isNotEmpty() &&
+                    (!currentEmailContent.contains('@') || !currentEmailContent.contains('.')),
             singleLine = true,
             keyboardOptions = KeyboardOptions.Default.copy(
                 autoCorrectEnabled = false,
@@ -113,11 +117,11 @@ internal fun EmailLoginStartScreenImpl(
                 imeAction = ImeAction.Go,
             ),
             keyboardActions = KeyboardActions {
-                onContinueClick()
+                onContinueClick(currentEmailContent)
             },
             trailingIcon = if (email.isNotEmpty()) {
                 {
-                    IconButton({ onEmailChange("") }) {
+                    IconButton({ currentEmailContent = "" }) {
                         Icon(Icons.Outlined.Close, "清空")
                     }
                 }
@@ -128,7 +132,7 @@ internal fun EmailLoginStartScreenImpl(
         Spacer(Modifier.height(16.dp))
 
         Button(
-            onContinueClick,
+            { onContinueClick(currentEmailContent) },
             Modifier.align(Alignment.End),
             contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
             enabled = enabled,
@@ -154,7 +158,6 @@ internal fun EmailPageTitle(mode: EmailLoginUiState.Mode) {
 private fun PreviewEmailLoginStartScreen() = ProvideCompositionLocalsForPreview {
     EmailLoginStartScreenImpl(
         "test@openani.org",
-        onEmailChange = {},
         {}, {}, {}, {},
     )
 }
