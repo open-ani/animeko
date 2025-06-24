@@ -11,9 +11,6 @@ package me.him188.ani.app.ui.login
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -37,10 +34,7 @@ class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
 
     private val stateFields = MutableStateFlow(EmailLoginUiState.Initial)
 
-    var emailContent by mutableStateOf("")
-        private set
-
-    val stateFlow = combine(
+    val state = combine(
         stateFields,
         sessionManager.stateProvider.stateFlow,
         userRepository.selfInfoFlow(),
@@ -56,8 +50,12 @@ class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
 
     private var otpId = ""
 
+    private inline fun updateState(block: EmailLoginUiState.() -> EmailLoginUiState) {
+        stateFields.value = stateFields.value.block()
+    }
+
     fun setEmail(email: String) {
-        emailContent = email
+        updateState { copy(email = email) }
     }
 
     suspend fun sendEmailOtp() {
@@ -66,11 +64,13 @@ class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
             throw RepositoryRateLimitedException()
         }
         otpId = withContext(Dispatchers.Default) {
-            userRepository.sendEmailOtpForLogin(emailContent)
+            userRepository.sendEmailOtpForLogin(stateFields.value.email)
         }
-        stateFields.value = stateFields.value.copy(
-            nextResendTime = Clock.System.now() + 30.seconds,
-        )
+        updateState {
+            copy(
+                nextResendTime = Clock.System.now() + 30.seconds,
+            )
+        }
     }
 
     suspend fun submitEmailOtp(otp: String) = withContext(Dispatchers.Default) {
@@ -84,11 +84,13 @@ class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
 
 @Immutable
 data class EmailLoginUiState(
+    val email: String,
     val nextResendTime: Instant,
     val mode: Mode
 ) {
     companion object {
         val Initial = EmailLoginUiState(
+            "",
             Instant.DISTANT_PAST,
             Mode.LOGIN,
         )

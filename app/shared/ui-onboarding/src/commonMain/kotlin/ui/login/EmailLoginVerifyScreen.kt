@@ -55,11 +55,11 @@ fun EmailLoginVerifyScreen(
     modifier: Modifier = Modifier,
     vm: EmailLoginViewModel = viewModel<EmailLoginViewModel> { EmailLoginViewModel() },
 ) {
-    val state by vm.stateFlow.collectAsStateWithLifecycle(EmailLoginUiState.Initial)
+    val state by vm.state.collectAsStateWithLifecycle(EmailLoginUiState.Initial)
     val asyncHandler = rememberAsyncHandler()
     val toaster = LocalToaster.current
     EmailLoginVerifyScreenImpl(
-        email = vm.emailContent,
+        email = state.email,
         nextResendTime = state.nextResendTime,
         onCodeSubmit = { otp ->
             asyncHandler.launch {
