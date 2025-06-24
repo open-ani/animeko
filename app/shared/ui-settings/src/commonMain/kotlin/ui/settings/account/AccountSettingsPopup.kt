@@ -42,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,7 +76,7 @@ fun AccountSettingsPopup(
     windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
 ) {
     val state by vm.stateFlow.collectAsStateWithLifecycle()
-    var showLogoutDialog by remember { mutableStateOf(false) }
+    var showLogoutDialog by rememberSaveable { mutableStateOf(false) }
 
     if (windowSizeClass.isWidthAtLeastMedium) {
         AccountSettingsPopupMedium(
