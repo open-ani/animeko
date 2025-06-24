@@ -117,6 +117,8 @@ class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
                     UploadAvatarResult.INVALID_FORMAT ->
                         avatarUploadState.value = EditProfileState.UploadAvatarState.InvalidFormat
                 }
+            } catch (ex: CancellationException) {
+                throw ex
             } catch (ex: Exception) {
                 avatarUploadState.value = EditProfileState.UploadAvatarState.UnknownError(
                     file = file,
