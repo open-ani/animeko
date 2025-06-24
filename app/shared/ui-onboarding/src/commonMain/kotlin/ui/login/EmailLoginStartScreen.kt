@@ -48,10 +48,10 @@ fun EmailLoginStartScreen(
     modifier: Modifier = Modifier,
     vm: EmailLoginViewModel = viewModel<EmailLoginViewModel> { EmailLoginViewModel() },
 ) {
-    val state by vm.state.collectAsStateWithLifecycle(EmailLoginUiState.Initial)
+    val state by vm.stateFlow.collectAsStateWithLifecycle(EmailLoginUiState.Initial)
     val asyncHandler = rememberAsyncHandler()
     EmailLoginStartScreenImpl(
-        state.email,
+        vm.emailContent,
         onEmailChange = { vm.setEmail(email = it) },
         onContinueClick = {
             asyncHandler.launch {
