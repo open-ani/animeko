@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.settings.account
 import androidx.compose.runtime.Immutable
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.readBytes
+import io.github.vinceglb.filekit.size
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -94,16 +95,17 @@ class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
             avatarUploadState.value = EditProfileState.UploadAvatarState.Uploading
 
             try {
+                if (file.size() > 1.megaBytes.inBytes) {
+                    avatarUploadState.value = EditProfileState.UploadAvatarState.SizeExceeded
+                    return@launch
+                }
+                
                 val imageBytes = withContext(Dispatchers.IO) {
                     file.readBytes()
                 }
 
                 if (!AvatarImageProcessor.checkImageFormat(imageBytes)) {
                     avatarUploadState.value = EditProfileState.UploadAvatarState.InvalidFormat
-                    return@launch
-                }
-                if (imageBytes.size > 1.megaBytes.inBytes) {
-                    avatarUploadState.value = EditProfileState.UploadAvatarState.SizeExceeded
                     return@launch
                 }
 
