@@ -144,10 +144,7 @@ fun SettingsScope.AccountSettingsGroup(
                             editingProfile = false
                             vm.saveProfile(it)
                         },
-                        onCancel = {
-                            editingProfile = false
-                            vm.refreshState()
-                        },
+                        onCancel = { editingProfile = false },
                         onCheckUsername = { vm.validateUsername(it) },
                         onUploadAvatar = { vm.uploadAvatar(it) },
                         onResetAvatarUploadState = { vm.resetAvatarUploadState() },
