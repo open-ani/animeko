@@ -134,10 +134,15 @@ class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
             return true
         }
 
-        if (username.isBlank() || username.length !in 6..20) {
+        if (username.isBlank() || !USERNAME_MATCHER.matches(username)) {
             return false
         }
-        return USERNAME_MATCHER.matches(username)
+
+        val length = username.foldRight(0) { char, acc ->
+            acc + if (char.code < 256) 1 else 2 // ASCII characters count as 1, others count as 2
+        }
+
+        return length in 6..20
     }
 
     fun saveProfile(profile: EditProfileState) {
