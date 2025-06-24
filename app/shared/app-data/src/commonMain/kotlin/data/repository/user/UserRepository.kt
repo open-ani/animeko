@@ -188,6 +188,14 @@ class UserRepository(
                         }
                     },
                 ).body()
+
+                UploadAvatarResult.SUCCESS
+            } catch (e: ClientRequestException) {
+                when (e.response.status) {
+                    HttpStatusCode.PayloadTooLarge -> UploadAvatarResult.TOO_LARGE
+                    HttpStatusCode.UnprocessableEntity -> UploadAvatarResult.INVALID_FORMAT
+                    else -> throw RepositoryException.wrapOrThrowCancellation(e)
+                }
             } catch (e: Exception) {
                 throw RepositoryException.wrapOrThrowCancellation(e)
             }
@@ -200,6 +208,10 @@ class UserRepository(
         }
         sessionManager.clearSession()
     }
+}
+
+enum class UploadAvatarResult {
+    SUCCESS, TOO_LARGE, INVALID_FORMAT
 }
 
 private fun AniAniSelfUser.toSelfInfo(): SelfInfo {

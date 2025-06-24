@@ -12,8 +12,6 @@ package me.him188.ani.app.ui.settings.account
 import androidx.compose.runtime.Immutable
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.readBytes
-import io.ktor.client.plugins.ClientRequestException
-import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -22,8 +20,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
+import me.him188.ani.app.data.repository.user.UploadAvatarResult
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.session.SessionManager
@@ -97,39 +95,30 @@ class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
             avatarUploadState.value = EditProfileState.UploadAvatarState.Uploading
 
             try {
-                val fileContent = withContext(Dispatchers.IO) {
+                val imageBytes = withContext(Dispatchers.IO) {
                     file.readBytes()
                 }
 
-                if (!AvatarImageProcessor.checkImageFormat(fileContent)) {
+                if (!AvatarImageProcessor.checkImageFormat(imageBytes)) {
                     avatarUploadState.value = EditProfileState.UploadAvatarState.InvalidFormat
                     return@launch
                 }
-                if (fileContent.size > 1.megaBytes.inBytes) {
+                if (imageBytes.size > 1.megaBytes.inBytes) {
                     avatarUploadState.value = EditProfileState.UploadAvatarState.SizeExceeded
                     return@launch
                 }
 
-                userRepo.uploadAvatar(fileContent)
-                avatarUploadState.value = EditProfileState.UploadAvatarState.Success("")
-            } catch (ex: Exception) {
-                val cause = ex.cause?.cause
-                if (ex is RepositoryUnknownException && cause is ClientRequestException) {
-                    when (cause.response.status) {
-                        HttpStatusCode.PayloadTooLarge -> {
-                            avatarUploadState.value = EditProfileState.UploadAvatarState.SizeExceeded
-                            return@launch
-                        }
+                when (userRepo.uploadAvatar(imageBytes)) {
+                    UploadAvatarResult.SUCCESS ->
+                        avatarUploadState.value = EditProfileState.UploadAvatarState.Success("")
 
-                        HttpStatusCode.UnprocessableEntity -> {
-                            avatarUploadState.value = EditProfileState.UploadAvatarState.InvalidFormat
-                            return@launch
-                        }
+                    UploadAvatarResult.TOO_LARGE ->
+                        avatarUploadState.value = EditProfileState.UploadAvatarState.SizeExceeded
 
-                        else -> {}
-                    }
+                    UploadAvatarResult.INVALID_FORMAT ->
+                        avatarUploadState.value = EditProfileState.UploadAvatarState.InvalidFormat
                 }
-
+            } catch (ex: Exception) {
                 avatarUploadState.value = EditProfileState.UploadAvatarState.UnknownError(
                     file = file,
                     loadError = LoadError.fromException(ex),
