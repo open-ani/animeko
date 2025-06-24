@@ -99,7 +99,7 @@ class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
                     avatarUploadState.value = EditProfileState.UploadAvatarState.SizeExceeded
                     return@launch
                 }
-                
+
                 val imageBytes = withContext(Dispatchers.IO) {
                     file.readBytes()
                 }
@@ -128,7 +128,7 @@ class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
                 )
             }
 
-            refreshState()
+            stateRefresher.restart()
         }
     }
 
@@ -153,10 +153,6 @@ class AccountSettingsViewModel : AbstractViewModel(), KoinComponent {
         userRepo.updateProfile(
             nickname = profile.nickname.takeIf { it != selfInfo?.nickname },
         )
-        refreshState()
-    }
-
-    fun refreshState() {
         stateRefresher.restart()
     }
 
