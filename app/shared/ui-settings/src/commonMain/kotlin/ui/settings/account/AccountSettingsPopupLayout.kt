@@ -36,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,7 +46,7 @@ import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
-import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
+import me.him188.ani.app.ui.foundation.interaction.hoverable
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
@@ -174,8 +173,10 @@ private fun EditableSelfAvatar(
     Box(
         modifier
             .size(size)
-            .onPointerEventMultiplatform(PointerEventType.Enter) { showEditAvatarScrim = true }
-            .onPointerEventMultiplatform(PointerEventType.Exit) { showEditAvatarScrim = false },
+            .hoverable(
+                onHover = { showEditAvatarScrim = true },
+                onUnhover = { showEditAvatarScrim = false },
+            ),
     ) {
         AvatarImage(
             url = selfInfo.selfInfo?.avatarUrl,
