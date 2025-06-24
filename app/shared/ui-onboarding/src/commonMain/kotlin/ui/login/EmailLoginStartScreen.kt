@@ -119,7 +119,7 @@ internal fun EmailLoginStartScreenImpl(
             keyboardActions = KeyboardActions {
                 onContinueClick(currentEmailContent)
             },
-            trailingIcon = if (email.isNotEmpty()) {
+            trailingIcon = if (currentEmailContent.isNotEmpty()) {
                 {
                     IconButton({ currentEmailContent = "" }) {
                         Icon(Icons.Outlined.Close, "清空")
