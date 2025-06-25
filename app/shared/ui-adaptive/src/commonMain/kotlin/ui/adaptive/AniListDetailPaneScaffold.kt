@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredWidthIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -33,12 +34,14 @@ import androidx.compose.material3.VerticalDragHandle
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldDefaults
 import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
+import androidx.compose.material3.adaptive.layout.PaneExpansionAnchor
 import androidx.compose.material3.adaptive.layout.PaneExpansionState
 import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
 import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldRole
 import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldScope
 import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldValue
 import androidx.compose.material3.adaptive.layout.defaultDragHandleSemantics
+import androidx.compose.material3.adaptive.layout.rememberPaneExpansionState
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -51,6 +54,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
@@ -116,6 +121,8 @@ fun <T> AniListDetailPaneScaffold(
     contentWindowInsets: WindowInsets = ListDetailPaneScaffoldDefaults.windowInsets,
     useSharedTransition: Boolean = false,
     listPanePreferredWidth: Dp = Dp.Unspecified,
+    minListPaneWidth: Dp = 360.dp,
+    minDetailPaneWidth: Dp = 360.dp,
     paneExpansionDragHandle: (@Composable ThreePaneScaffoldScope.(PaneExpansionState) -> Unit)? = { state ->
         val interactionSource = remember { MutableInteractionSource() }
         VerticalDragHandle(
@@ -148,7 +155,12 @@ fun <T> AniListDetailPaneScaffold(
             scaffoldValue,
             listPane = {
                 val threePaneScaffoldScope = this
-                ListDetailAnimatedPane(Modifier.preferredWidth(listPanePreferredWidth), useSharedTransition) {
+                ListDetailAnimatedPane(
+                    Modifier
+                        .requiredWidthIn(min = minListPaneWidth)
+                        .preferredWidth(listPanePreferredWidth),
+                    useSharedTransition,
+                ) {
                     Column {
                         val scope =
                             remember(threePaneScaffoldScope, this@ListDetailAnimatedPane) {
@@ -224,7 +236,10 @@ fun <T> AniListDetailPaneScaffold(
             },
             detailPane = {
                 val threePaneScaffoldScope = this
-                ListDetailAnimatedPane(useSharedTransition = useSharedTransition) {
+                ListDetailAnimatedPane(
+                    Modifier.requiredWidthIn(min = minDetailPaneWidth),
+                    useSharedTransition = useSharedTransition,
+                ) {
                     Card(
                         shape = layoutParameters.detailPaneShape,
                         colors = layoutParameters.detailPaneColors,
@@ -273,6 +288,10 @@ fun <T> AniListDetailPaneScaffold(
                 }
             },
             modifier,
+            paneExpansionState = rememberPaneExpansionState(
+                keyProvider = scaffoldValue,
+                anchors = calculatePaneAnchors(minListPaneWidth, listPanePreferredWidth, minDetailPaneWidth),
+            ),
             paneExpansionDragHandle = paneExpansionDragHandle,
         )
     }
@@ -416,3 +435,37 @@ private val ThreePaneScaffoldValue.isSinglePane: Boolean
         if (this[ThreePaneScaffoldRole.Tertiary] == PaneAdaptedValue.Expanded) count++
         return count <= 1
     }
+
+@Composable
+private fun calculatePaneAnchors(
+    minListPaneWidth: Dp = Dp.Unspecified,
+    preferredListPaneWidth: Dp = Dp.Unspecified,
+    minDetailPaneWidth: Dp = Dp.Unspecified,
+): List<PaneExpansionAnchor> {
+    val screenWidth = LocalWindowInfo.current.containerSize.width
+    val density = LocalDensity.current
+
+    return remember(density, screenWidth, minListPaneWidth, preferredListPaneWidth, minDetailPaneWidth) {
+        if (screenWidth <= 0) return@remember emptyList()
+
+        buildList {
+            if (minListPaneWidth != Dp.Unspecified) {
+                val minListPaneWidthPx = with(density) { minListPaneWidth.roundToPx() }
+                add(PaneExpansionAnchor.Proportion((minListPaneWidthPx / screenWidth.toFloat()).coerceIn(0f, 1f)))
+            }
+            if (preferredListPaneWidth != Dp.Unspecified) {
+                val preferredListPaneWidthPx = with(density) { preferredListPaneWidth.roundToPx() }
+                add(PaneExpansionAnchor.Proportion((preferredListPaneWidthPx / screenWidth.toFloat()).coerceIn(0f, 1f)))
+            }
+            if (minDetailPaneWidth != Dp.Unspecified) {
+                val minDetailPaneWidthPx = with(density) { minDetailPaneWidth.roundToPx() }
+                add(
+                    PaneExpansionAnchor.Proportion(
+                        ((screenWidth - minDetailPaneWidthPx) / screenWidth.toFloat())
+                            .coerceIn(0f, 1f),
+                    ),
+                )
+            }
+        }
+    }
+}

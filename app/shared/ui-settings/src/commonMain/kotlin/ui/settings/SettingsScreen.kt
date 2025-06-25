@@ -564,6 +564,7 @@ internal fun SettingsPageLayout(
             }
         },
         modifier,
+        listPanePreferredWidth = 380.dp,
         layoutParameters = layoutParameters,
         contentWindowInsets = contentWindowInsets,
     )
