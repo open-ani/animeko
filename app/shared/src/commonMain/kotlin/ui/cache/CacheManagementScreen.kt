@@ -39,18 +39,14 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
-import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.MediaCacheState
@@ -98,7 +94,6 @@ typealias CacheGroupGridLayoutState = LazyStaggeredGridState
 @Stable
 class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
     private val cacheManager: MediaCacheManager by inject()
-    private val subjectCollectionRepository: SubjectCollectionRepository by inject()
 
     val lazyGridState: CacheGroupGridLayoutState = LazyStaggeredGridState()
 
@@ -164,31 +159,6 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
                         )
                     }
 
-                val commonInfoFlow =
-                    subjectCollectionRepository.subjectCollectionFlow(firstCache.metadata.subjectIdInt) // 既会查缓存, 也会查网络, 基本上不会有查不到的情况
-                        .filterNotNull()
-                        .map {
-                            createGroupCommonInfo(
-                                subjectId = it.subjectId,
-                                firstCache = firstCache,
-                                subjectDisplayName = it.subjectInfo.displayName,
-                                imageUrl = it.subjectInfo.imageLarge,
-                            )
-                        }
-                        .catch {
-                            emit(
-                                createGroupCommonInfo(
-                                    subjectId = firstCache.metadata.subjectIdInt,
-                                    firstCache = firstCache,
-                                    subjectDisplayName = firstCache.metadata.subjectNameCN
-                                        ?: firstCache.metadata.subjectNames.firstOrNull()
-                                        ?: firstCache.origin.originalTitle,
-                                    imageUrl = null,
-                                ),
-                            )
-                        }
-                        .distinctUntilChanged()
-
                 val episodeFlows = mediaCaches.map { mediaCache ->
                     createCacheEpisodeFlow(mediaCache)
                 }.let { episodeFlows ->
@@ -199,11 +169,16 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
                     }
                 }.shareInBackground()
 
-                combine(
-                    statsFlow,
-                    commonInfoFlow,
-                    episodeFlows,
-                ) { stats, commonInfo, episodes ->
+                val commonInfo = createGroupCommonInfo(
+                    subjectId = firstCache.metadata.subjectIdInt,
+                    firstCache = firstCache,
+                    subjectDisplayName = firstCache.metadata.subjectNameCN
+                        ?: firstCache.metadata.subjectNames.firstOrNull()
+                        ?: firstCache.origin.originalTitle,
+                    imageUrl = null,
+                )
+
+                combine(statsFlow, episodeFlows) { stats, episodes ->
                     CacheGroupState(
                         id = groupId,
                         commonInfo = commonInfo,
