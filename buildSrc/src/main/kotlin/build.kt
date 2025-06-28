@@ -108,6 +108,7 @@ fun Project.configureKotlinOptIns() {
     val options = kotlinCommonCompilerOptions()
     options.apply {
         languageVersion.set(kotlinVersion)
+        apiVersion.set(kotlinVersion)
     }
     // ksp task extends KotlinCompile
     project.tasks.withType(KotlinCompile::class.java) {
