@@ -14,6 +14,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.io.IOException
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.data.repository.user.AccessTokenSession
@@ -24,7 +25,6 @@ import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.Uuid
-import okio.IOException
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
