@@ -111,6 +111,8 @@ fun Project.configureKotlinOptIns() {
         apiVersion.set(kotlinVersion)
         freeCompilerArgs.add("-Xcontext-sensitive-resolution")
         freeCompilerArgs.add("-jvm-default=no-compatibility")
+        freeCompilerArgs.add("-Xcontext-parameters")
+        freeCompilerArgs.add("-Xnested-type-aliases")
     }
     // ksp task extends KotlinCompile
     project.tasks.withType(KotlinCompile::class.java) {
@@ -199,7 +201,6 @@ fun Project.configureJvmTarget() {
                 compilerOptions {
                     freeCompilerArgs.add("-Xdont-warn-on-error-suppression")
                     freeCompilerArgs.add("-Xannotation-target-all")
-                    freeCompilerArgs.add("-Xmulti-dollar-interpolation")
                 }
             }
             if (this is KotlinJvmAndroidCompilation) {
