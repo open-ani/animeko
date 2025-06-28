@@ -110,6 +110,7 @@ fun Project.configureKotlinOptIns() {
         languageVersion.set(kotlinVersion)
         apiVersion.set(kotlinVersion)
         freeCompilerArgs.add("-Xcontext-sensitive-resolution")
+        freeCompilerArgs.add("-jvm-default=no-compatibility")
     }
     // ksp task extends KotlinCompile
     project.tasks.withType(KotlinCompile::class.java) {
