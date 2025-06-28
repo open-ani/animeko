@@ -40,7 +40,6 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.SplitButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,12 +49,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.domain.session.auth.OAuthConfigurator
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.AniMotionScheme
 import me.him188.ani.app.ui.foundation.animation.AnimatedVisibilityMotionScheme
@@ -78,11 +74,7 @@ sealed interface AuthState {
     data object AwaitingResult : AuthState
 
     data object Success : AuthState
-    sealed interface Failed : AuthState
-
-    class UnknownError(val error: LoadError) : Failed
-
-    class KnownError(val type: OAuthConfigurator.KnownErrorType) : Failed
+    class Failed(val error: LoadError) : AuthState
 }
 
 @Composable
@@ -161,7 +153,7 @@ private fun AuthorizeButton(
                 transitionSpec = LocalAniMotionScheme.current.animatedContent.standard,
             ) {
                 when (it) {
-                    is AuthState.Idle, is AuthState.UnknownError -> {
+                    is AuthState.Idle, is AuthState.Failed -> {
                         if (authorizeState is AuthState.LoggedInAni) {
                             if (authorizeState.bound) {
                                 Text("不可重复绑定")
@@ -173,7 +165,7 @@ private fun AuthorizeButton(
                         }
                     }
 
-                    is AuthState.AwaitingResult, is AuthState.KnownError -> {
+                    is AuthState.AwaitingResult -> {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
@@ -198,7 +190,7 @@ private fun AuthorizeButton(
         modifier,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        val awaitingResult = authorizeState is AuthState.AwaitingResult || authorizeState is AuthState.KnownError
+        val awaitingResult = authorizeState is AuthState.AwaitingResult
         if (authorizeState is AuthState.Success) {
             OutlinedButton(
                 onClick = onClick,
@@ -235,14 +227,6 @@ private fun AuthorizeStateText(
     modifier: Modifier = Modifier,
     animatedVisibilityMotionScheme: AnimatedVisibilityMotionScheme = LocalAniMotionScheme.current.animatedVisibility,
 ) {
-    val clipboard = LocalClipboardManager.current
-
-    LaunchedEffect(authorizeState) {
-        if (authorizeState !is AuthState.KnownError) return@LaunchedEffect
-        if (authorizeState.type is OAuthConfigurator.KnownErrorType.UnsupportedBrowserOperation) {
-            clipboard.setText(AnnotatedString(authorizeState.type.url))
-        }
-    }
 
     AnimatedVisibility(
         visible = authorizeState is AuthState.Success || authorizeState is AuthState.Failed,
@@ -252,14 +236,13 @@ private fun AuthorizeStateText(
     ) {
         Text(
             when (authorizeState) {
-                is AuthState.UnknownError -> renderLoadErrorMessage(authorizeState.error)
-                is AuthState.KnownError -> renderKnownError(authorizeState.type)
+                is AuthState.Failed -> renderLoadErrorMessage(authorizeState.error)
                 else -> ""
             },
             style = MaterialTheme.typography.bodyMedium,
             color = when (authorizeState) {
                 is AuthState.Success -> MaterialTheme.colorScheme.primary
-                is AuthState.UnknownError -> MaterialTheme.colorScheme.error
+                is AuthState.Failed -> MaterialTheme.colorScheme.error
                 else -> MaterialTheme.colorScheme.onSurface
             },
         )
@@ -275,13 +258,6 @@ private enum class HelpOption {
     CANT_RECEIVE_REGISTER_EMAIL,
     REGISTER_ACTIVATION_FAILED,
     OTHERS,
-}
-
-@Composable
-private fun renderKnownError(type: OAuthConfigurator.KnownErrorType): String {
-    return when (type) {
-        is OAuthConfigurator.KnownErrorType.UnsupportedBrowserOperation -> "无法打开浏览器, 授权链接已复制到剪切板, 请手动打开浏览器访问"
-    }
 }
 
 @Composable

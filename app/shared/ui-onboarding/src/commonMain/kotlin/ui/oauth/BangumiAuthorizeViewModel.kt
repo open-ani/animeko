@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterIsInstance
 import me.him188.ani.app.data.network.AniApiProvider
-import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionState
@@ -60,8 +59,7 @@ class BangumiAuthorizeViewModel : AbstractViewModel(), KoinComponent {
                 }
 
                 is OAuthConfigurator.State.AwaitingResult -> AuthState.AwaitingResult
-                is OAuthConfigurator.State.UnknownError -> AuthState.UnknownError(LoadError.fromException(authState.error))
-                is OAuthConfigurator.State.KnownError -> AuthState.KnownError(authState.error)
+                is OAuthConfigurator.State.Failed -> AuthState.Failed(authState.error)
                 is OAuthConfigurator.State.Success -> {
                     if (sessionState is SessionState.Valid) {
                         AuthState.Success

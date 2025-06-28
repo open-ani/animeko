@@ -15,16 +15,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import me.him188.ani.app.data.repository.RepositoryException
-import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.data.repository.user.AccessTokenSession
+import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.session.checkAccessAniApiNow
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.Uuid
-import okio.IOException
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.seconds
 
@@ -65,14 +65,7 @@ class OAuthConfigurator(
                 client.getOAuthRegisterLink(requestId)
             }
 
-            // fail-fast
-            try {
-                onOpenUrl(externalUrl)
-            } catch (_: IOException) {
-                _state.value = State.KnownError(KnownErrorType.UnsupportedBrowserOperation(externalUrl))
-            } catch (_: UnsupportedOperationException) {
-                _state.value = State.KnownError(KnownErrorType.UnsupportedBrowserOperation(externalUrl))
-            }
+            onOpenUrl(externalUrl)
 
             var oAuthResult: OAuthResult? = null
             while (oAuthResult == null) {
@@ -97,10 +90,13 @@ class OAuthConfigurator(
             throw ex
         } catch (ex: Exception) {
             val re = RepositoryException.wrapOrThrowCancellation(ex)
-            if (re is RepositoryUnknownException) {
+            val loadError = LoadError.fromException(re)
+            if (loadError is LoadError.UnknownError) {
                 logger.error(re) { "OAuth failed with unknown error, request id: $requestId" }
+            } else {
+                logger.warn { "OAuth failed, request id: $requestId, $loadError" }
             }
-            _state.value = State.UnknownError(re)
+            _state.value = State.Failed(loadError)
         }
     }
 
@@ -108,15 +104,6 @@ class OAuthConfigurator(
         data object Idle : State
         class AwaitingResult(val requestId: String, val deferred: CompletableDeferred<OAuthResult>) : State
         class Success(val requestId: String, val result: OAuthResult) : State
-        sealed interface Failed : State
-
-        class KnownError(val error: KnownErrorType) : Failed
-
-        class UnknownError(val error: Throwable) : Failed
-
-    }
-
-    sealed class KnownErrorType {
-        class UnsupportedBrowserOperation(val url: String) : KnownErrorType()
+        class Failed(val error: LoadError) : State
     }
 }
