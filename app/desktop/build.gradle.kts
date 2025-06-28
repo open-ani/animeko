@@ -326,7 +326,7 @@ idea {
     }
 }
 
-tasks.register<ComposeHotRun>("runHot") {
+tasks.named<ComposeHotRun>("runHot") {
     configureDevProperties()
 }
 
