@@ -359,6 +359,7 @@ open class ComposeMediaPlayerComponent @JvmOverloads constructor(
             "--no-snapshot-preview",
             "--quiet",
             "--intf=dummy",
+            "--no-hotkeys",
         )
 
     }
