@@ -180,6 +180,11 @@ enum class SettingsTab {
     ;
 
     companion object {
+        /**
+         * 在 PC 上右侧默认显示的 tab.
+         */
+        val Default = APPEARANCE
+
         @Stable
         val NavType by lazy(LazyThreadSafetyMode.PUBLICATION) {
             EnumNavType(kotlin.enums.enumEntries<SettingsTab>())

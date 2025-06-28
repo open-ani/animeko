@@ -368,7 +368,7 @@ internal fun SettingsPageLayout(
             this
         } else {
             // 双页模式, 默认选择第一个 tab, 以免右边很空
-            this ?: SettingsTab.entries.first()
+            this ?: SettingsTab.Default
         }
     }
 
