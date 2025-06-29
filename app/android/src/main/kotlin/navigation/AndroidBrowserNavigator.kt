@@ -10,66 +10,81 @@
 package me.him188.ani.android.navigation
 
 import android.content.Intent
-import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.net.toUri
 import me.him188.ani.app.navigation.BrowserNavigator
+import me.him188.ani.app.navigation.OpenBrowserResult
+import me.him188.ani.app.navigation.QQ_GROUP_JOIN_LINK
 import me.him188.ani.app.platform.Context
 import me.him188.ani.utils.logging.logger
 
 class AndroidBrowserNavigator : BrowserNavigator {
     private val logger = logger<AndroidBrowserNavigator>()
 
-    override fun openBrowser(context: Context, url: String) {
-        runCatching {
+    override fun openBrowser(context: Context, url: String): OpenBrowserResult {
+        val lastEx: Exception
+
+        try {
             launchChromeTab(context, url)
-        }.recoverCatching {
+            return OpenBrowserResult.Success
+        } catch (ex: Exception) {
+            lastEx = ex
+        }
+
+        try {
             view(url, context)
-        }.onFailure {
-            logger.warn("Failed to open tab", it)
+            return OpenBrowserResult.Success
+        } catch (ex: Exception) {
+            val finalEx = ex.apply { addSuppressed(lastEx) }
+            logger.warn("Failed to open browser", finalEx)
+            return OpenBrowserResult.Failure(finalEx, url)
         }
     }
 
     private fun launchChromeTab(context: Context, url: String) {
         val intent = CustomTabsIntent.Builder().build()
-        intent.launchUrl(context, Uri.parse(url))
+        intent.launchUrl(context, url.toUri())
     }
 
-    override fun intentActionView(context: Context, url: String) {
-        kotlin.runCatching {
+    override fun intentActionView(context: Context, url: String): OpenBrowserResult {
+        try {
             view(url, context)
-        }.onFailure {
-            logger.warn("Failed to open browser", it)
+            return OpenBrowserResult.Success
+        } catch (ex: Exception) {
+            logger.warn("Failed to open browser", ex)
+            return OpenBrowserResult.Failure(ex, url)
         }
     }
 
-    override fun intentOpenVideo(context: Context, url: String) {
-        kotlin.runCatching {
-            val browserIntent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(url.toUri(), "video/*")
-            }
-            context.startActivity(
-                Intent.createChooser(browserIntent, "选择播放器"),
-            )
-        }.onFailure {
-            logger.warn("Failed to open browser", it)
+    override fun intentOpenVideo(context: Context, url: String): OpenBrowserResult {
+        try {
+            val browserIntent = Intent(Intent.ACTION_VIEW)
+                .apply { setDataAndType(url.toUri(), "video/*") }
+            context.startActivity(Intent.createChooser(browserIntent, "选择播放器"))
+            return OpenBrowserResult.Success
+        } catch (ex: Exception) {
+            logger.warn("Failed to open video", ex)
+            return OpenBrowserResult.Failure(ex, url)
         }
     }
 
     private fun view(url: String, context: Context) {
         val browserIntent = Intent(Intent.ACTION_VIEW).apply {
-            setData(Uri.parse(url))
+            setData(url.toUri())
         }
         context.startActivity(browserIntent)
     }
 
-    override fun openJoinGroup(context: Context) {
-        val browserIntent = Intent(Intent.ACTION_VIEW).apply {
-            setData(Uri.parse(QQ_GROUP))
-        }
-        kotlin.runCatching {
+    override fun openJoinGroup(context: Context): OpenBrowserResult {
+        try {
+            val browserIntent = Intent(Intent.ACTION_VIEW)
+                .apply { setData(QQ_GROUP.toUri()) }
             context.startActivity(browserIntent)
-        } // 未安装 QQ
+            return OpenBrowserResult.Success
+        } catch (ex: Exception) {
+            logger.warn("Failed to open QQ", ex)
+            return OpenBrowserResult.Failure(ex, QQ_GROUP_JOIN_LINK)
+        }
     }
 }
 

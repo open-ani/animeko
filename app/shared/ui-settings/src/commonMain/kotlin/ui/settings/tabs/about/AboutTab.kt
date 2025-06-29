@@ -47,7 +47,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import me.him188.ani.app.data.network.protocol.ReleaseClass
-import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.navigation.QQ_GROUP_ID
+import me.him188.ani.app.platform.navigation.rememberBrowserNavigator
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.Res
 import me.him188.ani.app.ui.foundation.a
@@ -76,7 +77,6 @@ import me.him188.ani.app.ui.lang.settings_about_website
 import me.him188.ani.app.ui.lang.settings_help_telegram
 import me.him188.ani.app.ui.settings.rendering.ReleaseClassIcon
 import me.him188.ani.app.ui.settings.rendering.guessReleaseClass
-import me.him188.ani.app.ui.settings.tabs.AniHelpNavigator
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -189,20 +189,20 @@ fun AboutTab(
                     .padding(start = (24 + 16).dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                val context = LocalContext.current
+                val browserNavigator = rememberBrowserNavigator()
                 SuggestionChip(
-                    { AniHelpNavigator.openJoinQQGroup(context) },
+                    { browserNavigator.openJoinGroup() },
                     icon = {
                         Icon(
                             AniIcons.QqRoundedOutline, stringResource(Lang.settings_about_qq_group),
                             Modifier.size(20.dp),
                         )
                     },
-                    label = { Text("927170241") },
+                    label = { Text(QQ_GROUP_ID) },
                 )
 
                 SuggestionChip(
-                    { AniHelpNavigator.openTelegram(context) },
+                    { browserNavigator.openJoinTelegram() },
                     icon = {
                         Image(
                             AniIcons.Telegram, stringResource(Lang.settings_help_telegram),
