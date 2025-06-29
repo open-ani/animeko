@@ -37,8 +37,8 @@ import kotlinx.serialization.Serializable
  * @param metaTags
  * @param name
  * @param nsfw
- * @param platform
- * @param summary
+ * @param platform 
+ * @param summary 
  * @param typeID 
  */
 @Serializable
@@ -61,9 +61,9 @@ data class BangumiNextSubjectWikiInfo(
 
     @SerialName(value = "summary") @Required val summary: kotlin.String,
 
-    @SerialName(value = "typeID") @Required val typeID: BangumiNextSubjectType,
+    @SerialName(value = "typeID") @Required val typeID: BangumiNextSubjectType
 
-    ) {
+) {
 
 
 }

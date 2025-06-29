@@ -78,7 +78,7 @@ sentry-compose-android = "8.3.0" # https://docs.sentry.io/platforms/android/inte
 #gitlive-firebase = "2.1.0"
 posthog-android = "3.11.3"
 posthog-java = "1.2.0"
-openapi-generator = "7.12.0"
+openapi-generator = "7.13.0"
 
 [plugins]
 compose-hot-reload = { id = "org.jetbrains.compose.hot-reload", version.ref = "compose-hot-reload" }

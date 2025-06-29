@@ -23,7 +23,7 @@
     <string name="settings_tab_player">播放器和彈幕過濾</string>
     <string name="settings_tab_media_source">數據源管理</string>
     <string name="settings_tab_media_selector">觀看偏好</string>
-    <string name="settings_tab_danmaku">彈幕源</string>
+    <string name="settings_tab_danmaku">伺服器區域</string>
     <string name="settings_tab_proxy">代理</string>
     <string name="settings_tab_bt">BitTorrent</string>
     <string name="settings_tab_cache">自動緩存</string>
@@ -394,10 +394,10 @@
     <string name="settings_theme_mode_dark">深色</string>
     <string name="settings_theme_mode_auto">自動</string>
 
-    <!-- DanmakuGroup -->
-    <string name="settings_network_danmaku">彈幕</string>
+    <!-- ServerSelectionGroup -->
+    <string name="settings_network_danmaku">伺服器區域</string>
     <string name="settings_network_danmaku_global_acceleration">全球加速</string>
-    <string name="settings_network_danmaku_global_acceleration_description">提升在獲取彈幕數據的速度\n在中國大陸內啟用會減速</string>
+    <string name="settings_network_danmaku_global_acceleration_description">提升存取全球伺服器的速度\n在中國大陸內啟用會減速</string>
     <string name="settings_network_danmaku_connection_test">連接速度測試</string>
     <string name="settings_network_danmaku_currently_using">當前使用</string>
     <string name="settings_network_danmaku_recommended_other_regions">建議在其他地區使用</string>

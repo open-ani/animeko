@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 // @formatter:off
 /**
  *
@@ -19,7 +28,6 @@ package me.him188.ani.client.apis
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
-import io.ktor.http.content.OutgoingContent
 import kotlinx.serialization.json.Json
 import me.him188.ani.client.infrastructure.ApiClient
 import me.him188.ani.client.infrastructure.HttpResponse
@@ -82,7 +90,7 @@ open class UserProfileAniApi : ApiClient {
      * @return kotlin.Any
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun uploadAvatar(body: OutgoingContent): HttpResponse<kotlin.Any> {
+    open suspend fun uploadAvatar(body: me.him188.ani.client.infrastructure.OctetByteArray): HttpResponse<kotlin.Any> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 

@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 // @formatter:off
 /**
  *
@@ -27,6 +36,7 @@ import me.him188.ani.client.infrastructure.RequestMethod
 import me.him188.ani.client.infrastructure.wrap
 import me.him188.ani.client.models.AniBatchUpdateEpisodeCollectionsRequest
 import me.him188.ani.client.models.AniCollectionType
+import me.him188.ani.client.models.AniEpisodeCollection
 import me.him188.ani.client.models.AniPaginatedResponse
 import me.him188.ani.client.models.AniSubjectCollection
 import me.him188.ani.client.models.AniUpdateEpisodeCollectionRequest
@@ -146,6 +156,40 @@ open class SubjectsAniApi : ApiClient {
 
 
     /**
+     * 获取单个剧集信息. 如果已登录, 还会返回 collectionType 字段
+     * 获取单个剧集信息. 如果已登录, 还会返回 collectionType 字段
+     * @param subjectId 
+     * @param episodeId 
+     * @return AniEpisodeCollection
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getEpisode(subjectId: kotlin.Long, episodeId: kotlin.Long): HttpResponse<AniEpisodeCollection> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/subjects/{subjectId}/episodes/{episodeId}".replace("{" + "subjectId" + "}", "$subjectId").replace("{" + "episodeId" + "}", "$episodeId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
      * 获取单个条目信息. 如果已登录, 还会返回 collectionType 等字段.
      * 获取单个条目信息. 如果已登录, 还会返回 collectionType 等字段.
      * @param subjectId 
@@ -197,7 +241,7 @@ open class SubjectsAniApi : ApiClient {
         val localVariableQuery = mutableMapOf<String, List<String>>()
         offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
         limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
-        type?.apply { localVariableQuery["type"] = listOf("$type") }
+        type?.apply { localVariableQuery["type"] = listOf("${ type.value }") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
@@ -252,8 +296,8 @@ open class SubjectsAniApi : ApiClient {
 
 
     /**
-     * 编辑自己的收藏
-     * 编辑自己的收藏
+     * 编辑自己的收藏或创建一个收藏
+     * 编辑自己的收藏或创建一个收藏
      * @param subjectId 
      * @param aniUpdateSubjectCollectionRequest  (optional)
      * @return kotlin.Any

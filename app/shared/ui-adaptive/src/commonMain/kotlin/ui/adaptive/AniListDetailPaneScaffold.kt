@@ -209,9 +209,14 @@ fun <T> AniListDetailPaneScaffold(
                             }
 
                         CompositionLocalProvider(
-                            LocalSharedTransitionScopeProvider provides SharedTransitionScopeProvider(
-                                this@SharedTransitionLayout, this@ListDetailAnimatedPane,
-                            ),
+                            LocalSharedTransitionScopeProvider provides remember(
+                                this@SharedTransitionLayout,
+                                this@ListDetailAnimatedPane,
+                            ) {
+                                SharedTransitionScopeProvider(
+                                    this@SharedTransitionLayout, this@ListDetailAnimatedPane,
+                                )
+                            },
                         ) {
                             val decoratedPaneContent = @Composable {
                                 Column(Modifier.fillMaxWidth().wrapContentWidth().widthIn(max = 1300.dp)) {
@@ -289,11 +294,16 @@ fun <T> AniListDetailPaneScaffold(
                 }
             },
             modifier,
-            paneExpansionState = rememberPaneExpansionState(
-                keyProvider = scaffoldValue,
-                anchors = calculatePaneAnchors(minListPaneWidth, listPanePreferredWidth, minDetailPaneWidth),
-            ),
-            paneExpansionDragHandle = paneExpansionDragHandle,
+            // singlePane 时不显示 handle 之类的. 否则会在切换页面时有动画问题. 应该是 CMP bug
+            paneExpansionState = if (layoutParameters.preferSinglePane) {
+                null
+            } else {
+                rememberPaneExpansionState(
+                    keyProvider = scaffoldValue,
+                    anchors = calculatePaneAnchors(minListPaneWidth, listPanePreferredWidth, minDetailPaneWidth),
+                )
+            },
+            paneExpansionDragHandle = if (layoutParameters.preferSinglePane) null else paneExpansionDragHandle,
         )
     }
 }

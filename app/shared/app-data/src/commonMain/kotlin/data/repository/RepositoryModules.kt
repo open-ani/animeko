@@ -12,6 +12,7 @@ package me.him188.ani.app.data.repository
 import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.data.persistent.PlatformDataStoreManager
 import me.him188.ani.app.data.repository.danmaku.DanmakuRepository
+import me.him188.ani.app.data.repository.subject.BangumiSyncCommandRepository
 import me.him188.ani.app.data.repository.user.UserRepository
 import org.koin.core.KoinApplication
 import org.koin.core.scope.Scope
@@ -31,6 +32,11 @@ fun KoinApplication.repositoryModules(dataStores: PlatformDataStoreManager) = mo
             aniApiProvider.userAuthApi,
             aniApiProvider.userProfileApi,
             get(),
+        )
+    }
+    single<BangumiSyncCommandRepository> {
+        BangumiSyncCommandRepository(
+            aniApiProvider.bangumiApi,
         )
     }
 }

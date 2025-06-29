@@ -37,8 +37,8 @@ import kotlinx.serialization.Serializable
  * @param duration
  * @param id
  * @param name
- * @param nameCN
- * @param sort
+ * @param nameCN 
+ * @param sort 
  * @param subjectID 
  * @param type 
  * @param desc 

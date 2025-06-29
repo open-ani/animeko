@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.settings.account
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
@@ -204,7 +205,7 @@ internal fun SettingsScope.ProfileGroupImpl(
                         title = { Text("Bangumi") },
                         description = { Text(currentInfo?.bangumiUsername ?: "未绑定") },
                         icon = {
-                            Icon(Icons.Default.BangumiNext, contentDescription = "Bangumi Icon")
+                            Image(Icons.Default.BangumiNext, contentDescription = "Bangumi Icon")
                         },
                         onClick = onBangumiClick,
                         modifier = Modifier.placeholder(isPlaceholder),

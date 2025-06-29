@@ -12,7 +12,6 @@ package me.him188.ani.app.data.repository.user
 import androidx.datastore.core.DataStore
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.content.OutgoingContent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -182,11 +181,7 @@ class UserRepository(
         profileApi.invoke {
             try {
                 this.uploadAvatar(
-                    object : OutgoingContent.ByteArrayContent() {
-                        override fun bytes(): ByteArray {
-                            return avatar
-                        }
-                    },
+                    me.him188.ani.client.infrastructure.OctetByteArray(avatar),
                 ).body()
 
                 UploadAvatarResult.SUCCESS

@@ -172,10 +172,23 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                 ),
                 ServerListFeatureHandler(
                     settingsRepository.danmakuSettings.flow.map { danmakuSettings ->
-                        if (danmakuSettings.useGlobal) {
-                            AniServers.optimizedForGlobal
-                        } else {
-                            AniServers.optimizedForCN
+                        when (danmakuSettings.useGlobal) {
+                            true -> {
+                                AniServers.optimizedForGlobal
+                            }
+
+                            false -> {
+                                AniServers.optimizedForCN
+                            }
+
+                            null -> {
+                                // 根据时区推断
+                                if (AniServers.shouldUseGlobalServer()) {
+                                    AniServers.optimizedForGlobal
+                                } else {
+                                    AniServers.optimizedForCN
+                                }
+                            }
                         }
                     },
                 ),

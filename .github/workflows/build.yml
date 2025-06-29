@@ -1278,66 +1278,6 @@ jobs:
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "analytics-server"'
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
-  verify_self-hosted-windows-10:
-    name: 'Verify (Windows 10 x86_64 (Self-Hosted))'
-    runs-on:
-    - 'self-hosted'
-    - 'Windows'
-    - 'X64'
-    permissions:
-      actions: 'read'
-    needs:
-    - 'build_github-windows-2019'
-    if: '${{ (github.repository == ''open-ani/animeko'') && (needs.build_github-windows-2019.result == ''success'') }}'
-    steps:
-    - id: 'step-0'
-      uses: 'actions/checkout@v4'
-    - id: 'step-1'
-      name: 'Download Windows x64 Portable (Attempt #1)'
-      continue-on-error: true
-      uses: 'actions/download-artifact@v4'
-      with:
-        name: 'ani-windows-portable'
-        path: '${{ github.workspace }}/ci-helper/verify'
-    - id: 'step-2'
-      name: 'Download Windows x64 Portable (Attempt #2)'
-      continue-on-error: true
-      uses: 'actions/download-artifact@v4'
-      with:
-        name: 'ani-windows-portable'
-        path: '${{ github.workspace }}/ci-helper/verify'
-      if: '${{ steps.step-1.outcome == ''failure'' }}'
-    - id: 'step-3'
-      name: 'Download Windows x64 Portable (Attempt #3)'
-      continue-on-error: false
-      uses: 'actions/download-artifact@v4'
-      with:
-        name: 'ani-windows-portable'
-        path: '${{ github.workspace }}/ci-helper/verify'
-      if: '${{ steps.step-2.outcome == ''failure'' }}'
-    - id: 'step-4'
-      name: 'Check that Anitorrent can be loaded'
-      timeout-minutes: 5
-      shell: 'powershell'
-      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "anitorrent-load-test"'
-    - id: 'step-5'
-      name: 'Check that Dandanplay APP ID is valid'
-      timeout-minutes: 5
-      shell: 'powershell'
-      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "dandanplay-app-id"'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
-    - id: 'step-6'
-      name: 'Check that sentryDsn is valid'
-      timeout-minutes: 5
-      shell: 'powershell'
-      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "sentry-dsn"'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
-    - id: 'step-7'
-      name: 'Check that analyticsServer is valid'
-      timeout-minutes: 5
-      shell: 'powershell'
-      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "analytics-server"'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_self-hosted-macos-15:
     name: 'Verify (macOS 15 AArch64 (Self-Hosted))'
     runs-on:

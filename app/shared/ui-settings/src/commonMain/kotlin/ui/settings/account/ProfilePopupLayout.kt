@@ -49,6 +49,7 @@ import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.interaction.hoverable
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
+import me.him188.ani.app.ui.foundation.widgets.HeroIcon
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.user.SelfInfoUiState
@@ -69,14 +70,21 @@ internal fun ProfilePopupLayout(
         Box(
             modifier = Modifier
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 12.dp)
+                .padding(bottom = 16.dp)
                 .fillMaxWidth(),
             contentAlignment = Alignment.Center,
         ) {
-            EditableSelfAvatar(state.selfInfo, onClickEditAvatar)
+            HeroIcon {
+                AvatarImage(
+                    url = state.selfInfo.selfInfo?.avatarUrl,
+                    Modifier
+                        .clip(CircleShape)
+                        .placeholder(state.selfInfo.isLoading),
+                )
+            }
         }
-        val (title, subtitle) = state.selfInfo.selfInfo.calculateDisplay()
-        val showEmail = subtitle.isNotBlank()
+        val (title, _) = state.selfInfo.selfInfo.calculateDisplay()
+        val showEmail = false
 
         Text(
             if (isLogin) {
@@ -89,8 +97,7 @@ internal fun ProfilePopupLayout(
             modifier = Modifier
                 .padding(horizontal = 16.dp)
                 .padding(
-                    top = 8.dp,
-                    bottom = if (showEmail) 4.dp else 8.dp,
+                    bottom = if (showEmail) 4.dp else 0.dp,
                 )
                 .fillMaxWidth(),
             maxLines = 1,
@@ -115,7 +122,7 @@ internal fun ProfilePopupLayout(
 
         SettingsTab(
             modifier = Modifier
-                .padding(top = 32.dp)
+                .padding(top = 24.dp)
                 .fillMaxWidth(),
         ) {
             Column {

@@ -24,15 +24,18 @@
 
 package me.him188.ani.datasources.bangumi.next.models
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextSlimBlogEntry
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextSlimUser
+
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
  * 
  *
- * @param entry
- * @param id
+ * @param entry 
+ * @param id 
  * @param user 
  */
 @Serializable

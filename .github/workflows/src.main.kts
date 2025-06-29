@@ -774,7 +774,7 @@ workflow(
         listOf(
             Runner.GithubWindowsServer2019,
             Runner.GithubWindowsServer2022,
-            Runner.SelfHostedWindows10,
+//            Runner.SelfHostedWindows10,
         ).forEach { runner ->
             addVerifyJob(build, runner, build.result.eq(AbstractResult.Status.Success))
         }

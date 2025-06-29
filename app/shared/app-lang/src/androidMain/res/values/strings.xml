@@ -23,7 +23,7 @@
     <string name="settings_tab_player">Player &amp; Danmaku Filter</string>
     <string name="settings_tab_media_source">Data Source Management</string>
     <string name="settings_tab_media_selector">Viewing Preferences</string>
-    <string name="settings_tab_danmaku">Danmaku Sources</string>
+    <string name="settings_tab_danmaku">Server Region</string>
     <string name="settings_tab_proxy">Proxy</string>
     <string name="settings_tab_bt">BitTorrent</string>
     <string name="settings_tab_cache">Auto Cache</string>
@@ -356,10 +356,10 @@
     <string name="settings_theme_mode_dark">Dark</string>
     <string name="settings_theme_mode_auto">Auto</string>
 
-    <!-- DanmakuGroup -->
-    <string name="settings_network_danmaku">Danmaku</string>
+    <!-- ServerSelectionGroup -->
+    <string name="settings_network_danmaku">Server Region</string>
     <string name="settings_network_danmaku_global_acceleration">Global Acceleration</string>
-    <string name="settings_network_danmaku_global_acceleration_description">Improves speed when fetching danmaku data\nEnabling this within mainland China will slow it down</string>
+    <string name="settings_network_danmaku_global_acceleration_description">Improves speed when accessing global servers\nEnabling this within mainland China will slow it down</string>
     <string name="settings_network_danmaku_connection_test">Connection Speed Test</string>
     <string name="settings_network_danmaku_currently_using">Currently using</string>
     <string name="settings_network_danmaku_recommended_other_regions">Recommended for other regions</string>
