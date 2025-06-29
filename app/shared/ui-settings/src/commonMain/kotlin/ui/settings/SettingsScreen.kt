@@ -79,7 +79,7 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.platform.navigation.rememberBrowserNavigator
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
@@ -126,7 +126,7 @@ import me.him188.ani.app.ui.settings.account.ProfileGroup
 import me.him188.ani.app.ui.settings.account.SelfInfoBanner
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.rendering.P2p
-import me.him188.ani.app.ui.settings.tabs.AniHelpNavigator
+import me.him188.ani.app.ui.settings.tabs.AniHelperDestination
 import me.him188.ani.app.ui.settings.tabs.DebugTab
 import me.him188.ani.app.ui.settings.tabs.about.AboutTab
 import me.him188.ani.app.ui.settings.tabs.about.AcknowledgementsTab
@@ -175,7 +175,7 @@ fun SettingsScreen(
     )
     val layoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective)
     val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
+    val browserNavigator = rememberBrowserNavigator()
 
     fun navigateToTab(tab: SettingsTab) {
         coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -259,10 +259,12 @@ fun SettingsScreen(
                                 }
                             }
                         },
-                        onClickReleaseNotes = { AniHelpNavigator.openGitHubRelease(context, vm.aboutTabInfo.version) },
-                        onClickWebsite = { AniHelpNavigator.openAniWebsite(context) },
-                        onClickFeedback = { AniHelpNavigator.openIssueTracker(context) },
-                        onClickSource = { AniHelpNavigator.openGitHubHome(context) },
+                        onClickReleaseNotes = {
+                            browserNavigator.openBrowser(AniHelperDestination.RELEASE_PREFIX + vm.aboutTabInfo.version)
+                        },
+                        onClickWebsite = { browserNavigator.openBrowser(AniHelperDestination.ANI_WEBSITE) },
+                        onClickFeedback = { browserNavigator.openBrowser(AniHelperDestination.ISSUE_TRACKER) },
+                        onClickSource = { browserNavigator.openBrowser(AniHelperDestination.GITHUB_HOME) },
                         onClickDevelopers = {
                             detailPaneNavController.navigate(DetailPaneRoutes.Developers)
                         },
@@ -273,7 +275,7 @@ fun SettingsScreen(
                     )
 
                     SettingsTab.LOG -> LogTab(
-                        onClickFeedback = { AniHelpNavigator.openIssueTracker(context) },
+                        onClickFeedback = { browserNavigator.openBrowser(AniHelperDestination.ISSUE_TRACKER) },
                     )
 
                     SettingsTab.DEBUG -> DebugTab(

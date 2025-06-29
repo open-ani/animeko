@@ -14,9 +14,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import me.him188.ani.app.navigation.BrowserNavigator
-import me.him188.ani.app.platform.ContextMP
-import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.platform.navigation.rememberBrowserNavigator
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_help_feedback
 import me.him188.ani.app.ui.lang.settings_help_github
@@ -24,50 +22,20 @@ import me.him188.ani.app.ui.lang.settings_help_qq
 import me.him188.ani.app.ui.lang.settings_help_telegram
 import me.him188.ani.app.ui.lang.settings_help_website
 import org.jetbrains.compose.resources.stringResource
-import org.koin.mp.KoinPlatform
 
-object AniHelpNavigator {
-    private const val GITHUB_HOME = "https://github.com/open-ani/animeko"
-    private const val GITHUB_CONTRIBUTORS = "https://github.com/open-ani/animeko/graphs/contributors"
-    private const val ANI_WEBSITE = "https://myani.org"
-    private const val ISSUE_TRACKER = "https://github.com/open-ani/animeko/issues"
+object AniHelperDestination {
+    const val GITHUB_HOME = "https://github.com/open-ani/animeko"
+    const val GITHUB_CONTRIBUTORS = "https://github.com/open-ani/animeko/graphs/contributors"
+    const val ANI_WEBSITE = "https://myani.org"
+    const val ISSUE_TRACKER = "https://github.com/open-ani/animeko/issues"
+    const val RELEASE_PREFIX = "https://github.com/open-ani/animeko/releases/tag/v"
 
-    private const val GITHUB_REPO = "https://github.com/him188/ani"
-    private const val BANGUMI = "https://bangumi.tv"
-    private const val DANDANPLAY = "https://www.dandanplay.com/"
-    private const val DMHY = "https://dmhy.org/"
-    private const val ACG_RIP = "https://acg.rip/"
-    private const val MIKAN = "https://mikanime.tv/"
-
-
-    fun openJoinQQGroup(context: ContextMP) {
-        KoinPlatform.getKoin().get<BrowserNavigator>().openJoinGroup(context)
-    }
-
-    fun openTelegram(context: ContextMP) {
-        KoinPlatform.getKoin().get<BrowserNavigator>().openJoinTelegram(context)
-    }
-
-    fun openIssueTracker(context: ContextMP) {
-        KoinPlatform.getKoin().get<BrowserNavigator>().openBrowser(context, ISSUE_TRACKER)
-    }
-
-    fun openGitHubContributors(context: ContextMP) {
-        KoinPlatform.getKoin().get<BrowserNavigator>().openBrowser(context, GITHUB_CONTRIBUTORS)
-    }
-
-    fun openGitHubRelease(context: ContextMP, version: String) {
-        KoinPlatform.getKoin().get<BrowserNavigator>()
-            .openBrowser(context, "https://github.com/open-ani/animeko/releases/tag/v$version")
-    }
-
-    fun openGitHubHome(context: ContextMP) {
-        KoinPlatform.getKoin().get<BrowserNavigator>().openBrowser(context, GITHUB_HOME)
-    }
-
-    fun openAniWebsite(context: ContextMP) {
-        KoinPlatform.getKoin().get<BrowserNavigator>().openBrowser(context, ANI_WEBSITE)
-    }
+    const val GITHUB_REPO = "https://github.com/him188/ani"
+    const val BANGUMI = "https://bangumi.tv"
+    const val DANDANPLAY = "https://www.dandanplay.com/"
+    const val DMHY = "https://dmhy.org/"
+    const val ACG_RIP = "https://acg.rip/"
+    const val MIKAN = "https://mikanime.tv/"
 }
 
 @Composable
@@ -76,31 +44,27 @@ fun HelpDropdown(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
+    val browserNavigator = rememberBrowserNavigator()
     DropdownMenu(expanded, onDismissRequest, modifier) {
         DropdownMenuItem(
             text = { Text(stringResource(Lang.settings_help_qq)) },
-            onClick = {
-                AniHelpNavigator.openJoinQQGroup(context)
-            },
+            onClick = { browserNavigator.openJoinGroup() },
         )
         DropdownMenuItem(
             text = { Text(stringResource(Lang.settings_help_telegram)) },
-            onClick = {
-                AniHelpNavigator.openTelegram(context)
-            },
+            onClick = { browserNavigator.openJoinTelegram() },
         )
         DropdownMenuItem(
             text = { Text(stringResource(Lang.settings_help_github)) },
-            onClick = { AniHelpNavigator.openGitHubHome(context) },
+            onClick = { browserNavigator.openBrowser(AniHelperDestination.GITHUB_HOME) },
         )
         DropdownMenuItem(
             text = { Text(stringResource(Lang.settings_help_feedback)) },
-            onClick = { AniHelpNavigator.openIssueTracker(context) },
+            onClick = { browserNavigator.openBrowser(AniHelperDestination.ISSUE_TRACKER) },
         )
         DropdownMenuItem(
             text = { Text(stringResource(Lang.settings_help_website)) },
-            onClick = { AniHelpNavigator.openAniWebsite(context) },
+            onClick = { browserNavigator.openBrowser(AniHelperDestination.ANI_WEBSITE) },
         )
     }
 }

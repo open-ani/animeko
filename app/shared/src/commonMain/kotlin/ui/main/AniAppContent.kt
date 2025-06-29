@@ -58,6 +58,7 @@ import me.him188.ani.app.navigation.OverrideNavigation
 import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.cache.CacheManagementScreen
 import me.him188.ani.app.ui.cache.CacheManagementViewModel
@@ -118,6 +119,7 @@ fun AniAppContent(aniNavigator: AniNavigator) {
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         CompositionLocalProvider(
             LocalNavigator provides aniNavigator,
+            LocalBrowserNavigator providesDefault aniAppViewModel.browserNavigator,
         ) {
             ProvideAniMotionCompositionLocals {
                 AniAppContentImpl(
