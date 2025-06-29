@@ -22,8 +22,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
-import me.him188.ani.app.platform.navigation.rememberBrowserNavigator
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.Res
 import me.him188.ani.app.ui.foundation.bangumi
@@ -39,7 +39,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 @Composable
 fun AcknowledgementsTab(modifier: Modifier = Modifier) {
     Column(modifier) {
-        val browserNavigator = rememberBrowserNavigator()
+        val uriHandler = LocalUriHandler.current
         val listItemColors = ListItemDefaults.colors(
             containerColor = Color.Transparent,
         )
@@ -47,7 +47,7 @@ fun AcknowledgementsTab(modifier: Modifier = Modifier) {
         ListItem(
             headlineContent = { Text(stringResource(Lang.settings_acknowledgements_bangumi)) },
             Modifier.clickable {
-                browserNavigator.openBrowser("https://bangumi.tv")
+                uriHandler.openUri("https://bangumi.tv")
             },
             supportingContent = { Text(stringResource(Lang.settings_acknowledgements_bangumi_description)) },
             leadingContent = {
@@ -63,7 +63,7 @@ fun AcknowledgementsTab(modifier: Modifier = Modifier) {
         ListItem(
             headlineContent = { Text(stringResource(Lang.settings_acknowledgements_dandanplay)) },
             Modifier.clickable {
-                browserNavigator.openBrowser("https://www.dandanplay.com")
+                uriHandler.openUri("https://www.dandanplay.com")
             },
             supportingContent = { Text(stringResource(Lang.settings_acknowledgements_dandanplay_description)) },
             colors = listItemColors,
