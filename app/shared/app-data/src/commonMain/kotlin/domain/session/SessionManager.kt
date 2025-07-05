@@ -37,6 +37,10 @@ import me.him188.ani.app.data.repository.user.GuestSession
 import me.him188.ani.app.data.repository.user.Session
 import me.him188.ani.app.data.repository.user.TokenRepository
 import me.him188.ani.app.domain.session.auth.OAuthResult
+import me.him188.ani.app.domain.session.auth.toOAuthResult
+import me.him188.ani.client.apis.UserAuthenticationAniApi
+import me.him188.ani.client.models.AniRefreshTokenRequest
+import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.thisLogger
@@ -49,9 +53,13 @@ import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 
 class AniSessionRefresher(
+    private val userAuthApi: ApiInvoker<UserAuthenticationAniApi>
 ) : SessionManager.SessionRefresher {
     override suspend fun refresh(refreshToken: String): OAuthResult {
-        TODO("AniSessionRefresher")
+        return userAuthApi.invoke {
+            val resp = refreshToken(AniRefreshTokenRequest(refreshToken)).body()
+            resp.toOAuthResult()
+        }
     }
 }
 

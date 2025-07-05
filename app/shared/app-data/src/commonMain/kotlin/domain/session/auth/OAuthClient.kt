@@ -15,6 +15,7 @@ import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.session.AccessTokenPair
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.client.apis.BangumiAniApi
+import me.him188.ani.client.models.AniLoginResponse
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
@@ -55,6 +56,18 @@ data class OAuthResult(
     val refreshToken: String,
 )
 
+fun AniLoginResponse.toOAuthResult(): OAuthResult {
+    return OAuthResult(
+        tokens = AccessTokenPair(
+            aniAccessToken = this.tokens.accessToken,
+            expiresAtMillis = this.tokens.expiresAtMillis,
+            bangumiAccessToken = this.tokens.bangumiAccessToken,
+        ),
+        expiresInSeconds = this.tokens.expiresAtMillis.milliseconds.inWholeSeconds,
+        refreshToken = this.tokens.refreshToken,
+    )
+}
+
 class BangumiOAuthClient(
     private val bangumiApi: ApiInvoker<BangumiAniApi>,
     private val sessionStateProvider: SessionStateProvider,
@@ -92,17 +105,8 @@ class BangumiOAuthClient(
             val resp = bangumiApi.invoke {
                 getToken(requestId).body()
             }
-            val result = resp
 
-            return OAuthResult(
-                tokens = AccessTokenPair(
-                    aniAccessToken = result.tokens.accessToken,
-                    expiresAtMillis = result.tokens.expiresAtMillis,
-                    bangumiAccessToken = result.tokens.bangumiAccessToken,
-                ),
-                expiresInSeconds = result.tokens.expiresAtMillis.milliseconds.inWholeSeconds,
-                refreshToken = result.tokens.refreshToken,
-            )
+            return resp.toOAuthResult()
         } catch (ex: ClientRequestException) {
             when (ex.response.status) {
                 HttpStatusCode.TooEarly -> return null

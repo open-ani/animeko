@@ -146,7 +146,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         SessionManager(
             tokenRepository = get(),
             coroutineScope = coroutineScope,
-            refreshSession = AniSessionRefresher(),
+            refreshSession = AniSessionRefresher(aniApiProvider.userAuthApi),
         )
     }
     single<SessionStateProvider> {
