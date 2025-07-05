@@ -7,16 +7,18 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 package me.him188.ani.client.infrastructure
 
 import io.ktor.utils.io.core.ByteReadPacket
 import io.ktor.utils.io.core.Input
 import io.ktor.utils.io.core.buildPacket
 import io.ktor.utils.io.core.readAvailable
-import io.ktor.utils.io.core.readBytes
 import io.ktor.utils.io.core.remaining
 import io.ktor.utils.io.core.writeFully
 import io.ktor.utils.io.core.writeText
+import kotlinx.io.Source
+import kotlinx.io.readByteArray
 import kotlin.experimental.and
 
 private val digits = "0123456789abcdef".toCharArray()
@@ -31,7 +33,7 @@ private fun Int.toBase64(): Char = BASE64_ALPHABET[this]
 private fun Byte.fromBase64(): Byte = BASE64_INVERSE_ALPHABET[toInt() and 0xff].toByte() and BASE64_MASK
 internal fun ByteArray.encodeBase64(): String = buildPacket { writeFully(this@encodeBase64) }.encodeBase64()
 internal fun String.decodeBase64Bytes(): ByteArray =
-    buildPacket { writeText(dropLastWhile { it == BASE64_PAD }) }.decodeBase64Bytes().readBytes()
+    buildPacket { writeText(dropLastWhile { it == BASE64_PAD }) }.decodeBase64Bytes().readByteArray()
 
 /**
  * Encode [bytes] as a HEX string with no spaces, newlines and `0x` prefixes.
@@ -74,7 +76,7 @@ internal fun hex(s: String): ByteArray {
  *
  * Taken from https://github.com/ktorio/ktor/blob/424d1d2cfaa3281302c60af9500f738c8c2fc846/ktor-utils/common/src/io/ktor/util/Base64.kt
  */
-private fun ByteReadPacket.encodeBase64(): String = buildString {
+private fun Source.encodeBase64(): String = buildString {
     val data = ByteArray(3)
     while (remaining > 0) {
         val read = readAvailable(data)
@@ -116,3 +118,5 @@ private fun ByteReadPacket.decodeBase64Bytes(): Input = buildPacket {
         }
     }
 }
+
+// @formatter:on

@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,30 +20,36 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
 
+import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param `data`
- * @param error
+ * @param userId 
+ * @param tokens 
+ * @param user 
  */
 @Serializable
 
-data class AniAuthenticationResponse(
+data class AniAuthenticationResponse (
 
-    @SerialName(value = "data") val `data`: AniSuccess? = null,
+    @SerialName(value = "userId") @Required val userId: kotlin.String,
 
-    @SerialName(value = "error") val error: AniRegisterErrors? = null
+    @SerialName(value = "tokens") @Required val tokens: AniAniTokens,
+
+    @SerialName(value = "user") @Required val user: AniAniSelfUser
 
 ) {
 
 
 }
 
+
+// @formatter:on

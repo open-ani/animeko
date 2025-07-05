@@ -1,12 +1,3 @@
-/*
- * Copyright (C) 2024-2025 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 /**
  *
  * Please note:
@@ -24,20 +15,23 @@
 
 package me.him188.ani.datasources.bangumi.next.apis
 
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
-import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.json.Json
-import me.him188.ani.datasources.bangumi.next.infrastructure.ApiClient
-import me.him188.ani.datasources.bangumi.next.infrastructure.HttpResponse
-import me.him188.ani.datasources.bangumi.next.infrastructure.RequestConfig
-import me.him188.ani.datasources.bangumi.next.infrastructure.RequestMethod
-import me.him188.ani.datasources.bangumi.next.infrastructure.wrap
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextCollectSubject
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextCollectionType
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextErrorResponse
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetMySubjectCollections200Response
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextSubjectType
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextUpdateSubjectProgress
+
+import me.him188.ani.datasources.bangumi.next.infrastructure.*
+import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.request.forms.formData
+import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.json.Json
+import io.ktor.http.ParametersBuilder
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 open class CollectionBangumiNextApi : ApiClient {
 
@@ -83,8 +77,8 @@ open class CollectionBangumiNextApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
-        subjectType?.apply { localVariableQuery["subjectType"] = listOf("$subjectType") }
-        type?.apply { localVariableQuery["type"] = listOf("$type") }
+        subjectType?.apply { localVariableQuery["subjectType"] = listOf("${subjectType.value}") }
+        type?.apply { localVariableQuery["type"] = listOf("${type.value}") }
         since?.apply { localVariableQuery["since"] = listOf("$since") }
         limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
         offset?.apply { localVariableQuery["offset"] = listOf("$offset") }

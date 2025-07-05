@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +20,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -32,16 +33,16 @@ import kotlinx.serialization.Serializable
  * 
  *
  * @param bangumiId 
- * @param name
+ * @param name 
  * @param aliases 
- * @param begin
+ * @param begin 
  * @param recurrence 
  * @param end 
  * @param mikanId 
  */
 @Serializable
 
-data class AniOnAirAnimeInfo(
+data class AniOnAirAnimeInfo (
 
     @SerialName(value = "bangumiId") @Required val bangumiId: kotlin.Int,
 
@@ -62,3 +63,5 @@ data class AniOnAirAnimeInfo(
 
 }
 
+
+// @formatter:on

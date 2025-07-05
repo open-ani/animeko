@@ -29,7 +29,7 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
-import me.him188.ani.app.data.network.BangumiEpisodeService
+import me.him188.ani.app.data.network.EpisodeService
 import me.him188.ani.app.data.network.toBangumiEpType
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
@@ -53,7 +53,7 @@ import kotlin.time.Duration.Companion.milliseconds
 class EpisodeCollectionRepository(
     private val subjectDao: SubjectCollectionDao,
     private val episodeCollectionDao: EpisodeCollectionDao,
-    private val bangumiEpisodeService: BangumiEpisodeService,
+    private val episodeService: EpisodeService,
     private val animeScheduleRepository: AnimeScheduleRepository,
     subjectCollectionRepository: Lazy<SubjectCollectionRepository>,
     private val getEpisodeTypeFiltersUseCase: GetEpisodeTypeFiltersUseCase,
@@ -79,7 +79,7 @@ class EpisodeCollectionRepository(
             entity?.takeIf { !it.isExpired() }
                 ?.toEpisodeCollectionInfo()
                 ?: kotlin.run {
-                    bangumiEpisodeService.getEpisodeCollectionById(episodeId)
+                    episodeService.getEpisodeCollectionById(episodeId)
                         ?.also {
                             episodeCollectionDao.upsert(it.toEntity(subjectId))
                         }
@@ -99,6 +99,9 @@ class EpisodeCollectionRepository(
         subjectId: Int,
         allowCached: Boolean = true,
     ): Flow<List<EpisodeCollectionInfo>> = getEpisodeTypeFiltersUseCase().flatMapLatest { epTypes ->
+        subjectCollectionRepository.subjectCollectionFlow(subjectId).map {
+            it.episodes
+        }
         episodeCollectionDao
             .filterBySubjectId(subjectId, epTypes)
             .distinctUntilChanged()
@@ -111,7 +114,7 @@ class EpisodeCollectionRepository(
 
                 try {
                     emit(
-                        bangumiEpisodeService.getEpisodeCollectionInfosBySubjectId(subjectId, null) // 总是缓存所有类型
+                        episodeService.getEpisodeCollectionInfosBySubjectId(subjectId, null) // 总是缓存所有类型
                             .toList() // 目前先直接全拿了, 反正一般情况下剧集数量很少
                             .also { list ->
                                 if (subjectDao.findById(subjectId).first() != null) {
@@ -173,7 +176,7 @@ class EpisodeCollectionRepository(
     ): Flow<PagingData<EpisodeCollectionInfo>> = Pager(
         config = pagingConfig,
         remoteMediator = EpisodeCollectionsRemoteMediator(
-            episodeCollectionDao, bangumiEpisodeService,
+            episodeCollectionDao, episodeService,
             subjectId,
         ),
         pagingSourceFactory = {
@@ -193,7 +196,7 @@ class EpisodeCollectionRepository(
             .first()
             .map { it.episodeId }
 
-        bangumiEpisodeService.setEpisodeCollection(subjectId, episodeIds, UnifiedCollectionType.DONE)
+        episodeService.setEpisodeCollection(subjectId, episodeIds, UnifiedCollectionType.DONE)
         episodeCollectionDao.setAllEpisodesWatched(subjectId)
     }
 
@@ -208,7 +211,7 @@ class EpisodeCollectionRepository(
             logger.warn { "User has not yet collected subject $subjectId when we want to setEpisodeCollectionType, ignoring." }
 //            subjectCollectionRepository.setSubjectCollectionTypeOrDelete(subjectId, UnifiedCollectionType.DOING)
         }
-        bangumiEpisodeService.setEpisodeCollection(subjectId, listOf(episodeId), collectionType)
+        episodeService.setEpisodeCollection(subjectId, listOf(episodeId), collectionType)
         episodeCollectionDao.updateSelfCollectionType(subjectId, episodeId, collectionType)
     }
 
@@ -228,7 +231,7 @@ class EpisodeCollectionRepository(
             if (local != null && (!local.isExpired() || !allowNetwork)) {
                 return@withContext local.selfCollectionType
             } else {
-                val remote = bangumiEpisodeService.getEpisodeCollectionById(episodeId)
+                val remote = episodeService.getEpisodeCollectionById(episodeId)
                 if (remote != null) {
                     return@withContext remote.collectionType
                 }
@@ -255,7 +258,7 @@ class EpisodeCollectionRepository(
      */
     private inner class EpisodeCollectionsRemoteMediator<T : Any>(
         private val episodeCollectionDao: EpisodeCollectionDao,
-        private val episodeService: BangumiEpisodeService,
+        private val episodeService: EpisodeService,
         val subjectId: Int,
     ) : RemoteMediator<Int, T>() {
         override suspend fun initialize(): InitializeAction {

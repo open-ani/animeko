@@ -26,8 +26,8 @@ import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
-import me.him188.ani.app.data.network.BangumiSubjectService
 import me.him188.ani.app.data.network.BatchSubjectRelations
+import me.him188.ani.app.data.network.SubjectService
 import me.him188.ani.app.data.persistent.database.dao.RelatedCharacterView
 import me.him188.ani.app.data.persistent.database.dao.RelatedPersonView
 import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionDao
@@ -71,7 +71,7 @@ sealed class SubjectRelationsRepository(
 class DefaultSubjectRelationsRepository(
     private val subjectCollectionDao: SubjectCollectionDao,
     private val subjectRelationsDao: SubjectRelationsDao,
-    private val bangumiSubjectService: BangumiSubjectService,
+    private val subjectService: SubjectService,
     private val subjectCollectionRepository: SubjectCollectionRepository,
     private val aniSubjectRelationIndexService: AniSubjectRelationIndexService,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
@@ -117,8 +117,6 @@ class DefaultSubjectRelationsRepository(
         ) { subjectCollectionInfos ->
             SubjectSeriesInfo.compute(
                 requestingSubject = requestingSubject,
-                seriesSubjects = subjectCollectionInfos.filter { it.subjectId in relations.seriesMainSubjectIds },
-                sequelSubjects = subjectCollectionInfos.filter { it.subjectId in relations.sequelSubjects },
             )
         }
     }.flatMapLatest {
@@ -195,7 +193,7 @@ class DefaultSubjectRelationsRepository(
     }
 
     private suspend fun fetchAndSaveSubjectRelations(subjectId: Int) {
-        val (batch) = bangumiSubjectService.batchGetSubjectRelations(intListOf(subjectId), withCharacterActors = true)
+        val (batch) = subjectService.batchGetSubjectRelations(intListOf(subjectId), withCharacterActors = true)
         subjectRelationsDao.upsertPersons(batch.allPersons.map { it.toEntity() }.toList())
         subjectRelationsDao.upsertCharacters(batch.relatedCharacterInfoList.map { it.character.toEntity() })
         subjectRelationsDao.upsertCharacterActors(batch.characterActorRelations().toList())

@@ -70,6 +70,7 @@ import me.him188.ani.app.ui.settings.tabs.network.ProxyTestState
 import me.him188.ani.app.ui.settings.tabs.network.SystemProxyPresentation
 import me.him188.ani.app.ui.settings.tabs.network.toDataSettings
 import me.him188.ani.app.ui.settings.tabs.network.toUIConfig
+import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.datasources.api.source.ConnectionStatus
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
@@ -283,6 +284,8 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
     val debugTriggerState = DebugTriggerState(debugSettingsState, backgroundScope)
     val aboutTabInfo = AboutTabInfo(currentAniBuildConfig.versionName)
 
+    val selfInfoFlow = SelfInfoStateProducer(koin = getKoin()).flow
+    
     suspend fun startProxyTesterLoop() {
         loopTasker.invoke {
             launch { proxyTester.testRunnerLoop() }

@@ -7,6 +7,8 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +21,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -30,14 +32,14 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param name
- * @param count
+ * @param name 
+ * @param count 
  */
 @Serializable
 
-data class AniTagEntity(
+data class AniTagEntity (
 
     @SerialName(value = "name") @Required val name: kotlin.String,
 
@@ -48,3 +50,7 @@ data class AniTagEntity(
 
 }
 
+
+// @formatter:on
+
+// @formatter:on

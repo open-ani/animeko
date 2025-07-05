@@ -30,11 +30,11 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- *
+ * 
  *
  * @param id
- * @param text
- * @param wikiTpl
+ * @param text 
+ * @param wikiTpl 
  */
 @Serializable
 

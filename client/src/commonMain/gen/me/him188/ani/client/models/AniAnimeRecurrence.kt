@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +20,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -32,12 +33,12 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param startTime
+ * @param startTime 
  * @param intervalMillis 
  */
 @Serializable
 
-data class AniAnimeRecurrence(
+data class AniAnimeRecurrence (
 
     @SerialName(value = "startTime") @Required val startTime: kotlin.String,
 
@@ -48,3 +49,5 @@ data class AniAnimeRecurrence(
 
 }
 
+
+// @formatter:on

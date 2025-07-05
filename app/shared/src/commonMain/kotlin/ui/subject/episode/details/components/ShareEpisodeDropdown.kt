@@ -22,9 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
-import me.him188.ani.app.domain.usecase.GlobalKoin
-import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
 import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.datasources.api.topic.ResourceLocation
@@ -39,6 +38,7 @@ fun ShareEpisodeDropdown(
 ) {
     val clipboard = LocalClipboardManager.current
     val uriHandler = LocalUriHandler.current
+    val browserNavigator = rememberAsyncBrowserNavigator()
     val context = LocalContext.current
 
     DropdownMenu(
@@ -77,7 +77,7 @@ fun ShareEpisodeDropdown(
                     text = { Text("用其他应用打开") },
                     onClick = {
                         onDismissRequest()
-                        GlobalKoin.get<BrowserNavigator>().intentOpenVideo(context, download.uri)
+                        browserNavigator.intentOpenVideo(context, download.uri)
                     },
                     leadingIcon = { Icon(Icons.Rounded.Outbox, null) },
                 )

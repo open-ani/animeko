@@ -33,8 +33,8 @@ import kotlinx.serialization.Serializable
  * 
  *
  * @param fieldEps
- * @param fieldInfobox
- * @param fieldSummary
+ * @param fieldInfobox 
+ * @param fieldSummary 
  * @param name 
  * @param nameCn 
  * @param platform 

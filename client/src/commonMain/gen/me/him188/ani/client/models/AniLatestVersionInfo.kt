@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +20,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -39,7 +40,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 
-data class AniLatestVersionInfo(
+data class AniLatestVersionInfo (
 
     @SerialName(value = "version") @Required val version: kotlin.String,
 
@@ -54,3 +55,5 @@ data class AniLatestVersionInfo(
 
 }
 
+
+// @formatter:on

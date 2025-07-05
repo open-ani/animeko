@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.ui.settings.framework.components
 
 import androidx.compose.foundation.clickable
@@ -12,14 +21,12 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,12 +37,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import me.him188.ani.app.ui.foundation.effects.defaultFocus
 import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
@@ -171,19 +176,19 @@ internal fun SettingsScope.TextFieldDialog(
     extra: @Composable (ColumnScope.() -> Unit) = {},
     textField: @Composable () -> Unit,
 ) {
-    Dialog(
+    AlertDialog(
         onDismissRequest = onDismissRequest,
-    ) {
-        Surface(
-            shape = MaterialTheme.shapes.large,
-        ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row {
-                    ProvideTextStyle(MaterialTheme.typography.titleMedium) {
-                        title()
-                    }
-                }
-
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                enabled = confirmEnabled,
+            ) {
+                Text("确认")
+            }
+        },
+        title = title,
+        text = {
+            Column(Modifier.padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row {
                     textField()
                 }
@@ -200,18 +205,10 @@ internal fun SettingsScope.TextFieldDialog(
                         }
                     }
                 }
-
-                Row(Modifier.align(Alignment.End), verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = onDismissRequest) { Text("取消") }
-
-                    Button(
-                        onClick = onConfirm,
-                        enabled = confirmEnabled,
-                    ) {
-                        Text("确认")
-                    }
-                }
             }
-        }
-    }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) { Text("取消") }
+        },
+    )
 }

@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +20,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -31,13 +32,13 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param year
- * @param season
+ * @param year 
+ * @param season 
  * @param id 
  */
 @Serializable
 
-data class AniAnimeSeasonId(
+data class AniAnimeSeasonId (
 
     @SerialName(value = "year") @Required val year: kotlin.Int,
 
@@ -50,3 +51,5 @@ data class AniAnimeSeasonId(
 
 }
 
+
+// @formatter:on

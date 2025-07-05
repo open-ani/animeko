@@ -37,10 +37,8 @@ data class SubjectSeriesInfo(
     companion object {
         fun compute(
             requestingSubject: SubjectCollectionInfo,
-            seriesSubjects: List<SubjectCollectionInfo>,
-            sequelSubjects: List<SubjectCollectionInfo>,
         ): SubjectSeriesInfo {
-            val sequelSubjectNames = sequelSubjects.flatMapTo(mutableSetOf()) { it.subjectInfo.allNames }.apply {
+            val sequelSubjectNames = requestingSubject.relations.sequelSubjectNames.toMutableSet().apply {
                 removeAll { sequelName ->
                     // 如果续集名称存在于当前名称中, 则删除, 否则可能导致过滤掉当前季度的条目
                     requestingSubject.subjectInfo.allNames.any {
@@ -49,14 +47,16 @@ data class SubjectSeriesInfo(
                 }
             }
             val seriesSubjectNamesWithoutSelf: Set<String> =
-                seriesSubjects.flatMapTo(mutableSetOf()) { it.subjectInfo.allNames }
-                    .filterNotTo(mutableSetOf()) { seriesName ->
+                requestingSubject.relations.seriesMainSubjectNames.toMutableSet().apply {
+                    removeAll { seriesName ->
                         requestingSubject.subjectInfo.allNames.any { subjectName ->
                             MediaListFilters.specialEquals(subjectName, seriesName)
                         }
                     }
+                }
 
-            val seasonSort = seriesSubjects.indexOfFirst { it.subjectId == requestingSubject.subjectId }
+            val seasonSort = requestingSubject.relations.seriesMainSubjectIds
+                .indexOfFirst { it == requestingSubject.subjectId }
                 .let { if (it == -1) 1 else it + 1 }
             return SubjectSeriesInfo(
 //                subjectId,

@@ -9,31 +9,14 @@
 
 package me.him188.ani.app.ui.onboarding
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.map
-import me.him188.ani.app.domain.session.AniAuthStateProvider
-import me.him188.ani.app.domain.session.AuthState
+import kotlinx.coroutines.flow.StateFlow
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.user.SelfInfoStateProducer
+import me.him188.ani.app.ui.user.SelfInfoUiState
 import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 
 class OnboardingCompleteViewModel : AbstractViewModel(), KoinComponent {
-    private val authStateProvider: AniAuthStateProvider by inject()
-
-    val state: Flow<OnboardingCompleteState> =
-        authStateProvider.state.filterIsInstance<AuthState.Success>()
-            .map { authState ->
-                OnboardingCompleteState(
-                    username = if (authState.isGuest) null else authState.username,
-                    avatarUrl = if (authState.isGuest) DEFAULT_AVATAR else (authState.avatarUrl ?: DEFAULT_AVATAR),
-                )
-            }
-            .stateInBackground(
-                OnboardingCompleteState.Placeholder,
-                SharingStarted.WhileSubscribed(),
-            )
+    val state: StateFlow<SelfInfoUiState> = SelfInfoStateProducer().flow
 
     companion object {
         internal const val DEFAULT_AVATAR = "https://lain.bgm.tv/r/200/pic/user/l/icon.jpg"

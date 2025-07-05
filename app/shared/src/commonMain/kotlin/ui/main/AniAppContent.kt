@@ -29,6 +29,7 @@ import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,7 +50,6 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.search.SubjectSearchQuery
-import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
@@ -57,8 +57,8 @@ import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.OverrideNavigation
 import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
-import me.him188.ani.app.navigation.findLast
 import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.cache.CacheManagementScreen
 import me.him188.ani.app.ui.cache.CacheManagementViewModel
@@ -76,14 +76,17 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.TopAppBarActionButton
+import me.him188.ani.app.ui.login.EmailLoginStartScreen
+import me.him188.ani.app.ui.login.EmailLoginVerifyScreen
+import me.him188.ani.app.ui.login.EmailLoginViewModel
+import me.him188.ani.app.ui.oauth.BangumiAuthorizeScreen
+import me.him188.ani.app.ui.oauth.BangumiAuthorizeViewModel
 import me.him188.ani.app.ui.onboarding.OnboardingCompleteScreen
 import me.him188.ani.app.ui.onboarding.OnboardingCompleteViewModel
 import me.him188.ani.app.ui.onboarding.OnboardingScreen
 import me.him188.ani.app.ui.onboarding.OnboardingViewModel
 import me.him188.ani.app.ui.onboarding.WelcomeScreen
 import me.him188.ani.app.ui.profile.auth.AniContactList
-import me.him188.ani.app.ui.profile.auth.BangumiAuthorizePage
-import me.him188.ani.app.ui.profile.auth.BangumiAuthorizeViewModel
 import me.him188.ani.app.ui.search.SearchScreen
 import me.him188.ani.app.ui.settings.SettingsScreen
 import me.him188.ani.app.ui.settings.SettingsViewModel
@@ -116,6 +119,7 @@ fun AniAppContent(aniNavigator: AniNavigator) {
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         CompositionLocalProvider(
             LocalNavigator provides aniNavigator,
+            LocalBrowserNavigator providesDefault aniAppViewModel.browserNavigator,
         ) {
             ProvideAniMotionCompositionLocals {
                 AniAppContentImpl(
@@ -142,6 +146,7 @@ private fun AniAppContentImpl(
     val windowInsets = ScaffoldDefaults.contentWindowInsets
         .add(WindowInsets.desktopTitleBar()) // Compose 目前不支持这个所以我们要自己加上
     val navMotionScheme by rememberUpdatedState(NavigationMotionScheme.current)
+    val emailLoginViewModel = viewModel<EmailLoginViewModel> { EmailLoginViewModel() }
 
     SharedTransitionLayout {
         NavHost(navController, startDestination = initialRoute, modifier) {
@@ -168,6 +173,75 @@ private fun AniAppContentImpl(
                     contactActions = { AniContactList() },
                     Modifier.fillMaxSize(),
                     windowInsets,
+                )
+            }
+            composable<NavRoutes.EmailLoginStart>(
+                enterTransition = enterTransition,
+                exitTransition = exitTransition,
+                popEnterTransition = popEnterTransition,
+                popExitTransition = popExitTransition,
+            ) {
+                EmailLoginStartScreen(
+                    onOtpSent = {
+                        aniNavigator.navigateEmailLoginVerify()
+                    },
+                    onBangumiLoginClick = {
+                        aniNavigator.navigateBangumiAuthorize()
+                    },
+                    onNavigateSettings = {
+                        aniNavigator.navigateSettings()
+                    },
+                    onNavigateBack = {
+                        aniNavigator.popBackStack(NavRoutes.EmailLoginStart, true)
+                    },
+                    vm = emailLoginViewModel,
+                )
+            }
+            composable<NavRoutes.EmailLoginVerify>(
+                enterTransition = enterTransition,
+                exitTransition = exitTransition,
+                popEnterTransition = popEnterTransition,
+                popExitTransition = popExitTransition,
+            ) {
+                EmailLoginVerifyScreen(
+                    onSuccess = {
+                        aniNavigator.popBackOrNavigateToMain(mainSceneInitialPage)
+                    },
+                    onBangumiLoginClick = {
+                        aniNavigator.navigateBangumiAuthorize()
+                    },
+                    onNavigateSettings = {
+                        aniNavigator.navigateSettings()
+                    },
+                    onNavigateBack = {
+                        aniNavigator.popBackStack(NavRoutes.EmailLoginVerify, true)
+                    },
+                    vm = emailLoginViewModel,
+                )
+            }
+            composable<NavRoutes.BangumiAuthorize>(
+                enterTransition = enterTransition,
+                exitTransition = exitTransition,
+                popEnterTransition = popEnterTransition,
+                popExitTransition = popExitTransition,
+            ) {
+                val vm = viewModel<BangumiAuthorizeViewModel> { BangumiAuthorizeViewModel() }
+                BangumiAuthorizeScreen(
+                    vm,
+                    onNavigateBack = {
+                        aniNavigator.popBackStack(NavRoutes.BangumiAuthorize, true)
+                    },
+                    onNavigateSettings = {
+                        aniNavigator.navigateSettings()
+                    },
+                    contactActions = {
+                        AniContactList()
+                    },
+                    onAuthorizeSuccess = {
+                        aniNavigator.popBackStack(NavRoutes.BangumiAuthorize, true)
+                        aniNavigator.popBackStack(NavRoutes.EmailLoginVerify, true)
+                        aniNavigator.popBackStack(NavRoutes.EmailLoginStart, true)
+                    },
                 )
             }
             composable<NavRoutes.Onboarding>(
@@ -262,12 +336,12 @@ private fun AniAppContentImpl(
                             this@SharedTransitionLayout, this,
                         ),
                     ) {
-                        val authState by vm.authState.collectAsStateWithLifecycle(AuthState.DummyAwaitingResult)
+                        val selfInfo by vm.selfInfo.collectAsState() // not -WithLifecycle
                         MainScreen(
                             page = currentPage,
-                            authState = authState,
+                            selfInfo = selfInfo,
                             onNavigateToPage = { currentPage = it },
-                            onNavigateToSettings = { aniNavigator.navigateSettings() },
+                            onNavigateToSettings = { aniNavigator.navigateSettings(it) },
                             onNavigateToSearch = { aniNavigator.navigateSubjectSearch() },
                             navigationLayoutType = navigationLayoutType,
                         )
@@ -292,27 +366,6 @@ private fun AniAppContentImpl(
                     onNavigateToEpisodeDetails = { subjectId, episodeId ->
                         navigator.navigateEpisodeDetails(subjectId, episodeId)
                     },
-                    windowInsets = windowInsets,
-                )
-            }
-            composable<NavRoutes.BangumiAuthorize>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-            ) {
-                BangumiAuthorizePage(
-                    viewModel { BangumiAuthorizeViewModel() },
-                    onClickBackNavigation = { aniNavigator.popBackStack() },
-                    onFinishLogin = {
-                        aniNavigator.navigateMain(
-                            mainSceneInitialPage,
-                            aniNavigator.currentNavigator.findLast<NavRoutes.Main>(),
-                        )
-                    },
-                    modifier = Modifier
-                        .widthIn(max = WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND.dp)
-                        .fillMaxHeight(),
                     windowInsets = windowInsets,
                 )
             }
@@ -399,6 +452,8 @@ private fun AniAppContentImpl(
                     viewModel {
                         SettingsViewModel()
                     },
+                    onNavigateToEmailLogin = { aniNavigator.navigateLogin() },
+                    onNavigateToBangumiOAuth = { aniNavigator.navigateBangumiAuthorize() },
                     Modifier.fillMaxSize(),
                     route.tab,
                     navigationIcon = {

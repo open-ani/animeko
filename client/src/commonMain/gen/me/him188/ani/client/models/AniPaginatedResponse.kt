@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +20,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -29,21 +30,23 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param total
- * @param items
+ * @param total 
+ * @param items 
  */
 @Serializable
 
-data class AniPaginatedResponse(
+data class AniPaginatedResponse (
 
     @SerialName(value = "total") @Required val total: kotlin.Long,
 
-    @SerialName(value = "items") @Required val items: kotlin.collections.List<AniSubjectCollectionEntity>
+    @SerialName(value = "items") @Required val items: kotlin.collections.List<AniSubjectCollection>
 
 ) {
 
 
 }
 
+
+// @formatter:on

@@ -39,8 +39,8 @@ import kotlinx.serialization.Serializable
  * @param replies
  * @param summary
  * @param title
- * @param type
- * @param uid
+ * @param type 
+ * @param uid 
  * @param updatedAt 
  */
 @Serializable

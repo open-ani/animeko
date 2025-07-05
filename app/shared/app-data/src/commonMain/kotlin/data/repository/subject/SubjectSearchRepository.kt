@@ -24,8 +24,8 @@ import me.him188.ani.app.data.models.schedule.AnimeSeasonId
 import me.him188.ani.app.data.models.schedule.yearMonths
 import me.him188.ani.app.data.network.BangumiSearchFilters
 import me.him188.ani.app.data.network.BangumiSubjectSearchService
-import me.him188.ani.app.data.network.BangumiSubjectService
 import me.him188.ani.app.data.network.BatchSubjectDetails
+import me.him188.ani.app.data.network.SubjectService
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.search.RatingRange
@@ -42,7 +42,7 @@ import kotlin.coroutines.cancellation.CancellationException
 class SubjectSearchRepository(
     private val bangumiSubjectSearchService: BangumiSubjectSearchService,
     private val subjectCollectionRepository: SubjectCollectionRepository,
-    private val subjectService: BangumiSubjectService,
+    private val subjectService: SubjectService,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
 ) : Repository(defaultDispatcher) {
 

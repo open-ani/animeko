@@ -17,39 +17,63 @@ import kotlinx.serialization.protobuf.ProtoBuf
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.datasources.api.EpisodeSort
 
-class ProtoConverters {
-    private val protobuf get() = ProtoBuf.Default
+private val protobuf get() = ProtoBuf.Default
+
+interface ProtoConverter<T> {
+    @TypeConverter
+    fun fromByteArray(value: ByteArray): T
 
     @TypeConverter
-    fun fromByteArray(value: ByteArray): List<String> {
-        return protobuf.decodeFromByteArray(ListSerializer(String.serializer()), value)
+    fun fromList(list: T): ByteArray
+}
+
+object ProtoConverters {
+    object StringList : ProtoConverter<List<String>> {
+        @TypeConverter
+        override fun fromByteArray(value: ByteArray): List<String> {
+            return protobuf.decodeFromByteArray(ListSerializer(String.serializer()), value)
+        }
+
+        @TypeConverter
+        override fun fromList(list: List<String>): ByteArray {
+            return protobuf.encodeToByteArray(ListSerializer(String.serializer()), list)
+        }
     }
 
-    @TypeConverter
-    fun fromList(list: List<String>): ByteArray {
-        return protobuf.encodeToByteArray(ListSerializer(String.serializer()), list)
+    object IntList : ProtoConverter<List<Int>> {
+        @TypeConverter
+        override fun fromByteArray(value: ByteArray): List<Int> {
+            return protobuf.decodeFromByteArray(ListSerializer(Int.serializer()), value)
+        }
+
+        @TypeConverter
+        override fun fromList(list: List<Int>): ByteArray {
+            return protobuf.encodeToByteArray(ListSerializer(Int.serializer()), list)
+        }
     }
 
+    object TagList : ProtoConverter<List<Tag>> {
+        @TypeConverter
+        override fun fromByteArray(value: ByteArray): List<Tag> {
+            return protobuf.decodeFromByteArray(ListSerializer(Tag.serializer()), value)
+        }
 
-    @TypeConverter
-    fun byteArrayToListTag(value: ByteArray): List<Tag> {
-        return protobuf.decodeFromByteArray(ListSerializer(Tag.serializer()), value)
+        @TypeConverter
+        override fun fromList(list: List<Tag>): ByteArray {
+            return protobuf.encodeToByteArray(ListSerializer(Tag.serializer()), list)
+        }
     }
 
-    @TypeConverter
-    fun listTagToByteArray(list: List<Tag>): ByteArray {
-        return protobuf.encodeToByteArray(ListSerializer(Tag.serializer()), list)
-    }
+    object IntArrayConverter : ProtoConverter<IntArray> {
+        @TypeConverter
+        override fun fromByteArray(value: ByteArray): IntArray {
+            return protobuf.decodeFromByteArray(IntArraySerializer(), value)
+        }
 
-
-    @TypeConverter
-    fun intArrayToByteArray(value: IntArray): ByteArray {
-        return protobuf.encodeToByteArray(IntArraySerializer(), value)
-    }
-
-    @TypeConverter
-    fun byteArrayToIntArray(value: ByteArray): IntArray {
-        return protobuf.decodeFromByteArray(IntArraySerializer(), value)
+        @TypeConverter
+        override fun fromList(list: IntArray): ByteArray {
+            return protobuf.encodeToByteArray(IntArraySerializer(), list)
+        }
     }
 }
 
