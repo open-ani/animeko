@@ -14,7 +14,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import me.him188.ani.app.platform.navigation.rememberBrowserNavigator
+import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_help_feedback
 import me.him188.ani.app.ui.lang.settings_help_github
@@ -44,27 +45,29 @@ fun HelpDropdown(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val browserNavigator = rememberBrowserNavigator()
+    val browserNavigator = rememberAsyncBrowserNavigator()
+    val context = LocalContext.current
+
     DropdownMenu(expanded, onDismissRequest, modifier) {
         DropdownMenuItem(
             text = { Text(stringResource(Lang.settings_help_qq)) },
-            onClick = { browserNavigator.openJoinGroup() },
+            onClick = { browserNavigator.openJoinGroup(context) },
         )
         DropdownMenuItem(
             text = { Text(stringResource(Lang.settings_help_telegram)) },
-            onClick = { browserNavigator.openJoinTelegram() },
+            onClick = { browserNavigator.openJoinTelegram(context) },
         )
         DropdownMenuItem(
             text = { Text(stringResource(Lang.settings_help_github)) },
-            onClick = { browserNavigator.openBrowser(AniHelperDestination.GITHUB_HOME) },
+            onClick = { browserNavigator.openBrowser(context, AniHelperDestination.GITHUB_HOME) },
         )
         DropdownMenuItem(
             text = { Text(stringResource(Lang.settings_help_feedback)) },
-            onClick = { browserNavigator.openBrowser(AniHelperDestination.ISSUE_TRACKER) },
+            onClick = { browserNavigator.openBrowser(context, AniHelperDestination.ISSUE_TRACKER) },
         )
         DropdownMenuItem(
             text = { Text(stringResource(Lang.settings_help_website)) },
-            onClick = { browserNavigator.openBrowser(AniHelperDestination.ANI_WEBSITE) },
+            onClick = { browserNavigator.openBrowser(context, AniHelperDestination.ANI_WEBSITE) },
         )
     }
 }

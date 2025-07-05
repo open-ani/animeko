@@ -48,7 +48,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import me.him188.ani.app.data.network.protocol.ReleaseClass
 import me.him188.ani.app.navigation.QQ_GROUP_ID
-import me.him188.ani.app.platform.navigation.rememberBrowserNavigator
+import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.Res
 import me.him188.ani.app.ui.foundation.a
@@ -101,6 +102,8 @@ fun AboutTab(
     onClickAcknowledgements: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+
     Column(modifier.fillMaxWidth()) {
         // Centered HeroIcon at the top
         AniHeroIconAndDescriptions()
@@ -189,9 +192,9 @@ fun AboutTab(
                     .padding(start = (24 + 16).dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                val browserNavigator = rememberBrowserNavigator()
+                val browserNavigator = rememberAsyncBrowserNavigator()
                 SuggestionChip(
-                    { browserNavigator.openJoinGroup() },
+                    { browserNavigator.openJoinGroup(context) },
                     icon = {
                         Icon(
                             AniIcons.QqRoundedOutline, stringResource(Lang.settings_about_qq_group),
@@ -202,7 +205,7 @@ fun AboutTab(
                 )
 
                 SuggestionChip(
-                    { browserNavigator.openJoinTelegram() },
+                    { browserNavigator.openJoinTelegram(context) },
                     icon = {
                         Image(
                             AniIcons.Telegram, stringResource(Lang.settings_help_telegram),

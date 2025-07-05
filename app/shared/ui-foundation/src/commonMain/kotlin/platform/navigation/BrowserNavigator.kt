@@ -20,13 +20,12 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.OpenBrowserResult
 import me.him188.ani.app.platform.Context
-import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 
 /**
- * Please use [rememberBrowserNavigator] instead of this directly.
+ * Please use [rememberAsyncBrowserNavigator] instead of this directly.
  */
 val LocalBrowserNavigator: ProvidableCompositionLocal<BrowserNavigator> = staticCompositionLocalOf {
     error("No BrowserNavigator provided")
@@ -42,22 +41,27 @@ private val logger = logger<BrowserNavigator>()
  */
 @Composable
 @Suppress("DEPRECATION")
-fun rememberBrowserNavigator(): DelegateBrowserNavigator {
+fun rememberAsyncBrowserNavigator(): BrowserNavigator {
     val navigator = LocalBrowserNavigator.current
     val toaster = LocalToaster.current
     val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
 
-    return remember {
-        val delegate = object : BrowserNavigator {
+    val failureAction = remember {
+        { failure: OpenBrowserResult.Failure ->
+            clipboard.setText(AnnotatedString(failure.dest))
+            toaster.toast("无法打开链接，已将链接复制到剪贴板，请打开浏览器访问")
+            logger.error(failure.throwable) { "Failed to open ${failure.dest}" }
+        }
+    }
+
+    return remember(navigator) {
+        object : BrowserNavigator {
             override fun openBrowser(context: Context, url: String): OpenBrowserResult {
                 scope.launch {
                     val openResult = navigator.openBrowser(context, url)
                     if (openResult is OpenBrowserResult.Failure) {
-                        clipboard.setText(AnnotatedString(openResult.dest))
-                        toaster.toast("无法打开链接，已将链接复制到剪贴板，请打开浏览器访问")
-                        logger.error(openResult.throwable) { "Failed to open browser" }
+                        failureAction(openResult)
                     }
                 }
                 return OpenBrowserResult.Success
@@ -67,9 +71,7 @@ fun rememberBrowserNavigator(): DelegateBrowserNavigator {
                 scope.launch {
                     val openResult = navigator.openJoinGroup(context)
                     if (openResult is OpenBrowserResult.Failure) {
-                        clipboard.setText(AnnotatedString(openResult.dest))
-                        toaster.toast("无法打开 QQ 群链接，已将加群链接复制到剪切板，请打开浏览器访问")
-                        logger.error(openResult.throwable) { "Failed to open join QQ group" }
+                        failureAction(openResult)
                     }
                 }
                 return OpenBrowserResult.Success
@@ -79,41 +81,11 @@ fun rememberBrowserNavigator(): DelegateBrowserNavigator {
                 scope.launch {
                     val openResult = navigator.intentActionView(context, url)
                     if (openResult is OpenBrowserResult.Failure) {
-                        clipboard.setText(AnnotatedString(openResult.dest))
-                        toaster.toast("无法打开链接，已将链接复制到剪贴板，请打开浏览器访问")
-                        logger.error(openResult.throwable) { "Failed to open intent action view" }
+                        failureAction(openResult)
                     }
                 }
                 return OpenBrowserResult.Success
             }
         }
-
-        DelegateBrowserNavigator(context, delegate)
-    }
-}
-
-@Suppress("unused")
-class DelegateBrowserNavigator(
-    private val context: Context,
-    private val delegate: BrowserNavigator,
-) : BrowserNavigator by delegate {
-    fun openBrowser(url: String): OpenBrowserResult {
-        return delegate.openBrowser(context, url)
-    }
-
-    fun openJoinGroup(): OpenBrowserResult {
-        return delegate.openJoinGroup(context)
-    }
-
-    fun openJoinTelegram(): OpenBrowserResult {
-        return delegate.openJoinTelegram(context)
-    }
-
-    fun intentActionView(url: String): OpenBrowserResult {
-        return delegate.intentActionView(context, url)
-    }
-
-    fun intentOpenVideo(url: String): OpenBrowserResult {
-        return delegate.intentOpenVideo(context, url)
     }
 }
