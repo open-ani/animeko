@@ -35,6 +35,14 @@ interface MediaSelectorEvents {
      * flow 的值为新的用户设置
      */
     val onChangePreference: Flow<MediaPreference>
+    
+    /**
+     * 媒体被加入黑名单.
+     * 当用户选择某媒体后，应该将之前选择的媒体（即 fastSelect 的结果）加入黑名单.
+     * 
+     * flow 的值为加入黑名单的媒体.
+     */
+    val onBlackListMedia: Flow<Media>
 }
 
 data class SelectEvent(
@@ -52,5 +60,7 @@ class MutableMediaSelectorEvents(
     override val onBeforeSelect: MutableSharedFlow<SelectEvent> =
         MutableSharedFlow(replay, extraBufferCapacity, onBufferOverflow)
     override val onChangePreference: MutableSharedFlow<MediaPreference> =
+        MutableSharedFlow(replay, extraBufferCapacity, onBufferOverflow)
+    override val onBlackListMedia: MutableSharedFlow<Media> =
         MutableSharedFlow(replay, extraBufferCapacity, onBufferOverflow)
 }

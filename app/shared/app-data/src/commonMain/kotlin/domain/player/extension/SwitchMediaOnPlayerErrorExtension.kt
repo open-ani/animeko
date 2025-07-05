@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.player.extension
 
 import kotlinx.collections.immutable.persistentHashSetOf
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.episode.MediaFetchSelectBundle
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
@@ -30,6 +32,7 @@ import me.him188.ani.app.domain.mediasource.GetWebMediaSourceInstanceFlowUseCase
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
+import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -86,7 +89,20 @@ class SwitchMediaOnPlayerErrorExtension(
                     return@collectLatest
                 }
 
-                handler.observeLoadErrorAndHandle(mediaFetchSessionFlow, videoLoadingStateFlow, playbackStateFlow)
+                coroutineScope {
+                    // 监听黑名单事件
+                    launch {
+                        mediaFetchSessionFlow.collectLatest { bundle ->
+                            if (bundle == null) return@collectLatest
+                            bundle.mediaSelector.events.onBlackListMedia.collect { blacklisted ->
+                                handler.addToBlacklist(blacklisted)
+                            }
+                        }
+                    }
+
+                    // 启动播放错误处理
+                    handler.observeLoadErrorAndHandle(mediaFetchSessionFlow, videoLoadingStateFlow, playbackStateFlow)
+                }
             }
     }
 
@@ -125,6 +141,10 @@ private class PlayerLoadErrorHandler(
     private val getSourceTiers: suspend () -> MediaSelectorSourceTiers,
 ) {
     private var blacklistedMediaIds = persistentHashSetOf<String>()
+
+    fun addToBlacklist(media: Media) {
+        blacklistedMediaIds = blacklistedMediaIds.add(media.mediaId)
+    }
 
     suspend fun handleError(
         session: MediaFetchSession,

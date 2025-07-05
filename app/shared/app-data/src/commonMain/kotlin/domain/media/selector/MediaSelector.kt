@@ -410,6 +410,16 @@ class DefaultMediaSelector(
     private suspend fun selectImpl(candidate: Media, updatePreference: Boolean, force: Boolean = false): Boolean {
         events.onBeforeSelect.emit(SelectEvent(candidate, null))
         if (selected.value == candidate && !force) return false
+        
+        // 如果是用户手动选择，将之前选中的媒体加入黑名单  
+        if (updatePreference) {
+            selected.value?.let { previousMedia ->
+                if (previousMedia.mediaId != candidate.mediaId) {
+                    events.onBlackListMedia.emit(previousMedia)
+                }
+            }
+        }
+        
         selected.value = candidate // MSF, will not trigger new emit
 
         if (updatePreference) {
@@ -422,7 +432,9 @@ class DefaultMediaSelector(
 
             broadcastChangePreference()
         }
-
+        
+        
+        
         // Publish events
         events.onSelect.emit(SelectEvent(candidate, null))
         return true
