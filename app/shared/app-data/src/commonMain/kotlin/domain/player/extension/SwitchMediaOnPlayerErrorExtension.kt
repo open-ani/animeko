@@ -69,6 +69,12 @@ class SwitchMediaOnPlayerErrorExtension(
         }
     }
 
+    /**
+     * 启动播放失败处理逻辑。
+     *
+     * 此函数监听当前播放会话流、视频加载状态和播放器状态，并在发生错误时触发自动切换。
+     * 同时也监听媒体选择事件，当用户手动切换媒体时，将先前选中的媒体加入黑名单，避免自动选择时回退。
+     */
     private suspend fun invoke(
         mediaFetchSessionFlow: Flow<MediaFetchSelectBundle?>,
         videoLoadingStateFlow: Flow<VideoLoadingState>,
@@ -90,12 +96,14 @@ class SwitchMediaOnPlayerErrorExtension(
                 }
 
                 coroutineScope {
-                    // 监听黑名单事件
+                    // 监听选择事件，根据手动状态操作黑名单
                     launch {
                         mediaFetchSessionFlow.collectLatest { bundle ->
                             if (bundle == null) return@collectLatest
-                            bundle.mediaSelector.events.onBlackListMedia.collect { blacklisted ->
-                                handler.addToBlacklist(blacklisted)
+                            bundle.mediaSelector.events.onSelect.collect { event ->
+                                if (event.isManualSelect && event.previousMedia != null) {
+                                    handler.addToBlacklist(event.previousMedia)
+                                }
                             }
                         }
                     }

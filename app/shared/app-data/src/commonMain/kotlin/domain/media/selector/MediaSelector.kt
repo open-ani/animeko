@@ -404,24 +404,41 @@ class DefaultMediaSelector(
     }
 
     /**
-     * 选择一个 [Media].设置为 [selected], 并广播事件.
-     * @param force 是否强制选择, 即使 [selected] 已经是 [candidate] 时也会选择.
+     * 内部媒体选择实现函数。
+     *
+     * 设置当前选中的 [Media]，并在必要时更新用户偏好设置及广播事件。
+     *
+     * 此函数会发出 [onBeforeSelect] 与 [onSelect] 两个事件，分别用于监听前置逻辑和最终结果。
+     * 若传入的 [candidate] 与当前选中的媒体相同，且 [force] 为 false，则不会进行任何操作。
+     *
+     * @param candidate 待选中的媒体项。
+     * @param updatePreference 是否根据此媒体更新用户偏好（如分辨率、联盟、字幕语言等）。
+     * @param force 是否强制切换媒体。若为 true，则即使媒体未变也会触发切换。
+     * @return 若成功完成切换则返回 true，否则为 false。
      */
-    private suspend fun selectImpl(candidate: Media, updatePreference: Boolean, force: Boolean = false): Boolean {
-        events.onBeforeSelect.emit(SelectEvent(candidate, null))
-        if (selected.value == candidate && !force) return false
+    private suspend fun selectImpl(
+        candidate: Media,
+        updatePreference: Boolean,
+        force: Boolean = false
+    ): Boolean {
+        val previous = selected.value
         
-        // 如果是用户手动选择，将之前选中的媒体加入黑名单  
-        if (updatePreference) {
-            selected.value?.let { previousMedia ->
-                if (previousMedia.mediaId != candidate.mediaId) {
-                    events.onBlackListMedia.emit(previousMedia)
-                }
-            }
-        }
+        // 若未启用强制切换，且目标与当前项相同，则跳过
+        if (!force && previous == candidate) return false
+        
+        // 发出切换前事件
+        events.onBeforeSelect.emit(
+            SelectEvent(
+                media = candidate,
+                subtitleLanguageId = null,
+                previousMedia = previous,
+                isManualSelect = true
+            )
+        )
         
         selected.value = candidate // MSF, will not trigger new emit
-
+        
+        // 更新用户偏好
         if (updatePreference) {
             alliance.preferWithoutBroadcast(candidate.properties.alliance)
             resolution.preferWithoutBroadcast(candidate.properties.resolution)
@@ -432,11 +449,17 @@ class DefaultMediaSelector(
 
             broadcastChangePreference()
         }
+
+        // 发出选择完成事件
+        events.onSelect.emit(
+            SelectEvent(
+                media = candidate,
+                subtitleLanguageId = null,
+                previousMedia = previous,
+                isManualSelect = true
+            )
+        )
         
-        
-        
-        // Publish events
-        events.onSelect.emit(SelectEvent(candidate, null))
         return true
     }
 

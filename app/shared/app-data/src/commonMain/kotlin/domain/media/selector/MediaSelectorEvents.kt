@@ -36,18 +36,23 @@ interface MediaSelectorEvents {
      */
     val onChangePreference: Flow<MediaPreference>
     
-    /**
-     * 媒体被加入黑名单.
-     * 当用户选择某媒体后，应该将之前选择的媒体（即 fastSelect 的结果）加入黑名单.
-     * 
-     * flow 的值为加入黑名单的媒体.
-     */
-    val onBlackListMedia: Flow<Media>
 }
 
+/**
+ * 表示一次媒体选择事件的详细信息。
+ *
+ * 此事件在媒体成功选择（无论自动或手动）后发出，用于向外部广播选择行为。
+ *
+ * @property media 当前被选中的媒体项，可能为 null。
+ * @property subtitleLanguageId 当前选择的字幕语言 ID，可能为 null。
+ * @property previousMedia 上一次被选中的媒体项。
+ * @property isManualSelect 是否为用户手动触发的选择操作。
+ */
 data class SelectEvent(
     val media: Media?,
     val subtitleLanguageId: String?,
+    val previousMedia: Media?,
+    val isManualSelect: Boolean
 )
 
 class MutableMediaSelectorEvents(
@@ -60,7 +65,5 @@ class MutableMediaSelectorEvents(
     override val onBeforeSelect: MutableSharedFlow<SelectEvent> =
         MutableSharedFlow(replay, extraBufferCapacity, onBufferOverflow)
     override val onChangePreference: MutableSharedFlow<MediaPreference> =
-        MutableSharedFlow(replay, extraBufferCapacity, onBufferOverflow)
-    override val onBlackListMedia: MutableSharedFlow<Media> =
         MutableSharedFlow(replay, extraBufferCapacity, onBufferOverflow)
 }
