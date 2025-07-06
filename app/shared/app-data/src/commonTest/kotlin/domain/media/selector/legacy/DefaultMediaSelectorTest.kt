@@ -12,6 +12,7 @@
 package me.him188.ani.app.domain.media.selector.legacy
 
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
@@ -22,9 +23,11 @@ import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.domain.media.selector.MediaExclusionReason
+import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
 import me.him188.ani.app.domain.media.selector.OptionalPreference
 import me.him188.ani.app.domain.media.selector.SelectEvent
 import me.him188.ani.app.domain.media.selector.preferredValueOrNull
+import me.him188.ani.app.domain.player.extension.PlayerLoadErrorHandler
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
@@ -1352,7 +1355,15 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
             selector.select(target)
         }.run {
             assertEquals(1, onSelect.size)
-            assertEquals(SelectEvent(target, null), onSelect.first())
+            assertEquals(
+                SelectEvent(
+                    media = target,
+                    subtitleLanguageId = null,
+                    previousMedia = null,
+                    isManualSelect = true
+                ),
+                onSelect.first()
+            )
             assertEquals(1, onChangePreference.size)
             assertEquals(
                 // 
@@ -1376,7 +1387,15 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
             selector.select(target)
         }.run {
             assertEquals(1, onSelect.size)
-            assertEquals(SelectEvent(target, null), onSelect.first())
+            assertEquals(
+                SelectEvent(
+                    media = target,
+                    subtitleLanguageId = null,
+                    previousMedia = null,
+                    isManualSelect = true
+                ),
+                onSelect.first()
+            )
             assertEquals(1, onChangePreference.size)
             assertEquals(
                 MediaPreference.Companion.Empty.copy(
@@ -1389,6 +1408,77 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
             )
         }
     }
+
+    @Test
+    fun `event select replaces previous`() = runTest {
+        savedUserPreference.value = MediaPreference.Companion.Empty
+        savedDefaultPreference.value = MediaPreference.Companion.Empty
+
+        val first = media(alliance = "A", subtitleLanguages = listOf("CHS"))
+        val second = media(alliance = "B", subtitleLanguages = listOf("CHT"))
+
+        addMedia(first)
+        addMedia(second)
+
+        selector.select(first)
+
+        runCollectEvents {
+            selector.select(second)
+        }.run {
+            assertEquals(1, onSelect.size)
+            val event = onSelect.first()
+
+            assertEquals(second, event.media)
+            assertEquals(null, event.subtitleLanguageId)
+            assertEquals(first, event.previousMedia)
+            assertEquals(true, event.isManualSelect)
+
+            assertEquals(1, onChangePreference.size)
+            assertEquals(
+                MediaPreference.Companion.Empty.copy(
+                    alliance = "B",
+                    resolution = second.properties.resolution,
+                    subtitleLanguageId = "CHT",
+                    mediaSourceId = "dmhy"
+                ),
+                onChangePreference.first()
+            )
+        }
+    }
+
+    @Test
+    fun `blacklist is updated on manual select`() = runTest {
+        val first = media(mediaId = "media-a", alliance = "A", subtitleLanguages = listOf("CHS"))
+        val second = media(mediaId = "media-b", alliance = "B", subtitleLanguages = listOf("CHT"))
+        addMedia(first)
+        addMedia(second)
+
+        val handler = PlayerLoadErrorHandler(
+            getWebSources = { listOf("source-a", "source-b") },
+            getPreferKind = { null },
+            getSourceTiers = { MediaSelectorSourceTiers(emptyMap()) } // fake tiers
+        )
+
+        val job = launch {
+            selector.events.onSelect.collect { event ->
+                if (event.isManualSelect && event.previousMedia != null) {
+                    handler.addToBlacklist(event.previousMedia)
+                }
+            }
+        }
+        
+        yield()
+        selector.select(first)
+        selector.select(second)
+        
+        delay(1000)
+        
+        assertTrue("media-a" in handler.blacklist)
+
+        job.cancel()
+    }
+
+
 
     @Test
     fun `event prefer`() = runTest {

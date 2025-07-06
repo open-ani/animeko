@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.player.extension
 
+import androidx.annotation.VisibleForTesting
 import kotlinx.collections.immutable.persistentHashSetOf
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -143,7 +144,7 @@ class SwitchMediaOnPlayerErrorExtension(
     }
 }
 
-private class PlayerLoadErrorHandler(
+internal class PlayerLoadErrorHandler(
     private val getWebSources: suspend () -> List<String>,
     private val getPreferKind: suspend () -> MediaSourceKind?,
     private val getSourceTiers: suspend () -> MediaSelectorSourceTiers,
@@ -190,4 +191,7 @@ private class PlayerLoadErrorHandler(
     companion object {
         private val logger = logger<PlayerLoadErrorHandler>()
     }
+
+    @VisibleForTesting
+    val blacklist: Set<String> get() = blacklistedMediaIds
 }
