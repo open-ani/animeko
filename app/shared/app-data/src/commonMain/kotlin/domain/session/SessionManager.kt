@@ -9,13 +9,16 @@
 
 package me.him188.ani.app.domain.session
 
+import io.ktor.client.plugins.ClientRequestException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -26,6 +29,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
+import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.data.repository.RepositoryAuthorizationException
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryNetworkException
@@ -35,16 +39,20 @@ import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.GuestSession
 import me.him188.ani.app.data.repository.user.Session
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.TokenRepository
 import me.him188.ani.app.domain.session.auth.OAuthResult
 import me.him188.ani.app.domain.session.auth.toOAuthResult
 import me.him188.ani.client.apis.UserAuthenticationAniApi
+import me.him188.ani.client.models.AniBindWithTokenRequest
 import me.him188.ani.client.models.AniRefreshTokenRequest
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.info
+import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.thisLogger
 import me.him188.ani.utils.logging.warn
+import org.koin.core.Koin
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.properties.Delegates
 import kotlin.time.Duration
@@ -294,6 +302,71 @@ class SessionManager(
         } catch (e: Exception) {
             // refresh 只应该 throw RepositoryException, 但是我们还是保险起见封装
             throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+    }
+
+    companion object {
+        private val logger = logger<SessionManager>()
+
+        private val _firstNavLoginDestToBgm = MutableStateFlow<Boolean>(false)
+        val firstNavLoginDestToBgm: StateFlow<Boolean> = _firstNavLoginDestToBgm
+
+        @Deprecated("Since 5.0, for migration only")
+        suspend fun migrateBangumiToken(koin: Koin) {
+            val settings = koin.get<SettingsRepository>()
+            val tokenRepository = koin.get<TokenRepository>()
+
+            val session = tokenRepository.session.first()
+            val needReLogin = settings.oneshotActionConfig.flow.first().needReLoginAfter500
+
+            // 如果是 guest (未登录或新用户) 或者已经迁移过一次了, 就不迁移
+            if (session is GuestSession || !needReLogin) {
+                return
+            }
+
+            check(session is AccessTokenSession)
+
+            val bgmRefreshToken = tokenRepository.refreshToken.first()
+            val client = koin.get<AniApiProvider>().bangumiApi
+            val sessionManager = koin.get<SessionManager>()
+
+            // 如果需要迁移, 并且有 bgm refresh token, 则尝试自动迁移
+            if (bgmRefreshToken != null) {
+                try {
+                    val result = client
+                        .invoke { bindWithToken(AniBindWithTokenRequest(bgmRefreshToken)) }
+                        .body()
+
+                    sessionManager.setSession(
+                        AccessTokenSession(
+                            AccessTokenPair(
+                                aniAccessToken = result.tokens.accessToken,
+                                expiresAtMillis = result.tokens.expiresAtMillis,
+                                bangumiAccessToken = result.tokens.bangumiAccessToken,
+                            ),
+                        ),
+                        refreshToken = result.tokens.refreshToken,
+                    )
+
+                    // 迁移完成后清除一次性动作
+                    settings.oneshotActionConfig.update { copy(needReLoginAfter500 = false) }
+                    return
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: ClientRequestException) {
+                    // 400 表示这个 refresh token 无效, 否则表示出现了其他内部错误
+                    if (e.response.status.value == 400) {
+                        logger.warn("Bangumi refresh token is invalid, clearing session", e)
+                    } else {
+                        logger.error("Failed to request bind Bangumi refresh, clearing session", e)
+                    }
+                }
+            }
+            // 这时候可能是没有 Bangumi refresh token, 或者请求迁移失败了 
+            // 需要清除 session 并在用户第一次点击登录按钮时导航到 bgm 登录, 以免注册多余的 ani 账号
+            sessionManager.clearSession()
+            _firstNavLoginDestToBgm.value = true
+            settings.oneshotActionConfig.update { copy(needReLoginAfter500 = false) }
         }
     }
 }

@@ -39,6 +39,13 @@ data class OneshotActionConfig(
      * @since 4.11
      */
     val metadataMigratedFor411: Boolean = false,
+
+    /**
+     * 用户更新到 5.0 版本之后需要重新登录
+     *
+     * @since 5.0
+     */
+    val needReLoginAfter500: Boolean = true,
 ) {
     companion object {
         @Stable

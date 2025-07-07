@@ -10,6 +10,7 @@
 package me.him188.ani.app.platform
 
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -489,6 +490,8 @@ fun KoinApplication.startCommonKoinModule(
     }
     // Now, the proxy settings is ready. Other components can use http clients.
 
+    val migrationCompleted = CompletableDeferred<Unit>()
+
     coroutineScope.launch {
         val mediaCacheMigrator = koin.get<MediaCacheMigrator>()
         val requiresMigration = mediaCacheMigrator.startupMigrationCheckAndGetIfRequiresMigration(coroutineScope)
@@ -498,10 +501,19 @@ fun KoinApplication.startCommonKoinModule(
             koin.get<HttpDownloader>().init() // 这涉及读取 DownloadState, 需要在加载 storage metadata 前调用.
         }
 
+        // 只有不需要迁移缓存时才能迁移旧 session token
+        migrationCompleted.complete(Unit)
+
         val manager = koin.get<MediaCacheManager>()
         for (storage in manager.storagesIncludingDisabled) {
             if (!requiresMigration) storage.restorePersistedCaches()
         }
+    }
+
+    @Suppress("DEPRECATION")
+    coroutineScope.launch {
+        migrationCompleted.await()
+        SessionManager.migrateBangumiToken(koin)
     }
 
     coroutineScope.launch {
