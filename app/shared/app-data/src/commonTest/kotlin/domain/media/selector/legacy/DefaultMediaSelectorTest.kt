@@ -1357,7 +1357,6 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
                     media = target,
                     subtitleLanguageId = null,
                     previousMedia = null,
-                    isManualSelect = true
                 ),
                 onSelect.first()
             )
@@ -1389,7 +1388,6 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
                     media = target,
                     subtitleLanguageId = null,
                     previousMedia = null,
-                    isManualSelect = true
                 ),
                 onSelect.first()
             )
@@ -1428,7 +1426,6 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
             assertEquals(second, event.media)
             assertEquals(null, event.subtitleLanguageId)
             assertEquals(first, event.previousMedia)
-            assertEquals(true, event.isManualSelect)
 
             assertEquals(1, onChangePreference.size)
             assertEquals(

@@ -11,7 +11,10 @@ package me.him188.ani.app.domain.player.extension
 
 import androidx.annotation.VisibleForTesting
 import kotlinx.collections.immutable.persistentHashSetOf
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
@@ -21,6 +24,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.episode.MediaFetchSelectBundle
@@ -97,20 +101,15 @@ class SwitchMediaOnPlayerErrorExtension(
                 }
 
                 coroutineScope {
-                    // 监听选择事件，根据手动状态操作黑名单
-                    launch {
-                        mediaFetchSessionFlow.collectLatest { bundle ->
-                            if (bundle == null) return@collectLatest
-                            bundle.mediaSelector.events.onSelect.collect { event ->
-                                if (event.isManualSelect && event.previousMedia != null) {
-                                    handler.addToBlacklist(event.previousMedia)
-                                }
-                            }
-                        }
-                    }
-
-                    // 启动播放错误处理
-                    handler.observeLoadErrorAndHandle(mediaFetchSessionFlow, videoLoadingStateFlow, playbackStateFlow)
+                    handler.observeMediaSelectorBlacklist(
+                        mediaFetchSessionFlow.mapNotNull { it?.mediaSelector }
+                    )
+                    
+                    handler.observeLoadErrorAndHandle(
+                        mediaFetchSessionFlow,
+                        videoLoadingStateFlow,
+                        playbackStateFlow
+                    )
                 }
             }
     }
@@ -154,7 +153,17 @@ internal class PlayerLoadErrorHandler(
     fun addToBlacklist(media: Media) {
         blacklistedMediaIds = blacklistedMediaIds.add(media.mediaId)
     }
-
+    
+    suspend fun observeMediaSelectorBlacklist(
+        mediaSelectorFlow: Flow<MediaSelector>
+    ): Job = CoroutineScope(currentCoroutineContext()).launch {
+        mediaSelectorFlow.collectLatest { selector ->
+            selector.events.onSelect.collect { event ->
+                event.previousMedia?.let { addToBlacklist(it) }
+            }
+        }
+    }
+    
     suspend fun handleError(
         session: MediaFetchSession,
         mediaSelector: MediaSelector,

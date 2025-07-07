@@ -46,13 +46,11 @@ interface MediaSelectorEvents {
  * @property media 当前被选中的媒体项，可能为 null。
  * @property subtitleLanguageId 当前选择的字幕语言 ID，可能为 null。
  * @property previousMedia 上一次被选中的媒体项。
- * @property isManualSelect 是否为用户手动触发的选择操作。
  */
 data class SelectEvent(
     val media: Media?,
     val subtitleLanguageId: String?,
     val previousMedia: Media?,
-    val isManualSelect: Boolean
 )
 
 class MutableMediaSelectorEvents(

@@ -9,8 +9,8 @@
 
 package me.him188.ani.app.domain.media.selector
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import me.him188.ani.app.domain.player.extension.PlayerLoadErrorHandler
 import me.him188.ani.app.domain.media.selector.testFramework.runSimpleMediaSelectorTestSuite
@@ -38,27 +38,29 @@ class MediaSelectorManualSelectTest {
             mediaApi.addMedia(secondMedia)
         }
     ) {
-        coroutineScope {
-            val handler = PlayerLoadErrorHandler(
-                getWebSources = { listOf("source-a", "source-b") },
-                getPreferKind = { null },
-                getSourceTiers = { MediaSelectorSourceTiers(emptyMap()) } // fake tiers
-            )
+        val first = mediaApi.mediaList.value[0]
+        val second = mediaApi.mediaList.value[1]
 
-            val job = launch {
-                selector.events.onSelect.collect { event ->
-                    if (event.isManualSelect && event.previousMedia != null) {
-                        handler.addToBlacklist(event.previousMedia)
-                    }
-                }
-            }
+        val handler = PlayerLoadErrorHandler(
+            getWebSources = { listOf("source-a", "source-b") },
+            getPreferKind = { null },
+            getSourceTiers = { MediaSelectorSourceTiers(emptyMap()) }
+        )
+
+        coroutineScope {
+            val job = handler.observeMediaSelectorBlacklist(
+                mediaSelectorFlow = flowOf(selector)
+            )
             
             testScope.runCurrent()
-            selector.select(mediaApi.mediaList.value[0])
-            selector.select(mediaApi.mediaList.value[1])
+            selector.select(first)
+            selector.select(second)
             testScope.advanceUntilIdle()
-            
-            assertTrue("ゆるキャン△-a" in handler.blacklist)
+
+            assertTrue(
+                actual = "ゆるキャン△-a" in handler.blacklist,
+                message = "Previous media should be blacklisted"
+            )
 
             job.cancel()
         }

@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -493,15 +495,23 @@ fun runFetchMediaSelectorTestSuite(
 inline fun DynamicTestsBuilder.addSimpleMediaSelectorTest(
     name: String? = null,
     crossinline buildTest: SimpleMediaSelectorTestSuite.() -> Unit = {},
-    crossinline thenCheck: suspend SimpleMediaSelectorTestSuite.(TestScope) -> Unit,
+    crossinline thenCheck: suspend SimpleMediaSelectorTestSuite.() -> Unit,
 ) {
-    add(name ?: "<unnamed test>") {
-        runTest {
-            val suite = SimpleMediaSelectorTestSuite(this).apply(buildTest)
-            suite.thenCheck(this)
+    val scheduler = TestCoroutineScheduler()
+    val dispatcher = StandardTestDispatcher(scheduler)
+    val scope = TestScope(dispatcher)
+    val suite = SimpleMediaSelectorTestSuite(scope).apply(buildTest)
+
+    add(name ?: suite.initApi.subjectName) {
+        runBlocking {
+            scope.runTest {
+                thenCheck(suite)
+            }
         }
     }
 }
+
+
 suspend inline fun SimpleMediaSelectorTestSuite.assertMedias(block: MaybeExcludedMediaAssertions.() -> Unit) {
     contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
     selector.filteredCandidates.first().assert(block)

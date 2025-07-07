@@ -432,7 +432,6 @@ class DefaultMediaSelector(
                 media = candidate,
                 subtitleLanguageId = null,
                 previousMedia = previous,
-                isManualSelect = true
             )
         )
         
@@ -456,7 +455,6 @@ class DefaultMediaSelector(
                 media = candidate,
                 subtitleLanguageId = null,
                 previousMedia = previous,
-                isManualSelect = true
             )
         )
         
