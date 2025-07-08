@@ -11,10 +11,7 @@ package me.him188.ani.app.domain.player.extension
 
 import androidx.annotation.VisibleForTesting
 import kotlinx.collections.immutable.persistentHashSetOf
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
@@ -101,15 +98,19 @@ class SwitchMediaOnPlayerErrorExtension(
                 }
 
                 coroutineScope {
-                    handler.observeMediaSelectorBlacklist(
-                        mediaFetchSessionFlow.mapNotNull { it?.mediaSelector }
-                    )
-                    
-                    handler.observeLoadErrorAndHandle(
-                        mediaFetchSessionFlow,
-                        videoLoadingStateFlow,
-                        playbackStateFlow
-                    )
+                    launch {
+                        handler.observeMediaSelectorBlacklist(
+                            mediaFetchSessionFlow.mapNotNull { it?.mediaSelector }
+                        )
+                    }
+
+                    launch {
+                        handler.observeLoadErrorAndHandle(
+                            mediaFetchSessionFlow,
+                            videoLoadingStateFlow,
+                            playbackStateFlow
+                        )
+                    }
                 }
             }
     }
@@ -150,16 +151,14 @@ internal class PlayerLoadErrorHandler(
 ) {
     private var blacklistedMediaIds = persistentHashSetOf<String>()
 
-    fun addToBlacklist(media: Media) {
-        blacklistedMediaIds = blacklistedMediaIds.add(media.mediaId)
-    }
-    
     suspend fun observeMediaSelectorBlacklist(
         mediaSelectorFlow: Flow<MediaSelector>
-    ): Job = CoroutineScope(currentCoroutineContext()).launch {
+    ) {
         mediaSelectorFlow.collectLatest { selector ->
             selector.events.onSelect.collect { event ->
-                event.previousMedia?.let { addToBlacklist(it) }
+                event.previousMedia?.let { 
+                    blacklistedMediaIds = blacklistedMediaIds.add(it.mediaId) 
+                }
             }
         }
     }

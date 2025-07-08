@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.media.selector
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import me.him188.ani.app.domain.player.extension.PlayerLoadErrorHandler
@@ -48,9 +49,11 @@ class MediaSelectorManualSelectTest {
         )
 
         coroutineScope {
-            val job = handler.observeMediaSelectorBlacklist(
-                mediaSelectorFlow = flowOf(selector)
-            )
+            val job = launch {
+                handler.observeMediaSelectorBlacklist(
+                    mediaSelectorFlow = flowOf(selector)
+                )
+            }
             
             testScope.runCurrent()
             selector.select(first)
@@ -64,5 +67,6 @@ class MediaSelectorManualSelectTest {
 
             job.cancel()
         }
+
     }
 }
