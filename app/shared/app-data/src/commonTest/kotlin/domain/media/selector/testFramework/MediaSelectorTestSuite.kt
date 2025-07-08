@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -274,7 +276,9 @@ sealed class MediaSelectorTestSuite {
 /**
  * 使用 [List] 存储待选 [me.him188.ani.datasources.api.Media].
  */
-class SimpleMediaSelectorTestSuite : MediaSelectorTestSuite() {
+class SimpleMediaSelectorTestSuite(
+    val testScope: TestScope
+) : MediaSelectorTestSuite() {
     val mediaApi = MediaApi()
 
     inner class MediaApi {
@@ -473,7 +477,9 @@ fun runSimpleMediaSelectorTestSuite(
     buildTest: SimpleMediaSelectorTestSuite.() -> Unit = {},
     thenCheck: suspend SimpleMediaSelectorTestSuite.() -> Unit
 ): TestResult = runTest {
-    SimpleMediaSelectorTestSuite().apply(buildTest).thenCheck()
+    val suite = SimpleMediaSelectorTestSuite(this)
+    suite.apply(buildTest)
+    suite.thenCheck()
 }
 
 /**
@@ -489,15 +495,22 @@ fun runFetchMediaSelectorTestSuite(
 inline fun DynamicTestsBuilder.addSimpleMediaSelectorTest(
     name: String? = null,
     crossinline buildTest: SimpleMediaSelectorTestSuite.() -> Unit = {},
-    crossinline runTest: suspend SimpleMediaSelectorTestSuite.() -> Unit,
+    crossinline thenCheck: suspend SimpleMediaSelectorTestSuite.() -> Unit,
 ) {
-    val suite = SimpleMediaSelectorTestSuite().apply(buildTest)
+    val scheduler = TestCoroutineScheduler()
+    val dispatcher = StandardTestDispatcher(scheduler)
+    val scope = TestScope(dispatcher)
+    val suite = SimpleMediaSelectorTestSuite(scope).apply(buildTest)
+
     add(name ?: suite.initApi.subjectName) {
         runBlocking {
-            runTest(suite)
+            scope.runTest {
+                thenCheck(suite)
+            }
         }
     }
 }
+
 
 suspend inline fun SimpleMediaSelectorTestSuite.assertMedias(block: MaybeExcludedMediaAssertions.() -> Unit) {
     contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
