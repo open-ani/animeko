@@ -61,10 +61,10 @@ import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 
 class AniSessionRefresher(
-    private val userAuthApi: ApiInvoker<UserAuthenticationAniApi>
+    private val getUserAuthApi: () -> ApiInvoker<UserAuthenticationAniApi>
 ) : SessionManager.SessionRefresher {
     override suspend fun refresh(refreshToken: String): OAuthResult {
-        return userAuthApi.invoke {
+        return getUserAuthApi().invoke {
             val resp = refreshToken(AniRefreshTokenRequest(refreshToken)).body()
             resp.toOAuthResult()
         }
