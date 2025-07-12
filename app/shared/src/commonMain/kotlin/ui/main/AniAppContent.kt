@@ -46,6 +46,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import androidx.window.core.layout.WindowSizeClass
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
@@ -321,6 +323,15 @@ private fun AniAppContentImpl(
 
                 val vm = viewModel { MainScreenSharedViewModel() }
                 var currentPage by rememberSaveable { mutableStateOf(route.initialPage) }
+
+                LaunchedEffect(Unit) {
+                    launch(start = CoroutineStart.ATOMIC) {
+                        vm.navigateToBgmLoginEvent.collect {
+                            aniNavigator.navigateBangumiAuthorize()
+                        }
+                    }
+                    vm.checkNeedReLogin()
+                }
 
                 OverrideNavigation(
                     {

@@ -23,7 +23,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -41,7 +40,6 @@ import kotlinx.coroutines.delay
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import me.him188.ani.app.data.repository.user.UserRepository.SendOtpResult
-import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
@@ -61,12 +59,7 @@ fun EmailLoginVerifyScreen(
     val asyncHandler = rememberAsyncHandler()
     val toaster = LocalToaster.current
 
-    LaunchedEffect(Unit) {
-        if (SessionManager.firstNavLoginDestToBgm.value) {
-            onBangumiLoginClick()
-        }
-    }
-    
+
     EmailLoginVerifyScreenImpl(
         email = state.email,
         nextResendTime = state.nextResendTime,

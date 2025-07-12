@@ -27,7 +27,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -39,7 +38,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -56,12 +54,6 @@ fun EmailLoginStartScreen(
     val state by vm.state.collectAsStateWithLifecycle(EmailLoginUiState.Initial)
     val asyncHandler = rememberAsyncHandler()
 
-    LaunchedEffect(Unit) {
-        if (SessionManager.firstNavLoginDestToBgm.value) {
-            onBangumiLoginClick()
-        }
-    }
-    
     EmailLoginStartScreenImpl(
         state.email,
         onContinueClick = {
