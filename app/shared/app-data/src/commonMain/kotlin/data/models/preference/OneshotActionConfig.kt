@@ -39,6 +39,11 @@ data class OneshotActionConfig(
      * @since 4.11
      */
     val metadataMigratedFor411: Boolean = false,
+
+    /**
+     * @since 5.0
+     */
+    val needReLoginAfter500: Boolean = true,
 ) {
     companion object {
         @Stable
