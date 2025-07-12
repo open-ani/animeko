@@ -35,9 +35,9 @@ import me.him188.ani.client.infrastructure.RequestConfig
 import me.him188.ani.client.infrastructure.RequestMethod
 import me.him188.ani.client.infrastructure.wrap
 import me.him188.ani.client.models.AniAuthenticationResponse
-import me.him188.ani.client.models.AniBindWithTokenRequest
 import me.him188.ani.client.models.AniListSyncCommandsSortBy
 import me.him188.ani.client.models.AniLoginResponse
+import me.him188.ani.client.models.AniLoginWithRefreshTokenRequest
 import me.him188.ani.client.models.AniOAuthRedirectResponse
 import me.him188.ani.client.models.AniPaginatedResponse1
 
@@ -96,22 +96,22 @@ open class BangumiAniApi : ApiClient {
     /**
      * 使用已有的 Bangumi refresh token 绑定账号
      * 使用已有的 Bangumi refresh token 绑定账号
-     * @param aniBindWithTokenRequest 
+     * @param aniLoginWithRefreshTokenRequest 
      * @return AniAuthenticationResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun bindWithToken(aniBindWithTokenRequest: AniBindWithTokenRequest): HttpResponse<AniAuthenticationResponse> {
+    open suspend fun loginWithRefreshToken(aniLoginWithRefreshTokenRequest: AniLoginWithRefreshTokenRequest): HttpResponse<AniAuthenticationResponse> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody = aniBindWithTokenRequest
+        val localVariableBody = aniLoginWithRefreshTokenRequest
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.POST,
-            "/v2/users/bangumi/bind/token",
+            "/v2/users/bangumi/loginWithRefreshToken",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

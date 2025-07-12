@@ -37,7 +37,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 
-data class AniBindWithTokenRequest (
+data class AniLoginWithRefreshTokenRequest (
 
     @SerialName(value = "refreshToken") @Required val refreshToken: kotlin.String
 

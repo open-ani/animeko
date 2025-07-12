@@ -42,7 +42,7 @@ import me.him188.ani.app.data.repository.user.TokenRepository
 import me.him188.ani.app.domain.session.auth.OAuthResult
 import me.him188.ani.app.domain.session.auth.toOAuthResult
 import me.him188.ani.client.apis.UserAuthenticationAniApi
-import me.him188.ani.client.models.AniBindWithTokenRequest
+import me.him188.ani.client.models.AniLoginWithRefreshTokenRequest
 import me.him188.ani.client.models.AniRefreshTokenRequest
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.logging.debug
@@ -333,7 +333,7 @@ class SessionManager(
             if (bgmRefreshToken != null) {
                 try {
                     val result = client
-                        .invoke { bindWithToken(AniBindWithTokenRequest(bgmRefreshToken)) }
+                        .invoke { loginWithRefreshToken(AniLoginWithRefreshTokenRequest(bgmRefreshToken)) }
                         .body()
 
                     sessionManager.setSession(
