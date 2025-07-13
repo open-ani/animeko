@@ -490,7 +490,7 @@ fun KoinApplication.startCommonKoinModule(
     }
     // Now, the proxy settings is ready. Other components can use http clients.
 
-    val migrationCompleted = CompletableDeferred<Unit>()
+    val migrationCacheCompleted = CompletableDeferred<Unit>()
 
     coroutineScope.launch {
         val mediaCacheMigrator = koin.get<MediaCacheMigrator>()
@@ -502,7 +502,7 @@ fun KoinApplication.startCommonKoinModule(
         }
 
         // 只有不需要迁移缓存时才能迁移旧 session token
-        migrationCompleted.complete(Unit)
+        migrationCacheCompleted.complete(Unit)
 
         val manager = koin.get<MediaCacheManager>()
         for (storage in manager.storagesIncludingDisabled) {
@@ -512,8 +512,8 @@ fun KoinApplication.startCommonKoinModule(
 
     @Suppress("DEPRECATION")
     coroutineScope.launch {
-        migrationCompleted.await()
-        SessionManager.migrateBangumiToken(koin)
+        migrationCacheCompleted.await()
+        SessionManager.migrationResult.value = SessionManager.migrateBangumiToken(koin)
     }
 
     coroutineScope.launch {

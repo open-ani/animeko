@@ -16,6 +16,7 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -311,15 +312,18 @@ class SessionManager(
     companion object {
         private val logger = logger<SessionManager>()
 
+        val migrationResult = MutableStateFlow<MigrationResult?>(null)
+
         @Deprecated("Since 5.0, for migration only")
         suspend fun migrateBangumiToken(koin: Koin): MigrationResult {
             val settings = koin.get<SettingsRepository>()
             val tokenRepository = koin.get<TokenRepository>()
 
             val session = tokenRepository.session.first()
+            val needReLogin = settings.oneshotActionConfig.flow.map { it.needReLoginAfter500 }
 
-            // 如果是 guest (未登录或新用户) 或者已经迁移过一次了, 就不迁移
-            if (session is GuestSession) {
+            // 如果是 guest (未登录或新用户) 或者已经迁移过了, 就不迁移
+            if (session is GuestSession || !needReLogin.first()) {
                 return MigrationResult.NoExtraAction
             }
 
@@ -364,6 +368,7 @@ class SessionManager(
             // 这时候可能是没有 Bangumi refresh token, 或者请求迁移失败了 
             // 需要清除 session 并在用户第一次点击登录按钮时导航到 bgm 登录, 以免注册多余的 ani 账号
             sessionManager.clearSession()
+            settings.oneshotActionConfig.update { copy(needReLoginAfter500 = false) }
             return MigrationResult.NeedReLogin
         }
     }

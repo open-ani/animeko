@@ -49,6 +49,7 @@ import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.getIcon
 import me.him188.ani.app.navigation.getText
+import me.him188.ani.app.navigation.navigateLoginOrBangumiAuthorizeIfNeeded
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuite
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
@@ -285,7 +286,7 @@ private fun MainScreenContent(
             },
             onNavigateToLogin = {
                 showAccountSettingsPopup = false
-                navigator.navigateLogin()
+                navigator.navigateLoginOrBangumiAuthorizeIfNeeded()
             },
         )
     }

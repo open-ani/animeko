@@ -45,6 +45,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.navigation.navigateLoginOrBangumiAuthorizeIfNeeded
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.icons.Passkey_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
@@ -79,7 +80,7 @@ fun LoadErrorCard(
     modifier: Modifier = Modifier,
     onLogin: () -> Unit = run {
         val navigator = LocalNavigator.current
-        { navigator.navigateLogin() }
+        { navigator.navigateLoginOrBangumiAuthorizeIfNeeded() }
     },
     shape: Shape = MaterialTheme.shapes.large, // behave like Dialogs.
     containerColor: Color = LoadErrorDefaults.containerColor,
