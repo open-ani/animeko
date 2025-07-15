@@ -63,7 +63,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
-import androidx.paging.compose.itemKey
 import kotlinx.coroutines.flow.collectLatest
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.domain.search.SearchSort
@@ -111,6 +110,12 @@ internal fun SearchResultColumn(
     val aniMotionScheme = LocalAniMotionScheme.current
 
     val itemsState = rememberUpdatedState(items)
+
+    val visibleItems: List<Pair<Int, SubjectPreviewItemInfo>> =
+        items.itemSnapshotList.items.mapIndexedNotNull { index, item ->
+            if (!item.hide) index to item else null
+        }
+    
     SearchResultLazyVerticalGrid(
         items,
         error = {
@@ -149,11 +154,11 @@ internal fun SearchResultColumn(
         }
 
         items(
-            items.itemCount,
-            key = items.itemKey { "SearchResultColumn-" + it.subjectId },
+            count = visibleItems.size,
+            key = { visibleItems[it].second.subjectId },
             contentType = items.itemContentType { 1 },
         ) { index ->
-            val info = items[index]
+            val (originalIndex, info) = visibleItems[index]
 
             SharedTransitionLayout {
                 AnimatedContent(
@@ -209,11 +214,11 @@ internal fun SearchResultColumn(
                                     }
 
                                     SearchResultItem(
-                                        info,
-                                        highlightSelected && index == selectedItemIndex(),
-                                        layoutParams.previewItem.shape,
-                                        { onSelect(index) },
-                                        onPlay,
+                                        info = info,
+                                        selected = highlightSelected && originalIndex == selectedItemIndex(),
+                                        shape = layoutParams.previewItem.shape,
+                                        onClick = { onSelect(originalIndex) },
+                                        onPlay = onPlay,
                                         Modifier
                                             .animateItem(
                                                 aniMotionScheme.feedItemFadeInSpec,
