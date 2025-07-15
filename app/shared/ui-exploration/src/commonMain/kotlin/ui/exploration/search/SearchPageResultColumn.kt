@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
+import androidx.paging.compose.itemKey
 import kotlinx.coroutines.flow.collectLatest
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.domain.search.SearchSort
@@ -113,7 +114,7 @@ internal fun SearchResultColumn(
 
     val visibleItems: List<Pair<Int, SubjectPreviewItemInfo>> =
         items.itemSnapshotList.items.mapIndexedNotNull { index, item ->
-            if (!item.hide) index to item else null
+            if (item != null && !item.hide) index to item else null
         }
     
     SearchResultLazyVerticalGrid(
@@ -180,7 +181,7 @@ internal fun SearchResultColumn(
                                     info?.title,
                                     info?.imageUrl,
                                     isPlaceholder = info == null,
-                                    onClick = { onSelect(index) },
+                                    onClick = { onSelect(originalIndex) },
                                     Modifier
                                         .ifNotNullThen(info) {
                                             sharedElement(
