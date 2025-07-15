@@ -45,6 +45,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -112,10 +113,14 @@ internal fun SearchResultColumn(
 
     val itemsState = rememberUpdatedState(items)
 
-    val visibleItems: List<Pair<Int, SubjectPreviewItemInfo>> =
-        items.itemSnapshotList.items.mapIndexedNotNull { index, item ->
-            if (item != null && !item.hide) index to item else null
+    val visibleItems by remember(items.itemSnapshotList) {
+        derivedStateOf {
+            items.itemSnapshotList.items.mapIndexedNotNull { index, item ->
+                if (item != null && !item.hide) index to item else null
+            }
         }
+    }
+
     
     SearchResultLazyVerticalGrid(
         items,
