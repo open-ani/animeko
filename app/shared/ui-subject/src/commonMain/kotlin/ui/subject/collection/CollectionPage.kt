@@ -29,7 +29,9 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.HowToReg
@@ -54,6 +56,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
@@ -299,37 +302,56 @@ fun CollectionPage(
             }
 
             else -> {
-                key(state.selectedTypeIndex) {
-                    PullToRefreshBox(
-                        items.loadState.refresh is LoadState.Loading,
-                        onRefresh = { items.refresh() },
-                        state = rememberPullToRefreshState(),
-                        enabled = LocalPlatform.current.isMobile(),
-                    ) {
-                        SubjectCollectionsColumn(
-                            items,
-                            item = { collection ->
-                                var nsfwModeState: NsfwMode by rememberSaveable(collection) { mutableStateOf(collection.nsfwMode) }
-                                NsfwMask(
-                                    nsfwModeState,
-                                    onTemporarilyDisplay = { nsfwModeState = NsfwMode.DISPLAY },
-                                    shape = SubjectCollectionItemDefaults.shape,
-                                ) {
-                                    SubjectCollectionItem(
-                                        collection,
-                                        { onCollectionUpdate(collection.subjectId, it) },
-                                        state.subjectProgressStateFactory,
-                                        state.createEditableSubjectCollectionTypeState(collection),
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                                .ifNotNullThen(nestedScrollConnection) { nestedScroll(it) },
-                            enableAnimation = enableAnimation,
-                            gridState = lazyGridState,
-                        )
+                val pagerState = rememberPagerState(
+                    initialPage = state.selectedTypeIndex,
+                    pageCount = { COLLECTION_TABS_SORTED.size }
+                )
+
+                LaunchedEffect(pagerState.currentPage) {
+                    if (pagerState.currentPage != state.selectedTypeIndex) {
+                        state.selectTypeIndex(pagerState.currentPage)
                     }
                 }
+
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    beyondViewportPageCount = 1,
+                    pageSpacing = 0.dp,
+                ) { pageIndex ->
+                    key(pageIndex) {
+                        PullToRefreshBox(
+                            items.loadState.refresh is LoadState.Loading,
+                            onRefresh = { items.refresh() },
+                            state = rememberPullToRefreshState(),
+                            enabled = LocalPlatform.current.isMobile(),
+                        ) {
+                            SubjectCollectionsColumn(
+                                items,
+                                item = { collection ->
+                                    var nsfwModeState: NsfwMode by rememberSaveable(collection) { mutableStateOf(collection.nsfwMode) }
+                                    NsfwMask(
+                                        nsfwModeState,
+                                        onTemporarilyDisplay = { nsfwModeState = NsfwMode.DISPLAY },
+                                        shape = SubjectCollectionItemDefaults.shape,
+                                    ) {
+                                        SubjectCollectionItem(
+                                            collection,
+                                            { onCollectionUpdate(collection.subjectId, it) },
+                                            state.subjectProgressStateFactory,
+                                            state.createEditableSubjectCollectionTypeState(collection),
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.fillMaxSize()
+                                    .ifNotNullThen(nestedScrollConnection) { nestedScroll(it) },
+                                enableAnimation = enableAnimation,
+                                gridState = lazyGridState,
+                            )
+                        }
+                    }
+                }
+                
             }
         }
 
