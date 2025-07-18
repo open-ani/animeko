@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,23 +20,24 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.apis
 
-import me.him188.ani.client.models.AniLoginResponse
-
-import me.him188.ani.client.infrastructure.*
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
 import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import me.him188.ani.client.infrastructure.ApiClient
+import me.him188.ani.client.infrastructure.HttpResponse
+import me.him188.ani.client.infrastructure.RequestConfig
+import me.him188.ani.client.infrastructure.RequestMethod
+import me.him188.ani.client.infrastructure.wrap
+import me.him188.ani.client.models.AniListSyncCommandsSortBy
+import me.him188.ani.client.models.AniLoginResponse
+import me.him188.ani.client.models.AniOAuthRedirectResponse
+import me.him188.ani.client.models.AniPaginatedResponse1
 
 open class BangumiAniApi : ApiClient {
 
@@ -44,31 +46,27 @@ open class BangumiAniApi : ApiClient {
         httpClientEngine: HttpClientEngine? = null,
         httpClientConfig: ((HttpClientConfig<*>) -> Unit)? = null,
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
-    ) : super(
-        baseUrl = baseUrl,
-        httpClientEngine = httpClientEngine,
-        httpClientConfig = httpClientConfig,
-        jsonBlock = jsonSerializer,
-    )
+    ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ) : super(baseUrl = baseUrl, httpClient = httpClient)
+    ): super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * 绑定 Bangumi 账号
      * 绑定 Bangumi 账号
-     * @param requestId
-     * @param os
-     * @param arch
-     * @return void
+     * @param requestId 
+     * @param os 
+     * @param arch 
+     * @return AniOAuthRedirectResponse
      */
-    open suspend fun bind(requestId: kotlin.String, os: kotlin.String, arch: kotlin.String): HttpResponse<Unit> {
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun bind(requestId: kotlin.String, os: kotlin.String, arch: kotlin.String): HttpResponse<AniOAuthRedirectResponse> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody =
+        val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -88,7 +86,39 @@ open class BangumiAniApi : ApiClient {
         return request(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * 执行队列中的命令
+     * 执行队列中的命令
+     * @return kotlin.Any
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun executeSyncCommands(): HttpResponse<kotlin.Any> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.POST,
+            "/v2/bangumi/sync",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
         ).wrap()
     }
 
@@ -96,7 +126,7 @@ open class BangumiAniApi : ApiClient {
     /**
      * 获取登录结果
      * 获取登录结果
-     * @param requestId
+     * @param requestId 
      * @return AniLoginResponse
      */
     @Suppress("UNCHECKED_CAST")
@@ -104,7 +134,7 @@ open class BangumiAniApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody =
+        val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -122,7 +152,45 @@ open class BangumiAniApi : ApiClient {
         return request(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * 获取队列中的 Bangumi 同步命令
+     * 获取队列中的 Bangumi 同步命令
+     * @param offset  (optional)
+     * @param limit  (optional)
+     * @param sortBy  (optional)
+     * @return AniPaginatedResponse1
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun listSyncCommands(offset: kotlin.Int? = null, limit: kotlin.Int? = null, sortBy: AniListSyncCommandsSortBy? = null): HttpResponse<AniPaginatedResponse1> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
+        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
+        sortBy?.apply { localVariableQuery["sortBy"] = listOf("${ sortBy.value }") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/bangumi/sync/commands",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
         ).wrap()
     }
 
@@ -130,16 +198,17 @@ open class BangumiAniApi : ApiClient {
     /**
      * 获取 Bangumi OAuth 授权链接
      * 获取 Bangumi OAuth 授权链接
-     * @param requestId
-     * @param os
-     * @param arch
-     * @return void
+     * @param requestId 
+     * @param os 
+     * @param arch 
+     * @return AniOAuthRedirectResponse
      */
-    open suspend fun oauth(requestId: kotlin.String, os: kotlin.String, arch: kotlin.String): HttpResponse<Unit> {
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun oauth(requestId: kotlin.String, os: kotlin.String, arch: kotlin.String): HttpResponse<AniOAuthRedirectResponse> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody =
+        val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -159,7 +228,7 @@ open class BangumiAniApi : ApiClient {
         return request(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 
@@ -167,15 +236,15 @@ open class BangumiAniApi : ApiClient {
     /**
      * Bangumi OAuth 回调
      * Bangumi OAuth 回调
-     * @param code
-     * @param state
+     * @param code 
+     * @param state 
      * @return void
      */
     open suspend fun oauthCallback(code: kotlin.String, state: kotlin.String): HttpResponse<Unit> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody =
+        val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -194,9 +263,11 @@ open class BangumiAniApi : ApiClient {
         return request(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 
 
 }
+
+// @formatter:on

@@ -16,13 +16,9 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import me.him188.ani.app.data.repository.RepositoryException
-import me.him188.ani.app.data.repository.RepositoryUnknownException
-import me.him188.ani.app.trace.ErrorReport
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.thisLogger
 import me.him188.ani.utils.logging.trace
-import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * 带有 [backgroundScope], 当 [AbstractViewModel] 被 forget 时自动 close scope 以防资源泄露.
@@ -65,13 +61,6 @@ abstract class AbstractViewModel : RememberObserver, ViewModel(), HasBackgroundS
         return CoroutineScope(
             CoroutineExceptionHandler { coroutineContext, throwable ->
                 logger.error(throwable) { "Unhandled exception in background scope for viewmodel ${this::class.qualifiedName}, coroutineContext: $coroutineContext" }
-                if (throwable !is CancellationException &&
-                    RepositoryException.wrapOrThrowCancellation(throwable) is RepositoryUnknownException
-                ) {
-                    ErrorReport.captureException(throwable) {
-                        setTag("viewmodel", this@AbstractViewModel::class.qualifiedName.toString())
-                    }
-                }
             } + SupervisorJob(),
         )
     }

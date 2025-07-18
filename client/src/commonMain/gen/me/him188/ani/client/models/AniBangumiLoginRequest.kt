@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +20,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -32,14 +33,14 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param bangumiToken
- * @param clientVersion
+ * @param bangumiToken 
+ * @param clientVersion 
  * @param clientOS 
  * @param clientArch 
  */
 @Serializable
 
-data class AniBangumiLoginRequest(
+data class AniBangumiLoginRequest (
 
     @SerialName(value = "bangumiToken") @Required val bangumiToken: kotlin.String,
 
@@ -54,3 +55,5 @@ data class AniBangumiLoginRequest(
 
 }
 
+
+// @formatter:on

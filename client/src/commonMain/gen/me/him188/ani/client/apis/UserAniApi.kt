@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +20,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.apis
@@ -42,17 +43,12 @@ open class UserAniApi : ApiClient {
         httpClientEngine: HttpClientEngine? = null,
         httpClientConfig: ((HttpClientConfig<*>) -> Unit)? = null,
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
-    ) : super(
-        baseUrl = baseUrl,
-        httpClientEngine = httpClientEngine,
-        httpClientConfig = httpClientConfig,
-        jsonBlock = jsonSerializer,
-    )
+    ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ) : super(baseUrl = baseUrl, httpClient = httpClient)
+    ): super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * 查看当前用户信息
@@ -81,9 +77,11 @@ open class UserAniApi : ApiClient {
         return request(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 
 
 }
+
+// @formatter:on

@@ -7,6 +7,8 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +21,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -29,16 +31,16 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param playTime
- * @param color
- * @param text
- * @param location
+ * @param playTime 
+ * @param color 
+ * @param text 
+ * @param location 
  */
 @Serializable
 
-data class AniDanmakuInfoEntity(
+data class AniDanmakuInfoEntity (
 
     @SerialName(value = "playTime") @Required val playTime: kotlin.Long,
 
@@ -53,3 +55,7 @@ data class AniDanmakuInfoEntity(
 
 }
 
+
+// @formatter:on
+
+// @formatter:on

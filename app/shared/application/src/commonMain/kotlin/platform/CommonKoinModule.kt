@@ -10,7 +10,6 @@
 package me.him188.ani.app.platform
 
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
-import io.ktor.client.plugins.auth.providers.BearerTokens
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,23 +29,18 @@ import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AnimeScheduleService
 import me.him188.ani.app.data.network.BangumiBangumiCommentServiceImpl
 import me.him188.ani.app.data.network.BangumiCommentService
-import me.him188.ani.app.data.network.BangumiEpisodeService
-import me.him188.ani.app.data.network.BangumiEpisodeServiceImpl
 import me.him188.ani.app.data.network.BangumiProfileService
 import me.him188.ani.app.data.network.BangumiRelatedPeopleService
 import me.him188.ani.app.data.network.BangumiSubjectSearchService
-import me.him188.ani.app.data.network.BangumiSubjectService
+import me.him188.ani.app.data.network.EpisodeService
+import me.him188.ani.app.data.network.EpisodeServiceImpl
 import me.him188.ani.app.data.network.RecommendationRepository
-import me.him188.ani.app.data.network.RemoteBangumiSubjectService
+import me.him188.ani.app.data.network.RemoteSubjectService
+import me.him188.ani.app.data.network.SubjectService
 import me.him188.ani.app.data.network.TrendsRepository
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.persistent.database.createDatabaseBuilder
-import me.him188.ani.app.data.repository.RepositoryAuthorizationException
-import me.him188.ani.app.data.repository.RepositoryNetworkException
-import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
-import me.him188.ani.app.data.repository.RepositoryUnknownException
-import me.him188.ani.app.data.repository.RepositoryUsernameProvider
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
@@ -75,9 +69,6 @@ import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionRepository
-import me.him188.ani.app.data.repository.user.AccessTokenSession
-import me.him188.ani.app.data.repository.user.GuestSession
-import me.him188.ani.app.data.repository.user.LegacyTokenRepository
 import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.TokenRepository
@@ -113,20 +104,9 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceManagerImpl
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionRequesterImpl
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionUpdater
-import me.him188.ani.app.domain.session.AccessTokenPair
-import me.him188.ani.app.domain.session.AniAuthClient
-import me.him188.ani.app.domain.session.AniAuthClientImpl
-import me.him188.ani.app.domain.session.AniAuthConfigurator
-import me.him188.ani.app.domain.session.AniAuthStateProvider
-import me.him188.ani.app.domain.session.BangumiSessionManager
-import me.him188.ani.app.domain.session.ConstantFailureAniAuthClient
-import me.him188.ani.app.domain.session.OpaqueSession
+import me.him188.ani.app.domain.session.AniSessionRefresher
 import me.him188.ani.app.domain.session.SessionManager
-import me.him188.ani.app.domain.session.SessionStatus
-import me.him188.ani.app.domain.session.finalState
-import me.him188.ani.app.domain.session.isExpired
-import me.him188.ani.app.domain.session.unverifiedAccessToken
-import me.him188.ani.app.domain.session.unverifiedAccessTokenOrNull
+import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.settings.SettingsBasedProxyProvider
 import me.him188.ani.app.domain.torrent.TorrentManager
@@ -143,7 +123,6 @@ import me.him188.ani.utils.coroutines.childScopeContext
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.httpdownloader.KtorPersistentHttpDownloader
 import me.him188.ani.utils.io.resolve
-import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.koin.core.KoinApplication
@@ -158,11 +137,21 @@ private val Scope.settingsRepository get() = get<SettingsRepository>()
 private val Scope.aniApiProvider get() = get<AniApiProvider>()
 
 fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScope: CoroutineScope) =
-    listOf(useCaseModules(), repositoryModules(), otherModules(getContext, coroutineScope))
+    listOf(useCaseModules(), repositoryModules(getContext().dataStores), otherModules(getContext, coroutineScope))
 
 private fun KoinApplication.otherModules(getContext: () -> Context, coroutineScope: CoroutineScope) = module {
     // Repositories
     single<ProxyProvider> { SettingsBasedProxyProvider(get(), coroutineScope) }
+    single<SessionManager> {
+        SessionManager(
+            tokenRepository = get(),
+            coroutineScope = coroutineScope,
+            refreshSession = AniSessionRefresher(),
+        )
+    }
+    single<SessionStateProvider> {
+        get<SessionManager>().stateProvider
+    }
     single<HttpClientProvider> {
         val sessionManager by inject<SessionManager>()
         DefaultHttpClientProvider(
@@ -170,33 +159,36 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             featureHandlers = listOf(
                 UserAgentFeatureHandler,
                 UseBangumiTokenFeatureHandler(
-                    @OptIn(OpaqueSession::class)
-                    sessionManager.unverifiedAccessToken.map { it?.bangumiAccessToken },
-                    onRefresh = {
-                        refreshTokens(
-                            sessionManager,
-                        ) {
-                            sessionManager.finalState.first().unverifiedAccessTokenOrNull?.bangumiAccessToken
-                        }
+                    sessionManager.accessTokenSessionFlow.map {
+                        it?.tokens?.bangumiAccessToken
                     },
+                    onRefresh = { null }, // 不在请求时自动刷新. 我们 SessionManager 有自己维护刷新.
                 ),
                 UseAniTokenFeatureHandler(
-                    @OptIn(OpaqueSession::class)
-                    sessionManager.unverifiedAccessToken.map { it?.aniAccessToken },
-                    onRefresh = {
-                        refreshTokens(
-                            sessionManager,
-                        ) {
-                            sessionManager.finalState.first().unverifiedAccessTokenOrNull?.aniAccessToken
-                        }
+                    sessionManager.accessTokenSessionFlow.map {
+                        it?.tokens?.aniAccessToken
                     },
+                    onRefresh = { null },
                 ),
                 ServerListFeatureHandler(
                     settingsRepository.danmakuSettings.flow.map { danmakuSettings ->
-                        if (danmakuSettings.useGlobal) {
-                            AniServers.optimizedForGlobal
-                        } else {
-                            AniServers.optimizedForCN
+                        when (danmakuSettings.useGlobal) {
+                            true -> {
+                                AniServers.optimizedForGlobal
+                            }
+
+                            false -> {
+                                AniServers.optimizedForCN
+                            }
+
+                            null -> {
+                                // 根据时区推断
+                                if (AniServers.shouldUseGlobalServer()) {
+                                    AniServers.optimizedForGlobal
+                                } else {
+                                    AniServers.optimizedForCN
+                                }
+                            }
                         }
                     },
                 ),
@@ -205,12 +197,8 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         )
     }
     single<AniApiProvider> { AniApiProvider(get<HttpClientProvider>().get(useAniToken = true)) }
-    single<AniAuthClient> {
-        AniAuthClientImpl(get<AniApiProvider>().oauthApi)
-    }
     single<TokenRepository> { TokenRepository(getContext().dataStores.tokenStore) }
     single<EpisodePreferencesRepository> { EpisodePreferencesRepositoryImpl(getContext().dataStores.preferredAllianceStore) }
-    single<SessionManager> { BangumiSessionManager(koin, coroutineScope.coroutineContext) }
     single<BangumiClient> {
         BangumiClientImpl(
             get<HttpClientProvider>().get(
@@ -223,34 +211,12 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             ),
         )
     }
-    single<AniAuthStateProvider> {
-        AniAuthConfigurator(
-            get(),
-            ConstantFailureAniAuthClient, // Read-only configurator doesn't need a auth client.
-            onLaunchAuthorize = { }, // Read-only configurator doesn't need to do real authorization.
-            parentCoroutineContext = coroutineScope.coroutineContext,
-        )
-    }
 
-    single<RepositoryUsernameProvider> {
-        RepositoryUsernameProvider {
-            when (val finalState = get<SessionManager>().finalState.first()) {
-                SessionStatus.Guest,
-                is SessionStatus.Expired -> throw RepositoryAuthorizationException()
-
-                SessionStatus.NetworkError -> throw RepositoryNetworkException()
-                SessionStatus.ServiceUnavailable -> throw RepositoryServiceUnavailableException()
-                is SessionStatus.Verified -> finalState.userInfo.username
-                    ?: throw IllegalStateException("RepositoryUsernameProvider: Username is null")
-
-                is SessionStatus.UnknownError -> throw RepositoryUnknownException(finalState.exception)
-            }
-        }
-    }
     single<SubjectCollectionRepository> {
         SubjectCollectionRepositoryImpl(
             api = client.api,
-            bangumiSubjectService = get(),
+            subjectService = get(),
+            database = database,
             subjectCollectionDao = database.subjectCollection(),
 //            characterDao = database.character(),
 //            characterActorDao = database.characterActor(),
@@ -260,7 +226,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             subjectRelationsDao = database.subjectRelations(),
             episodeCollectionRepository = get(),
             animeScheduleRepository = get(),
-            bangumiEpisodeService = get(),
+            episodeService = get(),
             episodeCollectionDao = database.episodeCollection(),
             sessionManager = get(),
             nsfwModeSettingsFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode },
@@ -302,22 +268,22 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         DefaultSubjectRelationsRepository(
             database.subjectCollection(),
             database.subjectRelations(),
-            bangumiSubjectService = get(),
+            subjectService = get(),
             subjectCollectionRepository = get(),
             aniSubjectRelationIndexService = get(),
         )
     }
 
     // Data layer network services
-    single<BangumiSubjectService> {
-        RemoteBangumiSubjectService(
+    single<SubjectService> {
+        RemoteSubjectService(
             client,
             client.api,
+            aniApiProvider.subjectApi,
             sessionManager = get(),
-            usernameProvider = get(),
         )
     }
-    single<BangumiEpisodeService> { BangumiEpisodeServiceImpl() }
+    single<EpisodeService> { EpisodeServiceImpl(aniApiProvider.subjectApi) }
 
     single<BangumiRelatedPeopleService> { BangumiRelatedPeopleService(get()) }
     single<AnimeScheduleRepository> { AnimeScheduleRepository(get()) }
@@ -332,7 +298,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         EpisodeCollectionRepository(
             subjectDao = database.subjectCollection(),
             episodeCollectionDao = database.episodeCollection(),
-            bangumiEpisodeService = get(),
+            episodeService = get(),
             animeScheduleRepository = get(),
             subjectCollectionRepository = inject(),
             getEpisodeTypeFiltersUseCase = get(),
@@ -481,7 +447,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             get<MediaSourceSubscriptionRepository>(),
             get<MediaSourceManager>(),
             get<MediaSourceCodecManager>(),
-            requester = MediaSourceSubscriptionRequesterImpl(client),
+            requester = MediaSourceSubscriptionRequesterImpl(client, get<AniApiProvider>().subscriptionApi),
         )
     }
     single<SelectorMediaSourceEpisodeCacheRepository> {
@@ -505,26 +471,6 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         )
     }
 }
-
-private suspend fun Scope.refreshTokens(
-    sessionManager: SessionManager,
-    getTokenAfterRetry: suspend () -> String?
-): BearerTokens? {
-    val before = sessionManager.finalState.first()
-    logger.info("Ktor believes Bangumi token is invalid. Refreshing. Current state: $before")
-    if (before !is SessionStatus.Expired) {
-        sessionManager.retry()
-    }
-    logger.info("Retry started. Now waiting for session to be verified.")
-    // `finalState.first()` wait for `retry` to complete.
-    // If `retry` succeeds, `finalState` will receive SessionStatus.Verified with a valid token.
-    return getTokenAfterRetry()?.let {
-        BearerTokens(it, "")
-    }.also {
-        logger.info("Result: ${it?.accessToken}")
-    }
-}
-
 
 /**
  * 会在非 preview 环境调用. 用来初始化一些模块
@@ -601,101 +547,7 @@ fun KoinApplication.startCommonKoinModule(
         }
     }
 
-    // Since 4.9, migrate legacy token store to new
-    coroutineScope.launch {
-        val logger = logger("LegacyTokenMigration")
-        val legacyRepo = LegacyTokenRepository(context.dataStores.legacyTokenStore)
-        val legacySession = legacyRepo
-            .session.first()
-
-        if (legacySession == null) {
-            return@launch
-        }
-
-        logger.info { "Legacy token is not null, migrating" }
-
-        val newRepo = koin.get<TokenRepository>()
-        val sessionManager = koin.get<SessionManager>()
-        when (legacySession) {
-            is AccessTokenSession -> {
-                val authClient = koin.get<AniAuthClient>()
-                if (legacySession.tokens.isExpired()) {
-                    val refreshToken = legacyRepo.refreshToken.first()
-                    if (refreshToken == null) {
-                        logger.info { "Legacy session is AccessTokenSession but invalid, skipping migrate and deleting legacy info" }
-                        legacyRepo.clear()
-                        return@launch
-                    }
-
-                    val authResult = try {
-                        authClient.refreshAccessToken(refreshToken)
-                    } catch (e: Throwable) {
-                        logger.warn(
-                            IllegalStateException(
-                                "Failed to refreshAccessToken, skipping migrate and deleting legacy info",
-                                e,
-                            ),
-                        )
-                        legacyRepo.clear()
-                        return@launch
-                    }
-
-                    logger.info { "Successfully migrated legacy tokens" }
-
-                    newRepo.setSession(
-                        AccessTokenSession(
-                            tokens = authResult.tokens,
-                        ),
-                    )
-                    sessionManager.retry()
-                    legacyRepo.clear()
-                    logger.info { "Done" }
-                    return@launch
-                } else {
-                    logger.info { "Legacy session is AccessTokenSession and valid, migrating to AccessTokenSession" }
-
-                    val legacyBangumiToken = legacySession.tokens.bangumiAccessToken
-                    // legacy aniAccessToken is always empty.
-
-                    val aniToken = try {
-                        authClient.getAccessTokensByBangumiToken(legacyBangumiToken)
-                    } catch (e: Throwable) {
-                        logger.warn(
-                            IllegalStateException(
-                                "Failed to get access tokens by bangumi token, skipping migrate and deleting legacy info",
-                                e,
-                            ),
-                        )
-                        legacyRepo.clear()
-                        return@launch
-                    }
-                    logger.info { "Successfully migrated legacy tokens" }
-
-                    newRepo.setSession(
-                        AccessTokenSession(
-                            tokens = AccessTokenPair(
-                                bangumiAccessToken = legacyBangumiToken,
-                                aniAccessToken = aniToken,
-                                expiresAtMillis = legacySession.tokens.expiresAtMillis,
-                            ),
-                        ),
-                    )
-                    sessionManager.retry()
-                    legacyRepo.clear()
-                    logger.info { "Done" }
-                }
-            }
-
-            GuestSession -> {
-                logger.info { "Legacy session is GuestSession, migrating to GuestSession" }
-                newRepo.setSession(GuestSession)
-                sessionManager.retry()
-                legacyRepo.clear()
-                logger.info { "Done" }
-            }
-        }
-    }
-
+    koin.get<SessionManager>().startBackgroundJob()
     return this
 }
 

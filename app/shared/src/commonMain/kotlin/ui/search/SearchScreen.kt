@@ -24,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
-import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.ui.exploration.search.SearchPage
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
@@ -50,11 +49,11 @@ fun SearchScreen(
         detailContent = {
             val subjectDetailsState by vm.subjectDetailsStateLoader.state
                 .collectAsStateWithLifecycle(null)
-            val authState by vm.authState.collectAsStateWithLifecycle(AuthState.DummyAwaitingResult)
+            val selfInfo by vm.selfInfoFlow.collectAsStateWithLifecycle()
 
             SubjectDetailsScreen(
                 subjectDetailsState,
-                authState,
+                selfInfo,
                 onPlay = { episodeId ->
                     val current = subjectDetailsState
                     if (current != null) {

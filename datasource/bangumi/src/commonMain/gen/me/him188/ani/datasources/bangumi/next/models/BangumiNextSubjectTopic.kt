@@ -32,8 +32,8 @@ import kotlinx.serialization.Serializable
  * 
  *
  * @param content
- * @param creator
- * @param replies
+ * @param creator 
+ * @param replies 
  * @param subject 
  */
 @Serializable

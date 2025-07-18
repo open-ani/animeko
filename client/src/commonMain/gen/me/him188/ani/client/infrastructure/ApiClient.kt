@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 package me.him188.ani.client.infrastructure
 
 import io.ktor.client.HttpClient
@@ -39,7 +40,7 @@ import me.him188.ani.client.auth.HttpBearerAuth
 import me.him188.ani.client.auth.OAuth
 
 open class ApiClient(
-    private val baseUrl: String
+        private val baseUrl: String
 ) {
 
     private lateinit var client: HttpClient
@@ -63,22 +64,21 @@ open class ApiClient(
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ) : this(baseUrl = baseUrl) {
+    ): this(baseUrl = baseUrl) {
         this.client = httpClient
     }
 
     private val authentications: kotlin.collections.Map<String, Authentication> by lazy {
         mapOf(
-            "auth-jwt" to HttpBearerAuth("bearer"),
-        )
+                "auth-jwt" to HttpBearerAuth("bearer"))
     }
 
     companion object {
         const val BASE_URL: String = "https://danmaku-global.myani.org"
         val JSON_DEFAULT: Json = Json {
-            ignoreUnknownKeys = true
-            prettyPrint = true
-            isLenient = true
+          ignoreUnknownKeys = true
+          prettyPrint = true
+          isLenient = true
         }
         protected val UNSAFE_HEADERS: List<String> = listOf(HttpHeaders.ContentType)
     }
@@ -90,7 +90,7 @@ open class ApiClient(
      */
     fun setUsername(username: String) {
         val auth = authentications?.values?.firstOrNull { it is HttpBasicAuth } as HttpBasicAuth?
-            ?: throw Exception("No HTTP basic authentication configured")
+                ?: throw Exception("No HTTP basic authentication configured")
         auth.username = username
     }
 
@@ -101,7 +101,7 @@ open class ApiClient(
      */
     fun setPassword(password: String) {
         val auth = authentications?.values?.firstOrNull { it is HttpBasicAuth } as HttpBasicAuth?
-            ?: throw Exception("No HTTP basic authentication configured")
+                ?: throw Exception("No HTTP basic authentication configured")
         auth.password = password
     }
 
@@ -112,8 +112,7 @@ open class ApiClient(
      * @param paramName The name of the API key parameter, or null or set the first key.
      */
     fun setApiKey(apiKey: String, paramName: String? = null) {
-        val auth =
-            authentications?.values?.firstOrNull { it is ApiKeyAuth && (paramName == null || paramName == it.paramName) } as ApiKeyAuth?
+        val auth = authentications?.values?.firstOrNull { it is ApiKeyAuth && (paramName == null || paramName == it.paramName)} as ApiKeyAuth?
                 ?: throw Exception("No API key authentication configured")
         auth.apiKey = apiKey
     }
@@ -125,8 +124,7 @@ open class ApiClient(
      * @param paramName The name of the API key parameter, or null or set the first key.
      */
     fun setApiKeyPrefix(apiKeyPrefix: String, paramName: String? = null) {
-        val auth =
-            authentications?.values?.firstOrNull { it is ApiKeyAuth && (paramName == null || paramName == it.paramName) } as ApiKeyAuth?
+        val auth = authentications?.values?.firstOrNull { it is ApiKeyAuth && (paramName == null || paramName == it.paramName) } as ApiKeyAuth?
                 ?: throw Exception("No API key authentication configured")
         auth.apiKeyPrefix = apiKeyPrefix
     }
@@ -138,7 +136,7 @@ open class ApiClient(
      */
     fun setAccessToken(accessToken: String) {
         val auth = authentications?.values?.firstOrNull { it is OAuth } as OAuth?
-            ?: throw Exception("No OAuth2 authentication configured")
+                ?: throw Exception("No OAuth2 authentication configured")
         auth.accessToken = accessToken
     }
 
@@ -149,37 +147,21 @@ open class ApiClient(
      */
     fun setBearerToken(bearerToken: String) {
         val auth = authentications?.values?.firstOrNull { it is HttpBearerAuth } as HttpBearerAuth?
-            ?: throw Exception("No Bearer authentication configured")
+                ?: throw Exception("No Bearer authentication configured")
         auth.bearerToken = bearerToken
     }
 
-    protected suspend fun <T : Any?> multipartFormRequest(
-        requestConfig: RequestConfig<T>,
-        body: kotlin.collections.List<PartData>?,
-        authNames: kotlin.collections.List<String>
-    ): HttpResponse {
+    protected suspend fun <T: Any?> multipartFormRequest(requestConfig: RequestConfig<T>, body: kotlin.collections.List<PartData>?, authNames: kotlin.collections.List<String>): HttpResponse {
         return request(requestConfig, MultiPartFormDataContent(body ?: listOf()), authNames)
     }
 
-    protected suspend fun <T : Any?> urlEncodedFormRequest(
-        requestConfig: RequestConfig<T>,
-        body: Parameters?,
-        authNames: kotlin.collections.List<String>
-    ): HttpResponse {
+    protected suspend fun <T: Any?> urlEncodedFormRequest(requestConfig: RequestConfig<T>, body: Parameters?, authNames: kotlin.collections.List<String>): HttpResponse {
         return request(requestConfig, FormDataContent(body ?: Parameters.Empty), authNames)
     }
 
-    protected suspend fun <T : Any?> jsonRequest(
-        requestConfig: RequestConfig<T>,
-        body: Any? = null,
-        authNames: kotlin.collections.List<String>
-    ): HttpResponse = request(requestConfig, body, authNames)
+    protected suspend fun <T: Any?> jsonRequest(requestConfig: RequestConfig<T>, body: Any? = null, authNames: kotlin.collections.List<String>): HttpResponse = request(requestConfig, body, authNames)
 
-    protected suspend fun <T : Any?> request(
-        requestConfig: RequestConfig<T>,
-        body: Any? = null,
-        authNames: kotlin.collections.List<String>
-    ): HttpResponse {
+    protected suspend fun <T: Any?> request(requestConfig: RequestConfig<T>, body: Any? = null, authNames: kotlin.collections.List<String>): HttpResponse {
         requestConfig.updateForAuth<T>(authNames)
         val headers = requestConfig.headers
 
@@ -194,8 +176,7 @@ open class ApiClient(
                 }
             }
             this.method = requestConfig.method.httpMethod
-            headers.filter { header -> !UNSAFE_HEADERS.contains(header.key) }
-                .forEach { header -> this.header(header.key, header.value) }
+            headers.filter { header -> !UNSAFE_HEADERS.contains(header.key) }.forEach { header -> this.header(header.key, header.value) }
             if (requestConfig.method in listOf(RequestMethod.PUT, RequestMethod.POST, RequestMethod.PATCH)) {
                 val contentType = (requestConfig.headers[HttpHeaders.ContentType]?.let { ContentType.parse(it) }
                     ?: ContentType.Application.Json)
@@ -205,7 +186,7 @@ open class ApiClient(
         }
     }
 
-    private fun <T : Any?> RequestConfig<T>.updateForAuth(authNames: kotlin.collections.List<String>) {
+    private fun <T: Any?> RequestConfig<T>.updateForAuth(authNames: kotlin.collections.List<String>) {
         for (authName in authNames) {
             val auth = authentications?.get(authName) ?: throw Exception("Authentication undefined: $authName")
             auth.apply(query, headers)
@@ -213,8 +194,7 @@ open class ApiClient(
     }
 
     private fun URLBuilder.appendPath(components: kotlin.collections.List<String>): URLBuilder = apply {
-        encodedPath =
-            encodedPath.trimEnd('/') + components.joinToString("/", prefix = "/") { it.encodeURLQueryComponent() }
+        encodedPath = encodedPath.trimEnd('/') + components.joinToString("/", prefix = "/") { it.encodeURLQueryComponent() }
     }
 
     private val RequestMethod.httpMethod: HttpMethod
@@ -228,3 +208,5 @@ open class ApiClient(
             RequestMethod.OPTIONS -> HttpMethod.Options
         }
 }
+
+// @formatter:on

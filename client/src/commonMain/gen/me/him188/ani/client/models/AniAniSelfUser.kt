@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +20,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -30,22 +31,23 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param id
- * @param nickname
- * @param hasPassword
- * @param email
- * @param smallAvatar
- * @param mediumAvatar
- * @param largeAvatar
- * @param registerTime
- * @param lastLoginTime
- * @param clientVersion
+ * @param id 
+ * @param nickname 
+ * @param hasPassword 
+ * @param email 
+ * @param smallAvatar 
+ * @param mediumAvatar 
+ * @param largeAvatar 
+ * @param registerTime 
+ * @param lastLoginTime 
+ * @param clientVersion 
+ * @param bangumiUsername 
  */
 @Serializable
 
-data class AniAniSelfUser(
+data class AniAniSelfUser (
 
     @SerialName(value = "id") @Required val id: kotlin.String,
 
@@ -65,10 +67,14 @@ data class AniAniSelfUser(
 
     @SerialName(value = "lastLoginTime") val lastLoginTime: kotlin.Long? = null,
 
-    @SerialName(value = "clientVersion") val clientVersion: kotlin.String? = null
+    @SerialName(value = "clientVersion") val clientVersion: kotlin.String? = null,
+
+    @SerialName(value = "bangumiUsername") val bangumiUsername: kotlin.String? = null
 
 ) {
 
 
 }
 
+
+// @formatter:on

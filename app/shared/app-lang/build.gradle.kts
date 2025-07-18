@@ -16,6 +16,7 @@ plugins {
     `ani-mpp-lib-targets`
     kotlin("plugin.serialization")
     org.jetbrains.kotlinx.atomicfu
+    idea
 }
 
 kotlin {
@@ -84,4 +85,12 @@ tasks.matching {
             || (it.name.startsWith("map") && it.name.endsWith("SourceSetPaths")) // mapReleaseSourceSetPaths
 }.configureEach {
     dependsOn(populateStringsLocales)
+}
+
+idea {
+    module {
+        excludeDirs.add(file("src/androidMain/res/values-zh"))
+        excludeDirs.add(file("src/androidMain/res/values-zh-rMO"))
+        excludeDirs.add(file("src/androidMain/res/values-zh-rSG"))
+    }
 }

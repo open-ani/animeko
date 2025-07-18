@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +20,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -30,15 +31,15 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param blockedIpPattern
- * @param blockedIdRegex
- * @param blockedClientRegex
+ * @param blockedIpPattern 
+ * @param blockedIdRegex 
+ * @param blockedClientRegex 
  */
 @Serializable
 
-data class AniPeerFilterRule(
+data class AniPeerFilterRule (
 
     @SerialName(value = "blockedIpPattern") @Required val blockedIpPattern: kotlin.collections.List<kotlin.String>,
 
@@ -51,3 +52,5 @@ data class AniPeerFilterRule(
 
 }
 
+
+// @formatter:on

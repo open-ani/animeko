@@ -1,3 +1,4 @@
+// @formatter:off
 package me.him188.ani.client.infrastructure
 
 /**
@@ -9,3 +10,5 @@ data class PartConfig<T>(
     val headers: MutableMap<String, String> = mutableMapOf(),
     val body: T? = null
 )
+
+// @formatter:on

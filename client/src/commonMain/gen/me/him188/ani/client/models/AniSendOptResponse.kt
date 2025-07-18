@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +20,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -30,13 +31,13 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param otpId
+ * @param otpId 
  */
 @Serializable
 
-data class AniSendOptResponse(
+data class AniSendOptResponse (
 
     @SerialName(value = "otpId") @Required val otpId: kotlin.String
 
@@ -45,3 +46,5 @@ data class AniSendOptResponse(
 
 }
 
+
+// @formatter:on

@@ -7,6 +7,8 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +21,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -29,15 +31,15 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param userId
- * @param tokens
- * @param user
+ * @param userId 
+ * @param tokens 
+ * @param user 
  */
 @Serializable
 
-data class AniSuccess(
+data class AniSuccess (
 
     @SerialName(value = "userId") @Required val userId: kotlin.String,
 
@@ -50,3 +52,7 @@ data class AniSuccess(
 
 }
 
+
+// @formatter:on
+
+// @formatter:on

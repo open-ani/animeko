@@ -23,11 +23,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
 import me.him188.ani.app.ui.foundation.icons.AniIcons
 import me.him188.ani.app.ui.foundation.icons.GithubMark
 import me.him188.ani.app.ui.foundation.icons.QqRoundedOutline
 import me.him188.ani.app.ui.foundation.icons.Telegram
-import me.him188.ani.app.ui.settings.tabs.AniHelpNavigator
+import me.him188.ani.app.ui.settings.tabs.AniHelperDestination
 
 private val ContactIconSize = 24.dp
 
@@ -35,13 +36,15 @@ private val ContactIconSize = 24.dp
 fun AniContactList(
     modifier: Modifier = Modifier
 ) {
+    val browserNavigator = rememberAsyncBrowserNavigator()
     val context = LocalContext.current
+
     FlowRow(
         modifier,
         horizontalArrangement = Arrangement.spacedBy(12.dp, alignment = Alignment.Start),
     ) {
         SuggestionChip(
-            { AniHelpNavigator.openGitHubHome(context) },
+            { browserNavigator.openBrowser(context, AniHelperDestination.GITHUB_HOME) },
             icon = {
                 Icon(AniIcons.GithubMark, "Github", Modifier.size(ContactIconSize))
             },
@@ -49,7 +52,7 @@ fun AniContactList(
         )
 
         SuggestionChip(
-            { AniHelpNavigator.openAniWebsite(context) },
+            { browserNavigator.openBrowser(context, AniHelperDestination.ANI_WEBSITE) },
             icon = {
                 Icon(
                     Icons.Rounded.Public, "官网",
@@ -60,7 +63,7 @@ fun AniContactList(
         )
 
         SuggestionChip(
-            { AniHelpNavigator.openJoinQQGroup(context) },
+            { browserNavigator.openJoinGroup(context) },
             icon = {
                 Icon(
                     AniIcons.QqRoundedOutline, "QQ 群",
@@ -71,7 +74,7 @@ fun AniContactList(
         )
 
         SuggestionChip(
-            { AniHelpNavigator.openTelegram(context) },
+            { browserNavigator.openJoinTelegram(context) },
             icon = {
                 Image(
                     AniIcons.Telegram, "Telegram",

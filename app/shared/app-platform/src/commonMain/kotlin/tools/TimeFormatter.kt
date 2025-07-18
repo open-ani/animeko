@@ -46,7 +46,7 @@ class TimeFormatter(
             in 3600..<86400 -> "${differenceInSeconds / 3600} 小时前"
             in -86400..<-3600 -> "${-differenceInSeconds / 3600} 小时后"
             in 86400..<86400 * 2 -> "${differenceInSeconds / 86400} 天前"
-            in -86400 * 2..<-86400 -> "${differenceInSeconds / 86400} 天后"
+            in -86400 * 2..<-86400 -> "${-differenceInSeconds / 86400} 天后"
             else -> getFormatter(showTime).format(instant.toLocalDateTime(TimeZone.currentSystemDefault()))
         }
     }

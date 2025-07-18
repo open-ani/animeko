@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +20,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.apis
@@ -33,9 +34,12 @@ import me.him188.ani.client.infrastructure.HttpResponse
 import me.him188.ani.client.infrastructure.RequestConfig
 import me.him188.ani.client.infrastructure.RequestMethod
 import me.him188.ani.client.infrastructure.wrap
+import me.him188.ani.client.models.AniBatchUpdateEpisodeCollectionsRequest
+import me.him188.ani.client.models.AniCollectionType
+import me.him188.ani.client.models.AniEpisodeCollection
 import me.him188.ani.client.models.AniPaginatedResponse
-import me.him188.ani.client.models.AniSubjectCollectionEntity
-import me.him188.ani.client.models.AniSubjectCollectionType
+import me.him188.ani.client.models.AniSubjectCollection
+import me.him188.ani.client.models.AniUpdateEpisodeCollectionRequest
 import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 
 open class SubjectsAniApi : ApiClient {
@@ -45,17 +49,12 @@ open class SubjectsAniApi : ApiClient {
         httpClientEngine: HttpClientEngine? = null,
         httpClientConfig: ((HttpClientConfig<*>) -> Unit)? = null,
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
-    ) : super(
-        baseUrl = baseUrl,
-        httpClientEngine = httpClientEngine,
-        httpClientConfig = httpClientConfig,
-        jsonBlock = jsonSerializer,
-    )
+    ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ) : super(baseUrl = baseUrl, httpClient = httpClient)
+    ): super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * Bangumi 全量同步
@@ -67,7 +66,7 @@ open class SubjectsAniApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody =
+        val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -84,15 +83,49 @@ open class SubjectsAniApi : ApiClient {
         return request(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 
 
     /**
+     * 批量编辑自己的条目收藏中的剧集进度
+     * 批量编辑自己的条目收藏中的剧集进度
+     * @param subjectId 
+     * @param aniBatchUpdateEpisodeCollectionsRequest 
+     * @return kotlin.Any
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun batchUpdateEpisodeCollections(subjectId: kotlin.Long, aniBatchUpdateEpisodeCollectionsRequest: AniBatchUpdateEpisodeCollectionsRequest): HttpResponse<kotlin.Any> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = aniBatchUpdateEpisodeCollectionsRequest
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.PATCH,
+            "/v2/subjects/{subjectId}/episodes/batchUpdate".replace("{" + "subjectId" + "}", "$subjectId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+
+    /**
      * 删除自己的收藏
      * 删除自己的收藏
-     * @param subjectId
+     * @param subjectId 
      * @return kotlin.Any
      */
     @Suppress("UNCHECKED_CAST")
@@ -100,7 +133,7 @@ open class SubjectsAniApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody =
+        val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -117,7 +150,41 @@ open class SubjectsAniApi : ApiClient {
         return request(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * 获取单个剧集信息. 如果已登录, 还会返回 collectionType 字段
+     * 获取单个剧集信息. 如果已登录, 还会返回 collectionType 字段
+     * @param subjectId 
+     * @param episodeId 
+     * @return AniEpisodeCollection
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getEpisode(subjectId: kotlin.Long, episodeId: kotlin.Long): HttpResponse<AniEpisodeCollection> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/subjects/{subjectId}/episodes/{episodeId}".replace("{" + "subjectId" + "}", "$subjectId").replace("{" + "episodeId" + "}", "$episodeId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
         ).wrap()
     }
 
@@ -125,15 +192,15 @@ open class SubjectsAniApi : ApiClient {
     /**
      * 获取单个条目信息. 如果已登录, 还会返回 collectionType 等字段.
      * 获取单个条目信息. 如果已登录, 还会返回 collectionType 等字段.
-     * @param subjectId
-     * @return AniSubjectCollectionEntity
+     * @param subjectId 
+     * @return AniSubjectCollection
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getSubject(subjectId: kotlin.Long): HttpResponse<AniSubjectCollectionEntity> {
+    open suspend fun getSubject(subjectId: kotlin.Long): HttpResponse<AniSubjectCollection> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody =
+        val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -150,7 +217,7 @@ open class SubjectsAniApi : ApiClient {
         return request(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 
@@ -164,21 +231,17 @@ open class SubjectsAniApi : ApiClient {
      * @return AniPaginatedResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getSubjectCollections(
-        offset: kotlin.Int? = null,
-        limit: kotlin.Int? = null,
-        type: AniSubjectCollectionType? = null
-    ): HttpResponse<AniPaginatedResponse> {
+    open suspend fun getSubjectCollections(offset: kotlin.Int? = null, limit: kotlin.Int? = null, type: AniCollectionType? = null): HttpResponse<AniPaginatedResponse> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody =
+        val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
         limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
-        type?.apply { localVariableQuery["type"] = listOf("$type") }
+        type?.apply { localVariableQuery["type"] = listOf("${ type.value }") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
@@ -192,23 +255,55 @@ open class SubjectsAniApi : ApiClient {
         return request(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 
 
     /**
-     * 编辑自己的收藏
-     * 编辑自己的收藏
-     * @param subjectId
+     * 编辑自己的条目收藏中的单个剧集进度
+     * 编辑自己的条目收藏中的单个剧集进度
+     * @param subjectId 
+     * @param episodeId 
+     * @param aniUpdateEpisodeCollectionRequest 
+     * @return kotlin.Any
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun updateEpisodeCollection(subjectId: kotlin.Long, episodeId: kotlin.Long, aniUpdateEpisodeCollectionRequest: AniUpdateEpisodeCollectionRequest): HttpResponse<kotlin.Any> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = aniUpdateEpisodeCollectionRequest
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.PATCH,
+            "/v2/subjects/{subjectId}/episodes/{episodeId}".replace("{" + "subjectId" + "}", "$subjectId").replace("{" + "episodeId" + "}", "$episodeId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+
+    /**
+     * 编辑自己的收藏或创建一个收藏
+     * 编辑自己的收藏或创建一个收藏
+     * @param subjectId 
      * @param aniUpdateSubjectCollectionRequest  (optional)
      * @return kotlin.Any
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun updateSubjectCollection(
-        subjectId: kotlin.Long,
-        aniUpdateSubjectCollectionRequest: AniUpdateSubjectCollectionRequest? = null
-    ): HttpResponse<kotlin.Any> {
+    open suspend fun updateSubjectCollection(subjectId: kotlin.Long, aniUpdateSubjectCollectionRequest: AniUpdateSubjectCollectionRequest? = null): HttpResponse<kotlin.Any> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -228,9 +323,12 @@ open class SubjectsAniApi : ApiClient {
         return jsonRequest(
             localVariableConfig,
             localVariableBody,
-            localVariableAuthNames,
+            localVariableAuthNames
         ).wrap()
     }
 
 
+
 }
+
+// @formatter:on

@@ -7,6 +7,8 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +21,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -29,29 +31,29 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param id
- * @param type
- * @param tags
- * @param metaTags
- * @param scoreDetails
- * @param name
- * @param nameCn
- * @param infobox
- * @param platform
- * @param summary
- * @param nsfw
- * @param date
- * @param favorite
- * @param series
- * @param score
- * @param rank
- * @param collectionType
+ * @param id 
+ * @param type 
+ * @param tags 
+ * @param metaTags 
+ * @param scoreDetails 
+ * @param name 
+ * @param nameCn 
+ * @param infobox 
+ * @param platform 
+ * @param summary 
+ * @param nsfw 
+ * @param date 
+ * @param favorite 
+ * @param series 
+ * @param score 
+ * @param rank 
+ * @param collectionType 
  */
 @Serializable
 
-data class AniSubjectCollectionEntity(
+data class AniSubjectCollectionEntity (
 
     @SerialName(value = "id") @Required val id: kotlin.Long,
 
@@ -85,10 +87,14 @@ data class AniSubjectCollectionEntity(
 
     @SerialName(value = "rank") val rank: kotlin.Int? = null,
 
-    @SerialName(value = "collectionType") val collectionType: AniSubjectCollectionType? = null
+    @SerialName(value = "collectionType") val collectionType: AniCollectionType? = null
 
 ) {
 
 
 }
 
+
+// @formatter:on
+
+// @formatter:on

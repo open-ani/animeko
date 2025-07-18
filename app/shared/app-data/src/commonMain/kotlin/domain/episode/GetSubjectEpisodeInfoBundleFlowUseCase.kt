@@ -11,17 +11,12 @@ package me.him188.ani.app.domain.episode
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
-import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
-import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
-import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.usecase.UseCase
-import me.him188.ani.utils.coroutines.flows.catching
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.coroutines.CoroutineContext
@@ -39,28 +34,23 @@ class GetSubjectEpisodeInfoBundleFlowUseCaseImpl(
     private val flowContext: CoroutineContext = Dispatchers.Default,
 ) : GetSubjectEpisodeInfoBundleFlowUseCase, KoinComponent {
     private val subjectCollectionRepository: SubjectCollectionRepository by inject()
-    private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
-    private val subjectRelationsRepository: SubjectRelationsRepository by inject()
 
     override fun invoke(idsFlow: Flow<GetSubjectEpisodeInfoBundleFlowUseCase.SubjectIdAndEpisodeId>): Flow<SubjectEpisodeInfoBundle> {
         return idsFlow.flatMapLatest { (subjectId, episodeId) ->
-            combine(
-                subjectCollectionRepository.subjectCollectionFlow(subjectId),
-                episodeCollectionRepository.episodeCollectionInfoFlow(subjectId, episodeId),
-                subjectRelationsRepository.subjectSeriesInfoFlow(subjectId).catching()
-                    .onStart<Result<SubjectSeriesInfo>?> { emit(null) },
-                // TODO: 2025/4/23 We should move this subjectCompleted calculation to Ani server.
-                episodeCollectionRepository.subjectCompletedFlow(subjectId).catching()
-                    .onStart<Result<Boolean>?> { emit(null) },
-            ) { subject, episode, seriesInfo, subjectCompleted ->
+            // 这里只需要查询一个网络请求 — subject collection. 
+
+            subjectCollectionRepository.subjectCollectionFlow(subjectId).map { subject ->
+                val episodeCollectionInfo = (subject.episodes.find { it.episodeId == episodeId }
+                    ?: throw NoSuchElementException("Episode $episodeId not found in subject $subjectId"))
                 SubjectEpisodeInfoBundle(
                     subjectId, episodeId,
-                    subject, episode,
-                    seriesInfo = seriesInfo?.getOrNull(),
-                    seriesInfoLoadError = seriesInfo?.exceptionOrNull()?.let { LoadError.fromException(it) },
-                    subjectCompleted = subjectCompleted?.getOrNull(),
-                    subjectCompletedLoadError = subjectCompleted?.exceptionOrNull()
-                        ?.let { LoadError.fromException(it) },
+                    subject,
+                    episodeCollectionInfo,
+                    seriesInfo = SubjectSeriesInfo.compute(subject),
+                    subjectCompleted = EpisodeCollections.isSubjectCompleted(
+                        subject.episodes.map { it.episodeInfo },
+                        subject.recurrence,
+                    ),
                 )
             }
         }.flowOn(flowContext)

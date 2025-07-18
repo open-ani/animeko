@@ -11,7 +11,9 @@ package me.him188.ani.app.data.models.subject
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import androidx.room.TypeConverters
 import kotlinx.serialization.Serializable
+import me.him188.ani.app.data.persistent.database.ProtoConverters
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Serializable
@@ -25,6 +27,7 @@ data class SelfRatingInfo(
      * `null` 表示未评价
      */
     val comment: String?,
+    @all:TypeConverters(ProtoConverters.StringList::class)
     val tags: List<String>,
     val isPrivate: Boolean,
 ) {

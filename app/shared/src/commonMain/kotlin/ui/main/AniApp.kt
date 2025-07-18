@@ -24,7 +24,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.intl.Locale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.ImageLoader
@@ -32,7 +31,6 @@ import coil3.compose.LocalPlatformContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.take
 import me.him188.ani.app.data.models.preference.ThemeSettings
@@ -41,6 +39,7 @@ import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
+import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.tools.LocalTimeFormatter
@@ -84,6 +83,8 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
         .map { storages ->
             storages.map { @Composable { it.engine.ComposeContent() } }
         }
+
+    val browserNavigator by inject<BrowserNavigator>()
 
     val appState: Flow<AniAppState?> = combine(
         settings.themeSettings.flow,

@@ -31,162 +31,10 @@ jobs:
       run: '.github/workflows/src.main.kts'
     - id: 'step-4'
       run: 'python .github/workflows/check_yaml_equivalence.py .github/workflows/build.yml .github/workflows/build.yml-check.yml'
-  build_self-hosted-windows-10:
-    name: 'Build (Windows 10 x86_64 (Self-Hosted))'
-    runs-on:
-    - 'self-hosted'
-    - 'Windows'
-    - 'X64'
-    permissions:
-      actions: 'write'
-    if: '${{ github.repository == ''open-ani/animeko'' }}'
-    steps:
-    - id: 'step-0'
-      uses: 'actions/checkout@v4'
-      with:
-        submodules: 'recursive'
-    - id: 'step-1'
-      continue-on-error: true
-      run: 'rm local.properties'
-    - id: 'step-2'
-      continue-on-error: true
-      run: |-
-        echo "ani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" >> local.properties
-        echo "ani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" >> local.properties
-        echo "ani.sentry.dsn=${{ secrets.SENTRY_DSN }}" >> local.properties
-        echo "ani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" >> local.properties
-        echo "ani.analytics.key=${{ secrets.ANALYTICS_KEY }}" >> local.properties
-        echo "kotlin.native.ignoreDisabledTargets=true" >> local.properties
-    - id: 'step-3'
-      name: 'Get JBR (Windows)'
-      env:
-        RUNNER_TOOL_CACHE: '${{ runner.tool_cache }}'
-        JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz'
-        JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz.checksum'
-      shell: 'cmd'
-      run: 'python .github/workflows/download_jbr.py'
-    - id: 'step-4'
-      name: 'Setup JBR 21 for Windows'
-      uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
-      with:
-        java-version: '21'
-        distribution: 'jdkfile'
-        jdkFile: '${{ steps.step-3.outputs.jbrLocation }}'
-      env:
-        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-    - id: 'step-5'
-      name: 'Dump Local Properties'
-      run: 'echo "jvm.toolchain.version=21" >> local.properties'
-    - id: 'step-6'
-      name: 'Setup Gradle'
-      uses: 'gradle/actions/setup-gradle@v3'
-      with:
-        cache-disabled: 'true'
-    - id: 'step-7'
-      name: 'Clean and download dependencies (Attempt #1)'
-      continue-on-error: true
-      timeout-minutes: 180
-      run: './gradlew --scan "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-8'
-      name: 'Clean and download dependencies (Attempt #2)'
-      continue-on-error: false
-      timeout-minutes: 180
-      run: './gradlew --scan "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-      if: '${{ steps.step-7.outcome == ''failure'' }}'
-    - id: 'step-9'
-      name: 'Update dev version name (Attempt #1)'
-      continue-on-error: true
-      timeout-minutes: 180
-      run: './gradlew updateDevVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-10'
-      name: 'Update dev version name (Attempt #2)'
-      continue-on-error: false
-      timeout-minutes: 180
-      run: './gradlew updateDevVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-      if: '${{ steps.step-9.outcome == ''failure'' }}'
-    - id: 'step-11'
-      name: 'Compile Kotlin (Attempt #1)'
-      continue-on-error: true
-      timeout-minutes: 180
-      run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-12'
-      name: 'Compile Kotlin (Attempt #2)'
-      continue-on-error: false
-      timeout-minutes: 180
-      run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-      if: '${{ steps.step-11.outcome == ''failure'' }}'
-    - id: 'step-13'
-      name: 'Compile Kotlin Android (Attempt #1)'
-      continue-on-error: true
-      timeout-minutes: 180
-      run: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-14'
-      name: 'Compile Kotlin Android (Attempt #2)'
-      continue-on-error: false
-      timeout-minutes: 180
-      run: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-      if: '${{ steps.step-13.outcome == ''failure'' }}'
-    - id: 'step-15'
-      name: 'Package Desktop (Attempt #1)'
-      continue-on-error: true
-      timeout-minutes: 180
-      run: './gradlew createReleaseDistributable "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-16'
-      name: 'Package Desktop (Attempt #2)'
-      continue-on-error: false
-      timeout-minutes: 180
-      run: './gradlew createReleaseDistributable "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-      if: '${{ steps.step-15.outcome == ''failure'' }}'
-    - id: 'step-17'
-      name: 'Upload Windows packages (Attempt #1)'
-      continue-on-error: true
-      uses: 'actions/upload-artifact@v4'
-      with:
-        name: 'ani-windows-portable'
-        path: 'app/desktop/build/compose/binaries/main-release/app'
-        if-no-files-found: 'error'
-        overwrite: 'true'
-    - id: 'step-18'
-      name: 'Upload Windows packages (Attempt #2)'
-      continue-on-error: true
-      uses: 'actions/upload-artifact@v4'
-      with:
-        name: 'ani-windows-portable'
-        path: 'app/desktop/build/compose/binaries/main-release/app'
-        if-no-files-found: 'error'
-        overwrite: 'true'
-      if: '${{ steps.step-17.outcome == ''failure'' }}'
-    - id: 'step-19'
-      name: 'Upload Windows packages (Attempt #3)'
-      continue-on-error: false
-      uses: 'actions/upload-artifact@v4'
-      with:
-        name: 'ani-windows-portable'
-        path: 'app/desktop/build/compose/binaries/main-release/app'
-        if-no-files-found: 'error'
-        overwrite: 'true'
-      if: '${{ steps.step-18.outcome == ''failure'' }}'
-    - id: 'step-20'
-      name: 'Check (Attempt #1)'
-      continue-on-error: true
-      timeout-minutes: 180
-      run: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-    - id: 'step-21'
-      name: 'Check (Attempt #2)'
-      continue-on-error: true
-      timeout-minutes: 180
-      run: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-      if: '${{ steps.step-20.outcome == ''failure'' }}'
-    - id: 'step-22'
-      name: 'Check (Attempt #3)'
-      continue-on-error: false
-      timeout-minutes: 180
-      run: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "--parallel" "-Pani.android.abis=x86_64"'
-      if: '${{ steps.step-21.outcome == ''failure'' }}'
-  build_github-windows-2019:
+  build_github-windows-2022:
     name: 'Build (Windows Server 2019 x86_64)'
     runs-on:
-    - 'windows-2019'
+      - 'windows-2022'
     permissions:
       actions: 'write'
     steps:
@@ -290,7 +138,7 @@ jobs:
       name: 'Upload compose logs'
       uses: 'actions/upload-artifact@v4'
       with:
-        name: 'compose-logs-github-windows-2019'
+        name: 'compose-logs-github-windows-2022'
         path: 'app/desktop/build/compose/logs'
       if: '${{ always() }}'
     - id: 'step-18'
@@ -1300,15 +1148,15 @@ jobs:
       name: 'Cleanup temp files'
       continue-on-error: true
       run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'
-  verify_github-windows-2019:
-    name: 'Verify (Windows Server 2019 x86_64 (GitHub))'
+  verify_github-windows-2025:
+    name: 'Verify (Windows Server 2025 x86_64 (GitHub))'
     runs-on:
-    - 'windows-2019'
+      - 'windows-2025'
     permissions:
       actions: 'read'
     needs:
-    - 'build_github-windows-2019'
-    if: '${{ needs.build_github-windows-2019.result == ''success'' }}'
+      - 'build_github-windows-2022'
+    if: '${{ needs.build_github-windows-2022.result == ''success'' }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -1372,8 +1220,8 @@ jobs:
     permissions:
       actions: 'read'
     needs:
-    - 'build_github-windows-2019'
-    if: '${{ needs.build_github-windows-2019.result == ''success'' }}'
+      - 'build_github-windows-2022'
+    if: '${{ needs.build_github-windows-2022.result == ''success'' }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -1425,66 +1273,6 @@ jobs:
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "sentry-dsn"'
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
     - id: 'step-8'
-      name: 'Check that analyticsServer is valid'
-      timeout-minutes: 5
-      shell: 'powershell'
-      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "analytics-server"'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
-  verify_self-hosted-windows-10:
-    name: 'Verify (Windows 10 x86_64 (Self-Hosted))'
-    runs-on:
-    - 'self-hosted'
-    - 'Windows'
-    - 'X64'
-    permissions:
-      actions: 'read'
-    needs:
-    - 'build_github-windows-2019'
-    if: '${{ (github.repository == ''open-ani/animeko'') && (needs.build_github-windows-2019.result == ''success'') }}'
-    steps:
-    - id: 'step-0'
-      uses: 'actions/checkout@v4'
-    - id: 'step-1'
-      name: 'Download Windows x64 Portable (Attempt #1)'
-      continue-on-error: true
-      uses: 'actions/download-artifact@v4'
-      with:
-        name: 'ani-windows-portable'
-        path: '${{ github.workspace }}/ci-helper/verify'
-    - id: 'step-2'
-      name: 'Download Windows x64 Portable (Attempt #2)'
-      continue-on-error: true
-      uses: 'actions/download-artifact@v4'
-      with:
-        name: 'ani-windows-portable'
-        path: '${{ github.workspace }}/ci-helper/verify'
-      if: '${{ steps.step-1.outcome == ''failure'' }}'
-    - id: 'step-3'
-      name: 'Download Windows x64 Portable (Attempt #3)'
-      continue-on-error: false
-      uses: 'actions/download-artifact@v4'
-      with:
-        name: 'ani-windows-portable'
-        path: '${{ github.workspace }}/ci-helper/verify'
-      if: '${{ steps.step-2.outcome == ''failure'' }}'
-    - id: 'step-4'
-      name: 'Check that Anitorrent can be loaded'
-      timeout-minutes: 5
-      shell: 'powershell'
-      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "anitorrent-load-test"'
-    - id: 'step-5'
-      name: 'Check that Dandanplay APP ID is valid'
-      timeout-minutes: 5
-      shell: 'powershell'
-      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "dandanplay-app-id"'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
-    - id: 'step-6'
-      name: 'Check that sentryDsn is valid'
-      timeout-minutes: 5
-      shell: 'powershell'
-      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "sentry-dsn"'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
-    - id: 'step-7'
       name: 'Check that analyticsServer is valid'
       timeout-minutes: 5
       shell: 'powershell'

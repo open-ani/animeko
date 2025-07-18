@@ -89,13 +89,11 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
-import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.toNavPlaceholder
 import me.him188.ani.app.data.repository.subject.CollectionsFilterQuery
-import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
@@ -107,8 +105,6 @@ import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.session.SelfAvatar
-import me.him188.ani.app.ui.foundation.session.SessionTipsArea
-import me.him188.ani.app.ui.foundation.session.SessionTipsIcon
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.NsfwMask
@@ -121,6 +117,7 @@ import me.him188.ani.app.ui.subject.collection.progress.rememberSubjectProgressS
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListDialog
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListUiState
+import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.hasScrollingBug
 import me.him188.ani.utils.platform.isDesktop
@@ -140,7 +137,6 @@ val COLLECTION_TABS_SORTED = listOf(
 @Stable
 class UserCollectionsState(
     private val startSearch: (filterQuery: CollectionsFilterQuery) -> Flow<PagingData<SubjectCollectionInfo>>,
-    selfInfoState: State<UserInfo?>,
     collectionCountsState: State<SubjectCollectionCounts?>,
     val subjectProgressStateFactory: SubjectProgressStateFactory,
     val createEditableSubjectCollectionTypeState: (subjectCollection: SubjectCollectionInfo) -> EditableSubjectCollectionTypeState,
@@ -179,8 +175,6 @@ class UserCollectionsState(
                 emitAll(startSearch(it))
             }
 
-    val selfInfo: UserInfo? by selfInfoState
-
     val collectionCounts: SubjectCollectionCounts? by collectionCountsState
 
     val tabRowScrollState = ScrollState(selectedTypeIndex)
@@ -199,11 +193,10 @@ class UserCollectionsState(
 @Composable
 fun CollectionPage(
     state: UserCollectionsState,
-    authState: AuthState,
+    selfInfo: SelfInfoUiState,
     items: LazyPagingItems<SubjectCollectionInfo>,
     onClickSearch: () -> Unit,
     onClickLogin: () -> Unit,
-    onClickRetryRefreshSession: () -> Unit,
     onClickSettings: () -> Unit,
     onCollectionUpdate: (subjectId: Int, episode: EpisodeListItem) -> Unit,
     modifier: Modifier = Modifier,
@@ -215,7 +208,7 @@ fun CollectionPage(
     // 如果有缓存, 列表区域要展示缓存, 错误就用图标放在角落
     CollectionPageLayout(
         settingsIcon = {
-            if (authState.isKnownGuestOrLoggedOut // #1269 游客模式下无法打开设置界面
+            if (selfInfo.isSessionValid == false // #1269 游客模式下无法打开设置界面
                 || currentWindowAdaptiveInfo1().windowSizeClass.isWidthAtLeastMedium
             ) {
                 IconButton(onClick = onClickSettings) {
@@ -224,19 +217,12 @@ fun CollectionPage(
             }
         },
         actions = {
-            SessionTipsIcon(
-                authState,
-                onLogin = onClickLogin,
-                onRetry = onClickRetryRefreshSession,
-            )
             actions()
         },
         avatar = { recommendedSize ->
             SelfAvatar(
-                authState,
-                state.selfInfo,
-                onClickLogin = onClickLogin,
-                onClickRetryRefreshSession = onClickRetryRefreshSession,
+                selfInfo,
+                onClick = onClickLogin,
                 size = recommendedSize,
             )
         },

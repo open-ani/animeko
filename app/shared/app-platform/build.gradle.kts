@@ -7,8 +7,6 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompileTool
-
 plugins {
     kotlin("multiplatform")
     id("com.android.library")
@@ -19,6 +17,7 @@ plugins {
     kotlin("plugin.serialization")
     id("org.jetbrains.kotlinx.atomicfu")
     idea
+    `build-config`
 }
 
 kotlin {
@@ -75,20 +74,13 @@ val dandanplayAppSecret = getPropertyOrNull("ani.dandanplay.app.secret") ?: ""
 val sentryDsn = getPropertyOrNull("ani.sentry.dsn") ?: ""
 val analyticsServer = getPropertyOrNull("ani.analytics.server") ?: ""
 val analyticsKey = getPropertyOrNull("ani.analytics.key") ?: ""
+val overrideAniApiServer = getPropertyOrNull("ani.api.server")?.takeIf { it.isNotBlank() }
 
 //if (bangumiClientDesktopAppId == null || bangumiClientDesktopSecret == null) {
 //    logger.warn("bangumi.oauth.client.desktop.appId or bangumi.oauth.client.desktop.secret is not set. Bangumi authorization will not work. Get a token from https://bgm.tv/dev/app and set them in local.properties.")
 //}
 
 android {
-    defaultConfig {
-        buildConfigField("String", "VERSION_NAME", "\"${getProperty("version.name")}\"")
-        buildConfigField("String", "DANDANPLAY_APP_ID", "\"$dandanplayAppId\"")
-        buildConfigField("String", "DANDANPLAY_APP_SECRET", "\"$dandanplayAppSecret\"")
-        buildConfigField("String", "SENTRY_DSN", "\"$sentryDsn\"")
-        buildConfigField("String", "ANALYTICS_KEY", "\"$analyticsKey\"")
-        buildConfigField("String", "ANALYTICS_SERVER", "\"$analyticsServer\"")
-    }
     buildTypes.getByName("release") {
         isMinifyEnabled = false
         isShrinkResources = false
@@ -97,11 +89,9 @@ android {
             *sharedAndroidProguardRules(),
         )
         buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani\"")
-        buildConfigField("String", "ANI_AUTH_SERVER_URL", "\"$aniAuthServerUrlRelease\"")
     }
     buildTypes.getByName("debug") {
         buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani.debug2\"")
-        buildConfigField("String", "ANI_AUTH_SERVER_URL", "\"$aniAuthServerUrlDebug\"")
     }
     buildFeatures {
         buildConfig = true
@@ -110,104 +100,55 @@ android {
 
 /// BUILD CONFIG
 
-val buildConfigDesktopDir = layout.buildDirectory.file("generated/source/buildConfigDesktop")
-val buildConfigIosDir = layout.buildDirectory.file("generated/source/buildConfigIos")
+buildConfig {
+    packageName.set("me.him188.ani.app.platform")
+    className.set("AniBuildConfig")
+    outputDir.set(layout.buildDirectory.dir("generated/buildconfig"))
 
-idea {
-    module {
-        generatedSourceDirs.add(buildConfigDesktopDir.get().asFile)
-        generatedSourceDirs.add(buildConfigIosDir.get().asFile)
-    }
-}
-
-kotlin.sourceSets.getByName("desktopMain") {
-    kotlin.srcDirs(buildConfigDesktopDir)
-}
-
-val generateAniBuildConfigDesktop = tasks.register("generateAniBuildConfigDesktop") {
-    val file = buildConfigDesktopDir.get().asFile.resolve("AniBuildConfig.kt").apply {
-        parentFile.mkdirs()
-        createNewFile()
-    }
-
-    inputs.property("project.version", project.version)
-
-    outputs.file(file)
-
-    val text = """
-            package me.him188.ani.app.platform
-            object AniBuildConfigDesktop : AniBuildConfig {
-                override val versionName = "${project.version}"
-                override val isDebug = System.getenv("ANI_DEBUG") == "true" || System.getProperty("ani.debug") == "true"
-                override val aniAuthServerUrl = if (isDebug) "$aniAuthServerUrlDebug" else "$aniAuthServerUrlRelease"
-                override val dandanplayAppId = "$dandanplayAppId"
-                override val dandanplayAppSecret = "$dandanplayAppSecret"
-                override val sentryDsn = "$sentryDsn"
-                override val analyticsKey = "$analyticsKey"
-                override val analyticsServer = "$analyticsServer"
-            }
-            """.trimIndent()
-
-    outputs.upToDateWhen {
-        file.exists() && file.readText().trim() == text.trim()
+    // Desktop platform configuration
+    platform("desktop") {
+        stringField("versionName", project.version.toString())
+        expressionField(
+            "isDebug",
+            "System.getenv(\"ANI_DEBUG\") == \"true\" || System.getProperty(\"ani.debug\") == \"true\"",
+        )
+        stringField("dandanplayAppId", dandanplayAppId)
+        stringField("dandanplayAppSecret", dandanplayAppSecret)
+        stringField("sentryDsn", sentryDsn)
+        stringField("analyticsKey", analyticsKey)
+        stringField("analyticsServer", analyticsServer)
+        stringField("overrideAniApiServer", overrideAniApiServer ?: "")
     }
 
-    doLast {
-        file.writeText(text)
+    // Android platform configuration
+    platform("android") {
+        stringField("versionName", project.version.toString())
+        expressionField("isDebug", "BuildConfig.DEBUG")
+        stringField("dandanplayAppId", dandanplayAppId)
+        stringField("dandanplayAppSecret", dandanplayAppSecret)
+        stringField("sentryDsn", sentryDsn)
+        stringField("analyticsKey", analyticsKey)
+        stringField("analyticsServer", analyticsServer)
+        stringField("overrideAniApiServer", overrideAniApiServer ?: "")
     }
-}
 
-if (enableIos) {
-    kotlin.sourceSets.getByName("iosMain") {
-        kotlin.srcDirs(buildConfigIosDir)
-    }
-    val generateAniBuildConfigIos = tasks.register("generateAniBuildConfigIos") {
-        val file = buildConfigIosDir.get().asFile.resolve("AniBuildConfig.kt").apply {
-            parentFile.mkdirs()
-            createNewFile()
-        }
+    // iOS platform configuration (only if enabled)
+    if (enableIos) {
+        platform("ios") {
+            stringField("versionName", project.version.toString())
+            booleanField("isDebug", false)
+            stringField("dandanplayAppId", dandanplayAppId)
+            stringField("dandanplayAppSecret", dandanplayAppSecret)
+            stringField("sentryDsn", sentryDsn)
+            stringField("analyticsKey", analyticsKey)
+            stringField("analyticsServer", analyticsServer)
 
-        inputs.property("project.version", project.version)
+            val sentryEnabled = (getPropertyOrNull("ani.sentry.ios") ?: "true").toBooleanStrict()
+            val analyticsEnabled = (getPropertyOrNull("ani.analytics.ios") ?: "true").toBooleanStrict()
 
-        outputs.file(file)
-
-        val sentryEnabled = (getPropertyOrNull("ani.sentry.ios") ?: "true").toBooleanStrict()
-        val analyticsEnabled = (getPropertyOrNull("ani.analytics.ios") ?: "true").toBooleanStrict()
-
-        val text = """
-            package me.him188.ani.app.platform
-            object AniBuildConfigIos : AniBuildConfig {
-                override val versionName = "${project.version}"
-                override val isDebug = false
-                override val aniAuthServerUrl = if (isDebug) "$aniAuthServerUrlDebug" else "$aniAuthServerUrlRelease"
-                override val dandanplayAppId = "$dandanplayAppId"
-                override val dandanplayAppSecret = "$dandanplayAppSecret"
-                override val sentryDsn = "$sentryDsn"
-                override val analyticsKey = "$analyticsKey"
-                override val analyticsServer = "$analyticsServer"
-                override val sentryEnabled = $sentryEnabled
-                override val analyticsEnabled = $analyticsEnabled
-            }
-            """.trimIndent()
-
-        outputs.upToDateWhen {
-            file.exists() && file.readText().trim() == text.trim()
-        }
-
-        doLast {
-            file.writeText(text)
+            booleanField("sentryEnabled", sentryEnabled)
+            booleanField("analyticsEnabled", analyticsEnabled)
+            stringField("overrideAniApiServer", overrideAniApiServer ?: "")
         }
     }
-    tasks.withType(KotlinCompileTool::class) {
-        dependsOn(generateAniBuildConfigIos)
-    }
-} else {
-    tasks.register("generateAniBuildConfigIos") {
-        inputs.property("project.version", project.version) // 如果没有 input 会不能 cache
-    }
 }
-
-tasks.named("compileKotlinDesktop") {
-    dependsOn(generateAniBuildConfigDesktop)
-}
-

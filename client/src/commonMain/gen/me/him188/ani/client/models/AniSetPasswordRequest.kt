@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +20,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -30,13 +31,13 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param password
+ * @param password 
  */
 @Serializable
 
-data class AniSetPasswordRequest(
+data class AniSetPasswordRequest (
 
     @SerialName(value = "password") @Required val password: kotlin.String
 
@@ -45,3 +46,5 @@ data class AniSetPasswordRequest(
 
 }
 
+
+// @formatter:on
