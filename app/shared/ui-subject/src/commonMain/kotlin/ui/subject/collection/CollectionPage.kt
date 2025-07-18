@@ -274,73 +274,55 @@ fun CollectionPage(
         modifier,
         windowInsets,
     ) { nestedScrollConnection ->
-        when {
-            // 假设没登录, 但是有缓存, 需要展示缓存
-            authState.isKnownGuest && items.itemCount == 0 -> {
-                SessionTipsArea(
-                    authState,
-                    guest = { GuestTips(onClickSearch = onClickSearch, onClickLogin = onClickLogin) },
-                    onLogin = onClickLogin,
-                    onRetry = onClickRetryRefreshSession,
-                    modifier = Modifier.padding(top = 32.dp)
-                        .padding(horizontal = 16.dp),
-                )
-            }
+        val pagerState = rememberPagerState(
+            initialPage = state.selectedTypeIndex,
+            pageCount = { COLLECTION_TABS_SORTED.size }
+        )
 
-            else -> {
-                val pagerState = rememberPagerState(
-                    initialPage = state.selectedTypeIndex,
-                    pageCount = { COLLECTION_TABS_SORTED.size }
-                )
-
-                LaunchedEffect(pagerState.currentPage) {
-                    if (pagerState.currentPage != state.selectedTypeIndex) {
-                        state.selectTypeIndex(pagerState.currentPage)
-                    }
-                }
-
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.fillMaxSize(),
-                    beyondViewportPageCount = 1,
-                    pageSpacing = 0.dp,
-                ) { pageIndex ->
-                    key(pageIndex) {
-                        PullToRefreshBox(
-                            items.loadState.refresh is LoadState.Loading,
-                            onRefresh = { items.refresh() },
-                            state = rememberPullToRefreshState(),
-                            enabled = LocalPlatform.current.isMobile(),
-                        ) {
-                            SubjectCollectionsColumn(
-                                items,
-                                item = { collection ->
-                                    var nsfwModeState: NsfwMode by rememberSaveable(collection) { mutableStateOf(collection.nsfwMode) }
-                                    NsfwMask(
-                                        nsfwModeState,
-                                        onTemporarilyDisplay = { nsfwModeState = NsfwMode.DISPLAY },
-                                        shape = SubjectCollectionItemDefaults.shape,
-                                    ) {
-                                        SubjectCollectionItem(
-                                            collection,
-                                            { onCollectionUpdate(collection.subjectId, it) },
-                                            state.subjectProgressStateFactory,
-                                            state.createEditableSubjectCollectionTypeState(collection),
-                                        )
-                                    }
-                                },
-                                modifier = Modifier.fillMaxSize()
-                                    .ifNotNullThen(nestedScrollConnection) { nestedScroll(it) },
-                                enableAnimation = enableAnimation,
-                                gridState = lazyGridState,
-                            )
-                        }
-                    }
-                }
-                
+        LaunchedEffect(pagerState.currentPage) {
+            if (pagerState.currentPage != state.selectedTypeIndex) {
+                state.selectTypeIndex(pagerState.currentPage)
             }
         }
 
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+            beyondViewportPageCount = 1,
+            pageSpacing = 0.dp,
+        ) { pageIndex ->
+            key(pageIndex) {
+                PullToRefreshBox(
+                    items.loadState.refresh is LoadState.Loading,
+                    onRefresh = { items.refresh() },
+                    state = rememberPullToRefreshState(),
+                    enabled = LocalPlatform.current.isMobile(),
+                ) {
+                    SubjectCollectionsColumn(
+                        items,
+                        item = { collection ->
+                            var nsfwModeState: NsfwMode by rememberSaveable(collection) { mutableStateOf(collection.nsfwMode) }
+                            NsfwMask(
+                                nsfwModeState,
+                                onTemporarilyDisplay = { nsfwModeState = NsfwMode.DISPLAY },
+                                shape = SubjectCollectionItemDefaults.shape,
+                            ) {
+                                SubjectCollectionItem(
+                                    collection,
+                                    { onCollectionUpdate(collection.subjectId, it) },
+                                    state.subjectProgressStateFactory,
+                                    state.createEditableSubjectCollectionTypeState(collection),
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize()
+                            .ifNotNullThen(nestedScrollConnection) { nestedScroll(it) },
+                        enableAnimation = enableAnimation,
+                        gridState = lazyGridState,
+                    )
+                }
+            }
+        }
     }
 }
 
