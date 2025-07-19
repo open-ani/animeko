@@ -187,6 +187,7 @@
     <string name="settings_storage_open_directory_chooser">Open directory chooser</string>
     <string name="settings_storage_open_bt_cache_directory">Open BT cache directory</string>
     <string name="settings_storage_directory_not_exist">This directory does not exist</string>
+    <string name="settings_storage_path_is_invalid">The path is invalid</string>
     <string name="settings_media_source_list">Data source list (%1$d)</string>
     <string name="settings_media_source_list_description">Disabled data sources won\'t be automatically queried during playback, but can be manually enabled if needed. Note that the sorting will prioritize the server order, so manual sorting within the same data source subscription may be ineffective.</string>
     <string name="settings_media_source_cancel_sort">Cancel sorting</string>

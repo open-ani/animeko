@@ -29,6 +29,7 @@ import me.him188.ani.app.ui.lang.settings_storage_choose_directory
 import me.him188.ani.app.ui.lang.settings_storage_directory_not_exist
 import me.him188.ani.app.ui.lang.settings_storage_open_bt_cache_directory
 import me.him188.ani.app.ui.lang.settings_storage_open_directory_chooser
+import me.him188.ani.app.ui.lang.settings_storage_path_is_invalid
 import me.him188.ani.app.ui.lang.settings_storage_title
 import me.him188.ani.app.ui.settings.framework.components.RowButtonItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
@@ -51,11 +52,33 @@ actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
                 mediaCacheSettings.saveDir ?: defaultSaveDir
             }
         }
+        
+        val toaster = LocalToaster.current
+        
+        val directoryNotExistMessage = stringResource(Lang.settings_storage_directory_not_exist)
+        val pathIsInvalidMessage = stringResource(Lang.settings_storage_path_is_invalid)
+        
         TextFieldItem(
             currentSaveDir,
             title = { Text(stringResource(Lang.settings_storage_bt_cache_location)) },
             onValueChangeCompleted = {
-                state.mediaCacheSettingsState.update(mediaCacheSettings.copy(saveDir = it))
+                val file = File(it)
+
+                val absolutePath = try {
+                    file.canonicalPath
+                } catch (e: Exception) {
+                    toaster.toast(pathIsInvalidMessage + "${e.message}")
+                    return@TextFieldItem
+                }
+
+                if (!file.exists() || !file.isDirectory) {
+                    toaster.toast(directoryNotExistMessage)
+                    return@TextFieldItem
+                }
+
+                state.mediaCacheSettingsState.update(
+                    mediaCacheSettings.copy(saveDir = absolutePath)
+                )
             },
             textFieldDescription = {
                 Text(stringResource(Lang.settings_storage_bt_cache_location_description))
@@ -63,7 +86,7 @@ actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
             extra = { textFieldValue ->
                 val directoryPicker = rememberDirectoryPickerLauncher(
                     stringResource(Lang.settings_storage_choose_directory),
-                    currentSaveDir,
+                    File(currentSaveDir).absolutePath,
                 ) {
                     it?.let {
                         textFieldValue.value = it.file.absolutePath
@@ -74,8 +97,6 @@ actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
                 }
             },
         )
-        val toaster = LocalToaster.current
-        val directoryNotExistMessage = stringResource(Lang.settings_storage_directory_not_exist)
         RowButtonItem(
             title = { Text(stringResource(Lang.settings_storage_open_bt_cache_directory)) },
             icon = { Icon(Icons.Rounded.ArrowOutward, null) },
