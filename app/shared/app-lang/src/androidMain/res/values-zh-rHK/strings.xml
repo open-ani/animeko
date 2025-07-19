@@ -201,6 +201,7 @@
     <string name="settings_storage_open_directory_chooser">打開目錄選擇</string>
     <string name="settings_storage_open_bt_cache_directory">打開 BT 緩存目錄</string>
     <string name="settings_storage_directory_not_exist">該目錄不存在</string>
+    <string name="settings_storage_path_is_invalid">該路徑無效</string>
 
     <!-- MediaSourceGroup -->
     <string name="settings_media_source_list">數據源列表 (%1$d)</string>
