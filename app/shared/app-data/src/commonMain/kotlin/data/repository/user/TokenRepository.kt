@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.domain.session.AccessTokenPair
-import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.isExpired
 
 /**
@@ -37,20 +36,19 @@ class TokenRepository(
     /**
      * 当前的登录会话, 为 `null` 表示未登录.
      */
-    val session: Flow<Session?> = dataStore.data.map { save ->
+    val session: Flow<Session> = dataStore.data.map { save ->
         when {
-            save.isGuest == true -> GuestSession
             save.accessTokens != null -> {
                 AccessTokenSession(
                     AccessTokenPair(
-                        bangumiAccessToken = save.accessTokens.bangumiAccessToken,
                         aniAccessToken = save.accessTokens.aniAccessToken,
                         expiresAtMillis = save.accessTokens.expiresAtMillis,
+                        bangumiAccessToken = save.accessTokens.bangumiAccessToken,
                     ),
                 )
             }
 
-            else -> null
+            else -> GuestSession
         }
     }
 
@@ -69,7 +67,6 @@ class TokenRepository(
                             aniAccessToken = session.tokens.aniAccessToken,
                             expiresAtMillis = session.tokens.expiresAtMillis,
                         ),
-                        isGuest = false,
                     )
                 }
             }
@@ -79,7 +76,6 @@ class TokenRepository(
                     it.copy(
                         refreshToken = null,
                         accessTokens = null,
-                        isGuest = true,
                     )
                 }
             }
@@ -91,7 +87,6 @@ class TokenRepository(
             it.copy(
                 refreshToken = null,
                 accessTokens = null,
-                isGuest = null,
             )
         }
     }
@@ -102,11 +97,10 @@ class TokenRepository(
 data class TokenSave internal constructor(
     val refreshToken: String? = null,
     val accessTokens: AccessTokens? = null,
-    val isGuest: Boolean? = null,
 ) {
     @Serializable
     data class AccessTokens(
-        val bangumiAccessToken: String,
+        val bangumiAccessToken: String?,
         val aniAccessToken: String,
         val expiresAtMillis: Long,
     )
@@ -191,9 +185,9 @@ class LegacyTokenRepository(
             }
             AccessTokenSession(
                 AccessTokenPair(
-                    accessToken,
                     "",
                     expiresAtMillis = expireAt,
+                    accessToken,
                 ),
             )
         }

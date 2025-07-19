@@ -31,8 +31,8 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param appearEps
- * @param summary
+ * @param appearEps 
+ * @param summary 
  * @param type 
  */
 @Serializable

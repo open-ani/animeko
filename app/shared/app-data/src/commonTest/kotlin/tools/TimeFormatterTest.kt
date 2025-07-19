@@ -15,6 +15,7 @@ import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.format.char
+import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -85,6 +86,11 @@ class TimeFormatterTest {
     fun testDaysAgo() {
         val timestamp = Instant.parse("2019-12-31T10:00:00Z")
         assertEquals("1 天前", timeFormatter.format(timestamp))
+    }
+    @Test
+    fun testDaysLater() {
+        val timestamp = Instant.parse("2020-01-02T11:00:00Z")
+        assertEquals("1 天后", timeFormatter.format(timestamp))
     }
 
     @Test

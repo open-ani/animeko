@@ -13,13 +13,11 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.paging.cachedIn
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.MyCollectionsSettings
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
@@ -28,10 +26,8 @@ import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.domain.session.OpaqueSession
 import me.him188.ani.app.domain.session.SessionEvent
-import me.him188.ani.app.domain.session.SessionManager
-import me.him188.ani.app.domain.session.userInfo
+import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.launchInBackground
@@ -52,7 +48,7 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
     private val episodeProgressRepository: EpisodeProgressRepository by inject()
     private val animeScheduleRepository: AnimeScheduleRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
-    private val sessionManager: SessionManager by inject()
+    private val sessionStateProvider: SessionStateProvider by inject()
 
     val lazyGridState = LazyGridState()
 
@@ -66,22 +62,14 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
 
     private val nsfwSettingFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
 
-    @OptIn(OpaqueSession::class)
     val state = UserCollectionsState(
         startSearch = { subjectCollectionRepository.subjectCollectionsPager(it) },
-        sessionManager.userInfo.produceState(null),
         collectionCountsState = subjectCollectionRepository.subjectCollectionCountsFlow().produceState(null),
         subjectProgressStateFactory,
         createEditableSubjectCollectionTypeState = {
             createEditableSubjectCollectionTypeState(it)
         },
     )
-
-    suspend fun refreshLoginSession() {
-        withContext(Dispatchers.Main) {
-            sessionManager.retry()
-        }
-    }
 
     // 在 VM 生命周期, 否则会导致切换页面后需要重新加载并丢失滚动进度
     val items = state.currentPagerFlow.cachedIn(backgroundScope)
@@ -126,14 +114,7 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
 //        }
 
         launchInBackground {
-            sessionManager.events.filter {
-                when (it) {
-                    SessionEvent.SwitchToGuest -> false
-                    SessionEvent.TokenRefreshed -> false
-                    SessionEvent.Login -> true
-                    SessionEvent.Logout -> true
-                }
-            }.collectLatest {
+            sessionStateProvider.eventFlow.filter { it is SessionEvent.NewLogin }.collectLatest {
                 logger.info { "登录信息变更, 清空缓存" }
                 // 如果有变更登录, 清空缓存
                 state.refresh()

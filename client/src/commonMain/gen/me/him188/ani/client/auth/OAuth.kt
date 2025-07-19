@@ -1,3 +1,4 @@
+// @formatter:off
 package me.him188.ani.client.auth
 
 class OAuth : Authentication {
@@ -8,3 +9,5 @@ class OAuth : Authentication {
         headers["Authorization"] = "Bearer $token"
     }
 }
+
+// @formatter:on

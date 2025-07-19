@@ -19,6 +19,7 @@ import kotlinx.datetime.toLocalDateTime
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.NsfwMode
+import me.him188.ani.app.data.persistent.database.dao.SubjectRelations
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
@@ -56,6 +57,11 @@ data class SubjectCollectionInfo(
      */
     val lastUpdated: Long,
     val nsfwMode: NsfwMode,
+
+    /**
+     * @since 5.0.0
+     */
+    val relations: SubjectRelations,
 ) {
     val subjectId: Int get() = subjectInfo.subjectId
 }
@@ -224,5 +230,6 @@ fun createTestSubjectCollection(
         cachedCharactersUpdated = 0,
         lastUpdated = 0,
         nsfwMode = nsfwMode,
+        relations = SubjectRelations.Empty,
     )
 }

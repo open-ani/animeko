@@ -24,19 +24,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Feedback
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.SettingsApplications
 import androidx.compose.material.icons.outlined.SmartDisplay
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Subscriptions
-import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material3.Icon
@@ -54,6 +57,7 @@ import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,6 +71,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -75,6 +80,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
@@ -84,6 +90,7 @@ import me.him188.ani.app.ui.adaptive.TopAppBarSize
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastExpanded
@@ -102,6 +109,7 @@ import me.him188.ani.app.ui.lang.settings_category_network_storage
 import me.him188.ani.app.ui.lang.settings_category_others
 import me.him188.ani.app.ui.lang.settings_debug_mode_enabled
 import me.him188.ani.app.ui.lang.settings_tab_about
+import me.him188.ani.app.ui.lang.settings_tab_account
 import me.him188.ani.app.ui.lang.settings_tab_appearance
 import me.him188.ani.app.ui.lang.settings_tab_bt
 import me.him188.ani.app.ui.lang.settings_tab_danmaku
@@ -114,9 +122,12 @@ import me.him188.ani.app.ui.lang.settings_tab_proxy
 import me.him188.ani.app.ui.lang.settings_tab_storage
 import me.him188.ani.app.ui.lang.settings_tab_theme
 import me.him188.ani.app.ui.lang.settings_tab_update
+import me.him188.ani.app.ui.settings.account.BangumiSyncTab
+import me.him188.ani.app.ui.settings.account.ProfileGroup
+import me.him188.ani.app.ui.settings.account.SelfInfoBanner
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.rendering.P2p
-import me.him188.ani.app.ui.settings.tabs.AniHelpNavigator
+import me.him188.ani.app.ui.settings.tabs.AniHelperDestination
 import me.him188.ani.app.ui.settings.tabs.DebugTab
 import me.him188.ani.app.ui.settings.tabs.about.AboutTab
 import me.him188.ani.app.ui.settings.tabs.about.AcknowledgementsTab
@@ -131,7 +142,7 @@ import me.him188.ani.app.ui.settings.tabs.media.TorrentEngineGroup
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceGroup
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionGroup
 import me.him188.ani.app.ui.settings.tabs.network.ConfigureProxyGroup
-import me.him188.ani.app.ui.settings.tabs.network.DanmakuGroup
+import me.him188.ani.app.ui.settings.tabs.network.ServerSelectionGroup
 import me.him188.ani.app.ui.settings.tabs.theme.ThemeGroup
 import me.him188.ani.utils.platform.hasScrollingBug
 import org.jetbrains.compose.resources.getString
@@ -145,6 +156,8 @@ typealias SettingsTab = me.him188.ani.app.navigation.SettingsTab
 @Composable
 fun SettingsScreen(
     vm: SettingsViewModel,
+    onNavigateToEmailLogin: () -> Unit,
+    onNavigateToBangumiOAuth: () -> Unit,
     modifier: Modifier = Modifier,
     initialTab: SettingsTab? = null,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
@@ -163,17 +176,22 @@ fun SettingsScreen(
     )
     val layoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective)
     val coroutineScope = rememberCoroutineScope()
+    val browserNavigator = rememberAsyncBrowserNavigator()
     val context = LocalContext.current
+
+    fun navigateToTab(tab: SettingsTab) {
+        coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
+            lastSelectedTab = tab
+        }
+    }
 
     SettingsPageLayout(
         navigator,
         // TODO: 2025/2/14 We should have a SettingsNavController or so to control the tab state 
         { lastSelectedTab },
         onSelectedTab = { tab ->
-            coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
-                lastSelectedTab = tab
-            }
+            navigateToTab(tab)
         },
         onClickBackOnListPage = {
             coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -186,7 +204,22 @@ fun SettingsScreen(
             }
         },
         navItems = {
-            Title(stringResource(Lang.settings_category_app_ui), paddingTop = 0.dp)
+            val selfInfoState by vm.selfInfoFlow.collectAsStateWithLifecycle()
+            val bannerChecked by remember {
+                derivedStateOf {
+                    lastSelectedTab == SettingsTab.PROFILE
+                }
+            }
+            SelfInfoBanner(
+                selfInfoState,
+                checked = bannerChecked,
+                { navigateToTab(SettingsTab.PROFILE) },
+                onNavigateToEmailLogin,
+                Modifier.fillMaxWidth(),
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+            )
+
+            Title(stringResource(Lang.settings_category_app_ui))
             Item(SettingsTab.APPEARANCE)
             Item(SettingsTab.THEME)
 
@@ -194,9 +227,9 @@ fun SettingsScreen(
             Item(SettingsTab.PLAYER)
             Item(SettingsTab.MEDIA_SOURCE)
             Item(SettingsTab.MEDIA_SELECTOR)
-            Item(SettingsTab.DANMAKU)
 
             Title(stringResource(Lang.settings_category_network_storage))
+            Item(SettingsTab.SERVER)
             Item(SettingsTab.PROXY)
             Item(SettingsTab.BT)
 //            Item(SettingsTab.CACHE)
@@ -228,10 +261,15 @@ fun SettingsScreen(
                                 }
                             }
                         },
-                        onClickReleaseNotes = { AniHelpNavigator.openGitHubRelease(context, vm.aboutTabInfo.version) },
-                        onClickWebsite = { AniHelpNavigator.openAniWebsite(context) },
-                        onClickFeedback = { AniHelpNavigator.openIssueTracker(context) },
-                        onClickSource = { AniHelpNavigator.openGitHubHome(context) },
+                        onClickReleaseNotes = {
+                            browserNavigator.openBrowser(
+                                context,
+                                AniHelperDestination.RELEASE_PREFIX + vm.aboutTabInfo.version,
+                            )
+                        },
+                        onClickWebsite = { browserNavigator.openBrowser(context, AniHelperDestination.ANI_WEBSITE) },
+                        onClickFeedback = { browserNavigator.openBrowser(context, AniHelperDestination.ISSUE_TRACKER) },
+                        onClickSource = { browserNavigator.openBrowser(context, AniHelperDestination.GITHUB_HOME) },
                         onClickDevelopers = {
                             detailPaneNavController.navigate(DetailPaneRoutes.Developers)
                         },
@@ -242,7 +280,7 @@ fun SettingsScreen(
                     )
 
                     SettingsTab.LOG -> LogTab(
-                        onClickFeedback = { AniHelpNavigator.openIssueTracker(context) },
+                        onClickFeedback = { browserNavigator.openBrowser(context, AniHelperDestination.ISSUE_TRACKER) },
                     )
 
                     SettingsTab.DEBUG -> DebugTab(
@@ -255,6 +293,14 @@ fun SettingsScreen(
                         tabModifier,
                     ) {
                         when (currentTab) {
+                            SettingsTab.PROFILE -> ProfileGroup(
+                                onNavigateToEmail = onNavigateToEmailLogin,
+                                onNavigateToBangumiSync = {
+                                    detailPaneNavController.navigate(DetailPaneRoutes.BangumiSync)
+                                },
+                                onNavigateToBangumiOAuth = onNavigateToBangumiOAuth,
+                            )
+
                             SettingsTab.APPEARANCE -> AppearanceGroup(vm.uiSettings)
                             SettingsTab.THEME -> ThemeGroup(vm.themeSettings)
                             SettingsTab.UPDATE -> SoftwareUpdateGroup(vm.softwareUpdateGroupState)
@@ -276,7 +322,7 @@ fun SettingsScreen(
                             }
 
                             SettingsTab.MEDIA_SELECTOR -> MediaSelectionGroup(vm.mediaSelectionGroupState)
-                            SettingsTab.DANMAKU -> DanmakuGroup(vm.danmakuSettingsState, vm.danmakuServerTesters)
+                            SettingsTab.SERVER -> ServerSelectionGroup(vm.danmakuSettingsState, vm.danmakuServerTesters)
                             SettingsTab.PROXY -> ConfigureProxyGroup(
                                 state = vm.configureProxyState,
                                 onStartProxyTestLoop = { vm.startProxyTesterLoop() },
@@ -330,7 +376,7 @@ internal fun SettingsPageLayout(
             this
         } else {
             // 双页模式, 默认选择第一个 tab, 以免右边很空
-            this ?: SettingsTab.entries.first()
+            this ?: SettingsTab.Default
         }
     }
 
@@ -419,7 +465,7 @@ internal fun SettingsPageLayout(
 
                 val verticalPadding = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding
 
-                Spacer(Modifier.height(verticalPadding)) // scrollable
+                Spacer(Modifier.height(verticalPadding - 8.dp)) // scrollable
                 navItems(scope)
                 Spacer(Modifier.height(verticalPadding)) // scrollable
             }
@@ -444,7 +490,10 @@ internal fun SettingsPageLayout(
                 val detailPaneNavController = rememberNavController()
 
                 @Composable
-                fun PaneScope.RouteContent(content: @Composable SettingsDetailPaneScope.() -> Unit) {
+                fun PaneScope.RouteContent(
+                    scrollable: Boolean = true,
+                    content: @Composable SettingsDetailPaneScope.() -> Unit,
+                ) {
                     val paneScope = this
                     val scope = remember(paneScope, detailPaneNavController) {
                         object : SettingsDetailPaneScope, PaneScope by paneScope {
@@ -455,8 +504,13 @@ internal fun SettingsPageLayout(
                     }
                     Column(
                         Modifier
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = SettingsScope.itemExtraHorizontalPadding),
+                            .ifThen(scrollable) {
+                                verticalScroll(rememberScrollState())
+                            }
+                            .padding(horizontal = SettingsScope.itemExtraHorizontalPadding)
+                            .fillMaxWidth()
+                            .wrapContentWidth()
+                            .widthIn(max = 1000.dp),
                     ) {
                         scope.content()
                     }
@@ -541,6 +595,27 @@ internal fun SettingsPageLayout(
                             }
                         }
                     }
+                    composable<DetailPaneRoutes.BangumiSync> {
+                        DetailPaneRoute(
+                            topAppBar = {
+                                AniTopAppBar(
+                                    title = { AniTopAppBarDefaults.Title("Bangumi 同步") },
+                                    navigationIcon = {
+                                        BackNavigationIconButton({ detailPaneNavController.navigateUp() })
+                                    },
+                                    colors = topAppBarColors,
+                                    windowInsets = topAppBarWindowInsets,
+                                    size = topAppBarSize,
+                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
+                                )
+                            },
+                            detailPaneTopAppBarScrollBehavior,
+                        ) {
+                            RouteContent(scrollable = false) {
+                                BangumiSyncTab()
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -595,6 +670,9 @@ internal sealed class DetailPaneRoutes {
 
     @Serializable
     data object Developers : DetailPaneRoutes()
+
+    @Serializable
+    data object BangumiSync : DetailPaneRoutes()
 }
 
 @Stable
@@ -617,13 +695,14 @@ abstract class SettingsDrawerScope internal constructor() : ColumnScope {
 @Stable
 private fun getIcon(tab: SettingsTab): ImageVector {
     return when (tab) {
+        SettingsTab.PROFILE -> Icons.Outlined.AccountCircle
         SettingsTab.APPEARANCE -> Icons.Outlined.SettingsApplications
         SettingsTab.THEME -> Icons.Outlined.Palette
         SettingsTab.UPDATE -> Icons.Outlined.Update
         SettingsTab.PLAYER -> Icons.Outlined.SmartDisplay
         SettingsTab.MEDIA_SOURCE -> Icons.Outlined.Subscriptions
         SettingsTab.MEDIA_SELECTOR -> Icons.Outlined.FilterList
-        SettingsTab.DANMAKU -> Icons.Outlined.Subtitles
+        SettingsTab.SERVER -> Icons.Outlined.Public
         SettingsTab.PROXY -> Icons.Outlined.VpnKey
         SettingsTab.BT -> Icons.Filled.P2p
 //        SettingsTab.CACHE -> Icons.Rounded.Download // Icons.Outlined.Download 太 sharp 了
@@ -638,12 +717,13 @@ private fun getIcon(tab: SettingsTab): ImageVector {
 @Composable
 private fun getName(tab: SettingsTab): String {
     return when (tab) {
+        SettingsTab.PROFILE -> stringResource(Lang.settings_tab_account)
         SettingsTab.APPEARANCE -> stringResource(Lang.settings_tab_appearance)
         SettingsTab.THEME -> stringResource(Lang.settings_tab_theme)
         SettingsTab.PLAYER -> stringResource(Lang.settings_tab_player)
         SettingsTab.MEDIA_SOURCE -> stringResource(Lang.settings_tab_media_source)
         SettingsTab.MEDIA_SELECTOR -> stringResource(Lang.settings_tab_media_selector)
-        SettingsTab.DANMAKU -> stringResource(Lang.settings_tab_danmaku)
+        SettingsTab.SERVER -> stringResource(Lang.settings_tab_danmaku)
         SettingsTab.PROXY -> stringResource(Lang.settings_tab_proxy)
         SettingsTab.BT -> stringResource(Lang.settings_tab_bt)
 //        SettingsTab.CACHE -> stringResource(Lang.settings_tab_cache)

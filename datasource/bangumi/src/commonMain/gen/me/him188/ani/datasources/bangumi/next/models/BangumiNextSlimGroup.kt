@@ -37,8 +37,8 @@ import kotlinx.serialization.Serializable
  * @param icon
  * @param id
  * @param members
- * @param name
- * @param nsfw
+ * @param name 
+ * @param nsfw 
  * @param title 
  */
 @Serializable

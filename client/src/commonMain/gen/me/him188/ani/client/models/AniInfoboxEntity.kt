@@ -7,6 +7,8 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +21,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -30,14 +32,14 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param template
- * @param fields
+ * @param template 
+ * @param fields 
  */
 @Serializable
 
-data class AniInfoboxEntity(
+data class AniInfoboxEntity (
 
     @SerialName(value = "template") @Required val template: kotlin.String,
 
@@ -48,3 +50,7 @@ data class AniInfoboxEntity(
 
 }
 
+
+// @formatter:on
+
+// @formatter:on

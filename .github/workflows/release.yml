@@ -73,10 +73,10 @@ jobs:
         prerelease: '${{ contains(steps.step-1.outputs.tag, ''-'') }}'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-  release_github-windows-2019:
+  release_github-windows-2022:
     name: 'Windows Server 2019 x86_64'
     runs-on:
-    - 'windows-2019'
+      - 'windows-2022'
     needs:
     - 'create-release'
     steps:
@@ -221,7 +221,7 @@ jobs:
       name: 'Upload compose logs'
       uses: 'actions/upload-artifact@v4'
       with:
-        name: 'compose-logs-github-windows-2019'
+        name: 'compose-logs-github-windows-2022'
         path: 'app/desktop/build/compose/logs'
       if: '${{ always() }}'
   release_self-hosted-macos-15:

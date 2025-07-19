@@ -21,6 +21,9 @@ import androidx.room.TypeConverters
 import androidx.room.migration.AutoMigrationSpec
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
+import me.him188.ani.app.data.persistent.database.converters.DurationConverter
+import me.him188.ani.app.data.persistent.database.converters.InstantConverter
+import me.him188.ani.app.data.persistent.database.converters.PackedDateConverter
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCommentDao
@@ -64,7 +67,7 @@ import me.him188.ani.app.data.persistent.database.entity.SubjectReviewEntity
         WebSearchSubjectInfoEntity::class,
         WebSearchEpisodeInfoEntity::class,
     ],
-    version = 14,
+    version = 15,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.Migration_1_2::class),
         AutoMigration(from = 2, to = 3, spec = Migrations.Migration_2_3::class),
@@ -79,11 +82,17 @@ import me.him188.ani.app.data.persistent.database.entity.SubjectReviewEntity
         AutoMigration(from = 11, to = 12, spec = Migrations.Migration_11_12::class),
         AutoMigration(from = 12, to = 13, spec = Migrations.Migration_12_13::class),
         AutoMigration(from = 13, to = 14, spec = Migrations.Migration_13_14::class),
+        AutoMigration(from = 14, to = 15, spec = Migrations.Migration_14_15::class),
     ],
     exportSchema = true,
 )
 @ConstructedBy(AniDatabaseConstructor::class)
-@TypeConverters(ProtoConverters::class, EpisodeSortConverter::class)
+@TypeConverters(
+    PackedDateConverter::class,
+    DurationConverter::class,
+    InstantConverter::class,
+    EpisodeSortConverter::class,
+)
 abstract class AniDatabase : RoomDatabase() {
     abstract fun searchHistory(): SearchHistoryDao
     abstract fun searchTag(): SearchTagDao
@@ -257,6 +266,16 @@ internal object Migrations {
      * @since 4.9.0-alpha03
      */
     class Migration_13_14 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+        }
+    }
+
+    /**
+     * Added [SubjectCollectionEntity.relations].
+     *
+     * @since 5.0.0
+     */
+    class Migration_14_15 : AutoMigrationSpec {
         override fun onPostMigrate(connection: SQLiteConnection) {
         }
     }

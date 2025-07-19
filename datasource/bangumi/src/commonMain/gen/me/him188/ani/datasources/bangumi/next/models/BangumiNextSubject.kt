@@ -48,8 +48,8 @@ import kotlinx.serialization.Serializable
  * @param series
  * @param seriesEntry
  * @param summary
- * @param tags
- * @param type
+ * @param tags 
+ * @param type 
  * @param volumes 
  * @param images 
  * @param interest 

@@ -33,8 +33,8 @@ import kotlinx.serialization.Serializable
  * 
  *
  * @param cn
- * @param en
- * @param id
+ * @param en 
+ * @param id 
  * @param jp 
  */
 @Serializable

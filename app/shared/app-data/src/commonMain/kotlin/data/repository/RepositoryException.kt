@@ -15,7 +15,6 @@ import io.ktor.client.plugins.ServerResponseException
 import io.ktor.http.HttpStatusCode
 import kotlinx.io.IOException
 import me.him188.ani.app.data.repository.RepositoryException.Companion.wrapOrThrowCancellation
-import me.him188.ani.app.trace.ErrorReport
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -36,7 +35,7 @@ sealed class RepositoryException : Exception {
                     HttpStatusCode.Forbidden -> RepositoryAuthorizationException(cause.response.status.description)
                     HttpStatusCode.TooManyRequests -> RepositoryRateLimitedException(cause.response.status.description)
                     else -> {
-                        createAndReportUnknownException(cause)
+                        RepositoryUnknownException(cause)
                     }
                 }
             }
@@ -45,15 +44,10 @@ sealed class RepositoryException : Exception {
             is ServerResponseException -> RepositoryServiceUnavailableException(cause.response.status.description)
 
             else -> {
-                createAndReportUnknownException(cause)
+                RepositoryUnknownException(cause)
             }
         }
 
-        private fun createAndReportUnknownException(cause: Throwable): RepositoryUnknownException {
-            return RepositoryUnknownException(cause).also {
-                ErrorReport.captureException(it)
-            }
-        }
     }
 }
 

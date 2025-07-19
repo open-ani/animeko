@@ -484,7 +484,7 @@ private fun EpisodeScreenTabletVeryWide(
                                     vm.videoStatisticsFlow,
                                     page.mediaSelectorState,
                                     { page.mediaSourceResultListPresentation },
-                                    page.authState,
+                                    page.selfInfo,
                                     onSwitchEpisode = { episodeId ->
                                         if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
                                             navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
@@ -626,7 +626,7 @@ private fun EpisodeScreenContentPhone(
                     vm.videoStatisticsFlow,
                     page.mediaSelectorState,
                     { page.mediaSourceResultListPresentation },
-                    page.authState,
+                    page.selfInfo,
                     onSwitchEpisode = { episodeId ->
                         if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
                             navigator.navigateEpisodeDetails(vm.subjectId, episodeId)

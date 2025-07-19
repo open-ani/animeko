@@ -49,18 +49,10 @@ data class SubjectEpisodeInfoBundle(
      * @since 4.10
      * @see anyLoading
      */
-    val seriesInfo: SubjectSeriesInfo?, // null means either loading or error.
-    /**
-     * @see anyLoading
-     */
-    val seriesInfoLoadError: LoadError? = null, // 有错误可能也不要紧, 考虑离线播放, 一定会网络错误.
-    val subjectCompleted: Boolean?,
-    val subjectCompletedLoadError: LoadError? = null,
+    val seriesInfo: SubjectSeriesInfo, // null means either loading or error.
+    val subjectCompleted: Boolean,
 ) {
-    fun anyLoading() =
-        (seriesInfo == null && seriesInfoLoadError == null)
-                || (subjectCompleted == null && subjectCompletedLoadError == null)
-
+    fun anyLoading() = false
     /**
      * Convenience accessor for the [SubjectInfo] associated with [subjectId].
      */

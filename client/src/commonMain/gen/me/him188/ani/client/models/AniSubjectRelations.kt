@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +20,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -30,24 +31,32 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * 
+ * 系列信息
  *
- * @param subjectId
- * @param seriesMainSubjectIds
+ * @param subjectId 
+ * @param seriesMainSubjectIds 
+ * @param seriesMainSubjectNames 
  * @param sequelSubjects 
+ * @param sequelSubjectNames 
  */
 @Serializable
 
-data class AniSubjectRelations(
+data class AniSubjectRelations (
 
-    @SerialName(value = "subjectId") @Required val subjectId: kotlin.Int,
+    @SerialName(value = "subjectId") @Required val subjectId: kotlin.Long,
 
     @SerialName(value = "seriesMainSubjectIds") @Required val seriesMainSubjectIds: kotlin.collections.List<kotlin.Int>,
 
-    @SerialName(value = "sequelSubjects") @Required val sequelSubjects: kotlin.collections.List<kotlin.Int>
+    @SerialName(value = "seriesMainSubjectNames") @Required val seriesMainSubjectNames: kotlin.collections.List<kotlin.String>,
+
+    @SerialName(value = "sequelSubjects") @Required val sequelSubjects: kotlin.collections.List<kotlin.Int>,
+
+    @SerialName(value = "sequelSubjectNames") @Required val sequelSubjectNames: kotlin.collections.List<kotlin.String>
 
 ) {
 
 
 }
 
+
+// @formatter:on

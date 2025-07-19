@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 package me.him188.ani.client.infrastructure
 
 import kotlinx.serialization.KSerializer
@@ -40,3 +41,5 @@ class OctetByteArray(val value: ByteArray) {
         return "OctetByteArray(${hex(value)})"
     }
 }
+
+// @formatter:on

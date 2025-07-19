@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +20,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -33,12 +34,12 @@ import kotlinx.serialization.Serializable
  * 
  *
  * @param accessToken 
- * @param refreshToken
+ * @param refreshToken 
  * @param expiresIn 
  */
 @Serializable
 
-data class AniAnonymousBangumiUserToken(
+data class AniAnonymousBangumiUserToken (
 
     @SerialName(value = "accessToken") @Required val accessToken: kotlin.String,
 
@@ -51,3 +52,5 @@ data class AniAnonymousBangumiUserToken(
 
 }
 
+
+// @formatter:on

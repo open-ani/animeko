@@ -32,8 +32,11 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
@@ -41,9 +44,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import kotlinx.coroutines.launch
-import me.him188.ani.app.domain.session.AuthState
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
+import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.getIcon
 import me.him188.ani.app.navigation.getText
 import me.him188.ani.app.platform.LocalContext
@@ -67,19 +70,22 @@ import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
+import me.him188.ani.app.ui.settings.account.ProfilePopup
+import me.him188.ani.app.ui.settings.account.ProfileViewModel
 import me.him188.ani.app.ui.subject.collection.CollectionPage
 import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
 import me.him188.ani.app.ui.update.UpdateNotifier
+import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.utils.platform.isAndroid
 
 
 @Composable
 fun MainScreen(
     page: MainScreenPage,
-    authState: AuthState,
+    selfInfo: SelfInfoUiState,
     modifier: Modifier = Modifier,
     onNavigateToPage: (MainScreenPage) -> Unit,
-    onNavigateToSettings: () -> Unit,
+    onNavigateToSettings: (tab: SettingsTab?) -> Unit,
     onNavigateToSearch: () -> Unit,
     navigationLayoutType: NavigationSuiteType = AniNavigationSuiteDefaults.calculateLayoutType(
         currentWindowAdaptiveInfo1(),
@@ -95,7 +101,7 @@ fun MainScreen(
 
     MainScreenContent(
         page,
-        authState,
+        selfInfo,
         onNavigateToPage,
         onNavigateToSettings,
         onNavigateToSearch,
@@ -107,9 +113,9 @@ fun MainScreen(
 @Composable
 private fun MainScreenContent(
     page: MainScreenPage,
-    authState: AuthState,
+    selfInfo: SelfInfoUiState,
     onNavigateToPage: (MainScreenPage) -> Unit,
-    onNavigateToSettings: () -> Unit,
+    onNavigateToSettings: (tab: SettingsTab?) -> Unit,
     onNavigateToSearch: () -> Unit,
     modifier: Modifier = Modifier,
     navigationLayoutType: NavigationSuiteType = AniNavigationSuiteDefaults.calculateLayoutType(
@@ -120,6 +126,12 @@ private fun MainScreenContent(
     val userCollectionsViewModel = viewModel<UserCollectionsViewModel> { UserCollectionsViewModel() }
     val cacheManagementViewModel = viewModel { CacheManagementViewModel() }
     val scope = rememberCoroutineScope()
+
+    var showAccountSettingsPopup: Boolean by remember { mutableStateOf(false) }
+    val profileViewModel = viewModel { ProfileViewModel() }
+
+    val navigatorState = rememberUpdatedState(LocalNavigator.current)
+    val navigator by navigatorState
 
     AniNavigationSuiteLayout(
         navigationSuite = {
@@ -152,7 +164,7 @@ private fun MainScreenContent(
                                 padding(vertical = 16.dp)
                             },
                         selected = false,
-                        onClick = onNavigateToSettings,
+                        onClick = { onNavigateToSettings(null) },
                         icon = { Icon(Icons.Rounded.Settings, null) },
                         enabled = true,
                         label = { Text("设置") },
@@ -192,8 +204,6 @@ private fun MainScreenContent(
         layoutType = navigationLayoutType,
     ) {
         val coroutineScope = rememberCoroutineScope()
-        val navigatorState = rememberUpdatedState(LocalNavigator.current)
-        val navigator by navigatorState
         // Windows caption button 在右侧, 没有足够空间放置按钮, 需要保留 title bar insets
         val isRightCaptionButton = WindowInsets.desktopCaptionButton.isTopRight()
         val toaster = LocalToaster.current
@@ -217,13 +227,10 @@ private fun MainScreenContent(
                     MainScreenPage.Exploration -> {
                         ExplorationScreen(
                             explorationPageViewModel.explorationPageState,
-                            authState,
+                            selfInfo,
                             onSearch = onNavigateToSearch,
                             onClickSettings = { navigator.navigateSettings() },
-                            onClickLogin = { navigator.navigateBangumiAuthorize() },
-                            onClickRetryRefreshSession = {
-                                coroutineScope.launch { explorationPageViewModel.refreshLoginSession() }
-                            },
+                            onClickLogin = { showAccountSettingsPopup = true },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -231,13 +238,10 @@ private fun MainScreenContent(
                     MainScreenPage.Collection -> {
                         CollectionPage(
                             state = userCollectionsViewModel.state,
-                            authState = authState,
+                            selfInfo = selfInfo,
                             items = userCollectionsViewModel.items.collectAsLazyPagingItems(),
                             onClickSearch = onNavigateToSearch,
-                            onClickLogin = { navigator.navigateBangumiAuthorize() },
-                            onClickRetryRefreshSession = {
-                                coroutineScope.launch { userCollectionsViewModel.refreshLoginSession() }
-                            },
+                            onClickLogin = { showAccountSettingsPopup = true },
                             onClickSettings = { navigator.navigateSettings() },
                             onCollectionUpdate = { subjectId, episode ->
                                 coroutineScope.launch {
@@ -265,6 +269,25 @@ private fun MainScreenContent(
                 }
             }
         }
+    }
+
+    if (showAccountSettingsPopup) {
+        ProfilePopup(
+            vm = profileViewModel,
+            onDismissRequest = { showAccountSettingsPopup = false },
+            onNavigateToSettings = {
+                showAccountSettingsPopup = false
+                onNavigateToSettings(null)
+            },
+            onNavigateToAccountSettings = {
+                showAccountSettingsPopup = false
+                onNavigateToSettings(SettingsTab.PROFILE)
+            },
+            onNavigateToLogin = {
+                showAccountSettingsPopup = false
+                navigator.navigateLogin()
+            },
+        )
     }
 }
 

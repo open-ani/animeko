@@ -7,6 +7,8 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +21,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -29,7 +31,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- *
+ * 
  *
  * Values: WISH,DONE,DOING,ON_HOLD,DROPPED
  */
@@ -70,11 +72,15 @@ enum class AniSubjectCollectionType(val value: kotlin.String) {
          * Returns a valid [AniSubjectCollectionType] for [data], null otherwise.
          */
         fun decode(data: kotlin.Any?): AniSubjectCollectionType? = data?.let {
-            val normalizedData = "$it".lowercase()
-            values().firstOrNull { value ->
-                it == value || normalizedData == "$value".lowercase()
-            }
+          val normalizedData = "$it".lowercase()
+          values().firstOrNull { value ->
+            it == value || normalizedData == "$value".lowercase()
+          }
         }
     }
 }
 
+
+// @formatter:on
+
+// @formatter:on

@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+// @formatter:off
 /**
  *
  * Please note:
@@ -19,7 +20,7 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport",
+    "UnusedImport"
 )
 
 package me.him188.ani.client.models
@@ -28,18 +29,23 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
+ * 
  *
- *
- * @param collectionType
+ * @param collectionType 
+ * @param selfRating 
  */
 @Serializable
 
-data class AniUpdateSubjectCollectionRequest(
+data class AniUpdateSubjectCollectionRequest (
 
-    @SerialName(value = "collectionType") val collectionType: AniSubjectCollectionType? = null
+    @SerialName(value = "collectionType") val collectionType: AniCollectionType? = null,
+
+    @SerialName(value = "selfRating") val selfRating: AniSelfRatingInfo? = null
 
 ) {
 
 
 }
 
+
+// @formatter:on

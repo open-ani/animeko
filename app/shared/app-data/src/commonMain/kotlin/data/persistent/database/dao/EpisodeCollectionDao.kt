@@ -57,6 +57,7 @@ data class EpisodeCollectionEntity(
     val name: String,
     val nameCn: String,
     val airDate: PackedDate,
+    @Deprecated("Not available anymore")
     val comment: Int,
     val desc: String,
     val sort: EpisodeSort,
@@ -167,6 +168,14 @@ interface EpisodeCollectionDao {
         ORDER BY lastFetched DESC LIMIT 1""",
     )
     suspend fun lastFetched(subjectId: Int): Long
+
+    @Query(
+        """
+        DELETE FROM episode_collection 
+        WHERE subjectId = :subjectId
+        """,
+    )
+    suspend fun deleteAllBySubjectId(subjectId: Int)
 }
 
 fun EpisodeCollectionDao.filterBySubjectId(

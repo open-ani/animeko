@@ -62,7 +62,7 @@ open class SubjectBangumiNextApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
-        type?.apply { localVariableQuery["type"] = listOf("$type") }
+        type?.apply { localVariableQuery["type"] = listOf("${type.value}") }
         limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
         offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
         val localVariableHeaders = mutableMapOf<String, String>()

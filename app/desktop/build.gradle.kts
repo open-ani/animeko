@@ -70,6 +70,8 @@ compose.desktop {
     application {
         jvmArgs(
             "-XX:+UseZGC",
+            "-XX:+ZGenerational",
+            "-XX:SoftMaxHeapSize=512m",
             "-Dorg.slf4j.simpleLogger.defaultLogLevel=TRACE",
             "-Dsun.java2d.metal=true",
             "-Djogamp.debug.JNILibLoader=true", // JCEF 加载 native 库的日志, 方便 debug
@@ -77,7 +79,6 @@ compose.desktop {
             "--add-opens=java.desktop/java.awt.peer=ALL-UNNAMED",
             "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
             "-XX:+EnableDynamicAgentLoading", // ByteBuddy agent
-            "-Xmx512m",
         )
         if (getOs() == Os.MacOS) {
             jvmArgs(

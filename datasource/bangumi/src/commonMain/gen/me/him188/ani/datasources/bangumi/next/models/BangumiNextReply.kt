@@ -36,8 +36,8 @@ import kotlinx.serialization.Serializable
  * @param creatorID
  * @param id
  * @param state
- * @param replies
- * @param creator
+ * @param replies 
+ * @param creator 
  * @param reactions 
  */
 @Serializable

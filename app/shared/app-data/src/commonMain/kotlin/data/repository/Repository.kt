@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import me.him188.ani.utils.coroutines.flows.shareTransparentlyIn
 import me.him188.ani.utils.logging.thisLogger
 import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * 每个 Repository 封装对相应数据的访问逻辑, 提供简单的接口, 让调用方无需关心数据的来源是网络还是本地存储.
@@ -45,23 +44,6 @@ abstract class Repository(
         )
     }
 }
-
-
-fun interface RepositoryUsernameProvider {
-    @Throws(RepositoryException::class, CancellationException::class)
-    suspend operator fun invoke(): String
-}
-
-@Throws(RepositoryAuthorizationException::class, CancellationException::class)
-suspend fun RepositoryUsernameProvider.getOrThrow(): String {
-    val username = try {
-        invoke()
-    } catch (e: Exception) {
-        throw RepositoryException.wrapOrThrowCancellation(e)
-    }
-    return username
-}
-
 
 internal fun <T : Any> List<T>?.toPage(pageNumber: Int): PagingSource.LoadResult.Page<Int, T> {
     val items = this

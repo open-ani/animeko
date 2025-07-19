@@ -42,7 +42,6 @@ import com.sun.jna.platform.win32.Advapi32Util
 import com.sun.jna.platform.win32.WinReg
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -58,7 +57,6 @@ import me.him188.ani.app.desktop.storage.AppFolderResolver
 import me.him188.ani.app.desktop.storage.AppInfo
 import me.him188.ani.app.desktop.window.WindowFrame
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
-import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.update.UpdateManager
 import me.him188.ani.app.navigation.AniNavigator
@@ -363,12 +361,6 @@ object AniDesktop {
         }
 
         val navigator = AniNavigator()
-
-        coroutineScope.launch {
-            navigator.awaitNavController()
-            val sessionManager by koin.koin.inject<SessionManager>()
-            AppStartupTasks.verifySession(sessionManager)
-        }
 
         val windowStateRepository = koin.koin.get<WindowStateRepository>()
         val savedWindowStateDeferred = coroutineScope.async {

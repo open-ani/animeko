@@ -18,7 +18,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
+import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.dialogs.compose.rememberDirectoryPickerLauncher
 import me.him188.ani.app.platform.LocalDesktopContext
 import me.him188.ani.app.platform.files
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster

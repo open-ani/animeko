@@ -23,12 +23,11 @@
 ## 准备 JDK (JetBrains Runtime with JCEF)
 
 由于 PC 端使用 [JCEF](https://github.com/jetbrains/jcef) (内置浏览器)，JDK 必须使用 JetBrains
-Runtime (JCEF)，版本 17 或 21，下文简称 JBR。
+Runtime (JCEF)，版本必须为 21，下文简称 JBR。
 
 需要自行安装 JBR (必须是带有 JCEF 的版本, 见图)。在 Android Studio 或 IntelliJ IDEA 中，如下图所示，
 可打开设置
-`Build, Execution, Deployment -> Build Tools -> Gradle`，修改 Gradle JDK 配置为 JBR (JCEF) 17 或 21。
-如果使用 21，则需要在 `local.properties` 中添加一行 `jvm.toolchain.version=21`。如果使用 17 则无需修改配置。
+`Build, Execution, Deployment -> Build Tools -> Gradle`，修改 Gradle JDK 配置为 JBR (JCEF) 21。
 
 <img src="images/idea-settings-download-jdk.png" alt="download jbr" width="400"/>
 <img src="images/idea-settings-download-jdk-version.png" alt="choose version" width="200"/>

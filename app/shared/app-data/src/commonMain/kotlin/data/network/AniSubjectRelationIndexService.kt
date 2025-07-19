@@ -28,7 +28,7 @@ class AniSubjectRelationIndexService(
         try {
             // https://auth.myani.org/v1/subject-relations/239816
             relationsApi {
-                getSubjectRelations(subjectId).body()
+                getSubjectRelations(subjectId.toLong()).body()
             }
         } catch (e: Exception) {
             throw RepositoryException.wrapOrThrowCancellation(e)

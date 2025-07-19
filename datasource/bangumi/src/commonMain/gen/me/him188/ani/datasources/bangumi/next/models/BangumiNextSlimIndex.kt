@@ -34,8 +34,8 @@ import kotlinx.serialization.Serializable
  *
  * @param createdAt
  * @param id
- * @param title
- * @param total
+ * @param title 
+ * @param total 
  * @param type 
  */
 @Serializable

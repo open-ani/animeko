@@ -35,8 +35,8 @@ import kotlinx.serialization.Serializable
  * @param metaTags
  * @param name
  * @param nsfw
- * @param platform
- * @param summary
+ * @param platform 
+ * @param summary 
  * @param type 
  */
 @Serializable
