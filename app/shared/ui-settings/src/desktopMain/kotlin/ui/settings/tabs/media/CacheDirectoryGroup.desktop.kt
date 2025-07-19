@@ -87,7 +87,7 @@ actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
             extra = { textFieldValue ->
                 val directoryPicker = rememberDirectoryPickerLauncher(
                     stringResource(Lang.settings_storage_choose_directory),
-                    File(currentSaveDir).absolutePath,
+                    PlatformFile(currentSaveDir),
                 ) {
                     it?.let {
                         textFieldValue.value = it.file.absolutePath
