@@ -27,6 +27,7 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_storage_bt_cache_location
 import me.him188.ani.app.ui.lang.settings_storage_bt_cache_location_description
 import me.him188.ani.app.ui.lang.settings_storage_choose_directory
+import me.him188.ani.app.ui.lang.settings_storage_directory_create_failed
 import me.him188.ani.app.ui.lang.settings_storage_directory_not_exist
 import me.him188.ani.app.ui.lang.settings_storage_open_bt_cache_directory
 import me.him188.ani.app.ui.lang.settings_storage_open_directory_chooser
@@ -58,27 +59,31 @@ actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
         
         val directoryNotExistMessage = stringResource(Lang.settings_storage_directory_not_exist)
         val pathIsInvalidMessage = stringResource(Lang.settings_storage_path_is_invalid)
+        val directoryCreateFailed = stringResource(Lang.settings_storage_directory_create_failed)
         
         TextFieldItem(
             currentSaveDir,
             title = { Text(stringResource(Lang.settings_storage_bt_cache_location)) },
             onValueChangeCompleted = {
-                val file = File(it)
-
-                val absolutePath = try {
-                    file.canonicalPath
+                val dir = try {
+                    File(it).canonicalFile
                 } catch (e: Exception) {
-                    toaster.toast(pathIsInvalidMessage + "${e.message}")
+                    toaster.toast("$pathIsInvalidMessage: ${e.message}")
+                    return@TextFieldItem
+                }
+                
+                if (!dir.exists() && !dir.mkdirs()) {
+                    toaster.toast("$directoryCreateFailed: ${dir.path}")
                     return@TextFieldItem
                 }
 
-                if (!file.exists() || !file.isDirectory) {
-                    toaster.toast(directoryNotExistMessage)
+                if (!dir.isDirectory) {
+                    toaster.toast(pathIsInvalidMessage)
                     return@TextFieldItem
                 }
 
                 state.mediaCacheSettingsState.update(
-                    mediaCacheSettings.copy(saveDir = absolutePath)
+                    mediaCacheSettings.copy(saveDir = dir.path)
                 )
             },
             textFieldDescription = {
