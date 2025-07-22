@@ -15,7 +15,8 @@ import me.him188.ani.app.domain.session.SessionManager
  * @see SessionManager.migrateBangumiToken
  */
 fun AniNavigator.navigateLoginOrBangumiAuthorizeIfNeeded() {
-    if (SessionManager.migrationResult == SessionManager.MigrationResult.NeedReLogin) {
+    val deferred = SessionManager.migrationResult
+    if (deferred.isCompleted && deferred.getCompleted() == SessionManager.MigrationResult.NeedReLogin) {
         navigateBangumiAuthorize()
     } else {
         navigateLogin()

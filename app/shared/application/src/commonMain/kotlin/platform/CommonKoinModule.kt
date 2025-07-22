@@ -513,7 +513,8 @@ fun KoinApplication.startCommonKoinModule(
     @Suppress("DEPRECATION")
     coroutineScope.launch {
         migrationCacheCompleted.await()
-        SessionManager.migrationResult.value = SessionManager.migrateBangumiToken(koin)
+        val migrationResult = SessionManager.migrateBangumiToken(koin)
+        SessionManager.migrationResult.complete(migrationResult)
     }
 
     coroutineScope.launch {

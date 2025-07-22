@@ -10,13 +10,13 @@
 package me.him188.ani.app.domain.session
 
 import io.ktor.client.plugins.ClientRequestException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -312,7 +312,7 @@ class SessionManager(
     companion object {
         private val logger = logger<SessionManager>()
 
-        val migrationResult = MutableStateFlow<MigrationResult?>(null)
+        val migrationResult = CompletableDeferred<MigrationResult>()
 
         @Deprecated("Since 5.0, for migration only")
         suspend fun migrateBangumiToken(koin: Koin): MigrationResult {
