@@ -1,12 +1,3 @@
-/*
- * Copyright (C) 2024-2025 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 /**
  *
  * Please note:
@@ -24,26 +15,23 @@
 
 package me.him188.ani.datasources.bangumi.next.apis
 
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
-import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
-import me.him188.ani.datasources.bangumi.next.infrastructure.ApiClient
-import me.him188.ani.datasources.bangumi.next.infrastructure.HttpResponse
-import me.him188.ani.datasources.bangumi.next.infrastructure.RequestConfig
-import me.him188.ani.datasources.bangumi.next.infrastructure.RequestMethod
-import me.him188.ani.datasources.bangumi.next.infrastructure.map
-import me.him188.ani.datasources.bangumi.next.infrastructure.wrap
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateEpisodeComment200Response
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateEpisodeCommentRequest
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextEpisode
+import me.him188.ani.datasources.bangumi.next.models.BangumiNextErrorResponse
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetEpisodeComments200ResponseInner
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextUpdateContent
+
+import me.him188.ani.datasources.bangumi.next.infrastructure.*
+import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.request.forms.formData
+import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.json.Json
+import io.ktor.http.ParametersBuilder
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 open class EpisodeBangumiNextApi : ApiClient {
 

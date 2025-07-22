@@ -176,7 +176,7 @@ class SessionManager(
 
                     emitState(SessionState.Invalid(reason))
                 } catch (e: Exception) {
-                    emitState(SessionState.Invalid(InvalidSessionReason.NETWORK_ERROR))
+                    emitState(SessionState.Invalid(InvalidSessionReason.UNKNOWN))
                     logger.error("Refresh session failed", e)
                 }
             } else {

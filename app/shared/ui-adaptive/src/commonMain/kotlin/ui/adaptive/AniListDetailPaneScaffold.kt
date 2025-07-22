@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredWidthIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -33,12 +34,14 @@ import androidx.compose.material3.VerticalDragHandle
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldDefaults
 import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
+import androidx.compose.material3.adaptive.layout.PaneExpansionAnchor
 import androidx.compose.material3.adaptive.layout.PaneExpansionState
 import androidx.compose.material3.adaptive.layout.PaneScaffoldDirective
 import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldRole
 import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldScope
 import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldValue
 import androidx.compose.material3.adaptive.layout.defaultDragHandleSemantics
+import androidx.compose.material3.adaptive.layout.rememberPaneExpansionState
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -51,9 +54,12 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
+import androidx.window.core.layout.WindowSizeClass
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
@@ -115,7 +121,9 @@ fun <T> AniListDetailPaneScaffold(
     modifier: Modifier = Modifier,
     contentWindowInsets: WindowInsets = ListDetailPaneScaffoldDefaults.windowInsets,
     useSharedTransition: Boolean = false,
-    listPanePreferredWidth: Dp = Dp.Unspecified,
+    listPanePreferredWidth: Dp = calculateMinimumPaneWidth(),
+    minListPaneWidth: Dp = calculateMinimumPaneWidth(),
+    minDetailPaneWidth: Dp = minListPaneWidth,
     paneExpansionDragHandle: (@Composable ThreePaneScaffoldScope.(PaneExpansionState) -> Unit)? = { state ->
         val interactionSource = remember { MutableInteractionSource() }
         VerticalDragHandle(
@@ -148,7 +156,12 @@ fun <T> AniListDetailPaneScaffold(
             scaffoldValue,
             listPane = {
                 val threePaneScaffoldScope = this
-                ListDetailAnimatedPane(Modifier.preferredWidth(listPanePreferredWidth), useSharedTransition) {
+                ListDetailAnimatedPane(
+                    Modifier
+                        .requiredWidthIn(min = minListPaneWidth)
+                        .preferredWidth(listPanePreferredWidth),
+                    useSharedTransition,
+                ) {
                     Column {
                         val scope =
                             remember(threePaneScaffoldScope, this@ListDetailAnimatedPane) {
@@ -196,9 +209,14 @@ fun <T> AniListDetailPaneScaffold(
                             }
 
                         CompositionLocalProvider(
-                            LocalSharedTransitionScopeProvider provides SharedTransitionScopeProvider(
-                                this@SharedTransitionLayout, this@ListDetailAnimatedPane,
-                            ),
+                            LocalSharedTransitionScopeProvider provides remember(
+                                this@SharedTransitionLayout,
+                                this@ListDetailAnimatedPane,
+                            ) {
+                                SharedTransitionScopeProvider(
+                                    this@SharedTransitionLayout, this@ListDetailAnimatedPane,
+                                )
+                            },
                         ) {
                             val decoratedPaneContent = @Composable {
                                 Column(Modifier.fillMaxWidth().wrapContentWidth().widthIn(max = 1300.dp)) {
@@ -224,7 +242,10 @@ fun <T> AniListDetailPaneScaffold(
             },
             detailPane = {
                 val threePaneScaffoldScope = this
-                ListDetailAnimatedPane(useSharedTransition = useSharedTransition) {
+                ListDetailAnimatedPane(
+                    Modifier.requiredWidthIn(min = minDetailPaneWidth),
+                    useSharedTransition = useSharedTransition,
+                ) {
                     Card(
                         shape = layoutParameters.detailPaneShape,
                         colors = layoutParameters.detailPaneColors,
@@ -273,8 +294,31 @@ fun <T> AniListDetailPaneScaffold(
                 }
             },
             modifier,
-            paneExpansionDragHandle = paneExpansionDragHandle,
+            // singlePane 时不显示 handle 之类的. 否则会在切换页面时有动画问题. 应该是 CMP bug
+            paneExpansionState = if (layoutParameters.preferSinglePane) {
+                null
+            } else {
+                rememberPaneExpansionState(
+                    keyProvider = scaffoldValue,
+                    anchors = calculatePaneAnchors(minListPaneWidth, listPanePreferredWidth, minDetailPaneWidth),
+                )
+            },
+            paneExpansionDragHandle = if (layoutParameters.preferSinglePane) null else paneExpansionDragHandle,
         )
+    }
+}
+
+@Composable
+private fun calculateMinimumPaneWidth(
+    windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
+): Dp {
+    return when {
+        windowSizeClass.containsWidthDp(1200) -> 412.dp // Large, M3 spec 
+        windowSizeClass.containsWidthDp(840) -> 360.dp // Expanded, M3 spec
+        else -> {
+            // M3 spec
+            (((windowSizeClass.minWidthDp - 24 * 3).toFloat() / 2).dp).coerceAtLeast(360.dp)
+        }
     }
 }
 
@@ -416,3 +460,66 @@ private val ThreePaneScaffoldValue.isSinglePane: Boolean
         if (this[ThreePaneScaffoldRole.Tertiary] == PaneAdaptedValue.Expanded) count++
         return count <= 1
     }
+
+@Composable
+private fun calculatePaneAnchors(
+    minListPaneWidth: Dp = Dp.Unspecified,
+    preferredListPaneWidth: Dp = Dp.Unspecified,
+    minDetailPaneWidth: Dp = Dp.Unspecified,
+    stepDp: Dp = 32.dp // 中间每间隔这么多加一个 anchor
+): List<PaneExpansionAnchor> {
+    val screenWidthPx = LocalWindowInfo.current.containerSize.width
+    val density = LocalDensity.current
+
+    return remember(density, screenWidthPx, minListPaneWidth, preferredListPaneWidth, minDetailPaneWidth, stepDp) {
+        if (screenWidthPx <= 0) return@remember emptyList()
+
+        // 计算下界：minListRatio（若未指定则为 0）
+        val minRatio = if (minListPaneWidth != Dp.Unspecified) {
+            val px = with(density) { minListPaneWidth.roundToPx() }
+            (px / screenWidthPx.toFloat()).coerceIn(0f, 1f)
+        } else 0f
+
+        // 计算上界：maxRatio（若未指定 minDetailPaneWidth 则为 1）
+        val maxRatio = if (minDetailPaneWidth != Dp.Unspecified) {
+            val px = with(density) { minDetailPaneWidth.roundToPx() }
+            ((screenWidthPx - px) / screenWidthPx.toFloat()).coerceIn(0f, 1f)
+        } else 1f
+
+        // 收集所有比例值
+        val ratios = mutableListOf<Float>()
+
+        // 1. 每隔 stepDp 加一个锚点
+        val stepPx = with(density) { stepDp.roundToPx() }
+        if (stepPx > 0) {
+            val count = (screenWidthPx / stepPx).coerceAtLeast(1)
+            for (i in 1..count) {
+                val p = (i * stepPx / screenWidthPx.toFloat()).coerceIn(0f, 1f)
+                ratios += p
+            }
+        }
+
+        // 2. 原 minListPaneWidth
+        if (minListPaneWidth != Dp.Unspecified) {
+            val px = with(density) { minListPaneWidth.roundToPx() }
+            ratios += (px / screenWidthPx.toFloat()).coerceIn(0f, 1f)
+        }
+        // 3. 原 preferredListPaneWidth
+        if (preferredListPaneWidth != Dp.Unspecified) {
+            val px = with(density) { preferredListPaneWidth.roundToPx() }
+            ratios += (px / screenWidthPx.toFloat()).coerceIn(0f, 1f)
+        }
+        // 4. 原 minDetailPaneWidth
+        if (minDetailPaneWidth != Dp.Unspecified) {
+            val px = with(density) { minDetailPaneWidth.roundToPx() }
+            ratios += ((screenWidthPx - px) / screenWidthPx.toFloat()).coerceIn(0f, 1f)
+        }
+
+        // 去重、过滤（在 [minRatio, maxRatio] 之间）、排序并映射回 Anchor
+        ratios
+            .distinct()
+            .filter { it in minRatio..maxRatio }
+            .sorted()
+            .map { PaneExpansionAnchor.Proportion(it) }
+    }
+}

@@ -9,7 +9,9 @@
 
 package me.him188.ani.app.domain.player.extension
 
+import androidx.annotation.VisibleForTesting
 import kotlinx.collections.immutable.persistentHashSetOf
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
@@ -19,6 +21,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.episode.MediaFetchSelectBundle
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
@@ -30,6 +34,7 @@ import me.him188.ani.app.domain.mediasource.GetWebMediaSourceInstanceFlowUseCase
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
+import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -66,6 +71,12 @@ class SwitchMediaOnPlayerErrorExtension(
         }
     }
 
+    /**
+     * 启动播放失败处理逻辑。
+     *
+     * 此函数监听当前播放会话流、视频加载状态和播放器状态，并在发生错误时触发自动切换。
+     * 同时也监听媒体选择事件，当用户手动切换媒体时，将先前选中的媒体加入黑名单，避免自动选择时回退。
+     */
     private suspend fun invoke(
         mediaFetchSessionFlow: Flow<MediaFetchSelectBundle?>,
         videoLoadingStateFlow: Flow<VideoLoadingState>,
@@ -86,7 +97,21 @@ class SwitchMediaOnPlayerErrorExtension(
                     return@collectLatest
                 }
 
-                handler.observeLoadErrorAndHandle(mediaFetchSessionFlow, videoLoadingStateFlow, playbackStateFlow)
+                coroutineScope {
+                    launch {
+                        handler.observeMediaSelectorBlacklist(
+                            mediaFetchSessionFlow.mapNotNull { it?.mediaSelector }
+                        )
+                    }
+
+                    launch {
+                        handler.observeLoadErrorAndHandle(
+                            mediaFetchSessionFlow,
+                            videoLoadingStateFlow,
+                            playbackStateFlow
+                        )
+                    }
+                }
             }
     }
 
@@ -119,13 +144,25 @@ class SwitchMediaOnPlayerErrorExtension(
     }
 }
 
-private class PlayerLoadErrorHandler(
+internal class PlayerLoadErrorHandler(
     private val getWebSources: suspend () -> List<String>,
     private val getPreferKind: suspend () -> MediaSourceKind?,
     private val getSourceTiers: suspend () -> MediaSelectorSourceTiers,
 ) {
     private var blacklistedMediaIds = persistentHashSetOf<String>()
 
+    suspend fun observeMediaSelectorBlacklist(
+        mediaSelectorFlow: Flow<MediaSelector>
+    ) {
+        mediaSelectorFlow.collectLatest { selector ->
+            selector.events.onSelect.collect { event ->
+                event.previousMedia?.let { 
+                    blacklistedMediaIds = blacklistedMediaIds.add(it.mediaId) 
+                }
+            }
+        }
+    }
+    
     suspend fun handleError(
         session: MediaFetchSession,
         mediaSelector: MediaSelector,
@@ -162,4 +199,7 @@ private class PlayerLoadErrorHandler(
     companion object {
         private val logger = logger<PlayerLoadErrorHandler>()
     }
+
+    @VisibleForTesting
+    val blacklist: Set<String> get() = blacklistedMediaIds
 }

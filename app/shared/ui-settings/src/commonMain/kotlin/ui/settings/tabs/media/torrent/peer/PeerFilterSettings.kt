@@ -39,7 +39,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
@@ -142,7 +141,6 @@ fun PeerFilterSettingsScreen(
                 }
             },
             modifier = modifier,
-            listPanePreferredWidth = 420.dp,
         )
     }
 }

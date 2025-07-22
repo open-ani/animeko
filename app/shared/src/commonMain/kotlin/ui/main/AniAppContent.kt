@@ -58,6 +58,7 @@ import me.him188.ani.app.navigation.OverrideNavigation
 import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.cache.CacheManagementScreen
 import me.him188.ani.app.ui.cache.CacheManagementViewModel
@@ -118,6 +119,7 @@ fun AniAppContent(aniNavigator: AniNavigator) {
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         CompositionLocalProvider(
             LocalNavigator provides aniNavigator,
+            LocalBrowserNavigator providesDefault aniAppViewModel.browserNavigator,
         ) {
             ProvideAniMotionCompositionLocals {
                 AniAppContentImpl(
@@ -235,6 +237,11 @@ private fun AniAppContentImpl(
                     contactActions = {
                         AniContactList()
                     },
+                    onAuthorizeSuccess = {
+                        aniNavigator.popBackStack(NavRoutes.BangumiAuthorize, true)
+                        aniNavigator.popBackStack(NavRoutes.EmailLoginVerify, true)
+                        aniNavigator.popBackStack(NavRoutes.EmailLoginStart, true)
+                    },
                 )
             }
             composable<NavRoutes.Onboarding>(
@@ -334,7 +341,7 @@ private fun AniAppContentImpl(
                             page = currentPage,
                             selfInfo = selfInfo,
                             onNavigateToPage = { currentPage = it },
-                            onNavigateToSettings = { aniNavigator.navigateSettings() },
+                            onNavigateToSettings = { aniNavigator.navigateSettings(it) },
                             onNavigateToSearch = { aniNavigator.navigateSubjectSearch() },
                             navigationLayoutType = navigationLayoutType,
                         )
@@ -445,6 +452,8 @@ private fun AniAppContentImpl(
                     viewModel {
                         SettingsViewModel()
                     },
+                    onNavigateToEmailLogin = { aniNavigator.navigateLogin() },
+                    onNavigateToBangumiOAuth = { aniNavigator.navigateBangumiAuthorize() },
                     Modifier.fillMaxSize(),
                     route.tab,
                     navigationIcon = {

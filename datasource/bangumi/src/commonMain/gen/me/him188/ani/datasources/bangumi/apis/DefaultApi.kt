@@ -24,27 +24,13 @@
 
 package me.him188.ani.datasources.bangumi.apis
 
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
-import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
-import me.him188.ani.datasources.bangumi.infrastructure.ApiClient
-import me.him188.ani.datasources.bangumi.infrastructure.HttpResponse
-import me.him188.ani.datasources.bangumi.infrastructure.RequestConfig
-import me.him188.ani.datasources.bangumi.infrastructure.RequestMethod
-import me.him188.ani.datasources.bangumi.infrastructure.map
-import me.him188.ani.datasources.bangumi.infrastructure.wrap
 import me.him188.ani.datasources.bangumi.models.BangumiCharacterDetail
 import me.him188.ani.datasources.bangumi.models.BangumiCharacterPerson
 import me.him188.ani.datasources.bangumi.models.BangumiCharacterRevision
 import me.him188.ani.datasources.bangumi.models.BangumiDetailedRevision
 import me.him188.ani.datasources.bangumi.models.BangumiEpType
 import me.him188.ani.datasources.bangumi.models.BangumiEpisodeDetail
+import me.him188.ani.datasources.bangumi.models.BangumiErrorDetail
 import me.him188.ani.datasources.bangumi.models.BangumiGetUserSubjectEpisodeCollection200Response
 import me.him188.ani.datasources.bangumi.models.BangumiIndex
 import me.him188.ani.datasources.bangumi.models.BangumiIndexBasicInfo
@@ -72,6 +58,17 @@ import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollection
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollectionModifyPayload
 import me.him188.ani.datasources.bangumi.models.BangumiV0RelatedSubject
 import me.him188.ani.datasources.bangumi.models.BangumiV0SubjectRelation
+
+import me.him188.ani.datasources.bangumi.infrastructure.*
+import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.request.forms.formData
+import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.json.Json
+import io.ktor.http.ParametersBuilder
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 open class DefaultApi : ApiClient {
 
@@ -547,7 +544,7 @@ open class DefaultApi : ApiClient {
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         subjectId?.apply { localVariableQuery["subject_id"] = listOf("$subjectId") }
-        type?.apply { localVariableQuery["type"] = listOf("$type") }
+        type?.apply { localVariableQuery["type"] = listOf("${type.value}") }
         limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
         offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
         val localVariableHeaders = mutableMapOf<String, String>()
@@ -623,7 +620,7 @@ open class DefaultApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
-        type?.apply { localVariableQuery["type"] = listOf("$type") }
+        type?.apply { localVariableQuery["type"] = listOf("${type.value}") }
         limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
         offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
         val localVariableHeaders = mutableMapOf<String, String>()
@@ -1411,8 +1408,8 @@ open class DefaultApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
-        subjectType?.apply { localVariableQuery["subject_type"] = listOf("$subjectType") }
-        type?.apply { localVariableQuery["type"] = listOf("$type") }
+        subjectType?.apply { localVariableQuery["subject_type"] = listOf("${subjectType.value}") }
+        type?.apply { localVariableQuery["type"] = listOf("${type.value}") }
         limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
         offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
         val localVariableHeaders = mutableMapOf<String, String>()
@@ -1491,7 +1488,7 @@ open class DefaultApi : ApiClient {
         val localVariableQuery = mutableMapOf<String, List<String>>()
         offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
         limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
-        episodeType?.apply { localVariableQuery["episode_type"] = listOf("$episodeType") }
+        episodeType?.apply { localVariableQuery["episode_type"] = listOf("${episodeType.value}") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(

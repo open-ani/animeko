@@ -36,7 +36,6 @@ class OAuthConfigurator(
     private val sessionManager: SessionManager,
     private val sessionStateProvider: SessionStateProvider,
     private val random: Random = Random.Default,
-    private val onOpenUrl: suspend (String) -> Unit,
 ) {
     private val logger = logger<OAuthConfigurator>()
 
@@ -48,7 +47,7 @@ class OAuthConfigurator(
      *
      * does not throw
      */
-    suspend fun auth(isRegister: Boolean) {
+    suspend fun auth(isRegister: Boolean, onOpenUrl: suspend (String) -> Unit) {
         val requestId = Uuid.random(random).toString()
         val tokenDeferred = CompletableDeferred<OAuthResult>()
 

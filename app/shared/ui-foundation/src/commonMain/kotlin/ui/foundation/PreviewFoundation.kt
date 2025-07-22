@@ -28,6 +28,8 @@ import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.navigation.NoopBrowserNavigator
+import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLocals
@@ -99,6 +101,7 @@ inline fun ProvideCompositionLocalsForPreview(
         LocalPlatformFontFamily providesDefault remember {
             PlatformFontFamily(null)
         },
+        LocalBrowserNavigator providesDefault NoopBrowserNavigator,
     ) {
         val navController = rememberNavController()
         aniNavigator.setNavController(navController)

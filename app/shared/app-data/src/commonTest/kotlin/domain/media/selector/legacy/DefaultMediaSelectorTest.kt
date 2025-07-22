@@ -1352,7 +1352,14 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
             selector.select(target)
         }.run {
             assertEquals(1, onSelect.size)
-            assertEquals(SelectEvent(target, null), onSelect.first())
+            assertEquals(
+                SelectEvent(
+                    media = target,
+                    subtitleLanguageId = null,
+                    previousMedia = null,
+                ),
+                onSelect.first()
+            )
             assertEquals(1, onChangePreference.size)
             assertEquals(
                 // 
@@ -1376,7 +1383,14 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
             selector.select(target)
         }.run {
             assertEquals(1, onSelect.size)
-            assertEquals(SelectEvent(target, null), onSelect.first())
+            assertEquals(
+                SelectEvent(
+                    media = target,
+                    subtitleLanguageId = null,
+                    previousMedia = null,
+                ),
+                onSelect.first()
+            )
             assertEquals(1, onChangePreference.size)
             assertEquals(
                 MediaPreference.Companion.Empty.copy(
@@ -1389,6 +1403,43 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
             )
         }
     }
+
+    @Test
+    fun `event select replaces previous`() = runTest {
+        savedUserPreference.value = MediaPreference.Companion.Empty
+        savedDefaultPreference.value = MediaPreference.Companion.Empty
+
+        val first = media(alliance = "A", subtitleLanguages = listOf("CHS"))
+        val second = media(alliance = "B", subtitleLanguages = listOf("CHT"))
+
+        addMedia(first)
+        addMedia(second)
+
+        selector.select(first)
+
+        runCollectEvents {
+            selector.select(second)
+        }.run {
+            assertEquals(1, onSelect.size)
+            val event = onSelect.first()
+
+            assertEquals(second, event.media)
+            assertEquals(null, event.subtitleLanguageId)
+            assertEquals(first, event.previousMedia)
+
+            assertEquals(1, onChangePreference.size)
+            assertEquals(
+                MediaPreference.Companion.Empty.copy(
+                    alliance = "B",
+                    resolution = second.properties.resolution,
+                    subtitleLanguageId = "CHT",
+                    mediaSourceId = "dmhy"
+                ),
+                onChangePreference.first()
+            )
+        }
+    }
+
 
     @Test
     fun `event prefer`() = runTest {

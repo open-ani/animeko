@@ -99,6 +99,9 @@ class EpisodeCollectionRepository(
         subjectId: Int,
         allowCached: Boolean = true,
     ): Flow<List<EpisodeCollectionInfo>> = getEpisodeTypeFiltersUseCase().flatMapLatest { epTypes ->
+        subjectCollectionRepository.subjectCollectionFlow(subjectId).map {
+            it.episodes
+        }
         episodeCollectionDao
             .filterBySubjectId(subjectId, epTypes)
             .distinctUntilChanged()

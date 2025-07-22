@@ -10,6 +10,10 @@
 package me.him188.ani.app.platform
 
 import io.ktor.http.Url
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.UtcOffset
+import kotlinx.datetime.offsetAt
 
 data class AniServer(
     val id: String,
@@ -57,4 +61,8 @@ object AniServers {
 
     val optimizedForCN: List<Url> = optimizedForCNWithName.map { it.url }
     val optimizedForGlobal: List<Url> = optimizedForGlobalWithName.map { it.url }
+
+    fun shouldUseGlobalServer(): Boolean {
+        return TimeZone.currentSystemDefault().offsetAt(Clock.System.now()) != UtcOffset(8)
+    }
 }

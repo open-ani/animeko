@@ -17,28 +17,34 @@ import platform.UIKit.*
 class IosBrowserNavigator : BrowserNavigator {
     private val logger = logger<IosBrowserNavigator>()
 
-    override fun openBrowser(context: Context, url: String) {
-        runCatching {
+    override fun openBrowser(context: Context, url: String): OpenBrowserResult {
+        try {
             openUrl(url)
-        }.onFailure {
-            logger.warn("Failed to open browser", it)
+            return OpenBrowserResult.Success
+        } catch (ex: Exception) {
+            logger.warn("Failed to open browser", ex)
+            return OpenBrowserResult.Failure(ex, url)
         }
     }
 
-    override fun intentActionView(context: Context, url: String) {
-        runCatching {
+    override fun intentActionView(context: Context, url: String): OpenBrowserResult {
+        try {
             openUrl(url)
-        }.onFailure {
-            logger.warn("Failed to open magnet link", it)
+            return OpenBrowserResult.Success
+        } catch (ex: Exception) {
+            logger.warn("Failed to open browser", ex)
+            return OpenBrowserResult.Failure(ex, url)
         }
     }
 
-    override fun openJoinGroup(context: Context) {
+    override fun openJoinGroup(context: Context): OpenBrowserResult {
         // The same QQ group URI used on Android; iOS QQ supports the mqqopensdkapi:// scheme as well
-        runCatching {
+        try {
             openUrl(QQ_GROUP)
-        }.onFailure {
-            logger.warn("Failed to open QQ group", it)
+            return OpenBrowserResult.Success
+        } catch (ex: Exception) {
+            logger.warn("Failed to open QQ group", ex)
+            return OpenBrowserResult.Failure(ex, QQ_GROUP_JOIN_LINK)
         }
     }
 

@@ -289,7 +289,6 @@ internal fun SearchPageListDetailScaffold(
         },
         modifier.background(MaterialTheme.colorScheme.surfaceContainerLowest),
         useSharedTransition = false,
-        listPanePreferredWidth = 480.dp,
         scaffoldValue = if (!hasSelectedItem) {
             // 如果没有选中项目, 全屏显示 List 页面.
             ThreePaneScaffoldValue(

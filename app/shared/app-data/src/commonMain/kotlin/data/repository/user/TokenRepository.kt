@@ -38,7 +38,6 @@ class TokenRepository(
      */
     val session: Flow<Session> = dataStore.data.map { save ->
         when {
-            save.isGuest == true -> GuestSession
             save.accessTokens != null -> {
                 AccessTokenSession(
                     AccessTokenPair(
@@ -68,7 +67,6 @@ class TokenRepository(
                             aniAccessToken = session.tokens.aniAccessToken,
                             expiresAtMillis = session.tokens.expiresAtMillis,
                         ),
-                        isGuest = false,
                     )
                 }
             }
@@ -78,7 +76,6 @@ class TokenRepository(
                     it.copy(
                         refreshToken = null,
                         accessTokens = null,
-                        isGuest = true,
                     )
                 }
             }
@@ -90,7 +87,6 @@ class TokenRepository(
             it.copy(
                 refreshToken = null,
                 accessTokens = null,
-                isGuest = null,
             )
         }
     }
@@ -101,7 +97,6 @@ class TokenRepository(
 data class TokenSave internal constructor(
     val refreshToken: String? = null,
     val accessTokens: AccessTokens? = null,
-    val isGuest: Boolean? = null,
 ) {
     @Serializable
     data class AccessTokens(

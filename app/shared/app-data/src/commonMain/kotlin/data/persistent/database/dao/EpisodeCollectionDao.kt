@@ -168,6 +168,14 @@ interface EpisodeCollectionDao {
         ORDER BY lastFetched DESC LIMIT 1""",
     )
     suspend fun lastFetched(subjectId: Int): Long
+
+    @Query(
+        """
+        DELETE FROM episode_collection 
+        WHERE subjectId = :subjectId
+        """,
+    )
+    suspend fun deleteAllBySubjectId(subjectId: Int)
 }
 
 fun EpisodeCollectionDao.filterBySubjectId(

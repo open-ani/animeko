@@ -265,12 +265,12 @@ sealed class Runner(
     ) : Runner(id, displayName, os, arch, labels)
 
     // Objects under GithubHosted
-    object GithubWindowsServer2019 : GithubHosted(
-        id = "github-windows-2019",
-        displayName = "Windows Server 2019 x86_64 (GitHub)",
+    object GithubWindowsServer2025 : GithubHosted(
+        id = "github-windows-2025",
+        displayName = "Windows Server 2025 x86_64 (GitHub)",
         os = OS.WINDOWS,
         arch = Arch.X64,
-        labels = setOf("windows-2019"),
+        labels = setOf("windows-2025"),
     )
 
     object GithubWindowsServer2022 : GithubHosted(
@@ -365,8 +365,8 @@ run {
         gradleHeap = "6g",
         kotlinCompilerHeap = "6g",
     )
-    val ghWin2019 = MatrixInstance(
-        runner = Runner.GithubWindowsServer2019,
+    val ghWin = MatrixInstance(
+        runner = Runner.GithubWindowsServer2022,
         name = "Windows Server 2019 x86_64",
         uploadApk = false,
         composeResourceTriple = "windows-x64",
@@ -440,8 +440,8 @@ run {
     )
 
     buildMatrixInstances = listOf(
-        selfWin10,
-        ghWin2019,
+//        selfWin10,
+        ghWin,
         ghUbuntu2404,
         ghMac13,
         selfMac15.copy(
@@ -452,7 +452,7 @@ run {
     )
 
     releaseMatrixInstances = listOf(
-        ghWin2019, // win installer
+        ghWin, // win installer
         selfMac15.copy(
             buildAllAndroidAbis = true,
             uploadApk = false,
@@ -772,9 +772,9 @@ workflow(
         matrix.runner.os == OS.WINDOWS && matrix.uploadDesktopInstallers
     }.forEach { (_, build) ->
         listOf(
-            Runner.GithubWindowsServer2019,
+            Runner.GithubWindowsServer2025,
             Runner.GithubWindowsServer2022,
-            Runner.SelfHostedWindows10,
+//            Runner.SelfHostedWindows10,
         ).forEach { runner ->
             addVerifyJob(build, runner, build.result.eq(AbstractResult.Status.Success))
         }

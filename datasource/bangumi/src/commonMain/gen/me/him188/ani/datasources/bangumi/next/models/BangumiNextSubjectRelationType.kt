@@ -25,17 +25,17 @@
 package me.him188.ani.datasources.bangumi.next.models
 
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
  * 
  *
  * @param cn
  * @param desc
- * @param en
- * @param id
+ * @param en 
+ * @param id 
  * @param jp 
  */
 @Serializable

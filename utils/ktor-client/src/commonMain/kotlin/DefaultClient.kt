@@ -51,11 +51,16 @@ fun createDefaultHttpClient(
     install(HttpRequestRetry) {
         maxRetries = 1
         delayMillis { 1000 }
+        retryIf { cause, response ->
+            // 只重试网络异常
+            cause is IOException
+        }
     }
     install(HttpCookies)
     install(HttpTimeout) {
-        requestTimeoutMillis = 30_000
+        requestTimeoutMillis = 300_000
         connectTimeoutMillis = 30_000
+        socketTimeoutMillis = 30_000
     }
     BrowserUserAgent()
     install(ContentNegotiation) {

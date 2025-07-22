@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 // @formatter:off
 /**
  *
@@ -26,6 +35,7 @@ import me.him188.ani.client.infrastructure.RequestConfig
 import me.him188.ani.client.infrastructure.RequestMethod
 import me.him188.ani.client.infrastructure.wrap
 import me.him188.ani.client.models.AniAuthenticationResponse
+import me.him188.ani.client.models.AniEditEmailRequest
 import me.him188.ani.client.models.AniLoginResponse
 import me.him188.ani.client.models.AniRefreshTokenRequest
 import me.him188.ani.client.models.AniRegisterOrLoginByEmailOtpRequest
@@ -46,6 +56,39 @@ open class UserAuthenticationAniApi : ApiClient {
         baseUrl: String,
         httpClient: HttpClient
     ): super(baseUrl = baseUrl, httpClient = httpClient)
+
+    /**
+     * 绑定或换绑邮箱
+     * 绑定或换绑邮箱
+     * @param aniEditEmailRequest 
+     * @return AniAuthenticationResponse
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun editEmail(aniEditEmailRequest: AniEditEmailRequest): HttpResponse<AniAuthenticationResponse> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = aniEditEmailRequest
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.PUT,
+            "/v2/users/auth/email",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
 
     /**
      * 刷新会话 token

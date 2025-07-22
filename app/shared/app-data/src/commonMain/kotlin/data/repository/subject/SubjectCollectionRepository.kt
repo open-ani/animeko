@@ -18,6 +18,7 @@ import androidx.paging.PagingData
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
 import androidx.paging.map
+import androidx.room.RoomDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -67,6 +68,7 @@ import me.him188.ani.app.data.persistent.database.dao.SubjectRelations
 import me.him188.ani.app.data.persistent.database.dao.SubjectRelationsDao
 import me.him188.ani.app.data.persistent.database.dao.deleteAll
 import me.him188.ani.app.data.persistent.database.dao.filterMostRecentUpdated
+import me.him188.ani.app.data.persistent.database.withTransaction
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
@@ -87,14 +89,13 @@ import me.him188.ani.client.models.AniSelfRatingInfo
 import me.him188.ani.client.models.AniSubjectCollection
 import me.him188.ani.client.models.AniSubjectRelations
 import me.him188.ani.client.models.AniTag
+import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.UTC9
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.bangumi.apis.DefaultApi
-import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollectionModifyPayload
-import me.him188.ani.datasources.bangumi.processing.toCollectionType
 import me.him188.ani.datasources.bangumi.processing.toSubjectCollectionType
 import me.him188.ani.utils.coroutines.combine
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
@@ -184,11 +185,14 @@ sealed class SubjectCollectionRepository(
     abstract suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>>
 
     abstract suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>>
+
+    abstract suspend fun performBangumiFullSync()
 }
 
 class SubjectCollectionRepositoryImpl(
     private val api: ApiInvoker<DefaultApi>,
     private val subjectService: SubjectService,
+    private val database: RoomDatabase,
     private val subjectCollectionDao: SubjectCollectionDao,
     private val subjectRelationsDao: SubjectRelationsDao,
     private val episodeCollectionRepository: EpisodeCollectionRepository,
@@ -242,11 +246,19 @@ class SubjectCollectionRepositoryImpl(
                 // 如果没有缓存, 则 fetch 然后插入 subject 缓存
                 if (existing == null || existing.isExpired()) {
                     val subject = subjectService.getSubjectCollection(subjectId)
-                    val entity = subject?.toEntity(
-                        lastFetched = currentTimeMillis(),
+                    val lastFetched = currentTimeMillis()
+                    val subjectEntity = subject?.toEntity(
+                        lastFetched = lastFetched,
                     )
-                    entity?.let {
-                        subjectCollectionDao.upsert(it) // 插入后, `subjectCollectionDao.findById(subjectId)` 会重新 emit
+                    if (subjectEntity != null) {
+                        val episodeEntities = subject.episodes.map {
+                            it.toEntity1(subjectId, lastFetched = lastFetched)
+                        }
+                        database.withTransaction {
+                            subjectCollectionDao.upsert(subjectEntity)
+                            episodeCollectionDao.deleteAllBySubjectId(subjectId) // 删除旧的剧集缓存, 因为服务器上可能会变少
+                            episodeCollectionDao.upsert(episodeEntities)
+                        }
                     }
                     // TODO: 2025/5/24 handle subject not found 
                 }
@@ -440,11 +452,13 @@ class SubjectCollectionRepositoryImpl(
         withContext(defaultDispatcher) {
             subjectService.patchSubjectCollection(
                 subjectId,
-                BangumiUserSubjectCollectionModifyPayload(
-                    rate = score,
-                    comment = comment,
-                    tags = tags,
-                    private = isPrivate,
+                AniUpdateSubjectCollectionRequest(
+                    selfRating = AniSelfRatingInfo(
+                        score = score ?: 0,
+                        comment = comment,
+                        tags = tags.orEmpty(),
+                        isPrivate = isPrivate ?: false,
+                    ),
                 ),
             )
 
@@ -509,12 +523,12 @@ class SubjectCollectionRepositoryImpl(
     ) {
         return withContext(defaultDispatcher) {
             sessionManager.checkAccessAniApiNow()
-            if (type == null) {
+            if (type == null || type == UnifiedCollectionType.NOT_COLLECTED) {
                 deleteSubjectCollection(subjectId)
             } else {
                 patchSubjectCollection(
                     subjectId,
-                    BangumiUserSubjectCollectionModifyPayload(type.toSubjectCollectionType()),
+                    AniUpdateSubjectCollectionRequest(collectionType = type.toAniSubjectCollectionType()),
                 )
             }
         }
@@ -530,17 +544,28 @@ class SubjectCollectionRepositoryImpl(
 
     private suspend fun patchSubjectCollection(
         subjectId: Int,
-        payload: BangumiUserSubjectCollectionModifyPayload,
+        payload: AniUpdateSubjectCollectionRequest,
     ) {
         withContext(defaultDispatcher) {
             subjectService.patchSubjectCollection(subjectId, payload)
-            subjectCollectionDao.updateType(subjectId, payload.type.toCollectionType())
+            subjectCollectionDao.updateType(subjectId, payload.collectionType.toUnifiedCollectionType())
         }
     }
 
     private suspend fun deleteSubjectCollection(subjectId: Int) {
         withContext(defaultDispatcher) {
             subjectService.deleteSubjectCollection(subjectId)
+            subjectCollectionDao.delete(subjectId)
+        }
+    }
+
+    override suspend fun performBangumiFullSync() {
+        try {
+            withContext(defaultDispatcher) {
+                subjectService.performBangumiFullSync()
+            }
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
         }
     }
 
@@ -715,8 +740,8 @@ fun AniSubjectCollection.toEntity(
         relations = relations.toSubjectRelationsEntity(),
         lastUpdated = updatedAt?.let { Instant.parse(it) }?.toEpochMilliseconds() ?: 0,
         lastFetched = lastFetched,
-        cachedStaffUpdated = lastFetched,
-        cachedCharactersUpdated = lastFetched,
+        cachedStaffUpdated = 0,
+        cachedCharactersUpdated = 0,
     )
 }
 
@@ -805,4 +830,15 @@ fun AniSelfRatingInfo.toSelfRatingInfo(): SelfRatingInfo {
     return SelfRatingInfo(
         score = score, comment = comment, tags = tags, isPrivate = isPrivate,
     )
+}
+
+fun UnifiedCollectionType.toAniSubjectCollectionType(): AniCollectionType? {
+    return when (this) {
+        UnifiedCollectionType.WISH -> AniCollectionType.WISH
+        UnifiedCollectionType.DOING -> AniCollectionType.DOING
+        UnifiedCollectionType.DONE -> AniCollectionType.DONE
+        UnifiedCollectionType.ON_HOLD -> AniCollectionType.ON_HOLD
+        UnifiedCollectionType.DROPPED -> AniCollectionType.DROPPED
+        UnifiedCollectionType.NOT_COLLECTED -> null
+    }
 }

@@ -35,11 +35,22 @@ interface MediaSelectorEvents {
      * flow 的值为新的用户设置
      */
     val onChangePreference: Flow<MediaPreference>
+    
 }
 
+/**
+ * 表示一次媒体选择事件的详细信息。
+ *
+ * 此事件在媒体成功选择（无论自动或手动）后发出，用于向外部广播选择行为。
+ *
+ * @property media 当前被选中的媒体项，可能为 null。
+ * @property subtitleLanguageId 当前选择的字幕语言 ID，可能为 null。
+ * @property previousMedia 上一次被选中的媒体项。
+ */
 data class SelectEvent(
     val media: Media?,
     val subtitleLanguageId: String?,
+    val previousMedia: Media?,
 )
 
 class MutableMediaSelectorEvents(

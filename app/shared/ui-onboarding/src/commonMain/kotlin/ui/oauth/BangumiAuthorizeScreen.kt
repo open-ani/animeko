@@ -11,11 +11,13 @@ package me.him188.ani.app.ui.oauth
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
 import me.him188.ani.app.ui.login.EmailLoginScreenLayout
 
 @Composable
@@ -23,11 +25,19 @@ fun BangumiAuthorizeScreen(
     vm: BangumiAuthorizeViewModel,
     onNavigateBack: () -> Unit,
     onNavigateSettings: () -> Unit,
+    onAuthorizeSuccess: () -> Unit,
     contactActions: @Composable () -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle(AuthState.NoAniAccount)
     val scope = rememberCoroutineScope()
+    val browserNavigator = rememberAsyncBrowserNavigator()
     val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        vm.collectNewLoginEvent {
+            onAuthorizeSuccess()
+        }
+    }
 
     BangumiAuthorizeScreen(
         state = state,
@@ -36,7 +46,9 @@ fun BangumiAuthorizeScreen(
                 val currentState = state
                 if (currentState is AuthState.AwaitingResult) return@launch
 
-                vm.startOAuth(context, state is AuthState.NoAniAccount)
+                vm.startOAuth(state is AuthState.NoAniAccount) {
+                    browserNavigator.openBrowser(context, it)
+                }
             }
         },
         onCancelAuthorize = { vm.cancelCurrentOAuth() },
