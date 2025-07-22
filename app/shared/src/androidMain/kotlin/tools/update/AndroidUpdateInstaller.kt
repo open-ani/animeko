@@ -69,21 +69,21 @@ class AndroidUpdateInstaller : UpdateInstaller {
 //            }
 //        }
 //        file.copyTo(externalFile)
-        intent.setDataAndType(Uri.fromFile(file), "application/vnd.android.package-archive")
+        //intent.setDataAndType(Uri.fromFile(file), "application/vnd.android.package-archive")
         val apkUri = FileProvider.getUriForFile(context, "${BuildConfig.APP_APPLICATION_ID}.fileprovider", file)
         intent.setDataAndType(apkUri, "application/vnd.android.package-archive")
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        val resInfoList: List<ResolveInfo> =
-            context.packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
-        for (resolveInfo in resInfoList) {
-            val packageName = resolveInfo.activityInfo.packageName
-            context.grantUriPermission(
-                packageName,
-                apkUri,
-                Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION,
-            )
-        }
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        //val resInfoList: List<ResolveInfo> =
+        //    context.packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        //for (resolveInfo in resInfoList) {
+        //    val packageName = resolveInfo.activityInfo.packageName
+        //    context.grantUriPermission(
+        //        packageName,
+        //        apkUri,
+        //        Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION,
+        //    )
+        //}
         context.startActivity(intent)
     }
 }
