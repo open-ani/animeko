@@ -236,6 +236,7 @@ class SessionManager(
 
         // 启动后台任务, 定时刷新 token
         coroutineScope.launch(CoroutineName("SessionManager auto refresh")) {
+            migrationResult.await() // 先等迁移
             tokenRepository.session.collectLatest { session ->
                 when (session) {
                     is GuestSession -> emitState(SessionState.Invalid(InvalidSessionReason.NO_TOKEN))
