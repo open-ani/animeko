@@ -76,7 +76,7 @@ jobs:
   release_github-windows-2022:
     name: 'Windows Server 2019 x86_64'
     runs-on:
-      - 'windows-2022'
+    - 'windows-2022'
     needs:
     - 'create-release'
     steps:
@@ -278,7 +278,7 @@ jobs:
       shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz'
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-8'
       name: 'Get JBR 21 for macOS AArch64 (Attempt #1)'
@@ -289,7 +289,7 @@ jobs:
       shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -301,7 +301,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -322,7 +322,7 @@ jobs:
       shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -334,7 +334,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -574,7 +574,7 @@ jobs:
       shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz'
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-7'
       name: 'Get JBR 21 for macOS AArch64 (Attempt #1)'
@@ -585,7 +585,7 @@ jobs:
       shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -597,7 +597,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -618,7 +618,7 @@ jobs:
       shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -630,7 +630,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -748,215 +748,215 @@ jobs:
   release_github-macos-13:
     name: 'macOS 13 x86_64 (GitHub)'
     runs-on:
-      - 'macos-13'
+    - 'macos-13'
     needs:
-      - 'create-release'
+    - 'create-release'
     steps:
-      - id: 'step-0'
-        uses: 'actions/checkout@v4'
-        with:
-          submodules: 'recursive'
-      - id: 'step-1'
-        name: 'Get Tag'
-        uses: 'dawidd6/action-get-tag@v1'
-      - id: 'step-2'
-        uses: 'bhowell2/github-substring-action@v1.0.0'
-        with:
-          value: '${{ steps.step-1.outputs.tag }}'
-          index_of_str: 'v'
-          default_return_value: '${{ steps.step-1.outputs.tag }}'
-      - id: 'step-3'
-        name: 'Free space for macOS'
-        continue-on-error: true
-        run: 'chmod +x ./ci-helper/free-space-macos.sh && ./ci-helper/free-space-macos.sh'
-      - id: 'step-4'
-        continue-on-error: true
-        run: 'rm local.properties'
-      - id: 'step-5'
-        continue-on-error: true
-        run: |-
-          echo "ani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" >> local.properties
-          echo "ani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" >> local.properties
-          echo "ani.sentry.dsn=${{ secrets.SENTRY_DSN }}" >> local.properties
-          echo "ani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" >> local.properties
-          echo "ani.analytics.key=${{ secrets.ANALYTICS_KEY }}" >> local.properties
-          echo "kotlin.native.ignoreDisabledTargets=true" >> local.properties
-      - id: 'step-6'
-        name: 'Resolve JBR location'
-        shell: 'bash'
-        run: |-
-          # Expand jbrLocationExpr
-          jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz'
-          echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
-      - id: 'step-7'
-        name: 'Get JBR 21 for macOS AArch64 (Attempt #1)'
-        env:
-          jbrLocation: '${{ steps.step-6.outputs.jbrLocation }}'
-        continue-on-error: true
-        timeout-minutes: 180
-        shell: 'bash'
-        run: |-
-          jbr_location="$jbrLocation"
-          checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz.checksum"
-          checksum_file="checksum.tmp"
-          wget -q -O $checksum_file $checksum_url
-          
-          expected_checksum=$(awk '{print $1}' $checksum_file)
-          file_checksum=""
-          
-          if [ -f "$jbr_location" ]; then
-              file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
-          fi
-          
-          if [ "$file_checksum" != "$expected_checksum" ]; then
-              wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz -O "$jbr_location"
-              file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
-          fi
-          
-          if [ "$file_checksum" != "$expected_checksum" ]; then
-              echo "Checksum verification failed!" >&2
-              rm -f $checksum_file
-              exit 1
-          fi
-          
-          rm -f $checksum_file
-          file "$jbr_location"
-      - id: 'step-8'
-        name: 'Get JBR 21 for macOS AArch64 (Attempt #2)'
-        env:
-          jbrLocation: '${{ steps.step-6.outputs.jbrLocation }}'
-        continue-on-error: false
-        timeout-minutes: 180
-        shell: 'bash'
-        run: |-
-          jbr_location="$jbrLocation"
-          checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz.checksum"
-          checksum_file="checksum.tmp"
-          wget -q -O $checksum_file $checksum_url
-          
-          expected_checksum=$(awk '{print $1}' $checksum_file)
-          file_checksum=""
-          
-          if [ -f "$jbr_location" ]; then
-              file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
-          fi
-          
-          if [ "$file_checksum" != "$expected_checksum" ]; then
-              wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz -O "$jbr_location"
-              file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
-          fi
-          
-          if [ "$file_checksum" != "$expected_checksum" ]; then
-              echo "Checksum verification failed!" >&2
-              rm -f $checksum_file
-              exit 1
-          fi
-          
-          rm -f $checksum_file
-          file "$jbr_location"
-        if: '${{ steps.step-7.outcome == ''failure'' }}'
-      - id: 'step-9'
-        name: 'Setup JBR 21 for macOS '
-        uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
-        with:
-          java-version: '21'
-          distribution: 'jdkfile'
-          jdkFile: '${{ steps.step-6.outputs.jbrLocation }}'
-        env:
-          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-      - id: 'step-10'
-        name: 'Dump Local Properties'
-        run: 'echo "jvm.toolchain.version=21" >> local.properties'
-      - id: 'step-11'
-        run: 'chmod -R 777 .'
-      - id: 'step-12'
-        name: 'Setup Gradle'
-        uses: 'gradle/actions/setup-gradle@v3'
-        with:
-          cache-disabled: 'true'
-      - id: 'step-13'
-        name: 'Clean and download dependencies (Attempt #1)'
-        continue-on-error: true
-        timeout-minutes: 180
-        run: './gradlew --scan "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=arm64-v8a"'
-      - id: 'step-14'
-        name: 'Clean and download dependencies (Attempt #2)'
-        continue-on-error: false
-        timeout-minutes: 180
-        run: './gradlew --scan "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=arm64-v8a"'
-        if: '${{ steps.step-13.outcome == ''failure'' }}'
-      - id: 'step-15'
-        name: 'Update Release Version Name (Attempt #1)'
-        env:
-          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-          GITHUB_REPOSITORY: '${{ secrets.GITHUB_REPOSITORY }}'
-          CI_RELEASE_ID: '${{ needs.create-release.outputs.id }}'
-          CI_TAG: '${{ steps.step-1.outputs.tag }}'
-        continue-on-error: true
-        timeout-minutes: 180
-        run: './gradlew updateReleaseVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=arm64-v8a"'
-      - id: 'step-16'
-        name: 'Update Release Version Name (Attempt #2)'
-        env:
-          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-          GITHUB_REPOSITORY: '${{ secrets.GITHUB_REPOSITORY }}'
-          CI_RELEASE_ID: '${{ needs.create-release.outputs.id }}'
-          CI_TAG: '${{ steps.step-1.outputs.tag }}'
-        continue-on-error: false
-        timeout-minutes: 180
-        run: './gradlew updateReleaseVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=arm64-v8a"'
-        if: '${{ steps.step-15.outcome == ''failure'' }}'
-      - id: 'step-17'
-        name: 'Compile Kotlin (Attempt #1)'
-        continue-on-error: true
-        timeout-minutes: 180
-        run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=arm64-v8a"'
-      - id: 'step-18'
-        name: 'Compile Kotlin (Attempt #2)'
-        continue-on-error: false
-        timeout-minutes: 180
-        run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=arm64-v8a"'
-        if: '${{ steps.step-17.outcome == ''failure'' }}'
-      - id: 'step-19'
-        name: 'Upload Desktop Installers (Attempt #1)'
-        env:
-          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-          GITHUB_REPOSITORY: '${{ secrets.GITHUB_REPOSITORY }}'
-          CI_RELEASE_ID: '${{ needs.create-release.outputs.id }}'
-          CI_TAG: '${{ steps.step-1.outputs.tag }}'
-          UPLOAD_TO_S3: 'true'
-          AWS_ACCESS_KEY_ID: '${{ secrets.AWS_ACCESS_KEY_ID }}'
-          AWS_SECRET_ACCESS_KEY: '${{ secrets.AWS_SECRET_ACCESS_KEY }}'
-          AWS_BASEURL: '${{ secrets.AWS_BASEURL }}'
-          AWS_REGION: '${{ secrets.AWS_REGION }}'
-          AWS_BUCKET: '${{ secrets.AWS_BUCKET }}'
-        continue-on-error: true
-        timeout-minutes: 180
-        run: './gradlew :ci-helper:uploadDesktopInstallers "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=arm64-v8a"'
-      - id: 'step-20'
-        name: 'Upload Desktop Installers (Attempt #2)'
-        env:
-          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-          GITHUB_REPOSITORY: '${{ secrets.GITHUB_REPOSITORY }}'
-          CI_RELEASE_ID: '${{ needs.create-release.outputs.id }}'
-          CI_TAG: '${{ steps.step-1.outputs.tag }}'
-          UPLOAD_TO_S3: 'true'
-          AWS_ACCESS_KEY_ID: '${{ secrets.AWS_ACCESS_KEY_ID }}'
-          AWS_SECRET_ACCESS_KEY: '${{ secrets.AWS_SECRET_ACCESS_KEY }}'
-          AWS_BASEURL: '${{ secrets.AWS_BASEURL }}'
-          AWS_REGION: '${{ secrets.AWS_REGION }}'
-          AWS_BUCKET: '${{ secrets.AWS_BUCKET }}'
-        continue-on-error: false
-        timeout-minutes: 180
-        run: './gradlew :ci-helper:uploadDesktopInstallers "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=arm64-v8a"'
-        if: '${{ steps.step-19.outcome == ''failure'' }}'
-      - id: 'step-21'
-        name: 'Upload compose logs'
-        uses: 'actions/upload-artifact@v4'
-        with:
-          name: 'compose-logs-github-macos-13'
-          path: 'app/desktop/build/compose/logs'
-        if: '${{ always() }}'
+    - id: 'step-0'
+      uses: 'actions/checkout@v4'
+      with:
+        submodules: 'recursive'
+    - id: 'step-1'
+      name: 'Get Tag'
+      uses: 'dawidd6/action-get-tag@v1'
+    - id: 'step-2'
+      uses: 'bhowell2/github-substring-action@v1.0.0'
+      with:
+        value: '${{ steps.step-1.outputs.tag }}'
+        index_of_str: 'v'
+        default_return_value: '${{ steps.step-1.outputs.tag }}'
+    - id: 'step-3'
+      name: 'Free space for macOS'
+      continue-on-error: true
+      run: 'chmod +x ./ci-helper/free-space-macos.sh && ./ci-helper/free-space-macos.sh'
+    - id: 'step-4'
+      continue-on-error: true
+      run: 'rm local.properties'
+    - id: 'step-5'
+      continue-on-error: true
+      run: |-
+        echo "ani.dandanplay.app.id=${{ secrets.DANDANPLAY_APP_ID }}" >> local.properties
+        echo "ani.dandanplay.app.secret=${{ secrets.DANDANPLAY_APP_SECRET }}" >> local.properties
+        echo "ani.sentry.dsn=${{ secrets.SENTRY_DSN }}" >> local.properties
+        echo "ani.analytics.server=${{ secrets.ANALYTICS_SERVER }}" >> local.properties
+        echo "ani.analytics.key=${{ secrets.ANALYTICS_KEY }}" >> local.properties
+        echo "kotlin.native.ignoreDisabledTargets=true" >> local.properties
+    - id: 'step-6'
+      name: 'Resolve JBR location'
+      shell: 'bash'
+      run: |-
+        # Expand jbrLocationExpr
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz'
+        echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
+    - id: 'step-7'
+      name: 'Get JBR 21 for macOS AArch64 (Attempt #1)'
+      env:
+        jbrLocation: '${{ steps.step-6.outputs.jbrLocation }}'
+      continue-on-error: true
+      timeout-minutes: 180
+      shell: 'bash'
+      run: |-
+        jbr_location="$jbrLocation"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz.checksum"
+        checksum_file="checksum.tmp"
+        wget -q -O $checksum_file $checksum_url
+
+        expected_checksum=$(awk '{print $1}' $checksum_file)
+        file_checksum=""
+
+        if [ -f "$jbr_location" ]; then
+            file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
+        fi
+
+        if [ "$file_checksum" != "$expected_checksum" ]; then
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz -O "$jbr_location"
+            file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
+        fi
+
+        if [ "$file_checksum" != "$expected_checksum" ]; then
+            echo "Checksum verification failed!" >&2
+            rm -f $checksum_file
+            exit 1
+        fi
+
+        rm -f $checksum_file
+        file "$jbr_location"
+    - id: 'step-8'
+      name: 'Get JBR 21 for macOS AArch64 (Attempt #2)'
+      env:
+        jbrLocation: '${{ steps.step-6.outputs.jbrLocation }}'
+      continue-on-error: false
+      timeout-minutes: 180
+      shell: 'bash'
+      run: |-
+        jbr_location="$jbrLocation"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz.checksum"
+        checksum_file="checksum.tmp"
+        wget -q -O $checksum_file $checksum_url
+
+        expected_checksum=$(awk '{print $1}' $checksum_file)
+        file_checksum=""
+
+        if [ -f "$jbr_location" ]; then
+            file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
+        fi
+
+        if [ "$file_checksum" != "$expected_checksum" ]; then
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz -O "$jbr_location"
+            file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
+        fi
+
+        if [ "$file_checksum" != "$expected_checksum" ]; then
+            echo "Checksum verification failed!" >&2
+            rm -f $checksum_file
+            exit 1
+        fi
+
+        rm -f $checksum_file
+        file "$jbr_location"
+      if: '${{ steps.step-7.outcome == ''failure'' }}'
+    - id: 'step-9'
+      name: 'Setup JBR 21 for macOS '
+      uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
+      with:
+        java-version: '21'
+        distribution: 'jdkfile'
+        jdkFile: '${{ steps.step-6.outputs.jbrLocation }}'
+      env:
+        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+    - id: 'step-10'
+      name: 'Dump Local Properties'
+      run: 'echo "jvm.toolchain.version=21" >> local.properties'
+    - id: 'step-11'
+      run: 'chmod -R 777 .'
+    - id: 'step-12'
+      name: 'Setup Gradle'
+      uses: 'gradle/actions/setup-gradle@v3'
+      with:
+        cache-disabled: 'true'
+    - id: 'step-13'
+      name: 'Clean and download dependencies (Attempt #1)'
+      continue-on-error: true
+      timeout-minutes: 180
+      run: './gradlew --scan "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=arm64-v8a"'
+    - id: 'step-14'
+      name: 'Clean and download dependencies (Attempt #2)'
+      continue-on-error: false
+      timeout-minutes: 180
+      run: './gradlew --scan "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=arm64-v8a"'
+      if: '${{ steps.step-13.outcome == ''failure'' }}'
+    - id: 'step-15'
+      name: 'Update Release Version Name (Attempt #1)'
+      env:
+        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        GITHUB_REPOSITORY: '${{ secrets.GITHUB_REPOSITORY }}'
+        CI_RELEASE_ID: '${{ needs.create-release.outputs.id }}'
+        CI_TAG: '${{ steps.step-1.outputs.tag }}'
+      continue-on-error: true
+      timeout-minutes: 180
+      run: './gradlew updateReleaseVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=arm64-v8a"'
+    - id: 'step-16'
+      name: 'Update Release Version Name (Attempt #2)'
+      env:
+        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        GITHUB_REPOSITORY: '${{ secrets.GITHUB_REPOSITORY }}'
+        CI_RELEASE_ID: '${{ needs.create-release.outputs.id }}'
+        CI_TAG: '${{ steps.step-1.outputs.tag }}'
+      continue-on-error: false
+      timeout-minutes: 180
+      run: './gradlew updateReleaseVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=arm64-v8a"'
+      if: '${{ steps.step-15.outcome == ''failure'' }}'
+    - id: 'step-17'
+      name: 'Compile Kotlin (Attempt #1)'
+      continue-on-error: true
+      timeout-minutes: 180
+      run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=arm64-v8a"'
+    - id: 'step-18'
+      name: 'Compile Kotlin (Attempt #2)'
+      continue-on-error: false
+      timeout-minutes: 180
+      run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=arm64-v8a"'
+      if: '${{ steps.step-17.outcome == ''failure'' }}'
+    - id: 'step-19'
+      name: 'Upload Desktop Installers (Attempt #1)'
+      env:
+        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        GITHUB_REPOSITORY: '${{ secrets.GITHUB_REPOSITORY }}'
+        CI_RELEASE_ID: '${{ needs.create-release.outputs.id }}'
+        CI_TAG: '${{ steps.step-1.outputs.tag }}'
+        UPLOAD_TO_S3: 'true'
+        AWS_ACCESS_KEY_ID: '${{ secrets.AWS_ACCESS_KEY_ID }}'
+        AWS_SECRET_ACCESS_KEY: '${{ secrets.AWS_SECRET_ACCESS_KEY }}'
+        AWS_BASEURL: '${{ secrets.AWS_BASEURL }}'
+        AWS_REGION: '${{ secrets.AWS_REGION }}'
+        AWS_BUCKET: '${{ secrets.AWS_BUCKET }}'
+      continue-on-error: true
+      timeout-minutes: 180
+      run: './gradlew :ci-helper:uploadDesktopInstallers "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=arm64-v8a"'
+    - id: 'step-20'
+      name: 'Upload Desktop Installers (Attempt #2)'
+      env:
+        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        GITHUB_REPOSITORY: '${{ secrets.GITHUB_REPOSITORY }}'
+        CI_RELEASE_ID: '${{ needs.create-release.outputs.id }}'
+        CI_TAG: '${{ steps.step-1.outputs.tag }}'
+        UPLOAD_TO_S3: 'true'
+        AWS_ACCESS_KEY_ID: '${{ secrets.AWS_ACCESS_KEY_ID }}'
+        AWS_SECRET_ACCESS_KEY: '${{ secrets.AWS_SECRET_ACCESS_KEY }}'
+        AWS_BASEURL: '${{ secrets.AWS_BASEURL }}'
+        AWS_REGION: '${{ secrets.AWS_REGION }}'
+        AWS_BUCKET: '${{ secrets.AWS_BUCKET }}'
+      continue-on-error: false
+      timeout-minutes: 180
+      run: './gradlew :ci-helper:uploadDesktopInstallers "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx6g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g" "-Pani.android.abis=arm64-v8a"'
+      if: '${{ steps.step-19.outcome == ''failure'' }}'
+    - id: 'step-21'
+      name: 'Upload compose logs'
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'compose-logs-github-macos-13'
+        path: 'app/desktop/build/compose/logs'
+      if: '${{ always() }}'
   release_github-ubuntu-2404:
     name: 'Ubuntu 24.04 x86_64 (GitHub)'
     runs-on:
