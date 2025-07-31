@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +49,8 @@ internal fun SelfInfoBanner(
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surface
 ) {
+    val isLogin = remember(state) { state.isSessionValid == true }
+
     Surface(
         checked = checked,
         onCheckedChange = onCheckedChange,
@@ -56,13 +59,13 @@ internal fun SelfInfoBanner(
         shape = MaterialTheme.shapes.large,
     ) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = CenterVertically) {
-            if (state.isSessionValid != null && state.selfInfo == null) {
+            if (!isLogin) {
                 FilledTonalButton(onLoginClick, Modifier.fillMaxWidth()) {
                     Text("登录 / 注册")
                 }
             } else {
                 AvatarImage(
-                    state.selfInfo?.avatarUrl,
+                    state.selfInfo?.avatarUrl?.takeIf { isLogin },
                     Modifier
                         .clip(CircleShape)
                         .size(64.dp)

@@ -43,7 +43,7 @@ fun MediaFetchRequestEditorDialog(
         mutableStateOf(fetchRequest.toEditingMediaFetchRequest())
     }
     var showConfirmDiscard by rememberSaveable { mutableStateOf(false) }
-    val onDismissRequest = {
+    val onDismissRequestWrapped = {
         val hasChange = editingRequest != fetchRequest.toEditingMediaFetchRequest()
         if (hasChange) {
             showConfirmDiscard = true
@@ -55,12 +55,12 @@ fun MediaFetchRequestEditorDialog(
     val toaster = LocalToaster.current
 
     AlertDialog(
-        onDismissRequest,
+        onDismissRequestWrapped,
         confirmButton = {
             TextButton(
                 {
                     editingRequest.toMediaFetchRequestOrNull()?.let {
-                        onDismissRequest()
+                        onDismissRequestWrapped()
                         onFetchRequestChange(it)
                     } ?: toaster.toast("请求无效，请检查")
                 },
@@ -70,7 +70,7 @@ fun MediaFetchRequestEditorDialog(
             }
         },
         dismissButton = {
-            TextButton(onDismissRequest) {
+            TextButton(onDismissRequestWrapped) {
                 Text("取消")
             }
         },
@@ -90,7 +90,6 @@ fun MediaFetchRequestEditorDialog(
         AlertDialog(
             onDismissRequest = {
                 showConfirmDiscard = false
-                onDismissRequest()
             },
             confirmButton = {
                 TextButton(

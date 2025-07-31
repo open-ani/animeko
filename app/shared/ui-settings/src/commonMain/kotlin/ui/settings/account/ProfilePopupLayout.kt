@@ -76,8 +76,9 @@ internal fun ProfilePopupLayout(
         ) {
             HeroIcon {
                 AvatarImage(
-                    url = state.selfInfo.selfInfo?.avatarUrl,
+                    url = state.selfInfo.selfInfo?.avatarUrl?.takeIf { isLogin },
                     Modifier
+                        .fillMaxSize()
                         .clip(CircleShape)
                         .placeholder(state.selfInfo.isLoading),
                 )
@@ -87,11 +88,7 @@ internal fun ProfilePopupLayout(
         val showEmail = false
 
         Text(
-            if (isLogin) {
-                title
-            } else {
-                "未登录"
-            },
+            if (isLogin) title else "未登录",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier

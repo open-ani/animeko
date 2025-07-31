@@ -24,10 +24,9 @@ import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.UploadAvatarResult
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.foundation.LoadError
-import me.him188.ani.app.domain.session.SessionManager
-import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
 import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
@@ -41,9 +40,10 @@ import org.koin.core.component.inject
  * It is used on both [AccountSettingsPopupMedium] and [AccountS].
  */
 class ProfileViewModel : AbstractViewModel(), KoinComponent {
-    private val sessionManager: SessionManager by inject()
     private val subjectCollectionRepo: SubjectCollectionRepository by inject()
     private val userRepo: UserRepository by inject()
+
+    private val selfInfoStateProvider: SelfInfoStateProducer = SelfInfoStateProducer(koin = getKoin())
 
     private val avatarUploadTasker = MonoTasker(backgroundScope)
     private val fullSyncTasker = MonoTasker(backgroundScope)
@@ -54,18 +54,12 @@ class ProfileViewModel : AbstractViewModel(), KoinComponent {
         MutableStateFlow<EditProfileState.UploadAvatarState>(EditProfileState.UploadAvatarState.Default)
 
     val stateFlow = combine(
-        sessionManager.stateProvider.stateFlow,
-        userRepo.selfInfoFlow(),
+        selfInfoStateProvider.flow,
         avatarUploadState,
-    ) { sessionState, selfInfo, avatarState ->
-        val isSessionValid = sessionState is SessionState.Valid
+    ) { selfInfoState, avatarState ->
         AccountSettingsState(
-            selfInfo = SelfInfoUiState(
-                selfInfo = selfInfo,
-                isLoading = false,
-                isSessionValid = isSessionValid,
-            ),
-            boundBangumi = isSessionValid && sessionState.bangumiConnected,
+            selfInfo = selfInfoState,
+            boundBangumi = selfInfoState.isSessionValid == true && selfInfoState.bangumiConnected == true,
             avatarUploadState = avatarState,
         )
     }
@@ -77,7 +71,7 @@ class ProfileViewModel : AbstractViewModel(), KoinComponent {
 
     suspend fun logout() {
         withContext(Dispatchers.Default) {
-            sessionManager.clearSession()
+            userRepo.clearSelfInfo()
         }
     }
 
@@ -168,7 +162,7 @@ class AccountSettingsState(
 ) {
     companion object {
         val Empty = AccountSettingsState(
-            selfInfo = SelfInfoUiState(null, true, null),
+            selfInfo = SelfInfoUiState(null, true, null, null),
             boundBangumi = false,
             avatarUploadState = EditProfileState.UploadAvatarState.Default,
         )

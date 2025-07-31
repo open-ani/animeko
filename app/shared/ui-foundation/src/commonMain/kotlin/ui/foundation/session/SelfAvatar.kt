@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.domain.session.SessionManager
+import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.tools.rememberUiMonoTasker
@@ -97,14 +97,14 @@ private class DefaultSelfAvatarActionHandler(
     private val navigator: AniNavigator,
     private val dispatcher: CoroutineContext = Dispatchers.Default,
 ) : SelfAvatarActionHandler, KoinComponent {
-    private val sessionManager: SessionManager by inject()
+    private val userRepo: UserRepository by inject()
     override fun onClickSettings() {
         navigator.navigateSettings()
     }
 
     override suspend fun onLogout() {
         withContext(dispatcher) {
-            sessionManager.clearSession()
+            userRepo.clearSelfInfo()
         }
     }
 }

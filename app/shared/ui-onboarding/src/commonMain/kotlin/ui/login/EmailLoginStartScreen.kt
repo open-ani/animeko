@@ -53,6 +53,7 @@ fun EmailLoginStartScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle(EmailLoginUiState.Initial)
     val asyncHandler = rememberAsyncHandler()
+
     EmailLoginStartScreenImpl(
         state.email,
         onContinueClick = {

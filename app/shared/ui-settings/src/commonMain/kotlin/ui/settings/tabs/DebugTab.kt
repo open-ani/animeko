@@ -24,6 +24,7 @@ import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.supportsLimitUploadOnMeteredNetwork
 import me.him188.ani.app.data.repository.user.AccessTokenSession
+import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.navigation.LocalNavigator
@@ -140,7 +141,7 @@ fun DebugTab(
                 title = { Text(stringResource(Lang.settings_debug_logout)) },
                 onClick = {
                     scope.launch {
-                        GlobalKoin.get<SessionManager>().clearSession()
+                        GlobalKoin.get<UserRepository>().clearSelfInfo()
                         toaster.toast(getString(Lang.settings_debug_logged_out))
                     }
                 },

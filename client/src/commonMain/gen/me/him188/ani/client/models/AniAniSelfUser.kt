@@ -36,6 +36,7 @@ import kotlinx.serialization.Serializable
  * @param id 
  * @param nickname 
  * @param hasPassword 
+ * @param isBangumiSessionValid 
  * @param email 
  * @param smallAvatar 
  * @param mediumAvatar 
@@ -54,6 +55,8 @@ data class AniAniSelfUser (
     @SerialName(value = "nickname") @Required val nickname: kotlin.String,
 
     @SerialName(value = "hasPassword") @Required val hasPassword: kotlin.Boolean,
+
+    @SerialName(value = "isBangumiSessionValid") @Required val isBangumiSessionValid: kotlin.Boolean,
 
     @SerialName(value = "email") val email: kotlin.String? = null,
 

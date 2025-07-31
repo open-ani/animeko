@@ -28,6 +28,7 @@ import me.him188.ani.datasources.bangumi.next.models.BangumiNextSlimSubject
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextSubjectType
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.ktor.ApiInvoker
+import me.him188.ani.utils.logging.error
 import kotlin.coroutines.CoroutineContext
 
 class TrendsRepository(
@@ -47,7 +48,7 @@ class TrendsRepository(
     fun trendsInfoPager(): Flow<PagingData<TrendsInfo>> {
         return Pager(defaultPagingConfig) {
             SinglePagePagingSource<Unit, TrendsInfo> {
-                runWrappingExceptionAsLoadResult {
+                runWrappingExceptionAsLoadResult<Unit, TrendsInfo> {
                     val trendsInfo = withContext(ioDispatcher) {
                         trendsApi {
                             getTrends().body().toTrendsInfo()
@@ -58,6 +59,10 @@ class TrendsRepository(
                         null,
                         null,
                     )
+                }.also {
+                    if (it is PagingSource.LoadResult.Error) {
+                        logger.error(it.throwable) { "Failed to load ani trends info." }
+                    }
                 }
             }
         }.flow
@@ -97,6 +102,10 @@ class TrendsRepository(
                     // If server returns fewer items than `loadSize`, we assume there's nothing more.
                     nextKey = if (list.size < loadSize) null else offset + loadSize,
                 )
+            }.also {
+                if (it is LoadResult.Error) {
+                    logger.error(it.throwable) { "Failed to load bangumi trends info." }
+                }
             }
         }
     }

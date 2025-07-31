@@ -67,7 +67,7 @@ import me.him188.ani.app.data.persistent.database.entity.SubjectReviewEntity
         WebSearchSubjectInfoEntity::class,
         WebSearchEpisodeInfoEntity::class,
     ],
-    version = 15,
+    version = 16,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.Migration_1_2::class),
         AutoMigration(from = 2, to = 3, spec = Migrations.Migration_2_3::class),
@@ -83,6 +83,7 @@ import me.him188.ani.app.data.persistent.database.entity.SubjectReviewEntity
         AutoMigration(from = 12, to = 13, spec = Migrations.Migration_12_13::class),
         AutoMigration(from = 13, to = 14, spec = Migrations.Migration_13_14::class),
         AutoMigration(from = 14, to = 15, spec = Migrations.Migration_14_15::class),
+        // 15 to 16 is destructive
     ],
     exportSchema = true,
 )

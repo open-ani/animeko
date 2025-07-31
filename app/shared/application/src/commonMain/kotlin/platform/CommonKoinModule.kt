@@ -10,6 +10,7 @@
 package me.him188.ani.app.platform
 
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -146,7 +147,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         SessionManager(
             tokenRepository = get(),
             coroutineScope = coroutineScope,
-            refreshSession = AniSessionRefresher(),
+            refreshSession = AniSessionRefresher { aniApiProvider.userAuthApi },
         )
     }
     single<SessionStateProvider> {
@@ -357,6 +358,12 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<AniDatabase> {
         getContext().createDatabaseBuilder()
             .fallbackToDestructiveMigrationOnDowngrade(true)
+            .fallbackToDestructiveMigrationFrom(
+                dropAllTables = true,
+                startVersions = buildList {
+                    addAll(1..15) // 16 is destructive
+                }.toIntArray(),
+            )
             .setDriver(BundledSQLiteDriver())
             .setQueryCoroutineContext(Dispatchers.IO_)
             .build()
@@ -489,6 +496,8 @@ fun KoinApplication.startCommonKoinModule(
     }
     // Now, the proxy settings is ready. Other components can use http clients.
 
+    val migrationCacheCompleted = CompletableDeferred<Unit>()
+
     coroutineScope.launch {
         val mediaCacheMigrator = koin.get<MediaCacheMigrator>()
         val requiresMigration = mediaCacheMigrator.startupMigrationCheckAndGetIfRequiresMigration(coroutineScope)
@@ -498,10 +507,20 @@ fun KoinApplication.startCommonKoinModule(
             koin.get<HttpDownloader>().init() // 这涉及读取 DownloadState, 需要在加载 storage metadata 前调用.
         }
 
+        // 只有不需要迁移缓存时才能迁移旧 session token
+        migrationCacheCompleted.complete(Unit)
+
         val manager = koin.get<MediaCacheManager>()
         for (storage in manager.storagesIncludingDisabled) {
             if (!requiresMigration) storage.restorePersistedCaches()
         }
+    }
+
+    @Suppress("DEPRECATION")
+    coroutineScope.launch {
+        migrationCacheCompleted.await()
+        val migrationResult = SessionManager.migrateBangumiToken(koin)
+        SessionManager.migrationResult.complete(migrationResult)
     }
 
     coroutineScope.launch {

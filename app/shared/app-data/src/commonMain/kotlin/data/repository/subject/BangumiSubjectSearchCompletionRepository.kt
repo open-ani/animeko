@@ -23,6 +23,7 @@ import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.runWrappingExceptionAsLoadResult
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.utils.logging.error
 
 /**
  * 搜索补全 (推荐)
@@ -45,7 +46,7 @@ class BangumiSubjectSearchCompletionRepository(
 
                 override suspend fun load(
                     params: LoadParams<Int>
-                ): LoadResult<Int, String> = runWrappingExceptionAsLoadResult {
+                ): LoadResult<Int, String> = runWrappingExceptionAsLoadResult<Int, String> {
                     // 只加载第一页
                     val completions = bangumiSubjectSearchService.searchSubjectNames(
                         keyword = query,
@@ -69,6 +70,10 @@ class BangumiSubjectSearchCompletionRepository(
                         prevKey = null,
                         nextKey = null,
                     )
+                }.also {
+                    if (it is LoadResult.Error) {
+                        logger.error(it.throwable) { "Failed to get search completions, query: $query" }
+                    }
                 }
             }
         },

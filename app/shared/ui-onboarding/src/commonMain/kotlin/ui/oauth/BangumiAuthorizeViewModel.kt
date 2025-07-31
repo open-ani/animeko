@@ -19,6 +19,7 @@ import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.session.auth.BangumiOAuthClient
 import me.him188.ani.app.domain.session.auth.OAuthConfigurator
+import me.him188.ani.app.domain.session.canAccessAniApiNow
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import org.koin.core.component.KoinComponent
@@ -49,7 +50,11 @@ class BangumiAuthorizeViewModel : AbstractViewModel(), KoinComponent {
                 }
 
                 is OAuthConfigurator.State.AwaitingResult -> AuthState.AwaitingResult
-                is OAuthConfigurator.State.Failed -> AuthState.Failed(authState.error)
+                is OAuthConfigurator.State.Failed -> AuthState.Failed(
+                    authState.error,
+                    sessionStateProvider.canAccessAniApiNow(),
+                )
+
                 is OAuthConfigurator.State.Success -> {
                     if (sessionState is SessionState.Valid) {
                         AuthState.Success

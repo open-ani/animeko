@@ -46,7 +46,9 @@ fun BangumiAuthorizeScreen(
                 val currentState = state
                 if (currentState is AuthState.AwaitingResult) return@launch
 
-                vm.startOAuth(state is AuthState.NoAniAccount) {
+                vm.startOAuth(
+                    state is AuthState.NoAniAccount || (currentState is AuthState.Failed && !currentState.loggedIn),
+                ) {
                     browserNavigator.openBrowser(context, it)
                 }
             }

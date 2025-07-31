@@ -35,6 +35,7 @@ import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollect
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressStateFactory
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
+import me.him188.ani.datasources.api.topic.toggleCollected
 import me.him188.ani.utils.logging.info
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -130,7 +131,7 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
         episodeCollectionRepository.setEpisodeCollectionType(
             subjectId,
             episodeId,
-            collectionType,
+            collectionType.toggleCollected(),
         )
     }
 }

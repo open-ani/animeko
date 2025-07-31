@@ -56,6 +56,15 @@ class SubjectRecurrenceTest {
     }
 
     @Test
+    fun `date-before-start - returns-first`() {
+        val startInstant = Instant.parse("2025-03-10T00:00:00Z")
+        val sut = SubjectRecurrence(startInstant, 7.days)
+
+        val dayBefore = LocalDate(2025, 3, 9).packed()
+        assertEquals(startInstant, sut.calculateEpisodeAirTime(dayBefore), "Dates before premiere must be null")
+    }
+
+    @Test
     fun `exact-date - n-th-episode - returns-correct-instant`() {
         val start = Instant.parse("2025-01-01T12:00:00Z")   // midday for safer TZ maths
         val interval = 7.days
@@ -86,15 +95,6 @@ class SubjectRecurrenceTest {
     // -------------------------------------------------------------------------
     // Error / edge‑cases
     // -------------------------------------------------------------------------
-
-    @Test
-    fun `date-before-start - returns-null`() {
-        val startInstant = Instant.parse("2025-03-10T00:00:00Z")
-        val sut = SubjectRecurrence(startInstant, 7.days)
-
-        val dayBefore = LocalDate(2025, 3, 9).packed()
-        assertNull(sut.calculateEpisodeAirTime(dayBefore), "Dates before premiere must be null")
-    }
 
     @Test
     fun `outside-24h-window - returns-null`() {

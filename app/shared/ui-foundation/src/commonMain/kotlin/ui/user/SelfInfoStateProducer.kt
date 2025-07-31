@@ -33,6 +33,10 @@ data class SelfInfoUiState(
      * `null` means loading
      */
     val isSessionValid: Boolean?,
+    /**
+     * `null means loading
+     */
+    val bangumiConnected: Boolean?
 )
 
 @TestOnly
@@ -48,6 +52,7 @@ val TestSelfInfoUiState
         ),
         isLoading = false,
         isSessionValid = true,
+        bangumiConnected = true,
     )
 
 class SelfInfoStateProducer(
@@ -66,6 +71,7 @@ class SelfInfoStateProducer(
             selfInfo = if (isSessionValid) selfInfo else null,
             isLoading = false,
             isSessionValid = isSessionValid,
+            bangumiConnected = isSessionValid && sessionState.bangumiConnected,
         )
     }.stateIn(
         CoroutineScope(flowContext),
@@ -74,6 +80,7 @@ class SelfInfoStateProducer(
             selfInfo = null,
             isLoading = true,
             isSessionValid = null,
+            bangumiConnected = null,
         ),
     )
 }
