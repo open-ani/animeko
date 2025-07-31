@@ -92,6 +92,9 @@ import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.avkit.AVKitMediampPlayerFactory
+import platform.AVFAudio.AVAudioSession
+import platform.AVFAudio.AVAudioSessionCategoryPlayback
+import platform.AVFAudio.setActive
 import platform.UIKit.NSLayoutConstraint
 import platform.UIKit.UIViewController
 import platform.UIKit.addChildViewController
@@ -272,6 +275,9 @@ fun getIosModules(
         )
     }
     single<MediampPlayerFactory<*>> {
+        val audioSession = AVAudioSession.sharedInstance()
+        audioSession.setCategory(AVAudioSessionCategoryPlayback,null)
+        audioSession.setActive( true,null)
         AVKitMediampPlayerFactory()
     }
     single<MediaSaveDirProvider> {
