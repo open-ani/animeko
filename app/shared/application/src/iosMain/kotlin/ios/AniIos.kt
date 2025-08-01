@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ComposeUIViewController
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -274,6 +275,7 @@ fun getIosModules(
             mediaResolver = get<MediaResolver>(),
         )
     }
+    @OptIn(ExperimentalForeignApi::class)
     single<MediampPlayerFactory<*>> {
         val audioSession = AVAudioSession.sharedInstance()
         audioSession.setCategory(AVAudioSessionCategoryPlayback,null)
