@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.subject.collection
 
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,7 +30,6 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.HowToReg
@@ -54,35 +54,37 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.paging.LoadState
-import androidx.paging.LoadStates
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -107,6 +109,7 @@ import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.NsfwMask
 import me.him188.ani.app.ui.foundation.widgets.PullToRefreshBox
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
+import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressStateFactory
@@ -116,9 +119,12 @@ import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListUiState
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.utils.coroutines.flows.FlowRestarter
+import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.platform.hasScrollingBug
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
+import kotlin.math.abs
 
 
 // 有顺序, https://github.com/Him188/ani/issues/73
@@ -141,49 +147,33 @@ class UserCollectionsState(
         type = UnifiedCollectionType.DOING,
     ),
 ) {
-    private var filterQueryPair by mutableStateOf(
-        1 to defaultQuery,
-    )
+    private var currentQuery by mutableStateOf(defaultQuery)
 
-    private val filterQuery by derivedStateOf { filterQueryPair.second }
-
-    private val availableTypes = COLLECTION_TABS_SORTED
-    val selectedTypeIndex by derivedStateOf {
-        availableTypes.indexOf(filterQuery.type)
-    }
-
-    fun selectTypeIndex(index: Int) {
-        updateQuery { copy(type = availableTypes[index]) }
-    }
-
-    val currentPagerFlow: Flow<PagingData<SubjectCollectionInfo>> =
-        snapshotFlow { filterQueryPair.second } // subscribe to both id and query, don't change to just `filterQuery`
-            .transformLatest {
-                emit(
-                    PagingData.from(
-                        emptyList(),
-                        LoadStates(
-                            refresh = LoadState.Loading,
-                            append = LoadState.NotLoading(false),
-                            prepend = LoadState.NotLoading(false),
-                        ),
-                    ),
-                )
-                emitAll(startSearch(it))
-            }
+    val selectedTypeIndex by derivedStateOf { availableTypes.indexOf(currentQuery.type) }
 
     val collectionCounts: SubjectCollectionCounts? by collectionCountsState
-
     val tabRowScrollState = ScrollState(selectedTypeIndex)
 
-    private fun updateQuery(query: CollectionsFilterQuery.() -> CollectionsFilterQuery) {
-        val current = filterQueryPair
-        filterQueryPair = current.copy(current.first, current.second.let(query))
+    private val restarter = FlowRestarter()
+
+    fun selectTypeIndex(index: Int) {
+        currentQuery = currentQuery.copy(type = availableTypes[index])
+    }
+
+    fun getCollectionTypePagerFlow(typeIndex: Int): Flow<PagingData<SubjectCollectionInfo>> {
+        return flowOf(CollectionsFilterQuery(availableTypes[typeIndex]))
+            .restartable(restarter)
+            .transformLatest {
+                emitAll(startSearch(it))
+            }
     }
 
     fun refresh() {
-        val current = filterQueryPair
-        filterQueryPair = current.copy(current.first + 1)
+        restarter.restart()
+    }
+
+    companion object {
+        private val availableTypes = COLLECTION_TABS_SORTED
     }
 }
 
@@ -191,7 +181,6 @@ class UserCollectionsState(
 fun CollectionPage(
     state: UserCollectionsState,
     selfInfo: SelfInfoUiState,
-    items: LazyPagingItems<SubjectCollectionInfo>,
     onClickSearch: () -> Unit,
     onClickLogin: () -> Unit,
     onClickSettings: () -> Unit,
@@ -202,6 +191,14 @@ fun CollectionPage(
     enableAnimation: Boolean = true,
     lazyGridState: LazyGridState = rememberLazyGridState(),
 ) {
+    var currentPageItems by remember {
+        mutableStateOf<LazyPagingItems<SubjectCollectionInfo>?>(null)
+    }
+
+    val isCurrentPageRefreshing by remember {
+        derivedStateOf { currentPageItems?.isLoadingFirstPageOrRefreshing == true }
+    }
+
     // 如果有缓存, 列表区域要展示缓存, 错误就用图标放在角落
     CollectionPageLayout(
         settingsIcon = {
@@ -226,7 +223,10 @@ fun CollectionPage(
         filters = {
             CollectionTypeScrollableTabRow(
                 selectedIndex = state.selectedTypeIndex,
-                onSelect = { index -> state.selectTypeIndex(index) },
+                onSelect = { index ->
+                    state.selectTypeIndex(index)
+                    // 移动端使用手势切换，不需要动画
+                },
                 Modifier.padding(horizontal = currentWindowAdaptiveInfo1().windowSizeClass.paneHorizontalPadding),
                 { type ->
                     val size = state.collectionCounts
@@ -264,20 +264,22 @@ fun CollectionPage(
                 scrollState = state.tabRowScrollState,
             )
         },
-        isRefreshing = { items.loadState.refresh is LoadState.Loading },
-        onRefresh = {
-            items.refresh()
-        },
+        isRefreshing = { isCurrentPageRefreshing },
+        onRefresh = { currentPageItems?.refresh() },
         modifier,
         windowInsets,
     ) { nestedScrollConnection ->
-        key(state.selectedTypeIndex) {
-            PullToRefreshBox(
-                items.loadState.refresh is LoadState.Loading,
-                onRefresh = { items.refresh() },
-                state = rememberPullToRefreshState(),
-                enabled = LocalPlatform.current.isMobile(),
-            ) {
+        PullToRefreshBox(
+            isCurrentPageRefreshing,
+            onRefresh = { currentPageItems?.refresh() },
+            state = rememberPullToRefreshState(),
+            enabled = LocalPlatform.current.isMobile(),
+        ) {
+            CollectionPageColumnLayout(
+                state,
+                onCurrentPagingItemChange = { currentPageItems = it },
+                modifier = Modifier.fillMaxSize(),
+            ) { items ->
                 SubjectCollectionsColumn(
                     items,
                     item = { collection ->
@@ -296,7 +298,15 @@ fun CollectionPage(
                         }
                     },
                     modifier = Modifier.fillMaxSize()
-                        .ifNotNullThen(nestedScrollConnection) { nestedScroll(it) },
+                        .ifNotNullThen(nestedScrollConnection) {
+                            nestedScroll(
+                                object : NestedScrollConnection by it {
+                                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                                        return super.onPreScroll(available, source)
+                                    }
+                                },
+                            )
+                        },
                     enableAnimation = enableAnimation,
                     gridState = lazyGridState,
                 )
@@ -373,22 +383,81 @@ private fun CollectionPageLayout(
     }
 }
 
+/**
+ * 在移动端使用自定义手势检测支持左右滑动切换标签.
+ */
+@Composable
+private fun CollectionPageColumnLayout(
+    state: UserCollectionsState,
+    onCurrentPagingItemChange: (LazyPagingItems<SubjectCollectionInfo>) -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable (items: LazyPagingItems<SubjectCollectionInfo>) -> Unit,
+) {
+    val platform = LocalPlatform.current
+    val scope = rememberCoroutineScope()
+    
+    // 直接使用当前选中的类型的LazyPagingItems
+    val currentItems = state.getCollectionTypePagerFlow(state.selectedTypeIndex)
+        .collectAsLazyPagingItemsWithLifecycle()
+    
+    LaunchedEffect(currentItems) {
+        onCurrentPagingItemChange(currentItems)
+    }
+
+    if (platform.isMobile()) {
+        // 移动端使用手势检测
+        Box(
+            modifier = modifier.swipeGesture(
+                onSwipeLeft = {
+                    val nextIndex = (state.selectedTypeIndex + 1).coerceAtMost(COLLECTION_TABS_SORTED.size - 1)
+                    if (nextIndex != state.selectedTypeIndex) {
+                        state.selectTypeIndex(nextIndex)
+                        scope.launch {
+                            state.tabRowScrollState.animateScrollTo(
+                                nextIndex * 100 // 滚动估算
+                            )
+                        }
+                    }
+                },
+                onSwipeRight = {
+                    val prevIndex = (state.selectedTypeIndex - 1).coerceAtLeast(0)
+                    if (prevIndex != state.selectedTypeIndex) {
+                        state.selectTypeIndex(prevIndex)
+                        scope.launch {
+                            state.tabRowScrollState.animateScrollTo(
+                                prevIndex * 100
+                            )
+                        }
+                    }
+                }
+            )
+        ) {
+            content(currentItems)
+        }
+    } else {
+        // 桌面端直接显示
+        Box(modifier) {
+            content(currentItems)
+        }
+    }
+}
+
 @Stable
 object CollectionPageFilters {
     @Composable
     fun CollectionTypeFilterButtons(
-        pagerState: PagerState,
+        selectedIndex: Int,
+        onSelect: (Int) -> Unit,
         modifier: Modifier = Modifier,
         itemLabel: @Composable (UnifiedCollectionType) -> Unit = { type ->
             Text(type.displayText(), softWrap = false)
         },
     ) {
-        val uiScope = rememberCoroutineScope()
         SingleChoiceSegmentedButtonRow(modifier) {
             COLLECTION_TABS_SORTED.forEachIndexed { index, type ->
                 SegmentedButton(
-                    selected = pagerState.currentPage == index,
-                    onClick = { uiScope.launch { pagerState.scrollToPage(index) } },
+                    selected = selectedIndex == index,
+                    onClick = { onSelect(index) },
                     shape = SegmentedButtonDefaults.itemShape(index, COLLECTION_TABS_SORTED.size),
                     Modifier.wrapContentWidth(),
                 ) {
@@ -538,6 +607,42 @@ private fun UnifiedCollectionType.displayText(): String {
         UnifiedCollectionType.ON_HOLD -> "搁置"
         UnifiedCollectionType.DROPPED -> "抛弃"
         UnifiedCollectionType.NOT_COLLECTED -> "未收藏"
+    }
+}
+
+/**
+ * 滑动手势检测
+ */
+private fun Modifier.swipeGesture(
+    onSwipeLeft: () -> Unit,
+    onSwipeRight: () -> Unit,
+    threshold: Float = 300f // 这是一个经验值
+): Modifier = this.pointerInput(Unit) {
+    var totalDragX = 0f
+    var hasTriggered = false
+    
+    detectDragGestures(
+        onDragStart = {
+            totalDragX = 0f
+            hasTriggered = false
+        },
+        onDragEnd = {
+            // 拖拽结束时重置状态
+            totalDragX = 0f
+            hasTriggered = false
+        }
+    ) { _, dragAmount ->
+        totalDragX += dragAmount.x
+        
+        // 只有在未触发过且累计滑动距离超过阈值时才触发一次
+        if (!hasTriggered && abs(totalDragX) > threshold) {
+            hasTriggered = true
+            if (totalDragX > 0) {
+                onSwipeRight()
+            } else {
+                onSwipeLeft()
+            }
+        }
     }
 }
 

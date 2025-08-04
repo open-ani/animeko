@@ -42,7 +42,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.paging.compose.collectAsLazyPagingItems
 import kotlinx.coroutines.launch
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
@@ -240,7 +239,6 @@ private fun MainScreenContent(
                         CollectionPage(
                             state = userCollectionsViewModel.state,
                             selfInfo = selfInfo,
-                            items = userCollectionsViewModel.items.collectAsLazyPagingItems(),
                             onClickSearch = onNavigateToSearch,
                             onClickLogin = { showAccountSettingsPopup = true },
                             onClickSettings = { navigator.navigateSettings() },
