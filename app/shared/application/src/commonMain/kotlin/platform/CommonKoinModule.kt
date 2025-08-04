@@ -217,7 +217,6 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         SubjectCollectionRepositoryImpl(
             api = client.api,
             subjectService = get(),
-            database = database,
             subjectCollectionDao = database.subjectCollection(),
 //            characterDao = database.character(),
 //            characterActorDao = database.characterActor(),
