@@ -341,8 +341,7 @@ class SessionManager(
             if (bgmRefreshToken != null) {
                 try {
                     val result = client
-                        .invoke { loginWithRefreshToken(AniLoginWithRefreshTokenRequest(bgmRefreshToken)) }
-                        .body()
+                        .invoke { loginWithRefreshToken(AniLoginWithRefreshTokenRequest(bgmRefreshToken)).body() }
 
                     sessionManager.setSession(
                         AccessTokenSession(

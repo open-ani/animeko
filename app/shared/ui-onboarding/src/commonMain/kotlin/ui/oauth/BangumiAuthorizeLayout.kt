@@ -153,16 +153,12 @@ private fun AuthorizeButton(
                 transitionSpec = LocalAniMotionScheme.current.animatedContent.standard,
             ) {
                 when (it) {
+                    is AuthState.LoggedInAni -> {
+                        Text("绑定 Bangumi 账号")
+                    }
+
                     is AuthState.Idle, is AuthState.Failed -> {
-                        if (authorizeState is AuthState.LoggedInAni) {
-                            if (authorizeState.bound) {
-                                Text("不可重复绑定")
-                            } else {
-                                Text("绑定 Bangumi 账号")
-                            }
-                        } else {
-                            Text("登录 / 注册")
-                        }
+                        Text("登录 / 注册")
                     }
 
                     is AuthState.AwaitingResult -> {

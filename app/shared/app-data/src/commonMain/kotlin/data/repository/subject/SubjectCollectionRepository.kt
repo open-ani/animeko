@@ -18,7 +18,6 @@ import androidx.paging.PagingData
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
 import androidx.paging.map
-import androidx.room.RoomDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -26,6 +25,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -68,7 +68,6 @@ import me.him188.ani.app.data.persistent.database.dao.SubjectRelations
 import me.him188.ani.app.data.persistent.database.dao.SubjectRelationsDao
 import me.him188.ani.app.data.persistent.database.dao.deleteAll
 import me.him188.ani.app.data.persistent.database.dao.filterMostRecentUpdated
-import me.him188.ani.app.data.persistent.database.withTransaction
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
@@ -104,6 +103,7 @@ import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.collections.toIntArray
 import me.him188.ani.utils.platform.currentTimeMillis
+import me.him188.ani.utils.serialization.BigNum
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
@@ -192,7 +192,6 @@ sealed class SubjectCollectionRepository(
 class SubjectCollectionRepositoryImpl(
     private val api: ApiInvoker<DefaultApi>,
     private val subjectService: SubjectService,
-    private val database: RoomDatabase,
     private val subjectCollectionDao: SubjectCollectionDao,
     private val subjectRelationsDao: SubjectRelationsDao,
     private val episodeCollectionRepository: EpisodeCollectionRepository,
@@ -239,7 +238,9 @@ class SubjectCollectionRepositoryImpl(
         return (currentTimeMillis() - lastFetched).milliseconds > cacheExpiry
     }
 
-    override fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo> =
+    override fun subjectCollectionFlow(
+        subjectId: Int
+    ): Flow<SubjectCollectionInfo> = getEpisodeTypeFiltersUseCase().flatMapLatest { epTypes ->
         subjectCollectionDao.findById(subjectId)
             .restartOnNewLogin(sessionManager)
             .onEach { existing ->
@@ -254,11 +255,9 @@ class SubjectCollectionRepositoryImpl(
                         val episodeEntities = subject.episodes.map {
                             it.toEntity1(subjectId, lastFetched = lastFetched)
                         }
-                        database.withTransaction {
-                            subjectCollectionDao.upsert(subjectEntity)
-                            episodeCollectionDao.deleteAllBySubjectId(subjectId) // 删除旧的剧集缓存, 因为服务器上可能会变少
-                            episodeCollectionDao.upsert(episodeEntities)
-                        }
+                        subjectCollectionDao.upsert(subjectEntity)
+                        episodeCollectionDao.deleteAllBySubjectId(subjectId) // 删除旧的剧集缓存, 因为服务器上可能会变少
+                        episodeCollectionDao.upsert(episodeEntities)
                     }
                     // TODO: 2025/5/24 handle subject not found 
                 }
@@ -266,7 +265,10 @@ class SubjectCollectionRepositoryImpl(
             .filterNotNull()
             // 有 subject 缓存后才能从 episodeCollectionRepository fetch episodes
             .combine(
-                episodeCollectionRepository.subjectEpisodeCollectionInfosFlow(subjectId),
+                episodeCollectionDao
+                    .filterBySubjectId(subjectId, epTypes)
+                    .map { list -> list.map { it.toEpisodeCollectionInfo() } }
+                    .distinctUntilChanged(),
                 nsfwModeSettingsFlow,
             ) { entity, episodes, nsfwModeSettings ->
                 entity.toSubjectCollectionInfo(
@@ -274,7 +276,8 @@ class SubjectCollectionRepositoryImpl(
                     currentDate = getCurrentDate(),
                     nsfwModeSettings = nsfwModeSettings,
                 )
-            }.flowOn(defaultDispatcher)
+            }
+    }.flowOn(defaultDispatcher)
 
     override fun batchLightSubjectAndEpisodesFlow(subjectIds: IntList): Flow<List<LightSubjectAndEpisodes>> {
         return flow {
@@ -800,7 +803,7 @@ fun AniEpisodeCollection.toEntity1(
         airDate = airdate?.let { PackedDate.parseFromDate(it) } ?: PackedDate.Invalid,
         comment = 0,
         desc = description,
-        sort = EpisodeSort(sort),
+        sort = EpisodeSort(BigNum(sort), type.toEpisodeType()),
         sortNumber = sort.toFloatOrNull() ?: 0f,
         selfCollectionType = collectionType.toUnifiedCollectionType(),
         lastFetched = lastFetched,

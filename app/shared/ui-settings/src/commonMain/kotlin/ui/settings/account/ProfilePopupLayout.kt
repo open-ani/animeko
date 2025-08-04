@@ -78,6 +78,7 @@ internal fun ProfilePopupLayout(
                 AvatarImage(
                     url = state.selfInfo.selfInfo?.avatarUrl?.takeIf { isLogin },
                     Modifier
+                        .fillMaxSize()
                         .clip(CircleShape)
                         .placeholder(state.selfInfo.isLoading),
                 )

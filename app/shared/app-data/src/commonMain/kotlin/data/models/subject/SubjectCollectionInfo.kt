@@ -13,7 +13,6 @@ import androidx.compose.runtime.Immutable
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.toLocalDateTime
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
@@ -26,9 +25,9 @@ import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.toLocalDateOrNull
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
+import kotlin.math.abs
 import kotlin.random.Random
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.days
 
 /**
  * 用户对一个条目的收藏情况
@@ -81,39 +80,27 @@ data class SubjectRecurrence(
      */
     fun calculateEpisodeAirTime(
         packedDate: PackedDate,
-        zone: TimeZone = TimeZone.currentSystemDefault()
-    ): Instant? { // Written by o3.
+        zone: TimeZone = TimeZone.currentSystemDefault(),
+    ): Instant? {
         val localDate: LocalDate = packedDate.toLocalDateOrNull() ?: return null
 
-        // 使用系统默认时区把 Instant ↔ LocalDate 互转
-        val zone: TimeZone = zone
         val startDate: LocalDate = startTime.toLocalDateTime(zone).date
+        val intervalDays = interval.inWholeDays
+        if (intervalDays <= 0) return null
 
-        // 目标日期不能早于首播日
-        if (localDate < startDate) return null
-
-        val intervalDays: Long = interval.inWholeDays
-        if (intervalDays <= 0) return null  // 非法或零间隔
-
-        val elapsedDays: Int = startDate.daysUntil(localDate)
-        val approxIndex: Long = elapsedDays / intervalDays
-
-        // 在 ±1 区间内尝试，允许 24 小时误差
-        val candidateIndices = listOf(approxIndex - 1, approxIndex, approxIndex + 1)
-            .filter { it >= 0 }
-
-        val targetMidnight: Instant = localDate.atStartOfDayIn(zone)
-        val tolerance: Duration = 1.days
+        val approxIndex = startDate.daysUntil(localDate) / intervalDays
+        val candidateIndices = listOf(approxIndex - 1, approxIndex, approxIndex + 1).filter { it >= 0 }
 
         for (idx in candidateIndices) {
-            val candidate: Instant = startTime + interval * idx.toInt()
-            val diff: Duration = (candidate - targetMidnight).absoluteValue
-            if (diff <= tolerance) return candidate
+            val candidate = startTime + interval * idx.toInt()
+            val candidateDate = candidate.toLocalDateTime(zone).date
+            // 接受本地日期差 ≤ 1 的候选
+            if (abs(localDate.daysUntil(candidateDate)) <= 1) {
+                return candidate
+            }
         }
-
         return null
     }
-
     /**
      * @see [calculateEpisodeAirTime]
      */
