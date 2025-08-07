@@ -12,7 +12,6 @@ package me.him188.ani.app.ui.subject.collection
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.paging.cachedIn
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
@@ -71,9 +70,6 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
             createEditableSubjectCollectionTypeState(it)
         },
     )
-
-    // 在 VM 生命周期, 否则会导致切换页面后需要重新加载并丢失滚动进度
-    val items = state.currentPagerFlow.cachedIn(backgroundScope)
 
     private fun createEditableSubjectCollectionTypeState(collection: SubjectCollectionInfo): EditableSubjectCollectionTypeState =
         // 必须不能有后台持续任务

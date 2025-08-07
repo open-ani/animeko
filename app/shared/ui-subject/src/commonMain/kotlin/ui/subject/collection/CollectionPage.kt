@@ -28,7 +28,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
@@ -54,23 +54,21 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
@@ -81,8 +79,11 @@ import androidx.paging.LoadState
 import androidx.paging.LoadStates
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -95,7 +96,6 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.foundation.LocalPlatform
-import me.him188.ani.app.ui.foundation.ifNotNullThen
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
@@ -107,6 +107,7 @@ import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.NsfwMask
 import me.him188.ani.app.ui.foundation.widgets.PullToRefreshBox
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
+import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressStateFactory
@@ -116,6 +117,8 @@ import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListUiState
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.utils.coroutines.flows.FlowRestarter
+import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.platform.hasScrollingBug
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
@@ -141,23 +144,27 @@ class UserCollectionsState(
         type = UnifiedCollectionType.DOING,
     ),
 ) {
-    private var filterQueryPair by mutableStateOf(
-        1 to defaultQuery,
-    )
+    private var currentQuery by mutableStateOf(defaultQuery)
 
-    private val filterQuery by derivedStateOf { filterQueryPair.second }
+    val selectedTypeIndex by derivedStateOf { availableTypes.indexOf(currentQuery.type) }
 
-    private val availableTypes = COLLECTION_TABS_SORTED
-    val selectedTypeIndex by derivedStateOf {
-        availableTypes.indexOf(filterQuery.type)
-    }
+    val collectionCounts: SubjectCollectionCounts? by collectionCountsState
+    val tabRowScrollState = ScrollState(selectedTypeIndex)
+    val pagerState = PagerState(selectedTypeIndex) { availableTypes.size }
+
+    // Store LazyGridState for each tab
+    private val gridStates = mutableMapOf<Int, LazyGridState>()
+    
+    private val restarter = FlowRestarter()
 
     fun selectTypeIndex(index: Int) {
-        updateQuery { copy(type = availableTypes[index]) }
+        currentQuery = currentQuery.copy(type = availableTypes[index])
     }
 
-    val currentPagerFlow: Flow<PagingData<SubjectCollectionInfo>> =
-        snapshotFlow { filterQueryPair.second } // subscribe to both id and query, don't change to just `filterQuery`
+    fun getCollectionTypePagerFlow(typeIndex: Int): Flow<PagingData<SubjectCollectionInfo>> {
+        return flowOf(typeIndex)
+            .restartable(restarter)
+            .map { CollectionsFilterQuery(availableTypes[typeIndex]) }
             .transformLatest {
                 emit(
                     PagingData.from(
@@ -171,19 +178,23 @@ class UserCollectionsState(
                 )
                 emitAll(startSearch(it))
             }
-
-    val collectionCounts: SubjectCollectionCounts? by collectionCountsState
-
-    val tabRowScrollState = ScrollState(selectedTypeIndex)
-
-    private fun updateQuery(query: CollectionsFilterQuery.() -> CollectionsFilterQuery) {
-        val current = filterQueryPair
-        filterQueryPair = current.copy(current.first, current.second.let(query))
     }
 
     fun refresh() {
-        val current = filterQueryPair
-        filterQueryPair = current.copy(current.first + 1)
+        restarter.restart()
+    }
+    
+    fun getGridState(pageIndex: Int): LazyGridState {
+        return gridStates.getOrPut(pageIndex) { LazyGridState() }
+    }
+    
+    suspend fun scrollToTop() {
+        val currentGridState = gridStates[selectedTypeIndex]
+        currentGridState?.animateScrollToItem(0)
+    }
+
+    companion object {
+        private val availableTypes = COLLECTION_TABS_SORTED
     }
 }
 
@@ -191,7 +202,6 @@ class UserCollectionsState(
 fun CollectionPage(
     state: UserCollectionsState,
     selfInfo: SelfInfoUiState,
-    items: LazyPagingItems<SubjectCollectionInfo>,
     onClickSearch: () -> Unit,
     onClickLogin: () -> Unit,
     onClickSettings: () -> Unit,
@@ -200,8 +210,17 @@ fun CollectionPage(
     actions: @Composable RowScope.() -> Unit = {},
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     enableAnimation: Boolean = true,
-    lazyGridState: LazyGridState = rememberLazyGridState(),
+
 ) {
+    val scope = rememberCoroutineScope()
+    var currentPageItems by remember {
+        mutableStateOf<LazyPagingItems<SubjectCollectionInfo>?>(null)
+    }
+
+    val isCurrentPageRefreshing by remember {
+        derivedStateOf { currentPageItems?.isLoadingFirstPageOrRefreshing == true }
+    }
+
     // 如果有缓存, 列表区域要展示缓存, 错误就用图标放在角落
     CollectionPageLayout(
         settingsIcon = {
@@ -226,7 +245,12 @@ fun CollectionPage(
         filters = {
             CollectionTypeScrollableTabRow(
                 selectedIndex = state.selectedTypeIndex,
-                onSelect = { index -> state.selectTypeIndex(index) },
+                onSelect = { index ->
+                    state.selectTypeIndex(index)
+                    scope.launch {
+                        state.pagerState.animateScrollToPage(index)
+                    }
+                },
                 Modifier.padding(horizontal = currentWindowAdaptiveInfo1().windowSizeClass.paneHorizontalPadding),
                 { type ->
                     val size = state.collectionCounts
@@ -264,16 +288,18 @@ fun CollectionPage(
                 scrollState = state.tabRowScrollState,
             )
         },
-        isRefreshing = { items.loadState.refresh is LoadState.Loading },
-        onRefresh = {
-            items.refresh()
-        },
+        isRefreshing = { isCurrentPageRefreshing },
+        onRefresh = { currentPageItems?.refresh() },
         modifier,
         windowInsets,
     ) { nestedScrollConnection ->
-        key(state.selectedTypeIndex) {
+        CollectionPageColumnLayout(
+            state,
+            onCurrentPagingItemChange = { currentPageItems = it },
+            modifier = Modifier.fillMaxSize(),
+        ) { items, pageIndex ->
             PullToRefreshBox(
-                items.loadState.refresh is LoadState.Loading,
+                items.isLoadingFirstPageOrRefreshing,
                 onRefresh = { items.refresh() },
                 state = rememberPullToRefreshState(),
                 enabled = LocalPlatform.current.isMobile(),
@@ -295,10 +321,9 @@ fun CollectionPage(
                             )
                         }
                     },
-                    modifier = Modifier.fillMaxSize()
-                        .ifNotNullThen(nestedScrollConnection) { nestedScroll(it) },
+                    modifier = Modifier.fillMaxSize(),
                     enableAnimation = enableAnimation,
-                    gridState = lazyGridState,
+                    gridState = state.getGridState(pageIndex),
                 )
             }
         }
@@ -369,6 +394,60 @@ private fun CollectionPageLayout(
                 .widthIn(max = 1300.dp),
         ) {
             content(scrollBehavior?.nestedScrollConnection)
+        }
+    }
+}
+
+/**
+ * 在移动端使用 [HorizontalPager] 支持左右滑动切换标签.
+ */
+@Composable
+private fun CollectionPageColumnLayout(
+    state: UserCollectionsState,
+    onCurrentPagingItemChange: (LazyPagingItems<SubjectCollectionInfo>) -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable (items: LazyPagingItems<SubjectCollectionInfo>, pageIndex: Int) -> Unit,
+) {
+    val platform = LocalPlatform.current
+
+    if (platform.isMobile()) {
+        LaunchedEffect(state.pagerState.currentPage) {
+            if (state.pagerState.currentPage != state.selectedTypeIndex) {
+                state.selectTypeIndex(state.pagerState.currentPage)
+            }
+        }
+
+        HorizontalPager(
+            state = state.pagerState,
+            modifier = modifier,
+            beyondViewportPageCount = 1,
+            pageSpacing = 0.dp,
+        ) { pageIndex ->
+            val items = remember {
+                state.getCollectionTypePagerFlow(pageIndex)
+            }.collectAsLazyPagingItemsWithLifecycle()
+
+            LaunchedEffect(state.selectedTypeIndex) {
+                if (pageIndex == state.selectedTypeIndex) {
+                    onCurrentPagingItemChange(items)
+                }
+            }
+
+            Column(Modifier.fillMaxSize()) {
+                content(items, pageIndex)
+            }
+        }
+    } else {
+        val items = remember(state.selectedTypeIndex) {
+            state.getCollectionTypePagerFlow(state.selectedTypeIndex)
+        }.collectAsLazyPagingItemsWithLifecycle()
+
+        LaunchedEffect(items) {
+            onCurrentPagingItemChange(items)
+        }
+
+        Box(modifier) {
+            content(items, state.selectedTypeIndex)
         }
     }
 }
