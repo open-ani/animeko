@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.ui.subject.details.components
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -19,9 +21,12 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -79,13 +84,28 @@ fun SubjectComment(
     onClickReaction: (commentId: Long, reactionId: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val uriHandler = LocalUriHandler.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val authorModifier = Modifier.clickable(
+        enabled = comment.author != null,
+        indication = ripple(),
+        interactionSource = interactionSource,
+        onClick = {
+            comment.author?.id?.let {
+                val url = "https://bgm.tv/user/" + comment.author?.id.toString()
+                uriHandler.openUri(url)
+            }
+        },
+    )
+    
     Comment(
-        avatar = { CommentDefaults.Avatar(comment.author?.avatarUrl) },
+        avatar = { CommentDefaults.Avatar(comment.author?.avatarUrl, authorModifier) },
         primaryTitle = {
             Text(
                 text = comment.author?.nickname ?: comment.author?.id.toString(),
                 textAlign = TextAlign.Center,
                 overflow = TextOverflow.Ellipsis,
+                modifier = authorModifier,
             )
         },
         secondaryTitle = {
