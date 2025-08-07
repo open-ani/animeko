@@ -93,6 +93,7 @@ fun SubjectCollectionsColumn(
         modifier,
         gridState,
         contentPadding = PaddingValues(all = spacedBy / 2),
+        userScrollEnabled = true,
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(1.dp)) } // 添加新 item 时保持到顶部
 

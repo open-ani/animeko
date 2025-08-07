@@ -10,7 +10,6 @@
 package me.him188.ani.app.ui.subject.collection
 
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,7 +28,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.HowToReg
@@ -67,24 +67,25 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.LoadState
+import androidx.paging.LoadStates
 import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -97,7 +98,6 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.foundation.LocalPlatform
-import me.him188.ani.app.ui.foundation.ifNotNullThen
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
@@ -124,7 +124,6 @@ import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.platform.hasScrollingBug
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
-import kotlin.math.abs
 
 
 // 有顺序, https://github.com/Him188/ani/issues/73
@@ -143,6 +142,7 @@ class UserCollectionsState(
     collectionCountsState: State<SubjectCollectionCounts?>,
     val subjectProgressStateFactory: SubjectProgressStateFactory,
     val createEditableSubjectCollectionTypeState: (subjectCollection: SubjectCollectionInfo) -> EditableSubjectCollectionTypeState,
+    private val backgroundScope: CoroutineScope,
     defaultQuery: CollectionsFilterQuery = CollectionsFilterQuery(
         type = UnifiedCollectionType.DOING,
     ),
@@ -153,7 +153,14 @@ class UserCollectionsState(
 
     val collectionCounts: SubjectCollectionCounts? by collectionCountsState
     val tabRowScrollState = ScrollState(selectedTypeIndex)
+    val pagerState = PagerState(selectedTypeIndex) { availableTypes.size }
 
+    // Store LazyGridState for each tab
+    private val gridStates = mutableMapOf<Int, LazyGridState>()
+    
+    // Cache data flows for each tab
+    private val cachedFlows = mutableMapOf<Int, Flow<PagingData<SubjectCollectionInfo>>>()
+    
     private val restarter = FlowRestarter()
 
     fun selectTypeIndex(index: Int) {
@@ -161,15 +168,38 @@ class UserCollectionsState(
     }
 
     fun getCollectionTypePagerFlow(typeIndex: Int): Flow<PagingData<SubjectCollectionInfo>> {
-        return flowOf(CollectionsFilterQuery(availableTypes[typeIndex]))
-            .restartable(restarter)
-            .transformLatest {
-                emitAll(startSearch(it))
-            }
+        return cachedFlows.getOrPut(typeIndex) {
+            flowOf(typeIndex)
+                .restartable(restarter)
+                .map { CollectionsFilterQuery(availableTypes[typeIndex]) }
+                .transformLatest { query ->
+                    emit(
+                        PagingData.from(
+                            emptyList<SubjectCollectionInfo>(),
+                            LoadStates(
+                                refresh = LoadState.Loading,
+                                append = LoadState.NotLoading(false),
+                                prepend = LoadState.NotLoading(false),
+                            ),
+                        ),
+                    )
+                    emitAll(startSearch(query))
+                }
+                .cachedIn(backgroundScope)
+        }
     }
 
     fun refresh() {
         restarter.restart()
+    }
+    
+    fun getGridState(pageIndex: Int): LazyGridState {
+        return gridStates.getOrPut(pageIndex) { LazyGridState() }
+    }
+    
+    suspend fun scrollToTop() {
+        val currentGridState = gridStates[selectedTypeIndex]
+        currentGridState?.animateScrollToItem(0)
     }
 
     companion object {
@@ -189,8 +219,9 @@ fun CollectionPage(
     actions: @Composable RowScope.() -> Unit = {},
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     enableAnimation: Boolean = true,
-    lazyGridState: LazyGridState = rememberLazyGridState(),
+
 ) {
+    val scope = rememberCoroutineScope()
     var currentPageItems by remember {
         mutableStateOf<LazyPagingItems<SubjectCollectionInfo>?>(null)
     }
@@ -225,7 +256,9 @@ fun CollectionPage(
                 selectedIndex = state.selectedTypeIndex,
                 onSelect = { index ->
                     state.selectTypeIndex(index)
-                    // 移动端使用手势切换，不需要动画
+                    scope.launch {
+                        state.pagerState.animateScrollToPage(index)
+                    }
                 },
                 Modifier.padding(horizontal = currentWindowAdaptiveInfo1().windowSizeClass.paneHorizontalPadding),
                 { type ->
@@ -269,17 +302,17 @@ fun CollectionPage(
         modifier,
         windowInsets,
     ) { nestedScrollConnection ->
-        PullToRefreshBox(
-            isCurrentPageRefreshing,
-            onRefresh = { currentPageItems?.refresh() },
-            state = rememberPullToRefreshState(),
-            enabled = LocalPlatform.current.isMobile(),
-        ) {
-            CollectionPageColumnLayout(
-                state,
-                onCurrentPagingItemChange = { currentPageItems = it },
-                modifier = Modifier.fillMaxSize(),
-            ) { items ->
+        CollectionPageColumnLayout(
+            state,
+            onCurrentPagingItemChange = { currentPageItems = it },
+            modifier = Modifier.fillMaxSize(),
+        ) { items, pageIndex ->
+            PullToRefreshBox(
+                items.isLoadingFirstPageOrRefreshing,
+                onRefresh = { items.refresh() },
+                state = rememberPullToRefreshState(),
+                enabled = LocalPlatform.current.isMobile(),
+            ) {
                 SubjectCollectionsColumn(
                     items,
                     item = { collection ->
@@ -297,18 +330,9 @@ fun CollectionPage(
                             )
                         }
                     },
-                    modifier = Modifier.fillMaxSize()
-                        .ifNotNullThen(nestedScrollConnection) {
-                            nestedScroll(
-                                object : NestedScrollConnection by it {
-                                    override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                                        return super.onPreScroll(available, source)
-                                    }
-                                },
-                            )
-                        },
+                    modifier = Modifier.fillMaxSize(),
                     enableAnimation = enableAnimation,
-                    gridState = lazyGridState,
+                    gridState = state.getGridState(pageIndex),
                 )
             }
         }
@@ -384,60 +408,53 @@ private fun CollectionPageLayout(
 }
 
 /**
- * 在移动端使用自定义手势检测支持左右滑动切换标签.
+ * 在移动端使用 [HorizontalPager] 支持左右滑动切换标签.
  */
 @Composable
 private fun CollectionPageColumnLayout(
     state: UserCollectionsState,
     onCurrentPagingItemChange: (LazyPagingItems<SubjectCollectionInfo>) -> Unit,
     modifier: Modifier = Modifier,
-    content: @Composable (items: LazyPagingItems<SubjectCollectionInfo>) -> Unit,
+    content: @Composable (items: LazyPagingItems<SubjectCollectionInfo>, pageIndex: Int) -> Unit,
 ) {
     val platform = LocalPlatform.current
-    val scope = rememberCoroutineScope()
-    
-    // 直接使用当前选中的类型的LazyPagingItems
-    val currentItems = state.getCollectionTypePagerFlow(state.selectedTypeIndex)
-        .collectAsLazyPagingItemsWithLifecycle()
-    
-    LaunchedEffect(currentItems) {
-        onCurrentPagingItemChange(currentItems)
-    }
 
     if (platform.isMobile()) {
-        // 移动端使用手势检测
-        Box(
-            modifier = modifier.swipeGesture(
-                onSwipeLeft = {
-                    val nextIndex = (state.selectedTypeIndex + 1).coerceAtMost(COLLECTION_TABS_SORTED.size - 1)
-                    if (nextIndex != state.selectedTypeIndex) {
-                        state.selectTypeIndex(nextIndex)
-                        scope.launch {
-                            state.tabRowScrollState.animateScrollTo(
-                                nextIndex * 100 // 滚动估算
-                            )
-                        }
-                    }
-                },
-                onSwipeRight = {
-                    val prevIndex = (state.selectedTypeIndex - 1).coerceAtLeast(0)
-                    if (prevIndex != state.selectedTypeIndex) {
-                        state.selectTypeIndex(prevIndex)
-                        scope.launch {
-                            state.tabRowScrollState.animateScrollTo(
-                                prevIndex * 100
-                            )
-                        }
-                    }
+        LaunchedEffect(state.pagerState.currentPage) {
+            if (state.pagerState.currentPage != state.selectedTypeIndex) {
+                state.selectTypeIndex(state.pagerState.currentPage)
+            }
+        }
+
+        HorizontalPager(
+            state = state.pagerState,
+            modifier = modifier,
+            beyondViewportPageCount = 1,
+            pageSpacing = 0.dp,
+        ) { pageIndex ->
+            val items = state.getCollectionTypePagerFlow(pageIndex)
+                .collectAsLazyPagingItemsWithLifecycle()
+
+            LaunchedEffect(state.selectedTypeIndex) {
+                if (pageIndex == state.selectedTypeIndex) {
+                    onCurrentPagingItemChange(items)
                 }
-            )
-        ) {
-            content(currentItems)
+            }
+
+            Column(Modifier.fillMaxSize()) {
+                content(items, pageIndex)
+            }
         }
     } else {
-        // 桌面端直接显示
+        val items = state.getCollectionTypePagerFlow(state.selectedTypeIndex)
+            .collectAsLazyPagingItemsWithLifecycle()
+
+        LaunchedEffect(items) {
+            onCurrentPagingItemChange(items)
+        }
+
         Box(modifier) {
-            content(currentItems)
+            content(items, state.selectedTypeIndex)
         }
     }
 }
@@ -446,18 +463,18 @@ private fun CollectionPageColumnLayout(
 object CollectionPageFilters {
     @Composable
     fun CollectionTypeFilterButtons(
-        selectedIndex: Int,
-        onSelect: (Int) -> Unit,
+        pagerState: PagerState,
         modifier: Modifier = Modifier,
         itemLabel: @Composable (UnifiedCollectionType) -> Unit = { type ->
             Text(type.displayText(), softWrap = false)
         },
     ) {
+        val uiScope = rememberCoroutineScope()
         SingleChoiceSegmentedButtonRow(modifier) {
             COLLECTION_TABS_SORTED.forEachIndexed { index, type ->
                 SegmentedButton(
-                    selected = selectedIndex == index,
-                    onClick = { onSelect(index) },
+                    selected = pagerState.currentPage == index,
+                    onClick = { uiScope.launch { pagerState.scrollToPage(index) } },
                     shape = SegmentedButtonDefaults.itemShape(index, COLLECTION_TABS_SORTED.size),
                     Modifier.wrapContentWidth(),
                 ) {
@@ -607,42 +624,6 @@ private fun UnifiedCollectionType.displayText(): String {
         UnifiedCollectionType.ON_HOLD -> "搁置"
         UnifiedCollectionType.DROPPED -> "抛弃"
         UnifiedCollectionType.NOT_COLLECTED -> "未收藏"
-    }
-}
-
-/**
- * 滑动手势检测
- */
-private fun Modifier.swipeGesture(
-    onSwipeLeft: () -> Unit,
-    onSwipeRight: () -> Unit,
-    threshold: Float = 300f // 这是一个经验值
-): Modifier = this.pointerInput(Unit) {
-    var totalDragX = 0f
-    var hasTriggered = false
-    
-    detectDragGestures(
-        onDragStart = {
-            totalDragX = 0f
-            hasTriggered = false
-        },
-        onDragEnd = {
-            // 拖拽结束时重置状态
-            totalDragX = 0f
-            hasTriggered = false
-        }
-    ) { _, dragAmount ->
-        totalDragX += dragAmount.x
-        
-        // 只有在未触发过且累计滑动距离超过阈值时才触发一次
-        if (!hasTriggered && abs(totalDragX) > threshold) {
-            hasTriggered = true
-            if (totalDragX > 0) {
-                onSwipeRight()
-            } else {
-                onSwipeLeft()
-            }
-        }
     }
 }
 

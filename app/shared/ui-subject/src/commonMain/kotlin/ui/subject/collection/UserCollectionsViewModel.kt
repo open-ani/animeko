@@ -69,6 +69,7 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
         createEditableSubjectCollectionTypeState = {
             createEditableSubjectCollectionTypeState(it)
         },
+        backgroundScope
     )
 
     private fun createEditableSubjectCollectionTypeState(collection: SubjectCollectionInfo): EditableSubjectCollectionTypeState =

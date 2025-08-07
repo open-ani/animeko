@@ -186,8 +186,8 @@ private fun MainScreenContent(
                                             0,
                                         )
 
-                                    MainScreenPage.Collection ->
-                                        userCollectionsViewModel.lazyGridState.animateScrollToItem(0)
+                                    MainScreenPage.Collection -> 
+                                        userCollectionsViewModel.state.scrollToTop()
 
                                     MainScreenPage.CacheManagement ->
                                         cacheManagementViewModel.lazyGridState.animateScrollToItem(0)
@@ -253,7 +253,6 @@ private fun MainScreenContent(
                             },
                             modifier = Modifier.fillMaxSize(),
                             enableAnimation = userCollectionsViewModel.myCollectionsSettings.enableListAnimation1,
-                            lazyGridState = userCollectionsViewModel.lazyGridState,
                         )
                     }
 

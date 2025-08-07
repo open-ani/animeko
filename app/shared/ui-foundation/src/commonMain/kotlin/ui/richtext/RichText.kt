@@ -322,7 +322,7 @@ object RichTextDefaults {
             text = content,
             modifier = modifier,
             inlineContent = inlineStickerMap,
-            style = TextStyle.Default.copy(lineHeight = FontSize.sp * 1.5f),
+            style = TextStyle.Default,
             maxLines = maxLine ?: Int.MAX_VALUE,
             overflow = TextOverflow.Ellipsis,
             onClick = { textPos ->
