@@ -78,8 +78,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
 import androidx.paging.LoadStates
 import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flowOf
@@ -140,6 +142,7 @@ class UserCollectionsState(
     collectionCountsState: State<SubjectCollectionCounts?>,
     val subjectProgressStateFactory: SubjectProgressStateFactory,
     val createEditableSubjectCollectionTypeState: (subjectCollection: SubjectCollectionInfo) -> EditableSubjectCollectionTypeState,
+    private val backgroundScope: CoroutineScope,
     defaultQuery: CollectionsFilterQuery = CollectionsFilterQuery(
         type = UnifiedCollectionType.DOING,
     ),
@@ -155,6 +158,9 @@ class UserCollectionsState(
     // Store LazyGridState for each tab
     private val gridStates = mutableMapOf<Int, LazyGridState>()
     
+    // Cache data flows for each tab
+    private val cachedFlows = mutableMapOf<Int, Flow<PagingData<SubjectCollectionInfo>>>()
+    
     private val restarter = FlowRestarter()
 
     fun selectTypeIndex(index: Int) {
@@ -162,22 +168,25 @@ class UserCollectionsState(
     }
 
     fun getCollectionTypePagerFlow(typeIndex: Int): Flow<PagingData<SubjectCollectionInfo>> {
-        return flowOf(typeIndex)
-            .restartable(restarter)
-            .map { CollectionsFilterQuery(availableTypes[typeIndex]) }
-            .transformLatest {
-                emit(
-                    PagingData.from(
-                        emptyList(),
-                        LoadStates(
-                            refresh = LoadState.Loading,
-                            append = LoadState.NotLoading(false),
-                            prepend = LoadState.NotLoading(false),
+        return cachedFlows.getOrPut(typeIndex) {
+            flowOf(typeIndex)
+                .restartable(restarter)
+                .map { CollectionsFilterQuery(availableTypes[typeIndex]) }
+                .transformLatest { query ->
+                    emit(
+                        PagingData.from(
+                            emptyList<SubjectCollectionInfo>(),
+                            LoadStates(
+                                refresh = LoadState.Loading,
+                                append = LoadState.NotLoading(false),
+                                prepend = LoadState.NotLoading(false),
+                            ),
                         ),
-                    ),
-                )
-                emitAll(startSearch(it))
-            }
+                    )
+                    emitAll(startSearch(query))
+                }
+                .cachedIn(backgroundScope)
+        }
     }
 
     fun refresh() {
@@ -423,9 +432,8 @@ private fun CollectionPageColumnLayout(
             beyondViewportPageCount = 1,
             pageSpacing = 0.dp,
         ) { pageIndex ->
-            val items = remember {
-                state.getCollectionTypePagerFlow(pageIndex)
-            }.collectAsLazyPagingItemsWithLifecycle()
+            val items = state.getCollectionTypePagerFlow(pageIndex)
+                .collectAsLazyPagingItemsWithLifecycle()
 
             LaunchedEffect(state.selectedTypeIndex) {
                 if (pageIndex == state.selectedTypeIndex) {
@@ -438,9 +446,8 @@ private fun CollectionPageColumnLayout(
             }
         }
     } else {
-        val items = remember(state.selectedTypeIndex) {
-            state.getCollectionTypePagerFlow(state.selectedTypeIndex)
-        }.collectAsLazyPagingItemsWithLifecycle()
+        val items = state.getCollectionTypePagerFlow(state.selectedTypeIndex)
+            .collectAsLazyPagingItemsWithLifecycle()
 
         LaunchedEffect(items) {
             onCurrentPagingItemChange(items)
