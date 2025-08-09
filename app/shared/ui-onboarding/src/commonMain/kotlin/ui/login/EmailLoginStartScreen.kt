@@ -91,9 +91,9 @@ internal fun EmailLoginStartScreenImpl(
         onNavigateSettings,
         onNavigateBack,
         modifier,
-        showThirdPartyLogin = showThirdPartyLogin,
-        title = title,
-    ) {
+        title,
+        showThirdPartyLogin,
+    ) { scrollState ->
         CenteredSectionHeader(
             title = { Text("你的邮箱地址") },
             description = { Text("我们将发送一封验证码邮件") },

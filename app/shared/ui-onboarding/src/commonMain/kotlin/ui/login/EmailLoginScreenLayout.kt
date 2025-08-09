@@ -86,8 +86,8 @@ internal fun EmailLoginScreenLayout(
                     }
                     .padding(contentPadding)
                     .padding(horizontal = 24.dp)
-                    .verticalScroll(scrollState)
-                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+                    .verticalScroll(scrollState),
             ) {
                 Column(
                     Modifier
