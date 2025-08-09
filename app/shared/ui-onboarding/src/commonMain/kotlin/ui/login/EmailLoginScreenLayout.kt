@@ -10,10 +10,10 @@
 package me.him188.ani.app.ui.login
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -70,33 +70,38 @@ internal fun EmailLoginScreenLayout(
         },
         contentWindowInsets = AniWindowInsets.forPageContent(),
     ) { contentPadding ->
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .wrapContentWidth(align = Alignment.CenterHorizontally)
-                .ifThen(currentWindowAdaptiveInfo1().windowSizeClass.isWidthAtLeastMedium) {
-                    widthIn(max = 480.dp)
-                }
-                .padding(contentPadding)
-                .padding(horizontal = 24.dp)
-                .verticalScroll(rememberScrollState())
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
-        ) {
+        BoxWithConstraints {
+            val availableHeight = maxHeight - contentPadding.calculateTopPadding() - contentPadding.calculateBottomPadding() - 48.dp
+            val thirdPartyLoginHeight = if (showThirdPartyLogin) 180.dp else 0.dp
+            val contentAreaHeight = availableHeight - thirdPartyLoginHeight
+            
             Column(
                 Modifier
-                    .fillMaxHeight()
                     .fillMaxWidth()
-                    .heightIn(min = 230.dp),
-                verticalArrangement = Arrangement.Center,
+                    .wrapContentWidth(align = Alignment.CenterHorizontally)
+                    .ifThen(currentWindowAdaptiveInfo1().windowSizeClass.isWidthAtLeastMedium) {
+                        widthIn(max = 480.dp)
+                    }
+                    .padding(contentPadding)
+                    .padding(horizontal = 24.dp)
+                    .verticalScroll(rememberScrollState())
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
             ) {
-                content()
-            }
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = contentAreaHeight),
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    content()
+                }
 
-            if (showThirdPartyLogin) {
-                ThirdPartyLoginMethods(
-                    onBangumiLoginClick,
-                    Modifier.heightIn(min = 180.dp).wrapContentHeight(align = Alignment.Top),
-                )
+                if (showThirdPartyLogin) {
+                    ThirdPartyLoginMethods(
+                        onBangumiLoginClick,
+                        Modifier.heightIn(min = 180.dp).wrapContentHeight(align = Alignment.Top),
+                    )
+                }
             }
         }
     }
