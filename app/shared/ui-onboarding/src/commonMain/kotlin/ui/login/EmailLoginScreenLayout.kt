@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.login
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -54,9 +55,9 @@ internal fun EmailLoginScreenLayout(
     modifier: Modifier = Modifier,
     title: @Composable () -> Unit = { Text("登录") },
     showThirdPartyLogin: Boolean = true,
-    content: @Composable ColumnScope.() -> Unit,
+    content: @Composable ColumnScope.(scrollState: ScrollState) -> Unit,
 ) {
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
         modifier,
         topBar = {
@@ -74,6 +75,7 @@ internal fun EmailLoginScreenLayout(
             val availableHeight = maxHeight - contentPadding.calculateTopPadding() - contentPadding.calculateBottomPadding() - 48.dp
             val thirdPartyLoginHeight = if (showThirdPartyLogin) 180.dp else 0.dp
             val contentAreaHeight = availableHeight - thirdPartyLoginHeight
+            val scrollState = rememberScrollState()
             
             Column(
                 Modifier
@@ -84,7 +86,7 @@ internal fun EmailLoginScreenLayout(
                     }
                     .padding(contentPadding)
                     .padding(horizontal = 24.dp)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .nestedScroll(scrollBehavior.nestedScrollConnection),
             ) {
                 Column(
@@ -93,7 +95,7 @@ internal fun EmailLoginScreenLayout(
                         .heightIn(min = contentAreaHeight),
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    content()
+                    content(scrollState)
                 }
 
                 if (showThirdPartyLogin) {

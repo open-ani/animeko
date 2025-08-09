@@ -75,12 +75,13 @@ internal fun BangumiAuthorizeScreen(
         onNavigateBack = onNavigateBack,
         title = { Text("授权 Bangumi 登录") },
         showThirdPartyLogin = false,
-    ) {
+    ) { scrollState ->
         BangumiAuthorizeLayout(
             authorizeState = state,
             contactActions = contactActions,
             onClickAuthorize = onClickAuthorize,
             onCancelAuthorize = onCancelAuthorize,
+            scrollState = scrollState,
         )
     }
 }

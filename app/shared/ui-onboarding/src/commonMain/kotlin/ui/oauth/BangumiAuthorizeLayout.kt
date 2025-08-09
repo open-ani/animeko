@@ -11,9 +11,9 @@ package me.him188.ani.app.ui.oauth
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
@@ -44,6 +43,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,6 +51,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.AniMotionScheme
@@ -83,12 +85,13 @@ fun BangumiAuthorizeLayout(
     contactActions: @Composable () -> Unit,
     onClickAuthorize: () -> Unit,
     onCancelAuthorize: () -> Unit,
+    scrollState: ScrollState,
     modifier: Modifier = Modifier,
 ) {
     SettingsTab(modifier) {
         val motionScheme = LocalAniMotionScheme.current
         Column(
-            modifier.scrollable(rememberScrollState(), orientation = Orientation.Vertical),
+            modifier,
             verticalArrangement = Arrangement.spacedBy(SettingsScope.itemVerticalSpacing),
         ) {
             HeroIcon {
@@ -131,6 +134,7 @@ fun BangumiAuthorizeLayout(
             }
             AuthorizeHelpQA(
                 contactActions = contactActions,
+                scrollState = scrollState,
                 Modifier.padding(top = 36.dp),
             )
         }
@@ -320,9 +324,11 @@ private fun renderHelpOptionContent(
 @Composable
 private fun SettingsScope.AuthorizeHelpQA(
     contactActions: @Composable () -> Unit,
+    scrollState: ScrollState,
     modifier: Modifier = Modifier,
 ) {
     var currentSelected by rememberSaveable { mutableStateOf<HelpOption?>(null) }
+    val scope = rememberCoroutineScope()
 
     Column(modifier = modifier) {
         Column(
@@ -346,7 +352,17 @@ private fun SettingsScope.AuthorizeHelpQA(
                     content = { renderHelpOptionContent(option, contactActions) },
                     expanded = currentSelected == option,
                     showDivider = index != HelpOption.entries.lastIndex,
-                    onClick = { currentSelected = if (currentSelected == option) null else option },
+                    onClick = { 
+                        val wasExpanded = currentSelected == option
+                        currentSelected = if (wasExpanded) null else option
+                        if (!wasExpanded) {
+                            scope.launch {
+                                // 帮助栏展开自动下拉以展示内容
+                                delay(100)
+                                scrollState.animateScrollBy(300f)
+                            }
+                        }
+                    },
                 )
             }
         }
