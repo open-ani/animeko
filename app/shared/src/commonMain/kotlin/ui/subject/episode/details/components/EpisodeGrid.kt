@@ -47,15 +47,18 @@ fun EpisodeGrid(
     episodeCarouselState: EpisodeCarouselState,
     onEpisodeClick: (EpisodeCollectionInfo) -> Unit,
     modifier: Modifier = Modifier,
+    isVisible: Boolean = true,
 ) {
     val gridState = rememberLazyGridState()
     
-    LaunchedEffect(Unit) {
-        val playingIndex = episodeCarouselState.episodes.indexOfFirst { 
-            episodeCarouselState.isPlaying(it) 
-        }
-        if (playingIndex >= 0) {
-            gridState.animateScrollToItem(playingIndex)
+    LaunchedEffect(isVisible) {
+        if (isVisible) {
+            val playingIndex = episodeCarouselState.episodes.indexOfFirst { 
+                episodeCarouselState.isPlaying(it) 
+            }
+            if (playingIndex >= 0) {
+                gridState.animateScrollToItem(playingIndex)
+            }
         }
     }
     

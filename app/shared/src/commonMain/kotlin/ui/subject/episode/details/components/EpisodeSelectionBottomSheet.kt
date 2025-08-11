@@ -47,7 +47,8 @@ fun EpisodeSelectionBottomSheet(
                 onEpisodeClick = { episode ->
                     episodeCarouselState.onSelect(episode)
                     onDismiss()
-                }
+                },
+                isVisible = true
             )
         }
     }
