@@ -104,8 +104,8 @@ fun EpisodeListSection(
 private fun DesktopEpisodeListSection(
     episodeCarouselState: EpisodeCarouselState,
     expanded: Boolean,
-    onToggleExpanded: () -> Unit,
     modifier: Modifier = Modifier,
+    onToggleExpanded: () -> Unit,
 ) {
     Column(modifier.padding(16.dp)) {
         Card(
@@ -207,7 +207,7 @@ private fun MobileEpisodeListSection(
     val horizontalListState = rememberLazyListState()
     var hasInitialScrolled by remember { mutableStateOf(false) }
     
-    Column(modifier.padding(16.dp)) {
+    Column(modifier.padding(horizontal = 16.dp)) {
         // 标题行
         Row(
             modifier = Modifier.fillMaxWidth(),

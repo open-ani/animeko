@@ -522,7 +522,7 @@ fun EpisodeDetailsScaffold(
             subjectSuggestions()
         }
 
-        Row(Modifier.padding(horizontalPaddingValues).paddingIfNotEmpty(top = 16.dp)) {
+        Row(Modifier.padding(horizontalPaddingValues).paddingIfNotEmpty(top = 12.dp)) {
             episodeInfo()
         }
 
@@ -544,15 +544,15 @@ fun EpisodeDetailsScaffold(
             }
         }
 
-        Row(Modifier.paddingIfNotEmpty(top = 12.dp)) {
+        Row(Modifier.paddingIfNotEmpty(top = 8.dp)) {
             exposedEpisodeItem(horizontalPaddingValues)
         }
 
-        Box(Modifier.paddingIfNotEmpty(top = 16.dp)) {
+        Box(Modifier.paddingIfNotEmpty(top = 12.dp)) {
             episodeListSection()
         }
 
-        SectionTitle(Modifier.padding(top = 16.dp, bottom = 8.dp)) {
+        SectionTitle(Modifier.padding(top = 12.dp, bottom = 8.dp)) {
             danmakuStatisticsSummary()
         }
 
