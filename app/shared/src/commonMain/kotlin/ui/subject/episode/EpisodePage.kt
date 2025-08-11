@@ -510,9 +510,7 @@ private fun EpisodeScreenTabletVeryWide(
                                     shareData = page.shareData,
                                     page.loadError,
                                     onRetryLoad = {
-                                        page.loadError?.let {
-                                            vm.retryLoad(it)
-                                        }
+                                        page.loadError?.let { vm.retryLoad(it) }
                                     },
                                 )
                             }

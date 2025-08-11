@@ -9,8 +9,13 @@
 
 package me.him188.ani.app.ui.subject.episode.details
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -20,26 +25,36 @@ import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Dataset
 import androidx.compose.material.icons.outlined.ExpandCircleDown
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.List
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -69,6 +84,7 @@ import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
+import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
@@ -194,20 +210,7 @@ fun EpisodeDetails(
     }
 
     var expandDanmakuStatistics by rememberSaveable { mutableStateOf(false) }
-
-    if (state.showEpisodes) {
-        ModalBottomSheet(
-            { state.showEpisodes = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = LocalPlatform.current.isDesktop()),
-            modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
-            contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
-        ) {
-            EpisodeCarousel(
-                episodeCarouselState,
-                contentPadding = PaddingValues(all = 16.dp),
-            )
-        }
-    }
+    var expandEpisodeList by rememberSaveable { mutableStateOf(false) }
 
     EditableSubjectCollectionTypeDialogsHost(editableSubjectCollectionTypeState)
 
@@ -426,8 +429,12 @@ fun EpisodeDetails(
                 }
             }
         },
-        onShowEpisodes = {
-            state.showEpisodes = true
+        episodeListSection = {
+            EpisodeListSection(
+                episodeCarouselState = episodeCarouselState,
+                expanded = expandEpisodeList,
+                onToggleExpanded = { expandEpisodeList = !expandEpisodeList },
+            )
         },
         onExpandSubject = {
             showSubjectDetails = true
@@ -470,7 +477,7 @@ fun EpisodeDetailsScaffold(
     exposedEpisodeItem: @Composable (contentPadding: PaddingValues) -> Unit,
     danmakuStatisticsSummary: @Composable () -> Unit,
     danmakuStatistics: @Composable (contentPadding: PaddingValues) -> Unit,
-    onShowEpisodes: () -> Unit,
+    episodeListSection: @Composable () -> Unit,
     onExpandSubject: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(all = 16.dp),
@@ -541,11 +548,6 @@ fun EpisodeDetailsScaffold(
 
         SectionTitle(
             Modifier.padding(top = 12.dp, bottom = 8.dp),
-            actions = {
-                IconButton(onShowEpisodes) {
-                    Icon(Icons.Outlined.Dataset, null)
-                }
-            },
         ) {
             FlowRow(
                 Modifier.weight(1f),
@@ -560,6 +562,8 @@ fun EpisodeDetailsScaffold(
             exposedEpisodeItem(horizontalPaddingValues)
         }
 
+        episodeListSection()
+
         SectionTitle(Modifier.padding(top = 16.dp, bottom = 8.dp)) {
             danmakuStatisticsSummary()
         }
@@ -569,3 +573,5 @@ fun EpisodeDetailsScaffold(
         }
     }
 }
+
+

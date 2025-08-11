@@ -752,11 +752,6 @@ class EpisodeViewModel(
     }
 
     suspend fun switchEpisode(episodeId: Int) {
-        // 关闭弹窗
-        withContext(Dispatchers.Main.immediate) {
-            episodeDetailsState.showEpisodes = false
-        }
-
         // 在后台 dispatchers 中操作
         backgroundScope.launch {
             fetchPlayState.switchEpisode(episodeId)
