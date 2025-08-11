@@ -10,27 +10,18 @@
 package me.him188.ani.app.ui.subject.episode.details
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -53,14 +44,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -72,21 +61,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.window.core.layout.WindowWidthSizeClass
 import kotlinx.coroutines.launch
-import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
-import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
+import me.him188.ani.app.ui.subject.episode.details.components.EpisodeCard
+import me.him188.ani.app.ui.subject.episode.details.components.EpisodeGridItem
+import me.him188.ani.app.ui.subject.episode.details.components.EpisodeListItem
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.utils.platform.isDesktop
@@ -99,11 +82,7 @@ fun EpisodeListSection(
     modifier: Modifier = Modifier,
     onToggleExpanded: () -> Unit,
 ) {
-    val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
-    val isDesktop = LocalPlatform.current.isDesktop()
-    val isWideScreen = windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
-    
-    if (isDesktop || isWideScreen) {
+    if (LocalPlatform.current.isDesktop()) {
         // 桌面端：保持原有的下拉展开方式
         DesktopEpisodeListSection(
             episodeCarouselState = episodeCarouselState,
@@ -385,263 +364,5 @@ private fun MobileEpisodeListSection(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun EpisodeListItem(
-    episode: EpisodeCollectionInfo,
-    isPlaying: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val isWatched = episode.collectionType.isDoneOrDropped()
-    
-    ListItem(
-        colors = ListItemDefaults.colors(
-            containerColor = if (isPlaying) {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-            } else if (isWatched) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            } else {
-                MaterialTheme.colorScheme.surface
-            }
-        ),
-        headlineContent = {
-            Text(
-                "${episode.episodeInfo.sort}  ${episode.episodeInfo.displayName}",
-                color = if (isPlaying) {
-                    MaterialTheme.colorScheme.primary
-                } else if (isWatched) {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                } else {
-                    LocalContentColor.current
-                }
-            )
-        },
-        supportingContent = {
-            if (episode.episodeInfo.nameCn.isNotEmpty()) {
-                Text(
-                    episode.episodeInfo.nameCn,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isWatched) {
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    } else {
-                        LocalContentColor.current.copy(alpha = 0.7f)
-                    }
-                )
-            }
-        },
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.small)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
-    )
-}
-
-@Composable
-private fun EpisodeCard(
-    episode: EpisodeCollectionInfo,
-    isPlaying: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val isWatched = episode.collectionType.isDoneOrDropped()
-    
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = if (isPlaying) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else if (isWatched) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            } else {
-                MaterialTheme.colorScheme.surfaceContainer
-            }
-        ),
-        modifier = modifier
-            .width(120.dp)
-            .height(80.dp)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
-    ) {
-        Box(
-            modifier = Modifier.padding(12.dp).fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.align(Alignment.CenterStart)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (isPlaying) {
-                        AnimatedEqualizer(
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(Modifier.width(4.dp))
-                    }
-                    Text(
-                        episode.episodeInfo.sort.toString(),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (isPlaying) {
-                            MaterialTheme.colorScheme.primary
-                        } else if (isWatched) {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        } else {
-                            LocalContentColor.current
-                        }
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    episode.episodeInfo.displayName,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = if (isWatched) {
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun EpisodeGridItem(
-    episode: EpisodeCollectionInfo,
-    isPlaying: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val isWatched = episode.collectionType.isDoneOrDropped()
-    
-    Card(
-        onClick = onClick,
-        colors = CardDefaults.cardColors(
-            containerColor = if (isPlaying) {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-            } else if (isWatched) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            } else {
-                MaterialTheme.colorScheme.surfaceContainer
-            }
-        ),
-        modifier = modifier
-            .aspectRatio(1.5f)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                episode.episodeInfo.sort.toString(),
-                style = MaterialTheme.typography.titleMedium,
-                color = if (isPlaying) {
-                    MaterialTheme.colorScheme.primary
-                } else if (isWatched) {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                } else {
-                    LocalContentColor.current
-                },
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                episode.episodeInfo.displayName,
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                color = if (isWatched) {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                } else {
-                    LocalContentColor.current
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun AnimatedEqualizer(
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.primary
-) {
-    val infiniteTransition = rememberInfiniteTransition()
-    
-    val bar1Height by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600),
-            repeatMode = RepeatMode.Reverse
-        )
-    )
-    
-    val bar2Height by infiniteTransition.animateFloat(
-        initialValue = 0.6f,
-        targetValue = 0.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800),
-            repeatMode = RepeatMode.Reverse
-        )
-    )
-    
-    val bar3Height by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 0.4f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(700),
-            repeatMode = RepeatMode.Reverse
-        )
-    )
-    
-    Canvas(
-        modifier = modifier.size(16.dp)
-    ) {
-        val barWidth = size.width / 5f
-        val maxHeight = size.height
-        val cornerRadius = CornerRadius(barWidth / 2f)
-        
-        // Bar 1
-        drawRoundRect(
-            color = color,
-            topLeft = Offset(0f, maxHeight * (1f - bar1Height)),
-            size = Size(barWidth, maxHeight * bar1Height),
-            cornerRadius = cornerRadius
-        )
-        
-        // Bar 2
-        drawRoundRect(
-            color = color,
-            topLeft = Offset(barWidth * 2f, maxHeight * (1f - bar2Height)),
-            size = Size(barWidth, maxHeight * bar2Height),
-            cornerRadius = cornerRadius
-        )
-        
-        // Bar 3
-        drawRoundRect(
-            color = color,
-            topLeft = Offset(barWidth * 4f, maxHeight * (1f - bar3Height)),
-            size = Size(barWidth, maxHeight * bar3Height),
-            cornerRadius = cornerRadius
-        )
     }
 }
