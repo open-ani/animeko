@@ -9,52 +9,35 @@
 
 package me.him188.ani.app.ui.subject.episode.details
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandCircleDown
-import androidx.compose.material.icons.outlined.ExpandLess
-import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.List
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -64,7 +47,6 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -84,7 +66,6 @@ import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
-import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
@@ -248,12 +229,14 @@ fun EpisodeDetails(
             }
         },
         airingStatus = {
-            AiringLabel(
-                state.airingLabelState,
-                Modifier.align(Alignment.CenterVertically),
-                style = LocalTextStyle.current,
-                progressColor = LocalContentColor.current,
-            )
+            if (LocalPlatform.current.isDesktop()) {
+                AiringLabel(
+                    state.airingLabelState,
+                    Modifier.align(Alignment.CenterVertically),
+                    style = LocalTextStyle.current,
+                    progressColor = LocalContentColor.current,
+                )
+            }
         },
         subjectSuggestions = {
             // 推荐一些状态修改操作
@@ -433,6 +416,7 @@ fun EpisodeDetails(
             EpisodeListSection(
                 episodeCarouselState = episodeCarouselState,
                 expanded = expandEpisodeList,
+                airingLabelState = state.airingLabelState,
                 onToggleExpanded = { expandEpisodeList = !expandEpisodeList },
             )
         },
@@ -538,31 +522,35 @@ fun EpisodeDetailsScaffold(
             subjectSuggestions()
         }
 
-        Row(Modifier.padding(horizontalPaddingValues).paddingIfNotEmpty(top = 12.dp)) {
+        Row(Modifier.padding(horizontalPaddingValues).paddingIfNotEmpty(top = 16.dp)) {
             episodeInfo()
         }
 
         Row(Modifier.padding(horizontalPaddingValues).paddingIfNotEmpty(top = 12.dp)) {
             loadError()
         }
-
-        SectionTitle(
-            Modifier.padding(top = 12.dp, bottom = 8.dp),
-        ) {
-            FlowRow(
-                Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+        
+        if (LocalPlatform.current.isDesktop()) {
+            SectionTitle(
+                Modifier.padding(top = 12.dp, bottom = 8.dp),
             ) {
-                airingStatus()
+                FlowRow(
+                    Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+                ) {
+                    airingStatus()
+                }
             }
         }
 
-        Row {
+        Row(Modifier.paddingIfNotEmpty(top = 12.dp)) {
             exposedEpisodeItem(horizontalPaddingValues)
         }
 
-        episodeListSection()
+        Box(Modifier.paddingIfNotEmpty(top = 16.dp)) {
+            episodeListSection()
+        }
 
         SectionTitle(Modifier.padding(top = 16.dp, bottom = 8.dp)) {
             danmakuStatisticsSummary()
