@@ -24,19 +24,15 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
+
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.List
 import androidx.compose.material.icons.outlined.MoreHoriz
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -44,12 +40,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -67,8 +59,8 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.episode.details.components.EpisodeCard
-import me.him188.ani.app.ui.subject.episode.details.components.EpisodeGridItem
 import me.him188.ani.app.ui.subject.episode.details.components.EpisodeListItem
+import me.him188.ani.app.ui.subject.episode.details.components.EpisodeSelectionBottomSheet
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.utils.platform.isDesktop
@@ -295,72 +287,10 @@ private fun MobileEpisodeListSection(
         }
     }
     
-    // BottomSheet
     if (showBottomSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showBottomSheet = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            contentWindowInsets = { BottomSheetDefaults.windowInsets }
-        ) {
-            Column {
-                TopAppBar(
-                    title = { Text("选择剧集") },
-                    actions = {
-                        IconButton(
-                            onClick = { showBottomSheet = false }
-                        ) {
-                            Icon(Icons.Outlined.Close, contentDescription = "关闭")
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = BottomSheetDefaults.ContainerColor
-                    )
-                )
-                
-                val gridState = rememberLazyGridState()
-                
-                LaunchedEffect(showBottomSheet) {
-                    if (showBottomSheet) {
-                        val playingIndex = episodeCarouselState.episodes.indexOfFirst { 
-                            episodeCarouselState.isPlaying(it) 
-                        }
-                        if (playingIndex >= 0) {
-                            gridState.animateScrollToItem(playingIndex)
-                        }
-                    }
-                }
-                
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    state = gridState,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(16.dp),
-                    modifier = Modifier.heightIn(max = 500.dp)
-                ) {
-                    items(
-                        items = episodeCarouselState.episodes,
-                        key = { it.episodeId }
-                    ) { episode ->
-                        EpisodeGridItem(
-                            episode = episode,
-                            isPlaying = episodeCarouselState.isPlaying(episode),
-                            onClick = { 
-                                episodeCarouselState.onSelect(episode)
-                                showBottomSheet = false
-                            },
-                            onLongClick = {
-                                val newType = if (episode.collectionType.isDoneOrDropped()) {
-                                    UnifiedCollectionType.NOT_COLLECTED
-                                } else {
-                                    UnifiedCollectionType.DONE
-                                }
-                                episodeCarouselState.setCollectionType(episode, newType)
-                            }
-                        )
-                    }
-                }
-            }
-        }
+        EpisodeSelectionBottomSheet(
+            episodeCarouselState = episodeCarouselState,
+            onDismiss = { showBottomSheet = false }
+        )
     }
 }

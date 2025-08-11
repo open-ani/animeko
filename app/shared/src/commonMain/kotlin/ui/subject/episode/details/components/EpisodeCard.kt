@@ -117,7 +117,7 @@ fun EpisodeCard(
 }
 
 @Composable
-private fun AnimatedEqualizer(
+fun AnimatedEqualizer(
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.primary
 ) {
