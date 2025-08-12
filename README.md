@@ -136,7 +136,7 @@ Animeko 采用语义化版本号, 简单来说就是 `4.x.y` 的格式. 有以�
 ## 技术总览
 
 如果你是开发者，我们总是欢迎你提交 PR 参与开发！
-以下几点可以给你一个技术上的大概了解。
+以下几点可以给你一个技术上的大概了解
 
 - [Kotlin 多平台][Kotlin Multiplatform]架构；
 - 使用新一代响应式 UI 框架 [Compose Multiplatform][Compose Multiplatform] 构建
