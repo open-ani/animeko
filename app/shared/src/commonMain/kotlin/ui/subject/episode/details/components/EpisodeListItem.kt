@@ -10,10 +10,10 @@
 package me.him188.ani.app.ui.subject.episode.details.components
 
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
@@ -34,34 +35,48 @@ fun EpisodeListItem(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isWatched = episode.collectionType.isDoneOrDropped()
+    
     ListItem(
         colors = ListItemDefaults.colors(
             containerColor = if (isPlaying) {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                MaterialTheme.colorScheme.primaryContainer
+            } else if (isWatched) {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             } else {
-                MaterialTheme.colorScheme.surface
+                MaterialTheme.colorScheme.surfaceContainer
             }
         ),
         headlineContent = {
-            Text(
-                "${episode.episodeInfo.sort}  ${episode.episodeInfo.displayName}",
-                color = if (isPlaying) MaterialTheme.colorScheme.primary else LocalContentColor.current
-            )
+            Row {
+                if (isPlaying) {
+                    AnimatedEqualizer(
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(
+                    "${episode.episodeInfo.sort}  ${episode.episodeInfo.displayName}",
+                    color = if (isPlaying) {
+                        MaterialTheme.colorScheme.primary
+                    } else if (isWatched) {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    } else {
+                        LocalContentColor.current
+                    }
+                )
+            }
         },
         supportingContent = {
             if (episode.episodeInfo.nameCn.isNotEmpty()) {
                 Text(
                     episode.episodeInfo.nameCn,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        },
-        trailingContent = {
-            if (episode.collectionType.isDoneOrDropped()) {
-                Icon(
-                    Icons.Outlined.Check,
-                    contentDescription = "已看",
-                    tint = MaterialTheme.colorScheme.primary
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isWatched) {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 )
             }
         },

@@ -20,18 +20,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-
+import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.List
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -74,7 +71,7 @@ fun EpisodeListSection(
     onToggleExpanded: () -> Unit,
 ) {
     if (LocalPlatform.current.isDesktop()) {
-        // 桌面端：保持原有的下拉展开方式
+        // 桌面端：下拉展开
         DesktopEpisodeListSection(
             episodeCarouselState = episodeCarouselState,
             expanded = expanded,
@@ -115,7 +112,7 @@ private fun DesktopEpisodeListSection(
                 },
                 leadingContent = {
                     Icon(
-                        Icons.Outlined.List, 
+                        Icons.AutoMirrored.Outlined.List, 
                         contentDescription = null,
                     )
                 },
@@ -160,7 +157,7 @@ private fun DesktopEpisodeListSection(
                 LazyColumn(
                     state = listState,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.heightIn(max = 400.dp),
+                    modifier = Modifier.height(360.dp),
                     contentPadding = PaddingValues(16.dp)
                 ) {
                     items(
