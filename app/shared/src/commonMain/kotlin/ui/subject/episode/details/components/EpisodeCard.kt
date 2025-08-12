@@ -125,27 +125,27 @@ fun AnimatedEqualizer(
 
     val bar1Height by infiniteTransition.animateFloat(
         initialValue = 0.3f,
-        targetValue = 1f,
+        targetValue = 0.9f,
         animationSpec = infiniteRepeatable(
-            animation = tween(500),
+            animation = tween(800),
             repeatMode = RepeatMode.Reverse
         )
     )
 
     val bar2Height by infiniteTransition.animateFloat(
-        initialValue = 0.6f,
-        targetValue = 0.2f,
+        initialValue = 0.7f,
+        targetValue = 0.4f,
         animationSpec = infiniteRepeatable(
-            animation = tween(600),
+            animation = tween(800, delayMillis = 200),
             repeatMode = RepeatMode.Reverse
         )
     )
 
     val bar3Height by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 0.4f,
+        initialValue = 0.5f,
+        targetValue = 1.0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(700),
+            animation = tween(800, delayMillis = 400),
             repeatMode = RepeatMode.Reverse
         )
     )

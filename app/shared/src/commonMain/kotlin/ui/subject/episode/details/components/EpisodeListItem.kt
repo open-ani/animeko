@@ -10,10 +10,7 @@
 package me.him188.ani.app.ui.subject.episode.details.components
 
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
@@ -22,7 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
@@ -48,35 +45,23 @@ fun EpisodeListItem(
             }
         ),
         headlineContent = {
-            Row {
-                if (isPlaying) {
-                    AnimatedEqualizer(
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.width(8.dp))
-                }
-                Text(
-                    "${episode.episodeInfo.sort}  ${episode.episodeInfo.displayName}",
-                    color = if (isPlaying) {
-                        MaterialTheme.colorScheme.primary
-                    } else if (isWatched) {
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    } else {
-                        LocalContentColor.current
-                    }
-                )
-            }
+            Text(
+                "${episode.episodeInfo.sort}  ${episode.episodeInfo.displayName}",
+                color = if (isPlaying) {
+                    MaterialTheme.colorScheme.primary
+                } else if (isWatched) {
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                } else {
+                    LocalContentColor.current
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         },
-        supportingContent = {
-            if (episode.episodeInfo.nameCn.isNotEmpty()) {
-                Text(
-                    episode.episodeInfo.nameCn,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isWatched) {
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    }
+        trailingContent = {
+            if (isPlaying) {
+                AnimatedEqualizer(
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         },
