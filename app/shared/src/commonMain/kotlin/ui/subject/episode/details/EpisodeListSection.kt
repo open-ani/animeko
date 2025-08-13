@@ -138,8 +138,7 @@ private fun DesktopEpisodeListSection(
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp)
-                    .padding(top = 8.dp)
+                    .padding(top = 4.dp)
             ) {
                 val listState = rememberLazyListState()
                 
