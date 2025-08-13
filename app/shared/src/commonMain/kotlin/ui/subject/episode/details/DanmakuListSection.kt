@@ -230,7 +230,7 @@ private fun DanmakuListItemView(
 ) {
     Surface(
         color = if (danmaku.isSelf) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            MaterialTheme.colorScheme.primaryContainer
         } else {
             Color.Transparent
         },

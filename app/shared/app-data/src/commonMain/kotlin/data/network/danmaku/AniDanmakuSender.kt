@@ -39,6 +39,8 @@ class AniDanmakuSender(
     companion object {
         private val logger = logger<AniDanmakuSender>()
     }
+    
+    // private val userRepository: UserRepository by inject() TODO：May need to be injected (General_K1ng)
 
     private suspend fun sendDanmaku(
         episodeId: Int,
@@ -59,6 +61,7 @@ class AniDanmakuSender(
         }
     }
 
+    // val selfId = userRepository.selfInfoFlow.map { it?.id?.toString() }
     val selfId = flowOf("") // TODO: 2025/4/8 Ani selfId
 
     private val sendLock = Mutex()

@@ -109,6 +109,7 @@ import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
+import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.isDesktop
@@ -162,7 +163,7 @@ fun EpisodeDetails(
     onRetryLoad: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-    danmakuListFlow: Flow<List<me.him188.ani.danmaku.ui.DanmakuPresentation>>? = null,
+    danmakuListFlow: Flow<List<DanmakuPresentation>>? = null,
 ) {
     var showSubjectDetails by rememberSaveable {
         mutableStateOf(false)
