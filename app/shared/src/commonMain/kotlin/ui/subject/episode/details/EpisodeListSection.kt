@@ -95,7 +95,7 @@ private fun DesktopEpisodeListSection(
     modifier: Modifier = Modifier,
     onToggleExpanded: () -> Unit,
 ) {
-    Column(modifier.padding(16.dp)) {
+    Column(modifier.padding(horizontal = 16.dp)) {
         Card(
             onClick = onToggleExpanded,
             colors = CardDefaults.cardColors(

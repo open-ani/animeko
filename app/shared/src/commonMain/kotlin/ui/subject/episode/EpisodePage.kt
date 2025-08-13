@@ -76,7 +76,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -512,6 +511,7 @@ private fun EpisodeScreenTabletVeryWide(
                                     onRetryLoad = {
                                         page.loadError?.let { vm.retryLoad(it) }
                                     },
+                                    danmakuListFlow = vm.allDanmakuListFlow,
                                 )
                             }
                         }
@@ -653,6 +653,7 @@ private fun EpisodeScreenContentPhone(
                         page.loadError?.let { vm.retryLoad(it) }
                     },
                     modifier = Modifier.fillMaxSize(),
+                    danmakuListFlow = vm.allDanmakuListFlow,
                 )
             }
         },

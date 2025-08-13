@@ -389,7 +389,7 @@ class EpisodeViewModel(
 
 
     @OptIn(UnsafeEpisodeSessionApi::class)
-    val episodeDetailsState: EpisodeDetailsState = kotlin.run {
+    val episodeDetailsState: EpisodeDetailsState = run {
         EpisodeDetailsState(
             subjectInfo = subjectInfoFlow.produceState(SubjectInfo.Empty),
             airingLabelState = AiringLabelState(
@@ -407,7 +407,7 @@ class EpisodeViewModel(
      * 剧集列表
      */
     @OptIn(UnsafeEpisodeSessionApi::class)
-    val episodeCarouselState: EpisodeCarouselState = kotlin.run {
+    val episodeCarouselState: EpisodeCarouselState = run {
         val episodeCacheStatusListState by episodeCollectionsFlow.flatMapLatest { list ->
             if (list.isEmpty()) {
                 return@flatMapLatest flowOfEmptyList()
@@ -551,6 +551,18 @@ class EpisodeViewModel(
         started = SharingStarted.WhileSubscribed(5000), // Must be some time, because when switching full-screen (i.e. configuration change), UI may stop collect for some milliseconds.
         replay = 1,
     ) // This is lazy. If user puts app into background, queries will abort.
+    
+    val allDanmakuListFlow = combine(
+        danmakuLoader.allDanmakuFlow,
+        danmakuManager.selfId
+    ) { danmakuList, selfId ->
+        danmakuList.map { 
+            DanmakuPresentation(it, isSelf = selfId == it.senderId) 
+        }
+    }.shareInBackground(
+        started = SharingStarted.WhileSubscribed(5000),
+        replay = 1,
+    )
 
 
     private val commentStateRestarter = FlowRestarter()
