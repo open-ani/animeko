@@ -95,14 +95,13 @@ private fun DesktopEpisodeListSection(
     modifier: Modifier = Modifier,
     onToggleExpanded: () -> Unit,
 ) {
-    Column(modifier.padding(horizontal = 16.dp)) {
-        Card(
-            onClick = onToggleExpanded,
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            ),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        ),
+        modifier = modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+    ) {
+        Column {
             ListItem(
                 headlineContent = { 
                     Text(
@@ -124,58 +123,56 @@ private fun DesktopEpisodeListSection(
                 },
                 colors = ListItemDefaults.colors(
                     containerColor = Color.Transparent
-                )
+                ),
+                modifier = Modifier.combinedClickable { onToggleExpanded() }
             )
-        }
-        
-        AnimatedVisibility(
-            visible = expanded,
-            enter = expandVertically(),
-            exit = shrinkVertically()
-        ) {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                shape = MaterialTheme.shapes.medium,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp)
+            
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically(),
+                exit = shrinkVertically()
             ) {
-                val listState = rememberLazyListState()
-                
-                LaunchedEffect(expanded) {
-                    if (expanded) {
-                        val playingIndex = episodeCarouselState.episodes.indexOfFirst { 
-                            episodeCarouselState.isPlaying(it) 
-                        }
-                        if (playingIndex >= 0) {
-                            listState.animateScrollToItem(playingIndex)
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val listState = rememberLazyListState()
+                    
+                    LaunchedEffect(expanded) {
+                        if (expanded) {
+                            val playingIndex = episodeCarouselState.episodes.indexOfFirst { 
+                                episodeCarouselState.isPlaying(it) 
+                            }
+                            if (playingIndex >= 0) {
+                                listState.animateScrollToItem(playingIndex)
+                            }
                         }
                     }
-                }
-                
-                LazyColumn(
-                    state = listState,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.height(360.dp),
-                    contentPadding = PaddingValues(16.dp)
-                ) {
-                    items(
-                        items = episodeCarouselState.episodes,
-                        key = { it.episodeId }
-                    ) { episode ->
-                        EpisodeListItem(
-                            episode = episode,
-                            isPlaying = episodeCarouselState.isPlaying(episode),
-                            onClick = { episodeCarouselState.onSelect(episode) },
-                            onLongClick = {
-                                val newType = if (episode.collectionType.isDoneOrDropped()) {
-                                    UnifiedCollectionType.NOT_COLLECTED
-                                } else {
-                                    UnifiedCollectionType.DONE
+                    
+                    LazyColumn(
+                        state = listState,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.height(360.dp),
+                        contentPadding = PaddingValues(16.dp)
+                    ) {
+                        items(
+                            items = episodeCarouselState.episodes,
+                            key = { it.episodeId }
+                        ) { episode ->
+                            EpisodeListItem(
+                                episode = episode,
+                                isPlaying = episodeCarouselState.isPlaying(episode),
+                                onClick = { episodeCarouselState.onSelect(episode) },
+                                onLongClick = {
+                                    val newType = if (episode.collectionType.isDoneOrDropped()) {
+                                        UnifiedCollectionType.NOT_COLLECTED
+                                    } else {
+                                        UnifiedCollectionType.DONE
+                                    }
+                                    episodeCarouselState.setCollectionType(episode, newType)
                                 }
-                                episodeCarouselState.setCollectionType(episode, newType)
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }

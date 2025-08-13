@@ -12,12 +12,13 @@ package me.him188.ani.app.ui.subject.episode.details
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -25,11 +26,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.FeaturedPlayList
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -76,11 +78,6 @@ fun DanmakuListSection(
     val danmakuList by danmakuFlow.collectAsState(initial = emptyList())
     var selectedSources by rememberSaveable { mutableStateOf(setOf<DanmakuServiceId>()) }
     
-    // 调试信息
-    LaunchedEffect(danmakuList.size, fetchResults.size, selectedSources) {
-        println("DanmakuListSection: danmakuList.size=${danmakuList.size}, fetchResults.size=${fetchResults.size}, selectedSources=$selectedSources")
-    }
-    
     val availableSources by remember {
         derivedStateOf {
             // 从 fetchResults 获取启用的源
@@ -94,10 +91,6 @@ fun DanmakuListSection(
                 sourcesFromDanmaku
             }
             
-            println("DanmakuListSection.availableSources: fetchResults.size=${fetchResults.size}, sourcesFromFetchResults=$sourcesFromFetchResults, sourcesFromDanmaku=$sourcesFromDanmaku, final sources=$sources")
-            fetchResults.forEach {
-                println("DanmakuListSection.fetchResult: serviceId=${it.serviceId}, enabled=${it.config.enabled}")
-            }
             sources
         }
     }
@@ -127,29 +120,23 @@ fun DanmakuListSection(
         }
     }
     
-    Column(modifier.padding(horizontal = 16.dp)) {
-        Card(
-            onClick = onToggleExpanded,
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            ),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        ),
+        modifier = modifier.padding(horizontal = 16.dp).fillMaxWidth(),
+    ) {
+        Column {
             ListItem(
                 headlineContent = { 
-                    val title = if (danmakuList.isEmpty()) {
-                        "弹幕列表 (暂无数据)"
-                    } else {
-                        "弹幕列表 (总计${danmakuList.size}, 显示${filteredDanmaku.size})"
-                    }
                     Text(
-                        title,
+                        "弹幕列表",
                         style = MaterialTheme.typography.titleMedium,
                     ) 
                 },
                 leadingContent = {
                     Icon(
-                        Icons.Outlined.Subtitles, 
+                        Icons.AutoMirrored.Outlined.FeaturedPlayList, 
                         contentDescription = null,
                     )
                 },
@@ -161,72 +148,72 @@ fun DanmakuListSection(
                 },
                 colors = ListItemDefaults.colors(
                     containerColor = Color.Transparent
-                )
+                ),
+                modifier = Modifier.clickable { onToggleExpanded() }
             )
-        }
-        
-        AnimatedVisibility(
-            visible = expanded,
-            enter = expandVertically(),
-            exit = shrinkVertically()
-        ) {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                shape = MaterialTheme.shapes.medium,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp)
+            
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically(),
+                exit = shrinkVertically()
             ) {
-                Column {
-                    // 弹幕源筛选chips
-                    if (availableSources.isNotEmpty()) {
-                        FlowRow(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            availableSources.forEach { serviceId ->
-                                FilterChip(
-                                    selected = serviceId in selectedSources,
-                                    onClick = {
-                                        selectedSources = if (serviceId in selectedSources) {
-                                            selectedSources - serviceId
-                                        } else {
-                                            selectedSources + serviceId
-                                        }
-                                    },
-                                    label = { Text(renderDanmakuServiceId(serviceId)) }
-                                )
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column {
+                        // 弹幕源筛选chips
+                        if (availableSources.isNotEmpty()) {
+                            FlowRow(
+                                modifier = Modifier.padding(horizontal = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                availableSources.forEach { serviceId ->
+                                    FilterChip(
+                                        selected = serviceId in selectedSources,
+                                        onClick = {
+                                            selectedSources = if (serviceId in selectedSources) {
+                                                selectedSources - serviceId
+                                            } else {
+                                                selectedSources + serviceId
+                                            }
+                                        },
+                                        label = { Text(renderDanmakuServiceId(serviceId)) }
+                                    )
+                                }
                             }
                         }
-                    }
-                    
-                    // 弹幕列表
-                    if (filteredDanmaku.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(120.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (danmakuList.isEmpty()) "暂无弹幕数据" else "没有符合筛选条件的弹幕",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    } else {
-                        LazyColumn(
-                            state = rememberLazyListState(),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                            modifier = Modifier.height(360.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
-                            items(
-                                items = filteredDanmaku,
-                                key = { "${it.timeMillis}-${it.content.hashCode()}" }
-                            ) { danmaku ->
-                                DanmakuListItemView(danmaku)
+                        
+                        // 弹幕列表
+                        if (filteredDanmaku.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(120.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (fetchResults.isEmpty()) {
+                                    CircularProgressIndicator()
+                                } else {
+                                    Text(
+                                        text = if (danmakuList.isEmpty()) "暂无弹幕数据" else "没有符合筛选条件的弹幕",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        } else {
+                            LazyColumn(
+                                state = rememberLazyListState(),
+                                modifier = Modifier.height(360.dp),
+                            ) {
+                                items(
+                                    items = filteredDanmaku,
+                                    key = { "${it.timeMillis}-${it.content.hashCode()}" }
+                                ) { danmaku ->
+                                    DanmakuListItemView(danmaku)
+                                }
                             }
                         }
                     }
@@ -241,17 +228,32 @@ private fun DanmakuListItemView(
     danmaku: DanmakuListItem,
     modifier: Modifier = Modifier,
 ) {
-    ListItem(
-        headlineContent = {
+    Surface(
+        color = if (danmaku.isSelf) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        } else {
+            Color.Transparent
+        },
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
                 text = danmaku.content,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
             )
-        },
-        trailingContent = {
-            Column(horizontalAlignment = Alignment.End) {
+            Column(
+                horizontalAlignment = Alignment.End,
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
                 Text(
                     text = renderDanmakuServiceId(danmaku.serviceId),
                     style = MaterialTheme.typography.labelSmall,
@@ -263,16 +265,8 @@ private fun DanmakuListItemView(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-        },
-        colors = ListItemDefaults.colors(
-            containerColor = if (danmaku.isSelf) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-            } else {
-                Color.Transparent
-            }
-        ),
-        modifier = modifier,
-    )
+        }
+    }
 }
 
 private fun renderDanmakuServiceId(serviceId: DanmakuServiceId): String = when (serviceId) {

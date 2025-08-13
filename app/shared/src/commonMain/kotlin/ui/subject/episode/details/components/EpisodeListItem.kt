@@ -39,7 +39,7 @@ fun EpisodeListItem(
             containerColor = if (isPlaying) {
                 MaterialTheme.colorScheme.primaryContainer
             } else if (isWatched) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                MaterialTheme.colorScheme.surfaceContainer
             } else {
                 MaterialTheme.colorScheme.surfaceContainer
             }
