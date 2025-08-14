@@ -10,9 +10,10 @@
 package me.him188.ani.app.data.network.danmaku
 
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.client.apis.DanmakuAniApi
 import me.him188.ani.client.models.AniDanmakuInfo
 import me.him188.ani.client.models.AniDanmakuLocation
@@ -21,6 +22,8 @@ import me.him188.ani.danmaku.api.DanmakuInfo
 import me.him188.ani.danmaku.api.DanmakuLocation
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.logging.logger
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 
@@ -35,12 +38,12 @@ class NetworkErrorException(override val cause: Throwable?) : SendDanmakuExcepti
 
 class AniDanmakuSender(
     private val aniDanmakuApi: ApiInvoker<DanmakuAniApi>,
-) {
+): KoinComponent {
     companion object {
         private val logger = logger<AniDanmakuSender>()
     }
     
-    // private val userRepository: UserRepository by inject() TODO：May need to be injected (General_K1ng)
+    private val userRepository: UserRepository by inject()
 
     private suspend fun sendDanmaku(
         episodeId: Int,
@@ -61,8 +64,7 @@ class AniDanmakuSender(
         }
     }
 
-    // val selfId = userRepository.selfInfoFlow.map { it?.id?.toString() }
-    val selfId = flowOf("") // TODO: 2025/4/8 Ani selfId
+    val selfId = userRepository.selfInfoFlow.map { it?.id?.toString() }
 
     private val sendLock = Mutex()
 
@@ -75,7 +77,7 @@ class AniDanmakuSender(
         DanmakuInfo(
             "self" + Random.nextInt(),
             AniDanmakuProvider.ID,
-            selfId,
+            selfId?: "", // 如果用户没有登录，则是空串
             DanmakuContent(
                 info.playTimeMillis,
                 info.color,
