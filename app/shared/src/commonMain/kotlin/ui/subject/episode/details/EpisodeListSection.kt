@@ -143,7 +143,7 @@ private fun DesktopEpisodeListSection(
                                 state = listState,
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.height(360.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                             ) {
                                 items(
                                     items = episodeCarouselState.episodes,

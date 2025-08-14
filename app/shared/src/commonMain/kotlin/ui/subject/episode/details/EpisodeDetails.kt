@@ -440,6 +440,12 @@ fun EpisodeDetails(
                     fetchResults = danmakuStatistics.fetchResults,
                     expanded = expandDanmakuList,
                     onToggleExpanded = { expandDanmakuList = !expandDanmakuList },
+                    onSetEnabled = onSetDanmakuSourceEnabled,
+                    onManualMatch = { serviceId ->
+                        danmakuStatistics.fetchResults.find { it.serviceId == serviceId }?.let {
+                            onManualMatchDanmaku(it.providerId)
+                        }
+                    },
                 )
             }
         } else null,
