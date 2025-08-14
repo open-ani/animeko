@@ -330,7 +330,7 @@ private fun PaginatedEpisodeList(
             val startEp = index * 100 + 1
             val endEp = startEp + chunk.size - 1
             EpisodeGroup(
-                title = "第 $startEp-$endEp 集",
+                title = "第 $startEp-$endEp 话",
                 episodes = chunk,
                 startIndex = index * 100,
             )
@@ -390,12 +390,10 @@ private fun PaginatedEpisodeList(
                 Surface(
                     onClick = { showGroupSelector = true },
                     color = Color.Transparent,
-                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -404,6 +402,7 @@ private fun PaginatedEpisodeList(
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.padding(end = 4.dp),
+                            maxLines = 1
                         )
                         Icon(
                             Icons.Outlined.ArrowDropDown,
