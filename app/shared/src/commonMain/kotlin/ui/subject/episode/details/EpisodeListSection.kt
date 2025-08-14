@@ -14,17 +14,20 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.ExpandLess
@@ -37,7 +40,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -76,14 +78,14 @@ fun EpisodeListSection(
             episodeCarouselState = episodeCarouselState,
             expanded = expanded,
             onToggleExpanded = onToggleExpanded,
-            modifier = modifier
+            modifier = modifier,
         )
     } else {
         // 移动端：横向滚动 + BottomSheet
         MobileEpisodeListSection(
             episodeCarouselState = episodeCarouselState,
             airingLabelState = airingLabelState,
-            modifier = modifier
+            modifier = modifier,
         )
     }
 }
@@ -95,23 +97,85 @@ private fun DesktopEpisodeListSection(
     modifier: Modifier = Modifier,
     onToggleExpanded: () -> Unit,
 ) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-        ),
-        modifier = modifier.padding(horizontal = 16.dp).fillMaxWidth(),
-    ) {
+    Box(modifier = modifier.padding(horizontal = 16.dp).fillMaxWidth()) {
         Column {
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically(),
+                exit = shrinkVertically(),
+            ) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    ),
+                    shape = RoundedCornerShape(
+                        topStart = 0.dp,
+                        topEnd = 0.dp,
+                        bottomStart = 12.dp,
+                        bottomEnd = 12.dp,
+                    ),
+                    modifier = Modifier.fillMaxWidth().offset(y = (-1).dp),
+                ) {
+                    Column(modifier = Modifier.padding(top = 72.dp)) {
+                        val listState = rememberLazyListState()
+
+                        LaunchedEffect(expanded) {
+                            if (expanded) {
+                                val playingIndex = episodeCarouselState.episodes.indexOfFirst {
+                                    episodeCarouselState.isPlaying(it)
+                                }
+                                if (playingIndex >= 0) {
+                                    listState.animateScrollToItem(playingIndex)
+                                }
+                            }
+                        }
+
+                        LazyColumn(
+                            state = listState,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.height(360.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                        ) {
+                            items(
+                                items = episodeCarouselState.episodes,
+                                key = { it.episodeId },
+                            ) { episode ->
+                                EpisodeListItem(
+                                    episode = episode,
+                                    isPlaying = episodeCarouselState.isPlaying(episode),
+                                    onClick = { episodeCarouselState.onSelect(episode) },
+                                    onLongClick = {
+                                        val newType = if (episode.collectionType.isDoneOrDropped()) {
+                                            UnifiedCollectionType.NOT_COLLECTED
+                                        } else {
+                                            UnifiedCollectionType.DONE
+                                        }
+                                        episodeCarouselState.setCollectionType(episode, newType)
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            ),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             ListItem(
-                headlineContent = { 
+                headlineContent = {
                     Text(
                         "剧集列表",
                         style = MaterialTheme.typography.titleMedium,
-                    ) 
+                    )
                 },
                 leadingContent = {
                     Icon(
-                        Icons.AutoMirrored.Outlined.List, 
+                        Icons.AutoMirrored.Outlined.List,
                         contentDescription = null,
                     )
                 },
@@ -122,60 +186,10 @@ private fun DesktopEpisodeListSection(
                     )
                 },
                 colors = ListItemDefaults.colors(
-                    containerColor = Color.Transparent
+                    containerColor = Color.Transparent,
                 ),
-                modifier = Modifier.combinedClickable { onToggleExpanded() }
+                modifier = Modifier.combinedClickable { onToggleExpanded() },
             )
-            
-            AnimatedVisibility(
-                visible = expanded,
-                enter = expandVertically(),
-                exit = shrinkVertically()
-            ) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    val listState = rememberLazyListState()
-                    
-                    LaunchedEffect(expanded) {
-                        if (expanded) {
-                            val playingIndex = episodeCarouselState.episodes.indexOfFirst { 
-                                episodeCarouselState.isPlaying(it) 
-                            }
-                            if (playingIndex >= 0) {
-                                listState.animateScrollToItem(playingIndex)
-                            }
-                        }
-                    }
-                    
-                    LazyColumn(
-                        state = listState,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.height(360.dp),
-                        contentPadding = PaddingValues(16.dp)
-                    ) {
-                        items(
-                            items = episodeCarouselState.episodes,
-                            key = { it.episodeId }
-                        ) { episode ->
-                            EpisodeListItem(
-                                episode = episode,
-                                isPlaying = episodeCarouselState.isPlaying(episode),
-                                onClick = { episodeCarouselState.onSelect(episode) },
-                                onLongClick = {
-                                    val newType = if (episode.collectionType.isDoneOrDropped()) {
-                                        UnifiedCollectionType.NOT_COLLECTED
-                                    } else {
-                                        UnifiedCollectionType.DONE
-                                    }
-                                    episodeCarouselState.setCollectionType(episode, newType)
-                                }
-                            )
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -190,13 +204,13 @@ private fun MobileEpisodeListSection(
     val coroutineScope = rememberCoroutineScope()
     val horizontalListState = rememberLazyListState()
     var hasInitialScrolled by remember { mutableStateOf(false) }
-    
+
     Column(modifier.padding(horizontal = 16.dp)) {
         // 标题行
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -205,16 +219,16 @@ private fun MobileEpisodeListSection(
                     modifier = Modifier.combinedClickable(
                         onClick = {},
                         onDoubleClick = {
-                            val playingIndex = episodeCarouselState.episodes.indexOfFirst { 
-                                episodeCarouselState.isPlaying(it) 
+                            val playingIndex = episodeCarouselState.episodes.indexOfFirst {
+                                episodeCarouselState.isPlaying(it)
                             }
                             if (playingIndex >= 0) {
                                 coroutineScope.launch {
                                     horizontalListState.animateScrollToItem(playingIndex)
                                 }
                             }
-                        }
-                    )
+                        },
+                    ),
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -222,28 +236,28 @@ private fun MobileEpisodeListSection(
                     airingLabelState,
                     modifier = Modifier,
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                     ),
-                    progressColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    progressColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 IconButton(
-                    onClick = { showBottomSheet = true }
+                    onClick = { showBottomSheet = true },
                 ) {
                     Icon(
                         Icons.Outlined.MoreHoriz,
-                        contentDescription = "查看更多剧集"
+                        contentDescription = "查看更多剧集",
                     )
                 }
             }
         }
-        
+
         Spacer(Modifier.height(8.dp))
-        
+
         // 初始滚动到正在播放的剧集
         LaunchedEffect(episodeCarouselState.episodes) {
             if (!hasInitialScrolled && episodeCarouselState.episodes.isNotEmpty()) {
-                val playingIndex = episodeCarouselState.episodes.indexOfFirst { 
-                    episodeCarouselState.isPlaying(it) 
+                val playingIndex = episodeCarouselState.episodes.indexOfFirst {
+                    episodeCarouselState.isPlaying(it)
                 }
                 if (playingIndex >= 0) {
                     horizontalListState.animateScrollToItem(playingIndex)
@@ -251,17 +265,17 @@ private fun MobileEpisodeListSection(
                 }
             }
         }
-        
+
         // 横向滚动的剧集列表
-        
+
         LazyRow(
             state = horizontalListState,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 4.dp)
+            contentPadding = PaddingValues(horizontal = 4.dp),
         ) {
             items(
                 items = episodeCarouselState.episodes,
-                key = { it.episodeId }
+                key = { it.episodeId },
             ) { episode ->
                 EpisodeCard(
                     episode = episode,
@@ -274,16 +288,16 @@ private fun MobileEpisodeListSection(
                             UnifiedCollectionType.DONE
                         }
                         episodeCarouselState.setCollectionType(episode, newType)
-                    }
+                    },
                 )
             }
         }
     }
-    
+
     if (showBottomSheet) {
         EpisodeSelectionBottomSheet(
             episodeCarouselState = episodeCarouselState,
-            onDismiss = { showBottomSheet = false }
+            onDismiss = { showBottomSheet = false },
         )
     }
 }
