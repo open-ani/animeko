@@ -348,13 +348,28 @@ private fun PaginatedEpisodeList(
     var currentGroupIndex by remember { mutableStateOf(initialCurrentGroup) }
     var showGroupSelector by remember { mutableStateOf(false) }
 
+    // 计算每个分组在LazyColumn中的起始位置
+    val groupStartIndices = remember(episodeGroups) {
+        var index = 0
+        episodeGroups.map { group ->
+            val startIndex = index
+            index++ // group header
+            index += group.episodes.size // episodes
+            startIndex
+        }
+    }
+
     LaunchedEffect(playingEpisodeIndex) {
         if (playingEpisodeIndex >= 0) {
             val targetGroupIndex = playingEpisodeIndex / 100
             currentGroupIndex = targetGroupIndex
-            val episodeIndexInGroup = playingEpisodeIndex % 100
-            listState.animateScrollToItem(episodeIndexInGroup)
+            listState.animateScrollToItem(playingEpisodeIndex + targetGroupIndex + 1) // +1 for each group header
         }
+    }
+
+    LaunchedEffect(currentGroupIndex) {
+        val targetIndex = groupStartIndices.getOrNull(currentGroupIndex) ?: 0
+        listState.animateScrollToItem(targetIndex)
     }
 
     Column(modifier = modifier) {
@@ -451,18 +466,26 @@ private fun PaginatedEpisodeList(
             }
         }
 
-        // Episode List
+        // Episode List with all episodes and group headers
         LazyColumn(
             state = listState,
             verticalArrangement = Arrangement.spacedBy(4.dp),
             modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(horizontal = 16.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         ) {
-            val currentGroup = episodeGroups.getOrNull(currentGroupIndex)
-            if (currentGroup != null) {
+            episodeGroups.forEachIndexed { groupIndex, group ->
+                item(key = "header_$groupIndex") {
+                    Text(
+                        group.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+                
                 items(
-                    items = currentGroup.episodes,
-                    key = { "${currentGroupIndex}_${it.episodeId}" },
+                    items = group.episodes,
+                    key = { "${groupIndex}_${it.episodeId}" }
                 ) { episode ->
                     EpisodeListItem(
                         episode = episode,
@@ -475,7 +498,7 @@ private fun PaginatedEpisodeList(
                                 UnifiedCollectionType.DONE
                             }
                             episodeCarouselState.setCollectionType(episode, newType)
-                        },
+                        }
                     )
                 }
             }
