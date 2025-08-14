@@ -62,6 +62,7 @@ import me.him188.ani.danmaku.ui.DanmakuPresentation
 import kotlin.time.Duration.Companion.milliseconds
 
 data class DanmakuListItem(
+    val id: String,
     val content: String,
     val timeMillis: Long,
     val serviceId: DanmakuServiceId,
@@ -112,6 +113,7 @@ fun DanmakuListSection(
                     if (serviceId !in selectedSources) return@mapNotNull null
 
                     DanmakuListItem(
+                        id = presentation.id,
                         content = presentation.danmaku.text,
                         timeMillis = presentation.danmaku.playTimeMillis,
                         serviceId = serviceId,
@@ -190,7 +192,7 @@ fun DanmakuListSection(
                             ) {
                                 items(
                                     items = filteredDanmaku,
-                                    key = { "${it.timeMillis}-${it.content.hashCode()}" },
+                                    key = { it.id },
                                 ) { danmaku ->
                                     DanmakuListItemView(danmaku)
                                 }

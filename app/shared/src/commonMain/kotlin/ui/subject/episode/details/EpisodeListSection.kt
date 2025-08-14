@@ -40,6 +40,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,6 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
@@ -130,29 +132,38 @@ private fun DesktopEpisodeListSection(
                             }
                         }
 
-                        LazyColumn(
-                            state = listState,
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.height(360.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                        ) {
-                            items(
-                                items = episodeCarouselState.episodes,
-                                key = { it.episodeId },
-                            ) { episode ->
-                                EpisodeListItem(
-                                    episode = episode,
-                                    isPlaying = episodeCarouselState.isPlaying(episode),
-                                    onClick = { episodeCarouselState.onSelect(episode) },
-                                    onLongClick = {
-                                        val newType = if (episode.collectionType.isDoneOrDropped()) {
-                                            UnifiedCollectionType.NOT_COLLECTED
-                                        } else {
-                                            UnifiedCollectionType.DONE
-                                        }
-                                        episodeCarouselState.setCollectionType(episode, newType)
-                                    },
-                                )
+                        if (episodeCarouselState.episodes.size > 100) {
+                            PaginatedEpisodeList(
+                                episodes = episodeCarouselState.episodes,
+                                episodeCarouselState = episodeCarouselState,
+                                listState = listState,
+                                modifier = Modifier.height(360.dp)
+                            )
+                        } else {
+                            LazyColumn(
+                                state = listState,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.height(360.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp),
+                            ) {
+                                items(
+                                    items = episodeCarouselState.episodes,
+                                    key = { it.episodeId },
+                                ) { episode ->
+                                    EpisodeListItem(
+                                        episode = episode,
+                                        isPlaying = episodeCarouselState.isPlaying(episode),
+                                        onClick = { episodeCarouselState.onSelect(episode) },
+                                        onLongClick = {
+                                            val newType = if (episode.collectionType.isDoneOrDropped()) {
+                                                UnifiedCollectionType.NOT_COLLECTED
+                                            } else {
+                                                UnifiedCollectionType.DONE
+                                            }
+                                            episodeCarouselState.setCollectionType(episode, newType)
+                                        },
+                                    )
+                                }
                             }
                         }
                     }
@@ -301,3 +312,124 @@ private fun MobileEpisodeListSection(
         )
     }
 }
+
+@Composable
+private fun PaginatedEpisodeList(
+    episodes: List<EpisodeCollectionInfo>,
+    episodeCarouselState: EpisodeCarouselState,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    modifier: Modifier = Modifier
+) {
+    val episodeGroups = remember(episodes) {
+        episodes.chunked(100).mapIndexed { index, chunk ->
+            val startEp = index * 100 + 1
+            val endEp = startEp + chunk.size - 1
+            EpisodeGroup(
+                title = "第 $startEp-$endEp 集",
+                episodes = chunk,
+                startIndex = index * 100
+            )
+        }
+    }
+    
+    val playingEpisodeIndex = remember(episodes) {
+        episodes.indexOfFirst { episodeCarouselState.isPlaying(it) }
+    }
+    
+    val initialExpandedGroup = remember(playingEpisodeIndex) {
+        if (playingEpisodeIndex >= 0) playingEpisodeIndex / 100 else 0
+    }
+    
+    var expandedGroups by remember { mutableStateOf(setOf(initialExpandedGroup)) }
+    
+    LaunchedEffect(playingEpisodeIndex) {
+        if (playingEpisodeIndex >= 0) {
+            val targetGroupIndex = playingEpisodeIndex / 100
+            expandedGroups = expandedGroups + targetGroupIndex
+            
+            // 计算在LazyColumn中的实际位置
+            var itemIndex = 0
+            for (i in 0 until targetGroupIndex) {
+                itemIndex++ // group header
+                if (i in expandedGroups) {
+                    itemIndex += episodeGroups[i].episodes.size
+                }
+            }
+            itemIndex++ // target group header
+            itemIndex += playingEpisodeIndex % 100 // episode position in group
+            
+            listState.animateScrollToItem(itemIndex)
+        }
+    }
+    
+    LazyColumn(
+        state = listState,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        episodeGroups.forEachIndexed { groupIndex, group ->
+            item(key = "header_$groupIndex") {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable {
+                            expandedGroups = if (groupIndex in expandedGroups) {
+                                expandedGroups - groupIndex
+                            } else {
+                                expandedGroups + groupIndex
+                            }
+                        }
+                ) {
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                group.title,
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                        },
+                        trailingContent = {
+                            Icon(
+                                if (groupIndex in expandedGroups) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                                contentDescription = if (groupIndex in expandedGroups) "收起" else "展开"
+                            )
+                        },
+                        colors = ListItemDefaults.colors(
+                            containerColor = Color.Transparent
+                        )
+                    )
+                }
+            }
+            
+            if (groupIndex in expandedGroups) {
+                items(
+                    items = group.episodes,
+                    key = { "${groupIndex}_${it.episodeId}" }
+                ) { episode ->
+                    EpisodeListItem(
+                        episode = episode,
+                        isPlaying = episodeCarouselState.isPlaying(episode),
+                        onClick = { episodeCarouselState.onSelect(episode) },
+                        onLongClick = {
+                            val newType = if (episode.collectionType.isDoneOrDropped()) {
+                                UnifiedCollectionType.NOT_COLLECTED
+                            } else {
+                                UnifiedCollectionType.DONE
+                            }
+                            episodeCarouselState.setCollectionType(episode, newType)
+                        },
+                        modifier = Modifier.padding(start = 16.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+private data class EpisodeGroup(
+    val title: String,
+    val episodes: List<EpisodeCollectionInfo>,
+    val startIndex: Int
+)
