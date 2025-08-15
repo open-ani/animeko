@@ -12,25 +12,18 @@ package me.him188.ani.android
 import android.annotation.SuppressLint
 import android.app.Application
 import android.content.ComponentName
-import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.os.LocaleList
 import android.util.Log
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.os.LocaleListCompat
 import androidx.datastore.core.DataStore
 import androidx.lifecycle.ProcessLifecycleOwner
 import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.android.activity.MainActivity
-import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
@@ -179,19 +172,6 @@ class AniApplication : Application() {
         mediaCacheBaseSaveDir.value = File(koin.get<MediaSaveDirProvider>().saveDir)
         connectionManager.launchCheckLoop()
 
-        scope.launch {
-            val settingsRepository = koin.get<SettingsRepository>()
-            settingsRepository.uiSettings.flow.collect { settings ->
-                settings.appLanguage?.let {
-                    try {
-                        applyLanguage(it.toLanguageTag())
-                    } catch (e: Throwable) {
-                        logger<AniApplication>().error(e) { "Failed to set app language, see exception" }
-                    }
-                }
-            }
-        }
-
         runBlocking { analyticsInitializer.join() }
         startupTimeMonitor.mark(StepName.Analytics)
 
@@ -247,16 +227,4 @@ class AniApplication : Application() {
 
     }
 
-    fun Context.applyLanguage(languageTag: String) {
-        val locales = LocaleListCompat.forLanguageTags(languageTag)
-        AppCompatDelegate.setApplicationLocales(locales)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE /* 34 */) {
-            // API‑34+: LocaleManager is still the recommended path
-            val localeManager = getSystemService(android.app.LocaleManager::class.java)
-            localeManager.applicationLocales = locales.unwrap() as LocaleList
-        } else {
-            // AndroidX AppCompat ≥ 1.6 handles API 14‑33
-            AppCompatDelegate.setApplicationLocales(locales)
-        }
-    }
 }
