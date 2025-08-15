@@ -588,13 +588,13 @@ fun EpisodeDetailsScaffold(
             episodeListSection()
         }
 
-        SectionTitle(Modifier.padding(top = 12.dp, bottom = 8.dp)) {
-            danmakuStatisticsSummary()
-        }
-
-        Row(Modifier.fillMaxWidth()) {
-            danmakuStatistics(horizontalPaddingValues)
-        }
+//        SectionTitle(Modifier.padding(top = 12.dp, bottom = 8.dp)) {
+//            danmakuStatisticsSummary()
+//        }
+//
+//        Row(Modifier.fillMaxWidth()) {
+//            danmakuStatistics(horizontalPaddingValues)
+//        }
     }
 }
 
