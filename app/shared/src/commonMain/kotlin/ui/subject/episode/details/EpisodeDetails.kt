@@ -101,7 +101,6 @@ import me.him188.ani.app.ui.subject.episode.EpisodePageLoadError
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuMatchInfoGrid
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceCard
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceSettingsDropdown
-import me.him188.ani.app.ui.subject.episode.details.components.DesktopDanmakuSourceSection
 import me.him188.ani.app.ui.subject.episode.details.components.PlayingEpisodeItemDefaults
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuMatchInfoSummaryRow
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuStatistics
@@ -375,52 +374,43 @@ fun EpisodeDetails(
         danmakuStatistics = { innerPadding ->
             val danmakuLoadingState = danmakuStatistics.danmakuLoadingState
             if (danmakuLoadingState is DanmakuLoadingState.Success) {
-                if (LocalPlatform.current.isDesktop()) {
-                    DesktopDanmakuSourceSection(
-                        fetchResults = danmakuStatistics.fetchResults,
-                        onSetEnabled = onSetDanmakuSourceEnabled,
-                        onManualMatch = onManualMatchDanmaku,
-                        modifier = Modifier.padding(innerPadding),
-                    )
-                } else {
-                    val colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                        contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainer),
-                    )
-                    DanmakuMatchInfoGrid(
-                        danmakuStatistics.fetchResults,
-                        Modifier.padding(innerPadding),
-                        itemSpacing = 16.dp,
-                    ) { source ->
-                        var showDropdown by rememberSaveable { mutableStateOf(false) }
-                        Box(Modifier.weight(1f)) {
-                            DanmakuSourceCard(
-                                source.matchInfo,
-                                enabled = source.config.enabled,
-                                expandDanmakuStatistics,
-                                onClickSettings = {
-                                    showDropdown = true
-                                },
-                                onClick = {
-                                    onManualMatchDanmaku(source.providerId)
-                                },
-                                Modifier.fillMaxWidth(),
-                                colors = colors,
-                                dropdown = {
-                                    DanmakuSourceSettingsDropdown(
-                                        showDropdown,
-                                        onDismissRequest = { showDropdown = false },
-                                        enabled = source.config.enabled,
-                                        onClickChange = {
-                                            onManualMatchDanmaku(source.providerId)
-                                        },
-                                        onSetEnabled = { enabled ->
-                                            onSetDanmakuSourceEnabled(source.matchInfo.serviceId, enabled)
-                                        },
-                                    )
-                                },
-                            )
-                        }
+                val colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainer),
+                )
+                DanmakuMatchInfoGrid(
+                    danmakuStatistics.fetchResults,
+                    Modifier.padding(innerPadding),
+                    itemSpacing = 16.dp,
+                ) { source ->
+                    var showDropdown by rememberSaveable { mutableStateOf(false) }
+                    Box(Modifier.weight(1f)) {
+                        DanmakuSourceCard(
+                            source.matchInfo,
+                            enabled = source.config.enabled,
+                            expandDanmakuStatistics,
+                            onClickSettings = {
+                                showDropdown = true
+                            },
+                            onClick = {
+                                onManualMatchDanmaku(source.providerId)
+                            },
+                            Modifier.fillMaxWidth(),
+                            colors = colors,
+                            dropdown = {
+                                DanmakuSourceSettingsDropdown(
+                                    showDropdown,
+                                    onDismissRequest = { showDropdown = false },
+                                    enabled = source.config.enabled,
+                                    onClickChange = {
+                                        onManualMatchDanmaku(source.providerId)
+                                    },
+                                    onSetEnabled = { enabled ->
+                                        onSetDanmakuSourceEnabled(source.matchInfo.serviceId, enabled)
+                                    },
+                                )
+                            },
+                        )
                     }
                 }
             }
@@ -559,7 +549,7 @@ fun EpisodeDetailsScaffold(
         Row(Modifier.padding(horizontalPaddingValues).paddingIfNotEmpty(top = 12.dp)) {
             loadError()
         }
-        
+
         if (LocalPlatform.current.isDesktop()) {
             SectionTitle(
                 Modifier.padding(top = 12.dp, bottom = 8.dp),
@@ -577,24 +567,26 @@ fun EpisodeDetailsScaffold(
         Row(Modifier.paddingIfNotEmpty(top = 8.dp)) {
             exposedEpisodeItem(horizontalPaddingValues)
         }
-        
+
         danmakuListSection?.let {
             Box(Modifier.paddingIfNotEmpty(top = 12.dp)) {
                 it()
             }
-        }   
+        }
 
         Box(Modifier.paddingIfNotEmpty(top = 12.dp)) {
             episodeListSection()
         }
 
-//        SectionTitle(Modifier.padding(top = 12.dp, bottom = 8.dp)) {
-//            danmakuStatisticsSummary()
-//        }
-//
-//        Row(Modifier.fillMaxWidth()) {
-//            danmakuStatistics(horizontalPaddingValues)
-//        }
+        if (!LocalPlatform.current.isDesktop()) {
+            SectionTitle(Modifier.padding(top = 12.dp, bottom = 8.dp)) {
+                danmakuStatisticsSummary()
+            }
+
+            Row(Modifier.fillMaxWidth()) {
+                danmakuStatistics(horizontalPaddingValues)
+            }
+        }
     }
 }
 
