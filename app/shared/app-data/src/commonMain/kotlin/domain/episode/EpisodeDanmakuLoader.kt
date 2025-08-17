@@ -241,6 +241,7 @@ class EpisodeDanmakuLoader(
                 result.list.mapNotNull { danmaku ->
                     val newText = sanitizeDanmakuText(danmaku.text) ?: return@mapNotNull null
                     danmaku.copy(
+                        serviceId = result.matchInfo.serviceId,
                         content = danmaku.content.copy(
                             playTimeMillis = danmaku.playTimeMillis + config.shiftMillis,
                             text = newText,
