@@ -106,32 +106,17 @@ fun DanmakuListSection(
         }
     }
     
-    // 默认显示所有弹幕
-    val filteredDanmaku by remember(danmakuList, selectedSources) {
+    // 显示弹幕列表，注意这里的弹幕已经是经过 [EpisodeDanmakuLoader] 过滤的
+    val filteredDanmaku by remember(danmakuList) {
         derivedStateOf {
-            if (selectedSources.isEmpty()) {
-                danmakuList.map { presentation ->
-                    DanmakuListItem(
-                        id = presentation.id,
-                        content = presentation.danmaku.text,
-                        timeMillis = presentation.danmaku.playTimeMillis,
-                        serviceId = presentation.danmaku.serviceId,
-                        isSelf = presentation.isSelf,
-                    )
-                }
-            } else {
-                danmakuList.mapNotNull { presentation ->
-                    val serviceId = presentation.danmaku.serviceId
-                    if (serviceId in selectedSources) {
-                        DanmakuListItem(
-                            id = presentation.id,
-                            content = presentation.danmaku.text,
-                            timeMillis = presentation.danmaku.playTimeMillis,
-                            serviceId = serviceId,
-                            isSelf = presentation.isSelf,
-                        )
-                    } else null
-                }
+            danmakuList.map { presentation ->
+                DanmakuListItem(
+                    id = presentation.id,
+                    content = presentation.danmaku.text,
+                    timeMillis = presentation.danmaku.playTimeMillis,
+                    serviceId = presentation.danmaku.serviceId,
+                    isSelf = presentation.isSelf,
+                )
             }.sortedBy { it.timeMillis }
         }
     }
