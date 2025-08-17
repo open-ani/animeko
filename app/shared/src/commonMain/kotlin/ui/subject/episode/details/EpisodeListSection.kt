@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -142,8 +143,8 @@ private fun DesktopEpisodeListSection(
                             LazyColumn(
                                 state = listState,
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.height(360.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                modifier = Modifier.heightIn(max = 360.dp),
+                                contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp),
                             ) {
                                 items(
                                     items = episodeCarouselState.episodes,
