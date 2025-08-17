@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -190,7 +191,7 @@ fun DanmakuListSection(
                         } else {
                             LazyColumn(
                                 state = rememberLazyListState(),
-                                modifier = Modifier.height(360.dp),
+                                modifier = Modifier.heightIn(max = 360.dp),
                             ) {
                                 items(
                                     items = filteredDanmaku,
