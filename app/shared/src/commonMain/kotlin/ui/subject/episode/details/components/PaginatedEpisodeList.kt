@@ -1,6 +1,12 @@
 package me.him188.ani.app.ui.subject.episode.details.components
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,8 +14,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -48,6 +65,7 @@ fun PaginatedEpisodeList(
 
     var currentGroupIndex by remember { mutableStateOf(initialCurrentGroup) }
     var showGroupSelector by remember { mutableStateOf(false) }
+    var isInitialPositioning by remember { mutableStateOf(true) }
 
     // 计算每个分组在LazyColumn中的起始位置
     val groupStartIndices = remember(episodeGroups) {
@@ -61,17 +79,31 @@ fun PaginatedEpisodeList(
     }
 
     LaunchedEffect(playingEpisodeIndex) {
-        if (playingEpisodeIndex >= 0) {
+        if (playingEpisodeIndex >= 0 && isInitialPositioning) {
             val targetGroupIndex = playingEpisodeIndex / 100
             currentGroupIndex = targetGroupIndex
-            listState.animateScrollToItem(playingEpisodeIndex + targetGroupIndex + 1) // +1 for each group header
+            // Calculate the exact position: all previous groups (headers + episodes) + current group header + episode position
+            val episodePositionInGroup = playingEpisodeIndex % 100
+            var itemIndex = 0
+            // Add all previous groups (header + episodes)
+            for (i in 0 until targetGroupIndex) {
+                itemIndex += 1 + episodeGroups[i].episodes.size // header + episodes
+            }
+            // Add current group header + episode position
+            itemIndex += 1 + episodePositionInGroup // +1 for current group header
+            listState.animateScrollToItem(itemIndex)
+            isInitialPositioning = false
         }
     }
 
     LaunchedEffect(currentGroupIndex) {
-        val targetIndex = groupStartIndices.getOrNull(currentGroupIndex) ?: 0
-        listState.animateScrollToItem(targetIndex)
+        if (!isInitialPositioning) {
+            val targetIndex = groupStartIndices.getOrNull(currentGroupIndex) ?: 0
+            listState.animateScrollToItem(targetIndex)
+        }
     }
+
+
 
     Column(modifier = modifier) {
         // Sticky Header
