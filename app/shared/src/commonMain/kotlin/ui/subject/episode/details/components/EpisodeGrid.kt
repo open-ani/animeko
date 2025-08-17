@@ -43,6 +43,11 @@ import me.him188.ani.app.ui.subject.episode.details.EpisodeCarouselState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 
+/**
+ * 剧集网格组件，以两列网格布局显示剧集列表。
+ *
+ * 支持自动滚动到当前播放的剧集。
+ */
 @Composable
 fun EpisodeGrid(
     episodeCarouselState: EpisodeCarouselState,
@@ -92,6 +97,28 @@ fun EpisodeGrid(
     }
 }
 
+/**
+ * 剧集网格项组件，用于网格布局中的单个剧集显示。
+ * 
+ * 与EpisodeCard相比，该组件采用更紧凑的垂直布局，适合网格环境下的显示。
+ * 支持与其他剧集组件相同的状态显示和交互行为。
+ * 
+ * @param episode 剧集收藏信息，包含剧集详情和收藏状态
+ * @param isPlaying 是否为当前播放的剧集
+ * @param onClick 点击回调，通常用于切换到该剧集
+ * @param onLongClick 长按回调，通常用于快速标记观看状态
+ * @param modifier 修饰符
+ * 
+ * ## 视觉状态
+ * - **正在播放**：主色容器背景，显示播放图标，主色文字
+ * - **已观看**：半透明背景，淡化文字颜色
+ * - **未观看**：正常背景和文字颜色
+ * 
+ * ## 布局特性
+ * - **固定高度**：72dp，适合网格布局
+ * - **垂直布局**：编号和标题垂直排列，节省水平空间
+ * - **文字截断**：标题过长时显示省略号
+ */
 @Composable
 fun EpisodeGridItem(
     episode: EpisodeCollectionInfo,

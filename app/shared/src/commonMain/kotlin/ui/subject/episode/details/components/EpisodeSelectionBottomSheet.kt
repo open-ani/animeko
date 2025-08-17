@@ -21,6 +21,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import me.him188.ani.app.ui.subject.episode.details.EpisodeCarouselState
 
+/**
+ * 剧集选择底部弹窗组件，用于移动端的剧集列表选择。
+ */
 @Composable
 fun EpisodeSelectionBottomSheet(
     episodeCarouselState: EpisodeCarouselState,

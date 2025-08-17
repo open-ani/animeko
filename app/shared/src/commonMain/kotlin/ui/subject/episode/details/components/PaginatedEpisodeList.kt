@@ -36,6 +36,18 @@ import me.him188.ani.app.ui.subject.episode.details.EpisodeCarouselState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 
+/**
+ * 分页剧集列表组件，用于处理大量剧集的性能优化显示。
+ * 
+ * 将剧集按100集为一组进行分组，提供分组导航和快速跳转功能。
+ * 适用于超过100集的长篇番剧，避免一次性渲染大量列表项导致的性能问题。
+ *
+ * - 每100集为一组，显示为“第1-100话”格式
+ * - 顶部固定导航栏，支持上下翻页和下拉选择
+ * - 初始化时自动滚动到当前播放的剧集
+ * - 每个分组在列表中显示标题分隔
+ * - 支持点击切换剧集和长按标记观看状态
+ */
 @Composable
 fun PaginatedEpisodeList(
     episodes: List<EpisodeCollectionInfo>,
@@ -239,6 +251,9 @@ fun PaginatedEpisodeList(
     }
 }
 
+/**
+ * 剧集分组数据类，用于将大量剧集按组组织。
+ */
 private data class EpisodeGroup(
     val title: String,
     val episodes: List<EpisodeCollectionInfo>,

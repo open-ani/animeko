@@ -66,6 +66,20 @@ import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.utils.platform.isDesktop
 
+/**
+ * 剧集列表区域组件，根据平台自适应显示不同的UI布局。
+ * 
+ * 在桌面端显示为可展开/收起的下拉列表，在移动端显示为横向滚动的卡片列表配合底部弹窗。
+ * 
+ * @param episodeCarouselState 剧集轮播状态，包含剧集列表、当前播放状态、选择和收藏操作等
+ * @param expanded 桌面端专用：是否展开剧集列表（移动端忽略此参数）
+ * @param airingLabelState 播出标签状态，用于显示番剧的播出信息
+ * @param onToggleExpanded 桌面端专用：切换展开/收起状态的回调（移动端忽略此参数）
+ * 
+ * ## 平台差异
+ * - **桌面端**：垂直列表布局，支持展开/收起，超过100集时使用分页显示
+ * - **移动端**：横向滚动卡片布局，点击更多按钮弹出底部选择器
+ */
 @Composable
 fun EpisodeListSection(
     episodeCarouselState: EpisodeCarouselState,
@@ -92,6 +106,12 @@ fun EpisodeListSection(
     }
 }
 
+/**
+ * 桌面端剧集列表组件。
+ * 
+ * 显示为可展开/收起的卡片式列表，点击标题栏可切换展开状态。
+ * 展开时会自动滚动到当前播放的剧集。
+ */
 @Composable
 private fun DesktopEpisodeListSection(
     episodeCarouselState: EpisodeCarouselState,
@@ -205,6 +225,13 @@ private fun DesktopEpisodeListSection(
     }
 }
 
+/**
+ * 移动端剧集列表组件。
+ * 
+ * 显示为横向滚动的卡片列表，配合标题栏和更多按钮。
+ * 点击更多按钮会弹出底部选择器，双击标题可快速滚动到当前播放的剧集。
+ *
+ */
 @Composable
 private fun MobileEpisodeListSection(
     episodeCarouselState: EpisodeCarouselState,

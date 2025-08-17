@@ -65,6 +65,15 @@ import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 
+/**
+ * 弹幕列表项数据类，用于在UI中显示单条弹幕信息。
+ * 
+ * @property id 弹幕唯一标识符
+ * @property content 弹幕文本内容
+ * @property timeMillis 弹幕出现时间（毫秒）
+ * @property serviceId 弹幕来源服务ID
+ * @property isSelf 是否为当前用户发送的弹幕
+ */
 data class DanmakuListItem(
     val id: String,
     val content: String,
@@ -73,6 +82,10 @@ data class DanmakuListItem(
     val isSelf: Boolean,
 )
 
+/**
+ * 弹幕列表区域组件，提供弹幕源选择和弹幕列表显示功能。
+ *
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DanmakuListSection(
@@ -219,6 +232,9 @@ fun DanmakuListSection(
     }
 }
 
+/**
+ * 弹幕源选择器组件，以FlowRow布局显示所有可用的弹幕源。
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DanmakuSourceChips(
@@ -244,6 +260,9 @@ private fun DanmakuSourceChips(
     }
 }
 
+/**
+ * 单个弹幕源选择芯片组件，显示弹幕源名称和状态。
+ */
 @Composable
 private fun DanmakuSourceChip(
     result: DanmakuFetchResultWithConfig,
@@ -327,6 +346,9 @@ private fun renderDanmakuServiceId(serviceId: DanmakuServiceId): String = when (
     else -> serviceId.value
 }
 
+/**
+ * 弹幕列表项视图组件，显示单条弹幕的详细信息。
+ */
 @Composable
 private fun DanmakuListItemView(danmaku: DanmakuListItem) {
     Surface(

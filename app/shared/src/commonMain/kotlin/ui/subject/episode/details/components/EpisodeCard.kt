@@ -33,6 +33,12 @@ import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 
+/**
+ * 剧集卡片组件，用于移动端横向滚动列表中显示单个剧集。
+ * 
+ * 显示为紧凑的卡片式布局，包含剧集编号、标题和状态指示器。
+ * 根据剧集的播放和观看状态显示不同的视觉效果。
+ */
 @Composable
 fun EpisodeCard(
     episode: EpisodeCollectionInfo,

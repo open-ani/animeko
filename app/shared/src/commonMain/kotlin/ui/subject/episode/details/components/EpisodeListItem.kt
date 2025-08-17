@@ -25,6 +25,11 @@ import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 
+/**
+ * 剧集列表项组件，用于桌面端垂直列表中的单个剧集显示。
+ *
+ * 适用于桌面端的展开列表和分页列表中，提供清晰的信息层次和交互反馈。
+ */
 @Composable
 fun EpisodeListItem(
     episode: EpisodeCollectionInfo,
