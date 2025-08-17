@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.displayName
+import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 
 @Composable
@@ -60,9 +61,7 @@ fun EpisodeListItem(
         },
         trailingContent = {
             if (isPlaying) {
-                AnimatedEqualizer(
-                    color = MaterialTheme.colorScheme.primary
-                )
+                PlayingIcon()
             }
         },
         modifier = modifier

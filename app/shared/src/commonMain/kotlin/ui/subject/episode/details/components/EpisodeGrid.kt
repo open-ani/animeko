@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.displayName
+import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.app.ui.subject.episode.details.EpisodeCarouselState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
@@ -129,9 +130,7 @@ fun EpisodeGridItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (isPlaying) {
-                    AnimatedEqualizer(
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    PlayingIcon()
                     Spacer(Modifier.width(4.dp))
                 }
                 Text(
