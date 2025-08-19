@@ -23,10 +23,10 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
@@ -167,7 +167,7 @@ object EpisodeVideoSideSheets {
 @Composable
 fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
     danmakuConfig: DanmakuConfig,
-    setDanmakuConfig: (config: DanmakuConfig) -> Unit,
+    setDanmakuConfig: ((DanmakuConfig) -> DanmakuConfig) -> Unit,
     enableRegexFilter: Boolean,
     onNavigateToFilterSettings: () -> Unit,
     switchDanmakuRegexFilterCompletely: () -> Unit,
