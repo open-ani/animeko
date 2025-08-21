@@ -16,6 +16,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.Context
+import me.him188.ani.app.tools.MonoTasker
 import platform.AVFAudio.AVAudioSession
 import platform.AVFAudio.outputVolume
 import platform.CoreGraphics.CGRectMake
@@ -50,11 +51,7 @@ internal class IosAudioManager : AudioManager {
     @OptIn(ExperimentalForeignApi::class)
     val volumeView = MPVolumeView(CGRectMake(-2000.0, -2000.0, 0.0, 0.0))
 
-    val coroutineScope = CoroutineScope(Dispatchers.Main)
-
-    
-    @Volatile
-    var currentJob: Job? = null
+    val tasker = MonoTasker( CoroutineScope(Dispatchers.Main))
 
     val slider by lazy {
         // 在 MPVolumeView 中找到 UISlider 组件
@@ -67,7 +64,7 @@ internal class IosAudioManager : AudioManager {
 
     @OptIn(ExperimentalForeignApi::class)
     override fun setVolume(streamType: StreamType, levelPercentage: Float) {
-        volumeView.alpha =  0.0 
+        volumeView.alpha = 0.0 
         if (volumeView.superview == null) {
             UIApplication.sharedApplication.keyWindow?.addSubview(volumeView)
         }
@@ -76,8 +73,7 @@ internal class IosAudioManager : AudioManager {
             slider.setValue(levelPercentage.coerceIn(0f, 1f), animated = false)
         }
         // 防抖移除 MPVolumeView
-        currentJob?.cancel()
-        currentJob = coroutineScope.launch {
+        tasker.launch {
             delay(3000)
             // 移除 MPVolumeView
             volumeView.removeFromSuperview()
