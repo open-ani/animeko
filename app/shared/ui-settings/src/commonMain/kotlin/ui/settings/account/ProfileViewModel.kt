@@ -30,6 +30,7 @@ import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
 import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
+import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -45,7 +46,7 @@ class ProfileViewModel : AbstractViewModel(), KoinComponent {
 
     private val selfInfoStateProvider: SelfInfoStateProducer = SelfInfoStateProducer(koin = getKoin())
 
-    private val avatarUploadTasker = MonoTasker(backgroundScope)
+    private val avatarUploadTasker = SingleTaskExecutor(backgroundScope.coroutineContext)
     private val fullSyncTasker = MonoTasker(backgroundScope)
 
     private val stateRefresher = FlowRestarter()
@@ -79,46 +80,43 @@ class ProfileViewModel : AbstractViewModel(), KoinComponent {
         avatarUploadState.value = EditProfileState.UploadAvatarState.Default
     }
 
-    suspend fun uploadAvatar(file: PlatformFile) {
-        avatarUploadTasker.launch {
+    suspend fun uploadAvatar(file: PlatformFile): Boolean {
+        return avatarUploadTasker.invoke {
             avatarUploadState.value = EditProfileState.UploadAvatarState.Uploading
 
-            try {
-                if (file.size() > 1.megaBytes.inBytes) {
-                    avatarUploadState.value = EditProfileState.UploadAvatarState.SizeExceeded
-                    return@launch
+            val uploadResultState = kotlin.run {
+                try {
+                    if (file.size() > 1.megaBytes.inBytes) {
+                        return@run EditProfileState.UploadAvatarState.SizeExceeded
+                    }
+
+                    val imageBytes = withContext(Dispatchers.IO) {
+                        file.readBytes()
+                    }
+
+                    if (!AvatarImageProcessor.checkImageFormat(imageBytes)) {
+                        return@run EditProfileState.UploadAvatarState.InvalidFormat
+                    }
+
+                    when (userRepo.uploadAvatar(imageBytes)) {
+                        UploadAvatarResult.SUCCESS -> EditProfileState.UploadAvatarState.Success("")
+                        UploadAvatarResult.TOO_LARGE -> EditProfileState.UploadAvatarState.SizeExceeded
+                        UploadAvatarResult.INVALID_FORMAT -> EditProfileState.UploadAvatarState.InvalidFormat
+                    }
+                } catch (ex: CancellationException) {
+                    throw ex
+                } catch (ex: Exception) {
+                    EditProfileState.UploadAvatarState.UnknownError(
+                        file = file,
+                        loadError = LoadError.fromException(ex),
+                    )
                 }
-
-                val imageBytes = withContext(Dispatchers.IO) {
-                    file.readBytes()
-                }
-
-                if (!AvatarImageProcessor.checkImageFormat(imageBytes)) {
-                    avatarUploadState.value = EditProfileState.UploadAvatarState.InvalidFormat
-                    return@launch
-                }
-
-                when (userRepo.uploadAvatar(imageBytes)) {
-                    UploadAvatarResult.SUCCESS ->
-                        avatarUploadState.value = EditProfileState.UploadAvatarState.Success("")
-
-                    UploadAvatarResult.TOO_LARGE ->
-                        avatarUploadState.value = EditProfileState.UploadAvatarState.SizeExceeded
-
-                    UploadAvatarResult.INVALID_FORMAT ->
-                        avatarUploadState.value = EditProfileState.UploadAvatarState.InvalidFormat
-                }
-            } catch (ex: CancellationException) {
-                throw ex
-            } catch (ex: Exception) {
-                avatarUploadState.value = EditProfileState.UploadAvatarState.UnknownError(
-                    file = file,
-                    loadError = LoadError.fromException(ex),
-                )
             }
 
+            avatarUploadState.value = uploadResultState
             stateRefresher.restart()
-        }.join()
+            uploadResultState is EditProfileState.UploadAvatarState.Success
+        }
     }
 
     fun validateNickname(nickname: String): Boolean {

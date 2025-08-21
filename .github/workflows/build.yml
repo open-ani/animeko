@@ -34,7 +34,7 @@ jobs:
   build_github-windows-2022:
     name: 'Build (Windows Server 2019 x86_64)'
     runs-on:
-      - 'windows-2022'
+    - 'windows-2022'
     permissions:
       actions: 'write'
     steps:
@@ -845,7 +845,7 @@ jobs:
       shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz'
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-4'
       name: 'Get JBR 21 for macOS AArch64 (Attempt #1)'
@@ -856,7 +856,7 @@ jobs:
       shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -868,7 +868,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -889,7 +889,7 @@ jobs:
       shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -901,7 +901,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -1151,11 +1151,11 @@ jobs:
   verify_github-windows-2025:
     name: 'Verify (Windows Server 2025 x86_64 (GitHub))'
     runs-on:
-      - 'windows-2025'
+    - 'windows-2025'
     permissions:
       actions: 'read'
     needs:
-      - 'build_github-windows-2022'
+    - 'build_github-windows-2022'
     if: '${{ needs.build_github-windows-2022.result == ''success'' }}'
     steps:
     - id: 'step-0'
@@ -1220,7 +1220,7 @@ jobs:
     permissions:
       actions: 'read'
     needs:
-      - 'build_github-windows-2022'
+    - 'build_github-windows-2022'
     if: '${{ needs.build_github-windows-2022.result == ''success'' }}'
     steps:
     - id: 'step-0'
@@ -1287,7 +1287,7 @@ jobs:
     permissions:
       actions: 'read'
     needs:
-      - 'build_self-hosted-macos-15'
+    - 'build_self-hosted-macos-15'
     if: '${{ (github.repository == ''open-ani/animeko'') && (needs.build_self-hosted-macos-15.result == ''success'') }}'
     steps:
     - id: 'step-0'
@@ -1338,7 +1338,7 @@ jobs:
     permissions:
       actions: 'read'
     needs:
-      - 'build_self-hosted-macos-15'
+    - 'build_self-hosted-macos-15'
     if: '${{ needs.build_self-hosted-macos-15.result == ''success'' }}'
     steps:
     - id: 'step-0'
@@ -1397,7 +1397,7 @@ jobs:
     permissions:
       actions: 'read'
     needs:
-      - 'build_self-hosted-macos-15'
+    - 'build_self-hosted-macos-15'
     if: '${{ needs.build_self-hosted-macos-15.result == ''success'' }}'
     steps:
     - id: 'step-0'

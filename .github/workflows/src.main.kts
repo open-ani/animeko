@@ -1179,7 +1179,7 @@ class WithMatrix(
         when (matrix.runner.os) {
             OS.MACOS -> {
                 val jbrLocationExpr = if (matrix.arch == Arch.AARCH64) {
-                    downloadJbrUnix("jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz")
+                    downloadJbrUnix("jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz")
                 } else {
                     downloadJbrUnix("jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz")
                 }

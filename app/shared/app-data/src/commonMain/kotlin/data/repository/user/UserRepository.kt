@@ -12,15 +12,23 @@ package me.him188.ani.app.data.repository.user
 import androidx.datastore.core.DataStore
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.OutgoingContent
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.user.SelfInfo
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.session.AccessTokenPair
+import me.him188.ani.app.domain.session.InvalidSessionReason
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
@@ -33,7 +41,12 @@ import me.him188.ani.client.models.AniEditEmailRequest
 import me.him188.ani.client.models.AniRegisterOrLoginByEmailOtpRequest
 import me.him188.ani.client.models.AniSendEmailOtpRequest
 import me.him188.ani.client.models.AniUpdateProfileRequest
+import me.him188.ani.utils.coroutines.flows.FlowRestarter
+import me.him188.ani.utils.coroutines.flows.catching
+import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.ktor.ApiInvoker
+import me.him188.ani.utils.logging.error
+import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.CoroutineContext
 import kotlin.uuid.Uuid
 
@@ -44,29 +57,56 @@ class UserRepository(
     private val authApi: ApiInvoker<UserAuthenticationAniApi>,
     private val profileApi: ApiInvoker<UserProfileAniApi>,
     private val sessionManager: SessionManager,
-    private val flowContext: CoroutineContext = Dispatchers.Default,
+    coroutineContext: CoroutineContext = Dispatchers.Default,
 ) {
-    /**
-     * 先读缓存, 然后网络. 注意, 重复 collect 会导致多次网络请求.
-     */
-    fun selfInfoFlow(): Flow<SelfInfo?> = flow {
-        emit(dataStore.data.first())
+    private val logger = logger<UserRepository>()
+    private val scope = CoroutineScope(coroutineContext)
 
-        if (sessionStateProvider.stateFlow.first() is SessionState.Valid) {
-            // Update self info when session is valid
-            val self = try {
-                userApi.invoke {
-                    getUser().body()
+    private val selfInfoRefresher = FlowRestarter()
+
+    /**
+     * 先读缓存, 然后网络.
+     */
+    val selfInfoFlow: Flow<SelfInfo?> = sessionStateProvider.stateFlow.transformLatest { state ->
+        when (state) {
+            is SessionState.Invalid -> {
+                when (state.reason) {
+                    InvalidSessionReason.NETWORK_ERROR -> {
+                        emit(dataStore.data.firstOrNull())
+                    }
+
+                    InvalidSessionReason.NO_TOKEN,
+                    InvalidSessionReason.UNKNOWN -> {
+                        emit(null)
+                    }
                 }
-            } catch (e: Exception) {
-                throw RepositoryException.wrapOrThrowCancellation(e)
             }
 
-            val newInfo = self.toSelfInfo()
-            dataStore.updateData { newInfo }
-            emit(newInfo)
+            is SessionState.Valid -> {
+                emit(dataStore.data.firstOrNull())
+                suspend {
+                    userApi.invoke { getUser().body() }.toSelfInfo()
+                }
+                    .asFlow()
+                    .catching()
+                    .restartable(selfInfoRefresher)
+                    .collectLatest { result ->
+                        result
+                            .onSuccess { self ->
+                                coroutineScope {
+                                    launch { dataStore.updateData { self } }
+                                    emit(self)
+                                }
+                            }
+                            .onFailure { e ->
+                                logger.error(RepositoryException.wrapOrThrowCancellation(e)) {
+                                    "Failed to refresh user profile info."
+                                }
+                            }
+                    }
+            }
         }
-    }.flowOn(flowContext)
+    }.shareIn(scope, SharingStarted.Eagerly, replay = 1)
 
     sealed class SendOtpResult {
         data class Success(
@@ -166,9 +206,9 @@ class UserRepository(
         }
         profileApi.invoke {
             try {
-                this.updateProfile(
-                    AniUpdateProfileRequest(nickname),
-                ).body()
+                this.updateProfile(AniUpdateProfileRequest(nickname)).body()
+                    // 更新 profile 后刷新一下
+                    .also { selfInfoRefresher.restart() }
             } catch (e: Exception) {
                 throw RepositoryException.wrapOrThrowCancellation(e)
             }
@@ -180,10 +220,19 @@ class UserRepository(
     ) = withContext(Dispatchers.Default) {
         profileApi.invoke {
             try {
+                // openapi generator 生成的 OctetByteArray 有问题，改成 OutgoingContent
+                // 每次生成 API 都要把参数类型改成 OutgoingContent
+                // todo: write patch in build scripts.
                 this.uploadAvatar(
-                    me.him188.ani.client.infrastructure.OctetByteArray(avatar),
+                    object : OutgoingContent.ByteArrayContent() {
+                        override fun bytes(): ByteArray {
+                            return avatar
+                        }
+                    },
                 ).body()
 
+                // 上传成功后刷新用户信息
+                selfInfoRefresher.restart()
                 UploadAvatarResult.SUCCESS
             } catch (e: ClientRequestException) {
                 when (e.response.status) {

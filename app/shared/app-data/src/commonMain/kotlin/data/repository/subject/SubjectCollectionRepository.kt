@@ -18,7 +18,6 @@ import androidx.paging.PagingData
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
 import androidx.paging.map
-import androidx.room.RoomDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -69,7 +68,6 @@ import me.him188.ani.app.data.persistent.database.dao.SubjectRelations
 import me.him188.ani.app.data.persistent.database.dao.SubjectRelationsDao
 import me.him188.ani.app.data.persistent.database.dao.deleteAll
 import me.him188.ani.app.data.persistent.database.dao.filterMostRecentUpdated
-import me.him188.ani.app.data.persistent.database.withTransaction
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
@@ -194,7 +192,6 @@ sealed class SubjectCollectionRepository(
 class SubjectCollectionRepositoryImpl(
     private val api: ApiInvoker<DefaultApi>,
     private val subjectService: SubjectService,
-    private val database: RoomDatabase,
     private val subjectCollectionDao: SubjectCollectionDao,
     private val subjectRelationsDao: SubjectRelationsDao,
     private val episodeCollectionRepository: EpisodeCollectionRepository,
@@ -258,11 +255,9 @@ class SubjectCollectionRepositoryImpl(
                         val episodeEntities = subject.episodes.map {
                             it.toEntity1(subjectId, lastFetched = lastFetched)
                         }
-                        database.withTransaction {
-                            subjectCollectionDao.upsert(subjectEntity)
-                            episodeCollectionDao.deleteAllBySubjectId(subjectId) // 删除旧的剧集缓存, 因为服务器上可能会变少
-                            episodeCollectionDao.upsert(episodeEntities)
-                        }
+                        subjectCollectionDao.upsert(subjectEntity)
+                        episodeCollectionDao.deleteAllBySubjectId(subjectId) // 删除旧的剧集缓存, 因为服务器上可能会变少
+                        episodeCollectionDao.upsert(episodeEntities)
                     }
                     // TODO: 2025/5/24 handle subject not found 
                 }

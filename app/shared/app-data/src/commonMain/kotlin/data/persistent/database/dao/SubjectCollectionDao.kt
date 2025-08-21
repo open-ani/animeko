@@ -200,7 +200,7 @@ interface SubjectCollectionDao {
         select * from subject_collection 
         where (collectionType is NOT NULL AND (:collectionType IS NULL OR collectionType = :collectionType))
         AND (:includeNsfw OR NOT nsfw)
-        order by lastUpdated DESC
+        order by lastUpdated DESC, subjectId DESC
         """,
     )
     @Transaction

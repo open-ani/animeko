@@ -9,7 +9,9 @@
 
 package me.him188.ani.app.ui.login
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -19,13 +21,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MediumFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -52,9 +55,9 @@ internal fun EmailLoginScreenLayout(
     modifier: Modifier = Modifier,
     title: @Composable () -> Unit = { Text("登录") },
     showThirdPartyLogin: Boolean = true,
-    content: @Composable ColumnScope.() -> Unit,
+    content: @Composable ColumnScope.(scrollState: ScrollState) -> Unit,
 ) {
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
         modifier,
         topBar = {
@@ -63,37 +66,44 @@ internal fun EmailLoginScreenLayout(
                 navigationIcon = { BackNavigationIconButton(onNavigateBack) },
                 scrollBehavior = scrollBehavior,
                 actions = { IconButton(onNavigateSettings) { Icon(Icons.Outlined.Settings, "设置") } },
-                windowInsets = AniWindowInsets.forPageContent(),
+                windowInsets = AniWindowInsets.forTopAppBar(),
             )
         },
         contentWindowInsets = AniWindowInsets.forPageContent(),
     ) { contentPadding ->
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .wrapContentWidth(align = Alignment.CenterHorizontally)
-                .ifThen(currentWindowAdaptiveInfo1().windowSizeClass.isWidthAtLeastMedium) {
-                    widthIn(max = 480.dp)
-                }
-                .padding(contentPadding)
-                .padding(horizontal = 24.dp)
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
-        ) {
+        BoxWithConstraints {
+            val availableHeight = maxHeight - contentPadding.calculateTopPadding() - contentPadding.calculateBottomPadding() - 48.dp
+            val thirdPartyLoginHeight = if (showThirdPartyLogin) 180.dp else 0.dp
+            val contentAreaHeight = availableHeight - thirdPartyLoginHeight
+            val scrollState = rememberScrollState()
+            
             Column(
                 Modifier
-                    .weight(1f)
-                    .wrapContentHeight(align = Alignment.CenterVertically)
                     .fillMaxWidth()
-                    .heightIn(min = 230.dp),
+                    .wrapContentWidth(align = Alignment.CenterHorizontally)
+                    .ifThen(currentWindowAdaptiveInfo1().windowSizeClass.isWidthAtLeastMedium) {
+                        widthIn(max = 480.dp)
+                    }
+                    .padding(contentPadding)
+                    .padding(horizontal = 24.dp)
+                    .nestedScroll(scrollBehavior.nestedScrollConnection)
+                    .verticalScroll(scrollState),
             ) {
-                content()
-            }
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = contentAreaHeight),
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    content(scrollState)
+                }
 
-            if (showThirdPartyLogin) {
-                ThirdPartyLoginMethods(
-                    onBangumiLoginClick,
-                    Modifier.heightIn(min = 180.dp).wrapContentHeight(align = Alignment.Top),
-                )
+                if (showThirdPartyLogin) {
+                    ThirdPartyLoginMethods(
+                        onBangumiLoginClick,
+                        Modifier.heightIn(min = 180.dp).wrapContentHeight(align = Alignment.Top),
+                    )
+                }
             }
         }
     }

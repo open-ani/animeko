@@ -23,10 +23,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -121,7 +123,7 @@ internal fun SettingsScope.ProfileGroupImpl(
     state: AccountSettingsState,
     isNicknameErrorProvider: (String) -> Boolean,
     onSaveNickname: (String) -> Unit,
-    onAvatarUpload: suspend (PlatformFile) -> Unit,
+    onAvatarUpload: suspend (PlatformFile) -> Boolean,
     onResetAvatarUploadState: () -> Unit,
     onLogout: () -> Unit,
     onNavigateToEmail: () -> Unit,
@@ -174,21 +176,30 @@ internal fun SettingsScope.ProfileGroupImpl(
                     sanitizeValue = { it.trim() },
                 )
 
+                val canBindEmail = remember(currentInfo) {
+                    currentInfo != null && currentInfo.email == null
+                }
+
                 TextItem(
                     title = {
                         SelectionContainer {
-                            Text(currentInfo?.email ?: "未设置", maxLines = 1, overflow = TextOverflow.MiddleEllipsis)
+                            Text(
+                                currentInfo?.email ?: "未设置",
+                                maxLines = 1,
+                                overflow = TextOverflow.MiddleEllipsis,
+                            )
                         }
                     },
                     description = { Text("邮箱") },
                     modifier = Modifier.placeholder(isPlaceholder),
-                    // TODO: 2025/6/28 目前先不允许更改邮箱. 需要改文案告诉他填写新邮箱
-//                    onClick = onNavigateToEmail,
-//                    action = {
-//                        IconButton(onNavigateToEmail) {
-//                            Icon(Icons.Rounded.Edit, "编辑", tint = MaterialTheme.colorScheme.primary)
-//                        }
-//                    },
+                    onClick = if (canBindEmail) onNavigateToEmail else null,
+                    action = if (canBindEmail) {
+                        {
+                            IconButton(onNavigateToEmail) {
+                                Icon(Icons.Rounded.Edit, "绑定", tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    } else null,
                 )
                 TextItem(
                     title = {
@@ -234,8 +245,7 @@ internal fun SettingsScope.ProfileGroupImpl(
             state.avatarUploadState,
             onAvatarUpload = { file ->
                 asyncHandler.launch {
-                    onAvatarUpload(file)
-                    showUploadAvatarDialog = false
+                    showUploadAvatarDialog = !onAvatarUpload(file)
                 }
             },
             onResetAvatarUploadState = onResetAvatarUploadState,

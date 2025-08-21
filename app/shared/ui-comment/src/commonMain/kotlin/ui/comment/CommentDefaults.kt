@@ -51,10 +51,10 @@ import org.jetbrains.compose.resources.painterResource
 
 object CommentDefaults {
     @Composable
-    fun Avatar(url: String?) {
+    fun Avatar(url: String?, modifier: Modifier = Modifier) {
         AvatarImage(
             url = url,
-            modifier = Modifier.size(36.dp),
+            modifier = modifier.size(36.dp),
         )
     }
 

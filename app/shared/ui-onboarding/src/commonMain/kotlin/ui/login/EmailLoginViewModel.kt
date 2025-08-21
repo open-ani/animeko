@@ -37,7 +37,7 @@ class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
     val state = combine(
         stateFields,
         sessionManager.stateProvider.stateFlow,
-        userRepository.selfInfoFlow(),
+        userRepository.selfInfoFlow,
     ) { state, sessionState, selfInfo ->
         state.copy(
             mode = when {

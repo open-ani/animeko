@@ -65,7 +65,7 @@ class SelfInfoStateProducer(
     /**
      * 如果重新 collect 这个 flow, 会导致多次网络请求.
      */
-    val flow = combine(sessionStateProvider.stateFlow, userRepository.selfInfoFlow()) { sessionState, selfInfo ->
+    val flow = combine(sessionStateProvider.stateFlow, userRepository.selfInfoFlow) { sessionState, selfInfo ->
         val isSessionValid = sessionState is SessionState.Valid
         SelfInfoUiState(
             selfInfo = if (isSessionValid) selfInfo else null,

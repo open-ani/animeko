@@ -14,7 +14,6 @@ package me.him188.ani.app.domain.foundation
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -61,7 +60,6 @@ sealed class DefaultHttpClientProviderTest {
                 backgroundScope = this,
                 featureHandlers = listOf(
                     UserAgentFeatureHandler,
-                    UseBangumiTokenFeatureHandler(flowOf(null), onRefresh = { null }),
                 ),
             ).apply {
                 backgroundScope.coroutineContext.job.invokeOnCompletion {

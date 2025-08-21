@@ -12,8 +12,11 @@ package me.him188.ani.app.ui.update
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -158,7 +161,9 @@ fun BoxScope.UpdateNotifier(
                             onDismiss = { dismissedManually = true },
                             onDetailsClick,
                             onAutoUpdateClick = onStartUpdateClick,
-                            modifier = Modifier.align(Alignment.BottomEnd).padding(24.dp)
+                            modifier = Modifier.align(Alignment.BottomEnd)
+                                .windowInsetsPadding(WindowInsets.navigationBars)
+                                .padding(24.dp)
                                 .shadow(4.dp, MaterialTheme.shapes.extraLarge),
                         )
                     }

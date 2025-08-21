@@ -127,16 +127,6 @@ enum class ScopedHttpClientUserAgent {
 
 // endregion
 
-// region UseBangumiToken = ScopedHttpClientFeatureKey<Boolean>("UseBangumiToken")
-val UseBangumiTokenFeature = ScopedHttpClientFeatureKey<Boolean>("UseBangumiToken")
-
-class UseBangumiTokenFeatureHandler(
-    bearerToken: Flow<String?>,
-    onRefresh: suspend () -> BearerTokens?,
-) : AbstractBearerTokenHandler(UseBangumiTokenFeature, bearerToken, onRefresh)
-
-// endregion
-
 abstract class AbstractBearerTokenHandler(
     key: ScopedHttpClientFeatureKey<Boolean>,
     private val bearerToken: Flow<String?>,

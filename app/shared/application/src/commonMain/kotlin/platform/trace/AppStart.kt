@@ -35,7 +35,7 @@ suspend fun IAnalytics.recordAppStart(startupTimeMonitor: StartupTimeMonitor) {
         setOf(ServerListFeature.withValue(ServerListFeatureConfig.Default)),
     )
 
-    val bangumiClient = BangumiClientImpl(client, client)
+    val bangumiClient = BangumiClientImpl(client)
     suspend fun testAniServer(url: Url): Boolean {
         val success = client.use {
             try {

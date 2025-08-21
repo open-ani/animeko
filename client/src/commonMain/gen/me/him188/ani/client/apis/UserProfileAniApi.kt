@@ -28,6 +28,7 @@ package me.him188.ani.client.apis
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
+import io.ktor.http.content.OutgoingContent
 import kotlinx.serialization.json.Json
 import me.him188.ani.client.infrastructure.ApiClient
 import me.him188.ani.client.infrastructure.HttpResponse
@@ -90,7 +91,7 @@ open class UserProfileAniApi : ApiClient {
      * @return kotlin.Any
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun uploadAvatar(body: me.him188.ani.client.infrastructure.OctetByteArray): HttpResponse<kotlin.Any> {
+    open suspend fun uploadAvatar(body: OutgoingContent): HttpResponse<kotlin.Any> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
