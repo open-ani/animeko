@@ -278,8 +278,8 @@ fun getIosModules(
     @OptIn(ExperimentalForeignApi::class)
     single<MediampPlayerFactory<*>> {
         val audioSession = AVAudioSession.sharedInstance()
-        audioSession.setCategory(AVAudioSessionCategoryPlayback,null)
-        audioSession.setActive( true,null)
+        audioSession.setCategory(AVAudioSessionCategoryPlayback, null)
+        audioSession.setActive(true, null)
         AVKitMediampPlayerFactory()
     }
     single<MediaSaveDirProvider> {
