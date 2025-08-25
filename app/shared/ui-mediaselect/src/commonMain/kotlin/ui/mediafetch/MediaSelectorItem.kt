@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.mediafetch
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,22 +40,31 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.tools.formatDateTime
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_debug_copied
 import me.him188.ani.app.ui.media.renderSubtitleLanguage
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcon
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcons
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.FileSize
+import me.him188.ani.datasources.api.topic.ResourceLocation
+import org.jetbrains.compose.resources.getString
 
 
 @OptIn(UnsafeOriginalMediaAccess::class)
@@ -73,6 +83,9 @@ internal fun MediaSelectorItem(
 ) {
     // We use the first media for display because the group has the same info.
     val media: Media = group.first.original
+    val clipboard = LocalClipboardManager.current
+    val toaster = LocalToaster.current
+    val scope = rememberCoroutineScope()
 
     // Determine the reason text, if any
     val reasonText = group.exclusionReason?.let { reason ->
@@ -94,6 +107,16 @@ internal fun MediaSelectorItem(
     MediaSelectorItemLayout(
         selected = selected,
         onClick = { onSelect(media) },
+        onLongClick = {
+            if (media.download !is ResourceLocation.MagnetLink) {
+                return@MediaSelectorItemLayout
+            }
+            scope.launch {
+                val downloadUri = media.download.uri
+                clipboard.setText(AnnotatedString(downloadUri))
+                toaster.toast(getString(Lang.settings_debug_copied, downloadUri))
+            }
+        },
         title = { Text(media.originalTitle) },
         labels = {
             // Size chip
@@ -174,6 +197,7 @@ internal fun MediaSelectorItem(
 fun MediaSelectorItemLayout(
     selected: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     title: @Composable () -> Unit,
     labels: @Composable RowScope.() -> Unit,
     exposedMediaSourceMenu: @Composable () -> Unit,
@@ -182,8 +206,11 @@ fun MediaSelectorItemLayout(
     modifier: Modifier = Modifier,
 ) {
     Card(
-        onClick = onClick,
-        modifier = modifier.width(IntrinsicSize.Min),
+        modifier = modifier.width(IntrinsicSize.Min)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+            ),
         colors = CardDefaults.cardColors(
             containerColor = if (selected) {
                 MaterialTheme.colorScheme.secondaryContainer
