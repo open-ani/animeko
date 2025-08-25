@@ -58,6 +58,7 @@ import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.rememberStatusBarHeightAsState
 import me.him188.ani.app.ui.subject.episode.video.loading.EpisodeVideoLoadingIndicator
+import me.him188.ani.app.videoplayer.ui.AspectRatioMode
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.VideoPlayer
@@ -127,6 +128,7 @@ internal fun EpisodeVideoImpl(
     audioController: LevelController,
     brightnessController: LevelController,
     playbackSpeedControllerState: PlaybackSpeedControllerState?,
+    aspectRatioControllerState: me.him188.ani.app.videoplayer.ui.AspectRatioControllerState?,
     leftBottomTips: @Composable () -> Unit,
     fullscreenSwitchButton: @Composable () -> Unit,
     sideSheets: @Composable (controller: VideoSideSheetsController<EpisodeVideoSideSheetPage>) -> Unit,
@@ -162,6 +164,7 @@ internal fun EpisodeVideoImpl(
             maintainAspectRatio = maintainAspectRatio,
             controllerState = playerControllerState,
             gestureLocked = isLocked,
+            aspectRatioControllerState = aspectRatioControllerState,
             topBar = {
                 WindowDragArea {
                     PlayerTopBar(
@@ -220,6 +223,7 @@ internal fun EpisodeVideoImpl(
                                 offset(x = -statusBarHeight / 2, y = 0.dp)
                             }
                             .matchParentSize(),
+                        aspectRatioMode = aspectRatioControllerState?.currentMode ?: AspectRatioMode.FIT,
                     )
                 }
             },
@@ -381,6 +385,17 @@ internal fun EpisodeVideoImpl(
 
                             playerState.subtitleTracks?.let {
                                 PlayerControllerDefaults.SubtitleSwitcher(it)
+                            }
+
+                            aspectRatioControllerState?.also { controller ->
+                                val aspectRatioAlwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "aspectRatioSwitcher")
+                                PlayerControllerDefaults.AspectRatioSwitcher(controller) {
+                                    if (it) {
+                                        aspectRatioAlwaysOnRequester.request()
+                                    } else {
+                                        aspectRatioAlwaysOnRequester.cancelRequest()
+                                    }
+                                }
                             }
 
                             val alwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "speedSwitcher")

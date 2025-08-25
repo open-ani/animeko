@@ -24,4 +24,5 @@ import org.openani.mediamp.MediampPlayer
 expect fun VideoPlayer(
     player: MediampPlayer,
     modifier: Modifier,
+    aspectRatioMode: AspectRatioMode = AspectRatioMode.FIT,
 )

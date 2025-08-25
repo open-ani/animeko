@@ -154,6 +154,9 @@ private fun PreviewVideoScaffoldImpl(
         playbackSpeedControllerState = remember {
             PlaybackSpeedControllerState(NoOpPlaybackSpeedController, scope = scope)
         },
+        aspectRatioControllerState = remember {
+            me.him188.ani.app.videoplayer.ui.AspectRatioControllerState()
+        },
         leftBottomTips = {
             PlayerControllerDefaults.LeftBottomTips(onClick = {})
         },

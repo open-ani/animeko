@@ -19,6 +19,7 @@ import org.openani.mediamp.vlc.compose.VlcMediampPlayerSurface
 actual fun VideoPlayer(
     player: MediampPlayer,
     modifier: Modifier,
+    aspectRatioMode: AspectRatioMode,
 ) {
     check(player is VlcMediampPlayer)
 

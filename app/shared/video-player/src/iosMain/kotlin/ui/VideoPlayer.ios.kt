@@ -23,7 +23,8 @@ import org.openani.mediamp.compose.MediampPlayerSurface
 @Composable
 actual fun VideoPlayer(
     player: MediampPlayer,
-    modifier: Modifier
+    modifier: Modifier,
+    aspectRatioMode: AspectRatioMode,
 ) {
     MediampPlayerSurface(player, modifier)
 }

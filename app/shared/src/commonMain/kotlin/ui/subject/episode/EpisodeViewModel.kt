@@ -77,6 +77,8 @@ import me.him188.ani.app.ui.subject.episode.video.PlayerSkipOpEdState
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorState
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.app.ui.user.SelfInfoUiState
+import me.him188.ani.app.videoplayer.ui.AspectRatioControllerState
+import me.him188.ani.app.videoplayer.ui.AspectRatioMode
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.danmaku.api.DanmakuContent
@@ -272,6 +274,7 @@ class EpisodeViewModel(
 
 
     val playerControllerState = PlayerControllerState(ControllerVisibility.Invisible)
+    val aspectRatioControllerState = AspectRatioControllerState(AspectRatioMode.FIT)
     private val mediaSourceInfoProvider: MediaSourceInfoProvider = MediaSourceInfoProvider(
         getSourceInfoFlow = { mediaSourceManager.infoFlowByMediaSourceId(it) },
     )

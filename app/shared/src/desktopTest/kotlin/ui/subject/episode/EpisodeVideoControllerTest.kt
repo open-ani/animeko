@@ -61,6 +61,7 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSe
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeSelectorState
+import me.him188.ani.app.videoplayer.ui.AspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.NoOpPlaybackSpeedController
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
@@ -213,6 +214,9 @@ class EpisodeVideoControllerTest {
                 brightnessController = NoOpLevelController,
                 playbackSpeedControllerState = remember {
                     PlaybackSpeedControllerState(NoOpPlaybackSpeedController, scope = scope)
+                },
+                aspectRatioControllerState = remember {
+                    AspectRatioControllerState()
                 },
                 leftBottomTips = {},
                 fullscreenSwitchButton = {
