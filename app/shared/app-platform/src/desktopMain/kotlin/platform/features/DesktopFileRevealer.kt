@@ -56,7 +56,7 @@ object DesktopFileRevealer : FileRevealer {
             when (currentPlatform()) {
                 is Platform.Windows -> {
                     // Windows
-                    val command = listOf("explorer", "/select", "\"", file.absolutePath, "\"")
+                    val command = listOf("explorer.exe", "/select,", file.absolutePath)
                     ProcessBuilder(command).start()
                     true
                 }
