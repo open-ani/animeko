@@ -49,8 +49,8 @@ class BangumiFullSyncStateResolver(
      */
     fun setChecking(enabled: Boolean) {
         checkerState.value = enabled
-        if (!enabled) {
-            fullSyncState.value = null // clear old state
+        if (enabled) {
+            fullSyncState.value = null
         }
     }
 

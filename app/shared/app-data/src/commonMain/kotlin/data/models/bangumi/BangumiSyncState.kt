@@ -9,44 +9,34 @@
 
 package me.him188.ani.app.data.models.bangumi
 
+import me.him188.ani.client.models.AniBangumiFullSyncState
+import me.him188.ani.client.models.AniBangumiSyncStateEntity
+
 sealed interface BangumiSyncState {
-    val value: Long
     val finished: Boolean get() = false
 
-    data object Started : BangumiSyncState {
-        override val value: Long = 0x0001_0000_0000_0000L
-    }
+    data object Started : BangumiSyncState
 
-    data class Fetched(val fetchedCount: Int) : BangumiSyncState {
-        override val value: Long = 0x0002_0000_0000_0000L or fetchedCount.toLong()
-    }
+    data class Fetched(val fetchedCount: Int) : BangumiSyncState
 
-    data class Saved(val savedCount: Int) : BangumiSyncState {
-        override val value: Long = 0x0003_0000_0000_0000L or savedCount.toLong()
-    }
+    data class Saved(val savedCount: Int) : BangumiSyncState
 
-    data object SyncingTimeline : BangumiSyncState {
-        override val value: Long = 0x0004_0000_0000_0000L
-    }
+    data object SyncingTimeline : BangumiSyncState
 
     data object Finished : BangumiSyncState {
-        override val value: Long = 0x0005_0000_0000_0000L
         override val finished: Boolean
             get() = true
     }
 
     companion object {
-        fun fromRaw(value: Long): BangumiSyncState {
-            val type = ((value and 0x0FFF_0000_0000_0000L) ushr 48).toInt()
-            val value = (value and 0x0000_0000_FFFF_FFFF).toInt()
-
-            return when (type) {
-                0x0001 -> Started
-                0x0002 -> Fetched(value)
-                0x0003 -> Saved(value)
-                0x0004 -> SyncingTimeline
-                0x0005 -> Finished
-                else -> throw IllegalArgumentException("Unknown SyncState type: $type")
+        fun fromEntity(entity: AniBangumiSyncStateEntity): BangumiSyncState? {
+            return when (entity.state) {
+                AniBangumiFullSyncState.STARTED -> Started
+                AniBangumiFullSyncState.FETCHED -> Fetched(entity.value)
+                AniBangumiFullSyncState.SAVED -> Saved(entity.value)
+                AniBangumiFullSyncState.SYNCING_TIMELINE -> SyncingTimeline
+                AniBangumiFullSyncState.FINISHED -> Finished
+                AniBangumiFullSyncState.UNKNOWN -> null
             }
         }
     }

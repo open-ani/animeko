@@ -58,8 +58,8 @@ fun BangumiFullSyncStateDialog(
 
 private fun renderBangumiSyncState(state: BangumiSyncState?): String {
     return when (state) {
-        null -> ""
-        BangumiSyncState.Started -> "正在开始同步"
+        null -> "准备中"
+        BangumiSyncState.Started -> "正在开始"
         is BangumiSyncState.Fetched -> "已获取 ${state.fetchedCount} 条收藏条目"
         is BangumiSyncState.Saved -> "已存储 ${state.savedCount} 条收藏条目"
         BangumiSyncState.SyncingTimeline -> "正在同步时间线"

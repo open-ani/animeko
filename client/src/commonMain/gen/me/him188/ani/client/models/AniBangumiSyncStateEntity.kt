@@ -25,20 +25,23 @@
 
 package me.him188.ani.client.models
 
-
+import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
  * 
  *
+ * @param state 
  * @param `value` 
  */
 @Serializable
 
 data class AniBangumiSyncStateEntity (
 
-    @SerialName(value = "value") val `value`: kotlin.Long? = null
+    @SerialName(value = "state") @Required val state: AniBangumiFullSyncState,
+
+    @SerialName(value = "value") @Required val `value`: kotlin.Int
 
 ) {
 

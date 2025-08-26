@@ -450,7 +450,7 @@ class RemoteSubjectService(
     override suspend fun getBangumiFullSyncState(): BangumiSyncState? {
         return subjectApi.invoke {
             val result = getBangumiFullSyncState().body()
-            result.value?.let { BangumiSyncState.fromRaw(it) }
+            result.let { BangumiSyncState.fromEntity(it) }
         }
     }
 }

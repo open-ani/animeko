@@ -280,6 +280,12 @@ fun CollectionPage(
 
     var showBangumiSyncStateDialog by rememberSaveable { mutableStateOf(false) }
 
+    LaunchedEffect(state.fullSyncState) {
+        if (state.fullSyncState == BangumiSyncState.Finished) {
+            showBangumiSyncStateDialog = false
+        }
+    }
+
     // 如果有缓存, 列表区域要展示缓存, 错误就用图标放在角落
     CollectionPageLayout(
         settingsIcon = {
@@ -408,7 +414,7 @@ fun CollectionPage(
         }
     }
 
-    if (showBangumiSyncStateDialog) {
+    if (showBangumiSyncStateDialog && isBangumiSyncing) {
         BangumiFullSyncStateDialog(
             state = state.fullSyncState,
             onDismissRequest = { showBangumiSyncStateDialog = false },

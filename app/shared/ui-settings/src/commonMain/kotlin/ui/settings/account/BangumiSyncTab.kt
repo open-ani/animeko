@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,8 +30,12 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import me.him188.ani.app.data.models.bangumi.BangumiSyncCommand
 import me.him188.ani.app.data.models.bangumi.BangumiSyncOp
@@ -77,9 +82,19 @@ class BangumiSyncTabViewModel() : AbstractViewModel(), KoinComponent {
     }
 
     suspend fun fullSync() {
-        fullSyncStateResolver.setChecking(true)
         try {
             subjectCollectionRepository.performBangumiFullSync()
+            fullSyncStateResolver.setChecking(true)
+
+            coroutineScope {
+                launch {
+                    fullSyncStateResolver.state.collectLatest {
+                        if (it != null && it.finished) {
+                            cancel()
+                        }
+                    }
+                }
+            }
         } finally {
             fullSyncStateResolver.setChecking(false)
         }
@@ -98,6 +113,8 @@ fun BangumiSyncTab(
     modifier: Modifier = Modifier
 ) {
     val asyncHandler = rememberAsyncHandler()
+    val syncState by vm.syncState.collectAsState(null)
+
     BangumiSyncTabImpl(
         syncCommandsFlow = vm.syncCommandsFlow,
         syncState = vm.syncState,

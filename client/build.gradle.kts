@@ -101,6 +101,7 @@ val generateApi = tasks.register("generateApiV0", GenerateTask::class) {
     generateApiTests.set(false)
     generateApiDocumentation.set(false)
     generateModelDocumentation.set(false)
+    validateSpec.set(false)
 
 //    typeMappings.put("BangumiValue", "kotlinx.serialization.json.JsonElement")
 //    schemaMappings.put("WikiV0", "kotlinx.serialization.json.JsonElement") // works
