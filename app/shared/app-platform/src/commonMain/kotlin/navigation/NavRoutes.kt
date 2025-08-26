@@ -86,6 +86,7 @@ sealed class NavRoutes {
     data class SubjectDetail(
         val subjectId: Int,
         val placeholder: SubjectDetailPlaceholder? = null,
+        val showHomeIcon: Boolean = false,
     ) : NavRoutes()
 
     @Serializable

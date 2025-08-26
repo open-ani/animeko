@@ -404,15 +404,17 @@ private fun AniAppContentImpl(
                                         aniNavigator.popBackStack(details, inclusive = true)
                                     },
                                 )
-                                TopAppBarActionButton(
-                                    {
-                                        aniNavigator.popBackOrNavigateToMain(mainSceneInitialPage)
-                                    },
-                                ) {
-                                    Icon(
-                                        Icons.Rounded.Home,
-                                        contentDescription = null,
-                                    )
+                                if (details.showHomeIcon) {
+                                    TopAppBarActionButton(
+                                        {
+                                            aniNavigator.popBackOrNavigateToMain(mainSceneInitialPage)
+                                        },
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.Home,
+                                            contentDescription = null,
+                                        )
+                                    }
                                 }
                             }
                         },

@@ -71,9 +71,10 @@ interface AniNavigator {
     fun navigateSubjectDetails(
         subjectId: Int,
         placeholder: SubjectDetailPlaceholder?,
+        showHomeIcon: Boolean = false,
     ) {
         currentNavigator.navigate(
-            NavRoutes.SubjectDetail(subjectId, placeholder),
+            NavRoutes.SubjectDetail(subjectId, placeholder, showHomeIcon),
         )
     }
 
