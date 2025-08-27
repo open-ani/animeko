@@ -119,8 +119,6 @@ fun VideoScaffold(
                             AspectRatioMode.FIT -> Modifier.fillMaxWidth().height(this@BoxWithConstraints.maxWidth * 9f / 16f)
                             AspectRatioMode.STRETCH -> Modifier.fillMaxSize()
                             AspectRatioMode.FILL -> Modifier.fillMaxSize()
-                            AspectRatioMode.RATIO_16_9 -> Modifier.fillMaxWidth().height(this@BoxWithConstraints.maxWidth * 9f / 16f)
-                            AspectRatioMode.RATIO_4_3 -> Modifier.fillMaxWidth().height(this@BoxWithConstraints.maxWidth * 3f / 4f)
                             null -> Modifier.fillMaxWidth().height(this@BoxWithConstraints.maxWidth * 9f / 16f)
                         }
                     },
@@ -137,8 +135,6 @@ fun VideoScaffold(
                             AspectRatioMode.FIT -> Modifier.matchParentSize()
                             AspectRatioMode.STRETCH -> Modifier.fillMaxSize()
                             AspectRatioMode.FILL -> Modifier.fillMaxSize()
-                            AspectRatioMode.RATIO_16_9 -> Modifier.matchParentSize()
-                            AspectRatioMode.RATIO_4_3 -> Modifier.matchParentSize()
                             null -> Modifier.matchParentSize()
                         }
                     )
