@@ -100,6 +100,7 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
 import me.him188.ani.app.videoplayer.ui.AspectRatioControllerState
+import me.him188.ani.app.videoplayer.ui.AspectRatioMode
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.top.needWorkaroundForFocusManager
@@ -503,7 +504,7 @@ object PlayerControllerDefaults {
         return OptionsSwitcher(
             value = aspectRatioControllerState.currentMode,
             onValueChange = { aspectRatioControllerState.setMode(it) },
-            optionsProvider = { me.him188.ani.app.videoplayer.ui.AspectRatioMode.entries },
+            optionsProvider = { AspectRatioMode.entries },
             renderValue = { Text(it.displayName) },
             renderValueExposed = { Text("画面") },
             modifier,

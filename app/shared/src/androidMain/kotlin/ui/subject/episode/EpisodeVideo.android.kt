@@ -43,6 +43,7 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeSelectorState
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
+import me.him188.ani.app.videoplayer.ui.AspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.NoOpPlaybackSpeedController
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
@@ -155,7 +156,7 @@ private fun PreviewVideoScaffoldImpl(
             PlaybackSpeedControllerState(NoOpPlaybackSpeedController, scope = scope)
         },
         aspectRatioControllerState = remember {
-            me.him188.ani.app.videoplayer.ui.AspectRatioControllerState()
+            AspectRatioControllerState()
         },
         leftBottomTips = {
             PlayerControllerDefaults.LeftBottomTips(onClick = {})

@@ -58,6 +58,7 @@ import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.rememberStatusBarHeightAsState
 import me.him188.ani.app.ui.subject.episode.video.loading.EpisodeVideoLoadingIndicator
+import me.him188.ani.app.videoplayer.ui.AspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.AspectRatioMode
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
@@ -128,7 +129,7 @@ internal fun EpisodeVideoImpl(
     audioController: LevelController,
     brightnessController: LevelController,
     playbackSpeedControllerState: PlaybackSpeedControllerState?,
-    aspectRatioControllerState: me.him188.ani.app.videoplayer.ui.AspectRatioControllerState?,
+    aspectRatioControllerState: AspectRatioControllerState?,
     leftBottomTips: @Composable () -> Unit,
     fullscreenSwitchButton: @Composable () -> Unit,
     sideSheets: @Composable (controller: VideoSideSheetsController<EpisodeVideoSideSheetPage>) -> Unit,
