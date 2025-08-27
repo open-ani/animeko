@@ -10,6 +10,7 @@
 package me.him188.ani.app.videoplayer.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.compose.MediampPlayerSurface
@@ -26,5 +27,7 @@ actual fun VideoPlayer(
     modifier: Modifier,
     aspectRatioMode: AspectRatioMode,
 ) {
-    MediampPlayerSurface(player, modifier)
+    key(aspectRatioMode) {
+        MediampPlayerSurface(player, modifier)
+    }
 }

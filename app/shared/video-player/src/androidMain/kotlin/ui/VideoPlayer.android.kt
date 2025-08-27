@@ -15,11 +15,14 @@ import android.view.View
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView.ControllerVisibilityListener
+import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.exoplayer.ExoPlayerMediampPlayer
 import org.openani.mediamp.exoplayer.compose.ExoPlayerMediampPlayerSurface
@@ -31,23 +34,21 @@ actual fun VideoPlayer(
     modifier: Modifier,
     aspectRatioMode: AspectRatioMode,
 ) {
-    val isPreviewing by rememberUpdatedState(me.him188.ani.app.ui.foundation.LocalIsPreviewing.current)
+    val isPreviewing by rememberUpdatedState(LocalIsPreviewing.current)
 
     if (isPreviewing) {
         Box(modifier)
     } else {
-        androidx.compose.runtime.key(aspectRatioMode) {
+        key(aspectRatioMode) {
             ExoPlayerMediampPlayerSurface(player as ExoPlayerMediampPlayer, modifier) {
                 controllerAutoShow = false
                 useController = false
                 controllerHideOnTouch = false
 
                 resizeMode = when (aspectRatioMode) {
-                    AspectRatioMode.FIT -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    AspectRatioMode.STRETCH -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL
-                    AspectRatioMode.FILL -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                    AspectRatioMode.RATIO_16_9 -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    AspectRatioMode.RATIO_4_3 -> androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    AspectRatioMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    AspectRatioMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                    AspectRatioMode.FILL -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                 }
                 controllerAutoShow = false
                 useController = false
