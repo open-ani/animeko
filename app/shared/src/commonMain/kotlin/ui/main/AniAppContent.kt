@@ -22,7 +22,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScaffoldDefaults
@@ -413,7 +413,7 @@ private fun AniAppContentImpl(
                                         },
                                     ) {
                                         Icon(
-                                            Icons.Rounded.Home,
+                                            Icons.Outlined.Home,
                                             contentDescription = null,
                                         )
                                     }
