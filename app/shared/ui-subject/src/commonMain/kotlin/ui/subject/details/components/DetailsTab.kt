@@ -231,7 +231,6 @@ fun SubjectDetailsDefaults.DetailsTab(
                                 nameCN = it.nameCn,
                                 coverUrl = it.image ?: "",
                             ),
-                            showHomeIcon = true,
                         )
                     },
                     Modifier.padding(horizontal = horizontalPadding),

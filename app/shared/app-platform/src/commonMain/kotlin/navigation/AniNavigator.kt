@@ -71,10 +71,9 @@ interface AniNavigator {
     fun navigateSubjectDetails(
         subjectId: Int,
         placeholder: SubjectDetailPlaceholder?,
-        showHomeIcon: Boolean = false,
     ) {
         currentNavigator.navigate(
-            NavRoutes.SubjectDetail(subjectId, placeholder, showHomeIcon),
+            NavRoutes.SubjectDetail(subjectId, placeholder),
         )
     }
 
@@ -251,6 +250,13 @@ inline fun <reified T : NavRoutes> NavHostController.findFirst(): NavRoutes? {
     return currentBackStack.value
         .firstOrNull { it.destination.route?.contains(routeFQN) == true }
         ?.toRoute<T>()
+}
+
+inline fun <reified T : NavRoutes> NavHostController.hasAnotherRoute(): Boolean {
+    val routeFQN = T::class.qualifiedName ?: return false
+    return currentBackStack.value
+        .dropLast(1)
+        .any { it.destination.route?.contains(routeFQN) == true }
 }
 
 /**

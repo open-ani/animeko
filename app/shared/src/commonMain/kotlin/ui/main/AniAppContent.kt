@@ -57,6 +57,7 @@ import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.OverrideNavigation
 import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
+import me.him188.ani.app.navigation.hasAnotherRoute
 import me.him188.ani.app.navigation.navigateLoginOrBangumiAuthorizeIfNeeded
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
@@ -404,7 +405,8 @@ private fun AniAppContentImpl(
                                         aniNavigator.popBackStack(details, inclusive = true)
                                     },
                                 )
-                                if (details.showHomeIcon) {
+                                val showHomeIcon = navController.hasAnotherRoute<NavRoutes.SubjectDetail>()
+                                if (showHomeIcon) {
                                     TopAppBarActionButton(
                                         {
                                             aniNavigator.popBackOrNavigateToMain(mainSceneInitialPage)
