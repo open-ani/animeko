@@ -354,7 +354,10 @@ private fun SubjectDetailsPage(
                         relatedSubjects = state.relatedSubjectsPager.collectAsLazyPagingItemsWithLifecycle(),
                         Modifier
                             .nestedScrollWorkaround(state.detailsTabLazyListState, connectedScrollState)
-                            .nestedScroll(connectedScrollState.nestedScrollConnection),
+                            .nestedScroll(connectedScrollState.nestedScrollConnection)
+                            .fillMaxWidth()
+                            .wrapContentWidth(align = Alignment.CenterHorizontally)
+                            .widthIn(max = MaximumContentWidth),
                         state.detailsTabLazyListState,
                         contentPadding = contentPadding,
                     )
@@ -387,7 +390,6 @@ private fun SubjectDetailsPage(
                 },
                 Modifier
                     .fillMaxWidth()
-                    .wrapContentWidth(align = Alignment.CenterHorizontally)
                     .widthIn(max = MaximumContentWidth),
             )
         }
