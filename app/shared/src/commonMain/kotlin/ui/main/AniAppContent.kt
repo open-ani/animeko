@@ -22,7 +22,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScaffoldDefaults
@@ -57,6 +57,7 @@ import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.OverrideNavigation
 import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
+import me.him188.ani.app.navigation.hasAnotherRoute
 import me.him188.ani.app.navigation.navigateLoginOrBangumiAuthorizeIfNeeded
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
@@ -404,15 +405,18 @@ private fun AniAppContentImpl(
                                         aniNavigator.popBackStack(details, inclusive = true)
                                     },
                                 )
-                                TopAppBarActionButton(
-                                    {
-                                        aniNavigator.popBackOrNavigateToMain(mainSceneInitialPage)
-                                    },
-                                ) {
-                                    Icon(
-                                        Icons.Rounded.Home,
-                                        contentDescription = null,
-                                    )
+                                val showHomeIcon = navController.hasAnotherRoute<NavRoutes.SubjectDetail>()
+                                if (showHomeIcon) {
+                                    TopAppBarActionButton(
+                                        {
+                                            aniNavigator.popBackOrNavigateToMain(mainSceneInitialPage)
+                                        },
+                                    ) {
+                                        Icon(
+                                            Icons.Outlined.Home,
+                                            contentDescription = null,
+                                        )
+                                    }
                                 }
                             }
                         },

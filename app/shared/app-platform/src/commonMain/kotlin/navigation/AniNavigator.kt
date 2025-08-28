@@ -252,6 +252,13 @@ inline fun <reified T : NavRoutes> NavHostController.findFirst(): NavRoutes? {
         ?.toRoute<T>()
 }
 
+inline fun <reified T : NavRoutes> NavHostController.hasAnotherRoute(): Boolean {
+    val routeFQN = T::class.qualifiedName ?: return false
+    return currentBackStack.value
+        .dropLast(1)
+        .any { it.destination.route?.contains(routeFQN) == true }
+}
+
 /**
  * It is always provided.
  */
