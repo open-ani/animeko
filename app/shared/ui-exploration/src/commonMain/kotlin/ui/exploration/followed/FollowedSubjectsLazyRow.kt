@@ -43,6 +43,7 @@ import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.widgets.NsfwMask
 import me.him188.ani.app.ui.search.*
 import me.him188.ani.app.ui.subject.SubjectProgressState
+import org.jetbrains.compose.resources.stringResource
 
 // https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Animeko?node-id=62-4581&node-type=frame&t=Evw0PwXZHXQNgEm3-0
 @Composable
@@ -101,7 +102,7 @@ fun FollowedSubjectsLazyRow(
                             LoadErrorCardRole.Unimportant,
                             content = {
                                 ListItem(
-                                    headlineContent = { Text("将番剧收藏为 \"在看\" 后将在这里显示") },
+                                    headlineContent = { Text(stringResource(Lang.exploration_continue_watching_hint)) },
                                     colors = listItemColors,
                                 )
                             },
