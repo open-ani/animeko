@@ -23,14 +23,16 @@ jobs:
     steps:
       - name: Check if PR is draft
         id: check
-        run: |
+        run: |-
           if [[ "${{ github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "pull_request_target" ]]; then
             if [[ "${{ github.event.pull_request.draft }}" == "true" ]]; then
               echo "is-draft-pr=true" >> $GITHUB_OUTPUT
             else
               echo "is-draft-pr=false" >> $GITHUB_OUTPUT
+            fi
           else
             echo "is-draft-pr=false" >> $GITHUB_OUTPUT
+          fi
 
   consistency-check:
     name: 'Workflow YAML Consistency Check'
