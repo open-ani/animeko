@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.SystemFileSystem
+import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.get
@@ -36,6 +37,7 @@ import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -51,6 +53,7 @@ import me.him188.ani.app.navigation.IosBrowserNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.platform.AniHostingUIViewController
 import me.him188.ani.app.platform.AppStartupTasks
+import me.him188.ani.app.platform.AppTerminator
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.IosContext
 import me.him188.ani.app.platform.IosContextFiles
@@ -292,4 +295,26 @@ fun getIosModules(
         )
     }
     single<UpdateInstaller> { IosUpdateInstaller }
+    
+    single<MediaCacheMigrator> {
+        MediaCacheMigrator(
+            context = context,
+            metadataStore = context.dataStores.mediaCacheMetadataStore,
+            m3u8DownloaderStore = context.dataStores.m3u8DownloaderStore,
+            mediaCacheManager = get(),
+            settingsRepo = get(),
+            appTerminator = object : AppTerminator {
+                override fun exitApp(context: me.him188.ani.app.platform.ContextMP, status: Int): Nothing {
+                    throw UnsupportedOperationException("iOS does not support app termination")
+                }
+            },
+            migrationChecker = object : MediaCacheMigrator.MigrationChecker {
+                override suspend fun requireMigrateTorrentCache(): Boolean = false
+                override suspend fun requireMigrateWebM3uCache(): Boolean = false
+            },
+            mediaCacheBaseDirProvider = get(),
+            getNewBaseSaveDir = { null },
+            getLegacyTorrentSaveDir = { context.files.dataDir }
+        )
+    }
 }
