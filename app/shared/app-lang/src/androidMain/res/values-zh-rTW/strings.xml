@@ -468,7 +468,10 @@
     <string name="settings_media_auto_cache_recent_only">僅快取最近看過的番劇</string>
     <string name="settings_media_auto_cache_count">快取數量</string>
     <string name="settings_media_auto_cache_count_description">目前設定: 僅快取最近看過的 %d 部番劇</string>
-    <string name="settings_media_auto_cache_manage">管理已快取的劇集</string><string name="settings_debug_logout">登出</string><string name="settings_debug_logged_out">已登出</string><string name="settings_tab_account">賬戶</string>
+    <string name="settings_media_auto_cache_manage">管理已快取的劇集</string>
+    <string name="settings_debug_logout">登出</string>
+    <string name="settings_debug_logged_out">已登出</string>
+    <string name="settings_tab_account">賬戶</string>
 </resources>
 
 <!--@formatter:on-->
