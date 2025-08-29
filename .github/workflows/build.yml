@@ -16,8 +16,26 @@ concurrency:
   group: '${{ github.workflow }}-${{ github.event_name }}-${{ github.ref_name == ''main'' && github.run_id || github.ref_name }}'
   cancel-in-progress: true
 jobs:
+  pr-draft-check:
+    runs-on: ubuntu-latest
+    outputs:
+      is-draft-pr: ${{ steps.check.outputs.is-draft-pr }}
+    steps:
+      - name: Check if PR is draft
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "pull_request_target" ]]; then
+            if [[ "${{ github.event.pull_request.draft }}" == "true" ]]; then
+              echo "is-draft-pr=true" >> $GITHUB_OUTPUT
+            else
+              echo "is-draft-pr=false" >> $GITHUB_OUTPUT
+          else
+            echo "is-draft-pr=false" >> $GITHUB_OUTPUT
+
   consistency-check:
     name: 'Workflow YAML Consistency Check'
+    needs: pr-draft-check
+    if: ${{ needs.pr-draft-check.outputs.is-draft-pr != 'true' }}
     runs-on: 'ubuntu-latest'
     permissions: {}
     steps:
@@ -33,6 +51,8 @@ jobs:
       run: 'python .github/workflows/check_yaml_equivalence.py .github/workflows/build.yml .github/workflows/build.yml-check.yml'
   build_github-windows-2022:
     name: 'Build (Windows Server 2019 x86_64)'
+    needs: pr-draft-check
+    if: ${{ needs.pr-draft-check.outputs.is-draft-pr != 'true' }}
     runs-on:
     - 'windows-2022'
     permissions:
@@ -189,6 +209,8 @@ jobs:
       if: '${{ steps.step-22.outcome == ''failure'' }}'
   build_github-ubuntu-2404:
     name: 'Build (Ubuntu 24.04 x86_64 (GitHub))'
+    needs: pr-draft-check
+    if: ${{ needs.pr-draft-check.outputs.is-draft-pr != 'true' }}
     runs-on:
     - 'ubuntu-24.04'
     permissions:
@@ -616,6 +638,8 @@ jobs:
       if: '${{ steps.step-52.outcome == ''failure'' }}'
   build_github-macos-13:
     name: 'Build (macOS 13 x86_64 (GitHub))'
+    needs: pr-draft-check
+    if: ${{ needs.pr-draft-check.outputs.is-draft-pr != 'true' }}
     runs-on:
     - 'macos-13'
     permissions:
@@ -816,13 +840,14 @@ jobs:
       if: '${{ steps.step-21.outcome == ''failure'' }}'
   build_self-hosted-macos-15:
     name: 'Build (macOS 15 AArch64 (Self-Hosted))'
+    needs: pr-draft-check
     runs-on:
     - 'self-hosted'
     - 'macOS'
     - 'ARM64'
     permissions:
       actions: 'write'
-    if: '${{ github.repository == ''open-ani/animeko'' }}'
+    if: '${{ github.repository == ''open-ani/animeko'' }} && ${{ needs.pr-draft-check.outputs.is-draft-pr != ''true'' }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
