@@ -427,6 +427,8 @@
 
     <!-- ServerSelectionGroup -->
     <string name="settings_network_danmaku">服务器区域</string>
+    <string name="settings_network_danmaku_auto">自动</string>
+    <string name="settings_network_danmaku_auto_hint">自动选择: %1$s</string>
     <string name="settings_network_danmaku_global_acceleration">全球加速</string>
     <string name="settings_network_danmaku_global_acceleration_description">提升访问全球服务器的速度\n在中国大陆内启用会减速</string>
     <string name="settings_network_danmaku_connection_test">连接速度测试</string>

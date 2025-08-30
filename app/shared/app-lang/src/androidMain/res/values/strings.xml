@@ -388,6 +388,8 @@
 
     <!-- ServerSelectionGroup -->
     <string name="settings_network_danmaku">Server Region</string>
+    <string name="settings_network_danmaku_auto">Auto</string>
+    <string name="settings_network_danmaku_auto_hint">Auto Select: %1$s</string>
     <string name="settings_network_danmaku_global_acceleration">Global Acceleration</string>
     <string name="settings_network_danmaku_global_acceleration_description">Improves speed when accessing global servers\nEnabling this within mainland China will slow it down</string>
     <string name="settings_network_danmaku_connection_test">Connection Speed Test</string>
