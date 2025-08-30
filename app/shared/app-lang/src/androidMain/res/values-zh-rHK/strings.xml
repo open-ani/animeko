@@ -473,6 +473,16 @@
     <string name="settings_debug_logged_out">已登出</string>
     <string name="settings_tab_account">賬戶</string>
 
+    <!-- AccountGroup -->
+    <string name="account_login">登入</string>
+    <string name="account_not_logged_in">未登入</string>
+    <string name="account_logout">登出</string>
+    <string name="account_logout_hint">確定要登出嗎？</string>
+    <string name="account_logged_out">已登出</string>
+    <string name="account_login_or_register">登入 / 註冊</string>
+    <string name="account_edit_profile">編輯個人資料</string>
+    <string name="account_edit_avatar">更換頭像</string>
+
     <!-- Version Expired Overlay -->
     <string name="settings_update_version_expired_title">版本過期</string>
     <string name="settings_update_version_expired_message">當前版本過舊，為了你的使用體驗，請更新到最新版本。\n右下角將會顯示最新版本，可以點擊自動更新。如果無法更新，請前往官網下載：</string>
@@ -481,6 +491,9 @@
     <string name="settings_update_version_expired_copied_to_clipboard">已複製到剪貼板，請到新版本點擊導入</string>
     <string name="settings_update_version_expired_export_settings">導出設置</string>
     <string name="settings_media_auto_cache_manage">管理已緩存的劇集</string>
+
+    <!-- CommonUIGroup -->
+    <string name="ui_btn_cancel">取消</string>
 </resources>
 
 <!--@formatter:on-->
