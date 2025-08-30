@@ -350,6 +350,15 @@
     <string name="exploration_title">Explore</string>
     <string name="exploration_settings">Settings</string>
     <string name="exploration_search">Search</string>
+    <string name="exploration_search_keyword">Keyword</string>
+    <string name="exploration_search_back_to_top">Back to top</string>
+    <string name="exploration_search_nsfw_hint">NSFW content is hidden</string>
+    <string name="exploration_search_nsfw_show">Display</string>
+    <string name="exploration_search_res_empty">No results found</string>
+    <string name="exploration_search_res_cnt">Results: %1$d</string>
+    <string name="exploration_search_res_match">Match</string>
+    <string name="exploration_search_res_collection">Collection</string>
+    <string name="exploration_search_res_rank">Rank</string>
     <string name="exploration_trending">Trending</string>
     <string name="exploration_schedule">Anime Schedule</string>
     <string name="exploration_continue_watching">Continue Watching</string>

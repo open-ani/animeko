@@ -371,10 +371,19 @@
     <string name="exploration_title">探索</string>
     <string name="exploration_settings">設置</string>
     <string name="exploration_search">搜索</string>
+    <string name="exploration_search_keyword">关键词</string>
+    <string name="exploration_search_back_to_top">返回頂部</string>
+    <string name="exploration_search_nsfw_hint">此內容不適合展示</string>
+    <string name="exploration_search_nsfw_show">顯示</string>
+    <string name="exploration_search_res_empty">沒有找到相關結果</string>
+    <string name="exploration_search_res_cnt">找到 %1$d 個結果</string>
+    <string name="exploration_search_res_match">最佳匹配</string>
+    <string name="exploration_search_res_collection">最多收藏</string>
+    <string name="exploration_search_res_rank">最高評分</string>
     <string name="exploration_trending">最高熱度</string>
     <string name="exploration_schedule">新番時間表</string>
     <string name="exploration_continue_watching">繼續觀看</string>
-    <string name="exploration_continue_watching_hint">將番劇收藏為 \"在看\" 後將在這裡顯示</string>
+    <string name="exploration_continue_watching_hint">將番劇收藏為 "在看" 後將在這裡顯示</string>
     <string name="exploration_recommendations">推薦</string>
     <string name="exploration_horizontal_scroll_tip">按住 Shift + 滑鼠滾輪 同樣可以水平滾動</string>
 
