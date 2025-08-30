@@ -50,9 +50,18 @@ import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.interaction.hoverable
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.account_edit_avatar
+import me.him188.ani.app.ui.lang.account_edit_profile
+import me.him188.ani.app.ui.lang.account_login
+import me.him188.ani.app.ui.lang.account_login_or_register
+import me.him188.ani.app.ui.lang.account_logout
+import me.him188.ani.app.ui.lang.account_not_logged_in
+import me.him188.ani.app.ui.lang.settings
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.user.SelfInfoUiState
+import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @Composable
@@ -88,7 +97,7 @@ internal fun ProfilePopupLayout(
         val showEmail = false
 
         Text(
-            if (isLogin) title else "未登录",
+            if (isLogin) title else stringResource(Lang.account_not_logged_in),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier
@@ -125,25 +134,35 @@ internal fun ProfilePopupLayout(
             Column {
                 if (isLogin) {
                     TextItem(
-                        icon = { Icon(Icons.Outlined.Edit, contentDescription = "Edit profile settings") },
+                        icon = {
+                            Icon(
+                                Icons.Outlined.Edit,
+                                contentDescription = stringResource(Lang.account_edit_profile),
+                            )
+                        },
                         onClick = onClickEditProfile,
                     ) {
-                        Text("编辑个人资料")
+                        Text(stringResource(Lang.account_edit_profile))
                     }
                 } else {
                     TextItem(
-                        icon = { Icon(Icons.AutoMirrored.Outlined.Login, contentDescription = "Login") },
+                        icon = {
+                            Icon(
+                                Icons.AutoMirrored.Outlined.Login,
+                                contentDescription = stringResource(Lang.account_login),
+                            )
+                        },
                         onClick = onClickLogin,
                     ) {
-                        Text("登录 / 注册")
+                        Text(stringResource(Lang.account_login_or_register))
                     }
                 }
 
                 TextItem(
-                    icon = { Icon(Icons.Outlined.Settings, contentDescription = "Settings") },
+                    icon = { Icon(Icons.Outlined.Settings, contentDescription = stringResource(Lang.settings)) },
                     onClick = onClickSettings,
                 ) {
-                    Text("设置")
+                    Text(stringResource(Lang.settings))
                 }
 
                 if (isLogin) {
@@ -152,14 +171,14 @@ internal fun ProfilePopupLayout(
                             ProvideContentColor(MaterialTheme.colorScheme.error) {
                                 Icon(
                                     Icons.AutoMirrored.Outlined.Logout,
-                                    contentDescription = "Logout",
+                                    contentDescription = stringResource(Lang.account_logout),
                                 )
                             }
                         },
                         onClick = onClickLogout,
                     ) {
                         ProvideContentColor(MaterialTheme.colorScheme.error) {
-                            Text("退出登录")
+                            Text(stringResource(Lang.account_logout))
                         }
                     }
                 }
@@ -209,7 +228,7 @@ private fun EditableSelfAvatar(
                     IconButton(onClickEditAvatar) {
                         Icon(
                             Icons.Outlined.Edit,
-                            contentDescription = "Edit avatar",
+                            contentDescription = stringResource(Lang.account_edit_avatar),
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                     }

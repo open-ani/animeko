@@ -41,7 +41,14 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.account_login
+import me.him188.ani.app.ui.lang.account_logout
+import me.him188.ani.app.ui.lang.account_logout_hint
+import me.him188.ani.app.ui.lang.settings
+import me.him188.ani.app.ui.lang.ui_btn_cancel
 import me.him188.ani.app.ui.user.SelfInfoUiState
+import org.jetbrains.compose.resources.stringResource
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.coroutines.CoroutineContext
@@ -63,8 +70,9 @@ fun SelfAvatar(
             )
         } else {
             if (state.isSessionValid == false || state.selfInfo == null) {
+                // TODO: 优化hover阴影表现
                 TextButton(onClick) {
-                    Text("登录")
+                    Text(stringResource(Lang.account_login))
                 }
             } else {
                 AvatarImage(
@@ -121,7 +129,7 @@ private fun SelfAvatarMenus(
     onClickAny: () -> Unit,
 ) {
     DropdownMenuItem(
-        text = { Text("设置") },
+        text = { Text(stringResource(Lang.settings)) },
         onClick = {
             handler.onClickSettings()
             onClickAny()
@@ -133,7 +141,7 @@ private fun SelfAvatarMenus(
     var showLogoutConfirmation by rememberSaveable { mutableStateOf(false) }
     val running by logoutTasker.isRunning.collectAsStateWithLifecycle()
     DropdownMenuItem(
-        text = { Text("退出登录", color = MaterialTheme.colorScheme.error) },
+        text = { Text(stringResource(Lang.account_logout), color = MaterialTheme.colorScheme.error) },
         leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Logout, null) },
         onClick = { showLogoutConfirmation = true },
         enabled = !running,
@@ -141,7 +149,7 @@ private fun SelfAvatarMenus(
     if (showLogoutConfirmation) {
         AlertDialog(
             { showLogoutConfirmation = false },
-            text = { Text("确定要退出登录吗?") },
+            text = { Text(stringResource(Lang.account_logout_hint)) },
             confirmButton = {
                 TextButton(
                     {
@@ -152,12 +160,12 @@ private fun SelfAvatarMenus(
                         showLogoutConfirmation = false
                     },
                 ) {
-                    Text("退出登录", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(Lang.account_logout), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton({ showLogoutConfirmation = false }) {
-                    Text("取消")
+                    Text(stringResource(Lang.ui_btn_cancel))
                 }
             },
         )
