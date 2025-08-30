@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -34,6 +34,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.ui.foundation.effects.blurEffect
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.exploration_search_nsfw_hint
+import me.him188.ani.app.ui.lang.exploration_search_nsfw_show
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Nsfw 模糊遮罩加提示. 点击可以临时展示.
@@ -67,9 +71,12 @@ fun NsfwMask(
                     verticalArrangement = Arrangement.Center,
                     modifier = Modifier.matchParentSize().defaultMinSize(minHeight = 30.dp).padding(top = 10.dp),
                 ) {
-                    Text("此内容不适合展示", textAlign = TextAlign.Center)
+                    Text(stringResource(Lang.exploration_search_nsfw_hint), textAlign = TextAlign.Center)
                     IconButton(onTemporarilyDisplay) {
-                        Icon(Icons.Rounded.RemoveRedEye, contentDescription = "临时展示")
+                        Icon(
+                            Icons.Rounded.RemoveRedEye,
+                            contentDescription = stringResource(Lang.exploration_search_nsfw_show),
+                        )
                     }
                 }
             }
