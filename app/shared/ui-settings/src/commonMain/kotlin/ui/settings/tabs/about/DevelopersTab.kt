@@ -54,6 +54,7 @@ import me.him188.ani.app.ui.lang.settings_developers_view_more_on_github
 import me.him188.ani.app.ui.lang.settings_developers_website_development
 import me.him188.ani.app.ui.settings.Res
 import me.him188.ani.app.ui.settings.btmuli
+import me.him188.ani.app.ui.settings.generalk1ng
 import me.him188.ani.app.ui.settings.him188
 import me.him188.ani.app.ui.settings.jerryz233
 import me.him188.ani.app.ui.settings.misakatat
@@ -143,6 +144,12 @@ fun DevelopersTab(
         )
 
         Header(stringResource(Lang.settings_developers_outstanding_contributors))
+
+        DeveloperItem(
+            "General_K1ng", "https://github.com/GeneralK1ng",
+            description = stringResource(Lang.settings_developers_contributor),
+            avatar = { LocalImage(Res.drawable.generalk1ng) },
+        )
 
         DeveloperItem(
             "JerryZ233", "https://github.com/JerryZ233",

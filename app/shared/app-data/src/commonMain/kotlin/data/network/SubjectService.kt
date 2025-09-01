@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.subject.CharacterInfo
 import me.him188.ani.app.data.models.subject.CharacterRole
 import me.him188.ani.app.data.models.subject.LightSubjectAndEpisodes
@@ -52,6 +53,8 @@ import me.him188.ani.datasources.bangumi.models.BangumiPerson
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectCollectionType
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollection
 import me.him188.ani.utils.coroutines.IO_
+import me.him188.ani.utils.coroutines.flows.FlowRestarter
+import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.collections.associateWithTo
@@ -105,6 +108,8 @@ interface SubjectService {
      * 执行 Bangumi 全量同步, 从 Bangumi 同步到 ani
      */
     suspend fun performBangumiFullSync()
+
+    suspend fun getBangumiFullSyncState(): BangumiSyncState?
 }
 
 data class BatchSubjectCollection(
@@ -352,6 +357,7 @@ class RemoteSubjectService(
         }
     }
 
+    val subjectCountStatsRestarter = FlowRestarter()
 
     override suspend fun patchSubjectCollection(subjectId: Int, payload: AniUpdateSubjectCollectionRequest) {
         sessionManager.checkAccessAniApiNow()
@@ -364,6 +370,7 @@ class RemoteSubjectService(
                 Unit
             }
         }
+        subjectCountStatsRestarter.restart()
     }
 
     override suspend fun deleteSubjectCollection(subjectId: Int) {
@@ -371,13 +378,26 @@ class RemoteSubjectService(
         subjectApi {
             this.deleteSubjectCollection(subjectId.toLong()).body()
         }
+        subjectCountStatsRestarter.restart()
     }
 
     override fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts> {
-        // TODO("subjectCollectionCountsFlow")
         return flow {
-            SubjectCollectionCounts(0, 0, 0, 0, 0, 0)
-        }
+            val stats = subjectApi {
+                this.getSubjectCollectionStats().body()
+            }
+
+            emit(
+                SubjectCollectionCounts(
+                    wish = stats.wish,
+                    doing = stats.doing,
+                    done = stats.done,
+                    onHold = stats.onHold,
+                    dropped = stats.dropped,
+                    total = stats.wish + stats.doing + stats.done + stats.onHold + stats.dropped,
+                ),
+            )
+        }.restartable(subjectCountStatsRestarter)
 //        return sessionManager.username.filterNotNull().map { username ->
 //            sessionManager.checkTokenNow()
 //            val types = UnifiedCollectionType.entries - UnifiedCollectionType.NOT_COLLECTED
@@ -424,6 +444,13 @@ class RemoteSubjectService(
         sessionManager.checkAccessAniApiNow()
         subjectApi.invoke {
             bangumiFullSync().body()
+        }
+    }
+
+    override suspend fun getBangumiFullSyncState(): BangumiSyncState? {
+        return subjectApi.invoke {
+            val result = getBangumiFullSyncState().body()
+            result.let { BangumiSyncState.fromEntity(it) }
         }
     }
 }

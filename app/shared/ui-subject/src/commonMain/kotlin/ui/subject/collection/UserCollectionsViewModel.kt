@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.MyCollectionsSettings
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
+import me.him188.ani.app.data.network.BangumiFullSyncStateResolver
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
@@ -49,6 +50,7 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
     private val animeScheduleRepository: AnimeScheduleRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val sessionStateProvider: SessionStateProvider by inject()
+    private val fullSyncStateResolver: BangumiFullSyncStateResolver by inject()
 
     val lazyGridState = LazyGridState()
 
@@ -66,10 +68,10 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
         startSearch = { subjectCollectionRepository.subjectCollectionsPager(it) },
         collectionCountsState = subjectCollectionRepository.subjectCollectionCountsFlow().produceState(null),
         subjectProgressStateFactory,
-        createEditableSubjectCollectionTypeState = {
-            createEditableSubjectCollectionTypeState(it)
-        },
-        backgroundScope
+        fullSyncStateResolver.state.produceState(null),
+        createEditableSubjectCollectionTypeState = { createEditableSubjectCollectionTypeState(it) },
+        onPagerFetchingAnyRemoteSource = { fullSyncStateResolver.setChecking(it) },
+        backgroundScope,
     )
 
     private fun createEditableSubjectCollectionTypeState(collection: SubjectCollectionInfo): EditableSubjectCollectionTypeState =
