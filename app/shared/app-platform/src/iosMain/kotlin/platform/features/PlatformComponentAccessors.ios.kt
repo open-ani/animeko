@@ -16,12 +16,15 @@ import kotlinx.coroutines.delay
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.tools.MonoTasker
 import platform.CoreGraphics.CGRectMake
+import platform.Foundation.NSNotificationCenter
 import platform.MediaPlayer.MPVolumeView
 import platform.UIKit.UIApplication
 import platform.UIKit.UIScreen
+import platform.UIKit.UIScreenBrightnessDidChangeNotification
 import platform.UIKit.UISlider
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
+
 
 actual fun getComponentAccessorsImpl(context: Context): PlatformComponentAccessors =
     IosPlatformComponentAccessors
@@ -38,6 +41,16 @@ private class IosBrightnessManager : BrightnessManager {
      *  UIScreen.mainScreen.brightness 设置后不能马上生效所以get的时候需要一个临时值
      */
     var brightness = UIScreen.mainScreen.brightness.toFloat()
+
+    init {
+        NSNotificationCenter.defaultCenter.addObserverForName(
+            name = UIScreenBrightnessDidChangeNotification,
+            `object` = null,
+            queue = null
+        ) { _ ->
+            brightness = UIScreen.mainScreen.brightness.toFloat()
+        }
+    }
     
     override fun getBrightness(): Float = brightness
 
