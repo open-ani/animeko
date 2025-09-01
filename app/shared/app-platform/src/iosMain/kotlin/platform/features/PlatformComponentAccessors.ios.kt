@@ -32,13 +32,20 @@ private object IosPlatformComponentAccessors : PlatformComponentAccessors {
 }
 
 private class IosBrightnessManager : BrightnessManager {
-    override fun getBrightness(): Float {
-        return UIScreen.mainScreen.brightness.toFloat()
-    }
+    /**
+     * 屏幕亮度
+     *
+     *  UIScreen.mainScreen.brightness 设置后不能马上生效所以get的时候需要一个临时值
+     */
+    var brightness = UIScreen.mainScreen.brightness.toFloat()
+    
+    override fun getBrightness(): Float = brightness
 
-    override fun setBrightness(level: Float) {
-        UIScreen.mainScreen.brightness = level.coerceIn(0f, 1f).toDouble()
-    }
+    override fun setBrightness(level: Float) =
+        level.coerceIn(0f, 1f).let { salvedLevel ->
+            brightness = salvedLevel
+            UIScreen.mainScreen.brightness = salvedLevel.toDouble()
+        }
 }
 
 internal class IosAudioManager : AudioManager {
