@@ -14,24 +14,33 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Publish
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import me.him188.ani.app.data.models.bangumi.BangumiSyncCommand
 import me.him188.ani.app.data.models.bangumi.BangumiSyncOp
+import me.him188.ani.app.data.models.bangumi.BangumiSyncState
+import me.him188.ani.app.data.network.BangumiFullSyncStateResolver
 import me.him188.ani.app.data.repository.subject.BangumiSyncCommandRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.ui.external.placeholder.placeholder
@@ -44,6 +53,7 @@ import me.him188.ani.app.ui.search.loadErrorItem
 import me.him188.ani.app.ui.search.pagingFooterStateItem
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
+import me.him188.ani.app.ui.user.BangumiFullSyncStateDialog
 import me.him188.ani.client.models.AniCollectionType
 import me.him188.ani.client.models.AniEpisodeCollectionType
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
@@ -61,16 +71,33 @@ class BangumiSyncTabViewModel() : AbstractViewModel(), KoinComponent {
     private val subjectCollectionRepository: SubjectCollectionRepository by inject()
     private val bangumiSyncCommandRepository: BangumiSyncCommandRepository by inject()
     private val flowRestarter = FlowRestarter()
+    private val fullSyncStateResolver by inject<BangumiFullSyncStateResolver>()
 
     val syncCommandsFlow: Flow<PagingData<BangumiSyncCommand>> =
         bangumiSyncCommandRepository.syncCommandsPager().cachedIn(backgroundScope).restartable(flowRestarter)
+    val syncState = fullSyncStateResolver.state
 
     private fun restartSyncCommandsFlow() {
         flowRestarter.restart()
     }
 
     suspend fun fullSync() {
-        subjectCollectionRepository.performBangumiFullSync()
+        try {
+            subjectCollectionRepository.performBangumiFullSync()
+            fullSyncStateResolver.setChecking(true)
+
+            coroutineScope {
+                launch {
+                    fullSyncStateResolver.state.collectLatest {
+                        if (it != null && it.finished) {
+                            cancel()
+                        }
+                    }
+                }
+            }
+        } finally {
+            fullSyncStateResolver.setChecking(false)
+        }
         restartSyncCommandsFlow()
     }
 
@@ -86,8 +113,11 @@ fun BangumiSyncTab(
     modifier: Modifier = Modifier
 ) {
     val asyncHandler = rememberAsyncHandler()
+    val syncState by vm.syncState.collectAsState(null)
+
     BangumiSyncTabImpl(
         syncCommandsFlow = vm.syncCommandsFlow,
+        syncState = vm.syncState,
         onFullSyncClick = {
             asyncHandler.launch {
                 vm.fullSync()
@@ -113,6 +143,7 @@ fun BangumiSyncTab(
 @Composable
 fun BangumiSyncTabImpl(
     syncCommandsFlow: Flow<PagingData<BangumiSyncCommand>>,
+    syncState: Flow<BangumiSyncState?>,
     onFullSyncClick: () -> Unit,
     onPushClick: () -> Unit,
     onSyncCancel: () -> Unit,
@@ -127,7 +158,7 @@ fun BangumiSyncTabImpl(
             onClick = onFullSyncClick,
             onClickEnabled = !isBangumiSyncing,
             description = {
-                Text("将 Bangumi 的收藏数据下载到 Animeko 收藏服务。通常来说不需要进行这个操作，Animeko 能自动完成同步。仅在你有发现数据不一致的情况时才需要手动下载。此操作可能需要一分钟完成")
+                Text("将 Bangumi 的收藏数据下载到 Animeko 收藏服务。通常来说不需要进行这个操作，Animeko 能自动完成同步。仅在你有发现数据不一致的情况时才需要手动下载。此操作可能需要一分钟完成。请注意，每十分钟只能执行一次全量同步")
             },
         )
     }
@@ -177,16 +208,20 @@ fun BangumiSyncTabImpl(
     }
 
     if (isBangumiSyncing) {
-        AlertDialog(
+        val syncState by syncState.collectAsStateWithLifecycle(null)
+        BangumiFullSyncStateDialog(
+            state = syncState,
             onDismissRequest = onSyncCancel,
-            title = { Text("正在同步") },
-            text = { Text("此操作可能需要数分钟时间，请耐心等待") },
             confirmButton = {
-                TextButton(onClick = onSyncCancel) {
-                    Text("取消")
+                TextButton(
+                    { onSyncCancel() },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) {
+                    Text("终止")
                 }
             },
-            properties = DialogProperties(dismissOnClickOutside = false),
         )
     }
 }
@@ -238,6 +273,7 @@ val TestAniBangumiSyncCommandEntities
 private fun PreviewBangumiSyncTab() = ProvideCompositionLocalsForPreview {
     BangumiSyncTabImpl(
         syncCommandsFlow = createTestPager(TestAniBangumiSyncCommandEntities),
+        syncState = flowOf(null),
         onFullSyncClick = {},
         onPushClick = {},
         onSyncCancel = {},

@@ -135,18 +135,20 @@ fun BoxScope.UpdateNotifier(
                     .align(Alignment.BottomCenter)
             }
 
-            DownloadingUpdatePopupCard(
-                version = presentation.newVersion,
-                fileDownloaderStats = presentation.fileDownloaderStats,
-                error = presentation.downloadError,
-                onInstallClick = onInstallClick,
-                onCancelClick = {
-                    onCancelClick()
-                    dismissedManually = true
-                },
-                onRetryClick = onRetryClick,
-                modifier = positionModifiers,
-            )
+            if (!dismissedManually) {
+                DownloadingUpdatePopupCard(
+                    version = presentation.newVersion,
+                    fileDownloaderStats = presentation.fileDownloaderStats,
+                    error = presentation.downloadError,
+                    onInstallClick = onInstallClick,
+                    onCancelClick = {
+                        onCancelClick()
+                        dismissedManually = true
+                    },
+                    onRetryClick = onRetryClick,
+                    modifier = positionModifiers,
+                )
+            }
         } else {
             // 提示有新版本
 
