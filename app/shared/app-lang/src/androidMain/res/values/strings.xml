@@ -420,9 +420,11 @@
     <string name="settings_network_proxy_title">Global Proxy Settings</string>
     <string name="settings_network_proxy_description">Applied to all data sources and Bangumi</string>
     <string name="settings_network_proxy_type">Proxy Type</string>
+    <string name="settings_network_proxy_mode_via">Using %1$s</string>
     <string name="settings_network_proxy_disabled">Disabled</string>
+    <string name="settings_network_proxy_disabled_hint">No proxy is used</string>
     <string name="settings_network_proxy_system">System Proxy</string>
-    <string name="settings_network_proxy_custom">Custom</string>
+    <string name="settings_network_proxy_custom">Custom Proxy</string>
     <string name="settings_network_proxy_detection_result">Auto-detection Result</string>
     <string name="settings_network_proxy_detecting">Detecting</string>
     <string name="settings_network_proxy_not_detected">No system proxy detected</string>
@@ -432,6 +434,18 @@
     <string name="settings_network_proxy_optional">Optional</string>
     <string name="settings_network_proxy_none">None</string>
     <string name="settings_network_proxy_password">Password</string>
+    <string name="settings_network_proxy_state_init">Testing connection, please wait…</string>
+    <string name="settings_network_proxy_state_running">Testing connection, please wait…</string>
+    <string name="settings_network_proxy_state_fail_np">Some services failed to connect, consider enabling proxy</string>
+    <string name="settings_network_proxy_state_fail_p">Some services failed to connect, consider changing proxy mode or address</string>
+    <string name="settings_network_proxy_state_success">All services connected successfully</string>
+    <string name="settings_network_proxy_retry">Retest</string>
+    <string name="settings_network_proxy_save_and_test">Save and Test</string>
+    <string name="settings_network_proxy_service_danmaku">Danmaku Service</string>
+    <string name="settings_network_proxy_service_collection">Collection Data Service</string>
+    <string name="settings_network_proxy_service_comments">Comments Service</string>
+    <string name="settings_network_proxy_service_connected_via">Connected successfully using %1$s</string>
+    <string name="settings_network_proxy_service_failed_via">Failed to connect using %1$s</string>
 
     <!-- TorrentEngineGroup -->
     <string name="settings_media_torrent_title">BT Settings</string>
@@ -473,6 +487,7 @@
     
     <!-- CommonUIGroup -->
     <string name="ui_btn_cancel">Cancel</string>
+    <string name="ui_btn_edit">Edit</string>
 </resources>
 
 <!--@formatter:on-->

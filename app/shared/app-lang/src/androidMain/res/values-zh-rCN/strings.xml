@@ -459,9 +459,11 @@
     <string name="settings_network_proxy_title">全局代理设置</string>
     <string name="settings_network_proxy_description">应用于所有数据源以及 Bangumi</string>
     <string name="settings_network_proxy_type">代理类型</string>
+    <string name="settings_network_proxy_mode_via">使用 %1$s</string>
     <string name="settings_network_proxy_disabled">禁用</string>
+    <string name="settings_network_proxy_disabled_hint">目前未使用代理</string>
     <string name="settings_network_proxy_system">系统代理</string>
-    <string name="settings_network_proxy_custom">自定义</string>
+    <string name="settings_network_proxy_custom">自定义代理</string>
     <string name="settings_network_proxy_detection_result">自动检测结果</string>
     <string name="settings_network_proxy_detecting">正在检测</string>
     <string name="settings_network_proxy_not_detected">未检测到系统代理</string>
@@ -471,6 +473,18 @@
     <string name="settings_network_proxy_optional">可选</string>
     <string name="settings_network_proxy_none">无</string>
     <string name="settings_network_proxy_password">密码</string>
+    <string name="settings_network_proxy_state_init">正在检测连接，请稍后…</string>
+    <string name="settings_network_proxy_state_running">正在检测连接，请稍后…</string>
+    <string name="settings_network_proxy_state_fail_np">部分服务连接失败，请考虑启用代理</string>
+    <string name="settings_network_proxy_state_fail_p">部分服务连接失败，请更换代理模式或代理地址</string>
+    <string name="settings_network_proxy_state_success">所有服务连接正常</string>
+    <string name="settings_network_proxy_retry">重新测试</string>
+    <string name="settings_network_proxy_save_and_test">保存并测试</string>
+    <string name="settings_network_proxy_service_danmaku">弹幕服务</string>
+    <string name="settings_network_proxy_service_collection">收藏数据服务</string>
+    <string name="settings_network_proxy_service_comments">评论服务</string>
+    <string name="settings_network_proxy_service_connected_via">使用 %1$s 连接成功</string>
+    <string name="settings_network_proxy_service_failed_via">使用 %1$s 连接失敗</string>
 
     <!-- TorrentEngineGroup -->
     <string name="settings_media_torrent_title">BT 设置</string>
@@ -512,6 +526,7 @@
 
     <!-- CommonUIGroup -->
     <string name="ui_btn_cancel">取消</string>
+    <string name="ui_btn_edit">修改</string>
 </resources>
 
 <!--@formatter:on-->

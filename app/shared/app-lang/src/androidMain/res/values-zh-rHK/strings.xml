@@ -441,9 +441,11 @@
     <string name="settings_network_proxy_title">全局代理設置</string>
     <string name="settings_network_proxy_description">應用於所有數據源以及 Bangumi</string>
     <string name="settings_network_proxy_type">代理類型</string>
+    <string name="settings_network_proxy_mode_via">透過 %1$s</string>
     <string name="settings_network_proxy_disabled">禁用</string>
+    <string name="settings_network_proxy_disabled_hint">目前未使用代理</string>
     <string name="settings_network_proxy_system">系統代理</string>
-    <string name="settings_network_proxy_custom">自定義</string>
+    <string name="settings_network_proxy_custom">自定義代理</string>
     <string name="settings_network_proxy_detection_result">自動檢測結果</string>
     <string name="settings_network_proxy_detecting">正在檢測</string>
     <string name="settings_network_proxy_not_detected">未檢測到系統代理</string>
@@ -453,6 +455,29 @@
     <string name="settings_network_proxy_optional">可選</string>
     <string name="settings_network_proxy_none">無</string>
     <string name="settings_network_proxy_password">密碼</string>
+    <!-- 正在检测连接，请稍后 -->
+    <string name="settings_network_proxy_state_init">正在檢測連接，請稍後…</string>
+    <string name="settings_network_proxy_state_running">正在檢測連接，請稍後…</string>
+    <!-- 部分服务连接失败，请考虑启用代理 tw-->
+    <string name="settings_network_proxy_state_fail_np">部分服務連接失敗，請考慮啟用代理</string>
+    <!-- 部分服务连接失败，请更换代理模式或代理地址 -->
+    <string name="settings_network_proxy_state_fail_p">部分服務連接失敗，請更換代理模式或代理地址</string>
+    <!-- 所有服务连接正常 -->
+    <string name="settings_network_proxy_state_success">所有服務連接正常</string>
+    <!-- 重新测试 -->
+    <string name="settings_network_proxy_retry">重新測試</string>
+    <!-- 保存并测试 -->
+    <string name="settings_network_proxy_save_and_test">保存並測試</string>
+    <!-- 弹幕服务 tw-->
+    <string name="settings_network_proxy_service_danmaku">彈幕服務</string>
+    <!-- 收藏数据服务 -->
+    <string name="settings_network_proxy_service_collection">收藏數據服務</string>
+    <!-- 评论服务 -->
+    <string name="settings_network_proxy_service_comments">評論服務</string>
+    <!-- 使用xx连接成功 -->
+    <string name="settings_network_proxy_service_connected_via">使用 %1$s 連接成功</string>
+    <!-- 使用xx连接失败 -->
+    <string name="settings_network_proxy_service_failed_via">使用 %1$s 連接失敗</string>
 
     <!-- TorrentEngineGroup -->
     <string name="settings_media_torrent_title">BT 設置</string>
@@ -505,6 +530,7 @@
 
     <!-- CommonUIGroup -->
     <string name="ui_btn_cancel">取消</string>
+    <string name="ui_btn_edit">編輯</string>
 </resources>
 
 <!--@formatter:on-->
