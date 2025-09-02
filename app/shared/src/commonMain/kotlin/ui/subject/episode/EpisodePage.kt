@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -67,6 +68,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalUriHandler
@@ -106,6 +108,7 @@ import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
 import me.him188.ani.app.ui.foundation.effects.OverrideCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.effects.ScreenOnEffect
 import me.him188.ani.app.ui.foundation.effects.ScreenRotationEffect
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
@@ -442,19 +445,26 @@ private fun EpisodeScreenTabletVeryWide(
                     .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Right + WindowInsetsSides.Bottom))
                     .background(MaterialTheme.colorScheme.background), // scrollable background
             ) {
-                // 填充 insets 背景颜色
-                Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
-                    Spacer(
-                        Modifier
-                            .fillMaxWidth()
-                            .windowInsetsPadding(
-                                // Consider #1767
-                                WindowInsets.safeContent // Note: this does not include desktop title bar.
-                                    .only(WindowInsetsSides.Top),
-                            ),
-                    )
+
+                val isCurrentInDarkTheme: Boolean = when (LocalThemeSettings.current.darkMode) {
+                    DarkMode.LIGHT -> false
+                    DarkMode.DARK -> true
+                    DarkMode.AUTO -> isSystemInDarkTheme()
                 }
 
+                // 填充 insets 背景颜色
+                // 如果当前不是 dark theme，则加一个渐变色避免看不清状态栏
+                Spacer(
+                    Modifier
+                        .fillMaxWidth()
+                        .ifThen(isCurrentInDarkTheme) { background(MaterialTheme.colorScheme.surfaceContainerLow) }
+                        .ifThen(!isCurrentInDarkTheme) { background(Brush.verticalGradient(listOf(Color.Black, MaterialTheme.colorScheme.surfaceContainerLow))) }
+                        .windowInsetsPadding(
+                            // Consider #1767
+                            WindowInsets.safeContent // Note: this does not include desktop title bar.
+                                .only(WindowInsetsSides.Top),
+                        ),
+                )
                 TabRow(
                     pagerState, scope, { vm.episodeCommentState.count }, Modifier.fillMaxWidth(),
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
