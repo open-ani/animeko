@@ -388,9 +388,6 @@ private fun SubjectDetailsPage(
                         }
                     }
                 },
-                Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = MaximumContentWidth),
             )
         }
     }
