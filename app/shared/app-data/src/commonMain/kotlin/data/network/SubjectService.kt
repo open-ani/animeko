@@ -449,8 +449,11 @@ class RemoteSubjectService(
 
     override suspend fun getBangumiFullSyncState(): BangumiSyncState? {
         return subjectApi.invoke {
-            val result = getBangumiFullSyncState().body()
-            result.let { BangumiSyncState.fromEntity(it) }
+            val result = getBangumiFullSyncState()
+            if (result.status == HttpStatusCode.NoContent.value) {
+                return@invoke null
+            }
+            BangumiSyncState.fromEntity(result.body())
         }
     }
 }

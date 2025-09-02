@@ -10,33 +10,37 @@
 package me.him188.ani.app.data.models.bangumi
 
 import me.him188.ani.client.models.AniBangumiFullSyncState
+import me.him188.ani.client.models.AniBangumiSyncError
 import me.him188.ani.client.models.AniBangumiSyncStateEntity
 
 sealed interface BangumiSyncState {
     val finished: Boolean get() = false
 
-    data object Started : BangumiSyncState
+    data object Preparing : BangumiSyncState
 
-    data class Fetched(val fetchedCount: Int) : BangumiSyncState
+    data class FetchingSubjects(val fetchedCount: Int) : BangumiSyncState
+    data class FetchingEpisodes(val fetchedCount: Int) : BangumiSyncState
+    data class Inserting(val savedCount: Int) : BangumiSyncState
 
-    data class Saved(val savedCount: Int) : BangumiSyncState
+    data class Finishing(val savedCount: Int) : BangumiSyncState
 
-    data object SyncingTimeline : BangumiSyncState
-
-    data object Finished : BangumiSyncState {
+    data class Finished(val savedCount: Int, val error: AniBangumiSyncError?) : BangumiSyncState {
         override val finished: Boolean
             get() = true
     }
 
+    data object Unsupported : BangumiSyncState
+
     companion object {
         fun fromEntity(entity: AniBangumiSyncStateEntity): BangumiSyncState? {
             return when (entity.state) {
-                AniBangumiFullSyncState.STARTED -> Started
-                AniBangumiFullSyncState.FETCHED -> Fetched(entity.value)
-                AniBangumiFullSyncState.SAVED -> Saved(entity.value)
-                AniBangumiFullSyncState.SYNCING_TIMELINE -> SyncingTimeline
-                AniBangumiFullSyncState.FINISHED -> Finished
-                AniBangumiFullSyncState.UNKNOWN -> null
+                null -> Unsupported
+                AniBangumiFullSyncState.PREPARING -> Preparing
+                AniBangumiFullSyncState.FETCHING_SUBJECTS -> FetchingSubjects(entity.value ?: 0)
+                AniBangumiFullSyncState.FETCHING_EPISODES -> FetchingEpisodes(entity.value ?: 0)
+                AniBangumiFullSyncState.INSERTING_DATABASE -> Inserting(entity.value ?: 0)
+                AniBangumiFullSyncState.FINISHING -> Finishing(entity.value ?: 0)
+                AniBangumiFullSyncState.FINISHED -> Finished(entity.value ?: 0, entity.error)
             }
         }
     }

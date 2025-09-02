@@ -12,14 +12,18 @@ package me.him188.ani.app.ui.subject.collection
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.preference.MyCollectionsSettings
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
-import me.him188.ani.app.data.network.BangumiFullSyncStateResolver
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
@@ -39,6 +43,7 @@ import me.him188.ani.datasources.api.topic.toggleCollected
 import me.him188.ani.utils.logging.info
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import kotlin.time.Duration.Companion.seconds
 
 @Stable
 class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
@@ -50,7 +55,6 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
     private val animeScheduleRepository: AnimeScheduleRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val sessionStateProvider: SessionStateProvider by inject()
-    private val fullSyncStateResolver: BangumiFullSyncStateResolver by inject()
 
     val lazyGridState = LazyGridState()
 
@@ -62,15 +66,27 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
         .map { it.myCollections }
         .produceState(MyCollectionsSettings.Default)
 
-    private val nsfwSettingFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
+    private var fullSyncJob: Job? = null
+    val fullSyncState: MutableStateFlow<BangumiSyncState?> = MutableStateFlow(null)
 
     val state = UserCollectionsState(
         startSearch = { subjectCollectionRepository.subjectCollectionsPager(it) },
         collectionCountsState = subjectCollectionRepository.subjectCollectionCountsFlow().produceState(null),
         subjectProgressStateFactory,
-        fullSyncStateResolver.state.produceState(null),
         createEditableSubjectCollectionTypeState = { createEditableSubjectCollectionTypeState(it) },
-        onPagerFetchingAnyRemoteSource = { fullSyncStateResolver.setChecking(it) },
+        onPagerFetchingAnyRemoteSource = { enable ->
+            fullSyncJob?.cancel()
+            fullSyncJob = null
+            if (enable) {
+                fullSyncJob = backgroundScope.launch {
+                    while (true) {
+                        val state = subjectCollectionRepository.getBangumiFullSyncState()
+                        fullSyncState.emit(state)
+                        delay(1.seconds)
+                    }
+                }
+            }
+        },
         backgroundScope,
     )
 

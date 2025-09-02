@@ -65,15 +65,11 @@ class BangumiAuthorizeViewModel : AbstractViewModel(), KoinComponent {
             }
         }
 
-    suspend fun startOAuth(isRegister: Boolean, onOpenUrl: suspend (String) -> Unit) {
-        tasker.invoke {
-            if (configurator.state.value is OAuthConfigurator.State.AwaitingResult) {
-                // 已经在等待结果了, 不需要重复开始
-                return@invoke
-            }
-
+    suspend fun doOAuth(isRegister: Boolean, onOpenUrl: suspend (String) -> Unit): Boolean {
+        val res = tasker.invoke {
             configurator.auth(isRegister, onOpenUrl)
         }
+        return res is OAuthConfigurator.State.Success
     }
 
     suspend fun collectNewLoginEvent(block: () -> Unit) {

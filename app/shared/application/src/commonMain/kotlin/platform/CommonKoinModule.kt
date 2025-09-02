@@ -30,7 +30,6 @@ import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AnimeScheduleService
 import me.him188.ani.app.data.network.BangumiBangumiCommentServiceImpl
 import me.him188.ani.app.data.network.BangumiCommentService
-import me.him188.ani.app.data.network.BangumiFullSyncStateResolver
 import me.him188.ani.app.data.network.BangumiProfileService
 import me.him188.ani.app.data.network.BangumiRelatedPeopleService
 import me.him188.ani.app.data.network.BangumiSubjectSearchService
@@ -272,10 +271,6 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         )
     }
     single<EpisodeService> { EpisodeServiceImpl(aniApiProvider.subjectApi) }
-
-    single<BangumiFullSyncStateResolver> {
-        BangumiFullSyncStateResolver(coroutineScope.coroutineContext, get())
-    }
 
     single<BangumiRelatedPeopleService> { BangumiRelatedPeopleService(get()) }
     single<AnimeScheduleRepository> { AnimeScheduleRepository(get()) }

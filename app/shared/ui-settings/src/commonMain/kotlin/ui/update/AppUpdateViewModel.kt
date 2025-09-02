@@ -279,7 +279,9 @@ class NewVersion(
     val publishedAt: String,
 ) {
     val majorChanges = changelogs.asSequence().flatMap { changelog ->
-        changelog.changes.lineSequence().map { it.removePrefix("- ").removePrefix("* ") }
+        changelog.changes.lineSequence()
+            .filterNot { it.isBlank() }
+            .map { it.removePrefix("- ").removePrefix("* ") }
     }.take(4).toList()
 }
 

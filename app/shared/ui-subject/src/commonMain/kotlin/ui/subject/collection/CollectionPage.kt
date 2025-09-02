@@ -153,7 +153,6 @@ class UserCollectionsState(
     private val startSearch: (filterQuery: CollectionsFilterQuery) -> Flow<PagingData<SubjectCollectionInfo>>,
     collectionCountsState: State<SubjectCollectionCounts?>,
     val subjectProgressStateFactory: SubjectProgressStateFactory,
-    fullSyncState: State<BangumiSyncState?>,
     val createEditableSubjectCollectionTypeState: (subjectCollection: SubjectCollectionInfo) -> EditableSubjectCollectionTypeState,
     val onPagerFetchingAnyRemoteSource: (Boolean) -> Unit,
     private val backgroundScope: CoroutineScope,
@@ -164,8 +163,6 @@ class UserCollectionsState(
     private var currentQuery by mutableStateOf(defaultQuery)
 
     val selectedTypeIndex by derivedStateOf { availableTypes.indexOf(currentQuery.type) }
-
-    val fullSyncState by fullSyncState
 
     val collectionCounts: SubjectCollectionCounts? by collectionCountsState
     val tabRowScrollState = ScrollState(selectedTypeIndex)
@@ -223,6 +220,7 @@ class UserCollectionsState(
         if (ms == null) {
             // 没有 remote mediator state, 说明没从 server 获取数据.
             remotePagingStates[typeIndex] = false
+            onPagerFetchingAnyRemoteSource(remotePagingStates.values.any { it })
             return
         }
         remotePagingStates.put(
@@ -256,6 +254,7 @@ class UserCollectionsState(
 fun CollectionPage(
     state: UserCollectionsState,
     selfInfo: SelfInfoUiState,
+    fullSyncState: BangumiSyncState?,
     onClickSearch: () -> Unit,
     onClickLogin: () -> Unit,
     onClickSettings: () -> Unit,
@@ -274,17 +273,8 @@ fun CollectionPage(
     val isCurrentPageRefreshing by remember {
         derivedStateOf { currentPageItems?.isLoadingFirstPageOrRefreshing == true }
     }
-    val isBangumiSyncing by remember {
-        derivedStateOf { state.fullSyncState != null && state.fullSyncState?.finished == false }
-    }
-
-    var showBangumiSyncStateDialog by rememberSaveable { mutableStateOf(false) }
-
-    LaunchedEffect(state.fullSyncState) {
-        if (state.fullSyncState == BangumiSyncState.Finished) {
-            showBangumiSyncStateDialog = false
-        }
-    }
+    var hideBangumiSync by rememberSaveable { mutableStateOf(false) }
+    val isBangumiSyncing = fullSyncState != null && !fullSyncState.finished
 
     // 如果有缓存, 列表区域要展示缓存, 错误就用图标放在角落
     CollectionPageLayout(
@@ -298,7 +288,7 @@ fun CollectionPage(
             }
         },
         actions = {
-            if (isBangumiSyncing) {
+            if (hideBangumiSync && isBangumiSyncing) {
                 val infiniteTransition = rememberInfiniteTransition(label = "rotation")
                 val angle by infiniteTransition.animateFloat(
                     initialValue = 0f,
@@ -310,10 +300,10 @@ fun CollectionPage(
                     label = "angle",
                 )
 
-                IconButton({ showBangumiSyncStateDialog = true }) {
+                IconButton({ hideBangumiSync = false }) {
                     Icon(
                         imageVector = Icons.Rounded.Sync,
-                        contentDescription = "Bangumi 同步中, 点击查看详情",
+                        contentDescription = "正在同步",
                         modifier = Modifier.rotate(angle),
                     )
                 }
@@ -414,10 +404,10 @@ fun CollectionPage(
         }
     }
 
-    if (showBangumiSyncStateDialog && isBangumiSyncing) {
+    if (!hideBangumiSync && isBangumiSyncing) {
         BangumiFullSyncStateDialog(
-            state = state.fullSyncState,
-            onDismissRequest = { showBangumiSyncStateDialog = false },
+            state = fullSyncState,
+            onDismissRequest = { hideBangumiSync = true },
         )
     }
 }
