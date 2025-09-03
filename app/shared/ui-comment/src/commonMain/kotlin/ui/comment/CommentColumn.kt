@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridItemScope
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -28,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
@@ -53,7 +55,8 @@ fun CommentColumn(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     connectedScrollState: ConnectedScrollState? = null,
     state: LazyGridState = rememberLazyGridState(),
-    commentItem: @Composable LazyGridItemScope.(index: Int, item: UIComment) -> Unit
+    maxColumnWidth: Dp = Dp.Unspecified,
+    commentItem: @Composable LazyGridItemScope.(index: Int, item: UIComment) -> Unit,
 ) {
     PullToRefreshBox(
         isRefreshing = items.isLoadingFirstPageOrRefreshing,
@@ -90,15 +93,24 @@ fun CommentColumn(
                 key = items.itemKey { "CommentColumn-" + it.id },
                 contentType = items.itemContentType(),
             ) { index ->
-                Column {
-                    val item = items[index] ?: return@items
-                    commentItem(index, item)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .widthIn(max = maxColumnWidth)
+                            .fillMaxWidth(),
+                    ) {
+                        val item = items[index] ?: return@items
+                        commentItem(index, item)
 
-                    if (hasDividerLine && index != items.itemCount - 1) {
-                        HorizontalDivider(
-                            modifier = Modifier.fillMaxWidth(),
-                            color = DividerDefaults.color.stronglyWeaken(),
-                        )
+                        if (hasDividerLine && index != items.itemCount - 1) {
+                            HorizontalDivider(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = DividerDefaults.color.stronglyWeaken(),
+                            )
+                        }
                     }
                 }
             }

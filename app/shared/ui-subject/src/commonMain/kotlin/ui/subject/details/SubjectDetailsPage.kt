@@ -355,9 +355,7 @@ private fun SubjectDetailsPage(
                         Modifier
                             .nestedScrollWorkaround(state.detailsTabLazyListState, connectedScrollState)
                             .nestedScroll(connectedScrollState.nestedScrollConnection)
-                            .fillMaxWidth()
-                            .wrapContentWidth(align = Alignment.CenterHorizontally)
-                            .widthIn(max = MaximumContentWidth),
+                            .fillMaxWidth(),
                         state.detailsTabLazyListState,
                         contentPadding = contentPadding,
                     )
