@@ -78,7 +78,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -457,8 +456,8 @@ private fun EpisodeScreenTabletVeryWide(
                 Spacer(
                     Modifier
                         .fillMaxWidth()
-                        .ifThen(isCurrentInDarkTheme) { background(MaterialTheme.colorScheme.surfaceContainerLow) }
-                        .ifThen(!isCurrentInDarkTheme) { background(Brush.verticalGradient(listOf(Color.Black, MaterialTheme.colorScheme.surfaceContainerLow))) }
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                        .ifThen(!isCurrentInDarkTheme) { background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.scrim, Color.Transparent))) }
                         .windowInsetsPadding(
                             // Consider #1767
                             WindowInsets.safeContent // Note: this does not include desktop title bar.
