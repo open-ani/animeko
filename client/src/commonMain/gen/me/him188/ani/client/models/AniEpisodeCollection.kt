@@ -34,7 +34,7 @@ import kotlinx.serialization.Serializable
  *
  * @param episodeId 
  * @param subjectId 
- * @param sort 
+ * @param sort 保证是数字
  * @param type 
  * @param name 
  * @param nameCn 
@@ -52,6 +52,7 @@ data class AniEpisodeCollection (
 
     @SerialName(value = "subjectId") @Required val subjectId: kotlin.Long,
 
+    /* 保证是数字 */
     @SerialName(value = "sort") @Required val sort: kotlin.String,
 
     @SerialName(value = "type") @Required val type: AniEpisodeType,

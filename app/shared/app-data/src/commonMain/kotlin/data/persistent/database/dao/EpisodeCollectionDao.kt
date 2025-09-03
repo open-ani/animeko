@@ -129,6 +129,17 @@ interface EpisodeCollectionDao {
 
     @Query(
         """
+        SELECT episodeId FROM episode_collection
+        WHERE subjectId = :subjectId
+        ORDER BY sortNumber ASC, sort ASC
+        """,
+    )
+    fun listIdBySubjectId(
+        subjectId: Int,
+    ): Flow<List<Int>>
+
+    @Query(
+        """
         SELECT * FROM episode_collection
         WHERE subjectId = :subjectId 
         ORDER BY sortNumber ASC, sort ASC""",
@@ -176,6 +187,14 @@ interface EpisodeCollectionDao {
         """,
     )
     suspend fun deleteAllBySubjectId(subjectId: Int)
+
+    @Query(
+        """
+        DELETE FROM episode_collection 
+        WHERE subjectId = :subjectId AND episodeId IN (:episodeIds)
+        """,
+    )
+    suspend fun deleteAllByEpisodeIds(subjectId: Int, episodeIds: List<Int>)
 }
 
 fun EpisodeCollectionDao.filterBySubjectId(

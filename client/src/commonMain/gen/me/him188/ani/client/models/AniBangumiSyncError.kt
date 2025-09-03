@@ -25,25 +25,24 @@
 
 package me.him188.ani.client.models
 
+
+import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
  * 
  *
- * @param state 
- * @param `value` 
- * @param error 
+ * @param stageName 
+ * @param extraInfo 
  */
 @Serializable
 
-data class AniBangumiSyncStateEntity (
+data class AniBangumiSyncError (
 
-    @SerialName(value = "state") val state: AniBangumiFullSyncState? = null,
+    @SerialName(value = "stageName") @Required val stageName: kotlin.String,
 
-    @SerialName(value = "value") val `value`: kotlin.Int? = null,
-
-    @SerialName(value = "error") val error: AniBangumiSyncError? = null
+    @SerialName(value = "extraInfo") @Required val extraInfo: kotlin.String
 
 ) {
 

@@ -29,11 +29,6 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 fun BangumiFullSyncStateDialog(
     state: BangumiSyncState?,
     onDismissRequest: () -> Unit,
-    confirmButton: @Composable () -> Unit = {
-        TextButton(onDismissRequest) {
-            Text("关闭")
-        }
-    },
 ) {
     AlertDialog(
         title = { Text("正在同步 Bangumi 收藏") },
@@ -47,11 +42,15 @@ fun BangumiFullSyncStateDialog(
                     LinearProgressIndicator({ 1f }, modifier = Modifier.fillMaxWidth())
                 }
                 Spacer(modifier = Modifier.height(24.dp))
-                Text("此操作可能需要数分钟时间，请耐心等待")
+                Text("此操作可能需要数分钟时间，请耐心等待。在同步过程中，其他功能不可使用")
             }
         },
         onDismissRequest = onDismissRequest,
-        confirmButton = confirmButton,
+        confirmButton = {
+            TextButton(onDismissRequest) {
+                Text("在后台继续")
+            }
+        },
         properties = DialogProperties(dismissOnClickOutside = false),
     )
 }
@@ -59,11 +58,20 @@ fun BangumiFullSyncStateDialog(
 private fun renderBangumiSyncState(state: BangumiSyncState?): String {
     return when (state) {
         null -> "准备中"
-        BangumiSyncState.Started -> "正在开始"
-        is BangumiSyncState.Fetched -> "已获取 ${state.fetchedCount} 条收藏条目"
-        is BangumiSyncState.Saved -> "已存储 ${state.savedCount} 条收藏条目"
-        BangumiSyncState.SyncingTimeline -> "正在同步时间线"
-        BangumiSyncState.Finished -> "同步完成"
+        BangumiSyncState.Preparing -> "正在获取元数据"
+        is BangumiSyncState.FetchingSubjects -> "(已完成 ${state.fetchedCount} 条) 正在获取更多收藏列表"
+        is BangumiSyncState.FetchingEpisodes -> "(已完成 ${state.fetchedCount} 条) 正在获取观看进度"
+        is BangumiSyncState.Inserting -> "(已完成 ${state.savedCount} 条) 正在保存"
+        is BangumiSyncState.Finishing -> "(已完成 ${state.savedCount} 条) 正在完成"
+        is BangumiSyncState.Finished -> {
+            if (state.error != null) {
+                "(已完成 ${state.savedCount} 条) 同步失败, 错误信息如下: \n$state"
+            } else {
+                "(已完成 ${state.savedCount} 条) 同步成功"
+            }
+        }
+
+        BangumiSyncState.Unsupported -> "进行中"
     }
 }
 
@@ -72,7 +80,7 @@ private fun renderBangumiSyncState(state: BangumiSyncState?): String {
 private fun PreviewBangumiFullSyncDialogSaved() {
     ProvideCompositionLocalsForPreview {
         BangumiFullSyncStateDialog(
-            state = BangumiSyncState.Saved(123),
+            state = BangumiSyncState.Inserting(123),
             onDismissRequest = {},
         )
     }
@@ -84,7 +92,7 @@ private fun PreviewBangumiFullSyncDialogSaved() {
 private fun PreviewBangumiFullSyncDialogSyncTimeline() {
     ProvideCompositionLocalsForPreview {
         BangumiFullSyncStateDialog(
-            state = BangumiSyncState.SyncingTimeline,
+            state = BangumiSyncState.Finishing(100),
             onDismissRequest = {},
         )
     }

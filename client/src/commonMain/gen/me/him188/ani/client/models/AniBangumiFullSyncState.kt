@@ -32,28 +32,28 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * Values: STARTED,FETCHED,SAVED,SYNCING_TIMELINE,FINISHED
+ * Values: PREPARING,FETCHING_SUBJECTS,FETCHING_EPISODES,INSERTING_DATABASE,FINISHING,FINISHED
  */
 @Serializable
 enum class AniBangumiFullSyncState(val value: kotlin.String) {
 
-    @SerialName(value = "STARTED")
-    STARTED("STARTED"),
+    @SerialName(value = "PREPARING")
+    PREPARING("PREPARING"),
 
-    @SerialName(value = "FETCHED")
-    FETCHED("FETCHED"),
+    @SerialName(value = "FETCHING_SUBJECTS")
+    FETCHING_SUBJECTS("FETCHING_SUBJECTS"),
 
-    @SerialName(value = "SAVED")
-    SAVED("SAVED"),
+    @SerialName(value = "FETCHING_EPISODES")
+    FETCHING_EPISODES("FETCHING_EPISODES"),
 
-    @SerialName(value = "SYNCING_TIMELINE")
-    SYNCING_TIMELINE("SYNCING_TIMELINE"),
+    @SerialName(value = "INSERTING_DATABASE")
+    INSERTING_DATABASE("INSERTING_DATABASE"),
+
+    @SerialName(value = "FINISHING")
+    FINISHING("FINISHING"),
 
     @SerialName(value = "FINISHED")
-    FINISHED("FINISHED"),
-    
-    @SerialName(value = "UNKNOWN")
-    UNKNOWN("UNKNOWN");
+    FINISHED("FINISHED");
 
     /**
      * Override [toString()] to avoid using the enum variable name as the value, and instead use

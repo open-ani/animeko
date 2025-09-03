@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import me.him188.ani.app.navigation.LocalNavigator
@@ -186,7 +187,7 @@ private fun MainScreenContent(
                                             0,
                                         )
 
-                                    MainScreenPage.Collection -> 
+                                    MainScreenPage.Collection ->
                                         userCollectionsViewModel.state.scrollToTop()
 
                                     MainScreenPage.CacheManagement ->
@@ -239,6 +240,7 @@ private fun MainScreenContent(
                         CollectionPage(
                             state = userCollectionsViewModel.state,
                             selfInfo = selfInfo,
+                            fullSyncState = userCollectionsViewModel.fullSyncState.collectAsStateWithLifecycle().value,
                             onClickSearch = onNavigateToSearch,
                             onClickLogin = { showAccountSettingsPopup = true },
                             onClickSettings = { navigator.navigateSettings() },

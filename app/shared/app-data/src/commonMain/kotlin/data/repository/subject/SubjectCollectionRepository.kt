@@ -41,6 +41,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Instant
+import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.NsfwMode
@@ -187,6 +188,8 @@ sealed class SubjectCollectionRepository(
     abstract suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>>
 
     abstract suspend fun performBangumiFullSync()
+
+    abstract suspend fun getBangumiFullSyncState(): BangumiSyncState?
 }
 
 class SubjectCollectionRepositoryImpl(
@@ -256,8 +259,16 @@ class SubjectCollectionRepositoryImpl(
                             it.toEntity1(subjectId, lastFetched = lastFetched)
                         }
                         subjectCollectionDao.upsert(subjectEntity)
-                        episodeCollectionDao.deleteAllBySubjectId(subjectId) // 删除旧的剧集缓存, 因为服务器上可能会变少
+
+                        // 更新剧集列表
+                        val oldIds = episodeCollectionDao.listIdBySubjectId(subjectId).first().toMutableList()
                         episodeCollectionDao.upsert(episodeEntities)
+                        for (newEntity in episodeEntities) {
+                            oldIds.remove(newEntity.episodeId)
+                        }
+                        if (oldIds.isNotEmpty()) { // 删除本地存的多余的剧集 (通常没有)
+                            episodeCollectionDao.deleteAllByEpisodeIds(subjectId, oldIds)
+                        }
                     }
                     // TODO: 2025/5/24 handle subject not found 
                 }
@@ -566,6 +577,16 @@ class SubjectCollectionRepositoryImpl(
         try {
             withContext(defaultDispatcher) {
                 subjectService.performBangumiFullSync()
+            }
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+    }
+
+    override suspend fun getBangumiFullSyncState(): BangumiSyncState? {
+        return try {
+            withContext(defaultDispatcher) {
+                subjectService.getBangumiFullSyncState()
             }
         } catch (e: Exception) {
             throw RepositoryException.wrapOrThrowCancellation(e)

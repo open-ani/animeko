@@ -255,17 +255,18 @@ open class SubjectsAniApi : ApiClient {
         ).wrap()
     }
 
+
     /**
      * 获取不同类型的收藏条目数量
      * 获取不同类型的收藏条目数量
-     * @return AniCollectionStats
+     * @return AniSubjectCollectionCountStats
      */
     @Suppress("UNCHECKED_CAST")
     open suspend fun getSubjectCollectionStats(): HttpResponse<AniSubjectCollectionCountStats> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody =
+        val localVariableBody = 
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()

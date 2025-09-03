@@ -17,13 +17,9 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.shareIn
-import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -53,7 +49,6 @@ import me.him188.ani.utils.logging.thisLogger
 import me.him188.ani.utils.logging.warn
 import org.koin.core.Koin
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.properties.Delegates
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
@@ -121,22 +116,12 @@ class SessionManager(
         override val stateFlow =
             MutableSharedFlow<SessionState>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
-        private var lastLogon: Boolean by Delegates.notNull()
+        override val eventFlow =
+            MutableSharedFlow<SessionEvent>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
-        override val eventFlow = stateFlow
-            .onStart { lastLogon = stateFlow.first() is SessionState.Valid }
-            .transformLatest { state ->
-                if (state is SessionState.Valid && !lastLogon) {
-                    emit(SessionEvent.NewLogin)
-                } else if (state is SessionState.Invalid && lastLogon) {
-                    if (state.reason == InvalidSessionReason.NO_TOKEN) {
-                        emit(SessionEvent.Logout)
-                    }
-                }
-                lastLogon = !(state is SessionState.Invalid && state.reason == InvalidSessionReason.NO_TOKEN)
-            }
-            // We share this flow to avoid `lastLogon` to be accessed from multiple collectors.
-            .shareIn(coroutineScope, SharingStarted.WhileSubscribed())
+        suspend fun emitEvent(event: SessionEvent) {
+            eventFlow.emit(event)
+        }
     }
 
     val stateProvider get() = _stateProvider
@@ -259,9 +244,13 @@ class SessionManager(
         session: AccessTokenSession,
         // Ani 登录保证每次登录都返回新的 refreshToken, 所以我们要求都更新
         refreshToken: String,
+        isNewLogin: Boolean = true,
     ) {
         tokenRepository.setSession(session)
         tokenRepository.setRefreshToken(refreshToken)
+        if (isNewLogin) {
+            _stateProvider.emitEvent(SessionEvent.NewLogin)
+        }
     }
 
 
@@ -295,6 +284,7 @@ class SessionManager(
                     tokens = result.tokens,
                 ),
                 refreshToken = result.refreshToken,
+                isNewLogin = false,
             )
             // 注意, 我们这里不修改公开的 state. background task 会帮我们修改.
         } catch (e: CancellationException) {

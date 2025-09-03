@@ -74,7 +74,7 @@ open class ApiClient(
     }
 
     companion object {
-        const val BASE_URL: String = "https://danmaku-global.myani.org"
+        const val BASE_URL: String = "https://api.animeko.org"
         val JSON_DEFAULT: Json = Json {
           ignoreUnknownKeys = true
           prettyPrint = true
