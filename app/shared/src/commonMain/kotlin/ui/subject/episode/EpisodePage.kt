@@ -153,6 +153,7 @@ import me.him188.ani.danmaku.api.DanmakuLocation
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.datasources.api.source.MediaFetchRequest
+import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
 import org.openani.mediamp.features.AudioLevelController
@@ -445,19 +446,24 @@ private fun EpisodeScreenTabletVeryWide(
                     .background(MaterialTheme.colorScheme.background), // scrollable background
             ) {
 
-                val isCurrentInDarkTheme: Boolean = when (LocalThemeSettings.current.darkMode) {
-                    DarkMode.LIGHT -> false
+                
+                val themeSettings = LocalThemeSettings.current
+                val isCurrentInDarkTheme: Boolean = when (themeSettings.darkMode) {
                     DarkMode.DARK -> true
+                    DarkMode.LIGHT -> themeSettings.alwaysDarkInEpisodePage
                     DarkMode.AUTO -> isSystemInDarkTheme()
                 }
 
                 // 填充 insets 背景颜色
-                // 如果当前不是 dark theme，则加一个渐变色避免看不清状态栏
+                // 如果当前不是 dark theme 并且 是安卓平台，则加一个渐变色避免看不清状态栏
+                // ios 宽屏模式下会自动隐藏状态栏, 无需处理
                 Spacer(
                     Modifier
                         .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                        .ifThen(!isCurrentInDarkTheme) { background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.scrim, Color.Transparent))) }
+                        .ifThen(!isCurrentInDarkTheme && LocalPlatform.current.isAndroid()) { 
+                            background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.scrim, Color.Transparent)))
+                        }
                         .windowInsetsPadding(
                             // Consider #1767
                             WindowInsets.safeContent // Note: this does not include desktop title bar.
