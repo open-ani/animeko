@@ -238,7 +238,7 @@ fun PaginatedEpisodeList(
 
                 items(
                     items = group.episodes,
-                    key = { "${groupIndex}_${it.episodeId}" }
+                    key = { "PaginatedEpisodeList_${groupIndex}_${it.episodeId}" }
                 ) { episode ->
                     EpisodeListItem(
                         episode = episode,
