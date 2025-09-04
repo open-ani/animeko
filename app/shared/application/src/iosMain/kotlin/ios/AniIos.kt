@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ComposeUIViewController
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -93,9 +92,6 @@ import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.avkit.AVKitMediampPlayerFactory
-import platform.AVFAudio.AVAudioSession
-import platform.AVFAudio.AVAudioSessionCategoryPlayback
-import platform.AVFAudio.setActive
 import platform.UIKit.NSLayoutConstraint
 import platform.UIKit.UIViewController
 import platform.UIKit.addChildViewController
@@ -275,11 +271,7 @@ fun getIosModules(
             mediaResolver = get<MediaResolver>(),
         )
     }
-    @OptIn(ExperimentalForeignApi::class)
     single<MediampPlayerFactory<*>> {
-        val audioSession = AVAudioSession.sharedInstance()
-        audioSession.setCategory(AVAudioSessionCategoryPlayback, null)
-        audioSession.setActive(true, null)
         AVKitMediampPlayerFactory()
     }
     single<MediaSaveDirProvider> {

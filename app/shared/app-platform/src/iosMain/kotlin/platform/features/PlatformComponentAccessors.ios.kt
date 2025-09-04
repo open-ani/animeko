@@ -15,6 +15,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.tools.MonoTasker
+import platform.AVFAudio.AVAudioSession
+import platform.AVFAudio.AVAudioSessionCategoryPlayback
+import platform.AVFAudio.setActive
 import platform.CoreGraphics.CGRectMake
 import platform.Foundation.NSNotificationCenter
 import platform.MediaPlayer.MPVolumeView
@@ -46,12 +49,12 @@ private class IosBrightnessManager : BrightnessManager {
         NSNotificationCenter.defaultCenter.addObserverForName(
             name = UIScreenBrightnessDidChangeNotification,
             `object` = null,
-            queue = null
+            queue = null,
         ) { _ ->
             brightness = UIScreen.mainScreen.brightness.toFloat()
         }
     }
-    
+
     override fun getBrightness(): Float = brightness
 
     override fun setBrightness(level: Float) =
@@ -61,6 +64,7 @@ private class IosBrightnessManager : BrightnessManager {
         }
 }
 
+@OptIn(ExperimentalForeignApi::class)
 internal class IosAudioManager : AudioManager {
 
     @OptIn(ExperimentalForeignApi::class)
@@ -71,6 +75,13 @@ internal class IosAudioManager : AudioManager {
     val slider by lazy {
         // 在 MPVolumeView 中找到 UISlider 组件
         volumeView.subviews.first { it is UISlider } as UISlider
+    }
+
+    init {
+        AVAudioSession.sharedInstance().run {
+            setCategory(AVAudioSessionCategoryPlayback, null)
+            setActive(true, null)
+        }
     }
 
     override fun getVolume(streamType: StreamType): Float {
