@@ -484,7 +484,7 @@
     <string name="settings_network_proxy_service_collection">收藏数据服务</string>
     <string name="settings_network_proxy_service_comments">评论服务</string>
     <string name="settings_network_proxy_service_connected_via">使用 %1$s 连接成功</string>
-    <string name="settings_network_proxy_service_failed_via">使用 %1$s 连接失敗</string>
+    <string name="settings_network_proxy_service_failed_via">使用 %1$s 连接失败</string>
 
     <!-- TorrentEngineGroup -->
     <string name="settings_media_torrent_title">BT 设置</string>
