@@ -24,11 +24,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.ExpandLess
@@ -40,6 +40,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,12 +54,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
+import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
-import me.him188.ani.app.ui.subject.episode.details.components.EpisodeCard
 import me.him188.ani.app.ui.subject.episode.details.components.EpisodeListItem
 import me.him188.ani.app.ui.subject.episode.details.components.EpisodeSelectionBottomSheet
 import me.him188.ani.app.ui.subject.episode.details.components.PaginatedEpisodeList
@@ -130,12 +134,7 @@ private fun DesktopEpisodeListSection(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                     ),
-                    shape = RoundedCornerShape(
-                        topStart = 12.dp,
-                        topEnd = 12.dp,
-                        bottomStart = 12.dp,
-                        bottomEnd = 12.dp,
-                    ),
+                    shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth().offset(y = (-1).dp),
                 ) {
                     Column(modifier = Modifier.padding(top = 64.dp)) {
@@ -337,5 +336,81 @@ private fun MobileEpisodeListSection(
             episodeCarouselState = episodeCarouselState,
             onDismiss = { showBottomSheet = false },
         )
+    }
+}
+
+/**
+ * 剧集卡片组件，用于移动端横向滚动列表中显示单个剧集。
+ *
+ * 显示为紧凑的卡片式布局，包含剧集编号、标题和状态指示器。
+ * 根据剧集的播放和观看状态显示不同的视觉效果。
+ */
+@Composable
+private fun EpisodeCard(
+    episode: EpisodeCollectionInfo,
+    isPlaying: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val isWatched = episode.collectionType.isDoneOrDropped()
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = if (isPlaying) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else if (isWatched) {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            } else {
+                MaterialTheme.colorScheme.surfaceContainer
+            }
+        ),
+        modifier = modifier
+            .width(120.dp)
+            .height(80.dp)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
+    ) {
+        Box(
+            modifier = Modifier.padding(12.dp).fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.align(Alignment.CenterStart)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (isPlaying) {
+                        PlayingIcon()
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    Text(
+                        episode.episodeInfo.sort.toString(),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (isPlaying) {
+                            MaterialTheme.colorScheme.primary
+                        } else if (isWatched) {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        } else {
+                            LocalContentColor.current
+                        }
+                    )
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    episode.episodeInfo.displayName,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = if (isWatched) {
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            }
+        }
     }
 }
