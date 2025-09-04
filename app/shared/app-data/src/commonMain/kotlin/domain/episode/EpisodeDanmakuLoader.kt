@@ -232,26 +232,24 @@ class EpisodeDanmakuLoader(
      * 获取所有弹幕数据的流，用于弹幕列表显示
      */
     val allDanmakuFlow: Flow<List<DanmakuInfo>> = combine(
-        danmakuLoader.fetchResultFlow.onStart { emit(null) },
-        configFlow
-    ) { results, configs ->
-        val allDanmaku = results?.flatMap { result ->
-            val config = configs[result.matchInfo.serviceId] ?: DanmakuOriginConfig.Default
-            if (config.enabled) {
+        fetchResults,
+        danmakuLoader.fetchResultFlow.onStart { emit(null) }
+    ) { fetchResultsWithConfig, rawResults ->
+        rawResults?.flatMap { result ->
+            val configResult = fetchResultsWithConfig.find { it.serviceId == result.matchInfo.serviceId }
+            if (configResult?.config?.enabled == true) {
                 result.list.mapNotNull { danmaku ->
                     val newText = sanitizeDanmakuText(danmaku.text) ?: return@mapNotNull null
                     danmaku.copy(
                         serviceId = result.matchInfo.serviceId,
                         content = danmaku.content.copy(
-                            playTimeMillis = danmaku.playTimeMillis + config.shiftMillis,
+                            playTimeMillis = danmaku.playTimeMillis + configResult.config.shiftMillis,
                             text = newText,
                         ),
                     )
                 }
             } else emptyList()
         } ?: emptyList()
-        
-        allDanmaku
     }.shareIn(flowScope, started = SharingStarted.WhileSubscribed(5000), replay = 1)
 
     private companion object {

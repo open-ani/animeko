@@ -69,11 +69,12 @@ fun EpisodeGrid(
     }
     
     LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
+        columns = GridCells.Adaptive(minSize = 128.dp),
         state = gridState,
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(16.dp),
+        userScrollEnabled = true,
         modifier = modifier.heightIn(max = 500.dp)
     ) {
         items(
@@ -120,7 +121,7 @@ fun EpisodeGrid(
  * - **文字截断**：标题过长时显示省略号
  */
 @Composable
-fun EpisodeGridItem(
+private fun EpisodeGridItem(
     episode: EpisodeCollectionInfo,
     isPlaying: Boolean,
     onClick: () -> Unit,
@@ -134,7 +135,7 @@ fun EpisodeGridItem(
             containerColor = if (isPlaying) {
                 MaterialTheme.colorScheme.primaryContainer
             } else if (isWatched) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
             } else {
                 MaterialTheme.colorScheme.surfaceContainer
             }
@@ -178,7 +179,7 @@ fun EpisodeGridItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 color = if (isWatched) {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 }

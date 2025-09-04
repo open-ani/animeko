@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -34,6 +35,7 @@ import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -42,7 +44,11 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,8 +69,8 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
+import me.him188.ani.app.ui.subject.episode.details.components.EpisodeGrid
 import me.him188.ani.app.ui.subject.episode.details.components.EpisodeListItem
-import me.him188.ani.app.ui.subject.episode.details.components.EpisodeSelectionBottomSheet
 import me.him188.ani.app.ui.subject.episode.details.components.PaginatedEpisodeList
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
@@ -332,10 +338,32 @@ private fun MobileEpisodeListSection(
     }
 
     if (showBottomSheet) {
-        EpisodeSelectionBottomSheet(
-            episodeCarouselState = episodeCarouselState,
-            onDismiss = { showBottomSheet = false },
-        )
+        ModalBottomSheet(
+            onDismissRequest = { showBottomSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            contentWindowInsets = { BottomSheetDefaults.windowInsets },
+            dragHandle = null,
+            modifier = modifier
+        ) {
+            Column {
+                TopAppBar(
+                    title = { Text("选择剧集") },
+                    windowInsets = WindowInsets(0),
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = BottomSheetDefaults.ContainerColor
+                    )
+                )
+
+                EpisodeGrid(
+                    episodeCarouselState = episodeCarouselState,
+                    onEpisodeClick = { episode ->
+                        episodeCarouselState.onSelect(episode)
+                        showBottomSheet = false
+                    },
+                    isVisible = true
+                )
+            }
+        }
     }
 }
 
@@ -360,7 +388,7 @@ private fun EpisodeCard(
             containerColor = if (isPlaying) {
                 MaterialTheme.colorScheme.primaryContainer
             } else if (isWatched) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
             } else {
                 MaterialTheme.colorScheme.surfaceContainer
             }
