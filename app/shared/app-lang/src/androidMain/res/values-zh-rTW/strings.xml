@@ -441,7 +441,7 @@
     <string name="settings_network_proxy_title">全域代理設定</string>
     <string name="settings_network_proxy_description">應用於所有資料源以及 Bangumi</string>
     <string name="settings_network_proxy_type">代理類型</string>
-    <string name="settings_network_proxy_mode_via">透過 %1$s</string>
+    <string name="settings_network_proxy_mode_via">正在透過 %1$s</string>
     <string name="settings_network_proxy_disabled">停用</string>
     <string name="settings_network_proxy_disabled_hint">目前未使用代理</string>
     <string name="settings_network_proxy_system">系統代理</string>
