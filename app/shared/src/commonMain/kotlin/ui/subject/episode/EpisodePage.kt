@@ -511,7 +511,7 @@ private fun EpisodeScreenTabletVeryWide(
                                     onRetryLoad = {
                                         page.loadError?.let { vm.retryLoad(it) }
                                     },
-                                    danmakuListFlow = vm.allDanmakuListFlow,
+                                    danmakuListState = vm.danmakuListState.collectAsStateWithLifecycle().value,
                                 )
                             }
                         }
@@ -653,7 +653,7 @@ private fun EpisodeScreenContentPhone(
                         page.loadError?.let { vm.retryLoad(it) }
                     },
                     modifier = Modifier.fillMaxSize(),
-                    danmakuListFlow = vm.allDanmakuListFlow,
+                    danmakuListState = vm.danmakuListState.collectAsStateWithLifecycle().value,
                 )
             }
         },

@@ -122,6 +122,8 @@ import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
+import me.him188.ani.app.ui.subject.episode.details.DanmakuListState
+import me.him188.ani.app.ui.subject.episode.details.DanmakuListStateProducer
 import me.him188.ani.app.ui.subject.episode.details.EpisodeCarouselState
 import me.him188.ani.app.ui.subject.episode.details.EpisodeDetailsState
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuStatistics
@@ -564,6 +566,36 @@ class EpisodeViewModel(
         replay = 1,
     )
 
+    private val selectedDanmakuSources = MutableStateFlow<Set<DanmakuServiceId>>(emptySet())
+    
+    init {
+        launchInBackground {
+            danmakuLoader.fetchResults.collect { fetchResults ->
+                val availableSources = fetchResults.map { it.serviceId }.toSet()
+                if (availableSources.isNotEmpty() && selectedDanmakuSources.value.isEmpty()) {
+                    selectedDanmakuSources.value = availableSources
+                    // Enable all sources by default
+                    availableSources.forEach { serviceId ->
+                        setDanmakuSourceEnabled(serviceId, true)
+                    }
+                }
+            }
+        }
+    }
+
+    val danmakuListStateProducer = DanmakuListStateProducer(
+        danmakuFlow = allDanmakuListFlow,
+        fetchResultsFlow = danmakuLoader.fetchResults,
+        selectedSourcesFlow = selectedDanmakuSources,
+    )
+
+    val danmakuListState = danmakuListStateProducer.stateFlow
+        .stateIn(
+            backgroundScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = DanmakuListState.Loading,
+        )
+
 
     private val commentStateRestarter = FlowRestarter()
 
@@ -868,6 +900,11 @@ class EpisodeViewModel(
 
     fun setDanmakuSourceEnabled(serviceId: DanmakuServiceId, enabled: Boolean) {
         danmakuLoader.setEnabled(serviceId, enabled)
+        selectedDanmakuSources.value = if (enabled) {
+            selectedDanmakuSources.value + serviceId
+        } else {
+            selectedDanmakuSources.value - serviceId
+        }
     }
 
     fun startMatchingDanmaku(id: DanmakuProviderId) {
