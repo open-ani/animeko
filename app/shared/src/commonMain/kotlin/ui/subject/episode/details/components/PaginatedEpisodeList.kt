@@ -1,5 +1,6 @@
 package me.him188.ani.app.ui.subject.episode.details.components
 
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,9 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -29,9 +33,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
+import me.him188.ani.app.data.models.episode.displayName
+import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.app.ui.subject.episode.details.EpisodeCarouselState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
@@ -250,6 +258,61 @@ fun PaginatedEpisodeList(
         }
     }
 }
+
+/**
+ * 剧集列表项组件，用于桌面端垂直列表中的单个剧集显示。
+ *
+ * 适用于桌面端的展开列表和分页列表中，提供清晰的信息层次和交互反馈。
+ */
+@Composable
+fun EpisodeListItem(
+    episode: EpisodeCollectionInfo,
+    isPlaying: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val isWatched = episode.collectionType.isDoneOrDropped()
+
+    ListItem(
+        colors = ListItemDefaults.colors(
+            containerColor = if (isPlaying) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else if (isWatched) {
+                MaterialTheme.colorScheme.surfaceContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainer
+            }
+        ),
+        headlineContent = {
+            Text(
+                "${episode.episodeInfo.sort}  ${episode.episodeInfo.displayName}",
+                color = if (isPlaying) {
+                    MaterialTheme.colorScheme.primary
+                } else if (isWatched) {
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                } else {
+                    LocalContentColor.current
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        trailingContent = {
+            if (isPlaying) {
+                PlayingIcon()
+            }
+        },
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.small)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
+    )
+}
+
 
 /**
  * 剧集分组数据类，用于将大量剧集按组组织。
