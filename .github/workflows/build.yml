@@ -937,89 +937,89 @@ jobs:
       name: 'Clean and download dependencies (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
-      run: './gradlew --scan "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew --scan "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-11'
       name: 'Clean and download dependencies (Attempt #2)'
       continue-on-error: false
       timeout-minutes: 180
-      run: './gradlew --scan "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew --scan "--stacktrace" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
       if: '${{ steps.step-10.outcome == ''failure'' }}'
     - id: 'step-12'
       name: 'Update dev version name (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
-      run: './gradlew updateDevVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew updateDevVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-13'
       name: 'Update dev version name (Attempt #2)'
       continue-on-error: false
       timeout-minutes: 180
-      run: './gradlew updateDevVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew updateDevVersionNameFromGit "--no-configuration-cache" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
       if: '${{ steps.step-12.outcome == ''failure'' }}'
     - id: 'step-14'
       name: 'Compile Kotlin (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
-      run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-15'
       name: 'Compile Kotlin (Attempt #2)'
       continue-on-error: false
       timeout-minutes: 180
-      run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew compileKotlin compileCommonMainKotlinMetadata compileJvmMainKotlinMetadata compileKotlinDesktop compileKotlinMetadata "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
       if: '${{ steps.step-14.outcome == ''failure'' }}'
     - id: 'step-16'
       name: 'Compile Kotlin Android (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
-      run: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-17'
       name: 'Compile Kotlin Android (Attempt #2)'
       continue-on-error: false
       timeout-minutes: 180
-      run: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew compileDebugKotlinAndroid compileReleaseKotlinAndroid "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
       if: '${{ steps.step-16.outcome == ''failure'' }}'
     - id: 'step-18'
       name: 'generateDummyFramework (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
-      run: './gradlew :app:shared:application:generateDummyFramework "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew :app:shared:application:generateDummyFramework "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-19'
       name: 'generateDummyFramework (Attempt #2)'
       continue-on-error: false
       timeout-minutes: 180
-      run: './gradlew :app:shared:application:generateDummyFramework "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew :app:shared:application:generateDummyFramework "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
       if: '${{ steps.step-18.outcome == ''failure'' }}'
     - id: 'step-20'
       name: 'Pod Install (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
-      run: './gradlew :app:ios:podInstall "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew :app:ios:podInstall "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-21'
       name: 'Pod Install (Attempt #2)'
       continue-on-error: false
       timeout-minutes: 180
-      run: './gradlew :app:ios:podInstall "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew :app:ios:podInstall "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
       if: '${{ steps.step-20.outcome == ''failure'' }}'
     - id: 'step-22'
       name: 'Patch ios Plist (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
-      run: './gradlew :app:ios:patchInfoPlist "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew :app:ios:patchInfoPlist "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-23'
       name: 'Patch ios Plist (Attempt #2)'
       continue-on-error: false
       timeout-minutes: 180
-      run: './gradlew :app:ios:patchInfoPlist "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew :app:ios:patchInfoPlist "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
       if: '${{ steps.step-22.outcome == ''failure'' }}'
     - id: 'step-24'
       name: 'Build iOS Debug IPA (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
-      run: './gradlew :app:ios:buildDebugIpa "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew :app:ios:buildDebugIpa "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-25'
       name: 'Build iOS Debug IPA (Attempt #2)'
       continue-on-error: false
       timeout-minutes: 180
-      run: './gradlew :app:ios:buildDebugIpa "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew :app:ios:buildDebugIpa "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
       if: '${{ steps.step-24.outcome == ''failure'' }}'
     - id: 'step-26'
       name: 'Upload iOS Debug IPA (Attempt #1)'
@@ -1051,12 +1051,12 @@ jobs:
       name: 'Package Desktop (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
-      run: './gradlew packageReleaseDistributionForCurrentOS "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew packageReleaseDistributionForCurrentOS "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-30'
       name: 'Package Desktop (Attempt #2)'
       continue-on-error: false
       timeout-minutes: 180
-      run: './gradlew packageReleaseDistributionForCurrentOS "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew packageReleaseDistributionForCurrentOS "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
       if: '${{ steps.step-29.outcome == ''failure'' }}'
     - id: 'step-31'
       name: 'Upload compose logs'
@@ -1098,35 +1098,35 @@ jobs:
       name: 'Check (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
-      run: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-36'
       name: 'Check (Attempt #2)'
       continue-on-error: true
       timeout-minutes: 180
-      run: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
       if: '${{ steps.step-35.outcome == ''failure'' }}'
     - id: 'step-37'
       name: 'Check (Attempt #3)'
       continue-on-error: false
       timeout-minutes: 180
-      run: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew check "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
       if: '${{ steps.step-36.outcome == ''failure'' }}'
     - id: 'step-38'
       name: 'Build Android Instrumented Tests (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
-      run: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-39'
       name: 'Build Android Instrumented Tests (Attempt #2)'
       continue-on-error: true
       timeout-minutes: 180
-      run: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
       if: '${{ steps.step-38.outcome == ''failure'' }}'
     - id: 'step-40'
       name: 'Build Android Instrumented Tests (Attempt #3)'
       continue-on-error: false
       timeout-minutes: 180
-      run: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+      run: './gradlew assembleDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
       if: '${{ steps.step-39.outcome == ''failure'' }}'
     - id: 'step-41'
       name: 'Android Instrumented Test (api=30, arch=arm64-v8a)'
@@ -1135,7 +1135,7 @@ jobs:
         api-level: '30'
         arch: 'arm64-v8a'
         emulator-boot-timeout: '1800'
-        script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+        script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-42'
       name: 'Android Instrumented Test (api=35, arch=arm64-v8a)'
       uses: 'reactivecircus/android-emulator-runner@v2.33.0'
@@ -1143,7 +1143,7 @@ jobs:
         api-level: '35'
         arch: 'arm64-v8a'
         emulator-boot-timeout: '1800'
-        script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx16g" "-Dkotlin.daemon.jvm.options=-Xmx16g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+        script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx12g" "-Dkotlin.daemon.jvm.options=-Xmx12g" "--parallel" "-Pani.android.abis=arm64-v8a"'
     - id: 'step-43'
       name: 'Cleanup temp files'
       continue-on-error: true

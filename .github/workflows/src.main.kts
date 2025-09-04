@@ -433,9 +433,8 @@ run {
         ),
         buildAllAndroidAbis = false,
         uploadIpa = true,
-        // Kotlin ios linking needs A LOT OF memory. 12GB + 16GB is proven to work fine. 8GB + 16GB does not work.
         gradleHeap = "8g",
-        kotlinCompilerHeap = "16g",
+        kotlinCompilerHeap = "12g",
         gradleParallel = true,
     )
 
