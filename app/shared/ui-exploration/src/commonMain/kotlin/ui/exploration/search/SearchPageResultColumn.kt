@@ -45,7 +45,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -113,15 +112,6 @@ internal fun SearchResultColumn(
 
     val itemsState = rememberUpdatedState(items)
 
-    val visibleItems by remember(items.itemSnapshotList) {
-        derivedStateOf {
-            items.itemSnapshotList.items.mapIndexedNotNull { index, item ->
-                if (item != null && !item.hide) index to item else null
-            }
-        }
-    }
-
-    
     SearchResultLazyVerticalGrid(
         items,
         error = {
@@ -160,11 +150,11 @@ internal fun SearchResultColumn(
         }
 
         items(
-            count = visibleItems.size,
-            key = { visibleItems[it].second.subjectId },
+            count = items.itemCount,
+            key = items.itemKey { it.subjectId },
             contentType = items.itemContentType { 1 },
         ) { index ->
-            val (originalIndex, info) = visibleItems[index]
+            val info = items[index]
 
             SharedTransitionLayout {
                 AnimatedContent(
@@ -186,7 +176,7 @@ internal fun SearchResultColumn(
                                     info?.title,
                                     info?.imageUrl,
                                     isPlaceholder = info == null,
-                                    onClick = { onSelect(originalIndex) },
+                                    onClick = { onSelect(index) },
                                     Modifier
                                         .ifNotNullThen(info) {
                                             sharedElement(
@@ -221,9 +211,9 @@ internal fun SearchResultColumn(
 
                                     SearchResultItem(
                                         info = info,
-                                        selected = highlightSelected && originalIndex == selectedItemIndex(),
+                                        selected = highlightSelected && index == selectedItemIndex(),
                                         shape = layoutParams.previewItem.shape,
-                                        onClick = { onSelect(originalIndex) },
+                                        onClick = { onSelect(index) },
                                         onPlay = onPlay,
                                         Modifier
                                             .animateItem(

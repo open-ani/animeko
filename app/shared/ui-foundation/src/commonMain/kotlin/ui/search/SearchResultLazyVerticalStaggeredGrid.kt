@@ -105,6 +105,20 @@ fun <T : Any> SearchResultLazyVerticalGrid(
                         }
                     }
                 }
+                
+                // 显示下一页加载指示器，否则加载速度慢用户不知道是否在更新
+                if (items.loadState.append is LoadState.Loading) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        ListItem(
+                            headlineContent = {
+                                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    LoadingIndicator()
+                                }
+                            },
+                            colors = listItemColors,
+                        )
+                    }
+                }
             }
         }
     }
