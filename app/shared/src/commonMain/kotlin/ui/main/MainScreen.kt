@@ -71,6 +71,8 @@ import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings
 import me.him188.ani.app.ui.settings.account.ProfilePopup
 import me.him188.ani.app.ui.settings.account.ProfileViewModel
 import me.him188.ani.app.ui.subject.collection.CollectionPage
@@ -78,6 +80,7 @@ import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
 import me.him188.ani.app.ui.update.UpdateNotifier
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.utils.platform.isAndroid
+import org.jetbrains.compose.resources.stringResource
 
 
 @Composable
@@ -168,7 +171,7 @@ private fun MainScreenContent(
                         onClick = { onNavigateToSettings(null) },
                         icon = { Icon(Icons.Rounded.Settings, null) },
                         enabled = true,
-                        label = { Text("设置") },
+                        label = { Text(stringResource(Lang.settings)) },
                         alwaysShowLabel = true,
                         colors = itemColors,
                     )

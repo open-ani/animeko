@@ -55,13 +55,32 @@ import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_network_proxy_address
 import me.him188.ani.app.ui.lang.settings_network_proxy_address_example
+import me.him188.ani.app.ui.lang.settings_network_proxy_custom
 import me.him188.ani.app.ui.lang.settings_network_proxy_detecting
 import me.him188.ani.app.ui.lang.settings_network_proxy_detection_result
+import me.him188.ani.app.ui.lang.settings_network_proxy_disabled
+import me.him188.ani.app.ui.lang.settings_network_proxy_disabled_hint
+import me.him188.ani.app.ui.lang.settings_network_proxy_mode_via
 import me.him188.ani.app.ui.lang.settings_network_proxy_none
 import me.him188.ani.app.ui.lang.settings_network_proxy_not_detected
 import me.him188.ani.app.ui.lang.settings_network_proxy_optional
 import me.him188.ani.app.ui.lang.settings_network_proxy_password
+import me.him188.ani.app.ui.lang.settings_network_proxy_retry
+import me.him188.ani.app.ui.lang.settings_network_proxy_save_and_test
+import me.him188.ani.app.ui.lang.settings_network_proxy_service_collection
+import me.him188.ani.app.ui.lang.settings_network_proxy_service_comments
+import me.him188.ani.app.ui.lang.settings_network_proxy_service_connected_via
+import me.him188.ani.app.ui.lang.settings_network_proxy_service_danmaku
+import me.him188.ani.app.ui.lang.settings_network_proxy_service_failed_via
+import me.him188.ani.app.ui.lang.settings_network_proxy_state_fail_np
+import me.him188.ani.app.ui.lang.settings_network_proxy_state_fail_p
+import me.him188.ani.app.ui.lang.settings_network_proxy_state_init
+import me.him188.ani.app.ui.lang.settings_network_proxy_state_running
+import me.him188.ani.app.ui.lang.settings_network_proxy_state_success
+import me.him188.ani.app.ui.lang.settings_network_proxy_system
+import me.him188.ani.app.ui.lang.settings_network_proxy_title
 import me.him188.ani.app.ui.lang.settings_network_proxy_username
+import me.him188.ani.app.ui.lang.ui_btn_edit
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextFieldItem
@@ -137,11 +156,11 @@ fun SettingsScope.ConfigureProxyGroup(
 @Composable
 private fun renderOverallTestText(state: ProxyOverallTestState): String {
     return when (state) {
-        ProxyOverallTestState.INIT -> "正在检测连接，请稍后"
-        ProxyOverallTestState.RUNNING -> "正在检测连接，请稍后"
-        ProxyOverallTestState.FAILED_NOT_PROXIED -> "部分服务连接失败，请考虑启用代理"
-        ProxyOverallTestState.FAILED_PROXIED -> "部分服务连接失败，请更换代理模式或代理地址"
-        ProxyOverallTestState.SUCCESS -> "所有服务连接正常"
+        ProxyOverallTestState.INIT -> stringResource(Lang.settings_network_proxy_state_init)
+        ProxyOverallTestState.RUNNING -> stringResource(Lang.settings_network_proxy_state_running)
+        ProxyOverallTestState.FAILED_NOT_PROXIED -> stringResource(Lang.settings_network_proxy_state_fail_np)
+        ProxyOverallTestState.FAILED_PROXIED -> stringResource(Lang.settings_network_proxy_state_fail_p)
+        ProxyOverallTestState.SUCCESS -> stringResource(Lang.settings_network_proxy_state_success)
     }
 }
 
@@ -163,7 +182,7 @@ private fun SettingsScope.ProxyTestStatusGroup(
         actions = if (state.hasError) {
             {
                 TextButton(onRequestReTest) {
-                    Text("重新测试")
+                    Text(stringResource(Lang.settings_network_proxy_retry))
                 }
             }
         } else null,
@@ -185,9 +204,9 @@ private fun renderTestCaseName(case: ProxyTestCase): String {
 @Composable
 private fun renderTestCaseDescription(case: ProxyTestCase): String {
     return when (case.name) {
-        ProxyTestCaseEnums.ANI -> "弹幕服务"
-        ProxyTestCaseEnums.BANGUMI -> "收藏数据服务"
-        ProxyTestCaseEnums.BANGUMI_NEXT -> "评论服务"
+        ProxyTestCaseEnums.ANI -> stringResource(Lang.settings_network_proxy_service_danmaku)
+        ProxyTestCaseEnums.BANGUMI -> stringResource(Lang.settings_network_proxy_service_collection)
+        ProxyTestCaseEnums.BANGUMI_NEXT -> stringResource(Lang.settings_network_proxy_service_comments)
     }
 }
 
@@ -223,12 +242,18 @@ private fun ProxyTestStatusIcon(
 
             ProxyTestCaseState.SUCCESS ->
                 ProvideContentColor(MaterialTheme.colorScheme.onSurfaceVariant) {
-                    Icon(Icons.Default.Check, "使用 ${state.name} 连接成功")
+                    Icon(
+                        Icons.Default.Check,
+                        stringResource(Lang.settings_network_proxy_service_connected_via, state.name),
+                    )
                 }
 
             ProxyTestCaseState.FAILED ->
                 ProvideContentColor(MaterialTheme.colorScheme.error) {
-                    Icon(Icons.Default.Close, "使用 ${state.name} 连接失败")
+                    Icon(
+                        Icons.Default.Close,
+                        stringResource(Lang.settings_network_proxy_service_failed_via, state.name),
+                    )
                 }
         }
     }
@@ -237,9 +262,9 @@ private fun ProxyTestStatusIcon(
 @Composable
 private fun renderProxyConfigModeName(mode: ProxyUIMode): String {
     return when (mode) {
-        ProxyUIMode.DISABLED -> "不使用代理"
-        ProxyUIMode.SYSTEM -> "系统代理"
-        ProxyUIMode.CUSTOM -> "自定义代理"
+        ProxyUIMode.DISABLED -> stringResource(Lang.settings_network_proxy_disabled)
+        ProxyUIMode.SYSTEM -> stringResource(Lang.settings_network_proxy_system)
+        ProxyUIMode.CUSTOM -> stringResource(Lang.settings_network_proxy_custom)
     }
 }
 
@@ -254,7 +279,9 @@ private fun SettingsScope.CurrentProxyTextModePresentation(
         title = {
             Text(
                 if (state.config.mode == ProxyUIMode.DISABLED)
-                    "未启用代理" else "正在使用${renderProxyConfigModeName(state.config.mode)}",
+                    stringResource(Lang.settings_network_proxy_disabled_hint)
+                else
+                    stringResource(Lang.settings_network_proxy_mode_via, state.config.mode),
             )
         },
         description = when (state.config.mode) {
@@ -276,7 +303,7 @@ private fun SettingsScope.CurrentProxyTextModePresentation(
             ) {
                 Icon(Icons.Rounded.Edit, null, Modifier.size(ButtonDefaults.IconSize))
                 Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                Text("修改", softWrap = false)
+                Text(stringResource(Lang.ui_btn_edit), softWrap = false)
             }
         },
     )
@@ -303,10 +330,10 @@ private fun SettingsScope.ProxyConfigGroup(
     }
 
     Group(
-        title = { Text("代理设置") },
+        title = { Text(stringResource(Lang.settings_network_proxy_title)) },
         actions = {
             TextButton({ onUpdate(currentConfig.value) }) {
-                Text("保存并测试")
+                Text(stringResource(Lang.settings_network_proxy_save_and_test))
             }
         },
         useThinHeader = true,
