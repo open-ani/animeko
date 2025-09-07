@@ -101,8 +101,8 @@ class SubjectSearchRepository(
 
                 // 在分页源中直接过滤掉不符合条件的数据 #2380
                 val subjectInfos = filterSubjectsBySort(
-                    subjectService.batchGetSubjectDetails(filteredIds), 
-                    searchQuery.sort
+                    subjectService.batchGetSubjectDetails(filteredIds),
+                    searchQuery.sort,
                 )
 
                 return@withContext LoadResult.Page(
@@ -149,7 +149,7 @@ class SubjectSearchRepository(
                 range.max?.let { "<${it}" },
             )
         }
-        
+
         /**
          * 将数据过滤从View提升到分页层，不然会导致 #2380
          */

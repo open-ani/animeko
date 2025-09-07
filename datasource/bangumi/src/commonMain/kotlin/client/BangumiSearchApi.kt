@@ -25,7 +25,7 @@ interface BangumiSearchApi {
      * @param types 条目类型, 默认为 [BangumiSubjectType.ANIME]
      * @param responseGroup 返回数据大小, 默认为 [BangumiResponseGroup.SMALL]
      * @param offset 开始条数, 默认为 0
-     * @param limit 返回条数, 最大为 25
+     * @param limit 返回条数, 最大为 20
      * @return 搜索结果, null 表示已经到达最后一条
      */
     suspend fun searchSubjectByKeywords(
