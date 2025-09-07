@@ -40,9 +40,8 @@ abstract class Repository(
 
     companion object {
         val defaultPagingConfig = PagingConfig(
-            pageSize = 20, // Bangumi API 实际最多返回 20 个结果 #2417
-            initialLoadSize = 20, // 设置初始加载大小等于 pageSize
-            prefetchDistance = 20, // 增加预取距离
+            pageSize = 30,
+            prefetchDistance = 20,
         )
     }
 }

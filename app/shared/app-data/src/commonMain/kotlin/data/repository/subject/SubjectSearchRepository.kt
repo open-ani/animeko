@@ -55,7 +55,7 @@ class SubjectSearchRepository(
         searchQuery: SubjectSearchQuery,
         useNewApi: suspend () -> Boolean = { false },
         ignoreDoneAndDropped: suspend () -> Boolean = { false },
-        pagingConfig: PagingConfig = Repository.defaultPagingConfig
+        pagingConfig: PagingConfig = bangumiSearchPagingConfig
     ): Flow<PagingData<BatchSubjectDetails>> = Pager(
         config = pagingConfig,
         initialKey = 0,
@@ -225,6 +225,11 @@ class SubjectSearchRepository(
 
     private companion object {
         private val logger = logger<SubjectSearchRepository>()
+        private val bangumiSearchPagingConfig = PagingConfig(
+            pageSize = 20, // Bangumi API 实际最多返回 20 个结果 #2417
+            initialLoadSize = 20,
+            prefetchDistance = 20,
+        )
     }
 }
 
