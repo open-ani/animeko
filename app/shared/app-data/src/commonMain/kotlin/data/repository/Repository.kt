@@ -41,7 +41,6 @@ abstract class Repository(
     companion object {
         val defaultPagingConfig = PagingConfig(
             pageSize = 30,
-            prefetchDistance = 20,
         )
     }
 }

@@ -228,7 +228,6 @@ class SubjectSearchRepository(
         private val bangumiSearchPagingConfig = PagingConfig(
             pageSize = 20, // Bangumi API 实际最多返回 20 个结果 #2417
             initialLoadSize = 20,
-            prefetchDistance = 20,
         )
     }
 }
