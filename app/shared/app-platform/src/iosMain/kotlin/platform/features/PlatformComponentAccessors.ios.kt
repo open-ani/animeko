@@ -58,9 +58,9 @@ private class IosBrightnessManager : BrightnessManager {
     override fun getBrightness(): Float = brightness
 
     override fun setBrightness(level: Float) =
-        level.coerceIn(0f, 1f).let { salvedLevel ->
-            brightness = salvedLevel
-            UIScreen.mainScreen.brightness = salvedLevel.toDouble()
+        level.coerceIn(0f, 1f).let { savedLevel ->
+            brightness = savedLevel
+            UIScreen.mainScreen.brightness = savedLevel.toDouble()
         }
 }
 
