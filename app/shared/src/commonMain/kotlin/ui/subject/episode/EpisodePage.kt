@@ -446,22 +446,23 @@ private fun EpisodeScreenTabletVeryWide(
                     .background(MaterialTheme.colorScheme.background), // scrollable background
             ) {
 
-                
+
                 val themeSettings = LocalThemeSettings.current
                 val isCurrentInDarkTheme: Boolean = when (themeSettings.darkMode) {
                     DarkMode.DARK -> true
-                    DarkMode.LIGHT -> themeSettings.alwaysDarkInEpisodePage
+                    DarkMode.LIGHT -> false
                     DarkMode.AUTO -> isSystemInDarkTheme()
                 }
-
-                // 填充 insets 背景颜色
-                // 如果当前不是 dark theme 并且 是安卓平台，则加一个渐变色避免看不清状态栏
+                // 如果当前不是 dark theme 并且 是安卓平台 并且 没有设置播放页始终使用暗色主题，则加一个渐变色避免看不清状态栏
                 // ios 宽屏模式下会自动隐藏状态栏, 无需处理
+                val needShadeBackground =
+                    !isCurrentInDarkTheme && LocalPlatform.current.isAndroid() && !themeSettings.alwaysDarkInEpisodePage
+                // 填充 insets 背景颜色
                 Spacer(
                     Modifier
                         .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                        .ifThen(!isCurrentInDarkTheme && LocalPlatform.current.isAndroid()) { 
+                        .ifThen(needShadeBackground) {
                             background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.scrim, Color.Transparent)))
                         }
                         .windowInsetsPadding(
