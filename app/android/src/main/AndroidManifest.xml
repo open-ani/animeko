@@ -34,10 +34,14 @@
             android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
             android:usesCleartextTraffic="true"
             android:largeHeap="true">
-
+        <!-- 支持画中画操作 -->
+        <receiver
+                android:name="me.him188.ani.app.videoplayer.ui.PipActionReceiver"
+                android:exported="false"/>
         <activity
                 android:name=".activity.MainActivity"
                 android:exported="true"
+                android:supportsPictureInPicture="true" 
                 android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
