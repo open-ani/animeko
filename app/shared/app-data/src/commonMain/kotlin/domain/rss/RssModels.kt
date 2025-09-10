@@ -13,6 +13,10 @@ import androidx.compose.runtime.Immutable
 import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import me.him188.ani.datasources.api.topic.FileSize
+import me.him188.ani.datasources.api.topic.FileSize.Companion.Unspecified
+import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
+import me.him188.ani.datasources.api.topic.FileSize.Companion.kiloBytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.datasources.api.topic.guessTorrentFromUrl
 import me.him188.ani.utils.xml.Element
@@ -51,6 +55,19 @@ data class RssItem(
 fun RssItem.guessResourceLocation(): ResourceLocation? {
     val url = this.enclosure?.url ?: this.link.takeIf { it.isNotBlank() } ?: return null
     return ResourceLocation.guessTorrentFromUrl(url)
+}
+
+fun RssItem.getMediaSize(): FileSize {
+    if (enclosure == null || enclosure.length <= 1L) {
+        //有的源会返回 1
+        return Unspecified
+    }
+    return if (link.contains("animes.garden")) {
+        //动漫花园返回的是kb
+        enclosure.length.kiloBytes
+    } else {
+        enclosure.length.bytes
+    }
 }
 
 @Immutable
