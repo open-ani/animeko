@@ -465,7 +465,10 @@ fun PlayerGestureHost(
             GestureIndicator(indicatorState)
         }
         val maxHeight = maxHeight
-
+        val adjustingVolumeOrBrightness =
+            indicatorState.visible && (indicatorState.state == VOLUME || indicatorState.state == BRIGHTNESS)
+        val adjustingForwardOrBackward =
+            indicatorState.visible && (indicatorState.state == FAST_FORWARD || indicatorState.state == FAST_BACKWARD)
 
         // TODO: 临时解决方案, 安卓和 PC 需要不同的组件层级关系才能实现各种快捷手势
         val needWorkaroundForFocusManager = needWorkaroundForFocusManager
@@ -484,7 +487,7 @@ fun PlayerGestureHost(
                             seekerState,
                             Orientation.Horizontal,
                             //调节音量/亮度时禁用水平seek
-                            enabled = !(indicatorState.visible && (indicatorState.state == VOLUME || indicatorState.state == BRIGHTNESS)),
+                            enabled = !adjustingVolumeOrBrightness,
                         )
                     }
                     .ifThen(family.keyboardLeftRightToSeek) {
@@ -650,7 +653,7 @@ fun PlayerGestureHost(
                                     ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
                                     Orientation.Vertical,
                                     indicatorState,
-                                    enabled = !seekerState.isSeeking,
+                                    enabled = !seekerState.isSeeking && !adjustingForwardOrBackward,
                                     step = 0.01f,
                                     setup = {
                                         indicatorState.state = BRIGHTNESS
@@ -671,7 +674,7 @@ fun PlayerGestureHost(
                                     ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
                                     Orientation.Vertical,
                                     indicatorState,
-                                    enabled = !seekerState.isSeeking,
+                                    enabled = !seekerState.isSeeking && !adjustingForwardOrBackward,
                                     step = 0.05f,
                                     setup = {
                                         indicatorState.state = VOLUME
@@ -742,8 +745,6 @@ fun PlayerGestureHost(
                     .combineClickableWithFamilyGesture()
                     .ifThen(family.swipeToSeek && enableSwipeToSeek) {
                         val swipeToSeekRequester = rememberAlwaysOnRequester(controllerState, "swipeToSeek")
-                        val adjustingVolumeOrBrightness =
-                            indicatorState.visible && (indicatorState.state == VOLUME || indicatorState.state == BRIGHTNESS)
                         swipeToSeek(
                             seekerState,
                             Orientation.Horizontal,
@@ -815,7 +816,7 @@ fun PlayerGestureHost(
                                     ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
                                     Orientation.Vertical,
                                     indicatorState,
-                                    enabled = !seekerState.isSeeking,
+                                    enabled = !seekerState.isSeeking && !adjustingForwardOrBackward,
                                     step = 0.01f,
                                     setup = {
                                         indicatorState.state = BRIGHTNESS
@@ -836,7 +837,7 @@ fun PlayerGestureHost(
                                     ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
                                     Orientation.Vertical,
                                     indicatorState,
-                                    enabled = !seekerState.isSeeking,
+                                    enabled = !seekerState.isSeeking && !adjustingForwardOrBackward,
                                     step = 0.05f,
                                     setup = {
                                         indicatorState.state = VOLUME
