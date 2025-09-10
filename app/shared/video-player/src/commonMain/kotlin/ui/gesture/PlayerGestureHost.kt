@@ -480,7 +480,12 @@ fun PlayerGestureHost(
                 modifier
                     .focusRequester(keyboardFocus)
                     .ifThen(family.swipeToSeek) {
-                        swipeToSeek(seekerState, Orientation.Horizontal)
+                        swipeToSeek(
+                            seekerState,
+                            Orientation.Horizontal,
+                            //调节音量/亮度时禁用水平seek
+                            enabled = !(indicatorState.visible && (indicatorState.state == VOLUME || indicatorState.state == BRIGHTNESS)),
+                        )
                     }
                     .ifThen(family.keyboardLeftRightToSeek) {
                         onKeyboardHorizontalDirection(
@@ -645,6 +650,7 @@ fun PlayerGestureHost(
                                     ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
                                     Orientation.Vertical,
                                     indicatorState,
+                                    enabled = !seekerState.isSeeking,
                                     step = 0.01f,
                                     setup = {
                                         indicatorState.state = BRIGHTNESS
@@ -665,6 +671,7 @@ fun PlayerGestureHost(
                                     ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
                                     Orientation.Vertical,
                                     indicatorState,
+                                    enabled = !seekerState.isSeeking,
                                     step = 0.05f,
                                     setup = {
                                         indicatorState.state = VOLUME
@@ -735,9 +742,13 @@ fun PlayerGestureHost(
                     .combineClickableWithFamilyGesture()
                     .ifThen(family.swipeToSeek && enableSwipeToSeek) {
                         val swipeToSeekRequester = rememberAlwaysOnRequester(controllerState, "swipeToSeek")
+                        val adjustingVolumeOrBrightness =
+                            indicatorState.visible && (indicatorState.state == VOLUME || indicatorState.state == BRIGHTNESS)
                         swipeToSeek(
                             seekerState,
                             Orientation.Horizontal,
+                            //调节音量/亮度时禁用水平seek
+                            enabled = !adjustingVolumeOrBrightness,
                             onDragStarted = {
                                 if (controllerState.visibility.bottomBar) {
                                     swipeToSeekRequester.request()
@@ -804,6 +815,7 @@ fun PlayerGestureHost(
                                     ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
                                     Orientation.Vertical,
                                     indicatorState,
+                                    enabled = !seekerState.isSeeking,
                                     step = 0.01f,
                                     setup = {
                                         indicatorState.state = BRIGHTNESS
@@ -824,6 +836,7 @@ fun PlayerGestureHost(
                                     ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
                                     Orientation.Vertical,
                                     indicatorState,
+                                    enabled = !seekerState.isSeeking,
                                     step = 0.05f,
                                     setup = {
                                         indicatorState.state = VOLUME
