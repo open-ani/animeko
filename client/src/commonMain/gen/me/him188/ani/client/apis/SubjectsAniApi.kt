@@ -25,24 +25,11 @@
 
 package me.him188.ani.client.apis
 
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
-import io.ktor.client.engine.HttpClientEngine
+import io.ktor.client.*
+import io.ktor.client.engine.*
 import kotlinx.serialization.json.Json
-import me.him188.ani.client.infrastructure.ApiClient
-import me.him188.ani.client.infrastructure.HttpResponse
-import me.him188.ani.client.infrastructure.RequestConfig
-import me.him188.ani.client.infrastructure.RequestMethod
-import me.him188.ani.client.infrastructure.wrap
-import me.him188.ani.client.models.AniBangumiSyncStateEntity
-import me.him188.ani.client.models.AniBatchUpdateEpisodeCollectionsRequest
-import me.him188.ani.client.models.AniCollectionType
-import me.him188.ani.client.models.AniEpisodeCollection
-import me.him188.ani.client.models.AniPaginatedResponse
-import me.him188.ani.client.models.AniSubjectCollection
-import me.him188.ani.client.models.AniSubjectCollectionCountStats
-import me.him188.ani.client.models.AniUpdateEpisodeCollectionRequest
-import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
+import me.him188.ani.client.infrastructure.*
+import me.him188.ani.client.models.*
 
 open class SubjectsAniApi : ApiClient {
 

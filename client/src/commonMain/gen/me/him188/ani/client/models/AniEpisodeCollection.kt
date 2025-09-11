@@ -34,11 +34,12 @@ import kotlinx.serialization.Serializable
  *
  * @param episodeId 
  * @param subjectId 
- * @param sort 保证是数字
+ * @param sort 保证是数字 (Decimal128)
  * @param type 
  * @param name 
  * @param nameCn 
  * @param description 
+ * @param ep 保证是数字 (Decimal128)
  * @param airdate 
  * @param disc 
  * @param duration 
@@ -52,7 +53,7 @@ data class AniEpisodeCollection (
 
     @SerialName(value = "subjectId") @Required val subjectId: kotlin.Long,
 
-    /* 保证是数字 */
+    /* 保证是数字 (Decimal128) */
     @SerialName(value = "sort") @Required val sort: kotlin.String,
 
     @SerialName(value = "type") @Required val type: AniEpisodeType,
@@ -62,6 +63,9 @@ data class AniEpisodeCollection (
     @SerialName(value = "nameCn") @Required val nameCn: kotlin.String,
 
     @SerialName(value = "description") @Required val description: kotlin.String,
+
+    /* 保证是数字 (Decimal128) */
+    @SerialName(value = "ep") val ep: kotlin.String? = null,
 
     @SerialName(value = "airdate") val airdate: kotlin.String? = null,
 
