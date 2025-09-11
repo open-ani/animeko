@@ -86,7 +86,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.CombinedLoadStates
 import androidx.paging.LoadState
-import androidx.paging.LoadStates
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectWithLifecycle
@@ -200,16 +199,7 @@ class UserCollectionsState(
                 .restartable(restarter)
                 .map { CollectionsFilterQuery(availableTypes[it]) }
                 .transformLatest { query ->
-                    emit(
-                        PagingData.from(
-                            emptyList<SubjectCollectionInfo>(),
-                            LoadStates(
-                                refresh = LoadState.Loading,
-                                append = LoadState.NotLoading(false),
-                                prepend = LoadState.NotLoading(false),
-                            ),
-                        ),
-                    )
+                    // 不再发射初始加载状态，直接发射真实数据
                     emitAll(startSearch(query))
                 }
 
