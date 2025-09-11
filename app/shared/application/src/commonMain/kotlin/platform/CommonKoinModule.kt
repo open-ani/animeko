@@ -10,35 +10,13 @@
 package me.him188.ani.app.platform
 
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineExceptionHandler
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.models.preference.ThemeSettings
-import me.him188.ani.app.data.network.AniApiProvider
-import me.him188.ani.app.data.network.AniSubjectRelationIndexService
-import me.him188.ani.app.data.network.AnimeScheduleService
-import me.him188.ani.app.data.network.BangumiBangumiCommentServiceImpl
-import me.him188.ani.app.data.network.BangumiCommentService
-import me.him188.ani.app.data.network.BangumiProfileService
-import me.him188.ani.app.data.network.BangumiRelatedPeopleService
-import me.him188.ani.app.data.network.BangumiSubjectSearchService
-import me.him188.ani.app.data.network.EpisodeService
-import me.him188.ani.app.data.network.EpisodeServiceImpl
-import me.him188.ani.app.data.network.RecommendationRepository
-import me.him188.ani.app.data.network.RemoteSubjectService
-import me.him188.ani.app.data.network.SubjectService
-import me.him188.ani.app.data.network.TrendsRepository
+import me.him188.ani.app.data.network.*
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.persistent.database.createDatabaseBuilder
@@ -46,29 +24,10 @@ import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
-import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
-import me.him188.ani.app.data.repository.media.EpisodePreferencesRepositoryImpl
-import me.him188.ani.app.data.repository.media.MediaSourceInstanceRepository
-import me.him188.ani.app.data.repository.media.MediaSourceInstanceRepositoryImpl
-import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
-import me.him188.ani.app.data.repository.media.MikanIndexCacheRepository
-import me.him188.ani.app.data.repository.media.MikanIndexCacheRepositoryImpl
-import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
-import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
-import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepositoryImpl
-import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
-import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepositoryImpl
-import me.him188.ani.app.data.repository.player.EpisodeScreenshotRepository
-import me.him188.ani.app.data.repository.player.WhatslinkEpisodeScreenshotRepository
+import me.him188.ani.app.data.repository.media.*
+import me.him188.ani.app.data.repository.player.*
 import me.him188.ani.app.data.repository.repositoryModules
-import me.him188.ani.app.data.repository.subject.BangumiSubjectSearchCompletionRepository
-import me.him188.ani.app.data.repository.subject.DefaultSubjectRelationsRepository
-import me.him188.ani.app.data.repository.subject.FollowedSubjectsRepository
-import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
-import me.him188.ani.app.data.repository.subject.SubjectCollectionRepositoryImpl
-import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
-import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
-import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
+import me.him188.ani.app.data.repository.subject.*
 import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionRepository
 import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
@@ -76,20 +35,8 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.TokenRepository
 import me.him188.ani.app.domain.comment.TurnstileState
 import me.him188.ani.app.domain.danmaku.DanmakuManager
-import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeature
-import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeatureHandler
-import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
+import me.him188.ani.app.domain.foundation.*
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider.HoldingInstanceMatrix
-import me.him188.ani.app.domain.foundation.HttpClientProvider
-import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
-import me.him188.ani.app.domain.foundation.ServerListFeature
-import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
-import me.him188.ani.app.domain.foundation.ServerListFeatureHandler
-import me.him188.ani.app.domain.foundation.UseAniTokenFeatureHandler
-import me.him188.ani.app.domain.foundation.UserAgentFeature
-import me.him188.ani.app.domain.foundation.UserAgentFeatureHandler
-import me.him188.ani.app.domain.foundation.get
-import me.him188.ani.app.domain.foundation.withValue
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.MediaCacheManagerImpl
 import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
@@ -203,7 +150,6 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
 
     single<SubjectCollectionRepository> {
         SubjectCollectionRepositoryImpl(
-            api = client.api,
             subjectService = get(),
             subjectCollectionDao = database.subjectCollection(),
 //            characterDao = database.character(),

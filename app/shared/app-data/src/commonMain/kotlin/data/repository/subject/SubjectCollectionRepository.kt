@@ -11,32 +11,11 @@ package me.him188.ani.app.data.repository.subject
 
 import androidx.collection.IntList
 import androidx.collection.mutableIntListOf
-import androidx.paging.LoadType
-import androidx.paging.Pager
-import androidx.paging.PagingConfig
-import androidx.paging.PagingData
-import androidx.paging.PagingState
-import androidx.paging.RemoteMediator
-import androidx.paging.map
+import androidx.paging.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flatMapMerge
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.retry
-import kotlinx.coroutines.flow.take
-import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -45,30 +24,10 @@ import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.NsfwMode
-import me.him188.ani.app.data.models.subject.LightEpisodeInfo
-import me.him188.ani.app.data.models.subject.LightSubjectAndEpisodes
-import me.him188.ani.app.data.models.subject.LightSubjectInfo
-import me.him188.ani.app.data.models.subject.RatingCounts
-import me.him188.ani.app.data.models.subject.RatingInfo
-import me.him188.ani.app.data.models.subject.SelfRatingInfo
-import me.him188.ani.app.data.models.subject.SubjectAiringInfo
-import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
-import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
-import me.him188.ani.app.data.models.subject.SubjectCollectionStats
-import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.data.models.subject.SubjectProgressInfo
-import me.him188.ani.app.data.models.subject.SubjectRecurrence
-import me.him188.ani.app.data.models.subject.Tag
+import me.him188.ani.app.data.models.subject.*
 import me.him188.ani.app.data.network.EpisodeService
 import me.him188.ani.app.data.network.SubjectService
-import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
-import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
-import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionDao
-import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionEntity
-import me.him188.ani.app.data.persistent.database.dao.SubjectRelations
-import me.him188.ani.app.data.persistent.database.dao.SubjectRelationsDao
-import me.him188.ani.app.data.persistent.database.dao.deleteAll
-import me.him188.ani.app.data.persistent.database.dao.filterMostRecentUpdated
+import me.him188.ani.app.data.persistent.database.dao.*
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
@@ -79,17 +38,7 @@ import me.him188.ani.app.domain.search.SubjectType
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.session.checkAccessAniApiNow
 import me.him188.ani.app.domain.session.restartOnNewLogin
-import me.him188.ani.client.models.AniAnimeRecurrence
-import me.him188.ani.client.models.AniCollectionType
-import me.him188.ani.client.models.AniEpisodeCollection
-import me.him188.ani.client.models.AniEpisodeCollectionType
-import me.him188.ani.client.models.AniEpisodeType
-import me.him188.ani.client.models.AniFavourite
-import me.him188.ani.client.models.AniSelfRatingInfo
-import me.him188.ani.client.models.AniSubjectCollection
-import me.him188.ani.client.models.AniSubjectRelations
-import me.him188.ani.client.models.AniTag
-import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
+import me.him188.ani.client.models.*
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
@@ -99,7 +48,6 @@ import me.him188.ani.datasources.bangumi.apis.DefaultApi
 import me.him188.ani.datasources.bangumi.processing.toSubjectCollectionType
 import me.him188.ani.utils.coroutines.combine
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
-import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.collections.toIntArray
@@ -193,7 +141,6 @@ sealed class SubjectCollectionRepository(
 }
 
 class SubjectCollectionRepositoryImpl(
-    private val api: ApiInvoker<DefaultApi>,
     private val subjectService: SubjectService,
     private val subjectCollectionDao: SubjectCollectionDao,
     private val subjectRelationsDao: SubjectRelationsDao,
