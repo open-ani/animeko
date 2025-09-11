@@ -772,6 +772,7 @@ fun AniEpisodeCollection.toEntity1(
         comment = 0,
         desc = description,
         sort = EpisodeSort(BigNum(sort), type.toEpisodeType()),
+        ep = ep?.let { EpisodeSort(BigNum(it), type.toEpisodeType()) },
         sortNumber = sort.toFloatOrNull() ?: 0f,
         selfCollectionType = collectionType.toUnifiedCollectionType(),
         lastFetched = lastFetched,
