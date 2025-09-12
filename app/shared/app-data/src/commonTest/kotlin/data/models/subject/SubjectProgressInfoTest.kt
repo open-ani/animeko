@@ -11,6 +11,7 @@ package me.him188.ani.app.data.models.subject
 
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo.Episode
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.PackedDate.Companion.Invalid
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -30,8 +31,9 @@ class SubjectProgressInfoTest {
         isKnownCompleted: Boolean,
         airDate: PackedDate = Invalid,
         id: Int = sort,
+        episodeType: EpisodeType? = EpisodeType.MainStory, // 默认为主线剧集
     ): Episode = Episode(
-        id, type, EpisodeSort(sort), EpisodeSort(sort),
+        id, type, episodeType, EpisodeSort(sort), EpisodeSort(sort),
         airDate,
         isKnownCompleted,
     )
@@ -218,6 +220,52 @@ class SubjectProgressInfoTest {
             ),
         ).run {
             assertEquals(ContinueWatchingStatus.Done, continueWatchingStatus)
+            assertEquals(2, nextEpisodeIdToPlay)
+        }
+    }
+
+    // https://github.com/open-ani/animeko/issues/1871
+    // 新添加的 00 排在最后
+    // https://bgm.tv/subject/1730
+    @Test
+    fun `episodes with 00 at end`() {
+        calculate(
+            subjectStarted = true,
+            episodes = listOf(
+                ep(DONE, 1, isKnownCompleted = true),  // 主线第1集
+                ep(WISH, 2, isKnownCompleted = true),  // 主线第2集，未看
+                ep(WISH, 3, isKnownCompleted = true),  // 主线第3集，未看
+                ep(DONE, 0, isKnownCompleted = true), // 主线第0集
+            ),
+        ).run {
+            // 索引应该是排序后的列表的索引
+            // 最后看的主线剧集应该是第1集（索引1），下一集应该是第2集（索引2）
+            assertEquals(
+                ContinueWatchingStatus.Continue(2, EpisodeSort(2), EpisodeSort(2), EpisodeSort(1), EpisodeSort(1)),
+                continueWatchingStatus,
+            )
+            assertEquals(2, nextEpisodeIdToPlay)
+        }
+    }
+
+    // 有 SP 且在最后
+    // https://bgm.tv/subject/43951
+    @Test
+    fun `episodes with sp`() {
+        calculate(
+            subjectStarted = true,
+            episodes = listOf(
+                ep(DONE, 1, isKnownCompleted = true),  // 主线第1集
+                ep(WISH, 2, isKnownCompleted = true),  // 主线第2集，未看
+                ep(WISH, 3, isKnownCompleted = true),  // 主线第3集，未看
+                ep(WISH, 4, isKnownCompleted = true, episodeType = EpisodeType.SP),
+            ),
+        ).run {
+            // 最后看的主线剧集应该是第1集（索引0），下一集应该是第2集（索引1）
+            assertEquals(
+                ContinueWatchingStatus.Continue(1, EpisodeSort(2), EpisodeSort(2), EpisodeSort(1), EpisodeSort(1)),
+                continueWatchingStatus,
+            )
             assertEquals(2, nextEpisodeIdToPlay)
         }
     }
