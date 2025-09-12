@@ -76,7 +76,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -931,6 +930,7 @@ private fun EpisodeVideo(
         playbackSpeedControllerState = remember {
             vm.player.features[PlaybackSpeed]?.let { PlaybackSpeedControllerState(it, scope = scope) }
         },
+        aspectRatioControllerState = vm.aspectRatioControllerState,
         leftBottomTips = {
             AniAnimatedVisibility(
                 visible = vm.playerSkipOpEdState.showSkipTips,
