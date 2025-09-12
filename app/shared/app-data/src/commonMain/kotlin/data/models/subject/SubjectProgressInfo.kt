@@ -13,8 +13,10 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.app.data.models.subject.SubjectProgressInfo.Companion.compute
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.ifInvalid
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -39,6 +41,7 @@ data class SubjectProgressInfo(
     class Episode(
         val id: Int,
         val type: UnifiedCollectionType,
+        val episodeType: EpisodeType?,
         val ep: EpisodeSort?,
         val sort: EpisodeSort,
         /**
@@ -71,6 +74,7 @@ data class SubjectProgressInfo(
                     Episode(
                         it.episodeId,
                         it.collectionType,
+                        it.episodeInfo.type,
                         it.episodeInfo.ep,
                         it.episodeInfo.sort,
                         it.episodeInfo.airDate,
@@ -86,21 +90,30 @@ data class SubjectProgressInfo(
             episodes: List<Episode>,
             subjectAirDate: PackedDate,
         ): SubjectProgressInfo {
-            val lastWatchedEpIndex = episodes.indexOfLast {
-                it.type == UnifiedCollectionType.DONE || it.type == UnifiedCollectionType.DROPPED
+            // 过滤并排序主线剧集
+            val sortedMainStoryEpisodes = episodes
+                .filter { it.episodeType == EpisodeType.MainStory }
+                .sortedBy { it.sort }
+
+            val lastWatchedEpIndex = kotlin.run {
+                // 找到最后一个已观看或已丢弃的主线剧集的索引（在sortedMainStoryEpisodes中的索引）
+                sortedMainStoryEpisodes.indexOfLast {
+                    it.type == UnifiedCollectionType.DONE || it.type == UnifiedCollectionType.DROPPED
+                }
             }
+
             val continueWatchingStatus = kotlin.run {
                 val latestEp = kotlin.run {
-                    episodes.lastOrNull { it.isKnownCompleted }
+                    sortedMainStoryEpisodes.lastOrNull { it.isKnownCompleted }
                 }
 
                 // 有剧集 isKnownCompleted == true 时就认为已开播
                 val actualSubjectStarted = latestEp != null || subjectStarted
 
                 val latestEpIndex: Int? =
-                    episodes.indexOfFirst { it == latestEp }
+                    sortedMainStoryEpisodes.indexOfFirst { it == latestEp }
                         .takeIf { it != -1 }
-                        ?: episodes.lastIndex.takeIf { it != -1 }
+                        ?: sortedMainStoryEpisodes.lastIndex.takeIf { it != -1 }
 
                 when (lastWatchedEpIndex) {
                     // 还没看过
@@ -109,29 +122,32 @@ data class SubjectProgressInfo(
                             ContinueWatchingStatus.Start
                         } else {
                             ContinueWatchingStatus.NotOnAir(
-                                subjectAirDate.ifInvalid { episodes.firstOrNull()?.airDate ?: PackedDate.Invalid },
+                                subjectAirDate.ifInvalid {
+                                    sortedMainStoryEpisodes.firstOrNull()?.airDate ?: PackedDate.Invalid
+                                },
                             )
                         }
                     }
 
                     // 看了第 n 集并且还有第 n+1 集
-                    in 0..<episodes.size - 1 -> {
+                    in 0..<sortedMainStoryEpisodes.size - 1 -> {
                         if (latestEpIndex != null && lastWatchedEpIndex < latestEpIndex && actualSubjectStarted) {
                             // 更新了 n+1 集
                             ContinueWatchingStatus.Continue(
                                 episodeIndex = lastWatchedEpIndex + 1,
-                                episodeEp = episodes.getOrNull(lastWatchedEpIndex + 1)?.ep,
-                                episodeSort = episodes.getOrNull(lastWatchedEpIndex + 1)?.sort,
-                                watchedEpisodeEp = episodes[lastWatchedEpIndex].ep,
-                                watchedEpisodeSort = episodes[lastWatchedEpIndex].sort,
+                                episodeEp = sortedMainStoryEpisodes.getOrNull(lastWatchedEpIndex + 1)?.ep,
+                                episodeSort = sortedMainStoryEpisodes.getOrNull(lastWatchedEpIndex + 1)?.sort,
+                                watchedEpisodeEp = sortedMainStoryEpisodes[lastWatchedEpIndex].ep,
+                                watchedEpisodeSort = sortedMainStoryEpisodes[lastWatchedEpIndex].sort,
                             )
                         } else {
                             // 还没更新
                             ContinueWatchingStatus.Watched(
                                 lastWatchedEpIndex,
-                                episodes.getOrNull(lastWatchedEpIndex)?.ep,
-                                episodes.getOrNull(lastWatchedEpIndex)?.sort,
-                                episodes.getOrNull(lastWatchedEpIndex + 1)?.airDate ?: PackedDate.Invalid,
+                                sortedMainStoryEpisodes.getOrNull(lastWatchedEpIndex)?.ep,
+                                sortedMainStoryEpisodes.getOrNull(lastWatchedEpIndex)?.sort,
+                                sortedMainStoryEpisodes.getOrNull(lastWatchedEpIndex + 1)?.airDate
+                                    ?: PackedDate.Invalid,
                             )
                         }
                     }
@@ -144,14 +160,14 @@ data class SubjectProgressInfo(
 
             val episodeToPlay = kotlin.run {
                 if (continueWatchingStatus is ContinueWatchingStatus.Watched) {
-                    return@run episodes[continueWatchingStatus.episodeIndex]
+                    return@run sortedMainStoryEpisodes.getOrNull(continueWatchingStatus.episodeIndex)
                 } else {
                     if (lastWatchedEpIndex != -1) {
-                        episodes.getOrNull(lastWatchedEpIndex + 1)?.let { return@run it }
-                        episodes.getOrNull(lastWatchedEpIndex)?.let { return@run it }
+                        sortedMainStoryEpisodes.getOrNull(lastWatchedEpIndex + 1)?.let { return@run it }
+                        sortedMainStoryEpisodes.getOrNull(lastWatchedEpIndex)?.let { return@run it }
                     }
 
-                    episodes.firstOrNull()?.let {
+                    sortedMainStoryEpisodes.firstOrNull()?.let {
                         return@run it
                     }
                 }
