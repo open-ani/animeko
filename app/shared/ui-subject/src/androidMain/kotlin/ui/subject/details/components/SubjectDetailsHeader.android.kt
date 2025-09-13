@@ -76,7 +76,6 @@ fun PreviewSubjectDetailsHeaderOnAirWatched() {
         ),
         progressInfo = SubjectProgressInfo(
             continueWatchingStatus = ContinueWatchingStatus.Watched(
-                0,
                 episodeEp = EpisodeSort(20 - 12),
                 episodeSort = EpisodeSort(20),
                 PackedDate.Invalid,
@@ -98,7 +97,6 @@ fun PreviewSubjectDetailsHeaderOnAirContinue() {
         ),
         progressInfo = SubjectProgressInfo(
             continueWatchingStatus = ContinueWatchingStatus.Continue(
-                episodeIndex = 0,
                 episodeEp = EpisodeSort(20 - 12),
                 episodeSort = EpisodeSort(20),
                 watchedEpisodeEp = EpisodeSort(19 - 12),
