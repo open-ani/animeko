@@ -9,6 +9,10 @@
 
 package me.him188.ani.app.ui.subject.episode
 
+import androidx.compose.animation.core.Spring.DampingRatioLowBouncy
+import androidx.compose.animation.core.Spring.StiffnessLow
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -29,10 +33,15 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -41,6 +50,7 @@ import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.domain.player.VideoLoadingState
+import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalPlatform
@@ -58,6 +68,7 @@ import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.rememberStatusBarHeightAsState
 import me.him188.ani.app.ui.subject.episode.video.loading.EpisodeVideoLoadingIndicator
+import me.him188.ani.app.videoplayer.ui.PictureInPictureController
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.VideoPlayer
@@ -152,12 +163,36 @@ internal fun EpisodeVideoImpl(
         }
     }
 
+    // 给画中画过度动画用的
+    var videoViewBounds by remember {
+        mutableStateOf(Rect.Zero)
+    }
+
+    var videoOffsetY by remember {
+        mutableFloatStateOf(.0f)
+    }
+    val videoMaxOffsetY = with(LocalDensity.current) { 50.dp.toPx() }
+    val videoThresholdOffsetDpY = 30.dp
+    val videoAnimeOffsetDpY by animateDpAsState(
+        with(LocalDensity.current) {
+            videoOffsetY.toDp()
+        },
+        animationSpec = spring(
+            dampingRatio = DampingRatioLowBouncy,
+            stiffness = StiffnessLow,
+        ),
+    )
+    val context = LocalContext.current
+    val pipController = remember(context, playerState) {
+        PictureInPictureController(context, playerState)
+    }
     AniTheme(darkModeOverride = DarkMode.DARK) {
         VideoScaffold(
             expanded = expanded,
             modifier = modifier
                 .hoverable(videoInteractionSource)
-                .cursorVisibility(showCursor),
+                .cursorVisibility(showCursor)
+                .offset(y = videoAnimeOffsetDpY),
             contentWindowInsets = contentWindowInsets,
             maintainAspectRatio = maintainAspectRatio,
             controllerState = playerControllerState,
@@ -219,7 +254,10 @@ internal fun EpisodeVideoImpl(
                             .ifThen(statusBarHeight != 0.dp) {
                                 offset(x = -statusBarHeight / 2, y = 0.dp)
                             }
-                            .matchParentSize(),
+                            .matchParentSize()
+                            .onGloballyPositioned {
+                                videoViewBounds = it.boundsInWindow()
+                            },
                     )
                 }
             },
@@ -274,6 +312,19 @@ internal fun EpisodeVideoImpl(
                     family = gestureFamily,
                     indicatorState,
                     fastForwardSpeed = fastForwardSpeed,
+                    onDrag = { change ->
+                        videoOffsetY = (videoOffsetY + change).coerceIn(-videoMaxOffsetY, videoMaxOffsetY)
+                        // Implement platform-specific PiP functionality
+                    },
+                    onDragEnd = {
+                        if (videoAnimeOffsetDpY > videoThresholdOffsetDpY) {
+                            if (expanded) onExitFullscreen()
+                            else pipController.enterPictureInPictureMode(videoViewBounds)
+                        } else if (videoAnimeOffsetDpY < -videoThresholdOffsetDpY) {
+                            onClickFullScreen()
+                        }
+                        videoOffsetY = 0f
+                    },
                 )
             },
             floatingMessage = {

@@ -18,6 +18,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,6 +60,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -75,6 +77,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -82,6 +85,7 @@ import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
@@ -448,6 +452,8 @@ fun PlayerGestureHost(
     onToggleFullscreen: () -> Unit = {},
     onExitFullscreen: () -> Unit = {},
     onToggleDanmaku: () -> Unit = {},
+    onDrag: (Float) -> Unit,
+    onDragEnd: () -> Unit,
 ) {
     val onTogglePauseResumeState by rememberUpdatedState(onTogglePauseResume)
 
@@ -684,6 +690,7 @@ fun PlayerGestureHost(
 
             val indicatorTasker = rememberUiMonoTasker()
             val focusManager by rememberUpdatedState(LocalFocusManager.current) // workaround for #288
+            val scope = rememberCoroutineScope()
 
             if (family.autoHideController) {
                 LaunchedEffect(controllerState.visibility, controllerState.alwaysOn) {
@@ -787,53 +794,43 @@ fun PlayerGestureHost(
                     }
                     .fillMaxSize(),
             ) {
-                Row(
+                Box(
                     Modifier.matchParentSize()
                         .systemGesturesPadding()
                         .ifThen(family.longPressForFastSkip) {
                             fastSkipState?.let {
                                 longPressFastSkip(it, SkipDirection.FORWARD)
                             }
-                        },
-                ) {
-                    Box(
-                        Modifier
-                            .ifThen(family.swipeLhsForBrightness) {
-                                swipeLevelControlWithIndicator(
-                                    brightnessController,
-                                    ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
-                                    Orientation.Vertical,
-                                    indicatorState,
-                                    step = 0.01f,
-                                    setup = {
-                                        indicatorState.state = BRIGHTNESS
-                                    },
-                                )
-                            }
-                            .weight(1f)
-                            .fillMaxHeight(),
-                    )
+                        }.pointerInput(Unit) {
+                            var startPointX = 0f
+                            detectVerticalDragGestures(
+                                onDragStart = { startPointX = it.x },
+                                onDragEnd = { onDragEnd() }
+                            ) { point, change ->
 
-                    Box(Modifier.weight(1f).fillMaxHeight())
-
-                    Box(
-                        Modifier
-                            .ifThen(family.swipeRhsForVolume) {
-                                swipeLevelControlWithIndicator(
-                                    audioController,
-                                    ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
-                                    Orientation.Vertical,
-                                    indicatorState,
-                                    step = 0.05f,
-                                    setup = {
-                                        indicatorState.state = VOLUME
-                                    },
-                                )
+                                /**
+                                 * 左边亮度控制 （0%～40%）
+                                 * 中间触发画中画 （40%～60%）
+                                 * 右边音量控制 （60%～100%）
+                                 *
+                                 */
+                                if (family.swipeLhsForBrightness && startPointX < size.width * 0.4f) {
+                                    // Left area - brightness control
+                                    val changeLevel = brightnessController.level + -(change / size.height)
+                                    brightnessController.setLevel(changeLevel)
+                                    scope.launch { indicatorState.showBrightnessRange(changeLevel) }
+                                } else if (family.swipeRhsForVolume && startPointX > size.width * 0.6f) {
+                                    // Right area - volume control
+                                    val changeLevel = audioController.level + -(change / size.height)
+                                    audioController.setLevel(changeLevel)
+                                    scope.launch { indicatorState.showVolumeRange(changeLevel) }
+                                } else {
+                                    // Trigger PiP mode when swiping down in the middle area
+                                    onDrag(change)
+                                }
                             }
-                            .weight(1f)
-                            .fillMaxHeight(),
-                    )
-                }
+                        }.fillMaxHeight(),
+                )
             }
 
             // 状态栏区域响应点击手势

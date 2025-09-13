@@ -158,6 +158,8 @@ fun LockableVideoGestureHost(
             fastForwardSpeed = fastForwardSpeed,
         )
     },
+    onDrag: (Float) -> Unit = {},
+    onDragEnd: () -> Unit = {},
 ) {
     if (locked) {
         LockedScreenGestureHost(
@@ -183,6 +185,8 @@ fun LockableVideoGestureHost(
             onExitFullscreen = onExitFullscreen,
             onToggleDanmaku = onToggleDanmaku,
             family = family,
+            onDrag = onDrag,
+            onDragEnd = onDragEnd,
         )
     }
 }
