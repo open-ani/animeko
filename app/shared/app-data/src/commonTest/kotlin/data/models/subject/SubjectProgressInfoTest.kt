@@ -110,7 +110,7 @@ class SubjectProgressInfoTest {
             ),
         ).run {
             assertEquals(
-                ContinueWatchingStatus.Watched(0, EpisodeSort(1), EpisodeSort(1), Invalid),
+                ContinueWatchingStatus.Watched(EpisodeSort(1), EpisodeSort(1), Invalid),
                 continueWatchingStatus,
             )
             assertEquals(1, nextEpisodeIdToPlay)
@@ -127,7 +127,7 @@ class SubjectProgressInfoTest {
             ),
         ).run {
             assertEquals(
-                ContinueWatchingStatus.Watched(0, EpisodeSort(1), EpisodeSort(1), Invalid),
+                ContinueWatchingStatus.Watched(EpisodeSort(1), EpisodeSort(1), Invalid),
                 continueWatchingStatus,
             )
             assertEquals(1, nextEpisodeIdToPlay)
@@ -172,7 +172,7 @@ class SubjectProgressInfoTest {
             ),
         ).run {
             assertEquals(
-                ContinueWatchingStatus.Watched(0, EpisodeSort(1), EpisodeSort(1), Invalid),
+                ContinueWatchingStatus.Watched(EpisodeSort(1), EpisodeSort(1), Invalid),
                 continueWatchingStatus,
             )
             assertEquals(1, nextEpisodeIdToPlay)
@@ -208,7 +208,7 @@ class SubjectProgressInfoTest {
     }
 
     private fun continue2_1() =
-        ContinueWatchingStatus.Continue(1, EpisodeSort(2), EpisodeSort(2), EpisodeSort(1), EpisodeSort(1))
+        ContinueWatchingStatus.Continue(EpisodeSort(2), EpisodeSort(2), EpisodeSort(1), EpisodeSort(1))
 
     @Test
     fun `all ep done`() {
@@ -238,10 +238,9 @@ class SubjectProgressInfoTest {
                 ep(DONE, 0, isKnownCompleted = true), // 主线第0集
             ),
         ).run {
-            // 索引应该是排序后的列表的索引
             // 最后看的主线剧集应该是第1集（索引1），下一集应该是第2集（索引2）
             assertEquals(
-                ContinueWatchingStatus.Continue(2, EpisodeSort(2), EpisodeSort(2), EpisodeSort(1), EpisodeSort(1)),
+                ContinueWatchingStatus.Continue(EpisodeSort(2), EpisodeSort(2), EpisodeSort(1), EpisodeSort(1)),
                 continueWatchingStatus,
             )
             assertEquals(2, nextEpisodeIdToPlay)
@@ -263,7 +262,7 @@ class SubjectProgressInfoTest {
         ).run {
             // 最后看的主线剧集应该是第1集（索引0），下一集应该是第2集（索引1）
             assertEquals(
-                ContinueWatchingStatus.Continue(1, EpisodeSort(2), EpisodeSort(2), EpisodeSort(1), EpisodeSort(1)),
+                ContinueWatchingStatus.Continue(EpisodeSort(2), EpisodeSort(2), EpisodeSort(1), EpisodeSort(1)),
                 continueWatchingStatus,
             )
             assertEquals(2, nextEpisodeIdToPlay)

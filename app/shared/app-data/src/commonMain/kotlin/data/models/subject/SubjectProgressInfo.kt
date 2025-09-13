@@ -134,7 +134,6 @@ data class SubjectProgressInfo(
                         if (latestEpIndex != null && lastWatchedEpIndex < latestEpIndex && actualSubjectStarted) {
                             // 更新了 n+1 集
                             ContinueWatchingStatus.Continue(
-                                episodeIndex = lastWatchedEpIndex + 1,
                                 episodeEp = sortedMainStoryEpisodes.getOrNull(lastWatchedEpIndex + 1)?.ep,
                                 episodeSort = sortedMainStoryEpisodes.getOrNull(lastWatchedEpIndex + 1)?.sort,
                                 watchedEpisodeEp = sortedMainStoryEpisodes[lastWatchedEpIndex].ep,
@@ -143,7 +142,6 @@ data class SubjectProgressInfo(
                         } else {
                             // 还没更新
                             ContinueWatchingStatus.Watched(
-                                lastWatchedEpIndex,
                                 sortedMainStoryEpisodes.getOrNull(lastWatchedEpIndex)?.ep,
                                 sortedMainStoryEpisodes.getOrNull(lastWatchedEpIndex)?.sort,
                                 sortedMainStoryEpisodes.getOrNull(lastWatchedEpIndex + 1)?.airDate
@@ -160,7 +158,7 @@ data class SubjectProgressInfo(
 
             val episodeToPlay = kotlin.run {
                 if (continueWatchingStatus is ContinueWatchingStatus.Watched) {
-                    return@run sortedMainStoryEpisodes.getOrNull(continueWatchingStatus.episodeIndex)
+                    return@run sortedMainStoryEpisodes.getOrNull(lastWatchedEpIndex)
                 } else {
                     if (lastWatchedEpIndex != -1) {
                         sortedMainStoryEpisodes.getOrNull(lastWatchedEpIndex + 1)?.let { return@run it }
@@ -201,7 +199,6 @@ sealed class ContinueWatchingStatus {
      * 继续看
      */
     data class Continue(
-        val episodeIndex: Int,
         val episodeEp: EpisodeSort?,
         val episodeSort: EpisodeSort?, // "12.5"
         val watchedEpisodeEp: EpisodeSort?,
@@ -212,7 +209,6 @@ sealed class ContinueWatchingStatus {
      * 看到了, 但是下一集还没更新
      */
     data class Watched(
-        val episodeIndex: Int,
         val episodeEp: EpisodeSort?, // "12.5"
         val episodeSort: EpisodeSort?, // "24.5"
         /**
@@ -237,7 +233,6 @@ object TestSubjectProgressInfos {
     @Stable
     val ContinueWatching2 = SubjectProgressInfo(
         continueWatchingStatus = ContinueWatchingStatus.Continue(
-            episodeIndex = 1,
             episodeEp = EpisodeSort(2),
             episodeSort = EpisodeSort(2),
             watchedEpisodeEp = EpisodeSort(1),
@@ -248,7 +243,7 @@ object TestSubjectProgressInfos {
 
     @Stable
     val Watched2 = SubjectProgressInfo(
-        continueWatchingStatus = ContinueWatchingStatus.Watched(1, EpisodeSort(2), EpisodeSort(2), PackedDate.Invalid),
+        continueWatchingStatus = ContinueWatchingStatus.Watched(EpisodeSort(2), EpisodeSort(2), PackedDate.Invalid),
         nextEpisodeIdToPlay = null,
     )
 
