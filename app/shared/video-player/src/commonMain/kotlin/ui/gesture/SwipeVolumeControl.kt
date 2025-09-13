@@ -80,10 +80,15 @@ fun Modifier.swipeLevelControlWithIndicator(
     stepSize: Dp,
     orientation: Orientation,
     indicatorState: GestureIndicatorState,
+    enabled: Boolean = true,
     step: Float = 0.05f,
     setup: () -> Unit = {}
 ): Modifier = this then swipeLevelControl(
-    controller = controller, stepSize = stepSize, orientation = orientation, step = step,
+    controller = controller,
+    stepSize = stepSize,
+    orientation = orientation,
+    step = step,
+    enabled = enabled,
     afterStep = {
         setup()
         indicatorState.progressValue = controller.level
@@ -101,6 +106,7 @@ fun Modifier.swipeLevelControl(
     stepSize: Dp,
     orientation: Orientation,
     step: Float = 0.05f,
+    enabled: Boolean = true,
     afterStep: (StepDirection) -> Unit = {},
     onDragStarted: suspend CoroutineScope.(startedPosition: Offset) -> Unit = {},
     onDragStopped: suspend CoroutineScope.(velocity: Float) -> Unit = {},
@@ -124,6 +130,7 @@ fun Modifier.swipeLevelControl(
             },
         ),
         orientation = orientation,
+        enabled = enabled,
         onDragStarted = onDragStarted,
         onDragStopped = onDragStopped,
     )
