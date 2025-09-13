@@ -165,6 +165,7 @@ private fun renderChipLabel(
     if (state.hasSelection) {
         return state.selected.joinToString(",")
     }
+    // TODO: 国际化
     return when (state.kind) {
         CanonicalTagKind.Audience -> "受众"
         CanonicalTagKind.Category -> "分类"
