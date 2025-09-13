@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -67,6 +68,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalUriHandler
@@ -76,7 +78,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -106,6 +107,7 @@ import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
 import me.him188.ani.app.ui.foundation.effects.OverrideCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.effects.ScreenOnEffect
 import me.him188.ani.app.ui.foundation.effects.ScreenRotationEffect
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
@@ -151,6 +153,7 @@ import me.him188.ani.danmaku.api.DanmakuLocation
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.datasources.api.source.MediaFetchRequest
+import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
 import org.openani.mediamp.features.AudioLevelController
@@ -442,19 +445,30 @@ private fun EpisodeScreenTabletVeryWide(
                     .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Right + WindowInsetsSides.Bottom))
                     .background(MaterialTheme.colorScheme.background), // scrollable background
             ) {
-                // 填充 insets 背景颜色
-                Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
-                    Spacer(
-                        Modifier
-                            .fillMaxWidth()
-                            .windowInsetsPadding(
-                                // Consider #1767
-                                WindowInsets.safeContent // Note: this does not include desktop title bar.
-                                    .only(WindowInsetsSides.Top),
-                            ),
-                    )
-                }
 
+                val themeSettings = LocalThemeSettings.current
+                val isEpPageDarkTheme = when {
+                    themeSettings.alwaysDarkInEpisodePage -> true
+                    themeSettings.darkMode == DarkMode.AUTO -> isSystemInDarkTheme()
+                    else -> themeSettings.darkMode == DarkMode.DARK
+                }
+                // 如果当前不是 dark theme 并且 是安卓平台 并且 没有设置播放页始终使用暗色主题，则加一个渐变色避免看不清状态栏
+                // ios 宽屏模式下会自动隐藏状态栏, 无需处理
+                val needShadeBackground = !isEpPageDarkTheme && LocalPlatform.current.isAndroid() 
+                // 填充 insets 背景颜色
+                Spacer(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                        .ifThen(needShadeBackground) {
+                            background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.scrim, Color.Transparent)))
+                        }
+                        .windowInsetsPadding(
+                            // Consider #1767
+                            WindowInsets.safeContent // Note: this does not include desktop title bar.
+                                .only(WindowInsetsSides.Top),
+                        ),
+                )
                 TabRow(
                     pagerState, scope, { vm.episodeCommentState.count }, Modifier.fillMaxWidth(),
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
