@@ -33,7 +33,7 @@ class SubjectProgressInfoTest {
         id: Int = sort,
         episodeType: EpisodeType? = EpisodeType.MainStory, // 默认为主线剧集
     ): Episode = Episode(
-        id, type, episodeType, EpisodeSort(sort), EpisodeSort(sort),
+        id, type, EpisodeSort(sort, episodeType), EpisodeSort(sort, episodeType),
         airDate,
         isKnownCompleted,
     )
@@ -238,7 +238,7 @@ class SubjectProgressInfoTest {
                 ep(DONE, 0, isKnownCompleted = true), // 主线第0集
             ),
         ).run {
-            // 最后看的主线剧集应该是第1集（索引1），下一集应该是第2集（索引2）
+            // 最后看的主线剧集应该是第1集，下一集应该是第2集
             assertEquals(
                 ContinueWatchingStatus.Continue(EpisodeSort(2), EpisodeSort(2), EpisodeSort(1), EpisodeSort(1)),
                 continueWatchingStatus,
@@ -247,20 +247,20 @@ class SubjectProgressInfoTest {
         }
     }
 
-    // 有 SP 且在最后
-    // https://bgm.tv/subject/43951
+    // 有 SP 且在最后并且已完成
+    // https://bgm.tv/subject/506677
     @Test
-    fun `episodes with sp`() {
+    fun `episodes with sp done`() {
         calculate(
             subjectStarted = true,
             episodes = listOf(
                 ep(DONE, 1, isKnownCompleted = true),  // 主线第1集
                 ep(WISH, 2, isKnownCompleted = true),  // 主线第2集，未看
                 ep(WISH, 3, isKnownCompleted = true),  // 主线第3集，未看
-                ep(WISH, 4, isKnownCompleted = true, episodeType = EpisodeType.SP),
+                ep(DONE, 4, isKnownCompleted = true, episodeType = EpisodeType.SP),
             ),
         ).run {
-            // 最后看的主线剧集应该是第1集（索引0），下一集应该是第2集（索引1）
+            // 最后看的主线剧集应该是第1集，下一集应该是第2集，应该排除掉 SP 干扰
             assertEquals(
                 ContinueWatchingStatus.Continue(EpisodeSort(2), EpisodeSort(2), EpisodeSort(1), EpisodeSort(1)),
                 continueWatchingStatus,
