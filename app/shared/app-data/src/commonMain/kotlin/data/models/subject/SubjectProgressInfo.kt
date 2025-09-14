@@ -87,7 +87,7 @@ data class SubjectProgressInfo(
             episodes: List<Episode>,
             subjectAirDate: PackedDate,
         ): SubjectProgressInfo {
-            // 过滤并排序普通剧集
+            // 进度应该仅考虑普通剧集，并且按 sort 排序
             val sortedNormalEpisodes = episodes
                 .filter { it.sort is EpisodeSort.Normal }
                 .sortedBy { it.sort }
