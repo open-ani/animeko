@@ -267,13 +267,12 @@ private fun TagsList(
                 derivedStateOf {
                     when {
                         isExpanded -> allTags
-                        allTags.size <= 6 -> allTags
                         else -> {
                             val filteredByCount = allTags.filter { it.count > 100 }
-                            if (filteredByCount.size < ALWAYS_SHOW_TAGS_COUNT) {
-                                allTags.take(ALWAYS_SHOW_TAGS_COUNT)
-                            } else {
+                            if (filteredByCount.size <= ALWAYS_SHOW_TAGS_COUNT) {
                                 filteredByCount
+                            } else {
+                                allTags.take(ALWAYS_SHOW_TAGS_COUNT)
                             }
                         }
                     }
