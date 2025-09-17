@@ -9,19 +9,9 @@
 
 package me.him188.ani.app.data.repository.episode
 
-import androidx.paging.LoadType
-import androidx.paging.Pager
-import androidx.paging.PagingConfig
-import androidx.paging.PagingData
-import androidx.paging.PagingState
-import androidx.paging.RemoteMediator
-import androidx.paging.map
+import androidx.paging.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
@@ -35,10 +25,16 @@ import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.subject.GetEpisodeTypeFiltersUseCase
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
+import me.him188.ani.app.data.repository.subject.toEpisodeType
+import me.him188.ani.app.data.repository.subject.toUnifiedCollectionType
 import me.him188.ani.app.domain.episode.EpisodeCollections
+import me.him188.ani.client.models.AniEpisodeCollection
+import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.currentTimeMillis
+import me.him188.ani.utils.serialization.BigNum
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
@@ -73,7 +69,7 @@ class EpisodeCollectionRepository(
             entity?.takeIf { !it.isExpired() }
                 ?.toEpisodeCollectionInfo()
                 ?: kotlin.run {
-                    episodeService.getEpisodeCollectionById(episodeId)
+                    episodeService.getEpisodeCollectionById(subjectId, episodeId)
                         ?.also {
                             episodeCollectionDao.upsert(it.toEntity(subjectId))
                         }
@@ -155,7 +151,7 @@ class EpisodeCollectionRepository(
     suspend fun setEpisodeCollectionType(
         subjectId: Int,
         episodeId: Int,
-        collectionType: UnifiedCollectionType
+        collectionType: UnifiedCollectionType,
     ) = withContext(defaultDispatcher) {
         if (subjectCollectionRepository.subjectCollectionFlow(subjectId)
                 .first().collectionType == UnifiedCollectionType.NOT_COLLECTED
@@ -174,8 +170,9 @@ class EpisodeCollectionRepository(
      * @return 收藏状态. 当无法确定时返回 `null`.
      */
     suspend fun getEpisodeCollectionType(
+        subjectId: Int,
         episodeId: Int,
-        allowNetwork: Boolean
+        allowNetwork: Boolean,
     ): UnifiedCollectionType? = withContext(defaultDispatcher) {
         try {
             val local = episodeCollectionDao.findByEpisodeId(episodeId).first()
@@ -183,7 +180,7 @@ class EpisodeCollectionRepository(
             if (local != null && (!local.isExpired() || !allowNetwork)) {
                 return@withContext local.selfCollectionType
             } else {
-                val remote = episodeService.getEpisodeCollectionById(episodeId)
+                val remote = episodeService.getEpisodeCollectionById(subjectId, episodeId)
                 if (remote != null) {
                     return@withContext remote.collectionType
                 }
@@ -292,6 +289,12 @@ fun EpisodeCollectionEntity.toEpisodeCollectionInfo() =
         collectionType = selfCollectionType,
     )
 
+fun AniEpisodeCollection.toEpisodeCollectionInfo() =
+    EpisodeCollectionInfo(
+        episodeInfo = toEpisodeInfo(),
+        collectionType = collectionType.toUnifiedCollectionType(),
+    )
+
 private fun EpisodeCollectionEntity.toEpisodeInfo(): EpisodeInfo {
     return EpisodeInfo(
         episodeId = this.episodeId,
@@ -303,5 +306,19 @@ private fun EpisodeCollectionEntity.toEpisodeInfo(): EpisodeInfo {
         desc = this.desc,
         sort = this.sort,
         ep = this.ep,
+    )
+}
+
+private fun AniEpisodeCollection.toEpisodeInfo(): EpisodeInfo {
+    return EpisodeInfo(
+        episodeId = this.episodeId.toInt(),
+        type = this.type.toEpisodeType(),
+        name = this.name,
+        nameCn = this.nameCn,
+        airDate = this.airdate?.let { PackedDate.parseFromDate(it) } ?: PackedDate.Invalid,
+        comment = 0,
+        desc = this.description,
+        sort = EpisodeSort(BigNum(this.sort), this.type.toEpisodeType()),
+        ep = this.ep?.let { EpisodeSort(BigNum(it), this.type.toEpisodeType()) },
     )
 }

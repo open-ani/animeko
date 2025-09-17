@@ -9,13 +9,9 @@
 
 package me.him188.ani.app.data.network
 
-import io.ktor.client.plugins.ClientRequestException
-import io.ktor.http.HttpStatusCode
+import io.ktor.client.plugins.*
+import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
@@ -29,18 +25,10 @@ import me.him188.ani.client.models.AniEpisodeCollectionType
 import me.him188.ani.client.models.AniEpisodeCollectionTypeUpdate
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
-import me.him188.ani.datasources.api.EpisodeType.ED
-import me.him188.ani.datasources.api.EpisodeType.MAD
-import me.him188.ani.datasources.api.EpisodeType.MainStory
-import me.him188.ani.datasources.api.EpisodeType.OP
-import me.him188.ani.datasources.api.EpisodeType.PV
-import me.him188.ani.datasources.api.EpisodeType.SP
+import me.him188.ani.datasources.api.EpisodeType.*
 import me.him188.ani.datasources.api.PackedDate
-import me.him188.ani.datasources.api.paging.PageBasedPagedSource
 import me.him188.ani.datasources.api.paging.Paged
-import me.him188.ani.datasources.api.paging.processPagedResponse
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.models.BangumiEpType
 import me.him188.ani.datasources.bangumi.models.BangumiEpisode
 import me.him188.ani.datasources.bangumi.models.BangumiEpisodeDetail
@@ -62,20 +50,13 @@ sealed interface EpisodeService {
     /**
      * 获取用户在这个条目下的所有剧集的收藏状态. 当用户没有收藏此条目时返回 [collectionType] 均为 [UnifiedCollectionType.NOT_COLLECTED].
      *
-     * @return 分页的剧集收藏信息. 使用 `toList()` 可以获取所有数据.
-     */
-    suspend fun getEpisodeCollectionInfosBySubjectId(subjectId: Int, epType: EpisodeType?): Flow<EpisodeCollectionInfo>
-
-    /**
-     * 获取用户在这个条目下的所有剧集的收藏状态. 当用户没有收藏此条目时返回 [collectionType] 均为 [UnifiedCollectionType.NOT_COLLECTED].
-     *
      * @return 分页的剧集收藏信息.
      */
     suspend fun getEpisodeCollectionInfosPaged(
         subjectId: Int,
         offset: Int? = 0,
         limit: Int? = 100,
-        episodeType: BangumiEpType? = null
+        episodeType: BangumiEpType? = null,
     ): Paged<EpisodeCollectionInfo>
 
     /**
@@ -83,7 +64,7 @@ sealed interface EpisodeService {
      *
      * 只有在 [episodeId] 找不到对应的公开剧集时返回 `null`.
      */
-    suspend fun getEpisodeCollectionById(episodeId: Int): EpisodeCollectionInfo?
+    suspend fun getEpisodeCollectionById(subjectId: Int, episodeId: Int): EpisodeCollectionInfo?
 
     /**
      * 设置多个剧集的收藏状态.
@@ -93,7 +74,7 @@ sealed interface EpisodeService {
     suspend fun setEpisodeCollection(
         subjectId: Int,
         episodeId: List<Int>,
-        type: UnifiedCollectionType
+        type: UnifiedCollectionType,
     ): Boolean
 }
 
@@ -101,25 +82,14 @@ class EpisodeServiceImpl(
     private val subjectApi: ApiInvoker<SubjectsAniApi>,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : EpisodeService, KoinComponent {
-    private val client by inject<BangumiClient>()
     private val logger = logger<EpisodeServiceImpl>()
     private val sessionManager: SessionStateProvider by inject()
-
-    // TODO: 2025/6/15 当 subjectId 无效时, 这个 flow 会 silently 不 emit 
-    override suspend fun getEpisodeCollectionInfosBySubjectId(
-        subjectId: Int,
-        epType: EpisodeType?
-    ): Flow<EpisodeCollectionInfo> = withContext(ioDispatcher) {
-        getSubjectEpisodeCollections(subjectId, epType?.toBangumiEpType())?.map {
-            it.toEpisodeCollectionInfo()
-        } ?: emptyFlow()
-    }.flowOn(ioDispatcher)
 
     override suspend fun getEpisodeCollectionInfosPaged(
         subjectId: Int,
         offset: Int?,
         limit: Int?,
-        episodeType: BangumiEpType?
+        episodeType: BangumiEpType?,
     ): Paged<EpisodeCollectionInfo> {
         return withContext(ioDispatcher) {
 
@@ -141,116 +111,25 @@ class EpisodeServiceImpl(
         }
     }
 
-    private fun getEpisodesBySubjectId(subjectId: Int, type: BangumiEpType?): Flow<BangumiEpisode> {
-        val episodes = PageBasedPagedSource { page ->
-            getEpisodesBySubjectIdPage(subjectId, type, page * 100, 100)
-        }
-        return episodes.results
-    }
 
-    private suspend fun getEpisodesBySubjectIdPage(
-        subjectId: Int,
-        type: BangumiEpType?,
-        offset: Int,
-        limit: Int
-    ): Paged<BangumiEpisode> = withContext(ioDispatcher) {
-        try {
-            client.api { getEpisodes(subjectId, type, offset = offset, limit = limit).body() }.run {
-                Paged(this.total ?: 0, !this.data.isNullOrEmpty(), this.data.orEmpty())
-            }
-        } catch (e: ClientRequestException) {
-            if (e.response.status == HttpStatusCode.BadRequest
-                || e.response.status == HttpStatusCode.NotFound
-            ) {
-                return@withContext Paged.empty()
-            }
-            throw e
-        }
-    }
-
-    private suspend fun getSubjectEpisodeCollections(
-        subjectId: Int,
-        type: BangumiEpType?
-    ): Flow<BangumiUserEpisodeCollection>? {
-        // TODO: 2025/6/15 
-        val firstPage = try {
-            withContext(ioDispatcher) {
-                client.api {
-                    getUserSubjectEpisodeCollection(
-                        subjectId,
-                        episodeType = type,
-                        offset = 0,
-                        limit = 100,
-                    ).body()
-                }
-            }
-        } catch (e: ClientRequestException) {
-            if (e.response.status == HttpStatusCode.NotFound
-                || e.response.status == HttpStatusCode.Unauthorized
-                || e.response.status == HttpStatusCode.BadRequest // #1031
-            ) {
-                return null
-            }
-            throw e
-        }
-
-        if (firstPage.data.isNullOrEmpty()) {
-            return null
-        }
-
-        val episodes = PageBasedPagedSource { page ->
-            val resp = if (page == 0) {
-                firstPage
-            } else {
-                try {
-                    withContext(ioDispatcher) {
-                        client.api {
-                            getUserSubjectEpisodeCollection(
-                                subjectId,
-                                episodeType = type,
-                                offset = page * 100,
-                                limit = 100,
-                            ).body()
-                        }
-                    }
-                } catch (e: ClientRequestException) {
-                    if (e.response.status == HttpStatusCode.BadRequest // #1031
-                    ) {
-                        return@PageBasedPagedSource Paged.empty()
-                    }
-                    throw e
-                }
-            }
-            Paged.processPagedResponse(resp.total, 100, resp.data)
-        }
-        return episodes.results
-    }
-
-    override suspend fun getEpisodeCollectionById(episodeId: Int): EpisodeCollectionInfo? = withContext(ioDispatcher) {
-        if (sessionManager.canAccessAniApiNow()) {
+    override suspend fun getEpisodeCollectionById(subjectId: Int, episodeId: Int): EpisodeCollectionInfo? =
+        withContext(ioDispatcher) {
             try {
-                return@withContext client.api { getUserEpisodeCollection(episodeId).body().toEpisodeCollectionInfo() }
-            } catch (e: ClientRequestException) {
-                if (e.response.status != HttpStatusCode.NotFound && !e.response.status.isUnauthorized()) {
-                    throw e
+                return@withContext subjectApi.invoke {
+                    this.getEpisode(subjectId.toLong(), episodeId.toLong()).body().toEpisodeCollectionInfo()
                 }
+            } catch (e: ClientRequestException) {
+                if (e.response.status == HttpStatusCode.NotFound) {
+                    return@withContext null
+                }
+                throw e
             }
         }
-
-        try {
-            client.api { getEpisodeById(episodeId).body().toEpisodeInfo().createNotCollected() }
-        } catch (e: Exception) {
-            if (e is ClientRequestException && e.response.status == HttpStatusCode.NotFound) {
-                return@withContext null
-            }
-            throw e
-        }
-    }
 
     override suspend fun setEpisodeCollection(
         subjectId: Int,
         episodeId: List<Int>,
-        type: UnifiedCollectionType
+        type: UnifiedCollectionType,
     ): Boolean = withContext(ioDispatcher) {
         if (!sessionManager.canAccessAniApiNow()) {
             return@withContext false

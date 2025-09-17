@@ -50,6 +50,7 @@ import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepositoryImpl
 import me.him188.ani.app.data.repository.media.MediaSourceInstanceRepository
 import me.him188.ani.app.data.repository.media.MediaSourceInstanceRepositoryImpl
+import me.him188.ani.app.data.repository.media.MediaSourceSaves
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
 import me.him188.ani.app.data.repository.media.MikanIndexCacheRepository
 import me.him188.ani.app.data.repository.media.MikanIndexCacheRepositoryImpl
@@ -203,7 +204,6 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
 
     single<SubjectCollectionRepository> {
         SubjectCollectionRepositoryImpl(
-            api = client.api,
             subjectService = get(),
             subjectCollectionDao = database.subjectCollection(),
 //            characterDao = database.character(),
@@ -520,6 +520,15 @@ fun KoinApplication.startCommonKoinModule(
             if (instance.factoryId.value in removedFactoryIds) {
                 manager.remove(instanceId = instance.instanceId)
             }
+        }
+    }
+
+    coroutineScope.launch {
+        val currentSaves = context.dataStores.mediaSourceSaveStore.data.first()
+        val defaultInstanceIds = MediaSourceSaves.Default.instances.map { it.instanceId }
+        // 如果当前的数据源列表的 instance ids 都在默认列表里, 说明用户没有自定义过数据源, 直接写入默认源
+        if (currentSaves.instances.all { it.instanceId in defaultInstanceIds }) {
+            context.dataStores.mediaSourceSaveStore.updateData { MediaSourceSaves.Default }
         }
     }
 

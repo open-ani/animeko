@@ -9,13 +9,8 @@
 
 package me.him188.ani.app.domain.player.extension
 
-import io.ktor.client.plugins.ClientRequestException
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
+import io.ktor.client.plugins.*
+import kotlinx.coroutines.flow.*
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.episode.GetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
@@ -45,7 +40,7 @@ class MarkAsWatchedExtension(
 
     override fun onStart(
         episodeSession: EpisodeSession,
-        backgroundTaskScope: ExtensionBackgroundTaskScope
+        backgroundTaskScope: ExtensionBackgroundTaskScope,
     ) {
         backgroundTaskScope.launch("AutoMarkWatched") {
             context.sessionFlow.collectLatest { session ->
@@ -61,7 +56,7 @@ class MarkAsWatchedExtension(
     private suspend fun invoke(
         player: MediampPlayer,
         subjectId: Int,
-        episodeId: Int
+        episodeId: Int,
     ) {
         getVideoScaffoldConfigUseCase()
             .map { it.autoMarkDone }
@@ -79,12 +74,14 @@ class MarkAsWatchedExtension(
     private suspend fun impl(
         episodeId: Int,
         player: MediampPlayer,
-        subjectId: Int
+        subjectId: Int,
     ) {
-        val collectionType = getEpisodeCollectionTypeUseCase(
-            episodeId,
-            allowNetwork = false, // 我们只是用来自动标记, 不需要精确的数据
-        )
+        val collectionType = // 我们只是用来自动标记, 不需要精确的数据
+            getEpisodeCollectionTypeUseCase(
+                subjectId,
+                episodeId,
+                allowNetwork = false, // 我们只是用来自动标记, 不需要精确的数据
+            )
         if (collectionType?.isDoneOrDropped() == true) {
             // 已经看过了
             return

@@ -10,14 +10,7 @@
 // @formatter:off
 package me.him188.ani.client.infrastructure
 
-import io.ktor.utils.io.core.ByteReadPacket
-import io.ktor.utils.io.core.Input
-import io.ktor.utils.io.core.buildPacket
-import io.ktor.utils.io.core.readAvailable
-import io.ktor.utils.io.core.readBytes
-import io.ktor.utils.io.core.remaining
-import io.ktor.utils.io.core.writeFully
-import io.ktor.utils.io.core.writeText
+import io.ktor.utils.io.core.*
 import kotlin.experimental.and
 
 private val digits = "0123456789abcdef".toCharArray()

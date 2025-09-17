@@ -31,6 +31,7 @@ data class EpisodeInfo(
      * 条目所在地区的上映日期. 通常来说是日本时区 (UTC+9)
      */
     val airDate: PackedDate = PackedDate.Invalid,
+    @Deprecated("No longer provided")
     val comment: Int = 0,
 //    /** 维基人填写的原始时长 */
 //    val duration: String = "",

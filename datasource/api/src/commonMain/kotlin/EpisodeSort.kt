@@ -9,6 +9,7 @@
 
 package me.him188.ani.datasources.api
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
 import me.him188.ani.datasources.api.EpisodeSort.Normal
@@ -92,7 +93,7 @@ sealed class EpisodeSort : Comparable<EpisodeSort> {
 
     @Serializable
     class Special internal constructor(
-        @ProtoNumber(1) val type: EpisodeType,
+        @ProtoNumber(1) @SerialName("episodeType") val type: EpisodeType,
         @ProtoNumber(2) override val number: Float?,
     ) : EpisodeSort() {
         override val raw: String get() = "${type.value}${getNumberStr(number)}" // "SP01"
