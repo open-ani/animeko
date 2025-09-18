@@ -44,7 +44,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -56,10 +59,13 @@ import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.readBytes
 import me.him188.ani.app.ui.external.placeholder.placeholder
+import me.him188.ani.app.ui.foundation.CropRect
 import me.him188.ani.app.ui.foundation.DragAndDropContent
 import me.him188.ani.app.ui.foundation.DragAndDropHoverState
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.app.ui.foundation.cropImageToSquare
+import me.him188.ani.app.ui.foundation.decodeImageBitmap
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastExpanded
@@ -76,6 +82,14 @@ import me.him188.ani.app.ui.settings.framework.components.TextFieldItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
+
+// Crop helpers for free-drag 1:1 selector
+private enum class CropCorner { TL, TR, BL, BR }
+private sealed interface CropDragMode {
+    data object None : CropDragMode
+    data object Move : CropDragMode
+    data class Resize(val corner: CropCorner) : CropDragMode
+}
 
 @Composable
 fun SettingsScope.ProfileGroup(
@@ -433,47 +447,33 @@ private fun CropAvatarDialog(
     onDismissRequest: () -> Unit,
     onConfirmCropped: (ByteArray) -> Unit,
 ) {
-    // Very simple square crop UI: drag to move, slider to zoom
-    val bitmap = remember(imageBytes) { me.him188.ani.app.ui.foundation.decodeImageBitmap(imageBytes) }
+    // Free-drag 1:1 selection box over full image
+    val bitmap = remember(imageBytes) { decodeImageBitmap(imageBytes) }
     val imgW = bitmap.width
     val imgH = bitmap.height
-    val minDim = kotlin.math.min(imgW, imgH).toFloat()
+    val minDim = kotlin.math.min(imgW, imgH)
+    val minCropPx = 64
+    val minAllowed = kotlin.math.min(minDim, minCropPx)
 
-    var zoom by remember { mutableStateOf(1f) } // 1f means using minDim as crop size
-    val maxZoom = remember(imgW, imgH) { (minDim / 64f).coerceAtLeast(1f) } // ensure at least 64px crop
-    var cropLeft by remember { mutableStateOf(((imgW - minDim) / 2f)) }
-    var cropTop by remember { mutableStateOf(((imgH - minDim) / 2f)) }
+    var selSize by remember { mutableStateOf(minDim * 0.8f) } // float px
+    var selX by remember { mutableStateOf((imgW.toFloat() - selSize) / 2f) }
+    var selY by remember { mutableStateOf((imgH.toFloat() - selSize) / 2f) }
 
-    fun cropSize(): Float = (minDim / zoom)
-    fun clamp() {
-        val s = cropSize()
-        cropLeft = cropLeft.coerceIn(0f, (imgW - s).coerceAtLeast(0f))
-        cropTop = cropTop.coerceIn(0f, (imgH - s).coerceAtLeast(0f))
+    fun clampSelection() {
+        selSize = selSize.coerceIn(minAllowed.toFloat(), minDim.toFloat())
+        selX = selX.coerceIn(0f, (imgW.toFloat() - selSize).coerceAtLeast(0f))
+        selY = selY.coerceIn(0f, (imgH.toFloat() - selSize).coerceAtLeast(0f))
     }
-
-    // keep centered when zoom changes
-    val lastZoom = remember { mutableStateOf(zoom) }
-    if (lastZoom.value != zoom) {
-        val oldSize = minDim / lastZoom.value
-        val newSize = cropSize()
-        // keep center
-        val centerX = cropLeft + oldSize / 2f
-        val centerY = cropTop + oldSize / 2f
-        cropLeft = centerX - newSize / 2f
-        cropTop = centerY - newSize / 2f
-        lastZoom.value = zoom
-        clamp()
-    }
+    clampSelection()
 
     AlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
             TextButton(
                 {
-                    val size = cropSize().toInt().coerceAtLeast(1)
-                    val bytes = me.him188.ani.app.ui.foundation.cropImageToSquare(
+                    val bytes = cropImageToSquare(
                         imageBytes,
-                        me.him188.ani.app.ui.foundation.CropRect(cropLeft.toInt(), cropTop.toInt(), size),
+                        CropRect(selX.toInt(), selY.toInt(), selSize.toInt()),
                         outputSize = 512,
                     )
                     onConfirmCropped(bytes)
@@ -488,11 +488,25 @@ private fun CropAvatarDialog(
         title = { Text("裁剪头像") },
         text = {
             Column(Modifier.fillMaxWidth()) {
-                // square viewport
-                val viewportDp = 280.dp
+                val viewportDp = 320.dp
                 val density = androidx.compose.ui.platform.LocalDensity.current
                 val viewportPx = with(density) { viewportDp.toPx() }
-                val scale = viewportPx / cropSize()
+
+                // Fit whole image into square viewport (contain)
+                val scale = remember(imgW, imgH, viewportPx) { kotlin.math.min(viewportPx / imgW, viewportPx / imgH) }
+                val dispW = imgW * scale
+                val dispH = imgH * scale
+                val offsetX = (viewportPx - dispW) / 2f
+                val offsetY = (viewportPx - dispH) / 2f
+
+                val handleDp = 14.dp
+                val handlePx = with(density) { handleDp.toPx() }
+                val handleHitExtra = with(density) { 6.dp.toPx() }
+
+                var mode by remember { mutableStateOf<CropDragMode>(CropDragMode.None) }
+
+                // Get theming values in composable context (not in draw block)
+                val borderColor = MaterialTheme.colorScheme.primary
 
                 androidx.compose.foundation.Canvas(
                     modifier = Modifier
@@ -501,38 +515,179 @@ private fun CropAvatarDialog(
                             BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                             shape = MaterialTheme.shapes.small,
                         )
-                        .pointerInput(imgW, imgH, zoom) {
-                            detectDragGestures { _, dragAmount ->
-                                val toOriginal = cropSize() / viewportPx
-                                cropLeft -= dragAmount.x * toOriginal
-                                cropTop -= dragAmount.y * toOriginal
-                                clamp()
+                        .pointerInput(Unit) {
+                            detectDragGestures(
+                                onDragStart = { p ->
+                                    val sx = offsetX + selX * scale
+                                    val sy = offsetY + selY * scale
+                                    val ss = selSize * scale
+                                    val cx = p.x
+                                    val cy = p.y
+
+                                    fun inRect(x: Float, y: Float, w: Float, h: Float) =
+                                        cx >= x && cx <= x + w && cy >= y && cy <= y + h
+
+                                    val tl = sx - handleHitExtra to sy - handleHitExtra
+                                    val tr = sx + ss - handlePx - handleHitExtra to sy - handleHitExtra
+                                    val bl = sx - handleHitExtra to sy + ss - handlePx - handleHitExtra
+                                    val br = sx + ss - handlePx - handleHitExtra to sy + ss - handlePx - handleHitExtra
+
+                                    mode = when {
+                                        inRect(
+                                            tl.first,
+                                            tl.second,
+                                            handlePx + 2 * handleHitExtra,
+                                            handlePx + 2 * handleHitExtra,
+                                        ) -> CropDragMode.Resize(CropCorner.TL)
+
+                                        inRect(
+                                            tr.first,
+                                            tr.second,
+                                            handlePx + 2 * handleHitExtra,
+                                            handlePx + 2 * handleHitExtra,
+                                        ) -> CropDragMode.Resize(CropCorner.TR)
+
+                                        inRect(
+                                            bl.first,
+                                            bl.second,
+                                            handlePx + 2 * handleHitExtra,
+                                            handlePx + 2 * handleHitExtra,
+                                        ) -> CropDragMode.Resize(CropCorner.BL)
+
+                                        inRect(
+                                            br.first,
+                                            br.second,
+                                            handlePx + 2 * handleHitExtra,
+                                            handlePx + 2 * handleHitExtra,
+                                        ) -> CropDragMode.Resize(CropCorner.BR)
+
+                                        inRect(sx, sy, ss, ss) -> CropDragMode.Move
+                                        else -> CropDragMode.None
+                                    }
+                                },
+                                onDragEnd = { mode = CropDragMode.None },
+                            ) { _, drag ->
+                                when (val m = mode) {
+                                    CropDragMode.None -> return@detectDragGestures
+                                    CropDragMode.Move -> {
+                                        val dxImg = (drag.x / scale)
+                                        val dyImg = (drag.y / scale)
+                                        selX += dxImg
+                                        selY += dyImg
+                                        clampSelection()
+                                    }
+
+                                    is CropDragMode.Resize -> {
+                                        val dxImg = (drag.x / scale)
+                                        val dyImg = (drag.y / scale)
+                                        when (m.corner) {
+                                            CropCorner.TL -> {
+                                                val anchorX = selX + selSize
+                                                val anchorY = selY + selSize
+                                                val newX =
+                                                    (selX + dxImg).coerceAtMost(anchorX - minAllowed).coerceAtLeast(0f)
+                                                val newY =
+                                                    (selY + dyImg).coerceAtMost(anchorY - minAllowed).coerceAtLeast(0f)
+                                                val newSize = kotlin.math.min(anchorX - newX, anchorY - newY)
+                                                selX = anchorX - newSize
+                                                selY = anchorY - newSize
+                                                selSize = newSize
+                                            }
+
+                                            CropCorner.TR -> {
+                                                val anchorX = selX
+                                                val anchorY = selY + selSize
+                                                val newRight =
+                                                    (selX + selSize + dxImg).coerceAtLeast(anchorX + minAllowed)
+                                                        .coerceAtMost(imgW.toFloat())
+                                                val newTop =
+                                                    (selY + dyImg).coerceAtMost(anchorY - minAllowed).coerceAtLeast(0f)
+                                                val newSize = kotlin.math.min(newRight - anchorX, anchorY - newTop)
+                                                selX = anchorX
+                                                selY = anchorY - newSize
+                                                selSize = newSize
+                                            }
+
+                                            CropCorner.BL -> {
+                                                val anchorX = selX + selSize
+                                                val anchorY = selY
+                                                val newLeft =
+                                                    (selX + dxImg).coerceAtMost(anchorX - minAllowed).coerceAtLeast(0f)
+                                                val newBottom =
+                                                    (selY + selSize + dyImg).coerceAtLeast(anchorY + minAllowed)
+                                                        .coerceAtMost(imgH.toFloat())
+                                                val newSize = kotlin.math.min(anchorX - newLeft, newBottom - anchorY)
+                                                selX = anchorX - newSize
+                                                selY = anchorY
+                                                selSize = newSize
+                                            }
+
+                                            CropCorner.BR -> {
+                                                val anchorX = selX
+                                                val anchorY = selY
+                                                val newRight =
+                                                    (selX + selSize + dxImg).coerceAtLeast(anchorX + minAllowed)
+                                                        .coerceAtMost(imgW.toFloat())
+                                                val newBottom =
+                                                    (selY + selSize + dyImg).coerceAtLeast(anchorY + minAllowed)
+                                                        .coerceAtMost(imgH.toFloat())
+                                                val newSize = kotlin.math.min(newRight - anchorX, newBottom - anchorY)
+                                                selX = anchorX
+                                                selY = anchorY
+                                                selSize = newSize
+                                            }
+                                        }
+                                        clampSelection()
+                                    }
+                                }
                             }
                         },
                 ) {
-                    // draw cropped area to fill canvas
-                    val s = cropSize().toInt().coerceAtLeast(1)
+                    // Draw base image (fit center)
                     drawImage(
                         image = bitmap,
-                        srcOffset = androidx.compose.ui.unit.IntOffset(
-                            cropLeft.toInt().coerceAtLeast(0),
-                            cropTop.toInt().coerceAtLeast(0),
-                        ),
-                        srcSize = androidx.compose.ui.unit.IntSize(s.coerceAtMost(imgW), s.coerceAtMost(imgH)),
-                        dstSize = androidx.compose.ui.unit.IntSize(size.width.toInt(), size.height.toInt()),
+                        dstOffset = androidx.compose.ui.unit.IntOffset(offsetX.toInt(), offsetY.toInt()),
+                        dstSize = androidx.compose.ui.unit.IntSize(dispW.toInt(), dispH.toInt()),
                     )
+
+                    // Overlay outside selection
+                    val sx = offsetX + selX * scale
+                    val sy = offsetY + selY * scale
+                    val ss = selSize * scale
+
+                    val overlayColor = Color.Black.copy(alpha = 0.45f)
+                    drawRect(overlayColor, topLeft = Offset(0f, 0f), size = Size(size.width, sy))
+                    drawRect(overlayColor, topLeft = Offset(0f, sy), size = Size(sx, ss))
+                    drawRect(overlayColor, topLeft = Offset(sx + ss, sy), size = Size(size.width - (sx + ss), ss))
+                    drawRect(
+                        overlayColor,
+                        topLeft = Offset(0f, sy + ss),
+                        size = Size(size.width, size.height - (sy + ss)),
+                    )
+
+                    // Border
+                    drawRect(
+                        color = borderColor,
+                        topLeft = Offset(sx, sy),
+                        size = Size(ss, ss),
+                        style = Stroke(width = 2f),
+                    )
+
+                    // Corner handles
+                    fun drawHandle(x: Float, y: Float) {
+                        drawRect(
+                            color = borderColor,
+                            topLeft = Offset(x, y),
+                            size = Size(handlePx, handlePx),
+                        )
+                    }
+                    drawHandle(sx - handlePx / 2, sy - handlePx / 2)
+                    drawHandle(sx + ss - handlePx / 2, sy - handlePx / 2)
+                    drawHandle(sx - handlePx / 2, sy + ss - handlePx / 2)
+                    drawHandle(sx + ss - handlePx / 2, sy + ss - handlePx / 2)
                 }
 
-                // zoom slider
-                androidx.compose.material3.Slider(
-                    value = zoom,
-                    onValueChange = {
-                        zoom = it.coerceIn(1f, maxZoom)
-                        clamp()
-                    },
-                    valueRange = 1f..maxZoom,
-                )
-                Text("拖动图片调整位置，滑动调节缩放")
+                Text("拖动选框移动，拖动角点调整大小（固定1:1）")
             }
         },
     )
