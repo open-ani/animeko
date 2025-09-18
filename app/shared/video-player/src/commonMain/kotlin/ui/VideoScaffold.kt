@@ -132,7 +132,7 @@ fun VideoScaffold(
                     .matchParentSize()
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
-                    .windowInsetsPadding(contentWindowInsets),
+                    .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Vertical)),
             ) {
                 CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
                     danmakuHost()
