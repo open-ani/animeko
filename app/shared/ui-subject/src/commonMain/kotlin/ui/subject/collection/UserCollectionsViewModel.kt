@@ -77,9 +77,12 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
         onPagerFetchingAnyRemoteSource = { enable ->
             if (!enable) {
                 backgroundScope.launch {
-                    fullSyncState.emit(BangumiSyncState.Finished(0, null))
+                    try {
+                        fullSyncTasker.cancelAndJoin()
+                    } finally {
+                        fullSyncState.emit(BangumiSyncState.Finished(0, null))
+                    }
                 }
-                fullSyncTasker.cancel()
                 return@UserCollectionsState
             }
 
