@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.settings.account
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -49,7 +51,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -346,7 +352,7 @@ private fun SettingsScope.UploadAvatarDialog(
                                 if (currentPlatform() is Platform.Desktop) {
                                     append("或拖动文件到此处。")
                                 }
-                                append("支持 JPEG/PNG/WebP，最大 1MB。可裁剪为方形头像")
+                                append("支持 JPEG/PNG/WebP，最大 1MB。多次上传需间隔一分钟。")
                             },
                         )
                     },
@@ -447,33 +453,40 @@ private fun CropAvatarDialog(
     onDismissRequest: () -> Unit,
     onConfirmCropped: (ByteArray) -> Unit,
 ) {
-    // Free-drag 1:1 selection box over full image
+    // Free-drag 1:1 selection box over scaled image inside a square viewport
     val bitmap = remember(imageBytes) { decodeImageBitmap(imageBytes) }
     val imgW = bitmap.width
     val imgH = bitmap.height
-    val minDim = kotlin.math.min(imgW, imgH)
-    val minCropPx = 64
-    val minAllowed = kotlin.math.min(minDim, minCropPx)
+    val minCropPx = 64 // minimum crop size in original image pixels
 
-    var selSize by remember { mutableStateOf(minDim * 0.8f) } // float px
-    var selX by remember { mutableStateOf((imgW.toFloat() - selSize) / 2f) }
-    var selY by remember { mutableStateOf((imgH.toFloat() - selSize) / 2f) }
+    // Selection stored in viewport (Canvas) coordinates
+    var selVx by rememberSaveable { mutableFloatStateOf(0f) }
+    var selVy by rememberSaveable { mutableFloatStateOf(0f) }
+    var selVs by rememberSaveable { mutableFloatStateOf(0f) }
 
-    fun clampSelection() {
-        selSize = selSize.coerceIn(minAllowed.toFloat(), minDim.toFloat())
-        selX = selX.coerceIn(0f, (imgW.toFloat() - selSize).coerceAtLeast(0f))
-        selY = selY.coerceIn(0f, (imgH.toFloat() - selSize).coerceAtLeast(0f))
-    }
-    clampSelection()
+    // Cache latest mapping from viewport->image for confirm click
+    var lastScale by rememberSaveable { mutableFloatStateOf(1f) }
+    var lastOffsetX by rememberSaveable { mutableFloatStateOf(0f) }
+    var lastOffsetY by rememberSaveable { mutableFloatStateOf(0f) }
 
     AlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
             TextButton(
                 {
+                    // Map viewport selection back to image coordinates using cached mapping
+                    val cropX = ((selVx - lastOffsetX) / lastScale).toInt().coerceIn(0, imgW)
+                    val cropY = ((selVy - lastOffsetY) / lastScale).toInt().coerceIn(0, imgH)
+                    val cropSize = (selVs / lastScale).toInt().coerceAtLeast(1)
+                    val safeSize = kotlin.math.min(cropSize, kotlin.math.min(imgW - cropX, imgH - cropY))
+
                     val bytes = cropImageToSquare(
                         imageBytes,
-                        CropRect(selX.toInt(), selY.toInt(), selSize.toInt()),
+                        CropRect(
+                            x = cropX.coerceAtMost(imgW - 1),
+                            y = cropY.coerceAtMost(imgH - 1),
+                            size = safeSize,
+                        ),
                         outputSize = 512,
                     )
                     onConfirmCropped(bytes)
@@ -488,29 +501,63 @@ private fun CropAvatarDialog(
         title = { Text("裁剪头像") },
         text = {
             Column(Modifier.fillMaxWidth()) {
-                val viewportDp = 320.dp
-                val density = androidx.compose.ui.platform.LocalDensity.current
+                val isAndroid = currentPlatform() is Platform.Mobile
+                // Slightly larger viewport on Android for easier touch interactions
+                val viewportDp = if (isAndroid) 360.dp else 320.dp
+                val density = LocalDensity.current
                 val viewportPx = with(density) { viewportDp.toPx() }
+                // Actual canvas size may be smaller due to parent constraints
+                var canvasSize by remember { mutableStateOf(IntSize.Zero) }
 
-                // Fit whole image into square viewport (contain)
-                val scale = remember(imgW, imgH, viewportPx) { kotlin.math.min(viewportPx / imgW, viewportPx / imgH) }
+                val canvasW = canvasSize.width.takeIf { it > 0 }?.toFloat() ?: viewportPx
+                val canvasH = canvasSize.height.takeIf { it > 0 }?.toFloat() ?: viewportPx
+
+                // Fit whole image into current canvas (contain)
+                val scale = remember(imgW, imgH, canvasW, canvasH) {
+                    kotlin.math.min(canvasW / imgW, canvasH / imgH)
+                }
                 val dispW = imgW * scale
                 val dispH = imgH * scale
-                val offsetX = (viewportPx - dispW) / 2f
-                val offsetY = (viewportPx - dispH) / 2f
+                val offsetX = (canvasW - dispW) / 2f
+                val offsetY = (canvasH - dispH) / 2f
+                val minAllowedV = (minCropPx * scale).coerceAtLeast(1f)
 
-                val handleDp = 14.dp
+                // cache mapping for Confirm action (used in onClick)
+                lastScale = scale
+                lastOffsetX = offsetX
+                lastOffsetY = offsetY
+
+                // Initialize selection in viewport coordinates (only first time)
+                if (selVs == 0f && scale > 0f) {
+                    selVs = kotlin.math.min(dispW, dispH) * 0.8f
+                    selVx = offsetX + (dispW - selVs) / 2f
+                    selVy = offsetY + (dispH - selVs) / 2f
+                }
+
+                val handleDp = if (isAndroid) 18.dp else 14.dp
                 val handlePx = with(density) { handleDp.toPx() }
-                val handleHitExtra = with(density) { 6.dp.toPx() }
+                // Enlarge clickable area on touch devices for easier dragging
+                val handleHitExtra = with(density) { (if (isAndroid) 16.dp else 8.dp).toPx() }
+
+                fun clampSelectionV() {
+                    val maxSize = kotlin.math.min(dispW, dispH)
+                    selVs = selVs.coerceIn(minAllowedV, maxSize)
+                    selVx = selVx.coerceIn(offsetX, (offsetX + dispW - selVs).coerceAtLeast(offsetX))
+                    selVy = selVy.coerceIn(offsetY, (offsetY + dispH - selVs).coerceAtLeast(offsetY))
+                }
+                clampSelectionV()
 
                 var mode by remember { mutableStateOf<CropDragMode>(CropDragMode.None) }
 
                 // Get theming values in composable context (not in draw block)
                 val borderColor = MaterialTheme.colorScheme.primary
 
-                androidx.compose.foundation.Canvas(
+                Canvas(
                     modifier = Modifier
                         .size(viewportDp)
+                        .onSizeChanged { canvasSize = it }
+                        // Ensure the image never paints outside the visible frame
+                        .clip(MaterialTheme.shapes.small)
                         .border(
                             BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                             shape = MaterialTheme.shapes.small,
@@ -518,19 +565,20 @@ private fun CropAvatarDialog(
                         .pointerInput(Unit) {
                             detectDragGestures(
                                 onDragStart = { p ->
-                                    val sx = offsetX + selX * scale
-                                    val sy = offsetY + selY * scale
-                                    val ss = selSize * scale
+                                    val sx = selVx
+                                    val sy = selVy
+                                    val ss = selVs
                                     val cx = p.x
                                     val cy = p.y
 
                                     fun inRect(x: Float, y: Float, w: Float, h: Float) =
                                         cx >= x && cx <= x + w && cy >= y && cy <= y + h
 
-                                    val tl = sx - handleHitExtra to sy - handleHitExtra
-                                    val tr = sx + ss - handlePx - handleHitExtra to sy - handleHitExtra
-                                    val bl = sx - handleHitExtra to sy + ss - handlePx - handleHitExtra
-                                    val br = sx + ss - handlePx - handleHitExtra to sy + ss - handlePx - handleHitExtra
+                                    val tl = Pair(sx - handleHitExtra, sy - handleHitExtra)
+                                    val tr = Pair(sx + ss - handlePx - handleHitExtra, sy - handleHitExtra)
+                                    val bl = Pair(sx - handleHitExtra, sy + ss - handlePx - handleHitExtra)
+                                    val br =
+                                        Pair(sx + ss - handlePx - handleHitExtra, sy + ss - handlePx - handleHitExtra)
 
                                     mode = when {
                                         inRect(
@@ -570,74 +618,70 @@ private fun CropAvatarDialog(
                                 when (val m = mode) {
                                     CropDragMode.None -> return@detectDragGestures
                                     CropDragMode.Move -> {
-                                        val dxImg = (drag.x / scale)
-                                        val dyImg = (drag.y / scale)
-                                        selX += dxImg
-                                        selY += dyImg
-                                        clampSelection()
+                                        selVx += drag.x
+                                        selVy += drag.y
+                                        clampSelectionV()
                                     }
 
                                     is CropDragMode.Resize -> {
-                                        val dxImg = (drag.x / scale)
-                                        val dyImg = (drag.y / scale)
+                                        val dx = drag.x
+                                        val dy = drag.y
                                         when (m.corner) {
                                             CropCorner.TL -> {
-                                                val anchorX = selX + selSize
-                                                val anchorY = selY + selSize
-                                                val newX =
-                                                    (selX + dxImg).coerceAtMost(anchorX - minAllowed).coerceAtLeast(0f)
-                                                val newY =
-                                                    (selY + dyImg).coerceAtMost(anchorY - minAllowed).coerceAtLeast(0f)
+                                                val anchorX = selVx + selVs
+                                                val anchorY = selVy + selVs
+                                                val newX = (selVx + dx).coerceAtMost(anchorX - minAllowedV)
+                                                    .coerceAtLeast(offsetX)
+                                                val newY = (selVy + dy).coerceAtMost(anchorY - minAllowedV)
+                                                    .coerceAtLeast(offsetY)
                                                 val newSize = kotlin.math.min(anchorX - newX, anchorY - newY)
-                                                selX = anchorX - newSize
-                                                selY = anchorY - newSize
-                                                selSize = newSize
+                                                selVx = anchorX - newSize
+                                                selVy = anchorY - newSize
+                                                selVs = newSize
                                             }
 
                                             CropCorner.TR -> {
-                                                val anchorX = selX
-                                                val anchorY = selY + selSize
-                                                val newRight =
-                                                    (selX + selSize + dxImg).coerceAtLeast(anchorX + minAllowed)
-                                                        .coerceAtMost(imgW.toFloat())
-                                                val newTop =
-                                                    (selY + dyImg).coerceAtMost(anchorY - minAllowed).coerceAtLeast(0f)
+                                                val anchorX = selVx
+                                                val anchorY = selVy + selVs
+                                                val newRight = (selVx + selVs + dx).coerceAtLeast(anchorX + minAllowedV)
+                                                    .coerceAtMost(offsetX + dispW)
+                                                val newTop = (selVy + dy).coerceAtMost(anchorY - minAllowedV)
+                                                    .coerceAtLeast(offsetY)
                                                 val newSize = kotlin.math.min(newRight - anchorX, anchorY - newTop)
-                                                selX = anchorX
-                                                selY = anchorY - newSize
-                                                selSize = newSize
+                                                selVx = anchorX
+                                                selVy = anchorY - newSize
+                                                selVs = newSize
                                             }
 
                                             CropCorner.BL -> {
-                                                val anchorX = selX + selSize
-                                                val anchorY = selY
-                                                val newLeft =
-                                                    (selX + dxImg).coerceAtMost(anchorX - minAllowed).coerceAtLeast(0f)
+                                                val anchorX = selVx + selVs
+                                                val anchorY = selVy
+                                                val newLeft = (selVx + dx).coerceAtMost(anchorX - minAllowedV)
+                                                    .coerceAtLeast(offsetX)
                                                 val newBottom =
-                                                    (selY + selSize + dyImg).coerceAtLeast(anchorY + minAllowed)
-                                                        .coerceAtMost(imgH.toFloat())
+                                                    (selVy + selVs + dy).coerceAtLeast(anchorY + minAllowedV)
+                                                        .coerceAtMost(offsetY + dispH)
                                                 val newSize = kotlin.math.min(anchorX - newLeft, newBottom - anchorY)
-                                                selX = anchorX - newSize
-                                                selY = anchorY
-                                                selSize = newSize
+                                                selVx = anchorX - newSize
+                                                selVy = anchorY
+                                                selVs = newSize
                                             }
 
                                             CropCorner.BR -> {
-                                                val anchorX = selX
-                                                val anchorY = selY
-                                                val newRight =
-                                                    (selX + selSize + dxImg).coerceAtLeast(anchorX + minAllowed)
-                                                        .coerceAtMost(imgW.toFloat())
+                                                val anchorX = selVx
+                                                val anchorY = selVy
+                                                val newRight = (selVx + selVs + dx).coerceAtLeast(anchorX + minAllowedV)
+                                                    .coerceAtMost(offsetX + dispW)
                                                 val newBottom =
-                                                    (selY + selSize + dyImg).coerceAtLeast(anchorY + minAllowed)
-                                                        .coerceAtMost(imgH.toFloat())
+                                                    (selVy + selVs + dy).coerceAtLeast(anchorY + minAllowedV)
+                                                        .coerceAtMost(offsetY + dispH)
                                                 val newSize = kotlin.math.min(newRight - anchorX, newBottom - anchorY)
-                                                selX = anchorX
-                                                selY = anchorY
-                                                selSize = newSize
+                                                selVx = anchorX
+                                                selVy = anchorY
+                                                selVs = newSize
                                             }
                                         }
-                                        clampSelection()
+                                        clampSelectionV()
                                     }
                                 }
                             }
@@ -646,14 +690,14 @@ private fun CropAvatarDialog(
                     // Draw base image (fit center)
                     drawImage(
                         image = bitmap,
-                        dstOffset = androidx.compose.ui.unit.IntOffset(offsetX.toInt(), offsetY.toInt()),
-                        dstSize = androidx.compose.ui.unit.IntSize(dispW.toInt(), dispH.toInt()),
+                        dstOffset = IntOffset(offsetX.toInt(), offsetY.toInt()),
+                        dstSize = IntSize(dispW.toInt(), dispH.toInt()),
                     )
 
                     // Overlay outside selection
-                    val sx = offsetX + selX * scale
-                    val sy = offsetY + selY * scale
-                    val ss = selSize * scale
+                    val sx = selVx
+                    val sy = selVy
+                    val ss = selVs
 
                     val overlayColor = Color.Black.copy(alpha = 0.45f)
                     drawRect(overlayColor, topLeft = Offset(0f, 0f), size = Size(size.width, sy))
@@ -687,7 +731,7 @@ private fun CropAvatarDialog(
                     drawHandle(sx + ss - handlePx / 2, sy + ss - handlePx / 2)
                 }
 
-                Text("拖动选框移动，拖动角点调整大小（固定1:1）")
+                Text("拖动选框移动，拖动角点调整大小", Modifier.padding(top = 8.dp))
             }
         },
     )
