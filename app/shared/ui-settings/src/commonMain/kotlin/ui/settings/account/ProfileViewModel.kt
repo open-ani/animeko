@@ -19,6 +19,7 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.UploadAvatarResult
@@ -84,38 +85,73 @@ class ProfileViewModel : AbstractViewModel(), KoinComponent {
         return avatarUploadTasker.invoke {
             avatarUploadState.value = EditProfileState.UploadAvatarState.Uploading
 
-            val uploadResultState = kotlin.run {
-                try {
-                    if (file.size() > 1.megaBytes.inBytes) {
-                        return@run EditProfileState.UploadAvatarState.SizeExceeded
-                    }
-
-                    val imageBytes = withContext(Dispatchers.IO) {
-                        file.readBytes()
-                    }
-
-                    if (!AvatarImageProcessor.checkImageFormat(imageBytes)) {
-                        return@run EditProfileState.UploadAvatarState.InvalidFormat
-                    }
-
-                    when (userRepo.uploadAvatar(imageBytes)) {
-                        UploadAvatarResult.SUCCESS -> EditProfileState.UploadAvatarState.Success("")
-                        UploadAvatarResult.TOO_LARGE -> EditProfileState.UploadAvatarState.SizeExceeded
-                        UploadAvatarResult.INVALID_FORMAT -> EditProfileState.UploadAvatarState.InvalidFormat
-                    }
-                } catch (ex: CancellationException) {
-                    throw ex
-                } catch (ex: Exception) {
-                    EditProfileState.UploadAvatarState.UnknownError(
-                        file = file,
-                        loadError = LoadError.fromException(ex),
+            val result = try {
+                if (file.size() > 1.megaBytes.inBytes) {
+                    EditProfileState.UploadAvatarState.SizeExceeded
+                } else {
+                    val bytes = withContext(Dispatchers.IO) { file.readBytes() }
+                    uploadAvatarInternal(
+                        imageBytes = bytes,
+                        unknownMapper = { err ->
+                            EditProfileState.UploadAvatarState.UnknownError(file = file, loadError = err)
+                        },
                     )
                 }
+            } catch (ex: CancellationException) {
+                throw ex
             }
 
-            avatarUploadState.value = uploadResultState
+            avatarUploadState.value = result
             stateRefresher.restart()
-            uploadResultState is EditProfileState.UploadAvatarState.Success
+            result is EditProfileState.UploadAvatarState.Success
+        }
+    }
+
+    suspend fun uploadAvatar(imageBytes: ByteArray): Boolean {
+        return avatarUploadTasker.invoke {
+            avatarUploadState.value = EditProfileState.UploadAvatarState.Uploading
+
+            val result = try {
+                // ByteArray 路径也做大小保护，以保持一致的用户提示
+                if (imageBytes.size > 1.megaBytes.inBytes) {
+                    EditProfileState.UploadAvatarState.SizeExceeded
+                } else {
+                    uploadAvatarInternal(
+                        imageBytes = imageBytes,
+                        unknownMapper = { err ->
+                            EditProfileState.UploadAvatarState.UnknownErrorWithRetry(
+                                loadError = err,
+                                onRetry = { backgroundScope.launch { uploadAvatar(imageBytes) } },
+                            )
+                        },
+                    )
+                }
+            } catch (ex: CancellationException) {
+                throw ex
+            }
+
+            avatarUploadState.value = result
+            stateRefresher.restart()
+            result is EditProfileState.UploadAvatarState.Success
+        }
+    }
+
+    private suspend fun uploadAvatarInternal(
+        imageBytes: ByteArray,
+        unknownMapper: (LoadError) -> EditProfileState.UploadAvatarState.Failed,
+    ): EditProfileState.UploadAvatarState {
+        return try {
+            if (!AvatarImageProcessor.checkImageFormat(imageBytes)) {
+                EditProfileState.UploadAvatarState.InvalidFormat
+            } else when (userRepo.uploadAvatar(imageBytes)) {
+                UploadAvatarResult.SUCCESS -> EditProfileState.UploadAvatarState.Success("")
+                UploadAvatarResult.TOO_LARGE -> EditProfileState.UploadAvatarState.SizeExceeded
+                UploadAvatarResult.INVALID_FORMAT -> EditProfileState.UploadAvatarState.InvalidFormat
+            }
+        } catch (ex: CancellationException) {
+            throw ex
+        } catch (ex: Exception) {
+            unknownMapper(LoadError.fromException(ex))
         }
     }
 
@@ -192,6 +228,11 @@ class EditProfileState(
         data object SizeExceeded : Failed
 
         data class UnknownError(val file: PlatformFile, val loadError: LoadError) : Failed
+
+        data class UnknownErrorWithRetry(
+            val loadError: LoadError,
+            val onRetry: () -> Unit,
+        ) : Failed
     }
 }
 

@@ -15,6 +15,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,6 +54,7 @@ import androidx.window.core.layout.WindowSizeClass
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.readBytes
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.DragAndDropContent
 import me.him188.ani.app.ui.foundation.DragAndDropHoverState
@@ -108,6 +111,9 @@ fun SettingsScope.ProfileGroup(
         onAvatarUpload = {
             vm.uploadAvatar(it)
         },
+        onAvatarUploadBytes = {
+            vm.uploadAvatar(it)
+        },
         onResetAvatarUploadState = {
             vm.resetAvatarUploadState()
         },
@@ -124,6 +130,7 @@ internal fun SettingsScope.ProfileGroupImpl(
     isNicknameErrorProvider: (String) -> Boolean,
     onSaveNickname: (String) -> Unit,
     onAvatarUpload: suspend (PlatformFile) -> Boolean,
+    onAvatarUploadBytes: suspend (ByteArray) -> Boolean,
     onResetAvatarUploadState: () -> Unit,
     onLogout: () -> Unit,
     onNavigateToEmail: () -> Unit,
@@ -248,6 +255,11 @@ internal fun SettingsScope.ProfileGroupImpl(
                     showUploadAvatarDialog = !onAvatarUpload(file)
                 }
             },
+            onAvatarUploadBytes = { bytes ->
+                asyncHandler.launch {
+                    showUploadAvatarDialog = !onAvatarUploadBytes(bytes)
+                }
+            },
             onResetAvatarUploadState = onResetAvatarUploadState,
             modifier = Modifier.padding(8.dp),
         )
@@ -259,24 +271,33 @@ private fun SettingsScope.UploadAvatarDialog(
     onDismissRequest: () -> Unit,
     avatarUploadState: EditProfileState.UploadAvatarState,
     onAvatarUpload: (PlatformFile) -> Unit,
+    onAvatarUploadBytes: (ByteArray) -> Unit,
     onResetAvatarUploadState: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var filePickerLaunched by rememberSaveable { mutableStateOf(false) }
+    var cropTarget by remember { mutableStateOf<ByteArray?>(null) }
+    val asyncHandler = rememberAsyncHandler()
     val filePicker = rememberFilePickerLauncher(
         type = FileKitType.Image,
         title = "选择头像",
     ) {
         filePickerLaunched = false
         it?.let { file ->
-            onAvatarUpload(file)
+            onResetAvatarUploadState()
+            asyncHandler.launch {
+                cropTarget = file.readBytes()
+            }
         }
     }
 
     val dndState = rememberDragAndDropState dnd@{
         if (it !is DragAndDropContent.FileList || it.files.isEmpty()) return@dnd false
 
-        onAvatarUpload(PlatformFile(it.files.first()))
+        onResetAvatarUploadState()
+        asyncHandler.launch {
+            cropTarget = PlatformFile(it.files.first()).readBytes()
+        }
         return@dnd true
     }
 
@@ -311,7 +332,7 @@ private fun SettingsScope.UploadAvatarDialog(
                                 if (currentPlatform() is Platform.Desktop) {
                                     append("或拖动文件到此处。")
                                 }
-                                append("仅支持 JPEG 和 PNG 格式，最大 1MB")
+                                append("支持 JPEG/PNG/WebP，最大 1MB。可裁剪为方形头像")
                             },
                         )
                     },
@@ -346,18 +367,29 @@ private fun SettingsScope.UploadAvatarDialog(
                         }
 
                         is EditProfileState.UploadAvatarState.Failed -> {
-                            if (avatarUploadState is EditProfileState.UploadAvatarState.UnknownError) {
-                                LoadErrorCard(
-                                    avatarUploadState.loadError,
-                                    onRetry = { onAvatarUpload(avatarUploadState.file) },
-                                )
-                            } else {
-                                LoadErrorCardLayout(LoadErrorCardRole.Important) {
-                                    ListItem(
-                                        leadingContent = { Icon(Icons.Rounded.ErrorOutline, null) },
-                                        headlineContent = { Text(renderAvatarUploadMessage(avatarUploadState)) },
-                                        colors = listItemColors,
+                            when (avatarUploadState) {
+                                is EditProfileState.UploadAvatarState.UnknownError -> {
+                                    LoadErrorCard(
+                                        avatarUploadState.loadError,
+                                        onRetry = { onAvatarUpload(avatarUploadState.file) },
                                     )
+                                }
+
+                                is EditProfileState.UploadAvatarState.UnknownErrorWithRetry -> {
+                                    LoadErrorCard(
+                                        avatarUploadState.loadError,
+                                        onRetry = avatarUploadState.onRetry,
+                                    )
+                                }
+
+                                else -> {
+                                    LoadErrorCardLayout(LoadErrorCardRole.Important) {
+                                        ListItem(
+                                            leadingContent = { Icon(Icons.Rounded.ErrorOutline, null) },
+                                            headlineContent = { Text(renderAvatarUploadMessage(avatarUploadState)) },
+                                            colors = listItemColors,
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -368,6 +400,18 @@ private fun SettingsScope.UploadAvatarDialog(
             }
         },
     )
+
+    val bytes = cropTarget
+    if (bytes != null) {
+        CropAvatarDialog(
+            imageBytes = bytes,
+            onDismissRequest = { cropTarget = null },
+            onConfirmCropped = { cropped ->
+                onAvatarUploadBytes(cropped)
+                cropTarget = null // keep upload dialog open to show progress
+            },
+        )
+    }
 }
 
 private fun renderAvatarUploadMessage(
@@ -378,6 +422,118 @@ private fun renderAvatarUploadMessage(
         is EditProfileState.UploadAvatarState.SizeExceeded -> "图片大小超过 1MB"
         is EditProfileState.UploadAvatarState.InvalidFormat -> "图片格式不支持"
         is EditProfileState.UploadAvatarState.UnknownError -> renderLoadErrorMessage(state.loadError)
+        is EditProfileState.UploadAvatarState.UnknownErrorWithRetry -> renderLoadErrorMessage(state.loadError)
         is EditProfileState.UploadAvatarState.Success, EditProfileState.UploadAvatarState.Default -> ""
     }
+}
+
+@Composable
+private fun CropAvatarDialog(
+    imageBytes: ByteArray,
+    onDismissRequest: () -> Unit,
+    onConfirmCropped: (ByteArray) -> Unit,
+) {
+    // Very simple square crop UI: drag to move, slider to zoom
+    val bitmap = remember(imageBytes) { me.him188.ani.app.ui.foundation.decodeImageBitmap(imageBytes) }
+    val imgW = bitmap.width
+    val imgH = bitmap.height
+    val minDim = kotlin.math.min(imgW, imgH).toFloat()
+
+    var zoom by remember { mutableStateOf(1f) } // 1f means using minDim as crop size
+    val maxZoom = remember(imgW, imgH) { (minDim / 64f).coerceAtLeast(1f) } // ensure at least 64px crop
+    var cropLeft by remember { mutableStateOf(((imgW - minDim) / 2f)) }
+    var cropTop by remember { mutableStateOf(((imgH - minDim) / 2f)) }
+
+    fun cropSize(): Float = (minDim / zoom)
+    fun clamp() {
+        val s = cropSize()
+        cropLeft = cropLeft.coerceIn(0f, (imgW - s).coerceAtLeast(0f))
+        cropTop = cropTop.coerceIn(0f, (imgH - s).coerceAtLeast(0f))
+    }
+
+    // keep centered when zoom changes
+    val lastZoom = remember { mutableStateOf(zoom) }
+    if (lastZoom.value != zoom) {
+        val oldSize = minDim / lastZoom.value
+        val newSize = cropSize()
+        // keep center
+        val centerX = cropLeft + oldSize / 2f
+        val centerY = cropTop + oldSize / 2f
+        cropLeft = centerX - newSize / 2f
+        cropTop = centerY - newSize / 2f
+        lastZoom.value = zoom
+        clamp()
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            TextButton(
+                {
+                    val size = cropSize().toInt().coerceAtLeast(1)
+                    val bytes = me.him188.ani.app.ui.foundation.cropImageToSquare(
+                        imageBytes,
+                        me.him188.ani.app.ui.foundation.CropRect(cropLeft.toInt(), cropTop.toInt(), size),
+                        outputSize = 512,
+                    )
+                    onConfirmCropped(bytes)
+                },
+            ) {
+                Text("裁剪并上传")
+            }
+        },
+        dismissButton = {
+            TextButton(onDismissRequest) { Text("取消") }
+        },
+        title = { Text("裁剪头像") },
+        text = {
+            Column(Modifier.fillMaxWidth()) {
+                // square viewport
+                val viewportDp = 280.dp
+                val density = androidx.compose.ui.platform.LocalDensity.current
+                val viewportPx = with(density) { viewportDp.toPx() }
+                val scale = viewportPx / cropSize()
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier
+                        .size(viewportDp)
+                        .border(
+                            BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                            shape = MaterialTheme.shapes.small,
+                        )
+                        .pointerInput(imgW, imgH, zoom) {
+                            detectDragGestures { _, dragAmount ->
+                                val toOriginal = cropSize() / viewportPx
+                                cropLeft -= dragAmount.x * toOriginal
+                                cropTop -= dragAmount.y * toOriginal
+                                clamp()
+                            }
+                        },
+                ) {
+                    // draw cropped area to fill canvas
+                    val s = cropSize().toInt().coerceAtLeast(1)
+                    drawImage(
+                        image = bitmap,
+                        srcOffset = androidx.compose.ui.unit.IntOffset(
+                            cropLeft.toInt().coerceAtLeast(0),
+                            cropTop.toInt().coerceAtLeast(0),
+                        ),
+                        srcSize = androidx.compose.ui.unit.IntSize(s.coerceAtMost(imgW), s.coerceAtMost(imgH)),
+                        dstSize = androidx.compose.ui.unit.IntSize(size.width.toInt(), size.height.toInt()),
+                    )
+                }
+
+                // zoom slider
+                androidx.compose.material3.Slider(
+                    value = zoom,
+                    onValueChange = {
+                        zoom = it.coerceIn(1f, maxZoom)
+                        clamp()
+                    },
+                    valueRange = 1f..maxZoom,
+                )
+                Text("拖动图片调整位置，滑动调节缩放")
+            }
+        },
+    )
 }
