@@ -7,11 +7,19 @@ on:
   push:
     paths-ignore:
     - '**/*.md'
-    - 'scrips/*'
+    - '.idea/**'
+    - '.junie/**'
+    - '.readme/**'
+    - '.run/**'
+    - 'scripts/*'
   pull_request:
     paths-ignore:
     - '**/*.md'
-    - 'scrips/*'
+    - '.idea/**'
+    - '.junie/**'
+    - '.readme/**'
+    - '.run/**'
+    - 'scripts/*'
 concurrency:
   group: '${{ github.workflow }}-${{ github.event_name }}-${{ github.ref_name == ''main'' && github.run_id || github.ref_name }}'
   cancel-in-progress: true

@@ -722,14 +722,23 @@ fun WorkflowBuilder.addConsistencyCheckJob(filename: String) {
     }
 }
 
+val commonIgnoredPaths = listOf(
+    "**/*.md",
+    ".idea/**",
+    ".junie/**",
+    ".readme/**",
+    ".run/**",
+    "scripts/*",
+)
+
 workflow(
     name = "Build",
     on = listOf(
         // Including: 
         // - pushing directly to main
         // - pushing to a branch that has an associated PR
-        Push(pathsIgnore = listOf("**/*.md", "scrips/*")),
-        PullRequest(pathsIgnore = listOf("**/*.md", "scrips/*")),
+        Push(pathsIgnore = commonIgnoredPaths),
+        PullRequest(pathsIgnore = commonIgnoredPaths),
     ),
     sourceFile = __FILE__,
     targetFileName = "build.yml",
