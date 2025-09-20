@@ -15,6 +15,7 @@ jobs:
     name: 'Workflow YAML Consistency Check'
     runs-on: 'ubuntu-latest'
     permissions: {}
+    if: '${{ (github.repository_owner == ''open-ani'') }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -29,6 +30,7 @@ jobs:
   create-release:
     name: 'Create Release'
     runs-on: 'ubuntu-latest'
+    if: '${{ (github.repository_owner == ''open-ani'') }}'
     outputs:
       uploadUrl: '${{ steps.step-4.outputs.upload_url }}'
       id: '${{ steps.step-4.outputs.id }}'

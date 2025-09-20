@@ -91,6 +91,8 @@ check(KotlinVersion.CURRENT.isAtLeast(2, 0, 0)) {
     "This script requires Kotlin 2.0.0 or later"
 }
 
+val owner = "open-ani"
+
 enum class OS {
     WINDOWS,
     UBUNTU,
@@ -704,6 +706,7 @@ fun WorkflowBuilder.addConsistencyCheckJob(filename: String) {
         id = "consistency-check",
         name = "Workflow YAML Consistency Check",
         runsOn = RunnerType.UbuntuLatest,
+        `if` = expr { github.isNotForkedRepository },
         permissions = mapOf(),
     ) {
         uses(action = Checkout())
@@ -770,7 +773,7 @@ workflow(
                 // For security concerns, all external contributors will need approval to run the workflow.
                 expr { github.isAnimekoRepository }
             } else {
-                null // always
+                expr { github.isNotForkedRepository }
             },
             outputs = BuildJobOutputs(),
             block = getBuildJobBody(matrix),
@@ -837,6 +840,7 @@ workflow(
         id = "create-release",
         name = "Create Release",
         runsOn = RunnerType.UbuntuLatest,
+        `if` = expr { github.isNotForkedRepository },
         outputs = object : JobOutputs() {
             var uploadUrl by output()
             var id by output()
@@ -1840,6 +1844,9 @@ val GitHubContext.isAnimekoRepository
 val GitHubContext.isPullRequest
     get() = """$event_name == 'pull_request'"""
 
+val GitHubContext.isNotForkedRepository: String
+    get() = repository_owner eq owner
+
 val MatrixInstance.isX64 get() = arch == Arch.X64
 val MatrixInstance.isAArch64 get() = arch == Arch.AARCH64
 
@@ -1858,11 +1865,11 @@ infix fun String.and(other: String) = "($this) && ($other)"
 infix fun String.or(other: String) = "($this) || ($other)"
 
 // 由于 infix 优先级问题, 这里要求使用传统调用方式.
-fun String.eq(other: OS) = this.eq(other.toString())
-fun String.eq(other: String) = "($this == '$other')"
-fun String.eq(other: Boolean) = "($this == $other)"
-fun String.neq(other: String) = "($this != '$other')"
-fun String.neq(other: Boolean) = "($this != $other)"
+infix fun String.eq(other: OS) = this.eq(other.toString())
+infix fun String.eq(other: String) = "($this == '$other')"
+infix fun String.eq(other: Boolean) = "($this == $other)"
+infix fun String.neq(other: String) = "($this != '$other')"
+infix fun String.neq(other: Boolean) = "($this != $other)"
 
 operator fun String.not() = "!($this)"
 

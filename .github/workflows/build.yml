@@ -28,6 +28,7 @@ jobs:
     name: 'Workflow YAML Consistency Check'
     runs-on: 'ubuntu-latest'
     permissions: {}
+    if: '${{ (github.repository_owner == ''open-ani'') }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -45,6 +46,7 @@ jobs:
     - 'windows-2022'
     permissions:
       actions: 'write'
+    if: '${{ (github.repository_owner == ''open-ani'') }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -201,6 +203,7 @@ jobs:
     - 'ubuntu-24.04'
     permissions:
       actions: 'write'
+    if: '${{ (github.repository_owner == ''open-ani'') }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
@@ -628,6 +631,7 @@ jobs:
     - 'macos-13'
     permissions:
       actions: 'write'
+    if: '${{ (github.repository_owner == ''open-ani'') }}'
     steps:
     - id: 'step-0'
       uses: 'actions/checkout@v4'
