@@ -37,6 +37,9 @@ import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings
+import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 
@@ -119,7 +122,7 @@ fun UserInfoRow(
 
         Column(Modifier.align(Alignment.Top)) {
             IconButton(onClickSettings) {
-                Icon(Icons.Rounded.Settings, "设置")
+                Icon(Icons.Rounded.Settings, stringResource(Lang.settings))
             }
         }
     }
