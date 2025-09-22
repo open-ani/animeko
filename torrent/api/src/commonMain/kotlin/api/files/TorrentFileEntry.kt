@@ -14,7 +14,6 @@ import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
@@ -201,6 +200,16 @@ abstract class AbstractTorrentFileEntry(
         }
 
         override val entry get() = this@AbstractTorrentFileEntry
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is AbstractTorrentFileHandle) return false
+            return entry === other.entry
+        }
+
+        override fun hashCode(): Int {
+            return entry.hashCode()
+        }
 
         final override fun resume(priority: FilePriority) {
             checkClosed()
