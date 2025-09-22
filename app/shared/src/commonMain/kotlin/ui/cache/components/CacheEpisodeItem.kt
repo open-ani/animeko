@@ -17,7 +17,6 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -121,10 +120,10 @@ fun CacheEpisodeItem(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 ProvideTextStyleContentColor(MaterialTheme.typography.labelLarge) {
-                    FlowRow(
+                    Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Bottom),
+                        verticalAlignment = Alignment.Bottom,
                     ) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -139,7 +138,7 @@ fun CacheEpisodeItem(
                             }
 
                             state.sizeText?.let {
-                                Text(it, Modifier.padding(end = 16.dp), softWrap = false)
+                                Text(it, Modifier.padding(end = 8.dp), softWrap = false)
                             }
                         }
 
@@ -147,11 +146,10 @@ fun CacheEpisodeItem(
                             Row(
                                 Modifier.basicMarquee(),
                                 horizontalArrangement = Arrangement.spacedBy(4.dp, alignment = Alignment.End),
+                                verticalAlignment = Alignment.Bottom,
                             ) {
-                                Box(Modifier.align(Alignment.Bottom)) {
-                                    state.speedText?.let {
-                                        Text(it, softWrap = false)
-                                    }
+                                state.speedText?.let {
+                                    Text(it, softWrap = false)
                                 }
 
                                 Box(contentAlignment = Alignment.CenterEnd) {
