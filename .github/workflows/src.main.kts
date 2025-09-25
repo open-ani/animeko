@@ -19,7 +19,7 @@
 @file:Repository("https://bindings.krzeminski.it")
 
 // Build
-@file:DependsOn("actions:checkout:v4")
+@file:DependsOn("actions:checkout:v5")
 @file:DependsOn("gmitch215:setup-java:6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d")
 @file:DependsOn("org.jetbrains:annotations:23.0.0")
 @file:DependsOn("actions:github-script:v7")
