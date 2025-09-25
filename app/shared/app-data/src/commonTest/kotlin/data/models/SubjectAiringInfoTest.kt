@@ -27,7 +27,7 @@ class SubjectAiringInfoTest {
         type: EpisodeType = EpisodeType.MainStory,
     ): EpisodeInfo = EpisodeInfo(
         episodeId = ++idCounter,
-        type = type, // Use the new type parameter
+        type = type,
         sort = EpisodeSort(sort),
         airDate = airDate,
     )
