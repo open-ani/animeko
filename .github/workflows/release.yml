@@ -39,7 +39,7 @@ jobs:
       name: 'Get Tag'
       uses: 'dawidd6/action-get-tag@v1'
     - id: 'step-2'
-      uses: 'bhowell2/github-substring-action@v1.0.0'
+      uses: 'bhowell2/github-substring-action@1.0.2'
       with:
         value: '${{ steps.step-1.outputs.tag }}'
         index_of_str: 'v'
@@ -88,7 +88,7 @@ jobs:
       name: 'Get Tag'
       uses: 'dawidd6/action-get-tag@v1'
     - id: 'step-2'
-      uses: 'bhowell2/github-substring-action@v1.0.0'
+      uses: 'bhowell2/github-substring-action@1.0.2'
       with:
         value: '${{ steps.step-1.outputs.tag }}'
         index_of_str: 'v'
@@ -242,7 +242,7 @@ jobs:
       name: 'Get Tag'
       uses: 'dawidd6/action-get-tag@v1'
     - id: 'step-2'
-      uses: 'bhowell2/github-substring-action@v1.0.0'
+      uses: 'bhowell2/github-substring-action@1.0.2'
       with:
         value: '${{ steps.step-1.outputs.tag }}'
         index_of_str: 'v'
@@ -548,7 +548,7 @@ jobs:
       name: 'Get Tag'
       uses: 'dawidd6/action-get-tag@v1'
     - id: 'step-2'
-      uses: 'bhowell2/github-substring-action@v1.0.0'
+      uses: 'bhowell2/github-substring-action@1.0.2'
       with:
         value: '${{ steps.step-1.outputs.tag }}'
         index_of_str: 'v'
@@ -760,7 +760,7 @@ jobs:
       name: 'Get Tag'
       uses: 'dawidd6/action-get-tag@v1'
     - id: 'step-2'
-      uses: 'bhowell2/github-substring-action@v1.0.0'
+      uses: 'bhowell2/github-substring-action@1.0.2'
       with:
         value: '${{ steps.step-1.outputs.tag }}'
         index_of_str: 'v'
@@ -972,7 +972,7 @@ jobs:
       name: 'Get Tag'
       uses: 'dawidd6/action-get-tag@v1'
     - id: 'step-2'
-      uses: 'bhowell2/github-substring-action@v1.0.0'
+      uses: 'bhowell2/github-substring-action@1.0.2'
       with:
         value: '${{ steps.step-1.outputs.tag }}'
         index_of_str: 'v'
