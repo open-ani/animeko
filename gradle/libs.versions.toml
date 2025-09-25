@@ -34,7 +34,7 @@ compose-hot-reload = "1.0.0-alpha05" # https://github.com/JetBrains/compose-hot-
 
 # JetBrains compose libraries. Follow the release notes for main Compose Multiplatform for versoins.
 compose-lifecycle = "2.9.0-beta01"
-compose-navigation = "2.9.0-beta01"
+compose-navigation = "2.9.0"
 compose-material3-adaptive = "1.1.2"
 
 # Jetpack Compose libraries. Use the exact version mentioned from Compose Multiplatfrom release notes.
