@@ -24,7 +24,7 @@ class SubjectAiringInfoTest {
     private fun ep(
         sort: Int,
         airDate: PackedDate = PackedDate.Invalid,
-        type: EpisodeType = EpisodeType.MainStory, // Added type parameter
+        type: EpisodeType = EpisodeType.MainStory,
     ): EpisodeInfo = EpisodeInfo(
         episodeId = ++idCounter,
         type = type, // Use the new type parameter
