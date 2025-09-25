@@ -30,7 +30,7 @@ jobs:
     permissions: {}
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
     - id: 'step-1'
       run: 'pip3 install PyYAML'
     - id: 'step-2'
@@ -47,7 +47,7 @@ jobs:
       actions: 'write'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
       with:
         submodules: 'recursive'
     - id: 'step-1'
@@ -203,7 +203,7 @@ jobs:
       actions: 'write'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
       with:
         submodules: 'recursive'
     - id: 'step-1'
@@ -630,7 +630,7 @@ jobs:
       actions: 'write'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
       with:
         submodules: 'recursive'
     - id: 'step-1'
@@ -833,7 +833,7 @@ jobs:
     if: '${{ github.repository == ''open-ani/animeko'' }}'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
       with:
         submodules: 'recursive'
     - id: 'step-1'
@@ -1167,7 +1167,7 @@ jobs:
     if: '${{ needs.build_github-windows-2022.result == ''success'' }}'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
     - id: 'step-1'
       name: 'Delete libraries from system'
       continue-on-error: true
@@ -1232,7 +1232,7 @@ jobs:
     if: '${{ needs.build_github-windows-2022.result == ''success'' }}'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
     - id: 'step-1'
       name: 'Delete libraries from system'
       continue-on-error: true
@@ -1299,7 +1299,7 @@ jobs:
     if: '${{ (github.repository == ''open-ani/animeko'') && (needs.build_self-hosted-macos-15.result == ''success'') }}'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
     - id: 'step-1'
       name: 'Download DMG (Attempt #1)'
       continue-on-error: true
@@ -1350,7 +1350,7 @@ jobs:
     if: '${{ needs.build_self-hosted-macos-15.result == ''success'' }}'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
     - id: 'step-1'
       name: 'Delete libraries from system'
       continue-on-error: true
@@ -1409,7 +1409,7 @@ jobs:
     if: '${{ needs.build_self-hosted-macos-15.result == ''success'' }}'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
     - id: 'step-1'
       name: 'Delete libraries from system'
       continue-on-error: true
@@ -1468,7 +1468,7 @@ jobs:
     if: '${{ needs.build_github-ubuntu-2404.result == ''success'' }}'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
     - id: 'step-1'
       name: 'Download Linux x64 AppImage (Attempt #1)'
       continue-on-error: true

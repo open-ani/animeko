@@ -17,7 +17,7 @@ jobs:
     permissions: {}
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
     - id: 'step-1'
       run: 'pip3 install PyYAML'
     - id: 'step-2'
@@ -34,7 +34,7 @@ jobs:
       id: '${{ steps.step-4.outputs.id }}'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
     - id: 'step-1'
       name: 'Get Tag'
       uses: 'dawidd6/action-get-tag@v1'
@@ -81,7 +81,7 @@ jobs:
     - 'create-release'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
       with:
         submodules: 'recursive'
     - id: 'step-1'
@@ -235,7 +235,7 @@ jobs:
     if: '${{ github.repository == ''open-ani/animeko'' }}'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
       with:
         submodules: 'recursive'
     - id: 'step-1'
@@ -541,7 +541,7 @@ jobs:
     - 'create-release'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
       with:
         submodules: 'recursive'
     - id: 'step-1'
@@ -753,7 +753,7 @@ jobs:
     - 'create-release'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
       with:
         submodules: 'recursive'
     - id: 'step-1'
@@ -965,7 +965,7 @@ jobs:
     - 'create-release'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
       with:
         submodules: 'recursive'
     - id: 'step-1'
