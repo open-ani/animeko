@@ -39,7 +39,7 @@ compose-material3-adaptive = "1.1.2"
 
 # Jetpack Compose libraries. Use the exact version mentioned from Compose Multiplatfrom release notes.
 # https://developer.android.com/jetpack/androidx/releases/compose-material3
-compose-material3 = "1.4.0-alpha07"
+compose-material3 = "1.4.0"
 jetpack-compose = "1.8.0"
 androidx-compose-material3-adaptive = "1.1.0"
 
