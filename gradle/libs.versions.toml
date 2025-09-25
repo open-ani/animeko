@@ -15,7 +15,7 @@ androidx-annotation = "1.9.1"
 androidx-media3 = "1.6.1" # https://developer.android.com/jetpack/androidx/releases/media3
 androidx-lifecycle = "2.8.7" # https://developer.android.com/jetpack/androidx/releases/lifecycle
 paging = "3.3.6" # https://developer.android.com/jetpack/androidx/releases/paging
-datastore = "1.1.3" # https://developer.android.com/jetpack/androidx/releases/datastore
+datastore = "1.1.7" # https://developer.android.com/jetpack/androidx/releases/datastore
 ksp = "2.1.21-2.0.1" # https://github.com/google/ksp/releases
 # note: room 2.7.0-rc01 cannot compile
 room = "2.7.1" # https://developer.android.com/jetpack/androidx/releases/room#declaring_dependencies
