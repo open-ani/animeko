@@ -45,7 +45,7 @@ androidx-compose-material3-adaptive = "1.1.0"
 
 ### OTHERS ###
 
-bytebuddy = "1.17.4" # https://github.com/raphw/byte-buddy/releases
+bytebuddy = "1.17.7" # https://github.com/raphw/byte-buddy/releases
 jna = "5.13.0" # 不要轻易改这个版本, 它可能导致 VLC 兼容性问题
 jsonpathkt-kotlinx = "3.0.2"
 ksoup = "0.2.2"
