@@ -1369,13 +1369,13 @@ jobs:
       if: '${{ steps.step-49.outcome == ''failure'' }}'
     - id: 'step-51'
       name: 'Generate QR code for APK (GitHub)'
-      uses: 'snow-actions/qrcode@v1.0.0'
+      uses: 'snow-actions/qrcode@v1.2.0'
       with:
         text: 'https://github.com/open-ani/animeko/releases/download/${{ steps.step-1.outputs.tag }}/ani-${{ steps.step-2.outputs.substring }}-universal.apk'
         path: 'apk-qrcode-github.png'
     - id: 'step-52'
       name: 'Generate QR code for APK (Cloudflare)'
-      uses: 'snow-actions/qrcode@v1.0.0'
+      uses: 'snow-actions/qrcode@v1.2.0'
       with:
         text: 'https://d.myani.org/${{ steps.step-1.outputs.tag }}/ani-${{ steps.step-2.outputs.substring }}-universal.apk'
         path: 'apk-qrcode-cloudflare.png'
@@ -1414,13 +1414,13 @@ jobs:
       if: '${{ steps.step-53.outcome == ''failure'' }}'
     - id: 'step-55'
       name: 'Generate QR code for iOS (GitHub)'
-      uses: 'snow-actions/qrcode@v1.0.0'
+      uses: 'snow-actions/qrcode@v1.2.0'
       with:
         text: 'https://github.com/open-ani/animeko/releases/download/${{ steps.step-1.outputs.tag }}/ani-${{ steps.step-2.outputs.substring }}.ipa'
         path: 'ipa-qrcode-github.png'
     - id: 'step-56'
       name: 'Generate QR code for iOS (Cloudflare)'
-      uses: 'snow-actions/qrcode@v1.0.0'
+      uses: 'snow-actions/qrcode@v1.2.0'
       with:
         text: 'https://d.myani.org/${{ steps.step-1.outputs.tag }}/ani-${{ steps.step-2.outputs.substring }}.ipa'
         path: 'ipa-qrcode-cloudflare.png'
