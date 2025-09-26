@@ -15,7 +15,7 @@
 @file:Suppress("UNSUPPORTED_FEATURE", "UNSUPPORTED")
 
 @file:Repository("https://repo.maven.apache.org/maven2/")
-@file:DependsOn("io.github.typesafegithub:github-workflows-kt:3.0.1")
+@file:DependsOn("io.github.typesafegithub:github-workflows-kt:3.5.0")
 @file:Repository("https://bindings.krzeminski.it")
 
 // Build
