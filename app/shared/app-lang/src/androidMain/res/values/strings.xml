@@ -254,6 +254,8 @@
     <string name="settings_mediasource_export">Export configuration</string>
     <string name="settings_mediasource_copied_to_clipboard">Copied to clipboard</string>
     <string name="settings_mediasource_export_failed">Unable to export now, please try again later</string>
+    <string name="subject_title_copied">Title copied to clipboard</string>
+
     <string name="settings_mediasource_export_single">Export a single configuration (developer only)</string>
     <string name="settings_mediasource_refresh">Refresh</string>
     <string name="settings_mediasource_unauthorized">Unauthorized</string>

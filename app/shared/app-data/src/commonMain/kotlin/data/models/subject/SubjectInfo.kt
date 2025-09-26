@@ -151,6 +151,10 @@ data class SubjectInfo(
 @Stable
 val SubjectInfo.nameCnOrName get() = nameCn.takeIf { it.isNotBlank() } ?: name
 
+@Stable
+val SubjectInfo.fullDisplayName: String
+    get() = if (nameCn.isNotBlank() && name.isNotBlank() && nameCn != name) "$nameCn / $name" else displayName
+
 fun SubjectInfo.toNavPlaceholder(): SubjectDetailPlaceholder {
     return SubjectDetailPlaceholder(subjectId, name, nameCn, imageLarge)
 }

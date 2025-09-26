@@ -278,6 +278,8 @@
     <string name="settings_mediasource_export">导出配置</string>
     <string name="settings_mediasource_copied_to_clipboard">已复制到剪贴板</string>
     <string name="settings_mediasource_export_failed">目前无法导出，请稍后再试</string>
+    <string name="subject_title_copied">番名已复制到剪贴板</string>
+
     <string name="settings_mediasource_export_single">导出单个配置 (仅限开发者)</string>
 
     <!-- RefreshIndicatedHeadlineRow -->
