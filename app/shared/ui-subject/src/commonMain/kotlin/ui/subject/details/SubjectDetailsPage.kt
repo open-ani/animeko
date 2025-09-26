@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.subject.details
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -69,8 +70,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -84,6 +87,7 @@ import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.Tag
+import me.him188.ani.app.data.models.subject.fullDisplayName
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeRequest
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.navigation.LocalNavigator
@@ -114,6 +118,8 @@ import me.him188.ani.app.ui.foundation.theme.MaterialThemeFromImage
 import me.him188.ani.app.ui.foundation.toComposeImageBitmap
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_title_copied
 import me.him188.ani.app.ui.rating.EditableRating
 import me.him188.ani.app.ui.rating.EditableRatingState
 import me.him188.ani.app.ui.richtext.RichTextDefaults
@@ -136,6 +142,7 @@ import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.toggleCollected
 import me.him188.ani.utils.platform.isMobile
+import org.jetbrains.compose.resources.stringResource
 
 // region screen
 
@@ -552,10 +559,26 @@ fun SubjectDetailsLayout(
                         AniAnimatedVisibility(connectedScrollState.isScrolledTop) {
                             TopAppBar(
                                 title = {
+                                    val clipboard = LocalClipboardManager.current
+                                    val toaster = LocalToaster.current
+                                    val copied = stringResource(Lang.subject_title_copied)
+                                    val fullName = info?.fullDisplayName.orEmpty()
+                                    val copy = {
+                                        if (fullName.isNotBlank()) {
+                                            clipboard.setText(AnnotatedString(fullName))
+                                            toaster.toast(copied)
+                                        }
+                                    }
                                     Text(
                                         info?.displayName ?: "",
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.combinedClickable(
+                                            onClick = copy,
+                                            onLongClick = copy,
+                                            onLongClickLabel = "复制",
+                                            onClickLabel = "复制",
+                                        ),
                                     )
                                 },
                                 navigationIcon = navigationIcon,

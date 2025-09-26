@@ -9,7 +9,7 @@
 
 package me.him188.ani.app.ui.subject.details.components
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -39,14 +39,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImagePainter
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.models.subject.fullDisplayName
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_title_copied
+import org.jetbrains.compose.resources.stringResource
 
 const val COVER_WIDTH_TO_HEIGHT_RATIO = 849 / 1200f
 
@@ -66,6 +73,7 @@ internal fun SubjectDetailsHeader(
     if (currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
         SubjectDetailsHeaderWide(
             coverImageUrl = coverImageUrl,
+            info = info,
             title = {
                 Text(
                     info?.displayName ?: "",
@@ -90,6 +98,7 @@ internal fun SubjectDetailsHeader(
     } else {
         SubjectDetailsHeaderCompact(
             coverImageUrl = coverImageUrl,
+            info = info,
             title = { Text(info?.displayName ?: "") },
             subtitle = { Text(info?.name ?: "") },
             seasonTags = { seasonTags() },
@@ -108,6 +117,7 @@ internal fun SubjectDetailsHeader(
 @Composable
 fun SubjectDetailsHeaderCompact(
     coverImageUrl: String?,
+    info: SubjectInfo?,
     title: @Composable () -> Unit,
     subtitle: @Composable () -> Unit,
     seasonTags: @Composable () -> Unit,
@@ -143,8 +153,19 @@ fun SubjectDetailsHeaderCompact(
                     Modifier.fillMaxWidth(), // required by Rating
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
+                    val clipboard = LocalClipboardManager.current
+                    val toaster = LocalToaster.current
+                    val copied = stringResource(Lang.subject_title_copied)
+                    val fullName = info?.fullDisplayName.orEmpty()
+                    val copy = {
+                        if (fullName.isNotBlank()) {
+                            clipboard.setText(AnnotatedString(fullName))
+                            toaster.toast(copied)
+                        }
+                    }
+
                     var showSubtitle by remember { mutableStateOf(false) }
-                    Box(Modifier.clickable { showSubtitle = !showSubtitle }) {
+                    Box(Modifier.combinedClickable(onClick = copy, onLongClick = { showSubtitle = !showSubtitle })) {
                         ProvideTextStyle(MaterialTheme.typography.titleLarge) {
                             if (showSubtitle) {
                                 subtitle()
@@ -192,6 +213,7 @@ fun SubjectDetailsHeaderCompact(
 @Composable
 fun SubjectDetailsHeaderWide(
     coverImageUrl: String?,
+    info: SubjectInfo?,
     title: @Composable () -> Unit,
     seasonTags: @Composable RowScope.() -> Unit,
     collectionData: @Composable () -> Unit,
@@ -230,7 +252,18 @@ fun SubjectDetailsHeaderWide(
                     Modifier.weight(1f, fill = true),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Box(Modifier) {
+                    val clipboard = LocalClipboardManager.current
+                    val toaster = LocalToaster.current
+                    val copied = stringResource(Lang.subject_title_copied)
+                    val fullName = info?.fullDisplayName.orEmpty()
+                    val copy = {
+                        if (fullName.isNotBlank()) {
+                            clipboard.setText(AnnotatedString(fullName))
+                            toaster.toast(copied)
+                        }
+                    }
+
+                    Box(Modifier.combinedClickable(onClick = copy, onLongClick = { })) {
                         ProvideTextStyle(MaterialTheme.typography.titleLarge) {
                             SelectionContainer {
                                 title()
