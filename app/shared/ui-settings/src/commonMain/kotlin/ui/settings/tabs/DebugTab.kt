@@ -33,12 +33,12 @@ import me.him188.ani.app.platform.MeteredNetworkDetector
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.account_logged_out
+import me.him188.ani.app.ui.lang.account_logout
 import me.him188.ani.app.ui.lang.settings_debug_copied
 import me.him188.ani.app.ui.lang.settings_debug_enter_onboarding
 import me.him188.ani.app.ui.lang.settings_debug_episodes
 import me.him188.ani.app.ui.lang.settings_debug_get_ani_token
-import me.him188.ani.app.ui.lang.settings_debug_logged_out
-import me.him188.ani.app.ui.lang.settings_debug_logout
 import me.him188.ani.app.ui.lang.settings_debug_metered_network
 import me.him188.ani.app.ui.lang.settings_debug_mode
 import me.him188.ani.app.ui.lang.settings_debug_mode_description
@@ -137,11 +137,11 @@ fun DebugTab(
         }
         Group(title = { Text(stringResource(Lang.settings_debug_others)) }, useThinHeader = true) {
             TextItem(
-                title = { Text(stringResource(Lang.settings_debug_logout)) },
+                title = { Text(stringResource(Lang.account_logout)) },
                 onClick = {
                     scope.launch {
                         GlobalKoin.get<UserRepository>().clearSelfInfo()
-                        toaster.toast(getString(Lang.settings_debug_logged_out))
+                        toaster.toast(getString(Lang.account_logged_out))
                     }
                 },
             )
