@@ -202,6 +202,16 @@ abstract class AbstractTorrentFileEntry(
 
         override val entry get() = this@AbstractTorrentFileEntry
 
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is AbstractTorrentFileHandle) return false
+            return entry === other.entry
+        }
+
+        override fun hashCode(): Int {
+            return entry.hashCode()
+        }
+
         final override fun resume(priority: FilePriority) {
             checkClosed()
             requestPriority(priority)

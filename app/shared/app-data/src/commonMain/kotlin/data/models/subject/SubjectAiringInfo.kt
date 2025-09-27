@@ -15,6 +15,7 @@ import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownOnAir
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.ifInvalid
 import me.him188.ani.datasources.api.minus
@@ -118,11 +119,14 @@ data class SubjectAiringInfo(
             // See test SubjectAiringInfoTest
             // Change with care!
 
+            // 仅保留正片
+            val mainStoryEpisodes = list.filter { it.type == EpisodeType.MainStory }
+
             val kind = when {
-                list.isEmpty() -> SubjectAiringKind.UPCOMING
-                list.all { it.isKnownCompleted(recurrence) } -> SubjectAiringKind.COMPLETED
-                list.all { it.isKnownOnAir(recurrence) } -> SubjectAiringKind.UPCOMING
-                list.any { it.isKnownCompleted(recurrence) } -> SubjectAiringKind.ON_AIR
+                mainStoryEpisodes.isEmpty() -> SubjectAiringKind.UPCOMING
+                mainStoryEpisodes.all { it.isKnownCompleted(recurrence) } -> SubjectAiringKind.COMPLETED
+                mainStoryEpisodes.all { it.isKnownOnAir(recurrence) } -> SubjectAiringKind.UPCOMING
+                mainStoryEpisodes.any { it.isKnownCompleted(recurrence) } -> SubjectAiringKind.ON_AIR
                 airDate.isValid -> when {
                     airDate <= PackedDate.now() -> SubjectAiringKind.COMPLETED
                     PackedDate.now() - airDate > 10 * 30 * 365.days -> SubjectAiringKind.COMPLETED // 播出 10 年后判定为完结, 一些老番缺失信息
@@ -131,18 +135,19 @@ data class SubjectAiringInfo(
 
                 else -> SubjectAiringKind.UPCOMING
             }
+
             return SubjectAiringInfo(
                 kind = kind,
-                mainEpisodeCount = list.size,
-                airDate = airDate.ifInvalid { list.firstOrNull()?.airDate ?: PackedDate.Invalid },
-                firstSort = list.firstOrNull()?.sort,
-                latestEp = list.lastOrNull { it.isKnownCompleted(recurrence) }?.sort,
-                latestSort = list.lastOrNull { it.isKnownCompleted(recurrence) }?.sort,
+                mainEpisodeCount = mainStoryEpisodes.size,
+                airDate = airDate.ifInvalid { mainStoryEpisodes.firstOrNull()?.airDate ?: PackedDate.Invalid },
+                firstSort = mainStoryEpisodes.firstOrNull()?.sort,
+                latestEp = mainStoryEpisodes.lastOrNull { it.isKnownCompleted(recurrence) }?.sort,
+                latestSort = mainStoryEpisodes.lastOrNull { it.isKnownCompleted(recurrence) }?.sort,
                 upcomingSort = if (kind == SubjectAiringKind.COMPLETED) {
                     null
                 } else {
-                    list.firstOrNull { it.isKnownOnAir(recurrence) }?.sort
-                        ?: list.firstOrNull { it.airDate.isInvalid }?.sort
+                    mainStoryEpisodes.firstOrNull { it.isKnownOnAir(recurrence) }?.sort
+                        ?: mainStoryEpisodes.firstOrNull { it.airDate.isInvalid }?.sort
                 },
             )
         }

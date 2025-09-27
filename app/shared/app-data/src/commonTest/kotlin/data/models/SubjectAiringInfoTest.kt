@@ -24,9 +24,10 @@ class SubjectAiringInfoTest {
     private fun ep(
         sort: Int,
         airDate: PackedDate = PackedDate.Invalid,
+        type: EpisodeType = EpisodeType.MainStory,
     ): EpisodeInfo = EpisodeInfo(
         episodeId = ++idCounter,
-        type = EpisodeType.MainStory,
+        type = type,
         sort = EpisodeSort(sort),
         airDate = airDate,
     )
@@ -172,5 +173,22 @@ class SubjectAiringInfoTest {
         assertEquals(EpisodeSort(1), info.firstSort)
         assertEquals(EpisodeSort(1), info.latestSort)
         assertEquals(EpisodeSort(2), info.upcomingSort)
+    }
+
+    @Test
+    fun `on air with special episodes mixed in`() {
+        val eps = listOf(
+            ep(sort = 1, airDate = PackedDate(2023, 1, 8), type = EpisodeType.MainStory),     // Completed Main
+            ep(sort = 1, airDate = PackedDate(2023, 1, 10), type = EpisodeType.SP),    // Completed Special
+            ep(sort = 2, airDate = PackedDate(8888, 1, 15), type = EpisodeType.MainStory),  // Upcoming Main
+            ep(sort = 2, airDate = PackedDate(8888, 1, 20), type = EpisodeType.SP),    // Upcoming Special
+        )
+        val info = SubjectAiringInfo.computeFromEpisodeList(eps, PackedDate.Invalid, null)
+        assertEquals(SubjectAiringKind.ON_AIR, info.kind)
+        assertEquals(2, info.mainEpisodeCount) // Should only count main episodes
+        assertEquals(PackedDate(2023, 1, 8), info.airDate) // Air date of the first main episode
+        assertEquals(EpisodeSort(1), info.firstSort) // Sort of the first main episode
+        assertEquals(EpisodeSort(1), info.latestSort) // Sort of the last aired main episode
+        assertEquals(EpisodeSort(2), info.upcomingSort) // Sort of the first upcoming main episode
     }
 }
