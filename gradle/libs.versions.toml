@@ -13,7 +13,7 @@ kotlinx-collections-immutable = "0.3.8" # https://github.com/Kotlin/kotlinx.coll
 ### ANDROIDX ###
 androidx-annotation = "1.9.1"
 androidx-media3 = "1.6.1" # https://developer.android.com/jetpack/androidx/releases/media3
-androidx-lifecycle = "2.8.7" # https://developer.android.com/jetpack/androidx/releases/lifecycle
+androidx-lifecycle = "2.9.4" # https://developer.android.com/jetpack/androidx/releases/lifecycle
 paging = "3.3.6" # https://developer.android.com/jetpack/androidx/releases/paging
 datastore = "1.1.7" # https://developer.android.com/jetpack/androidx/releases/datastore
 ksp = "2.1.21-2.0.1" # https://github.com/google/ksp/releases
