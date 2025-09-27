@@ -1662,16 +1662,28 @@ class WithMatrix(
                         cp -r app/desktop/build/compose/binaries/main-release/app/Ani/* AppDir/usr
                         
                         cp app/desktop/appResources/linux-x64/AppRun AppDir/AppRun
-                        cp app/desktop/appResources/linux-x64/animeko.desktop AppDir/animeko.desktop
+                        cp app/desktop/appResources/linux-x64/org.openani.animeko.desktop AppDir/org.openani.animeko.desktop
                         cp app/desktop/appResources/linux-x64/icon.png AppDir/icon.png
+                        cp -r app/desktop/appResources/linux-x64/share AppDir/usr/
                         
                         # Fix permissions
                         chmod a+x AppDir/AppRun
                         chmod a+x AppDir/usr/bin/Ani
                         chmod a+x AppDir/usr/lib/runtime/lib/jcef_helper
                         
+                        # Get and export version
+                        if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+                            export VERSION="${GITHUB_REF_NAME#v}"
+                        else
+                            export VERSION="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+                        fi
+                        echo VERSION: "$VERSION"
+                        
                         # Build AppImage
                         ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir
+                        
+                        # Rename AppImage
+                        mv Animeko*.AppImage Animeko-x86_64.AppImage
                         """.trimIndent(),
                 )
                 // Expected output path: Animeko-x86_64.AppImage.
