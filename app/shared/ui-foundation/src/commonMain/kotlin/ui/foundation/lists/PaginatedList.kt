@@ -1,0 +1,258 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
+package me.him188.ani.app.ui.foundation.lists
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowDropDown
+import androidx.compose.material.icons.outlined.ChevronLeft
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+
+/**
+ * 通用分页列表组件，支持分组显示和分页导航
+ *
+ * @param T 列表项数据类型
+ * @param items 列表数据
+ * @param config 分组配置
+ * @param listState LazyColumn状态
+ * @param modifier 修饰符
+ * @param contentPadding 内容内边距
+ * @param itemContent 列表项内容Composable
+ * @param headerContent 分组标题内容Composable（可选）
+ * @param playingItemIndex 需要自动滚动到的条目索引（可选）
+ * @param onItemClick 列表项点击回调（可选）
+ */
+@Composable
+fun <T> PaginatedList(
+    items: List<T>,
+    config: PaginatedGroupConfig<T>,
+    listState: LazyListState,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+    itemContent: @Composable (T) -> Unit,
+    headerContent: @Composable (String) -> Unit = { DefaultGroupHeader(title = it) },
+    playingItemIndex: Int = -1,
+    onItemClick: ((T) -> Unit)? = null,
+) {
+    val state = rememberPaginatedListState(items = items, config = config)
+
+    // 播放状态导航定位
+    LaunchedEffect(playingItemIndex) {
+        if (playingItemIndex >= 0 && state.isInitialPositioning) {
+            val targetGroupIndex = playingItemIndex / config.itemsPerGroup
+            state.navigateToGroup(targetGroupIndex)
+
+            val itemPosition = state.calculateItemPosition(playingItemIndex)
+            if (itemPosition != null) {
+                listState.animateScrollToItem(itemPosition)
+                state.isInitialPositioning = false
+            }
+        }
+    }
+
+    // 分组切换时的滚动
+    LaunchedEffect(state.currentGroupIndex) {
+        if (!state.isInitialPositioning) {
+            val targetIndex = state.groupStartIndices.getOrNull(state.currentGroupIndex) ?: 0
+            listState.animateScrollToItem(targetIndex)
+        }
+    }
+
+    Column(modifier = modifier) {
+        // 分页导航条
+        PaginatedListNavigation(
+            state = state,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        // 分组列表内容
+        LazyColumn(
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.weight(1f),
+            contentPadding = contentPadding,
+        ) {
+            state.groups.forEach { group ->
+                item(key = "header_${group.groupIndex}") {
+                    headerContent(group.title)
+                }
+
+                items(
+                    items = group.items,
+                    key = { "PaginatedList_${group.groupIndex}_${it.hashCode()}" },
+                ) { item ->
+                    if (onItemClick != null) {
+                        Surface(
+                            onClick = { onItemClick(item) },
+                            color = Color.Transparent,
+                            shape = MaterialTheme.shapes.small,
+                        ) {
+                            itemContent(item)
+                        }
+                    } else {
+                        itemContent(item)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 分页列表导航组件
+ */
+@Composable
+fun <T> PaginatedListNavigation(
+    state: PaginatedListState<T>,
+    modifier: Modifier = Modifier,
+) {
+    var showGroupSelector by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // 上一组按钮
+        IconButton(
+            onClick = { state.navigateToPrevious() },
+            enabled = state.canNavigateToPrevious,
+        ) {
+            Icon(
+                Icons.Outlined.ChevronLeft,
+                contentDescription = "上一组",
+                tint = if (state.canNavigateToPrevious) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                },
+            )
+        }
+
+        // 分组选择器
+        Box(
+            modifier = Modifier.weight(1f),
+            contentAlignment = Alignment.Center,
+        ) {
+            Surface(
+                onClick = { showGroupSelector = true },
+                color = Color.Transparent,
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = state.currentGroup?.title ?: "",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(end = 4.dp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Icon(
+                        Icons.Outlined.ArrowDropDown,
+                        contentDescription = "选择分组",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            // 分组下拉菜单
+            DropdownMenu(
+                expanded = showGroupSelector,
+                onDismissRequest = { showGroupSelector = false },
+            ) {
+                state.groups.forEachIndexed { index, group ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = group.title,
+                                color = if (index == state.currentGroupIndex) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                            )
+                        },
+                        onClick = {
+                            state.navigateToGroup(index)
+                            showGroupSelector = false
+                        },
+                    )
+                }
+            }
+        }
+
+        // 下一组按钮
+        IconButton(
+            onClick = { state.navigateToNext() },
+            enabled = state.canNavigateToNext,
+        ) {
+            Icon(
+                Icons.Outlined.ChevronRight,
+                contentDescription = "下一组",
+                tint = if (state.canNavigateToNext) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                },
+            )
+        }
+    }
+}
+
+/**
+ * 默认分组标题组件
+ */
+@Composable
+fun DefaultGroupHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = modifier.padding(vertical = 8.dp),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
