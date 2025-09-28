@@ -234,7 +234,7 @@ androidx-media3-exoplayer-hls = { module = "androidx.media3:media3-exoplayer-hls
 
 kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
 korlibs-crypto = { module = "com.soywiz:korlibs-crypto", version.ref = "korlibs" }
-jetbrains-annotations = { module = "org.jetbrains:annotations", version = "23.1.0" }
+jetbrains-annotations = { module = "org.jetbrains:annotations", version = "26.0.2-1" }
 directories = { module = "dev.dirs:directories", version = "26" }
 snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
 antlr-kotlin-runtime = { module = "com.strumenta:antlr-kotlin-runtime", version.ref = "antlr-kotlin" }
