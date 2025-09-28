@@ -81,14 +81,14 @@ class DanmakuListStateProducer(
         }
 
         val danmakuItems = danmakuList.map { presentation ->
-                DanmakuListItem(
-                    id = presentation.danmaku.id,
-                    content = presentation.danmaku.text,
-                    timeMillis = presentation.danmaku.playTimeMillis,
-                    serviceId = presentation.danmaku.serviceId,
-                    isSelf = presentation.isSelf,
-                )
-            }.sortedBy { it.timeMillis }
+            DanmakuListItem(
+                id = presentation.danmaku.id,
+                content = presentation.danmaku.text,
+                timeMillis = presentation.danmaku.playTimeMillis,
+                serviceId = presentation.danmaku.serviceId,
+                isSelf = presentation.isSelf,
+            )
+        }.sortedBy { it.timeMillis }
 
         DanmakuListState(
             danmakuItems = danmakuItems,

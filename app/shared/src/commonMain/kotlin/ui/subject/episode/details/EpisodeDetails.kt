@@ -73,7 +73,6 @@ import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeRequest
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.episode.share.MediaShareData
-import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
@@ -110,7 +109,6 @@ import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.utils.platform.isDesktop
 
 @Stable
 class EpisodeDetailsState(
@@ -173,7 +171,7 @@ fun EpisodeDetails(
         if (showSubjectDetails) {
             ModalBottomSheet(
                 { showSubjectDetails = false },
-                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = LocalPlatform.current.isDesktop()),
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = currentWindowAdaptiveInfo1().isWidthAtLeastMedium),
                 modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
                 contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
             ) {
@@ -231,7 +229,7 @@ fun EpisodeDetails(
             }
         },
         airingStatus = {
-            if (LocalPlatform.current.isDesktop()) {
+            if (currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
                 AiringLabel(
                     state.airingLabelState,
                     Modifier.align(Alignment.CenterVertically),
@@ -269,10 +267,10 @@ fun EpisodeDetails(
         exposedEpisodeItem = { innerPadding ->
             var showMediaSelector by rememberSaveable { mutableStateOf(false) }
             if (showMediaSelector) {
-                val platform = LocalPlatform.current
+                val windowAdaptiveInfo = currentWindowAdaptiveInfo1()
                 val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(initialMediaSelectorViewKind) }
 
-                if (platform.isDesktop() && currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
+                if (windowAdaptiveInfo.isWidthAtLeastMedium) {
                     val sheetState = rememberModalSideSheetState()
                     ModalSideSheet(
                         { showMediaSelector = false },
@@ -327,7 +325,7 @@ fun EpisodeDetails(
                     }
                 } else {
                     val sheetState =
-                        rememberModalBottomSheetState(skipPartiallyExpanded = platform.isDesktop())
+                        rememberModalBottomSheetState(skipPartiallyExpanded = windowAdaptiveInfo.isWidthAtLeastMedium)
                     ModalBottomSheet(
                         { showMediaSelector = false },
                         sheetState = sheetState,
@@ -422,7 +420,7 @@ fun EpisodeDetails(
                 onToggleExpanded = { expandEpisodeList = !expandEpisodeList },
             )
         },
-        danmakuListSection = if (LocalPlatform.current.isDesktop() && danmakuListState != null) {
+        danmakuListSection = if (currentWindowAdaptiveInfo1().isWidthAtLeastMedium && danmakuListState != null) {
             {
                 DanmakuListSection(
                     state = danmakuListState,
@@ -548,7 +546,7 @@ fun EpisodeDetailsScaffold(
             loadError()
         }
 
-        if (LocalPlatform.current.isDesktop()) {
+        if (currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
             SectionTitle(
                 Modifier.padding(top = 12.dp, bottom = 8.dp),
             ) {
@@ -576,7 +574,7 @@ fun EpisodeDetailsScaffold(
             episodeListSection()
         }
 
-        if (!LocalPlatform.current.isDesktop()) {
+        if (!currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
             SectionTitle(Modifier.padding(top = 12.dp, bottom = 8.dp)) {
                 danmakuStatisticsSummary()
             }

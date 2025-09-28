@@ -65,8 +65,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.displayName
-import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.icons.PlayingIcon
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.episode.details.components.EpisodeGrid
@@ -74,21 +75,20 @@ import me.him188.ani.app.ui.subject.episode.details.components.EpisodeListItem
 import me.him188.ani.app.ui.subject.episode.details.components.PaginatedEpisodeList
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
-import me.him188.ani.utils.platform.isDesktop
 
 /**
- * 剧集列表区域组件，根据平台自适应显示不同的UI布局。
- * 
- * 在桌面端显示为可展开/收起的下拉列表，在移动端显示为横向滚动的卡片列表配合底部弹窗。
- * 
+ * 剧集列表区域组件，根据屏幕尺寸自适应显示不同的UI布局。
+ *
+ * 在宽屏设备显示为可展开/收起的下拉列表，在窄屏设备显示为横向滚动的卡片列表配合底部弹窗。
+ *
  * @param episodeCarouselState 剧集轮播状态，包含剧集列表、当前播放状态、选择和收藏操作等
- * @param expanded 桌面端专用：是否展开剧集列表（移动端忽略此参数）
+ * @param expanded 宽屏布局专用：是否展开剧集列表（窄屏布局忽略此参数）
  * @param airingLabelState 播出标签状态，用于显示番剧的播出信息
- * @param onToggleExpanded 桌面端专用：切换展开/收起状态的回调（移动端忽略此参数）
- * 
- * ## 平台差异
- * - **桌面端**：垂直列表布局，支持展开/收起，超过100集时使用分页显示
- * - **移动端**：横向滚动卡片布局，点击更多按钮弹出底部选择器
+ * @param onToggleExpanded 宽屏布局专用：切换展开/收起状态的回调（窄屏布局忽略此参数）
+ *
+ * ## 响应式布局差异
+ * - **宽屏**（≥600.dp宽度）：垂直列表布局，支持展开/收起，超过100集时使用分页显示
+ * - **窄屏**（<600.dp宽度）：横向滚动卡片布局，点击更多按钮弹出底部选择器
  */
 @Composable
 fun EpisodeListSection(
@@ -98,17 +98,20 @@ fun EpisodeListSection(
     modifier: Modifier = Modifier,
     onToggleExpanded: () -> Unit,
 ) {
-    if (LocalPlatform.current.isDesktop()) {
-        // 桌面端：下拉展开
-        DesktopEpisodeListSection(
+    val windowAdaptiveInfo = currentWindowAdaptiveInfo1()
+    val isWideLayout = windowAdaptiveInfo.isWidthAtLeastMedium
+
+    if (isWideLayout) {
+        // 宽屏布局：下拉展开
+        WideEpisodeListSection(
             episodeCarouselState = episodeCarouselState,
             expanded = expanded,
             onToggleExpanded = onToggleExpanded,
             modifier = modifier,
         )
     } else {
-        // 移动端：横向滚动 + BottomSheet
-        MobileEpisodeListSection(
+        // 窄屏布局：横向滚动 + BottomSheet
+        NarrowEpisodeListSection(
             episodeCarouselState = episodeCarouselState,
             airingLabelState = airingLabelState,
             modifier = modifier,
@@ -117,13 +120,14 @@ fun EpisodeListSection(
 }
 
 /**
- * 桌面端剧集列表组件。
- * 
+ * 宽屏剧集列表组件。
+ *
  * 显示为可展开/收起的卡片式列表，点击标题栏可切换展开状态。
  * 展开时会自动滚动到当前播放的剧集。
+ * 适用于宽度 ≥ 600dp 的屏幕。
  */
 @Composable
-private fun DesktopEpisodeListSection(
+private fun WideEpisodeListSection(
     episodeCarouselState: EpisodeCarouselState,
     expanded: Boolean,
     modifier: Modifier = Modifier,
@@ -231,14 +235,15 @@ private fun DesktopEpisodeListSection(
 }
 
 /**
- * 移动端剧集列表组件。
- * 
+ * 窄屏剧集列表组件。
+ *
  * 显示为横向滚动的卡片列表，配合标题栏和更多按钮。
  * 点击更多按钮会弹出底部选择器，双击标题可快速滚动到当前播放的剧集。
+ * 适用于宽度 < 600dp 的屏幕。
  *
  */
 @Composable
-private fun MobileEpisodeListSection(
+private fun NarrowEpisodeListSection(
     episodeCarouselState: EpisodeCarouselState,
     airingLabelState: AiringLabelState,
     modifier: Modifier = Modifier,
@@ -343,15 +348,15 @@ private fun MobileEpisodeListSection(
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             contentWindowInsets = { BottomSheetDefaults.windowInsets },
             dragHandle = null,
-            modifier = modifier
+            modifier = modifier,
         ) {
             Column {
                 TopAppBar(
                     title = { Text("选择剧集") },
                     windowInsets = WindowInsets(0),
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = BottomSheetDefaults.ContainerColor
-                    )
+                        containerColor = BottomSheetDefaults.ContainerColor,
+                    ),
                 )
 
                 EpisodeGrid(
@@ -360,7 +365,7 @@ private fun MobileEpisodeListSection(
                         episodeCarouselState.onSelect(episode)
                         showBottomSheet = false
                     },
-                    isVisible = true
+                    isVisible = true,
                 )
             }
         }
@@ -391,24 +396,24 @@ private fun EpisodeCard(
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
             } else {
                 MaterialTheme.colorScheme.surfaceContainer
-            }
+            },
         ),
         modifier = modifier
             .width(120.dp)
             .height(80.dp)
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = onLongClick
-            )
+                onLongClick = onLongClick,
+            ),
     ) {
         Box(
-            modifier = Modifier.padding(12.dp).fillMaxWidth()
+            modifier = Modifier.padding(12.dp).fillMaxWidth(),
         ) {
             Column(
-                modifier = Modifier.align(Alignment.CenterStart)
+                modifier = Modifier.align(Alignment.CenterStart),
             ) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (isPlaying) {
                         PlayingIcon()
@@ -423,7 +428,7 @@ private fun EpisodeCard(
                             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         } else {
                             LocalContentColor.current
-                        }
+                        },
                     )
                 }
                 Spacer(Modifier.height(4.dp))
@@ -436,7 +441,7 @@ private fun EpisodeCard(
                         MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
-                    }
+                    },
                 )
             }
         }
