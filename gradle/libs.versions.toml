@@ -217,7 +217,7 @@ androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", 
 androidx-lifecycle-runtime-testing = { module = "androidx.lifecycle:lifecycle-runtime-testing", version.ref = "androidx-lifecycle" }
 androidx-collection = { module = "androidx.collection:collection", version = "1.5.0" }
 # Used dynamically, don't remove.
-androidx-test-runner = { module = "androidx.test:runner", version = "1.5.0" }
+androidx-test-runner = { module = "androidx.test:runner", version = "1.7.0" }
 
 # Android unit test
 mockito = { module = "org.mockito:mockito-core", version.ref = "mockito" }
