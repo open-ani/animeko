@@ -8,7 +8,7 @@ kotlinx-serialization = "1.8.1" # https://github.com/Kotlin/kotlinx.serializatio
 kotlinx-datetime = "0.6.2" # https://github.com/Kotlin/kotlinx-datetime/releases
 kotlinx-atomicfu = "0.27.0" # https://github.com/Kotlin/kotlinx-atomicfu/releases
 kotlinx-io = "0.7.0" # https://github.com/Kotlin/kotlinx-io/releases
-kotlinx-collections-immutable = "0.3.8" # https://github.com/Kotlin/kotlinx.collections.immutable/releases
+kotlinx-collections-immutable = "0.4.0" # https://github.com/Kotlin/kotlinx.collections.immutable/releases
 
 ### ANDROIDX ###
 androidx-annotation = "1.9.1"
