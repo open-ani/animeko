@@ -87,7 +87,6 @@ import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeRequest
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.navigation.navigateLoginOrBangumiAuthorizeIfNeeded
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.ImageViewer
 import me.him188.ani.app.ui.foundation.LocalPlatform
@@ -216,7 +215,7 @@ fun SubjectDetailsScreen(
             state.value,
             selfInfo,
             onPlay = onPlay,
-            onClickLogin = { navigator.navigateLoginOrBangumiAuthorizeIfNeeded() },
+            onClickLogin = { navigator.navigateEmailLoginStart() },
             onClickTag,
             onEpisodeCollectionUpdate = onEpisodeCollectionUpdate,
             modifier,

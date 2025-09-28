@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.login
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -63,6 +65,7 @@ fun EmailLoginVerifyScreen(
     EmailLoginVerifyScreenImpl(
         email = state.email,
         nextResendTime = state.nextResendTime,
+        isExistingAccount = state.isExistingAccount,
         onCodeSubmit = { otp ->
             asyncHandler.launch {
                 val result = if (state.mode == EmailLoginUiState.Mode.LOGIN) {
@@ -89,7 +92,7 @@ fun EmailLoginVerifyScreen(
         modifier = modifier,
         enabled = !asyncHandler.isWorking,
         showThirdPartyLogin = state.mode == EmailLoginUiState.Mode.LOGIN,
-        title = { EmailPageTitle(state.mode) },
+        title = { EmailPageTitle(state.mode, state.isExistingAccount) },
     )
 }
 
@@ -98,6 +101,7 @@ fun EmailLoginVerifyScreen(
 internal fun EmailLoginVerifyScreenImpl(
     email: String,
     nextResendTime: Instant,
+    isExistingAccount: Boolean?,
     onCodeSubmit: (string: String) -> Unit,
     onResendClick: () -> Unit,
     onBangumiLoginClick: () -> Unit,
@@ -118,7 +122,18 @@ internal fun EmailLoginVerifyScreenImpl(
     ) {
         CenteredSectionHeader(
             title = { Text("输入验证码") },
-            description = { Text("请检查邮箱 $email") },
+            description = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("请检查邮箱 $email")
+                    if (isExistingAccount != null) {
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            if (isExistingAccount) "正在登录现有账号" else "正在注册新账号",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            },
         )
 
         Spacer(Modifier.height(8.dp))
@@ -194,6 +209,7 @@ private fun PreviewEmailLoginVerifyScreen() = ProvideCompositionLocalsForPreview
     EmailLoginVerifyScreenImpl(
         "test@openani.org",
         nextResendTime = Clock.System.now() + 16.seconds,
+        isExistingAccount = true,
         onCodeSubmit = {},
         onResendClick = {},
         {},

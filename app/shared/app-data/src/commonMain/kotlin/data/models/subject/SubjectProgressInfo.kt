@@ -13,6 +13,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
+import me.him188.ani.app.data.models.subject.SubjectProgressInfo.Companion.compute
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
@@ -86,21 +87,27 @@ data class SubjectProgressInfo(
             episodes: List<Episode>,
             subjectAirDate: PackedDate,
         ): SubjectProgressInfo {
-            val lastWatchedEpIndex = episodes.indexOfLast {
+            // 进度应该仅考虑普通剧集，并且按 sort 排序
+            val sortedNormalEpisodes = episodes
+                .filter { it.sort is EpisodeSort.Normal }
+                .sortedBy { it.sort }
+
+            val lastWatchedEpIndex = sortedNormalEpisodes.indexOfLast {
                 it.type == UnifiedCollectionType.DONE || it.type == UnifiedCollectionType.DROPPED
             }
+
             val continueWatchingStatus = kotlin.run {
                 val latestEp = kotlin.run {
-                    episodes.lastOrNull { it.isKnownCompleted }
+                    sortedNormalEpisodes.lastOrNull { it.isKnownCompleted }
                 }
 
                 // 有剧集 isKnownCompleted == true 时就认为已开播
                 val actualSubjectStarted = latestEp != null || subjectStarted
 
                 val latestEpIndex: Int? =
-                    episodes.indexOfFirst { it == latestEp }
+                    sortedNormalEpisodes.indexOfFirst { it == latestEp }
                         .takeIf { it != -1 }
-                        ?: episodes.lastIndex.takeIf { it != -1 }
+                        ?: sortedNormalEpisodes.lastIndex.takeIf { it != -1 }
 
                 when (lastWatchedEpIndex) {
                     // 还没看过
@@ -109,29 +116,30 @@ data class SubjectProgressInfo(
                             ContinueWatchingStatus.Start
                         } else {
                             ContinueWatchingStatus.NotOnAir(
-                                subjectAirDate.ifInvalid { episodes.firstOrNull()?.airDate ?: PackedDate.Invalid },
+                                subjectAirDate.ifInvalid {
+                                    sortedNormalEpisodes.firstOrNull()?.airDate ?: PackedDate.Invalid
+                                },
                             )
                         }
                     }
 
                     // 看了第 n 集并且还有第 n+1 集
-                    in 0..<episodes.size - 1 -> {
+                    in 0..<sortedNormalEpisodes.size - 1 -> {
                         if (latestEpIndex != null && lastWatchedEpIndex < latestEpIndex && actualSubjectStarted) {
                             // 更新了 n+1 集
                             ContinueWatchingStatus.Continue(
-                                episodeIndex = lastWatchedEpIndex + 1,
-                                episodeEp = episodes.getOrNull(lastWatchedEpIndex + 1)?.ep,
-                                episodeSort = episodes.getOrNull(lastWatchedEpIndex + 1)?.sort,
-                                watchedEpisodeEp = episodes[lastWatchedEpIndex].ep,
-                                watchedEpisodeSort = episodes[lastWatchedEpIndex].sort,
+                                episodeEp = sortedNormalEpisodes.getOrNull(lastWatchedEpIndex + 1)?.ep,
+                                episodeSort = sortedNormalEpisodes.getOrNull(lastWatchedEpIndex + 1)?.sort,
+                                watchedEpisodeEp = sortedNormalEpisodes[lastWatchedEpIndex].ep,
+                                watchedEpisodeSort = sortedNormalEpisodes[lastWatchedEpIndex].sort,
                             )
                         } else {
                             // 还没更新
                             ContinueWatchingStatus.Watched(
-                                lastWatchedEpIndex,
-                                episodes.getOrNull(lastWatchedEpIndex)?.ep,
-                                episodes.getOrNull(lastWatchedEpIndex)?.sort,
-                                episodes.getOrNull(lastWatchedEpIndex + 1)?.airDate ?: PackedDate.Invalid,
+                                sortedNormalEpisodes.getOrNull(lastWatchedEpIndex)?.ep,
+                                sortedNormalEpisodes.getOrNull(lastWatchedEpIndex)?.sort,
+                                sortedNormalEpisodes.getOrNull(lastWatchedEpIndex + 1)?.airDate
+                                    ?: PackedDate.Invalid,
                             )
                         }
                     }
@@ -144,14 +152,14 @@ data class SubjectProgressInfo(
 
             val episodeToPlay = kotlin.run {
                 if (continueWatchingStatus is ContinueWatchingStatus.Watched) {
-                    return@run episodes[continueWatchingStatus.episodeIndex]
+                    return@run sortedNormalEpisodes[lastWatchedEpIndex]
                 } else {
                     if (lastWatchedEpIndex != -1) {
-                        episodes.getOrNull(lastWatchedEpIndex + 1)?.let { return@run it }
-                        episodes.getOrNull(lastWatchedEpIndex)?.let { return@run it }
+                        sortedNormalEpisodes.getOrNull(lastWatchedEpIndex + 1)?.let { return@run it }
+                        sortedNormalEpisodes.getOrNull(lastWatchedEpIndex)?.let { return@run it }
                     }
 
-                    episodes.firstOrNull()?.let {
+                    sortedNormalEpisodes.firstOrNull()?.let {
                         return@run it
                     }
                 }
@@ -185,7 +193,6 @@ sealed class ContinueWatchingStatus {
      * 继续看
      */
     data class Continue(
-        val episodeIndex: Int,
         val episodeEp: EpisodeSort?,
         val episodeSort: EpisodeSort?, // "12.5"
         val watchedEpisodeEp: EpisodeSort?,
@@ -196,7 +203,6 @@ sealed class ContinueWatchingStatus {
      * 看到了, 但是下一集还没更新
      */
     data class Watched(
-        val episodeIndex: Int,
         val episodeEp: EpisodeSort?, // "12.5"
         val episodeSort: EpisodeSort?, // "24.5"
         /**
@@ -221,7 +227,6 @@ object TestSubjectProgressInfos {
     @Stable
     val ContinueWatching2 = SubjectProgressInfo(
         continueWatchingStatus = ContinueWatchingStatus.Continue(
-            episodeIndex = 1,
             episodeEp = EpisodeSort(2),
             episodeSort = EpisodeSort(2),
             watchedEpisodeEp = EpisodeSort(1),
@@ -232,7 +237,7 @@ object TestSubjectProgressInfos {
 
     @Stable
     val Watched2 = SubjectProgressInfo(
-        continueWatchingStatus = ContinueWatchingStatus.Watched(1, EpisodeSort(2), EpisodeSort(2), PackedDate.Invalid),
+        continueWatchingStatus = ContinueWatchingStatus.Watched(EpisodeSort(2), EpisodeSort(2), PackedDate.Invalid),
         nextEpisodeIdToPlay = null,
     )
 

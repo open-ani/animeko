@@ -94,7 +94,7 @@ class HttpMediaCacheEngine(
         }
 
         return when (media.download) {
-            is ResourceLocation.HttpStreamingFile -> false
+            is ResourceLocation.HttpStreamingFile -> mediaResolver.supports(media)
             is ResourceLocation.HttpTorrentFile,
             is ResourceLocation.LocalFile,
             is ResourceLocation.MagnetLink,

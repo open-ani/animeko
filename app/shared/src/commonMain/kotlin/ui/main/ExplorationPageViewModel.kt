@@ -57,7 +57,7 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
 //        ),
         followedSubjectsPager = combine(
             settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode },
-            followedSubjectsRepository.followedSubjectsPager().cachedIn(backgroundScope),
+            followedSubjectsRepository.followedSubjectsPager(),
         ) { nsfwMode, subjects ->
             if (nsfwMode != NsfwMode.HIDE) return@combine subjects
             subjects.filter { !it.subjectInfo.nsfw }

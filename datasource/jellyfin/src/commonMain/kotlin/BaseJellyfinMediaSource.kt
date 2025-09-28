@@ -139,10 +139,10 @@ abstract class BaseJellyfinMediaSource(
 
     private fun getSubtitles(itemId: String, mediaStreams: List<MediaStream>): List<Subtitle> {
         return mediaStreams
-            .filter { it.Type == "Subtitle" && it.IsTextSubtitleStream && it.IsExternal }
+            .filter { it.Type == "Subtitle" && it.IsTextSubtitleStream && it.IsExternal && it.Codec != null }
             .map { stream ->
                 Subtitle(
-                    uri = getSubtitleUri(itemId, stream.Index, stream.Codec),
+                    uri = getSubtitleUri(itemId, stream.Index, stream.Codec!!),
                     language = stream.Language,
                     mimeType = when (stream.Codec.lowercase()) {
                         "ass" -> "text/x-ass"
@@ -194,10 +194,10 @@ private data class MediaStream(
     val Title: String? = null, // 除了字幕以外其他可能没有
     val Language: String? = null, // 字幕语言代码，如 chs
     val Type: String,
-    val Codec: String,
+    val Codec: String? = null, // 除了字幕以外其他可能没有
     val Index: Int,
     val IsExternal: Boolean, // 是否为外挂字幕
-    val IsTextSubtitleStream: Boolean,
+    val IsTextSubtitleStream: Boolean, // 是否可下载
 )
 
 @Serializable

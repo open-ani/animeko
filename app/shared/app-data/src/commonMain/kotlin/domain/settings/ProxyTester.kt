@@ -50,7 +50,7 @@ class ProxyTester(
         )
 
         ServiceConnectionTesters.createDefault(
-            bangumiClient = BangumiClientImpl(client, client),
+            bangumiClient = BangumiClientImpl(client),
             aniClient = AniApiProvider(client).trendsApi,
         )
     }

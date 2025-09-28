@@ -38,23 +38,22 @@ object AniServers {
     }
 
     private fun getServers(): Pair<List<AniServer>, List<AniServer>> {
-        val cnServers = arrayOf(
-            AniServer("api", Url("https://api.animeko.org")),
-            AniServer("danmaku-cn", Url("https://danmaku-cn.myani.org")),
-            AniServer("s1", Url("https://s1.animeko.openani.org")),
-        )
+        val api = AniServer("api", Url("https://api.animeko.org"))
+        val danmakuCn = AniServer("danmaku-cn", Url("https://danmaku-cn.myani.org"))
+        val s1 = AniServer("s1", Url("https://s1.animeko.openani.org"))
+        val danmakuGlobal = AniServer("danmaku-global", Url("https://danmaku-global.myani.org"))
 
-        val globalServers = arrayOf(
-            AniServer("danmaku-global", Url("https://danmaku-global.myani.org")),
-        )
-
-        val cn = buildList(cnServers.size + globalServers.size) {
-            cnServers.forEach { add(it) }
-            globalServers.forEach { add(it) }
+        val cn = buildList(4) {
+            add(api)
+            add(danmakuGlobal)
+            add(s1)
+            add(danmakuCn)
         }
-        val global = buildList(globalServers.size + cnServers.size) {
-            globalServers.forEach { add(it) }
-            cnServers.forEach { add(it) }
+        val global = buildList(4) {
+            add(danmakuGlobal)
+            add(api)
+            add(s1)
+            add(danmakuCn)
         }
         return Pair(cn, global)
     }

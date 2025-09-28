@@ -63,12 +63,14 @@ class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
             // fail fast
             throw RepositoryRateLimitedException()
         }
-        otpId = withContext(Dispatchers.Default) {
+        val info = withContext(Dispatchers.Default) {
             userRepository.sendEmailOtpForLogin(stateFields.value.email)
         }
+        otpId = info.otpId
         updateState {
             copy(
                 nextResendTime = Clock.System.now() + 30.seconds,
+                isExistingAccount = info.hasExistingUser,
             )
         }
     }
@@ -86,13 +88,16 @@ class EmailLoginViewModel : AbstractViewModel(), KoinComponent {
 data class EmailLoginUiState(
     val email: String,
     val nextResendTime: Instant,
-    val mode: Mode
+    val mode: Mode,
+    // null means unknown; true -> existing user; false -> new registration
+    val isExistingAccount: Boolean? = null,
 ) {
     companion object {
         val Initial = EmailLoginUiState(
             "",
             Instant.DISTANT_PAST,
             Mode.LOGIN,
+            isExistingAccount = null,
         )
     }
 

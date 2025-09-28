@@ -38,7 +38,7 @@ data class SelfInfoDisplay(
 fun SelfInfo?.calculateDisplay(): SelfInfoDisplay {
     val selfInfo = this
     if (selfInfo == null) {
-        return SelfInfoDisplay("加载中...", "foo@animeko.org") // placeholder, no need to be localized
+        return SelfInfoDisplay("加载中...", "") // placeholder, no need to be localized
     }
 
     if (selfInfo.nickname.isNotEmpty()) {

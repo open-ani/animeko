@@ -19,10 +19,10 @@
 package me.him188.ani.app.platform
 
 import android.net.Uri
-import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -39,7 +39,7 @@ import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.ConcurrentLinkedQueue
 
 
-abstract class BaseComponentActivity : ComponentActivity() {
+abstract class BaseComponentActivity : AppCompatActivity() {
     @Stable
     val snackbarHostState = SnackbarHostState()
 

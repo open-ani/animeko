@@ -50,6 +50,7 @@ import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepositoryImpl
 import me.him188.ani.app.data.repository.media.MediaSourceInstanceRepository
 import me.him188.ani.app.data.repository.media.MediaSourceInstanceRepositoryImpl
+import me.him188.ani.app.data.repository.media.MediaSourceSaves
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
 import me.him188.ani.app.data.repository.media.MikanIndexCacheRepository
 import me.him188.ani.app.data.repository.media.MikanIndexCacheRepositoryImpl
@@ -70,6 +71,7 @@ import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionRepository
+import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.TokenRepository
@@ -85,8 +87,6 @@ import me.him188.ani.app.domain.foundation.ServerListFeature
 import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
 import me.him188.ani.app.domain.foundation.ServerListFeatureHandler
 import me.him188.ani.app.domain.foundation.UseAniTokenFeatureHandler
-import me.him188.ani.app.domain.foundation.UseBangumiTokenFeature
-import me.him188.ani.app.domain.foundation.UseBangumiTokenFeatureHandler
 import me.him188.ani.app.domain.foundation.UserAgentFeature
 import me.him188.ani.app.domain.foundation.UserAgentFeatureHandler
 import me.him188.ani.app.domain.foundation.get
@@ -159,15 +159,9 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             get(), coroutineScope,
             featureHandlers = listOf(
                 UserAgentFeatureHandler,
-                UseBangumiTokenFeatureHandler(
-                    sessionManager.accessTokenSessionFlow.map {
-                        it?.tokens?.bangumiAccessToken
-                    },
-                    onRefresh = { null }, // 不在请求时自动刷新. 我们 SessionManager 有自己维护刷新.
-                ),
                 UseAniTokenFeatureHandler(
-                    sessionManager.accessTokenSessionFlow.map {
-                        it?.tokens?.aniAccessToken
+                    sessionManager.sessionFlow.map {
+                        (it as? AccessTokenSession)?.tokens?.aniAccessToken
                     },
                     onRefresh = { null },
                 ),
@@ -204,18 +198,12 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         BangumiClientImpl(
             get<HttpClientProvider>().get(
                 userAgent = ScopedHttpClientUserAgent.ANI,
-                useBangumiToken = true,
-            ),
-            get<HttpClientProvider>().get(
-                userAgent = ScopedHttpClientUserAgent.ANI,
-                useBangumiToken = false,
             ),
         )
     }
 
     single<SubjectCollectionRepository> {
         SubjectCollectionRepositoryImpl(
-            api = client.api,
             subjectService = get(),
             subjectCollectionDao = database.subjectCollection(),
 //            characterDao = database.character(),
@@ -285,7 +273,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
     single<EpisodeService> { EpisodeServiceImpl(aniApiProvider.subjectApi) }
 
-    single<BangumiRelatedPeopleService> { BangumiRelatedPeopleService(get()) }
+    single<BangumiRelatedPeopleService> { BangumiRelatedPeopleService(get<AniApiProvider>().subjectApi) }
     single<AnimeScheduleRepository> { AnimeScheduleRepository(get()) }
     single<BangumiCommentRepository> {
         BangumiCommentRepository(
@@ -515,13 +503,6 @@ fun KoinApplication.startCommonKoinModule(
         }
     }
 
-    @Suppress("DEPRECATION")
-    coroutineScope.launch {
-        migrationCacheCompleted.await()
-        val migrationResult = SessionManager.migrateBangumiToken(koin)
-        SessionManager.migrationResult.complete(migrationResult)
-    }
-
     coroutineScope.launch {
         val subscriptionUpdater = koin.get<MediaSourceSubscriptionUpdater>()
         while (currentCoroutineContext().isActive) {
@@ -538,6 +519,15 @@ fun KoinApplication.startCommonKoinModule(
             if (instance.factoryId.value in removedFactoryIds) {
                 manager.remove(instanceId = instance.instanceId)
             }
+        }
+    }
+
+    coroutineScope.launch {
+        val currentSaves = context.dataStores.mediaSourceSaveStore.data.first()
+        val defaultInstanceIds = MediaSourceSaves.Default.instances.map { it.instanceId }
+        // 如果当前的数据源列表的 instance ids 都在默认列表里, 说明用户没有自定义过数据源, 直接写入默认源
+        if (currentSaves.instances.all { it.instanceId in defaultInstanceIds }) {
+            context.dataStores.mediaSourceSaveStore.updateData { MediaSourceSaves.Default }
         }
     }
 
@@ -578,7 +568,6 @@ private fun holdingInstanceMatrixSequence() = sequence {
             HoldingInstanceMatrix(
                 setOf(
                     UserAgentFeature.withValue(userAgent),
-                    UseBangumiTokenFeature.withValue(false),
                     ServerListFeature.withValue(ServerListFeatureConfig.Default),
                     ConvertSendCountExceedExceptionFeature.withValue(true),
                 ),
@@ -590,7 +579,6 @@ private fun holdingInstanceMatrixSequence() = sequence {
         HoldingInstanceMatrix(
             setOf(
                 UserAgentFeature.withValue(ScopedHttpClientUserAgent.ANI),
-                UseBangumiTokenFeature.withValue(true),
                 ServerListFeature.withValue(ServerListFeatureConfig.Default),
                 ConvertSendCountExceedExceptionFeature.withValue(true),
             ),

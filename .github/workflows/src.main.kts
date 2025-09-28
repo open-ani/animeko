@@ -722,14 +722,23 @@ fun WorkflowBuilder.addConsistencyCheckJob(filename: String) {
     }
 }
 
+val commonIgnoredPaths = listOf(
+    "**/*.md",
+    ".idea/**",
+    ".junie/**",
+    ".readme/**",
+    ".run/**",
+    "scripts/*",
+)
+
 workflow(
     name = "Build",
     on = listOf(
         // Including: 
         // - pushing directly to main
         // - pushing to a branch that has an associated PR
-        Push(pathsIgnore = listOf("**/*.md", "scrips/*")),
-        PullRequest(pathsIgnore = listOf("**/*.md", "scrips/*")),
+        Push(pathsIgnore = commonIgnoredPaths),
+        PullRequest(pathsIgnore = commonIgnoredPaths),
     ),
     sourceFile = __FILE__,
     targetFileName = "build.yml",
@@ -1179,7 +1188,7 @@ class WithMatrix(
         when (matrix.runner.os) {
             OS.MACOS -> {
                 val jbrLocationExpr = if (matrix.arch == Arch.AARCH64) {
-                    downloadJbrUnix("jbrsdk_jcef-21.0.6-osx-aarch64-b895.91.tar.gz")
+                    downloadJbrUnix("jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz")
                 } else {
                     downloadJbrUnix("jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz")
                 }

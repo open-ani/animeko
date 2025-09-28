@@ -18,7 +18,6 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.toRoute
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.UISettings
@@ -151,7 +150,7 @@ fun DebugTab(
                 onClick = {
                     scope.launch {
                         val value =
-                            (GlobalKoin.get<SessionManager>().sessionFlow.firstOrNull() as? AccessTokenSession)?.tokens?.aniAccessToken
+                            (GlobalKoin.get<SessionManager>().sessionFlow.value as? AccessTokenSession)?.tokens?.aniAccessToken
                         toaster.toast(getString(Lang.settings_debug_copied, value.toString()))
                         clipboard.setText(AnnotatedString(value.toString()))
                     }

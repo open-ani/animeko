@@ -28,14 +28,13 @@ import me.him188.ani.app.domain.mediasource.asCandidate
 import me.him188.ani.app.domain.rss.RssChannel
 import me.him188.ani.app.domain.rss.RssItem
 import me.him188.ani.app.domain.rss.RssParser
+import me.him188.ani.app.domain.rss.getMediaSize
 import me.him188.ani.app.domain.rss.guessResourceLocation
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaProperties
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
-import me.him188.ani.datasources.api.topic.FileSize.Companion.Unspecified
-import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.Resolution
 import me.him188.ani.datasources.api.topic.titles.RawTitleParser
 import me.him188.ani.datasources.api.topic.titles.parse
@@ -115,8 +114,7 @@ abstract class RssMediaSourceEngine {
                     resolution = details.resolution?.toString() ?: Resolution.R1080P.toString(),
                     alliance = item.title.trim().split("]", "】").getOrNull(0).orEmpty().removePrefix("[")
                         .removePrefix("【").trim(),
-                    size = if (item.enclosure == null || item.enclosure.length <= 1L) Unspecified // 有的源会返回 1
-                    else item.enclosure.length.bytes,
+                    size = item.getMediaSize(),
                     subtitleKind = details.subtitleKind,
                 ),
                 episodeRange = details.episodeRange,

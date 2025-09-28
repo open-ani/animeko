@@ -158,6 +158,7 @@ fun MonoTasker(
 
     override suspend fun cancelAndJoin() {
         job?.run {
+            cancel()
             join()
         }
     }

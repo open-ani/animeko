@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -71,7 +71,7 @@ internal constructor(
             PagingDataPresenter<T>(
                 mainContext = mainDispatcher,
                 cachedPagingData =
-                if (flow is SharedFlow<PagingData<T>>) flow.replayCache.firstOrNull() else null,
+                    if (flow is SharedFlow<PagingData<T>>) flow.replayCache.firstOrNull() else null,
             ) {
             override suspend fun presentPagingDataEvent(
                 event: PagingDataEvent<T>,
@@ -163,6 +163,14 @@ internal constructor(
             ),
     )
         private set
+
+    fun addLoadStateListener(listener: (CombinedLoadStates) -> Unit) {
+        pagingDataPresenter.addLoadStateListener(listener)
+    }
+
+    fun removeLoadStateListener(listener: (CombinedLoadStates) -> Unit) {
+        pagingDataPresenter.removeLoadStateListener(listener)
+    }
 
     internal suspend fun collectLoadState() {
         pagingDataPresenter.loadStateFlow.filterNotNull().collect { loadState = it }
@@ -268,4 +276,34 @@ public fun <T : Any> Flow<PagingData<T>>.collectAsLazyPagingItemsWithLifecycle(
     }
 
     return lazyPagingItems
+}
+
+@Composable
+public fun <T : Any> LazyPagingItems<T>.collectWithLifecycle(
+    context: CoroutineContext = EmptyCoroutineContext,
+    lifecycle: Lifecycle = LocalLifecycleOwner.current.lifecycle,
+    minActiveState: Lifecycle.State = Lifecycle.State.STARTED,
+): LazyPagingItems<T> {
+
+    LaunchedEffect(this) {
+        lifecycle.repeatOnLifecycle(minActiveState) {
+            if (context == EmptyCoroutineContext) {
+                collectPagingData()
+            } else {
+                withContext(context) { collectPagingData() }
+            }
+        }
+    }
+
+    LaunchedEffect(this) {
+        lifecycle.repeatOnLifecycle(minActiveState) {
+            if (context == EmptyCoroutineContext) {
+                collectLoadState()
+            } else {
+                withContext(context) { collectLoadState() }
+            }
+        }
+    }
+
+    return this
 }

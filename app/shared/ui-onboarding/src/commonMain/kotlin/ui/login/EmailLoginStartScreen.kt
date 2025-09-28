@@ -68,7 +68,7 @@ fun EmailLoginStartScreen(
         onNavigateBack,
         enabled = !asyncHandler.isWorking,
         showThirdPartyLogin = state.mode == EmailLoginUiState.Mode.LOGIN,
-        title = { EmailPageTitle(state.mode) },
+        title = { EmailPageTitle(state.mode, state.isExistingAccount) },
         modifier = modifier,
     )
 }
@@ -146,9 +146,14 @@ internal fun EmailLoginStartScreenImpl(
 }
 
 @Composable
-internal fun EmailPageTitle(mode: EmailLoginUiState.Mode) {
+internal fun EmailPageTitle(mode: EmailLoginUiState.Mode, isExistingAccount: Boolean?) {
     when (mode) {
-        EmailLoginUiState.Mode.LOGIN -> Text("登录")
+        EmailLoginUiState.Mode.LOGIN -> when (isExistingAccount) {
+            true -> Text("登录")
+            false -> Text("注册")
+            null -> Text("登录 / 注册")
+        }
+
         EmailLoginUiState.Mode.BIND -> Text("绑定邮箱")
         EmailLoginUiState.Mode.REBIND -> Text("更改邮箱")
     }

@@ -1,0 +1,1209 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 16,
+    "identityHash": "1051be0fdfc92b7afd09cbdd4f223a5e",
+    "entities": [
+      {
+        "tableName": "search_history",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`sequence` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `content` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "sequence",
+            "columnName": "sequence",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "content",
+            "columnName": "content",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "sequence"
+          ]
+        },
+        "indices": [
+          {
+            "name": "distinct_content",
+            "unique": true,
+            "columnNames": [
+              "content"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `distinct_content` ON `${TABLE_NAME}` (`content`)"
+          },
+          {
+            "name": "sequence_desc",
+            "unique": false,
+            "columnNames": [
+              "sequence"
+            ],
+            "orders": [
+              "DESC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `sequence_desc` ON `${TABLE_NAME}` (`sequence` DESC)"
+          }
+        ]
+      },
+      {
+        "tableName": "search_tag",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `content` TEXT NOT NULL, `useCount` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "content",
+            "columnName": "content",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "useCount",
+            "columnName": "useCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "subject_collection",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`subjectId` INTEGER NOT NULL, `name` TEXT NOT NULL, `nameCn` TEXT NOT NULL, `summary` TEXT NOT NULL, `nsfw` INTEGER NOT NULL, `imageLarge` TEXT NOT NULL, `totalEpisodes` INTEGER NOT NULL, `airDate` INTEGER NOT NULL, `aliases` BLOB NOT NULL, `tags` BLOB NOT NULL, `completeDate` INTEGER NOT NULL, `collectionType` TEXT NOT NULL, `lastUpdated` INTEGER NOT NULL DEFAULT 0, `lastFetched` INTEGER NOT NULL DEFAULT 0, `cachedStaffUpdated` INTEGER NOT NULL DEFAULT 0, `cachedCharactersUpdated` INTEGER NOT NULL DEFAULT 0, `collection_stats_wish` INTEGER NOT NULL, `collection_stats_doing` INTEGER NOT NULL, `collection_stats_done` INTEGER NOT NULL, `collection_stats_onHold` INTEGER NOT NULL, `collection_stats_dropped` INTEGER NOT NULL, `rating_rank` INTEGER NOT NULL, `rating_total` INTEGER NOT NULL, `rating_score` TEXT NOT NULL, `rating_count_s1` INTEGER NOT NULL, `rating_count_s2` INTEGER NOT NULL, `rating_count_s3` INTEGER NOT NULL, `rating_count_s4` INTEGER NOT NULL, `rating_count_s5` INTEGER NOT NULL, `rating_count_s6` INTEGER NOT NULL, `rating_count_s7` INTEGER NOT NULL, `rating_count_s8` INTEGER NOT NULL, `rating_count_s9` INTEGER NOT NULL, `rating_count_s10` INTEGER NOT NULL, `self_rating_score` INTEGER NOT NULL, `self_rating_comment` TEXT, `self_rating_tags` BLOB NOT NULL, `self_rating_isPrivate` INTEGER NOT NULL, `recurrence_startTime` INTEGER, `recurrence_interval` TEXT, `relations_seriesMainSubjectIds` BLOB NOT NULL DEFAULT '[]', `relations_seriesMainSubjectNames` BLOB NOT NULL DEFAULT '[]', `relations_sequelSubjects` BLOB NOT NULL DEFAULT '[]', `relations_sequelSubjectNames` BLOB NOT NULL DEFAULT '[]', PRIMARY KEY(`subjectId`))",
+        "fields": [
+          {
+            "fieldPath": "subjectId",
+            "columnName": "subjectId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nameCn",
+            "columnName": "nameCn",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "summary",
+            "columnName": "summary",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nsfw",
+            "columnName": "nsfw",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "imageLarge",
+            "columnName": "imageLarge",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalEpisodes",
+            "columnName": "totalEpisodes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "airDate",
+            "columnName": "airDate",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "aliases",
+            "columnName": "aliases",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tags",
+            "columnName": "tags",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completeDate",
+            "columnName": "completeDate",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "collectionType",
+            "columnName": "collectionType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastUpdated",
+            "columnName": "lastUpdated",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "lastFetched",
+            "columnName": "lastFetched",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "cachedStaffUpdated",
+            "columnName": "cachedStaffUpdated",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "cachedCharactersUpdated",
+            "columnName": "cachedCharactersUpdated",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "collectionStats.wish",
+            "columnName": "collection_stats_wish",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "collectionStats.doing",
+            "columnName": "collection_stats_doing",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "collectionStats.done",
+            "columnName": "collection_stats_done",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "collectionStats.onHold",
+            "columnName": "collection_stats_onHold",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "collectionStats.dropped",
+            "columnName": "collection_stats_dropped",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ratingInfo.rank",
+            "columnName": "rating_rank",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ratingInfo.total",
+            "columnName": "rating_total",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ratingInfo.score",
+            "columnName": "rating_score",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ratingInfo.count.s1",
+            "columnName": "rating_count_s1",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ratingInfo.count.s2",
+            "columnName": "rating_count_s2",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ratingInfo.count.s3",
+            "columnName": "rating_count_s3",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ratingInfo.count.s4",
+            "columnName": "rating_count_s4",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ratingInfo.count.s5",
+            "columnName": "rating_count_s5",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ratingInfo.count.s6",
+            "columnName": "rating_count_s6",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ratingInfo.count.s7",
+            "columnName": "rating_count_s7",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ratingInfo.count.s8",
+            "columnName": "rating_count_s8",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ratingInfo.count.s9",
+            "columnName": "rating_count_s9",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ratingInfo.count.s10",
+            "columnName": "rating_count_s10",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "selfRatingInfo.score",
+            "columnName": "self_rating_score",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "selfRatingInfo.comment",
+            "columnName": "self_rating_comment",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "selfRatingInfo.tags",
+            "columnName": "self_rating_tags",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "selfRatingInfo.isPrivate",
+            "columnName": "self_rating_isPrivate",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recurrence.startTime",
+            "columnName": "recurrence_startTime",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "recurrence.interval",
+            "columnName": "recurrence_interval",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "relations.seriesMainSubjectIds",
+            "columnName": "relations_seriesMainSubjectIds",
+            "affinity": "BLOB",
+            "notNull": true,
+            "defaultValue": "'[]'"
+          },
+          {
+            "fieldPath": "relations.seriesMainSubjectNames",
+            "columnName": "relations_seriesMainSubjectNames",
+            "affinity": "BLOB",
+            "notNull": true,
+            "defaultValue": "'[]'"
+          },
+          {
+            "fieldPath": "relations.sequelSubjects",
+            "columnName": "relations_sequelSubjects",
+            "affinity": "BLOB",
+            "notNull": true,
+            "defaultValue": "'[]'"
+          },
+          {
+            "fieldPath": "relations.sequelSubjectNames",
+            "columnName": "relations_sequelSubjectNames",
+            "affinity": "BLOB",
+            "notNull": true,
+            "defaultValue": "'[]'"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "subjectId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_subject_collection_lastUpdated",
+            "unique": false,
+            "columnNames": [
+              "lastUpdated"
+            ],
+            "orders": [
+              "DESC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_subject_collection_lastUpdated` ON `${TABLE_NAME}` (`lastUpdated` DESC)"
+          }
+        ]
+      },
+      {
+        "tableName": "episode_collection",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`subjectId` INTEGER NOT NULL, `episodeId` INTEGER NOT NULL, `episodeType` TEXT, `name` TEXT NOT NULL, `nameCn` TEXT NOT NULL, `airDate` INTEGER NOT NULL, `comment` INTEGER NOT NULL, `desc` TEXT NOT NULL, `sort` TEXT NOT NULL, `sortNumber` REAL NOT NULL DEFAULT 3.4028235e38, `ep` TEXT, `selfCollectionType` TEXT NOT NULL, `lastFetched` INTEGER NOT NULL, PRIMARY KEY(`episodeId`), FOREIGN KEY(`subjectId`) REFERENCES `subject_collection`(`subjectId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "subjectId",
+            "columnName": "subjectId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "episodeId",
+            "columnName": "episodeId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "episodeType",
+            "columnName": "episodeType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nameCn",
+            "columnName": "nameCn",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "airDate",
+            "columnName": "airDate",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "comment",
+            "columnName": "comment",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "desc",
+            "columnName": "desc",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sort",
+            "columnName": "sort",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortNumber",
+            "columnName": "sortNumber",
+            "affinity": "REAL",
+            "notNull": true,
+            "defaultValue": "3.4028235e38"
+          },
+          {
+            "fieldPath": "ep",
+            "columnName": "ep",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "selfCollectionType",
+            "columnName": "selfCollectionType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastFetched",
+            "columnName": "lastFetched",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "episodeId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_episode_collection_subjectId_episodeId",
+            "unique": true,
+            "columnNames": [
+              "subjectId",
+              "episodeId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_episode_collection_subjectId_episodeId` ON `${TABLE_NAME}` (`subjectId`, `episodeId`)"
+          },
+          {
+            "name": "index_episode_collection_sortNumber_sort",
+            "unique": false,
+            "columnNames": [
+              "sortNumber",
+              "sort"
+            ],
+            "orders": [
+              "ASC",
+              "ASC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_episode_collection_sortNumber_sort` ON `${TABLE_NAME}` (`sortNumber` ASC, `sort` ASC)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "subject_collection",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "subjectId"
+            ],
+            "referencedColumns": [
+              "subjectId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "person",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`personId` INTEGER NOT NULL, `name` TEXT NOT NULL, `nameCn` TEXT NOT NULL, `imageLarge` TEXT NOT NULL, `imageMedium` TEXT NOT NULL, `type` INTEGER NOT NULL, `summary` TEXT NOT NULL, PRIMARY KEY(`personId`))",
+        "fields": [
+          {
+            "fieldPath": "personId",
+            "columnName": "personId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nameCn",
+            "columnName": "nameCn",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "imageLarge",
+            "columnName": "imageLarge",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "imageMedium",
+            "columnName": "imageMedium",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "summary",
+            "columnName": "summary",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "personId"
+          ]
+        }
+      },
+      {
+        "tableName": "subject_person",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`subjectId` INTEGER NOT NULL, `index` INTEGER NOT NULL, `personId` INTEGER NOT NULL, `position` INTEGER NOT NULL, PRIMARY KEY(`subjectId`, `personId`), FOREIGN KEY(`subjectId`) REFERENCES `subject_collection`(`subjectId`) ON UPDATE NO ACTION ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED, FOREIGN KEY(`personId`) REFERENCES `person`(`personId`) ON UPDATE NO ACTION ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED)",
+        "fields": [
+          {
+            "fieldPath": "subjectId",
+            "columnName": "subjectId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "index",
+            "columnName": "index",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "personId",
+            "columnName": "personId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "subjectId",
+            "personId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_subject_person_personId",
+            "unique": false,
+            "columnNames": [
+              "personId"
+            ],
+            "orders": [
+              "ASC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_subject_person_personId` ON `${TABLE_NAME}` (`personId` ASC)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "subject_collection",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "subjectId"
+            ],
+            "referencedColumns": [
+              "subjectId"
+            ]
+          },
+          {
+            "table": "person",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "personId"
+            ],
+            "referencedColumns": [
+              "personId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "character",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`characterId` INTEGER NOT NULL, `name` TEXT NOT NULL, `nameCn` TEXT NOT NULL, `imageLarge` TEXT NOT NULL, `imageMedium` TEXT NOT NULL, PRIMARY KEY(`characterId`))",
+        "fields": [
+          {
+            "fieldPath": "characterId",
+            "columnName": "characterId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nameCn",
+            "columnName": "nameCn",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "imageLarge",
+            "columnName": "imageLarge",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "imageMedium",
+            "columnName": "imageMedium",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "characterId"
+          ]
+        }
+      },
+      {
+        "tableName": "subject_character",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`subjectId` INTEGER NOT NULL, `index` INTEGER NOT NULL, `characterId` INTEGER NOT NULL, `role` INTEGER NOT NULL, PRIMARY KEY(`subjectId`, `characterId`), FOREIGN KEY(`subjectId`) REFERENCES `subject_collection`(`subjectId`) ON UPDATE NO ACTION ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED, FOREIGN KEY(`characterId`) REFERENCES `character`(`characterId`) ON UPDATE NO ACTION ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED)",
+        "fields": [
+          {
+            "fieldPath": "subjectId",
+            "columnName": "subjectId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "index",
+            "columnName": "index",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "characterId",
+            "columnName": "characterId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "role",
+            "columnName": "role",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "subjectId",
+            "characterId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_subject_character_subjectId",
+            "unique": false,
+            "columnNames": [
+              "subjectId"
+            ],
+            "orders": [
+              "ASC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_subject_character_subjectId` ON `${TABLE_NAME}` (`subjectId` ASC)"
+          },
+          {
+            "name": "index_subject_character_characterId",
+            "unique": false,
+            "columnNames": [
+              "characterId"
+            ],
+            "orders": [
+              "ASC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_subject_character_characterId` ON `${TABLE_NAME}` (`characterId` ASC)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "subject_collection",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "subjectId"
+            ],
+            "referencedColumns": [
+              "subjectId"
+            ]
+          },
+          {
+            "table": "character",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "characterId"
+            ],
+            "referencedColumns": [
+              "characterId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "character_actor",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`characterId` INTEGER NOT NULL, `actorPersonId` INTEGER NOT NULL, PRIMARY KEY(`characterId`), FOREIGN KEY(`characterId`) REFERENCES `character`(`characterId`) ON UPDATE NO ACTION ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED, FOREIGN KEY(`actorPersonId`) REFERENCES `person`(`personId`) ON UPDATE NO ACTION ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED)",
+        "fields": [
+          {
+            "fieldPath": "characterId",
+            "columnName": "characterId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actorPersonId",
+            "columnName": "actorPersonId",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "characterId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_character_actor_characterId_actorPersonId",
+            "unique": true,
+            "columnNames": [
+              "characterId",
+              "actorPersonId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_character_actor_characterId_actorPersonId` ON `${TABLE_NAME}` (`characterId`, `actorPersonId`)"
+          },
+          {
+            "name": "index_character_actor_actorPersonId",
+            "unique": false,
+            "columnNames": [
+              "actorPersonId"
+            ],
+            "orders": [
+              "ASC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_character_actor_actorPersonId` ON `${TABLE_NAME}` (`actorPersonId` ASC)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "character",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "characterId"
+            ],
+            "referencedColumns": [
+              "characterId"
+            ]
+          },
+          {
+            "table": "person",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "actorPersonId"
+            ],
+            "referencedColumns": [
+              "personId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "subject_review",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`subjectId` INTEGER NOT NULL, `authorId` INTEGER NOT NULL, `authorNickname` TEXT NOT NULL, `authorAvatarUrl` TEXT, `updatedAt` INTEGER NOT NULL, `rating` INTEGER NOT NULL, `content` TEXT NOT NULL, PRIMARY KEY(`subjectId`, `authorId`), FOREIGN KEY(`subjectId`) REFERENCES `subject_collection`(`subjectId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "subjectId",
+            "columnName": "subjectId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "authorId",
+            "columnName": "authorId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "authorNickname",
+            "columnName": "authorNickname",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "authorAvatarUrl",
+            "columnName": "authorAvatarUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "content",
+            "columnName": "content",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "subjectId",
+            "authorId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_subject_review_subjectId",
+            "unique": false,
+            "columnNames": [
+              "subjectId"
+            ],
+            "orders": [
+              "ASC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_subject_review_subjectId` ON `${TABLE_NAME}` (`subjectId` ASC)"
+          },
+          {
+            "name": "index_updatedAt_desc",
+            "unique": false,
+            "columnNames": [
+              "updatedAt"
+            ],
+            "orders": [
+              "DESC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_updatedAt_desc` ON `${TABLE_NAME}` (`updatedAt` DESC)"
+          },
+          {
+            "name": "index_updatedAt_asc",
+            "unique": false,
+            "columnNames": [
+              "updatedAt"
+            ],
+            "orders": [
+              "ASC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_updatedAt_asc` ON `${TABLE_NAME}` (`updatedAt` ASC)"
+          },
+          {
+            "name": "index_rating_desc",
+            "unique": false,
+            "columnNames": [
+              "rating"
+            ],
+            "orders": [
+              "DESC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_rating_desc` ON `${TABLE_NAME}` (`rating` DESC)"
+          },
+          {
+            "name": "index_rating_asc",
+            "unique": false,
+            "columnNames": [
+              "rating"
+            ],
+            "orders": [
+              "ASC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_rating_asc` ON `${TABLE_NAME}` (`rating` ASC)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "subject_collection",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "subjectId"
+            ],
+            "referencedColumns": [
+              "subjectId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "episode_comment",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`episodeId` INTEGER NOT NULL, `commentId` INTEGER NOT NULL, `authorId` INTEGER NOT NULL, `parentCommentId` INTEGER, `authorNickname` TEXT NOT NULL, `authorAvatarUrl` TEXT, `createdAt` INTEGER NOT NULL, `content` TEXT NOT NULL, PRIMARY KEY(`commentId`), FOREIGN KEY(`episodeId`) REFERENCES `episode_collection`(`episodeId`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`parentCommentId`) REFERENCES `episode_comment`(`commentId`) ON UPDATE NO ACTION ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED)",
+        "fields": [
+          {
+            "fieldPath": "episodeId",
+            "columnName": "episodeId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "commentId",
+            "columnName": "commentId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "authorId",
+            "columnName": "authorId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parentCommentId",
+            "columnName": "parentCommentId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "authorNickname",
+            "columnName": "authorNickname",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "authorAvatarUrl",
+            "columnName": "authorAvatarUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "content",
+            "columnName": "content",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "commentId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_episode_comment_episodeId",
+            "unique": false,
+            "columnNames": [
+              "episodeId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_episode_comment_episodeId` ON `${TABLE_NAME}` (`episodeId`)"
+          },
+          {
+            "name": "index_episode_comment_parentCommentId",
+            "unique": false,
+            "columnNames": [
+              "parentCommentId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_episode_comment_parentCommentId` ON `${TABLE_NAME}` (`parentCommentId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "episode_collection",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "episodeId"
+            ],
+            "referencedColumns": [
+              "episodeId"
+            ]
+          },
+          {
+            "table": "episode_comment",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "parentCommentId"
+            ],
+            "referencedColumns": [
+              "commentId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "web_search_subject",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mediaSourceId` TEXT NOT NULL, `subjectName` TEXT NOT NULL, `internalId` TEXT NOT NULL, `name` TEXT NOT NULL, `fullUrl` TEXT NOT NULL, `partialUrl` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mediaSourceId",
+            "columnName": "mediaSourceId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "subjectName",
+            "columnName": "subjectName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "internalId",
+            "columnName": "internalId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fullUrl",
+            "columnName": "fullUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partialUrl",
+            "columnName": "partialUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_web_search_subject_mediaSourceId_subjectName",
+            "unique": true,
+            "columnNames": [
+              "mediaSourceId",
+              "subjectName"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_web_search_subject_mediaSourceId_subjectName` ON `${TABLE_NAME}` (`mediaSourceId`, `subjectName`)"
+          }
+        ]
+      },
+      {
+        "tableName": "web_search_episode",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `channel` TEXT, `name` TEXT NOT NULL, `episodeSortOrEp` TEXT, `playUrl` TEXT NOT NULL, `parentId` INTEGER NOT NULL, FOREIGN KEY(`parentId`) REFERENCES `web_search_subject`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channel",
+            "columnName": "channel",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "episodeSortOrEp",
+            "columnName": "episodeSortOrEp",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "playUrl",
+            "columnName": "playUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parentId",
+            "columnName": "parentId",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_web_search_episode_parentId",
+            "unique": false,
+            "columnNames": [
+              "parentId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_web_search_episode_parentId` ON `${TABLE_NAME}` (`parentId`)"
+          },
+          {
+            "name": "index_web_search_episode_channel_name_parentId",
+            "unique": true,
+            "columnNames": [
+              "channel",
+              "name",
+              "parentId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_web_search_episode_channel_name_parentId` ON `${TABLE_NAME}` (`channel`, `name`, `parentId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "web_search_subject",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "parentId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1051be0fdfc92b7afd09cbdd4f223a5e')"
+    ]
+  }
+}

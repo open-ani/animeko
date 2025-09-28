@@ -28,13 +28,13 @@ import kotlin.time.Duration.Companion.seconds
  * @see MediaSelectorSummary
  * @see me.him188.ani.app.domain.media.selector.MediaSelector.selectedMaybeExcludedMediaFlow
  */
-class MediaSelectorSummaryPresenter(
+class MediaSelectorSummaryStateProducer(
     selectedMaybeExcludedMediaFlow: Flow<MaybeExcludedMedia?>,
     mediaSourceResultsFlow: Flow<List<MediaSourceFetchResult>>,
     mediaSelectorSettingsFlow: Flow<MediaSelectorSettings>,
     mediaSources: Flow<List<MediaSourceInfoWithId>>,
 ) {
-    private val queriedSourcesFlow = combine(mediaSourceResultsFlow, mediaSources) { results, sources ->
+    private val sourceSummariesFlow = combine(mediaSourceResultsFlow, mediaSources) { results, sources ->
         tupleOf(results, sources)
     }.flatMapLatest { (results, sourcesSorted) ->
         combine(results.map { result ->
@@ -51,7 +51,7 @@ class MediaSelectorSummaryPresenter(
                     },
                 )
                 .map {
-                    it.sourceInfo.toQueriedSourcePresentation()
+                    it.sourceInfo.toSummary()
                 }
                 .toList()
         }
@@ -59,12 +59,12 @@ class MediaSelectorSummaryPresenter(
 
     @OptIn(UnsafeOriginalMediaAccess::class)
     val flow = combine(
-        queriedSourcesFlow,
+        sourceSummariesFlow,
         mediaSelectorSettingsFlow,
         mediaSources,
-    ) { queriedSources, mediaSelectorSettings, mediaSourceInstancesSorted ->
-        tupleOf(queriedSources, mediaSelectorSettings, mediaSourceInstancesSorted)
-    }.transformLatest { (queriedSources, mediaSelectorSettings, mediaSourceInstances) ->
+    ) { sourceSummaries, mediaSelectorSettings, mediaSourceInstancesSorted ->
+        tupleOf(sourceSummaries, mediaSelectorSettings, mediaSourceInstancesSorted)
+    }.transformLatest { (sourceSummaries, mediaSelectorSettings, mediaSourceInstances) ->
         emitAll(
             selectedMaybeExcludedMediaFlow.map { selected ->
                 when {
@@ -72,8 +72,8 @@ class MediaSelectorSummaryPresenter(
                         MediaSelectorSummary.Selected(
                             mediaSourceInstances.find { it.mediaSourceId == selected.original.mediaSourceId }
                                 ?.info
-                                ?.toQueriedSourcePresentation()
-                                ?: QueriedSourcePresentation(
+                                ?.toSummary()
+                                ?: MediaSelectorSourceSummary(
                                     sourceName = selected.original.mediaSourceId,
                                     sourceIconUrl = "",
                                 ),
@@ -84,7 +84,7 @@ class MediaSelectorSummaryPresenter(
 
                     mediaSelectorSettings.preferKind == MediaSourceKind.WEB -> {
                         MediaSelectorSummary.AutoSelecting(
-                            queriedSources = queriedSources,
+                            sources = sourceSummaries,
                             estimate = if (mediaSelectorSettings.fastSelectWebKind) mediaSelectorSettings.fastSelectWebKindAllowNonPreferredDelay
                             else 10.seconds,
                         )
@@ -92,7 +92,7 @@ class MediaSelectorSummaryPresenter(
 
                     else -> {
                         MediaSelectorSummary.RequiresManualSelection(
-                            queriedSources = queriedSources,
+                            sources = sourceSummaries,
                         )
                     }
                 }
@@ -112,8 +112,8 @@ val MediaSelector.selectedMaybeExcludedMediaFlow: Flow<MaybeExcludedMedia?>
         }
     }
 
-private fun MediaSourceInfo.toQueriedSourcePresentation() =
-    QueriedSourcePresentation(
+private fun MediaSourceInfo.toSummary() =
+    MediaSelectorSourceSummary(
         displayName,
         iconUrl ?: "",
     )

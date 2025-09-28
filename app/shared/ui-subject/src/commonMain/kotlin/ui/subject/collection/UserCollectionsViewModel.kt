@@ -12,11 +12,15 @@ package me.him188.ani.app.ui.subject.collection
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.preference.MyCollectionsSettings
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
@@ -28,6 +32,7 @@ import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.navigation.AniNavigator
+import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
@@ -38,6 +43,7 @@ import me.him188.ani.datasources.api.topic.toggleCollected
 import me.him188.ani.utils.logging.info
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import kotlin.time.Duration.Companion.seconds
 
 @Stable
 class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
@@ -60,16 +66,35 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
         .map { it.myCollections }
         .produceState(MyCollectionsSettings.Default)
 
-    private val nsfwSettingFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
+    private val fullSyncTasker = MonoTasker(backgroundScope)
+    val fullSyncState: MutableStateFlow<BangumiSyncState?> = MutableStateFlow(null)
 
     val state = UserCollectionsState(
         startSearch = { subjectCollectionRepository.subjectCollectionsPager(it) },
         collectionCountsState = subjectCollectionRepository.subjectCollectionCountsFlow().produceState(null),
         subjectProgressStateFactory,
-        createEditableSubjectCollectionTypeState = {
-            createEditableSubjectCollectionTypeState(it)
+        createEditableSubjectCollectionTypeState = { createEditableSubjectCollectionTypeState(it) },
+        onPagerFetchingAnyRemoteSource = { enable ->
+            if (!enable) {
+                backgroundScope.launch {
+                    try {
+                        fullSyncTasker.cancelAndJoin()
+                    } finally {
+                        fullSyncState.emit(BangumiSyncState.Finished(0, null))
+                    }
+                }
+                return@UserCollectionsState
+            }
+
+            fullSyncTasker.launch {
+                while (true) {
+                    val state = subjectCollectionRepository.getBangumiFullSyncState()
+                    fullSyncState.emit(state)
+                    delay(1.seconds)
+                }
+            }
         },
-        backgroundScope
+        backgroundScope,
     )
 
     private fun createEditableSubjectCollectionTypeState(collection: SubjectCollectionInfo): EditableSubjectCollectionTypeState =

@@ -16,16 +16,19 @@ import io.ktor.http.content.OutgoingContent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.user.SelfInfo
+import me.him188.ani.app.data.repository.RepositoryAuthorizationException
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.session.AccessTokenPair
 import me.him188.ani.app.domain.session.InvalidSessionReason
@@ -47,6 +50,7 @@ import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.CoroutineContext
 import kotlin.uuid.Uuid
 
@@ -88,6 +92,16 @@ class UserRepository(
                     userApi.invoke { getUser().body() }.toSelfInfo()
                 }
                     .asFlow()
+                    // 首次登录这里的 http client 可能还是旧的, 添加重试机制确保 user info 能够正确获取.
+                    .retryWhen { e, attempt ->
+                        val wrapped = RepositoryException.wrapOrThrowCancellation(e)
+                        (wrapped is RepositoryAuthorizationException && attempt < 3).also {
+                            if (it) {
+                                logger.warn(wrapped) { "Failed to get user info, retried $attempt, max retries: 3" }
+                                delay(125L)
+                            }
+                        }
+                    }
                     .catching()
                     .restartable(selfInfoRefresher)
                     .collectLatest { result ->
@@ -178,16 +192,26 @@ class UserRepository(
         }
     }
 
+    data class SendEmailOtpInfo(
+        val otpId: String,
+        val hasExistingUser: Boolean?,
+    )
+
     suspend fun sendEmailOtpForLogin(
         email: String,
-    ) = withContext(Dispatchers.Default) {
+    ): SendEmailOtpInfo = withContext(Dispatchers.Default) {
         authApi.invoke {
             try {
-                this.sendEmailOtp(
+                val resp = this.sendEmailOtp(
                     AniSendEmailOtpRequest(
                         email = email,
                     ),
-                ).body().otpId
+                ).body()
+
+                SendEmailOtpInfo(
+                    otpId = resp.otpId,
+                    hasExistingUser = resp.hasExistingUser,
+                )
             } catch (e: Exception) {
                 throw RepositoryException.wrapOrThrowCancellation(e)
             }

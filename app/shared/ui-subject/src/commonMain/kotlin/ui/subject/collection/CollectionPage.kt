@@ -9,6 +9,12 @@
 
 package me.him188.ani.app.ui.subject.collection
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,6 +42,7 @@ import androidx.compose.material.icons.rounded.HowToReg
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
@@ -60,6 +67,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -67,6 +75,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.layout.onPlaced
@@ -75,12 +84,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.CombinedLoadStates
 import androidx.paging.LoadState
-import androidx.paging.LoadStates
 import androidx.paging.PagingData
-import androidx.paging.cachedIn
 import androidx.paging.compose.LazyPagingItems
-import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
+import androidx.paging.compose.collectWithLifecycle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
@@ -89,6 +97,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
@@ -117,6 +126,7 @@ import me.him188.ani.app.ui.subject.collection.progress.rememberSubjectProgressS
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListDialog
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListUiState
+import me.him188.ani.app.ui.user.BangumiFullSyncStateDialog
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
@@ -142,6 +152,7 @@ class UserCollectionsState(
     collectionCountsState: State<SubjectCollectionCounts?>,
     val subjectProgressStateFactory: SubjectProgressStateFactory,
     val createEditableSubjectCollectionTypeState: (subjectCollection: SubjectCollectionInfo) -> EditableSubjectCollectionTypeState,
+    val onPagerFetchingAnyRemoteSource: (Boolean) -> Unit,
     private val backgroundScope: CoroutineScope,
     defaultQuery: CollectionsFilterQuery = CollectionsFilterQuery(
         type = UnifiedCollectionType.DOING,
@@ -157,46 +168,73 @@ class UserCollectionsState(
 
     // Store LazyGridState for each tab
     private val gridStates = mutableMapOf<Int, LazyGridState>()
-    
+
     // Cache data flows for each tab
-    private val cachedFlows = mutableMapOf<Int, Flow<PagingData<SubjectCollectionInfo>>>()
-    
+    private val cachedLazyPagingItems: MutableMap<Int, LazyPagingItems<SubjectCollectionInfo>> = mutableMapOf()
+    val selectedPageRefreshing by derivedStateOf {
+        cachedLazyPagingItems[selectedTypeIndex]?.isLoadingFirstPageOrRefreshing == true
+    }
+
     private val restarter = FlowRestarter()
+
+    // true 表示这个 PagingData 的 remote mediator 正在加载, 即正在从 ani server 获取数据.
+    // 从 server 获取收藏数据时可能会触发 user 的 full sync 操作, 需要等待 full sync 完成后才能获取到收藏数据.
+    // 
+    // 记录每个 type 的 remote mediator 是否正在加载
+    // 只要有一个在加载, 我们就通知 view model 轮询获取 full sync 状态.
+    private val remotePagingStates = mutableStateMapOf<Int, Boolean>()
 
     fun selectTypeIndex(index: Int) {
         currentQuery = currentQuery.copy(type = availableTypes[index])
     }
 
-    fun getCollectionTypePagerFlow(typeIndex: Int): Flow<PagingData<SubjectCollectionInfo>> {
-        return cachedFlows.getOrPut(typeIndex) {
-            flowOf(typeIndex)
+    fun refreshSelectedPage() {
+        cachedLazyPagingItems[selectedTypeIndex]?.refresh()
+    }
+
+    @Suppress("INVISIBLE_REFERENCE")
+    fun getCollectionLazyPagingItems(typeIndex: Int): LazyPagingItems<SubjectCollectionInfo> {
+        return cachedLazyPagingItems.getOrPut(typeIndex) {
+            val pagingFlow = flowOf(typeIndex)
                 .restartable(restarter)
-                .map { CollectionsFilterQuery(availableTypes[typeIndex]) }
+                .map { CollectionsFilterQuery(availableTypes[it]) }
                 .transformLatest { query ->
-                    emit(
-                        PagingData.from(
-                            emptyList<SubjectCollectionInfo>(),
-                            LoadStates(
-                                refresh = LoadState.Loading,
-                                append = LoadState.NotLoading(false),
-                                prepend = LoadState.NotLoading(false),
-                            ),
-                        ),
-                    )
+                    // 不再发射初始加载状态，直接发射真实数据
                     emitAll(startSearch(query))
                 }
-                .cachedIn(backgroundScope)
+
+            LazyPagingItems(pagingFlow).apply {
+                addLoadStateListener { checkPagingState(typeIndex, it) }
+            }
         }
+    }
+
+    // listener is called on main thread
+    private fun checkPagingState(typeIndex: Int, loadState: CombinedLoadStates) {
+        val ms = loadState.mediator
+        if (ms == null) {
+            // 没有 remote mediator state, 说明没从 server 获取数据.
+            remotePagingStates[typeIndex] = false
+            onPagerFetchingAnyRemoteSource(remotePagingStates.values.any { it })
+            return
+        }
+        remotePagingStates.put(
+            typeIndex,
+            // 加载中的状态, 正在从 server 获取数据.
+            !ms.isIdle && !ms.hasError && ms.refresh is LoadState.Loading,
+        )
+
+        onPagerFetchingAnyRemoteSource(remotePagingStates.values.any { it })
     }
 
     fun refresh() {
         restarter.restart()
     }
-    
+
     fun getGridState(pageIndex: Int): LazyGridState {
         return gridStates.getOrPut(pageIndex) { LazyGridState() }
     }
-    
+
     suspend fun scrollToTop() {
         val currentGridState = gridStates[selectedTypeIndex]
         currentGridState?.animateScrollToItem(0)
@@ -211,6 +249,7 @@ class UserCollectionsState(
 fun CollectionPage(
     state: UserCollectionsState,
     selfInfo: SelfInfoUiState,
+    fullSyncState: BangumiSyncState?,
     onClickSearch: () -> Unit,
     onClickLogin: () -> Unit,
     onClickSettings: () -> Unit,
@@ -220,15 +259,10 @@ fun CollectionPage(
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     enableAnimation: Boolean = true,
 
-) {
+    ) {
     val scope = rememberCoroutineScope()
-    var currentPageItems by remember {
-        mutableStateOf<LazyPagingItems<SubjectCollectionInfo>?>(null)
-    }
-
-    val isCurrentPageRefreshing by remember {
-        derivedStateOf { currentPageItems?.isLoadingFirstPageOrRefreshing == true }
-    }
+    var hideBangumiSync by rememberSaveable { mutableStateOf(false) }
+    val isBangumiSyncing = fullSyncState != null && !fullSyncState.finished
 
     // 如果有缓存, 列表区域要展示缓存, 错误就用图标放在角落
     CollectionPageLayout(
@@ -242,6 +276,26 @@ fun CollectionPage(
             }
         },
         actions = {
+            if (hideBangumiSync && isBangumiSyncing) {
+                val infiniteTransition = rememberInfiniteTransition(label = "rotation")
+                val angle by infiniteTransition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 360f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(3000, easing = LinearEasing),
+                        repeatMode = RepeatMode.Restart,
+                    ),
+                    label = "angle",
+                )
+
+                IconButton({ hideBangumiSync = false }) {
+                    Icon(
+                        imageVector = Icons.Rounded.Sync,
+                        contentDescription = "正在同步",
+                        modifier = Modifier.rotate(angle),
+                    )
+                }
+            }
             actions()
         },
         avatar = { recommendedSize ->
@@ -297,21 +351,20 @@ fun CollectionPage(
                 scrollState = state.tabRowScrollState,
             )
         },
-        isRefreshing = { isCurrentPageRefreshing },
-        onRefresh = { currentPageItems?.refresh() },
+        isRefreshing = { state.selectedPageRefreshing || isBangumiSyncing },
+        onRefresh = { state.refreshSelectedPage() },
         modifier,
         windowInsets,
     ) { nestedScrollConnection ->
         CollectionPageColumnLayout(
             state,
-            onCurrentPagingItemChange = { currentPageItems = it },
             modifier = Modifier.fillMaxSize(),
         ) { items, pageIndex ->
             PullToRefreshBox(
                 items.isLoadingFirstPageOrRefreshing,
                 onRefresh = { items.refresh() },
                 state = rememberPullToRefreshState(),
-                enabled = LocalPlatform.current.isMobile(),
+                enabled = LocalPlatform.current.isMobile() && !isBangumiSyncing,
             ) {
                 SubjectCollectionsColumn(
                     items,
@@ -332,10 +385,17 @@ fun CollectionPage(
                     },
                     modifier = Modifier.fillMaxSize(),
                     enableAnimation = enableAnimation,
-                    gridState = state.getGridState(pageIndex),
+                    gridState = remember(pageIndex) { state.getGridState(pageIndex) },
                 )
             }
         }
+    }
+
+    if (!hideBangumiSync && isBangumiSyncing) {
+        BangumiFullSyncStateDialog(
+            state = fullSyncState,
+            onDismissRequest = { hideBangumiSync = true },
+        )
     }
 }
 
@@ -413,7 +473,6 @@ private fun CollectionPageLayout(
 @Composable
 private fun CollectionPageColumnLayout(
     state: UserCollectionsState,
-    onCurrentPagingItemChange: (LazyPagingItems<SubjectCollectionInfo>) -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable (items: LazyPagingItems<SubjectCollectionInfo>, pageIndex: Int) -> Unit,
 ) {
@@ -432,26 +491,18 @@ private fun CollectionPageColumnLayout(
             beyondViewportPageCount = 1,
             pageSpacing = 0.dp,
         ) { pageIndex ->
-            val items = state.getCollectionTypePagerFlow(pageIndex)
-                .collectAsLazyPagingItemsWithLifecycle()
-
-            LaunchedEffect(state.selectedTypeIndex) {
-                if (pageIndex == state.selectedTypeIndex) {
-                    onCurrentPagingItemChange(items)
-                }
-            }
+            val items = state
+                .getCollectionLazyPagingItems(pageIndex)
+                .collectWithLifecycle()
 
             Column(Modifier.fillMaxSize()) {
                 content(items, pageIndex)
             }
         }
     } else {
-        val items = state.getCollectionTypePagerFlow(state.selectedTypeIndex)
-            .collectAsLazyPagingItemsWithLifecycle()
-
-        LaunchedEffect(items) {
-            onCurrentPagingItemChange(items)
-        }
+        val items = remember(state.selectedTypeIndex) {
+            state.getCollectionLazyPagingItems(state.selectedTypeIndex)
+        }.collectWithLifecycle()
 
         Box(modifier) {
             content(items, state.selectedTypeIndex)

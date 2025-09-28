@@ -47,7 +47,7 @@ class OAuthConfigurator(
      *
      * does not throw
      */
-    suspend fun auth(isRegister: Boolean, onOpenUrl: suspend (String) -> Unit) {
+    suspend fun auth(isRegister: Boolean, onOpenUrl: suspend (String) -> Unit): State {
         val requestId = Uuid.random(random).toString()
         val tokenDeferred = CompletableDeferred<OAuthResult>()
 
@@ -97,6 +97,7 @@ class OAuthConfigurator(
             }
             _state.value = State.Failed(loadError)
         }
+        return _state.value
     }
 
     sealed interface State {

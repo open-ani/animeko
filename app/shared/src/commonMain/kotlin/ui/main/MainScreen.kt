@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import me.him188.ani.app.navigation.LocalNavigator
@@ -48,7 +49,6 @@ import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.getIcon
 import me.him188.ani.app.navigation.getText
-import me.him188.ani.app.navigation.navigateLoginOrBangumiAuthorizeIfNeeded
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuite
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
@@ -186,7 +186,7 @@ private fun MainScreenContent(
                                             0,
                                         )
 
-                                    MainScreenPage.Collection -> 
+                                    MainScreenPage.Collection ->
                                         userCollectionsViewModel.state.scrollToTop()
 
                                     MainScreenPage.CacheManagement ->
@@ -239,6 +239,7 @@ private fun MainScreenContent(
                         CollectionPage(
                             state = userCollectionsViewModel.state,
                             selfInfo = selfInfo,
+                            fullSyncState = userCollectionsViewModel.fullSyncState.collectAsStateWithLifecycle().value,
                             onClickSearch = onNavigateToSearch,
                             onClickLogin = { showAccountSettingsPopup = true },
                             onClickSettings = { navigator.navigateSettings() },
@@ -283,7 +284,7 @@ private fun MainScreenContent(
             },
             onNavigateToLogin = {
                 showAccountSettingsPopup = false
-                navigator.navigateLoginOrBangumiAuthorizeIfNeeded()
+                navigator.navigateEmailLoginStart()
             },
         )
     }

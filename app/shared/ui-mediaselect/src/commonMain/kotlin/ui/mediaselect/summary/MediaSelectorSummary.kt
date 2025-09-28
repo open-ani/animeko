@@ -9,49 +9,12 @@
 
 package me.him188.ani.app.ui.mediaselect.summary
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ContextualFlowRow
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredHeight
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.animation.*
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SyncAlt
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.contentColorFor
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -80,22 +43,22 @@ sealed class MediaSelectorSummary {
 
     @Immutable
     data class AutoSelecting(
-        val queriedSources: List<QueriedSourcePresentation>,
-        val estimate: Duration
+        val sources: List<MediaSelectorSourceSummary>,
+        val estimate: Duration,
     ) : MediaSelectorSummary() {
         override val typeId get() = 1
     }
 
     @Immutable
     data class RequiresManualSelection(
-        val queriedSources: List<QueriedSourcePresentation>,
+        val sources: List<MediaSelectorSourceSummary>,
     ) : MediaSelectorSummary() {
         override val typeId get() = 2
     }
 
     @Immutable
     data class Selected(
-        val source: QueriedSourcePresentation,
+        val source: MediaSelectorSourceSummary,
         val mediaTitle: String,
         val isPerfectMatch: Boolean,
     ) : MediaSelectorSummary() {
@@ -234,10 +197,11 @@ fun MediaSelectorSummaryCard(
             ) { state ->
                 when (state) {
                     is MediaSelectorSummary.AutoSelecting,
-                    is MediaSelectorSummary.RequiresManualSelection -> {
-                        val queriedSources = when (state) {
-                            is MediaSelectorSummary.AutoSelecting -> state.queriedSources
-                            is MediaSelectorSummary.RequiresManualSelection -> state.queriedSources
+                    is MediaSelectorSummary.RequiresManualSelection,
+                        -> {
+                        val sources = when (state) {
+                            is MediaSelectorSummary.AutoSelecting -> state.sources
+                            is MediaSelectorSummary.RequiresManualSelection -> state.sources
                             is MediaSelectorSummary.Selected -> error("not reachable")
                         }
 
@@ -255,8 +219,8 @@ fun MediaSelectorSummaryCard(
                                 )
                             }
 
-                            QueriedSources(
-                                queriedSources,
+                            SourceSummaryRow(
+                                sources,
                                 Modifier.padding(all = MediaSelectorSummaryDefaults.bodyContentPadding),
                             )
                         }
@@ -291,7 +255,7 @@ fun MediaSelectorSummaryCard(
 }
 
 @Composable
-private fun SourceIcon(source: QueriedSourcePresentation, modifier: Modifier) {
+private fun SourceIcon(source: MediaSelectorSourceSummary, modifier: Modifier) {
     me.him188.ani.app.ui.mediaselect.common.SourceIcon(
         iconUrl = source.sourceIconUrl,
         sourceName = source.sourceName,
@@ -311,7 +275,7 @@ private class MediaSelectorSummaryState(
         flow
             .distinctUntilChangedBy { summary ->
                 // 仅当 typeId 或者 AutoSelecting 的 estimate 变更时, 才重启协程 (动画). 
-                // 如果状态里的 queriedSources 属性变了, 不要重启协程 (动画), 否则可能会有轻微的不连贯.
+                // 如果状态里的 sourceSummaries 属性变了, 不要重启协程 (动画), 否则可能会有轻微的不连贯.
                 intArrayOf(
                     summary.typeId,
                     // AutoSelecting.estimate ?: 0
@@ -340,14 +304,14 @@ private class MediaSelectorSummaryState(
 
 
 @Immutable
-data class QueriedSourcePresentation(
+data class MediaSelectorSourceSummary(
     val sourceName: String,
     val sourceIconUrl: String,
 )
 
 @Composable
-private fun QueriedSources(
-    sources: List<QueriedSourcePresentation>,
+private fun SourceSummaryRow(
+    sources: List<MediaSelectorSourceSummary>,
     modifier: Modifier = Modifier,
 ) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -490,7 +454,7 @@ private fun PreviewMediaSelectorSummarySelectedPerfect() {
     ProvideCompositionLocalsForPreview {
         MediaSelectorSummaryCard(
             summary = MediaSelectorSummary.Selected(
-                source = TestQueriedSources[0],
+                source = TestMediaSelectorSourceSummaries[0],
                 mediaTitle = TestMediaTitle,
                 isPerfectMatch = true,
             ),
@@ -506,7 +470,7 @@ private fun PreviewMediaSelectorSummarySelected() {
     ProvideCompositionLocalsForPreview {
         MediaSelectorSummaryCard(
             summary = MediaSelectorSummary.Selected(
-                source = TestQueriedSources[0],
+                source = TestMediaSelectorSourceSummaries[0],
                 mediaTitle = TestMediaTitle,
                 isPerfectMatch = false,
             ),
@@ -533,7 +497,7 @@ fun PreviewMediaSelectorSummaryAutoSelecting() {
         LaunchedEffect(Unit) {
             delay(5.seconds)
             state = MediaSelectorSummary.Selected(
-                TestQueriedSources[0],
+                TestMediaSelectorSourceSummaries[0],
                 mediaTitle = TestMediaTitle,
                 isPerfectMatch = false,
             )
@@ -560,7 +524,7 @@ fun PreviewMediaSelectorSummaryAutoSelectingQuickComplete() {
         LaunchedEffect(Unit) {
             delay(2.seconds)
             state = MediaSelectorSummary.Selected(
-                TestQueriedSources[0],
+                TestMediaSelectorSourceSummaries[0],
                 mediaTitle = TestMediaTitle,
                 isPerfectMatch = Random.nextBoolean(),
             )
@@ -573,19 +537,19 @@ private val TestMediaTitle
     get() = "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s"
 
 @TestOnly
-fun createTestMediaSelectorSummaryRequiresManualSelection(sources: List<QueriedSourcePresentation>) =
+fun createTestMediaSelectorSummaryRequiresManualSelection(sources: List<MediaSelectorSourceSummary>) =
     MediaSelectorSummary.RequiresManualSelection(
-        queriedSources = sources,
+        sources = sources,
     )
 
 @TestOnly
 fun createTestMediaSelectorSummaryAutoSelecting() = MediaSelectorSummary.AutoSelecting(
-    queriedSources = TestQueriedSources,
+    sources = TestMediaSelectorSourceSummaries,
     estimate = 5.seconds,
 )
 
 @TestOnly
-internal val TestQueriedSources
+internal val TestMediaSelectorSourceSummaries
     get() = (1..30).map {
-        QueriedSourcePresentation("source$it", "https://picsum.photos/200/300")
+        MediaSelectorSourceSummary("source$it", "https://picsum.photos/200/300")
     }

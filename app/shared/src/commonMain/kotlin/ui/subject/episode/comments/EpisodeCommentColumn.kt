@@ -15,10 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AddComment
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,7 +45,8 @@ fun EpisodeCommentColumn(
 
     Scaffold(
         modifier,
-        floatingActionButton = {
+        // TODO: 2025.08.15 暂时去掉发评论功能, 等 ani server 做好转发再上
+        /*floatingActionButton = {
             ExtendedFloatingActionButton(
                 text = { Text("写评论") },
                 icon = {
@@ -58,7 +55,7 @@ fun EpisodeCommentColumn(
                 onNewCommentClick,
                 expanded = !gridState.canScrollBackward,
             )
-        },
+        },*/
     ) { _ ->
         CommentColumn(
             state.list.collectAsLazyPagingItemsWithLifecycle(),

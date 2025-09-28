@@ -13,20 +13,9 @@ import androidx.paging.LoadState
 import androidx.paging.LoadStates
 import androidx.paging.PagingData
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.*
 import me.him188.ani.app.data.models.preference.NsfwMode
-import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
-import me.him188.ani.app.data.models.subject.SubjectAiringInfo
-import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
-import me.him188.ani.app.data.models.subject.SubjectProgressInfo
-import me.him188.ani.app.data.models.subject.hasNewEpisodeToPlay
+import me.him188.ani.app.data.models.subject.*
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryUnknownException
@@ -156,16 +145,6 @@ class FollowedSubjectsRepository(
             PagingData.from(
                 it,
                 NotLoading,
-            )
-        }.catch { e ->
-            emit(
-                PagingData.empty(
-                    sourceLoadStates = LoadStates(
-                        refresh = LoadState.NotLoading(true),
-                        prepend = LoadState.NotLoading(true),
-                        append = LoadState.Error(e),
-                    ),
-                ),
             )
         }.flowOn(defaultDispatcher)
 

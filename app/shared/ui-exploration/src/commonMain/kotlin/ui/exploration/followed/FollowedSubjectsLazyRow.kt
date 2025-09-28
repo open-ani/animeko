@@ -18,21 +18,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.Stable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
@@ -49,21 +38,10 @@ import me.him188.ani.app.data.models.subject.hasNewEpisodeToPlay
 import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
-import me.him188.ani.app.ui.foundation.layout.BasicCarouselItem
-import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
-import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
-import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
-import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastExpanded
-import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
-import me.him188.ani.app.ui.foundation.layout.minimumHairlineSize
+import me.him188.ani.app.ui.foundation.layout.*
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.widgets.NsfwMask
-import me.him188.ani.app.ui.search.LoadErrorCard
-import me.him188.ani.app.ui.search.LoadErrorCardLayout
-import me.him188.ani.app.ui.search.LoadErrorCardRole
-import me.him188.ani.app.ui.search.isFinishedAndEmpty
-import me.him188.ani.app.ui.search.isLoadingFirstPage
-import me.him188.ani.app.ui.search.rememberLoadErrorState
+import me.him188.ani.app.ui.search.*
 import me.him188.ani.app.ui.subject.SubjectProgressState
 
 // https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Animeko?node-id=62-4581&node-type=frame&t=Evw0PwXZHXQNgEm3-0
@@ -111,7 +89,7 @@ fun FollowedSubjectsLazyRow(
                 item {
                     Box(Modifier.minimumHairlineSize()) {
                         val problem by items.rememberLoadErrorState()
-                        LoadErrorCard(problem, { items.refresh() })
+                        LoadErrorCard(problem, { items.retry() })
                     }
                 }
             }

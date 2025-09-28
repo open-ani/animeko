@@ -77,8 +77,8 @@ class EpisodeVideoSettingsViewModel : AbstractSettingsViewModel(), KoinComponent
         danmakuConfigState.isLoading || danmakuFilterConfigState.isLoading
     }
 
-    fun setDanmakuConfig(config: DanmakuConfig) {
-        danmakuConfigState.update(config)
+    fun setDanmakuConfig(transform: DanmakuConfig.() -> DanmakuConfig) {
+        danmakuConfigState.update(transform(danmakuConfig))
     }
 
     fun switchDanmakuRegexFilterCompletely() {
@@ -109,7 +109,7 @@ fun EpisodeVideoSettings(
 @Composable
 fun EpisodeVideoSettings(
     danmakuConfig: DanmakuConfig,
-    setDanmakuConfig: (config: DanmakuConfig) -> Unit,
+    setDanmakuConfig: ((DanmakuConfig) -> DanmakuConfig) -> Unit,
     enableRegexFilter: Boolean,
     onManageRegexFilters: () -> Unit,
     switchDanmakuRegexFilterCompletely: () -> Unit,
@@ -125,7 +125,7 @@ fun EpisodeVideoSettings(
                 ) {
                     ElevatedFilterChip(
                         selected = danmakuConfig.enableTop,
-                        onClick = { setDanmakuConfig(danmakuConfig.copy(enableTop = !danmakuConfig.enableTop)) },
+                        onClick = { setDanmakuConfig { config -> config.copy(enableTop = !config.enableTop) } },
                         leadingIcon = {
                             if (danmakuConfig.enableTop) Icon(Icons.Rounded.Check, contentDescription = null)
                             else Icon(Icons.Rounded.Close, contentDescription = null)
@@ -134,7 +134,7 @@ fun EpisodeVideoSettings(
                     )
                     ElevatedFilterChip(
                         selected = danmakuConfig.enableFloating,
-                        onClick = { setDanmakuConfig(danmakuConfig.copy(enableFloating = !danmakuConfig.enableFloating)) },
+                        onClick = { setDanmakuConfig { config -> config.copy(enableFloating = !config.enableFloating) } },
                         label = { Text("滚动", maxLines = 1) },
                         leadingIcon = {
                             if (danmakuConfig.enableFloating) Icon(Icons.Rounded.Check, contentDescription = null)
@@ -143,7 +143,7 @@ fun EpisodeVideoSettings(
                     )
                     ElevatedFilterChip(
                         selected = danmakuConfig.enableBottom,
-                        onClick = { setDanmakuConfig(danmakuConfig.copy(enableBottom = !danmakuConfig.enableBottom)) },
+                        onClick = { setDanmakuConfig { config -> config.copy(enableBottom = !config.enableBottom) } },
                         label = { Text("底部", maxLines = 1) },
                         leadingIcon = {
                             if (danmakuConfig.enableBottom) Icon(Icons.Rounded.Check, contentDescription = null)
@@ -153,9 +153,7 @@ fun EpisodeVideoSettings(
                     ElevatedFilterChip(
                         selected = danmakuConfig.enableColor,
                         onClick = {
-                            setDanmakuConfig(
-                                danmakuConfig.copy(enableColor = !danmakuConfig.enableColor),
-                            )
+                            setDanmakuConfig { config -> config.copy(enableColor = !config.enableColor) }
                         },
                         leadingIcon = {
                             if (danmakuConfig.enableColor) Icon(Icons.Rounded.Check, contentDescription = null)
@@ -170,11 +168,9 @@ fun EpisodeVideoSettings(
             }
             SliderItem(
                 value = fontSize,
-                onValueChange = {
+                onValueChange = { newValue ->
                     // 故意每次改都更新, 可以即时预览
-                    setDanmakuConfig(
-                        danmakuConfig.copy(style = danmakuConfig.style.copy(fontSize = DanmakuStyle.Default.fontSize * it)),
-                    )
+                    setDanmakuConfig { config -> config.copy(style = config.style.copy(fontSize = DanmakuStyle.Default.fontSize * newValue)) }
                 },
                 valueRange = 0.50f..3f,
 //                steps = ((3f - 0.50f) / 0.05f).toInt() - 1,
@@ -188,11 +184,9 @@ fun EpisodeVideoSettings(
             }
             SliderItem(
                 value = alpha,
-                onValueChange = {
+                onValueChange = { newValue ->
                     // 故意每次改都更新, 可以即时预览
-                    setDanmakuConfig(
-                        danmakuConfig.copy(style = danmakuConfig.style.copy(alpha = it)),
-                    )
+                    setDanmakuConfig { config -> config.copy(style = config.style.copy(alpha = newValue)) }
                 },
                 valueRange = 0f..1f,
 //                steps = ((1f - 0f) / 0.05f).toInt() - 1,
@@ -206,11 +200,9 @@ fun EpisodeVideoSettings(
             }
             SliderItem(
                 value = strokeWidth,
-                onValueChange = {
+                onValueChange = { newValue ->
                     // 故意每次改都更新, 可以即时预览
-                    setDanmakuConfig(
-                        danmakuConfig.copy(style = danmakuConfig.style.copy(strokeWidth = it * DanmakuStyle.Default.strokeWidth)),
-                    )
+                    setDanmakuConfig { config -> config.copy(style = config.style.copy(strokeWidth = newValue * DanmakuStyle.Default.strokeWidth)) }
                 },
                 valueRange = 0f..2f,
 //                steps = ((2f - 0f) / 0.1f).toInt() - 1,
@@ -226,12 +218,12 @@ fun EpisodeVideoSettings(
             }
             SliderItem(
                 value = fontWeight,
-                onValueChange = {
-                    if (it != fontWeight) {
+                onValueChange = { newValue ->
+                    if (newValue != fontWeight) {
                         // 故意每次改都更新, 可以即时预览
-                        setDanmakuConfig(
-                            danmakuConfig.copy(style = danmakuConfig.style.copy(fontWeight = FontWeight(it.toInt()))),
-                        )
+                        setDanmakuConfig { config ->
+                            config.copy(style = config.style.copy(fontWeight = FontWeight(newValue.toInt())))
+                        }
                     }
                 },
                 valueRange = 100f..900f,
@@ -248,12 +240,8 @@ fun EpisodeVideoSettings(
             }
             SliderItem(
                 value = speed,
-                onValueChange = {
-                    setDanmakuConfig(
-                        danmakuConfig.copy(
-                            speed = it * DanmakuConfig.Default.speed,
-                        ),
-                    )
+                onValueChange = { newValue ->
+                    setDanmakuConfig { config -> config.copy(speed = newValue * DanmakuConfig.Default.speed) }
                 },
                 valueRange = 0.2f..3f,
 //                steps = ((3f - 0.2f) / 0.1f).toInt() - 1,
@@ -283,13 +271,13 @@ fun EpisodeVideoSettings(
                 },
                 // 这个会导致 repopulate, 所以改完了才更新
                 onValueChangeFinished = {
-                    setDanmakuConfig(
-                        danmakuConfig.copy(
+                    setDanmakuConfig { config ->
+                        config.copy(
                             safeSeparation = displayDensityRange.start +
                                     ((displayDensityRange.endInclusive - displayDensityRange.start + 1.dp)
                                         .times((1 - displayDensity * 0.1f))),
-                        ),
-                    )
+                        )
+                    }
                 },
                 valueRange = 0f..10f,
                 steps = 9,
@@ -307,12 +295,8 @@ fun EpisodeVideoSettings(
 
             SliderItem(
                 value = danmakuConfig.displayArea,
-                onValueChange = {
-                    setDanmakuConfig(
-                        danmakuConfig.copy(
-                            displayArea = it.coerceIn(0f, 1f),
-                        ),
-                    )
+                onValueChange = { newValue ->
+                    setDanmakuConfig { config -> config.copy(displayArea = newValue.coerceIn(0f, 1f)) }
                 },
                 valueRange = 0f..1f,
                 title = { Text("显示区域") },
@@ -350,10 +334,8 @@ fun EpisodeVideoSettings(
 
                 SwitchItem(
                     danmakuConfig.isDebug,
-                    onCheckedChange = {
-                        setDanmakuConfig(
-                            danmakuConfig.copy(isDebug = it),
-                        )
+                    onCheckedChange = { checked ->
+                        setDanmakuConfig { config -> config.copy(isDebug = checked) }
                     },
                     title = { Text("弹幕调试模式") },
                 )

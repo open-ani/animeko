@@ -10,10 +10,6 @@
 package me.him188.ani.app.data.network
 
 import androidx.collection.IntList
-import androidx.collection.IntObjectMap
-import androidx.collection.IntSet
-import androidx.collection.mutableIntObjectMapOf
-import androidx.collection.mutableIntSetOf
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.ResponseException
 import io.ktor.http.HttpStatusCode
@@ -23,15 +19,15 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.subject.CharacterInfo
 import me.him188.ani.app.data.models.subject.CharacterRole
 import me.him188.ani.app.data.models.subject.LightSubjectAndEpisodes
 import me.him188.ani.app.data.models.subject.LightSubjectInfo
 import me.him188.ani.app.data.models.subject.PersonInfo
 import me.him188.ani.app.data.models.subject.PersonPosition
+import me.him188.ani.app.data.models.subject.PersonType
 import me.him188.ani.app.data.models.subject.RatingCounts
 import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.RelatedPersonInfo
@@ -43,18 +39,19 @@ import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.session.checkAccessAniApiNow
 import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.client.models.AniCollectionType
+import me.him188.ani.client.models.AniPerson
 import me.him188.ani.client.models.AniSubjectCollection
 import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.apis.DefaultApi
 import me.him188.ani.datasources.bangumi.models.BangumiCount
-import me.him188.ani.datasources.bangumi.models.BangumiPerson
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectCollectionType
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollection
 import me.him188.ani.utils.coroutines.IO_
+import me.him188.ani.utils.coroutines.flows.FlowRestarter
+import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.platform.collections.associateWithTo
 import org.koin.core.component.KoinComponent
 import kotlin.coroutines.CoroutineContext
 
@@ -79,10 +76,10 @@ interface SubjectService {
         withCharacterActors: Boolean = true,
     ): List<BatchSubjectDetails>
 
-    suspend fun batchGetSubjectRelations(
-        ids: IntList,
+    suspend fun getSubjectRelations(
+        subjectId: Int,
         withCharacterActors: Boolean,
-    ): List<BatchSubjectRelations>
+    ): BatchSubjectRelations
 
     suspend fun batchGetLightSubjectAndEpisodes(
         subjectIds: IntList,
@@ -105,6 +102,8 @@ interface SubjectService {
      * 执行 Bangumi 全量同步, 从 Bangumi 同步到 ani
      */
     suspend fun performBangumiFullSync()
+
+    suspend fun getBangumiFullSyncState(): BangumiSyncState?
 }
 
 data class BatchSubjectCollection(
@@ -223,105 +222,40 @@ class RemoteSubjectService(
         }
     }
 
-    override suspend fun batchGetSubjectRelations(
-        ids: IntList,
+    override suspend fun getSubjectRelations(
+        subjectId: Int,
         withCharacterActors: Boolean
-    ): List<BatchSubjectRelations> {
-        if (ids.isEmpty()) {
-            return emptyList()
+    ): BatchSubjectRelations = withContext(ioDispatcher) {
+        val (characters, persons) = subjectApi {
+            val chars = getSubjectCharacters(subjectId.toLong(), withCharacterActors.takeIf { it } ?: false).body()
+            val staff = getSubjectStaff(subjectId.toLong()).body()
+            Pair(chars, staff)
         }
-        return withContext(ioDispatcher) {
-            val respDeferred = async {
-                BangumiSubjectRelationsGraphQLExecutor.execute(client, ids)
-            }
 
-            val actorConcurrency = Semaphore(10)
-            // subjectId to List<Character>
-            val subjectIdToActorsDeferred = if (withCharacterActors) {
-                ids.associateWithTo(HashMap(ids.size)) { id ->
-                    // faster query
-                    async {
-                        actorConcurrency.withPermit {
-                            mutableIntObjectMapOf<List<BangumiPerson>>().apply {
-                                for (character in api { getRelatedCharactersBySubjectId(id).body() }) {
-                                    put(character.id, character.actors.orEmpty())
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                emptyMap()
-            }
-            val subjectIdToActors = subjectIdToActorsDeferred.mapValues { it.value.await() }
-
-            // 等待查询条目信息
-            val (response, errors) = respDeferred.await()
-
-            // 获取所有条目的所有配音人员 ID
-            val actorPersonIdSet: IntSet = mutableIntSetOf().apply {
-                for (element in response) {
-                    if (element != null) {
-                        BangumiSubjectGraphQLParser.forEachCharacter(element) { subjectId, characterId ->
-                            subjectIdToActors[subjectId]!![characterId]?.forEach {
-                                add(it.id)
-                            }
-                        }
-                    }
-                }
-            }
-
-            val actorPersonIdArray = actorPersonIdSet.toIntArray()
-
-            // 获取配音人员详情
-            // key is person id
-            val actorPersons: IntObjectMap<PersonInfo> = mutableIntObjectMapOf<PersonInfo>().apply {
-                BangumiPersonGraphQLExecutor.execute(
-                    client,
-                    actorPersonIdArray,
-                ).data.forEachIndexed { index, jsonObject ->
-                    if (jsonObject != null) {
-                        put(actorPersonIdArray[index], BangumiSubjectGraphQLParser.parsePerson(jsonObject))
-                    }
-                }
-            }
-
-            // 解析条目详情
-            response.mapIndexed { index, element ->
-                if (element == null) { // error
-                    val subjectId = ids[index]
-                    BatchSubjectRelations(
-                        subjectId = subjectId,
-                        listOf(
-                            RelatedCharacterInfo(
-                                0,
-                                CharacterInfo(
-                                    id = 0,
-                                    nameCn = "<错误>",
-                                    name = "<错误>",
-                                    actors = emptyList(),
-                                    imageMedium = "",
-                                    imageLarge = "",
-                                ),
-                                CharacterRole.MAIN,
-                            ),
-                        ),
-                        emptyList(),
-                    )
-                } else {
-                    val subjectId = ids[index]
-                    BangumiSubjectGraphQLParser.parseBatchSubjectRelations(
-                        element,
-                        getActors = {
-                            subjectIdToActors[subjectId]!![it]?.map { person ->
-                                actorPersons[person.id]
-                                    ?: error("Actor (person) ${person.id} not found. Available actors: $actorPersons")
-                            }.orEmpty()
-                        },
-                    )
-                }
-            }
-        }
+        BatchSubjectRelations(
+            subjectId = subjectId,
+            relatedCharacterInfoList = characters.map { rc ->
+                RelatedCharacterInfo(
+                    index = rc.index,
+                    character = CharacterInfo(
+                        id = rc.character.id.toInt(),
+                        name = rc.character.name,
+                        nameCn = rc.character.nameCn,
+                        actors = rc.character.actors.map { it.toPersonInfo() },
+                        imageMedium = rc.character.imageMedium,
+                        imageLarge = rc.character.imageLarge,
+                    ),
+                    role = CharacterRole(rc.role),
+                )
+            },
+            relatedPersonInfoList = persons.map { rp ->
+                RelatedPersonInfo(
+                    index = rp.index,
+                    personInfo = rp.person.toPersonInfo(),
+                    position = PersonPosition(rp.position),
+                )
+            },
+        )
     }
 
     override suspend fun batchGetLightSubjectAndEpisodes(subjectIds: IntList): List<LightSubjectAndEpisodes> {
@@ -352,6 +286,7 @@ class RemoteSubjectService(
         }
     }
 
+    val subjectCountStatsRestarter = FlowRestarter()
 
     override suspend fun patchSubjectCollection(subjectId: Int, payload: AniUpdateSubjectCollectionRequest) {
         sessionManager.checkAccessAniApiNow()
@@ -364,6 +299,7 @@ class RemoteSubjectService(
                 Unit
             }
         }
+        subjectCountStatsRestarter.restart()
     }
 
     override suspend fun deleteSubjectCollection(subjectId: Int) {
@@ -371,13 +307,26 @@ class RemoteSubjectService(
         subjectApi {
             this.deleteSubjectCollection(subjectId.toLong()).body()
         }
+        subjectCountStatsRestarter.restart()
     }
 
     override fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts> {
-        // TODO("subjectCollectionCountsFlow")
         return flow {
-            SubjectCollectionCounts(0, 0, 0, 0, 0, 0)
-        }
+            val stats = subjectApi {
+                this.getSubjectCollectionStats().body()
+            }
+
+            emit(
+                SubjectCollectionCounts(
+                    wish = stats.wish,
+                    doing = stats.doing,
+                    done = stats.done,
+                    onHold = stats.onHold,
+                    dropped = stats.dropped,
+                    total = stats.wish + stats.doing + stats.done + stats.onHold + stats.dropped,
+                ),
+            )
+        }.restartable(subjectCountStatsRestarter)
 //        return sessionManager.username.filterNotNull().map { username ->
 //            sessionManager.checkTokenNow()
 //            val types = UnifiedCollectionType.entries - UnifiedCollectionType.NOT_COLLECTED
@@ -424,6 +373,16 @@ class RemoteSubjectService(
         sessionManager.checkAccessAniApiNow()
         subjectApi.invoke {
             bangumiFullSync().body()
+        }
+    }
+
+    override suspend fun getBangumiFullSyncState(): BangumiSyncState? {
+        return subjectApi.invoke {
+            val result = getBangumiFullSyncState()
+            if (result.status == HttpStatusCode.NoContent.value) {
+                return@invoke null
+            }
+            BangumiSyncState.fromEntity(result.body())
         }
     }
 }
@@ -496,4 +455,18 @@ private fun BangumiSubjectCollectionType.toAniCollectionType(): AniCollectionTyp
         BangumiSubjectCollectionType.OnHold -> AniCollectionType.ON_HOLD
         BangumiSubjectCollectionType.Dropped -> AniCollectionType.DROPPED
     }
+}
+
+private fun AniPerson.toPersonInfo(): PersonInfo {
+    return PersonInfo(
+        id = id.toInt(),
+        name = name,
+        type = PersonType.fromId(type),
+        careers = emptyList(),
+        imageLarge = imageLarge,
+        imageMedium = imageMedium,
+        summary = summary,
+        locked = false,
+        nameCn = nameCn,
+    )
 }

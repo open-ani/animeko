@@ -11,26 +11,16 @@
 
 package me.him188.ani.app.domain.foundation
 
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.client.plugins.HttpSend
-import io.ktor.client.request.get
-import io.ktor.client.request.request
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.Url
-import io.ktor.http.fullPath
-import io.ktor.http.headersOf
-import io.ktor.utils.io.CancellationException
+import io.ktor.client.*
+import io.ktor.client.engine.mock.*
+import io.ktor.client.plugins.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.utils.io.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
-import kotlin.test.fail
+import kotlin.test.*
 
 class ServerListFeatureHandlerTest {
 
@@ -291,5 +281,83 @@ class ServerListFeatureHandlerTest {
         assertEquals("query=1", replaced.fullPath.substringAfter('?'))
 
         assertEquals("https://newhost/some/path?query=1#fragment", replaced.toString())
+    }
+
+    @Test
+    fun `sticky selection - rotates starting server based on last success`() = runTest {
+        val aniServerUrls = MutableStateFlow(
+            listOf(
+                Url("https://server1.com"),
+                Url("https://server2.com"),
+                Url("https://server3.com"),
+            ),
+        )
+        val config = defaultConfig()
+
+        // Track attempts per request path to check the first tried host of each request
+        val attemptsByPath = mutableMapOf<String, MutableList<String>>()
+
+        // Phase controls which host succeeds to simulate different successful servers over time
+        var phase = 1
+
+        val client = buildTestClient(
+            aniServerUrlsFlow = aniServerUrls,
+            featureConfig = config,
+        ) { url ->
+            val path = url.fullPath
+            attemptsByPath.getOrPut(path) { mutableListOf() }.add(url.host)
+
+            when (phase) {
+                1 -> when (url.host) {
+                    "server1.com" -> HttpStatusCode.ServiceUnavailable to "f1"
+                    "server2.com" -> {
+                        phase = 2
+                        HttpStatusCode.OK to "ok2"
+                    }
+
+                    else -> HttpStatusCode.InternalServerError to "f"
+                }
+
+                2 -> when (url.host) {
+                    "server2.com" -> HttpStatusCode.ServiceUnavailable to "f2"
+                    "server3.com" -> {
+                        phase = 3
+                        HttpStatusCode.OK to "ok3"
+                    }
+
+                    else -> HttpStatusCode.InternalServerError to "f"
+                }
+
+                else -> when (url.host) {
+                    "server3.com" -> HttpStatusCode.ServiceUnavailable to "f3"
+                    "server1.com" -> {
+                        phase = 4
+                        HttpStatusCode.OK to "ok1"
+                    }
+
+                    else -> HttpStatusCode.InternalServerError to "f"
+                }
+            }
+        }
+
+        val r1 = client.get("https://${ServerListFeatureConfig.MAGIC_ANI_SERVER_HOST}/req1")
+        assertEquals(HttpStatusCode.OK, r1.status)
+        assertEquals("ok2", r1.bodyAsText())
+
+        val r2 = client.get("https://${ServerListFeatureConfig.MAGIC_ANI_SERVER_HOST}/req2")
+        assertEquals(HttpStatusCode.OK, r2.status)
+        assertEquals("ok3", r2.bodyAsText())
+
+        val r3 = client.get("https://${ServerListFeatureConfig.MAGIC_ANI_SERVER_HOST}/req3")
+        assertEquals(HttpStatusCode.OK, r3.status)
+        assertEquals("ok1", r3.bodyAsText())
+
+        // Verify the first tried host for each request follows sticky order:
+        // - req1 starts with server1 (default index 0)
+        // - req2 starts with server2 (last success)
+        // - req3 starts with server3 (updated last success)
+        assertEquals("server1.com", attemptsByPath["/req1"]?.firstOrNull())
+        assertEquals("server2.com", attemptsByPath["/req2"]?.firstOrNull())
+        assertEquals("server3.com", attemptsByPath["/req3"]?.firstOrNull())
     }
 }

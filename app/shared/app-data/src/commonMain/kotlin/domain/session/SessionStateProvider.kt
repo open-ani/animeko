@@ -68,10 +68,10 @@ sealed interface SessionEvent {
      */
     data object NewLogin : SessionEvent
 
-    /**
-     * 用户主动退出登录.
-     */
-    data object Logout : SessionEvent
+//    /**
+//     * 用户主动退出登录.
+//     */
+//    data object Logout : SessionEvent
 }
 
 /**

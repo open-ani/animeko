@@ -101,6 +101,7 @@ val generateApi = tasks.register("generateApiV0", GenerateTask::class) {
     generateApiTests.set(false)
     generateApiDocumentation.set(false)
     generateModelDocumentation.set(false)
+    validateSpec.set(false)
 
 //    typeMappings.put("BangumiValue", "kotlinx.serialization.json.JsonElement")
 //    schemaMappings.put("WikiV0", "kotlinx.serialization.json.JsonElement") // works
@@ -119,10 +120,24 @@ val fixGeneratedOpenApi = tasks.register("fixGeneratedOpenApi") {
 
     doLast {
         outputDir.walk().filter { it.isFile }.forEach {
-            val text = it.readText()
+            var text = it.readText()
+            val original = text
+            text = text.replace(
+                """
+                    open suspend fun uploadAvatar(body: me.him188.ani.client.infrastructure.OctetByteArray): HttpResponse<kotlin.Any> {
+                """.trimIndent(),
+                """
+                    open suspend fun uploadAvatar(body: io.ktor.http.content.OutgoingContent): HttpResponse<kotlin.Any> {
+                """.trimIndent()
+            )
+
             val off = "off" // 防止 IDE 把我们这个代码识别成指令
             if (!text.contains("// @formatter:$off")) {
-                it.writeText("// @formatter:$off\n$text\n// @formatter:on\n")
+                text = "// @formatter:$off\n$text\n// @formatter:on\n"
+            }
+
+            if (text != original) {
+                it.writeText(text)
             }
         }
     }

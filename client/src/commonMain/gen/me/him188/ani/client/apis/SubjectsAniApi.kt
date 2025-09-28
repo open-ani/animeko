@@ -28,17 +28,28 @@ package me.him188.ani.client.apis
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 import me.him188.ani.client.infrastructure.ApiClient
 import me.him188.ani.client.infrastructure.HttpResponse
 import me.him188.ani.client.infrastructure.RequestConfig
 import me.him188.ani.client.infrastructure.RequestMethod
+import me.him188.ani.client.infrastructure.map
 import me.him188.ani.client.infrastructure.wrap
+import me.him188.ani.client.models.AniBangumiSyncStateEntity
 import me.him188.ani.client.models.AniBatchUpdateEpisodeCollectionsRequest
 import me.him188.ani.client.models.AniCollectionType
 import me.him188.ani.client.models.AniEpisodeCollection
 import me.him188.ani.client.models.AniPaginatedResponse
+import me.him188.ani.client.models.AniRelatedCharacter
+import me.him188.ani.client.models.AniRelatedPerson
+import me.him188.ani.client.models.AniRelatedSubject
 import me.him188.ani.client.models.AniSubjectCollection
+import me.him188.ani.client.models.AniSubjectCollectionCountStats
 import me.him188.ani.client.models.AniUpdateEpisodeCollectionRequest
 import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 
@@ -156,6 +167,38 @@ open class SubjectsAniApi : ApiClient {
 
 
     /**
+     * 获取 Bangumi 全量同步状态
+     * 获取 Bangumi 全量同步状态
+     * @return AniBangumiSyncStateEntity
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getBangumiFullSyncState(): HttpResponse<AniBangumiSyncStateEntity> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/subjects/bangumi/full-sync/state",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
      * 获取单个剧集信息. 如果已登录, 还会返回 collectionType 字段
      * 获取单个剧集信息. 如果已登录, 还会返回 collectionType 字段
      * @param subjectId 
@@ -190,6 +233,48 @@ open class SubjectsAniApi : ApiClient {
 
 
     /**
+     * 获取关联条目列表
+     * 获取关联条目列表
+     * @param subjectId 
+     * @return kotlin.collections.List<AniRelatedSubject>
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getRelatedSubjects(subjectId: kotlin.Long): HttpResponse<kotlin.collections.List<AniRelatedSubject>> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/subjects/{subjectId}/related-subjects".replace("{" + "subjectId" + "}", "$subjectId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap<GetRelatedSubjectsResponse>().map { value }
+    }
+
+    @Serializable(GetRelatedSubjectsResponse.Companion::class)
+    private class GetRelatedSubjectsResponse(val value: List<AniRelatedSubject>) {
+        companion object : KSerializer<GetRelatedSubjectsResponse> {
+            private val serializer: KSerializer<List<AniRelatedSubject>> = serializer<List<AniRelatedSubject>>()
+            override val descriptor = serializer.descriptor
+            override fun serialize(encoder: Encoder, value: GetRelatedSubjectsResponse) = serializer.serialize(encoder, value.value)
+            override fun deserialize(decoder: Decoder) = GetRelatedSubjectsResponse(serializer.deserialize(decoder))
+        }
+    }
+
+    /**
      * 获取单个条目信息. 如果已登录, 还会返回 collectionType 等字段.
      * 获取单个条目信息. 如果已登录, 还会返回 collectionType 等字段.
      * @param subjectId 
@@ -209,6 +294,82 @@ open class SubjectsAniApi : ApiClient {
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/v2/subjects/{subjectId}".replace("{" + "subjectId" + "}", "$subjectId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * 获取条目的角色 (characters). 默认返回配音演员.
+     * 获取条目的角色 (characters). 默认返回配音演员.
+     * @param subjectId 
+     * @param withActors  (optional)
+     * @return kotlin.collections.List<AniRelatedCharacter>
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getSubjectCharacters(subjectId: kotlin.Long, withActors: kotlin.Boolean? = null): HttpResponse<kotlin.collections.List<AniRelatedCharacter>> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        withActors?.apply { localVariableQuery["withActors"] = listOf("$withActors") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/subjects/{subjectId}/characters".replace("{" + "subjectId" + "}", "$subjectId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap<GetSubjectCharactersResponse>().map { value }
+    }
+
+    @Serializable(GetSubjectCharactersResponse.Companion::class)
+    private class GetSubjectCharactersResponse(val value: List<AniRelatedCharacter>) {
+        companion object : KSerializer<GetSubjectCharactersResponse> {
+            private val serializer: KSerializer<List<AniRelatedCharacter>> = serializer<List<AniRelatedCharacter>>()
+            override val descriptor = serializer.descriptor
+            override fun serialize(encoder: Encoder, value: GetSubjectCharactersResponse) = serializer.serialize(encoder, value.value)
+            override fun deserialize(decoder: Decoder) = GetSubjectCharactersResponse(serializer.deserialize(decoder))
+        }
+    }
+
+    /**
+     * 获取不同类型的收藏条目数量
+     * 获取不同类型的收藏条目数量
+     * @return AniSubjectCollectionCountStats
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getSubjectCollectionStats(): HttpResponse<AniSubjectCollectionCountStats> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/subjects/count",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -259,6 +420,48 @@ open class SubjectsAniApi : ApiClient {
         ).wrap()
     }
 
+
+    /**
+     * 获取条目的制作人员 (staff)
+     * 获取条目的制作人员 (staff)
+     * @param subjectId 
+     * @return kotlin.collections.List<AniRelatedPerson>
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getSubjectStaff(subjectId: kotlin.Long): HttpResponse<kotlin.collections.List<AniRelatedPerson>> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/subjects/{subjectId}/staff".replace("{" + "subjectId" + "}", "$subjectId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap<GetSubjectStaffResponse>().map { value }
+    }
+
+    @Serializable(GetSubjectStaffResponse.Companion::class)
+    private class GetSubjectStaffResponse(val value: List<AniRelatedPerson>) {
+        companion object : KSerializer<GetSubjectStaffResponse> {
+            private val serializer: KSerializer<List<AniRelatedPerson>> = serializer<List<AniRelatedPerson>>()
+            override val descriptor = serializer.descriptor
+            override fun serialize(encoder: Encoder, value: GetSubjectStaffResponse) = serializer.serialize(encoder, value.value)
+            override fun deserialize(decoder: Decoder) = GetSubjectStaffResponse(serializer.deserialize(decoder))
+        }
+    }
 
     /**
      * 编辑自己的条目收藏中的单个剧集进度

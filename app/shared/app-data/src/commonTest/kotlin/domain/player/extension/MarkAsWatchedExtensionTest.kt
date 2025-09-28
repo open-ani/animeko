@@ -15,12 +15,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.test.*
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
@@ -54,7 +49,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         videoScaffoldConfigFlow: Flow<VideoScaffoldConfig> = flowOf(
             VideoScaffoldConfig.AllDisabled.copy(autoMarkDone = true),
         ),
-        getEpisodeCollectionType: GetEpisodeCollectionTypeUseCase = GetEpisodeCollectionTypeUseCase { _, _ -> null },
+        getEpisodeCollectionType: GetEpisodeCollectionTypeUseCase = GetEpisodeCollectionTypeUseCase { _, _, _ -> null },
         setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase = SetEpisodeCollectionTypeUseCase { _, _, _ -> },
     ): Triple<CoroutineScope, EpisodePlayerTestSuite, EpisodeFetchSelectPlayState> {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
@@ -133,7 +128,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
     fun `does not mark if already DONE or DROPPED`() = runTest {
         var setCalled = false
         val (testScope, suite, _) = createCase(
-            getEpisodeCollectionType = { _, _ -> UnifiedCollectionType.DONE },
+            getEpisodeCollectionType = { _, _, _ -> UnifiedCollectionType.DONE },
             setEpisodeCollectionType = { _, _, _ ->
                 setCalled = true
             },
@@ -158,7 +153,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         var requestedType: UnifiedCollectionType? = null
 
         val (testScope, suite, _) = createCase(
-            getEpisodeCollectionType = { _, _ -> null }, // Not already marked
+            getEpisodeCollectionType = { _, _, _ -> null }, // Not already marked
             setEpisodeCollectionType = { subjectId, episodeId, type ->
                 requestedSubjectId = subjectId
                 requestedEpisodeId = episodeId
@@ -184,7 +179,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
     fun `marks only once for the same episode`() = runTest {
         var callCount = 0
         val (testScope, suite, _) = createCase(
-            getEpisodeCollectionType = { _, _ -> null },
+            getEpisodeCollectionType = { _, _, _ -> null },
             setEpisodeCollectionType = { _, _, _ ->
                 callCount++
             },
@@ -215,7 +210,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         var requestedType: UnifiedCollectionType? = null
 
         val (testScope, suite, _) = createCase(
-            getEpisodeCollectionType = { _, _ -> null }, // Not already marked
+            getEpisodeCollectionType = { _, _, _ -> null }, // Not already marked
             setEpisodeCollectionType = { subjectId, episodeId, type ->
                 requestedSubjectId = subjectId
                 requestedEpisodeId = episodeId
@@ -244,7 +239,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         var requestedType: UnifiedCollectionType? = null
 
         val (testScope, suite, _) = createCase(
-            getEpisodeCollectionType = { _, _ -> null }, // Not already marked
+            getEpisodeCollectionType = { _, _, _ -> null }, // Not already marked
             setEpisodeCollectionType = { subjectId, episodeId, type ->
                 requestedSubjectId = subjectId
                 requestedEpisodeId = episodeId
@@ -270,7 +265,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
     fun `does not mark when neither at 90 percent nor within last 100 seconds`() = runTest {
         var setCalled = false
         val (testScope, suite, _) = createCase(
-            getEpisodeCollectionType = { _, _ -> null }, // Not already marked
+            getEpisodeCollectionType = { _, _, _ -> null }, // Not already marked
             setEpisodeCollectionType = { _, _, _ ->
                 setCalled = true
             },
@@ -294,7 +289,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
     fun `does not mark when video is shorter than 10 seconds`() = runTest {
         var setCalled = false
         val (testScope, suite, _) = createCase(
-            getEpisodeCollectionType = { _, _ -> null }, // Not already marked
+            getEpisodeCollectionType = { _, _, _ -> null }, // Not already marked
             setEpisodeCollectionType = { _, _, _ ->
                 setCalled = true
             },

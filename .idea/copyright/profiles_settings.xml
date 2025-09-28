@@ -1,9 +1,8 @@
 <component name="CopyrightManager">
-  <settings>
+  <settings default="openani-animeko">
     <module2copyright>
       <element module="mediamp-vlc" copyright="openani-gpl-v3" />
       <element module="Mediamp" copyright="openani-apache-v2" />
-      <element module="Project Files" copyright="openani-animeko" />
     </module2copyright>
   </settings>
 </component>

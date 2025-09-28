@@ -11,6 +11,7 @@ package me.him188.ani.app.data.models.subject
 
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo.Episode
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.PackedDate.Companion.Invalid
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -30,8 +31,9 @@ class SubjectProgressInfoTest {
         isKnownCompleted: Boolean,
         airDate: PackedDate = Invalid,
         id: Int = sort,
+        episodeType: EpisodeType? = EpisodeType.MainStory, // 默认为主线剧集
     ): Episode = Episode(
-        id, type, EpisodeSort(sort), EpisodeSort(sort),
+        id, type, EpisodeSort(sort, episodeType), EpisodeSort(sort, episodeType),
         airDate,
         isKnownCompleted,
     )
@@ -108,7 +110,7 @@ class SubjectProgressInfoTest {
             ),
         ).run {
             assertEquals(
-                ContinueWatchingStatus.Watched(0, EpisodeSort(1), EpisodeSort(1), Invalid),
+                ContinueWatchingStatus.Watched(EpisodeSort(1), EpisodeSort(1), Invalid),
                 continueWatchingStatus,
             )
             assertEquals(1, nextEpisodeIdToPlay)
@@ -125,7 +127,7 @@ class SubjectProgressInfoTest {
             ),
         ).run {
             assertEquals(
-                ContinueWatchingStatus.Watched(0, EpisodeSort(1), EpisodeSort(1), Invalid),
+                ContinueWatchingStatus.Watched(EpisodeSort(1), EpisodeSort(1), Invalid),
                 continueWatchingStatus,
             )
             assertEquals(1, nextEpisodeIdToPlay)
@@ -170,7 +172,7 @@ class SubjectProgressInfoTest {
             ),
         ).run {
             assertEquals(
-                ContinueWatchingStatus.Watched(0, EpisodeSort(1), EpisodeSort(1), Invalid),
+                ContinueWatchingStatus.Watched(EpisodeSort(1), EpisodeSort(1), Invalid),
                 continueWatchingStatus,
             )
             assertEquals(1, nextEpisodeIdToPlay)
@@ -206,7 +208,7 @@ class SubjectProgressInfoTest {
     }
 
     private fun continue2_1() =
-        ContinueWatchingStatus.Continue(1, EpisodeSort(2), EpisodeSort(2), EpisodeSort(1), EpisodeSort(1))
+        ContinueWatchingStatus.Continue(EpisodeSort(2), EpisodeSort(2), EpisodeSort(1), EpisodeSort(1))
 
     @Test
     fun `all ep done`() {
@@ -218,6 +220,51 @@ class SubjectProgressInfoTest {
             ),
         ).run {
             assertEquals(ContinueWatchingStatus.Done, continueWatchingStatus)
+            assertEquals(2, nextEpisodeIdToPlay)
+        }
+    }
+
+    // https://github.com/open-ani/animeko/issues/1871
+    // 新添加的 00 排在最后
+    // https://bgm.tv/subject/1730
+    @Test
+    fun `episodes with 00 at end`() {
+        calculate(
+            subjectStarted = true,
+            episodes = listOf(
+                ep(DONE, 1, isKnownCompleted = true),  // 主线第1集
+                ep(WISH, 2, isKnownCompleted = true),  // 主线第2集，未看
+                ep(WISH, 3, isKnownCompleted = true),  // 主线第3集，未看
+                ep(DONE, 0, isKnownCompleted = true), // 主线第0集
+            ),
+        ).run {
+            // 最后看的主线剧集应该是第1集，下一集应该是第2集
+            assertEquals(
+                ContinueWatchingStatus.Continue(EpisodeSort(2), EpisodeSort(2), EpisodeSort(1), EpisodeSort(1)),
+                continueWatchingStatus,
+            )
+            assertEquals(2, nextEpisodeIdToPlay)
+        }
+    }
+
+    // 有 SP 且在最后并且已完成
+    // https://bgm.tv/subject/506677
+    @Test
+    fun `episodes with sp done`() {
+        calculate(
+            subjectStarted = true,
+            episodes = listOf(
+                ep(DONE, 1, isKnownCompleted = true),  // 主线第1集
+                ep(WISH, 2, isKnownCompleted = true),  // 主线第2集，未看
+                ep(WISH, 3, isKnownCompleted = true),  // 主线第3集，未看
+                ep(DONE, 4, isKnownCompleted = true, episodeType = EpisodeType.SP),
+            ),
+        ).run {
+            // 最后看的主线剧集应该是第1集，下一集应该是第2集，应该排除掉 SP 干扰
+            assertEquals(
+                ContinueWatchingStatus.Continue(EpisodeSort(2), EpisodeSort(2), EpisodeSort(1), EpisodeSort(1)),
+                continueWatchingStatus,
+            )
             assertEquals(2, nextEpisodeIdToPlay)
         }
     }

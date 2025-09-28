@@ -9,22 +9,13 @@
 
 package me.him188.ani.app.domain.foundation
 
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
-import io.ktor.client.call.HttpClientCall
-import io.ktor.client.plugins.BrowserUserAgent
-import io.ktor.client.plugins.ClientRequestException
-import io.ktor.client.plugins.HttpSend
-import io.ktor.client.plugins.ResponseException
-import io.ktor.client.plugins.SendCountExceedException
-import io.ktor.client.plugins.Sender
-import io.ktor.client.plugins.auth.Auth
-import io.ktor.client.plugins.auth.providers.BearerTokens
-import io.ktor.client.plugins.auth.providers.bearer
-import io.ktor.client.plugins.plugin
-import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.http.URLBuilder
-import io.ktor.http.Url
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.plugins.*
+import io.ktor.client.plugins.auth.*
+import io.ktor.client.plugins.auth.providers.*
+import io.ktor.client.request.*
+import io.ktor.http.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.io.IOException
@@ -127,16 +118,6 @@ enum class ScopedHttpClientUserAgent {
 
 // endregion
 
-// region UseBangumiToken = ScopedHttpClientFeatureKey<Boolean>("UseBangumiToken")
-val UseBangumiTokenFeature = ScopedHttpClientFeatureKey<Boolean>("UseBangumiToken")
-
-class UseBangumiTokenFeatureHandler(
-    bearerToken: Flow<String?>,
-    onRefresh: suspend () -> BearerTokens?,
-) : AbstractBearerTokenHandler(UseBangumiTokenFeature, bearerToken, onRefresh)
-
-// endregion
-
 abstract class AbstractBearerTokenHandler(
     key: ScopedHttpClientFeatureKey<Boolean>,
     private val bearerToken: Flow<String?>,
@@ -218,6 +199,11 @@ data class ServerListFeatureConfig(
 data class ServerListFeatureHandler(
     private val aniServerUrls: Flow<List<Url>>,
 ) : ScopedHttpClientFeatureHandler<ServerListFeatureConfig>(ServerListFeature) {
+    // Sticky selection state: remembers the last successful server index for the
+    // current list of servers. Reset when the server list changes (by signature).
+    private data class SelectionState(val signature: Int, val index: Int)
+
+    private val selectionState = kotlinx.atomicfu.atomic<SelectionState?>(null)
     override fun applyToClient(client: HttpClient, value: ServerListFeatureConfig) {
         client.plugin(HttpSend).intercept { request ->
             value.aniServerRules?.let { rule ->
@@ -247,8 +233,19 @@ data class ServerListFeatureHandler(
             error("No server URL to try for ani server request")
         }
 
+        // compute a signature for the current server list to know when to reset stickiness
+        val signature = urls.joinToString("|") { it.toString() }.hashCode()
+
+        // determine starting index using sticky selection
+        val startIndex = selectionState.value
+            .takeIf { it != null && it.signature == signature && it.index in urls.indices }
+            ?.index ?: 0
+
         var lastCall: HttpClientCall? = null
-        for (serverUrl in urls) {
+        // iterate servers in cyclic order starting from startIndex
+        for (i in urls.indices) {
+            val index = (startIndex + i) % urls.size // 从上次成功的 index 开始
+            val serverUrl = urls[index]
             replaceUrl(request.url, serverUrl)
 
             if (lastCall != null) { // 第二个请求了, 就开始打日志
@@ -269,7 +266,8 @@ data class ServerListFeatureHandler(
             lastCall = thisCall
 
             if (thisCall.response.status.value in 100..399) {
-                // success
+                // success: remember the index for next time
+                selectionState.value = SelectionState(signature, index)
                 return thisCall
             } else {
                 // failed

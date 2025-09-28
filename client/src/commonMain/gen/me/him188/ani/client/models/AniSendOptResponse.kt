@@ -34,12 +34,15 @@ import kotlinx.serialization.Serializable
  * 
  *
  * @param otpId 
+ * @param hasExistingUser 
  */
 @Serializable
 
 data class AniSendOptResponse (
 
-    @SerialName(value = "otpId") @Required val otpId: kotlin.String
+    @SerialName(value = "otpId") @Required val otpId: kotlin.String,
+
+    @SerialName(value = "hasExistingUser") @Required val hasExistingUser: kotlin.Boolean
 
 ) {
 

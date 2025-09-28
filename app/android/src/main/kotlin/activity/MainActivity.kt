@@ -15,14 +15,18 @@ import android.widget.Toast
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.core.os.LocaleListCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.platform.rememberPlatformWindow
@@ -43,6 +47,7 @@ class MainActivity : AniComponentActivity() {
 
     private val mediaCacheMigrator: MediaCacheMigrator by inject()
     private val migrationStatus: StateFlow<MediaCacheMigrator.Status?> by lazy { mediaCacheMigrator.status }
+    private val settingsRepository: SettingsRepository by inject()
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -71,6 +76,7 @@ class MainActivity : AniComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        applyLanguage()
         handleStartIntent(intent)
 
         enableEdgeToEdge(
@@ -108,6 +114,22 @@ class MainActivity : AniComponentActivity() {
 
                 val migrationStatus by migrationStatus.collectAsStateWithLifecycle()
                 migrationStatus?.let { MediaCacheMigrationDialog(status = it) }
+            }
+        }
+    }
+
+    private fun applyLanguage() {
+        lifecycleScope.launch {
+            settingsRepository.uiSettings.flow.drop(1).collect { settings ->
+                settings.appLanguage?.let {
+                    try {
+                        val locales = LocaleListCompat.forLanguageTags(it.toLanguageTag())
+                        logger.info("Set locale to $locales")
+                        AppCompatDelegate.setApplicationLocales(locales)
+                    } catch (e: Throwable) {
+                        logger.error(e) { "Failed to set app language, see exception" }
+                    }
+                }
             }
         }
     }
