@@ -23,7 +23,7 @@ sentry-kotlin-multiplatform = "0.11.0"
 sqlite = "2.5.0"
 androidx-activity = "1.10.1"
 androidx-core = "1.15.0"
-androidx-window = { strictly = "1.4.0-beta02" }
+androidx-window = { strictly = "1.5.0" }
 
 ### COMPOSE ###
 # How to upgrade them? Check compose multiplatform release notes and find the corresponding versions for each library.
