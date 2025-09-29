@@ -505,7 +505,15 @@ object PlayerControllerDefaults {
             value = aspectRatioControllerState.currentMode,
             onValueChange = { aspectRatioControllerState.setMode(it) },
             optionsProvider = { AspectRatioMode.entries },
-            renderValue = { Text(it.name) },
+            renderValue = {
+                Text(
+                    when (it) {
+                        AspectRatioMode.FIT -> "适应"
+                        AspectRatioMode.STRETCH -> "拉伸"
+                        AspectRatioMode.FILL -> "填充"
+                    },
+                )
+            },
             renderValueExposed = { Text("画面") },
             modifier,
             properties = PlatformPopupProperties(
