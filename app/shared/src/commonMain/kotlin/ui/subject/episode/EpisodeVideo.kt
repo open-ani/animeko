@@ -59,7 +59,6 @@ import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideShe
 import me.him188.ani.app.ui.subject.episode.video.components.rememberStatusBarHeightAsState
 import me.him188.ani.app.ui.subject.episode.video.loading.EpisodeVideoLoadingIndicator
 import me.him188.ani.app.videoplayer.ui.AspectRatioControllerState
-import me.him188.ani.app.videoplayer.ui.AspectRatioMode
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.VideoPlayer
@@ -87,6 +86,7 @@ import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isDesktop
 import org.openani.mediamp.MediampPlayer
+import org.openani.mediamp.features.AspectRatioMode
 import org.openani.mediamp.features.audioTracks
 import org.openani.mediamp.features.subtitleTracks
 import org.openani.mediamp.togglePause
@@ -165,7 +165,6 @@ internal fun EpisodeVideoImpl(
             maintainAspectRatio = maintainAspectRatio,
             controllerState = playerControllerState,
             gestureLocked = isLocked,
-            aspectRatioControllerState = aspectRatioControllerState,
             topBar = {
                 WindowDragArea {
                     PlayerTopBar(

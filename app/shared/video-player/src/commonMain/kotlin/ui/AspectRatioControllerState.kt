@@ -9,22 +9,11 @@
 
 package me.him188.ani.app.videoplayer.ui
 
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-
-/**
- * 视频画面比例模式
- */
-@Stable
-enum class AspectRatioMode(val displayName: String) {
-    FIT("适应"),
-    STRETCH("拉伸"),
-    FILL("填充")
-}
+import org.openani.mediamp.features.AspectRatioMode
 
 /**
  * 画面比例控制器状态
@@ -39,11 +28,4 @@ class AspectRatioControllerState(
     fun setMode(mode: AspectRatioMode) {
         currentMode = mode
     }
-}
-
-@Composable
-fun rememberAspectRatioControllerState(
-    initialMode: AspectRatioMode = AspectRatioMode.FIT
-): AspectRatioControllerState {
-    return remember { AspectRatioControllerState(initialMode) }
 }

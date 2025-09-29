@@ -14,6 +14,8 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.compose.MediampPlayerSurface
+import org.openani.mediamp.features.AspectRatioMode
+import org.openani.mediamp.features.VideoAspectRatio
 
 /**
  * Displays a video player itself. There is no control bar or any other UI elements.
@@ -28,6 +30,8 @@ actual fun VideoPlayer(
     aspectRatioMode: AspectRatioMode,
 ) {
     key(aspectRatioMode) {
+        // 设置 mediamp 的 aspect ratio mode
+        player.features[VideoAspectRatio.Key]?.setMode(aspectRatioMode)
         MediampPlayerSurface(player, modifier)
     }
 }

@@ -19,13 +19,14 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView.ControllerVisibilityListener
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.exoplayer.ExoPlayerMediampPlayer
 import org.openani.mediamp.exoplayer.compose.ExoPlayerMediampPlayerSurface
+import org.openani.mediamp.features.AspectRatioMode
+import org.openani.mediamp.features.VideoAspectRatio
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
@@ -40,16 +41,13 @@ actual fun VideoPlayer(
         Box(modifier)
     } else {
         key(aspectRatioMode) {
+            // 设置 mediamp 的 aspect ratio mode
+            player.features[VideoAspectRatio.Key]?.setMode(aspectRatioMode)
+
             ExoPlayerMediampPlayerSurface(player as ExoPlayerMediampPlayer, modifier) {
                 controllerAutoShow = false
                 useController = false
                 controllerHideOnTouch = false
-
-                resizeMode = when (aspectRatioMode) {
-                    AspectRatioMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    AspectRatioMode.STRETCH -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                    AspectRatioMode.FILL -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                }
                 controllerAutoShow = false
                 useController = false
                 controllerHideOnTouch = false

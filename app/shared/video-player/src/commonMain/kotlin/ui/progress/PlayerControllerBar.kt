@@ -100,10 +100,10 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
 import me.him188.ani.app.videoplayer.ui.AspectRatioControllerState
-import me.him188.ani.app.videoplayer.ui.AspectRatioMode
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.top.needWorkaroundForFocusManager
+import org.openani.mediamp.features.AspectRatioMode
 import kotlin.math.roundToInt
 
 const val TAG_SELECT_EPISODE_ICON_BUTTON = "SelectEpisodeIconButton"
@@ -505,7 +505,7 @@ object PlayerControllerDefaults {
             value = aspectRatioControllerState.currentMode,
             onValueChange = { aspectRatioControllerState.setMode(it) },
             optionsProvider = { AspectRatioMode.entries },
-            renderValue = { Text(it.displayName) },
+            renderValue = { Text(it.name) },
             renderValueExposed = { Text("画面") },
             modifier,
             properties = PlatformPopupProperties(

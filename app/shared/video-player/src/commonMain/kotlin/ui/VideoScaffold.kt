@@ -81,7 +81,6 @@ fun VideoScaffold(
     maintainAspectRatio: Boolean = !expanded,
     controllerState: PlayerControllerState,
     gestureLocked: Boolean = false,
-    aspectRatioControllerState: AspectRatioControllerState? = null,
     topBar: @Composable RowScope.() -> Unit = {},
     /**
      * @see VideoPlayer
@@ -108,39 +107,21 @@ fun VideoScaffold(
         modifier.then(if (expanded) Modifier.fillMaxHeight() else Modifier.fillMaxWidth()),
         contentAlignment = Alignment.Center,
     ) { // 16:9 box
-        val currentMode = aspectRatioControllerState?.currentMode
         Box(
-            Modifier
-                .then(
-                    if (!maintainAspectRatio) {
-                        Modifier.fillMaxSize()
-                    } else {
-                        when (currentMode) {
-                            AspectRatioMode.FIT -> Modifier.fillMaxWidth().height(this@BoxWithConstraints.maxWidth * 9f / 16f)
-                            AspectRatioMode.STRETCH -> Modifier.fillMaxSize()
-                            AspectRatioMode.FILL -> Modifier.fillMaxSize()
-                            null -> Modifier.fillMaxWidth().height(this@BoxWithConstraints.maxWidth * 9f / 16f)
-                        }
-                    },
-                ),
+            Modifier.then(
+                if (!maintainAspectRatio) {
+                    Modifier.fillMaxSize()
+                } else {
+                    Modifier.fillMaxWidth().height(this@BoxWithConstraints.maxWidth * 9f / 16f)
+                },
+            ),
         ) {
             Box(
                 Modifier
                     .background(Color.Transparent)
                     .matchParentSize(), // no window insets for video
             ) {
-                Box(
-                    Modifier.then(
-                        when (currentMode) {
-                            AspectRatioMode.FIT -> Modifier.matchParentSize()
-                            AspectRatioMode.STRETCH -> Modifier.fillMaxSize()
-                            AspectRatioMode.FILL -> Modifier.fillMaxSize()
-                            null -> Modifier.matchParentSize()
-                        }
-                    )
-                ) {
-                    video()
-                }
+                video()
                 Box(Modifier.matchParentSize()) // 防止点击事件传播到 video 里
             }
 
@@ -345,7 +326,6 @@ fun VideoScaffold(
                     }
                 }
             }
-
 
             // 右侧 sheet
             Box(Modifier.matchParentSize().windowInsetsPadding(contentWindowInsets)) {
