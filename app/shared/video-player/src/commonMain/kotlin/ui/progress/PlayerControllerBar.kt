@@ -510,7 +510,7 @@ object PlayerControllerDefaults {
                     when (it) {
                         AspectRatioMode.FIT -> "适应"
                         AspectRatioMode.STRETCH -> "拉伸"
-                        AspectRatioMode.FILL -> "填充"
+                        AspectRatioMode.CROP -> "填充"
                     },
                 )
             },
