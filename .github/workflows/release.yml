@@ -64,7 +64,7 @@ jobs:
         echo "EOF" >> $GITHUB_OUTPUT
     - id: 'step-4'
       name: 'Create Release'
-      uses: 'softprops/action-gh-release@v1'
+      uses: 'softprops/action-gh-release@v2'
       with:
         body: '${{ steps.step-3.outputs.result }}'
         name: '${{ steps.step-2.outputs.substring }}'

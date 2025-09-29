@@ -33,7 +33,7 @@
 // Release
 @file:DependsOn("dawidd6:action-get-tag:v1")
 @file:DependsOn("bhowell2:github-substring-action:v1.0.0")
-@file:DependsOn("softprops:action-gh-release:v1")
+@file:DependsOn("softprops:action-gh-release:v2")
 @file:DependsOn("snow-actions:qrcode:v1.0.0")
 
 import Secrets.ANALYTICS_KEY
