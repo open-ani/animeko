@@ -22,7 +22,7 @@
 @file:DependsOn("actions:checkout:v5")
 @file:DependsOn("gmitch215:setup-java:6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d")
 @file:DependsOn("org.jetbrains:annotations:26.0.2-1")
-@file:DependsOn("actions:github-script:v7")
+@file:DependsOn("actions:github-script:v8")
 @file:DependsOn("gradle:actions__setup-gradle:v3")
 @file:DependsOn("timheuer:base64-to-file:v1.1")
 @file:DependsOn("actions:upload-artifact:v4")
