@@ -29,7 +29,7 @@ plugins {
     id("com.google.devtools.ksp") version libs.versions.ksp apply false
     id("androidx.room") version libs.versions.room apply false
     id("com.strumenta.antlr-kotlin") version libs.versions.antlr.kotlin apply false
-    id("de.mannodermaus.android-junit5") version "1.11.2.0" apply false
+    id("de.mannodermaus.android-junit5") version "1.13.4.0" apply false
     id("io.sentry.kotlin.multiplatform.gradle") version libs.versions.sentry.kmp apply false
     alias(libs.plugins.compose.hot.reload) apply false
     id("de.undercouch.download") version "5.6.0" apply false // HTTP download task

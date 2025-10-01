@@ -8,22 +8,22 @@ kotlinx-serialization = "1.8.1" # https://github.com/Kotlin/kotlinx.serializatio
 kotlinx-datetime = "0.6.2" # https://github.com/Kotlin/kotlinx-datetime/releases
 kotlinx-atomicfu = "0.27.0" # https://github.com/Kotlin/kotlinx-atomicfu/releases
 kotlinx-io = "0.7.0" # https://github.com/Kotlin/kotlinx-io/releases
-kotlinx-collections-immutable = "0.3.8" # https://github.com/Kotlin/kotlinx.collections.immutable/releases
+kotlinx-collections-immutable = "0.4.0" # https://github.com/Kotlin/kotlinx.collections.immutable/releases
 
 ### ANDROIDX ###
 androidx-annotation = "1.9.1"
-androidx-media3 = "1.6.1" # https://developer.android.com/jetpack/androidx/releases/media3
-androidx-lifecycle = "2.8.7" # https://developer.android.com/jetpack/androidx/releases/lifecycle
+androidx-media3 = "1.8.0" # https://developer.android.com/jetpack/androidx/releases/media3
+androidx-lifecycle = "2.9.4" # https://developer.android.com/jetpack/androidx/releases/lifecycle
 paging = "3.3.6" # https://developer.android.com/jetpack/androidx/releases/paging
 datastore = "1.1.3" # https://developer.android.com/jetpack/androidx/releases/datastore
 ksp = "2.1.21-2.0.1" # https://github.com/google/ksp/releases
 # note: room 2.7.0-rc01 cannot compile
 room = "2.7.1" # https://developer.android.com/jetpack/androidx/releases/room#declaring_dependencies
-sentry-kotlin-multiplatform = "0.11.0"
+sentry-kotlin-multiplatform = "0.19.0"
 sqlite = "2.5.0"
 androidx-activity = "1.10.1"
 androidx-core = "1.15.0"
-androidx-window = { strictly = "1.4.0-beta02" }
+androidx-window = { strictly = "1.5.0" }
 
 ### COMPOSE ###
 # How to upgrade them? Check compose multiplatform release notes and find the corresponding versions for each library.
@@ -33,52 +33,52 @@ compose-multiplatform = "1.8.0"
 compose-hot-reload = "1.0.0-alpha05" # https://github.com/JetBrains/compose-hot-reload/releases
 
 # JetBrains compose libraries. Follow the release notes for main Compose Multiplatform for versoins.
-compose-lifecycle = "2.9.0-beta01"
-compose-navigation = "2.9.0-beta01"
-compose-material3-adaptive = "1.1.0"
+compose-lifecycle = "2.9.4"
+compose-navigation = "2.9.0"
+compose-material3-adaptive = "1.1.2"
 
 # Jetpack Compose libraries. Use the exact version mentioned from Compose Multiplatfrom release notes.
 # https://developer.android.com/jetpack/androidx/releases/compose-material3
-compose-material3 = "1.4.0-alpha07"
-jetpack-compose = "1.8.0"
+compose-material3 = "1.4.0"
+jetpack-compose = "1.9.2"
 androidx-compose-material3-adaptive = "1.1.0"
 
 ### OTHERS ###
 
-bytebuddy = "1.17.4" # https://github.com/raphw/byte-buddy/releases
+bytebuddy = "1.17.7" # https://github.com/raphw/byte-buddy/releases
 jna = "5.13.0" # 不要轻易改这个版本, 它可能导致 VLC 兼容性问题
 jsonpathkt-kotlinx = "3.0.2"
 ksoup = "0.2.2"
 filekit = "0.10.0-beta04" # https://github.com/vinceglb/FileKit/releases
-kotlinpoet = "1.18.1" # https://github.com/square/kotlinpoet/releases
-log4j-core = "2.20.0"
-korlibs = "6.0.0"
+kotlinpoet = "2.2.0" # https://github.com/square/kotlinpoet/releases
+log4j-core = "2.25.2"
+korlibs = "6.0.1"
 ktor = "3.1.1" # https://github.com/ktorio/ktor/releases
-koin = "3.5.6" # https://github.com/InsertKoinIO/koin/releases
-slf4j = "2.0.16"
-jsoup = "1.18.1" # https://github.com/jhy/jsoup/releases
-snakeyaml = "2.2"
+koin = "4.1.1" # https://github.com/InsertKoinIO/koin/releases
+slf4j = "2.0.17"
+jsoup = "1.21.2" # https://github.com/jhy/jsoup/releases
+snakeyaml = "2.5"
 coil = "3.1.0" # https://github.com/coil-kt/coil/releases
 constraintlayout-compose = "0.4.0"
-antlr-kotlin = "1.0.2"
+antlr-kotlin = "1.0.5"
 diamondedge-logging = "2.0.3" # Only for native. On JVM we use slf4j directly.
 ipaddress-parser = "5.5.1"
-turbine = "1.2.0" # https://github.com/cashapp/turbine/releases/
+turbine = "1.2.1" # https://github.com/cashapp/turbine/releases/
 junit4 = "4.13.2"
-junit5 = "5.11.4"
-mannodermaus-junit5 = "1.6.0" # https://github.com/mannodermaus/android-junit5
-stately-common = "2.0.7"
+junit5 = "5.13.4"
+mannodermaus-junit5 = "1.8.0" # https://github.com/mannodermaus/android-junit5
+stately-common = "2.1.0"
 vlcj = "4.8.2"
 jsystemthemedetector = "3.8"
-materialkolor = "2.0.2"
-mockito = "5.12.0"
-mockito-kotlin = "5.4.0"
+materialkolor = "2.1.1"
+mockito = "5.20.0"
+mockito-kotlin = "6.0.0"
 sentry-kmp = "0.12.0" # used in plugins, don't remove # https://mvnrepository.com/artifact/io.sentry/sentry-kotlin-multiplatform-gradle-plugin
-sentry-compose-android = "8.3.0" # https://docs.sentry.io/platforms/android/integrations/jetpack-compose/
+sentry-compose-android = "8.22.0" # https://docs.sentry.io/platforms/android/integrations/jetpack-compose/
 #gitlive-firebase = "2.1.0"
-posthog-android = "3.11.3"
+posthog-android = "3.22.0"
 posthog-java = "1.2.0"
-openapi-generator = "7.13.0"
+openapi-generator = "7.16.0"
 
 [plugins]
 compose-hot-reload = { id = "org.jetbrains.compose.hot-reload", version.ref = "compose-hot-reload" }
@@ -206,18 +206,18 @@ androidx-window-core = { module = "androidx.window:window-core", version.ref = "
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
 androidx-activity-ktx = { module = "androidx.activity:activity-ktx", version.ref = "androidx-activity" }
-androidx-appcompat = { module = "androidx.appcompat:appcompat", version = "1.7.0" }
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version = "1.7.1" }
 androidx-material = { module = "com.google.android.material:material", version = "1.12.0" }
 #androidx-material3-window-size-class0 = { module = "androidx.compose.material3:material3-window-size-class", version = "1.2.1" }
 androidx-browser = { module = "androidx.browser:browser", version = "1.8.0" }
-androidx-media = { module = "androidx.media:media", version = "1.7.0" }
+androidx-media = { module = "androidx.media:media", version = "1.7.1" }
 androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-service = { module = "androidx.lifecycle:lifecycle-service", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-runtime-testing = { module = "androidx.lifecycle:lifecycle-runtime-testing", version.ref = "androidx-lifecycle" }
-androidx-collection = { module = "androidx.collection:collection", version = "1.4.5" }
+androidx-collection = { module = "androidx.collection:collection", version = "1.5.0" }
 # Used dynamically, don't remove.
-androidx-test-runner = { module = "androidx.test:runner", version = "1.5.0" }
+androidx-test-runner = { module = "androidx.test:runner", version = "1.7.0" }
 
 # Android unit test
 mockito = { module = "org.mockito:mockito-core", version.ref = "mockito" }
@@ -234,7 +234,7 @@ androidx-media3-exoplayer-hls = { module = "androidx.media3:media3-exoplayer-hls
 
 kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
 korlibs-crypto = { module = "com.soywiz:korlibs-crypto", version.ref = "korlibs" }
-jetbrains-annotations = { module = "org.jetbrains:annotations", version = "23.0.0" }
+jetbrains-annotations = { module = "org.jetbrains:annotations", version = "26.0.2-1" }
 directories = { module = "dev.dirs:directories", version = "26" }
 snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
 antlr-kotlin-runtime = { module = "com.strumenta:antlr-kotlin-runtime", version.ref = "antlr-kotlin" }

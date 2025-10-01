@@ -15,14 +15,14 @@
 @file:Suppress("UNSUPPORTED_FEATURE", "UNSUPPORTED")
 
 @file:Repository("https://repo.maven.apache.org/maven2/")
-@file:DependsOn("io.github.typesafegithub:github-workflows-kt:3.0.1")
+@file:DependsOn("io.github.typesafegithub:github-workflows-kt:3.5.0")
 @file:Repository("https://bindings.krzeminski.it")
 
 // Build
-@file:DependsOn("actions:checkout:v4")
+@file:DependsOn("actions:checkout:v5")
 @file:DependsOn("gmitch215:setup-java:6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d")
-@file:DependsOn("org.jetbrains:annotations:23.0.0")
-@file:DependsOn("actions:github-script:v7")
+@file:DependsOn("org.jetbrains:annotations:26.0.2-1")
+@file:DependsOn("actions:github-script:v8")
 @file:DependsOn("gradle:actions__setup-gradle:v3")
 @file:DependsOn("timheuer:base64-to-file:v1.1")
 @file:DependsOn("actions:upload-artifact:v4")
@@ -33,7 +33,7 @@
 // Release
 @file:DependsOn("dawidd6:action-get-tag:v1")
 @file:DependsOn("bhowell2:github-substring-action:v1.0.0")
-@file:DependsOn("softprops:action-gh-release:v1")
+@file:DependsOn("softprops:action-gh-release:v2")
 @file:DependsOn("snow-actions:qrcode:v1.0.0")
 
 import Secrets.ANALYTICS_KEY

@@ -33,6 +33,7 @@
             android:supportsRtl="true"
             android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
             android:usesCleartextTraffic="true"
+            android:enableOnBackInvokedCallback="true"
             android:largeHeap="true">
 
         <activity

@@ -17,7 +17,7 @@ jobs:
     permissions: {}
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
     - id: 'step-1'
       run: 'pip3 install PyYAML'
     - id: 'step-2'
@@ -34,12 +34,12 @@ jobs:
       id: '${{ steps.step-4.outputs.id }}'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
     - id: 'step-1'
       name: 'Get Tag'
       uses: 'dawidd6/action-get-tag@v1'
     - id: 'step-2'
-      uses: 'bhowell2/github-substring-action@v1.0.0'
+      uses: 'bhowell2/github-substring-action@1.0.2'
       with:
         value: '${{ steps.step-1.outputs.tag }}'
         index_of_str: 'v'
@@ -64,7 +64,7 @@ jobs:
         echo "EOF" >> $GITHUB_OUTPUT
     - id: 'step-4'
       name: 'Create Release'
-      uses: 'softprops/action-gh-release@v1'
+      uses: 'softprops/action-gh-release@v2'
       with:
         body: '${{ steps.step-3.outputs.result }}'
         name: '${{ steps.step-2.outputs.substring }}'
@@ -81,14 +81,14 @@ jobs:
     - 'create-release'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
       with:
         submodules: 'recursive'
     - id: 'step-1'
       name: 'Get Tag'
       uses: 'dawidd6/action-get-tag@v1'
     - id: 'step-2'
-      uses: 'bhowell2/github-substring-action@v1.0.0'
+      uses: 'bhowell2/github-substring-action@1.0.2'
       with:
         value: '${{ steps.step-1.outputs.tag }}'
         index_of_str: 'v'
@@ -235,14 +235,14 @@ jobs:
     if: '${{ github.repository == ''open-ani/animeko'' }}'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
       with:
         submodules: 'recursive'
     - id: 'step-1'
       name: 'Get Tag'
       uses: 'dawidd6/action-get-tag@v1'
     - id: 'step-2'
-      uses: 'bhowell2/github-substring-action@v1.0.0'
+      uses: 'bhowell2/github-substring-action@1.0.2'
       with:
         value: '${{ steps.step-1.outputs.tag }}'
         index_of_str: 'v'
@@ -541,14 +541,14 @@ jobs:
     - 'create-release'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
       with:
         submodules: 'recursive'
     - id: 'step-1'
       name: 'Get Tag'
       uses: 'dawidd6/action-get-tag@v1'
     - id: 'step-2'
-      uses: 'bhowell2/github-substring-action@v1.0.0'
+      uses: 'bhowell2/github-substring-action@1.0.2'
       with:
         value: '${{ steps.step-1.outputs.tag }}'
         index_of_str: 'v'
@@ -753,14 +753,14 @@ jobs:
     - 'create-release'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
       with:
         submodules: 'recursive'
     - id: 'step-1'
       name: 'Get Tag'
       uses: 'dawidd6/action-get-tag@v1'
     - id: 'step-2'
-      uses: 'bhowell2/github-substring-action@v1.0.0'
+      uses: 'bhowell2/github-substring-action@1.0.2'
       with:
         value: '${{ steps.step-1.outputs.tag }}'
         index_of_str: 'v'
@@ -965,14 +965,14 @@ jobs:
     - 'create-release'
     steps:
     - id: 'step-0'
-      uses: 'actions/checkout@v4'
+      uses: 'actions/checkout@v5'
       with:
         submodules: 'recursive'
     - id: 'step-1'
       name: 'Get Tag'
       uses: 'dawidd6/action-get-tag@v1'
     - id: 'step-2'
-      uses: 'bhowell2/github-substring-action@v1.0.0'
+      uses: 'bhowell2/github-substring-action@1.0.2'
       with:
         value: '${{ steps.step-1.outputs.tag }}'
         index_of_str: 'v'
@@ -1369,13 +1369,13 @@ jobs:
       if: '${{ steps.step-49.outcome == ''failure'' }}'
     - id: 'step-51'
       name: 'Generate QR code for APK (GitHub)'
-      uses: 'snow-actions/qrcode@v1.0.0'
+      uses: 'snow-actions/qrcode@v1.2.0'
       with:
         text: 'https://github.com/open-ani/animeko/releases/download/${{ steps.step-1.outputs.tag }}/ani-${{ steps.step-2.outputs.substring }}-universal.apk'
         path: 'apk-qrcode-github.png'
     - id: 'step-52'
       name: 'Generate QR code for APK (Cloudflare)'
-      uses: 'snow-actions/qrcode@v1.0.0'
+      uses: 'snow-actions/qrcode@v1.2.0'
       with:
         text: 'https://d.myani.org/${{ steps.step-1.outputs.tag }}/ani-${{ steps.step-2.outputs.substring }}-universal.apk'
         path: 'apk-qrcode-cloudflare.png'
@@ -1414,13 +1414,13 @@ jobs:
       if: '${{ steps.step-53.outcome == ''failure'' }}'
     - id: 'step-55'
       name: 'Generate QR code for iOS (GitHub)'
-      uses: 'snow-actions/qrcode@v1.0.0'
+      uses: 'snow-actions/qrcode@v1.2.0'
       with:
         text: 'https://github.com/open-ani/animeko/releases/download/${{ steps.step-1.outputs.tag }}/ani-${{ steps.step-2.outputs.substring }}.ipa'
         path: 'ipa-qrcode-github.png'
     - id: 'step-56'
       name: 'Generate QR code for iOS (Cloudflare)'
-      uses: 'snow-actions/qrcode@v1.0.0'
+      uses: 'snow-actions/qrcode@v1.2.0'
       with:
         text: 'https://d.myani.org/${{ steps.step-1.outputs.tag }}/ani-${{ steps.step-2.outputs.substring }}.ipa'
         path: 'ipa-qrcode-cloudflare.png'
