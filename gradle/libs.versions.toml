@@ -15,7 +15,7 @@ androidx-annotation = "1.9.1"
 androidx-media3 = "1.8.0" # https://developer.android.com/jetpack/androidx/releases/media3
 androidx-lifecycle = "2.9.4" # https://developer.android.com/jetpack/androidx/releases/lifecycle
 paging = "3.3.6" # https://developer.android.com/jetpack/androidx/releases/paging
-datastore = "1.1.7" # https://developer.android.com/jetpack/androidx/releases/datastore
+datastore = "1.1.3" # https://developer.android.com/jetpack/androidx/releases/datastore
 ksp = "2.1.21-2.0.1" # https://github.com/google/ksp/releases
 # note: room 2.7.0-rc01 cannot compile
 room = "2.7.1" # https://developer.android.com/jetpack/androidx/releases/room#declaring_dependencies
@@ -46,7 +46,7 @@ androidx-compose-material3-adaptive = "1.1.0"
 ### OTHERS ###
 
 bytebuddy = "1.17.7" # https://github.com/raphw/byte-buddy/releases
-jna = "5.18.0" # 不要轻易改这个版本, 它可能导致 VLC 兼容性问题
+jna = "5.13.0" # 不要轻易改这个版本, 它可能导致 VLC 兼容性问题
 jsonpathkt-kotlinx = "3.0.2"
 ksoup = "0.2.2"
 filekit = "0.10.0-beta04" # https://github.com/vinceglb/FileKit/releases
