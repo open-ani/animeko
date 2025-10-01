@@ -371,9 +371,19 @@
     <string name="exploration_title">探索</string>
     <string name="exploration_settings">設定</string>
     <string name="exploration_search">搜尋</string>
+    <string name="exploration_search_keyword">关键词</string>
+    <string name="exploration_search_back_to_top">返回頂部</string>
+    <string name="exploration_search_nsfw_hint">此內容不適合展示</string>
+    <string name="exploration_search_nsfw_show">顯示</string>
+    <string name="exploration_search_res_empty">沒有找到相關結果</string>
+    <string name="exploration_search_res_cnt">找到 %1$d 個結果</string>
+    <string name="exploration_search_res_match">最佳匹配</string>
+    <string name="exploration_search_res_collection">最多收藏</string>
+    <string name="exploration_search_res_rank">最高評分</string>
     <string name="exploration_trending">最高熱度</string>
     <string name="exploration_schedule">新番時間表</string>
     <string name="exploration_continue_watching">繼續觀看</string>
+    <string name="exploration_continue_watching_hint">將番劇收藏為 "在看" 後將在這裡顯示</string>
     <string name="exploration_recommendations">推薦</string>
     <string name="exploration_horizontal_scroll_tip">按住 Shift + 滑鼠滾輪 同樣可以水平滾動</string>
 
@@ -399,6 +409,8 @@
 
     <!-- ServerSelectionGroup -->
     <string name="settings_network_danmaku">伺服器區域</string>
+    <string name="settings_network_danmaku_auto">自動</string>
+    <string name="settings_network_danmaku_auto_hint">自動選擇: %1$s</string>
     <string name="settings_network_danmaku_global_acceleration">全球加速</string>
     <string name="settings_network_danmaku_global_acceleration_description">提升存取全球伺服器的速度\n在中國大陸內啟用會減速</string>
     <string name="settings_network_danmaku_connection_test">連線速度測試</string>
@@ -429,9 +441,11 @@
     <string name="settings_network_proxy_title">全域代理設定</string>
     <string name="settings_network_proxy_description">應用於所有資料源以及 Bangumi</string>
     <string name="settings_network_proxy_type">代理類型</string>
+    <string name="settings_network_proxy_mode_via">正在透過 %1$s</string>
     <string name="settings_network_proxy_disabled">停用</string>
+    <string name="settings_network_proxy_disabled_hint">目前未使用代理</string>
     <string name="settings_network_proxy_system">系統代理</string>
-    <string name="settings_network_proxy_custom">自訂</string>
+    <string name="settings_network_proxy_custom">自訂代理</string>
     <string name="settings_network_proxy_detection_result">自動偵測結果</string>
     <string name="settings_network_proxy_detecting">正在偵測</string>
     <string name="settings_network_proxy_not_detected">未偵測到系統代理</string>
@@ -441,6 +455,18 @@
     <string name="settings_network_proxy_optional">可選</string>
     <string name="settings_network_proxy_none">無</string>
     <string name="settings_network_proxy_password">密碼</string>
+    <string name="settings_network_proxy_state_init">正在偵測連接，請稍後…</string>
+    <string name="settings_network_proxy_state_running">正在偵測連接，請稍後…</string>
+    <string name="settings_network_proxy_state_fail_np">部分服務連接失敗，請考慮啟用代理</string>
+    <string name="settings_network_proxy_state_fail_p">部分服務連接失敗，請更換代理模式或代理地址</string>
+    <string name="settings_network_proxy_state_success">所有服務連接正常</string>
+    <string name="settings_network_proxy_retry">重新測試</string>
+    <string name="settings_network_proxy_save_and_test">保存並測試</string>
+    <string name="settings_network_proxy_service_danmaku">彈幕服務</string>
+    <string name="settings_network_proxy_service_collection">收藏數據服務</string>
+    <string name="settings_network_proxy_service_comments">評論服務</string>
+    <string name="settings_network_proxy_service_connected_via">使用 %1$s 連接成功</string>
+    <string name="settings_network_proxy_service_failed_via">使用 %1$s 連接失敗</string>
 
     <!-- TorrentEngineGroup -->
     <string name="settings_media_torrent_title">BT 設置</string>
@@ -459,7 +485,7 @@
 
     <!-- AutoCacheGroup -->
     <string name="settings_media_auto_cache_title">自動快取</string>
-    <string name="settings_media_auto_cache_description">自動快取 \"在看\" 分類中未觀看的劇集</string>
+    <string name="settings_media_auto_cache_description">自動快取 "在看" 分類中未觀看的劇集</string>
     <string name="settings_media_auto_cache_enable">啟用自動快取</string>
     <string name="settings_media_auto_cache_max_count">最大自動快取話數</string>
     <string name="settings_media_auto_cache_max_count_description">若手動快取數量超過該設定值，將不會自動快取</string>
@@ -467,7 +493,22 @@
     <string name="settings_media_auto_cache_recent_only">僅快取最近看過的番劇</string>
     <string name="settings_media_auto_cache_count">快取數量</string>
     <string name="settings_media_auto_cache_count_description">目前設定: 僅快取最近看過的 %d 部番劇</string>
-    <string name="settings_media_auto_cache_manage">管理已快取的劇集</string><string name="settings_debug_logout">登出</string><string name="settings_debug_logged_out">已登出</string><string name="settings_tab_account">賬戶</string>
+    <string name="settings_media_auto_cache_manage">管理已快取的劇集</string>
+    <string name="settings_tab_account">賬戶</string>
+
+    <!-- AccountGroup -->
+    <string name="account_login">登入</string>
+    <string name="account_not_logged_in">未登入</string>
+    <string name="account_logout">登出</string>
+    <string name="account_logout_hint">確定要登出嗎？</string>
+    <string name="account_logged_out">已登出</string>
+    <string name="account_login_or_register">登入 / 註冊</string>
+    <string name="account_edit_profile">編輯個人資料</string>
+    <string name="account_edit_avatar">更換頭像</string>
+
+    <!-- CommonUIGroup -->
+    <string name="ui_btn_cancel">取消</string>
+    <string name="ui_btn_edit">編輯</string>
 </resources>
 
 <!--@formatter:on-->

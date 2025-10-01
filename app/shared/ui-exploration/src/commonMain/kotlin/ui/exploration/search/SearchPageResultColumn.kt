@@ -63,7 +63,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
-import androidx.paging.compose.itemKey
 import kotlinx.coroutines.flow.collectLatest
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.domain.search.SearchSort
@@ -81,6 +80,12 @@ import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.widgets.NsfwMask
 import me.him188.ani.app.ui.foundation.widgets.SelectableDropdownMenuItem
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.exploration_search_res_cnt
+import me.him188.ani.app.ui.lang.exploration_search_res_collection
+import me.him188.ani.app.ui.lang.exploration_search_res_empty
+import me.him188.ani.app.ui.lang.exploration_search_res_match
+import me.him188.ani.app.ui.lang.exploration_search_res_rank
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.SearchDefaults.IconTextButton
 import me.him188.ani.app.ui.search.SearchResultLazyVerticalGrid
@@ -89,6 +94,7 @@ import me.him188.ani.app.ui.search.isFinishedAndEmpty
 import me.him188.ani.app.ui.subject.SubjectCoverCard
 import me.him188.ani.app.ui.subject.SubjectGridDefaults
 import me.him188.ani.app.ui.subject.SubjectGridLayoutParams
+import org.jetbrains.compose.resources.stringResource
 
 
 @Composable
@@ -342,7 +348,7 @@ private fun LazyGridItemScope.SearchResultColumnScopeImpl(
         when {
             itemsState.value.isFinishedAndEmpty -> {
                 ListItem(
-                    headlineContent = { Text("无搜索结果") },
+                    headlineContent = { Text(stringResource(Lang.exploration_search_res_empty)) },
                     modifier = modifier1,
                     colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
                 )
@@ -355,7 +361,10 @@ private fun LazyGridItemScope.SearchResultColumnScopeImpl(
                         verticalArrangement = Arrangement.aligned(Alignment.CenterVertically),
                         itemVerticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("已显示 ${itemsState.value.itemCount} 个结果", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            stringResource(Lang.exploration_search_res_cnt, itemsState.value.itemCount),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
                         Row(
                             Modifier.weight(1f).align(Alignment.Bottom),
                             verticalAlignment = Alignment.CenterVertically,
@@ -459,8 +468,9 @@ private fun SortButton(
     }
 }
 
+@Composable
 private fun getSortText(currentSort: SearchSort): String = when (currentSort) {
-    SearchSort.MATCH -> "最佳匹配"
-    SearchSort.COLLECTION -> "最多收藏"
-    SearchSort.RANK -> "最高排名"
+    SearchSort.MATCH -> stringResource(Lang.exploration_search_res_match)
+    SearchSort.COLLECTION -> stringResource(Lang.exploration_search_res_collection)
+    SearchSort.RANK -> stringResource(Lang.exploration_search_res_rank)
 }

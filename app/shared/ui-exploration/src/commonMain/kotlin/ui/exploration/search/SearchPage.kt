@@ -58,8 +58,13 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.exploration_search
+import me.him188.ani.app.ui.lang.exploration_search_back_to_top
+import me.him188.ani.app.ui.lang.exploration_search_keyword
 import me.him188.ani.app.ui.search.collectHasQueryAsState
 import me.him188.ani.utils.platform.isDesktop
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SearchPage(
@@ -91,7 +96,7 @@ fun SearchPage(
             SuggestionSearchBar(
                 state.suggestionSearchBarState,
                 Modifier.padding(bottom = 16.dp),
-                placeholder = { Text("关键词") },
+                placeholder = { Text(stringResource(Lang.exploration_search_keyword)) },
                 windowInsets = contentWindowInsets.only(WindowInsetsSides.Horizontal),
             )
         },
@@ -194,7 +199,7 @@ fun SearchPage(
                         }
                     },
                 ) {
-                    Icon(Icons.Rounded.KeyboardArrowUp, "回到顶部")
+                    Icon(Icons.Rounded.KeyboardArrowUp, stringResource(Lang.exploration_search_back_to_top))
                 }
             }
         },
@@ -246,7 +251,7 @@ internal fun SearchPageListDetailScaffold(
         navigator,
         listPaneTopAppBar = {
             AniTopAppBar(
-                title = { Text("搜索") },
+                title = { Text(stringResource(Lang.exploration_search)) },
                 Modifier.fillMaxWidth(),
                 navigationIcon = {
                     if (navigator.canNavigateBack()) {

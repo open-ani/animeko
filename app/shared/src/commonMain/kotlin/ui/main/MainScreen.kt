@@ -97,6 +97,7 @@ import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.utils.platform.isAndroid
 import org.koin.mp.KoinPlatform
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings
 import me.him188.ani.app.ui.lang.settings_update_version_expired_title
 import me.him188.ani.app.ui.lang.settings_update_version_expired_message
 import me.him188.ani.app.ui.lang.settings_update_version_expired_message_with_latest
@@ -195,7 +196,7 @@ private fun MainScreenContent(
                         onClick = { onNavigateToSettings(null) },
                         icon = { Icon(Icons.Rounded.Settings, null) },
                         enabled = true,
-                        label = { Text("设置") },
+                        label = { Text(stringResource(Lang.settings)) },
                         alwaysShowLabel = true,
                         colors = itemColors,
                     )
