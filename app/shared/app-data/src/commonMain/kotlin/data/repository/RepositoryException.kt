@@ -16,6 +16,7 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.io.IOException
 import me.him188.ani.app.data.repository.RepositoryException.Companion.wrapOrThrowCancellation
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.jvm.JvmName
 
 /**
  * 数据层抛出的异常.
@@ -91,6 +92,15 @@ class RepositoryServiceUnavailableException(message: String? = null, cause: Thro
 class RepositoryRateLimitedException(message: String? = null, cause: Throwable? = null) :
     RepositoryException(message, cause)
 
+/**
+ * 每个请求的专属错误, 例如邮箱格式不正确.
+ */
+class RepositoryRequestError(
+    @get:JvmName("getLocalizedMessage0") val localizedMessage: String,
+    message: String? = null,
+    cause: Throwable? = null,
+) : RepositoryException(message, cause)
+
 class RepositoryUnknownException(throwable: Throwable) : RepositoryException(null, cause = throwable)
 
 val PagingSource.LoadResult.Error<*, *>.repositoryException: RepositoryException?
@@ -103,6 +113,7 @@ fun RepositoryException.shouldRetry() = when (this) {
     is RepositoryRateLimitedException -> false
     is RepositoryServiceUnavailableException -> false
     is RepositoryUnknownException -> false
+    is RepositoryRequestError -> false
 }
 
 fun RepositoryException.Companion.shouldRetry(throwable: Throwable): Boolean {

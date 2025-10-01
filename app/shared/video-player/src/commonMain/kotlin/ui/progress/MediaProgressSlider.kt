@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.domain.media.player.ChunkState
@@ -160,15 +161,16 @@ private class Data(
 @Composable
 fun rememberMediaProgressSliderState(
     player: MediampPlayer,
+    chaptersFlow: Flow<List<Chapter>> = player.chapters ?: flowOf(emptyList()),
     onPreview: (positionMillis: Long) -> Unit,
     onPreviewFinished: (positionMillis: Long) -> Unit,
 ): PlayerProgressSliderState { // TODO: 2025/1/3  refactor rememberMediaProgressSliderState
 
-    val flow = remember(player) {
+    val flow = remember(player, chaptersFlow) {
         combine(
             player.currentPositionMillis,
             player.mediaProperties,
-            player.chapters ?: flowOf(emptyList()),
+            chaptersFlow,
             ::Data,
         ) // TODO: this should be in domain layer
     }

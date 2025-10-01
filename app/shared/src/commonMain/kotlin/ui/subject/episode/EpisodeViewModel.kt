@@ -17,14 +17,44 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.paging.cachedIn
 import androidx.paging.map
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.nameCnOrName
+import me.him188.ani.app.data.network.AutoSkipRepository
 import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
@@ -34,8 +64,18 @@ import me.him188.ani.app.domain.comment.PostCommentUseCase
 import me.him188.ani.app.domain.comment.TurnstileState
 import me.him188.ani.app.domain.danmaku.DanmakuManager
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
-import me.him188.ani.app.domain.episode.*
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
+import me.him188.ani.app.domain.episode.EpisodeDanmakuLoader
+import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
+import me.him188.ani.app.domain.episode.EpisodeSession
+import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
+import me.him188.ani.app.domain.episode.SubjectEpisodeInfoBundle
+import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
+import me.him188.ani.app.domain.episode.episodeIdFlow
+import me.him188.ani.app.domain.episode.getCurrentEpisodeId
+import me.him188.ani.app.domain.episode.infoBundleFlow
+import me.him188.ani.app.domain.episode.infoLoadErrorFlow
+import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
@@ -44,12 +84,23 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceResultsFilterer
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseCase
 import me.him188.ani.app.domain.player.CacheProgressProvider
-import me.him188.ani.app.domain.player.extension.*
+import me.him188.ani.app.domain.player.extension.AnalyticsExtension
+import me.him188.ani.app.domain.player.extension.AutoSelectExtension
+import me.him188.ani.app.domain.player.extension.CacheOnBtPlayExtension
+import me.him188.ani.app.domain.player.extension.MarkAsWatchedExtension
+import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
+import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
+import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
+import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsUseCase
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.platform.Context
-import me.him188.ani.app.ui.comment.*
+import me.him188.ani.app.ui.comment.BangumiCommentSticker
+import me.him188.ani.app.ui.comment.CommentEditorState
+import me.him188.ani.app.ui.comment.CommentMapperContext
 import me.him188.ani.app.ui.comment.CommentMapperContext.parseToUIComment
+import me.him188.ani.app.ui.comment.CommentState
+import me.him188.ani.app.ui.comment.EditCommentSticker
 import me.him188.ani.app.ui.danmaku.UIDanmakuEvent
 import me.him188.ani.app.ui.episode.PlayingEpisodeSummary
 import me.him188.ani.app.ui.episode.danmaku.MatchingDanmakuPresenter
@@ -59,7 +110,12 @@ import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.foundation.stateOf
-import me.him188.ani.app.ui.mediafetch.*
+import me.him188.ani.app.ui.mediafetch.MediaSelectorState
+import me.him188.ani.app.ui.mediafetch.MediaSourceInfoProvider
+import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresentation
+import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresenter
+import me.him188.ani.app.ui.mediafetch.ViewKind
+import me.him188.ani.app.ui.mediafetch.createTestMediaSelectorState
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummary
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryStateProducer
 import me.him188.ani.app.ui.mediaselect.summary.selectedMaybeExcludedMediaFlow
@@ -105,10 +161,13 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import org.openani.mediamp.InternalMediampApi
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.features.chapters
+import org.openani.mediamp.metadata.Chapter
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -187,6 +246,7 @@ class EpisodeViewModel(
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory by inject()
     private val setDanmakuEnabledUseCase: SetDanmakuEnabledUseCase by inject()
     private val postCommentUseCase: PostCommentUseCase by inject()
+    private val autoSkipRepository: AutoSkipRepository by inject()
     private val getMediaSelectorSettings: GetMediaSelectorSettingsUseCase by inject()
     private val getMediaSourceInstances: GetMediaSourceInstancesUseCase by inject()
     val turnstileState: TurnstileState by inject()
@@ -534,8 +594,45 @@ class EpisodeViewModel(
         backgroundScope = backgroundScope,
     )
 
+    // Combine original chapters with AutoSkip rules fetched from server
+    @OptIn(UnsafeEpisodeSessionApi::class, InternalMediampApi::class)
+    private val autoSkipChaptersFlow: Flow<List<Chapter>> =
+        fetchPlayState.episodeSessionFlow.flatMapLatest { session ->
+            autoSkipRepository.rulesFlow(session.episodeId)
+        }.combine(
+            player.mediaProperties.mapNotNull { it?.durationMillis?.milliseconds },
+        ) { times, videoLength ->
+            val durationMillis = when {
+                videoLength > 20.minutes -> 85_000L
+                videoLength > 10.minutes -> 55_000L
+                else -> 0L
+            }
+            if (durationMillis == 0L) {
+                emptyList()
+            } else {
+                times.map { t ->
+                    Chapter(
+                        "AutoSkip",
+                        durationMillis,
+                        t.toLong() * 1000L,
+                    )
+                }
+            }
+        }
+
+    private val enableAutoSkip = false
+
+    private val combinedChaptersFlow: Flow<List<Chapter>> =
+        combine(
+            (player.chapters ?: flowOf(emptyList())),
+            if (enableAutoSkip) autoSkipChaptersFlow else emptyFlow(),
+        ) { a, b -> if (b.isEmpty()) a else (a + b) }
+
+    // Chapters to be displayed on progress slider (merged with AutoSkip rules)
+    val progressChaptersFlow: Flow<List<Chapter>> = combinedChaptersFlow
+
     val playerSkipOpEdState: PlayerSkipOpEdState = PlayerSkipOpEdState(
-        chapters = (player.chapters ?: flowOf(emptyList())).produceState(emptyList()),
+        chapters = combinedChaptersFlow.produceState(emptyList()),
         onSkip = {
             player.seekTo(it)
         },
@@ -740,6 +837,34 @@ class EpisodeViewModel(
                 .filterNotNull()
                 .firstOrNull()
                 ?.restartAll()
+        }
+    }
+
+    /**
+     * UI handler for the "skip 85 seconds" button.
+     * Reports the action to server with throttling and then performs the seek.
+     */
+    @OptIn(UnsafeEpisodeSessionApi::class)
+    fun onClickSkip85(currentPositionMillis: Long) {
+        // Seek immediately for UX
+        player.skip(85_000L)
+        // Report in background
+        launchInBackground {
+            logger.info { "Reporting skip 85 at ${currentPositionMillis / 1000}s" }
+            val episodeId = fetchPlayState.getCurrentEpisodeId()
+            val selected = fetchPlayState.episodeSessionFlow.firstOrNull()
+                ?.fetchSelectFlow
+                ?.firstOrNull()
+                ?.mediaSelector
+                ?.selected
+                ?.firstOrNull()
+            val mediaSourceId = selected?.mediaSourceId ?: return@launchInBackground
+            val timeSeconds = (currentPositionMillis / 1000).toInt()
+            if (timeSeconds < 0 || timeSeconds > 200 * 60) {
+                logger.warn { "Refusing to report skip 85 at invalid time ${timeSeconds}s" }
+                return@launchInBackground
+            }
+            autoSkipRepository.reportSkip(episodeId, mediaSourceId, timeSeconds)
         }
     }
 

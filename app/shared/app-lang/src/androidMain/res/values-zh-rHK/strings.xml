@@ -27,7 +27,8 @@
     <string name="settings_tab_proxy">代理</string>
     <string name="settings_tab_bt">BitTorrent</string>
     <string name="settings_tab_cache">自動緩存</string>
-    <string name="settings_tab_storage">存儲空間</string>
+    <string name="settings_tab_storage">儲存</string>
+    <string name="settings_tab_settings_backup">設定備份</string>
     <string name="settings_tab_log">日誌</string>
     <string name="settings_log_open_directory">打開日誌目錄</string>
     <string name="settings_tab_update">軟件更新</string>
@@ -467,6 +468,14 @@
     <string name="settings_media_auto_cache_count">緩存數量</string>
     <string name="settings_media_auto_cache_count_description">當前設置: 僅緩存最近看過的 %d 部番劇</string>
     <string name="settings_media_auto_cache_manage">管理已緩存的劇集</string><string name="settings_debug_logout">登出</string><string name="settings_debug_logged_out">已登出</string><string name="settings_tab_account">賬戶</string>
+
+    <!-- Version Expired Overlay -->
+    <string name="settings_update_version_expired_title">版本過期</string>
+    <string name="settings_update_version_expired_message">當前版本過舊，為了你的使用體驗，請更新到最新版本。\n右下角將會顯示最新版本，可以點擊自動更新。如果無法更新，請前往官網下載：</string>
+    <string name="settings_update_version_expired_message_with_latest">當前版本過舊，為了你的使用體驗，請更新到最新版本 %1$s。\n右下角將會顯示最新版本，可以點擊自動更新。如果無法更新，請前往官網下載：</string>
+    <string name="settings_update_version_expired_import_settings_hint">如果新版本要求導入設置，請點擊：</string>
+    <string name="settings_update_version_expired_copied_to_clipboard">已複製到剪貼板，請到新版本點擊導入</string>
+    <string name="settings_update_version_expired_export_settings">導出設置</string>
 </resources>
 
 <!--@formatter:on-->

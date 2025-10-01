@@ -101,6 +101,7 @@ fun HttpClientProvider.get(
         ServerListFeature.withValue(serverListConfig),
         ConvertSendCountExceedExceptionFeature.withValue(true),
         UseAniTokenFeature.withValue(useAniToken),
+        VersionExpiryFeature.withValue(true),
     ),
 )
 
@@ -292,5 +293,4 @@ class DefaultHttpClientProvider(
         pool.forceReleaseAll()
     }
 }
-
 

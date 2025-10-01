@@ -10,6 +10,7 @@
 package me.him188.ani.app.data.network
 
 import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
+import me.him188.ani.client.apis.AutoSkipAniApi
 import me.him188.ani.client.apis.BangumiAniApi
 import me.him188.ani.client.apis.BangumiOAuthAniApi
 import me.him188.ani.client.apis.DanmakuAniApi
@@ -36,6 +37,7 @@ class AniApiProvider(
     val subjectRelationsApi = ApiInvoker(client) { SubjectRelationsAniApi(baseurl, it) }
     val danmakuApi = ApiInvoker(client) { DanmakuAniApi(baseurl, it) }
     val pfRuleApi = ApiInvoker(client) { PeerFilterRuleAniApi(baseurl, it) }
+    val autoSkipApi = ApiInvoker(client) { AutoSkipAniApi(baseurl, it) }
 
     val bangumiApi = ApiInvoker(client) { BangumiAniApi(baseurl, it) }
     val subjectApi = ApiInvoker(client) { SubjectsAniApi(baseurl, it) }

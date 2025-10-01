@@ -46,6 +46,7 @@ import me.him188.ani.app.data.repository.RepositoryAuthorizationException
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
+import me.him188.ani.app.data.repository.RepositoryRequestError
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
 import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
@@ -272,6 +273,10 @@ class MediaSourceMediaFetcher(
 
                         is RepositoryUnknownException -> {
                             logger.error(exception) { "Failed to fetch media from ${sourceInfo.displayName} due to unknown error" }
+                        }
+
+                        is RepositoryRequestError -> {
+                            logger.warn { "Failed to fetch media from ${sourceInfo.displayName} due to request error: ${exception.localizedMessage}" }
                         }
                     }
                 }

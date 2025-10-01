@@ -7,12 +7,23 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.settings.tabs.media
+package me.him188.ani.client.models
 
-import androidx.compose.runtime.Composable
-import me.him188.ani.app.ui.settings.framework.components.SettingsScope
+import kotlinx.serialization.Serializable
 
-@Composable
-actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
-    // TODO: IOS CacheDirectoryGroup
-}
+@Serializable
+data class AutoSkipRule(
+    val time: Int,
+)
+
+@Serializable
+data class AutoSkipRules(
+    val rules: List<AutoSkipRule>,
+)
+
+@Serializable
+data class AutoSkipReportRequest(
+    val mediaSourceId: String,
+    val time: Int,
+)
+

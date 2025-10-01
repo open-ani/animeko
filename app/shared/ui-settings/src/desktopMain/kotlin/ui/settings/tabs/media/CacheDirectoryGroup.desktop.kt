@@ -54,13 +54,13 @@ actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
                 mediaCacheSettings.saveDir ?: defaultSaveDir
             }
         }
-        
+
         val toaster = LocalToaster.current
-        
+
         val directoryNotExistMessage = stringResource(Lang.settings_storage_directory_not_exist)
         val pathIsInvalidMessage = stringResource(Lang.settings_storage_path_is_invalid)
         val directoryCreateFailed = stringResource(Lang.settings_storage_directory_create_failed)
-        
+
         TextFieldItem(
             currentSaveDir,
             title = { Text(stringResource(Lang.settings_storage_bt_cache_location)) },
@@ -71,7 +71,7 @@ actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
                     toaster.toast("$pathIsInvalidMessage: ${e.message}")
                     return@TextFieldItem
                 }
-                
+
                 if (!dir.exists() && !dir.mkdirs()) {
                     toaster.toast("$directoryCreateFailed: ${dir.path}")
                     return@TextFieldItem
@@ -83,7 +83,7 @@ actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
                 }
 
                 state.mediaCacheSettingsState.update(
-                    mediaCacheSettings.copy(saveDir = dir.path)
+                    mediaCacheSettings.copy(saveDir = dir.path),
                 )
             },
             textFieldDescription = {

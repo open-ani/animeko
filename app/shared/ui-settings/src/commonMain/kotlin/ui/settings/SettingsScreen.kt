@@ -36,6 +36,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Science
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SettingsApplications
 import androidx.compose.material.icons.outlined.SmartDisplay
 import androidx.compose.material.icons.outlined.Storage
@@ -119,6 +120,7 @@ import me.him188.ani.app.ui.lang.settings_tab_media_selector
 import me.him188.ani.app.ui.lang.settings_tab_media_source
 import me.him188.ani.app.ui.lang.settings_tab_player
 import me.him188.ani.app.ui.lang.settings_tab_proxy
+import me.him188.ani.app.ui.lang.settings_tab_settings_backup
 import me.him188.ani.app.ui.lang.settings_tab_storage
 import me.him188.ani.app.ui.lang.settings_tab_theme
 import me.him188.ani.app.ui.lang.settings_tab_update
@@ -136,6 +138,7 @@ import me.him188.ani.app.ui.settings.tabs.app.AppearanceGroup
 import me.him188.ani.app.ui.settings.tabs.app.PlayerGroup
 import me.him188.ani.app.ui.settings.tabs.app.SoftwareUpdateGroup
 import me.him188.ani.app.ui.settings.tabs.log.LogTab
+import me.him188.ani.app.ui.settings.tabs.media.BackupSettings
 import me.him188.ani.app.ui.settings.tabs.media.CacheDirectoryGroup
 import me.him188.ani.app.ui.settings.tabs.media.MediaSelectionGroup
 import me.him188.ani.app.ui.settings.tabs.media.TorrentEngineGroup
@@ -145,6 +148,7 @@ import me.him188.ani.app.ui.settings.tabs.network.ConfigureProxyGroup
 import me.him188.ani.app.ui.settings.tabs.network.ServerSelectionGroup
 import me.him188.ani.app.ui.settings.tabs.theme.ThemeGroup
 import me.him188.ani.utils.platform.hasScrollingBug
+import me.him188.ani.utils.platform.isDesktop
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
@@ -233,7 +237,7 @@ fun SettingsScreen(
             Item(SettingsTab.PROXY)
             Item(SettingsTab.BT)
 //            Item(SettingsTab.CACHE)
-            if (vm.cacheDirectoryGroupState.showThisTab) {
+            if (LocalPlatform.current.isDesktop()) {
                 Item(SettingsTab.STORAGE)
             }
 
@@ -244,6 +248,7 @@ fun SettingsScreen(
             if (vm.isInDebugMode) {
                 Item(SettingsTab.DEBUG)
             }
+            Item(SettingsTab.SETTINGS_BACKUP)
         },
         tabContent = { currentTab ->
             val tabModifier = Modifier
@@ -331,6 +336,7 @@ fun SettingsScreen(
                             SettingsTab.BT -> TorrentEngineGroup(vm.torrentSettingsState)
 //                            SettingsTab.CACHE -> AutoCacheGroup(vm.mediaCacheSettingsState)
                             SettingsTab.STORAGE -> CacheDirectoryGroup(vm.cacheDirectoryGroupState)
+                            SettingsTab.SETTINGS_BACKUP -> BackupSettings(vm.cacheDirectoryGroupState)
                             SettingsTab.ABOUT -> {} // see above
                             SettingsTab.DEBUG -> {}
                             SettingsTab.LOG -> {}
@@ -707,6 +713,7 @@ private fun getIcon(tab: SettingsTab): ImageVector {
         SettingsTab.BT -> Icons.Filled.P2p
 //        SettingsTab.CACHE -> Icons.Rounded.Download // Icons.Outlined.Download 太 sharp 了
         SettingsTab.STORAGE -> Icons.Outlined.Storage
+        SettingsTab.SETTINGS_BACKUP -> Icons.Outlined.Settings
         SettingsTab.ABOUT -> Icons.Outlined.Info
         SettingsTab.LOG -> Icons.Outlined.Feedback
         SettingsTab.DEBUG -> Icons.Outlined.Science
@@ -728,6 +735,7 @@ private fun getName(tab: SettingsTab): String {
         SettingsTab.BT -> stringResource(Lang.settings_tab_bt)
 //        SettingsTab.CACHE -> stringResource(Lang.settings_tab_cache)
         SettingsTab.STORAGE -> stringResource(Lang.settings_tab_storage)
+        SettingsTab.SETTINGS_BACKUP -> stringResource(Lang.settings_tab_settings_backup)
         SettingsTab.LOG -> stringResource(Lang.settings_tab_log)
         SettingsTab.UPDATE -> stringResource(Lang.settings_tab_update)
         SettingsTab.ABOUT -> stringResource(Lang.settings_tab_about)

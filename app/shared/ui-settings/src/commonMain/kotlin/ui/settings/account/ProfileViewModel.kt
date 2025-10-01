@@ -183,6 +183,11 @@ class ProfileViewModel : AbstractViewModel(), KoinComponent {
         subjectCollectionRepo.performBangumiFullSync()
     }
 
+    suspend fun unbindBangumi() {
+        userRepo.unbindBangumi()
+        stateRefresher.restart()
+    }
+
     companion object {
         private val NICKNAME_MATCHER = Regex("^[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FFa-zA-Z\\d_]+$")
     }

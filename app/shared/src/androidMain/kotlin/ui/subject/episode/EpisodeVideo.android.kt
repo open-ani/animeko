@@ -116,6 +116,7 @@ private fun PreviewVideoScaffoldImpl(
         hasNextEpisode = true,
         onClickNextEpisode = {},
         playerControllerState = controllerState,
+        onClickSkip85 = { playerState.skip(85_000L) },
         title = {
             EpisodePlayerTitle(
                 "28",

@@ -10,13 +10,19 @@
 package me.him188.ani.app.ui.main
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
@@ -25,6 +31,7 @@ import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
@@ -37,13 +44,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
+import me.him188.ani.app.domain.foundation.VersionExpiryService
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.SettingsTab
@@ -67,16 +82,29 @@ import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isTopRight
 import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
+import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
+import me.him188.ani.app.ui.settings.SettingsViewModel
 import me.him188.ani.app.ui.settings.account.ProfilePopup
 import me.him188.ani.app.ui.settings.account.ProfileViewModel
 import me.him188.ani.app.ui.subject.collection.CollectionPage
 import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
+import me.him188.ani.app.ui.update.AppUpdateViewModel
 import me.him188.ani.app.ui.update.UpdateNotifier
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.utils.platform.isAndroid
+import org.koin.mp.KoinPlatform
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_update_version_expired_title
+import me.him188.ani.app.ui.lang.settings_update_version_expired_message
+import me.him188.ani.app.ui.lang.settings_update_version_expired_message_with_latest
+import me.him188.ani.app.ui.lang.settings_update_version_expired_import_settings_hint
+import me.him188.ani.app.ui.lang.settings_update_version_expired_copied_to_clipboard
+import me.him188.ani.app.ui.lang.settings_update_version_expired_export_settings
+import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.stringResource
 
 
 @Composable
@@ -317,7 +345,85 @@ private fun TabContent(
         Box(Modifier.fillMaxWidth()) {
             content()
 
-            UpdateNotifier()
+            UpdateNotifierWithVersionExpiryCheck()
         }
     }
+}
+
+@Composable
+private fun BoxScope.UpdateNotifierWithVersionExpiryCheck() {
+    // Force check when version expired
+    val updateVm = viewModel { AppUpdateViewModel() }
+    val versionExpiryService = remember { KoinPlatform.getKoin().get<VersionExpiryService>() }
+    val expired by versionExpiryService.state.collectAsStateWithLifecycle(null)
+    LaunchedEffect(expired) {
+        if (expired != null) {
+            updateVm.startCheckLatestVersion(null)
+        }
+    }
+    if (expired != null) {
+        Surface(Modifier.fillMaxSize()) {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    stringResource(Lang.settings_update_version_expired_title),
+                    Modifier.padding(all = 24.dp),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+
+                val latestVersion = expired?.latestVersion
+                Text(
+                    buildAnnotatedString {
+                        append(
+                            if (latestVersion != null) {
+                                stringResource(
+                                    Lang.settings_update_version_expired_message_with_latest,
+                                    latestVersion,
+                                )
+                            } else {
+                                stringResource(Lang.settings_update_version_expired_message)
+                            },
+                        )
+                        pushLink(
+                            LinkAnnotation.Url(
+                                "https://myani.org",
+                                styles = TextLinkStyles(style = SpanStyle(color = MaterialTheme.colorScheme.primary)),
+                            ),
+                        )
+                        append("https://myani.org")
+                    },
+                    Modifier.padding(horizontal = 24.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+
+                val settingsVm = viewModel<SettingsViewModel> { SettingsViewModel() }
+                val asyncHandler = rememberAsyncHandler()
+                val toaster = LocalToaster.current
+                val clipboard = LocalClipboardManager.current
+
+                Row(
+                    Modifier.padding(horizontal = 24.dp).padding(top = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(Lang.settings_update_version_expired_import_settings_hint),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+
+                    OutlinedButton(
+                        {
+                            asyncHandler.launch {
+                                val data = settingsVm.cacheDirectoryGroupState.onGetBackupData()
+                                clipboard.setText(AnnotatedString(data))
+                                toaster.toast(getString(Lang.settings_update_version_expired_copied_to_clipboard))
+                            }
+                        },
+                    ) {
+                        Text(stringResource(Lang.settings_update_version_expired_export_settings))
+                    }
+                }
+            }
+        }
+    }
+    UpdateNotifier(viewModel = updateVm)
 }

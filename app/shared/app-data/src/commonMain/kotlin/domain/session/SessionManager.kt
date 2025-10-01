@@ -27,6 +27,7 @@ import me.him188.ani.app.data.repository.RepositoryAuthorizationException
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
+import me.him188.ani.app.data.repository.RepositoryRequestError
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
 import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.data.repository.user.AccessTokenSession
@@ -153,6 +154,7 @@ class SessionManager(
 
                         is RepositoryServiceUnavailableException -> InvalidSessionReason.NO_TOKEN
                         is RepositoryUnknownException -> InvalidSessionReason.UNKNOWN
+                        is RepositoryRequestError -> InvalidSessionReason.UNKNOWN
                     }
 
                     if (reason == InvalidSessionReason.UNKNOWN) {

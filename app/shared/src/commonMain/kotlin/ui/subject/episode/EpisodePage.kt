@@ -837,6 +837,7 @@ private fun EpisodeVideo(
 
     val progressSliderState = rememberMediaProgressSliderState(
         vm.player,
+        vm.progressChaptersFlow,
         onPreview = {
             // not yet supported
         },
@@ -872,6 +873,7 @@ private fun EpisodeVideo(
         hasNextEpisode = vm.episodeSelectorState.hasNextEpisode,
         onClickNextEpisode = { vm.episodeSelectorState.selectNext() },
         playerControllerState = playerControllerState,
+        onClickSkip85 = { vm.onClickSkip85(it) },
         title = {
             val episode = page.episodePresentation
             val subject = page.subjectPresentation

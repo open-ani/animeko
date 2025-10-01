@@ -58,7 +58,7 @@ fun EmailLoginStartScreen(
         state.email,
         onContinueClick = {
             asyncHandler.launch {
-                vm.setEmail(it)
+                vm.setEmail(it.trim())
                 vm.sendEmailOtp()
                 onOtpSent()
             }
