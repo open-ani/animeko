@@ -133,6 +133,7 @@ import me.him188.ani.app.ui.subject.episode.video.PlayerSkipOpEdState
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorState
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.app.ui.user.SelfInfoUiState
+import me.him188.ani.app.videoplayer.ui.AspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.danmaku.api.DanmakuContent
@@ -164,6 +165,7 @@ import org.koin.core.component.inject
 import org.openani.mediamp.InternalMediampApi
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
+import org.openani.mediamp.features.AspectRatioMode
 import org.openani.mediamp.features.chapters
 import org.openani.mediamp.metadata.Chapter
 import kotlin.time.Duration.Companion.milliseconds
@@ -332,6 +334,7 @@ class EpisodeViewModel(
 
 
     val playerControllerState = PlayerControllerState(ControllerVisibility.Invisible)
+    val aspectRatioControllerState = AspectRatioControllerState(AspectRatioMode.FIT)
     private val mediaSourceInfoProvider: MediaSourceInfoProvider = MediaSourceInfoProvider(
         getSourceInfoFlow = { mediaSourceManager.infoFlowByMediaSourceId(it) },
     )
