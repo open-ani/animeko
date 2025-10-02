@@ -17,12 +17,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 
-/**
- * 分组数据接口，定义分组的基本属性
- */
-interface GroupData {
-    val title: String
-}
 
 /**
  * 可分页列表的分组配置
@@ -62,11 +56,11 @@ class DefaultPaginatedGroupConfig<T>(
  */
 @Stable
 data class PaginatedGroup<T>(
-    override val title: String,
+    val title: String,
     val items: List<T>,
     val startIndex: Int,
     val groupIndex: Int,
-) : GroupData
+)
 
 /**
  * 分页列表状态管理类
