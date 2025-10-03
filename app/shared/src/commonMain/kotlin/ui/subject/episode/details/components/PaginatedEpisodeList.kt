@@ -72,22 +72,17 @@ fun PaginatedEpisodeList(
         derivedStateOf { episodes.indexOfFirst { episodeCarouselState.isPlaying(it) } }
     }
 
-    val state = rememberPaginatedListState(episodes, config, episodes)
+    val state = rememberPaginatedListState(episodes, config, episodes, listState)
 
     // 统一的播放位置处理
     LaunchedEffect(playingEpisodeIndex) {
         if (playingEpisodeIndex >= 0) {
-            val itemPosition = state.bringIntoView(playingEpisodeIndex)
-            if (itemPosition != null) {
-                listState.animateScrollToItem(itemPosition)
-            }
+            state.bringIntoView(playingEpisodeIndex)
         }
     }
 
     PaginatedList(
-        items = episodes,
-        config = config,
-        listState = listState,
+        state = state,
         modifier = modifier,
         onItemClick = { episode ->
             episodeCarouselState.onSelect(episode)
@@ -170,5 +165,3 @@ fun EpisodeListItem(
             ),
     )
 }
-
-

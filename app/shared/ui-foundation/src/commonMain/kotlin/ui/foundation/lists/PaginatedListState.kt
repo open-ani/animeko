@@ -9,13 +9,18 @@
 
 package me.him188.ani.app.ui.foundation.lists
 
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 
 /**
@@ -53,6 +58,8 @@ data class PaginatedGroup<T>(
 class PaginatedListState<T>(
     private val items: List<T>,
     private val config: PaginatedGroupConfig<T>,
+    val listState: LazyListState = LazyListState(),
+    private val coroutineScope: CoroutineScope,
 ) {
     /**
      * 分组后的数据
@@ -73,6 +80,38 @@ class PaginatedListState<T>(
      * 当前分组索引
      */
     var currentGroupIndex by mutableStateOf(0)
+
+    /**
+     * 导航到指定分组，并自动滚动到对应位置
+     */
+    fun navigateToGroup(groupIndex: Int) {
+        if (groupIndex in 0 until totalGroupsCount) {
+            currentGroupIndex = groupIndex
+            // 分组变化时自动滚动到对应位置
+            coroutineScope.launch {
+                val targetIndex = groupStartIndices.getOrNull(groupIndex) ?: 0
+                listState.animateScrollToItem(targetIndex)
+            }
+        }
+    }
+
+    /**
+     * 导航到上一组
+     */
+    fun navigateToPreviousGroup() {
+        if (canNavigateToPreviousGroup) {
+            navigateToGroup(currentGroupIndex - 1)
+        }
+    }
+
+    /**
+     * 导航到下一组
+     */
+    fun navigateToNextGroup() {
+        if (canNavigateToNextGroup) {
+            navigateToGroup(currentGroupIndex + 1)
+        }
+    }
 
     /**
      * 每个分组在列表中的起始索引
@@ -111,33 +150,6 @@ class PaginatedListState<T>(
         get() = currentGroupIndex < totalGroupsCount - 1
 
     /**
-     * 导航到上一组
-     */
-    fun navigateToPreviousGroup() {
-        if (canNavigateToPreviousGroup) {
-            currentGroupIndex--
-        }
-    }
-
-    /**
-     * 导航到下一组
-     */
-    fun navigateToNextGroup() {
-        if (canNavigateToNextGroup) {
-            currentGroupIndex++
-        }
-    }
-
-    /**
-     * 导航到指定分组
-     */
-    fun navigateToGroup(groupIndex: Int) {
-        if (groupIndex in 0 until totalGroupsCount) {
-            currentGroupIndex = groupIndex
-        }
-    }
-
-    /**
      * 计算指定条目在列表中的精确位置
      */
     fun calculateItemPosition(itemIndexInCurrentGroup: Int): Int? {
@@ -161,15 +173,24 @@ class PaginatedListState<T>(
      * 将指定条目滚动到可视区域
      *
      * @param itemIndex 要滚动到的条目索引
-     * @return 返回计算出的列表位置，如果没有对应的 LazyListState，需要外部自行滚动
+     * @param animate 是否使用动画滚动
      */
-    fun bringIntoView(itemIndex: Int): Int? {
-        if (itemIndex < 0 || itemIndex >= items.size) return null
+    suspend fun bringIntoView(itemIndex: Int, animate: Boolean = true) {
+        if (itemIndex < 0 || itemIndex >= items.size) return
+
         val targetGroupIndex = itemIndex / config.itemsPerGroup
         // 导航到对应的分组
         currentGroupIndex = targetGroupIndex
+
+        // 计算条目在列表中的精确位置并滚动
         val itemPosition = calculateItemPosition(itemIndex)
-        return itemPosition
+        if (itemPosition != null) {
+            if (animate) {
+                listState.animateScrollToItem(itemPosition)
+            } else {
+                listState.scrollToItem(itemPosition)
+            }
+        }
     }
 
 }
@@ -182,6 +203,10 @@ fun <T> rememberPaginatedListState(
     items: List<T>,
     config: PaginatedGroupConfig<T>,
     key: Any? = null,
-): PaginatedListState<T> = remember(key) {
-    PaginatedListState(items, config)
+    listState: LazyListState = rememberLazyListState(),
+): PaginatedListState<T> {
+    val coroutineScope = rememberCoroutineScope()
+    return remember(key) {
+        PaginatedListState(items, config, listState, coroutineScope)
+    }
 }

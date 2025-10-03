@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,7 +31,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -47,9 +45,7 @@ import androidx.compose.ui.unit.dp
  * 通用分页列表组件，支持分组显示和分页导航
  *
  * @param T 列表项数据类型
- * @param items 列表数据
- * @param config 分组配置
- * @param listState LazyColumn状态
+ * @param state 分页列表状态
  * @param modifier 修饰符
  * @param contentPadding 内容内边距
  * @param itemContent 列表项内容Composable
@@ -58,22 +54,13 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun <T> PaginatedList(
-    items: List<T>,
-    config: PaginatedGroupConfig<T>,
-    listState: LazyListState,
+    state: PaginatedListState<T>,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
     headerContent: @Composable (title: String) -> Unit = { DefaultGroupHeader(title = it) },
     onItemClick: ((T) -> Unit)? = null,
     itemContent: @Composable (T) -> Unit,
 ) {
-    val state = rememberPaginatedListState(items = items, config = config)
-
-    // 分组切换时的滚动
-    LaunchedEffect(state.currentGroupIndex) {
-        val targetIndex = state.groupStartIndices.getOrNull(state.currentGroupIndex) ?: 0
-        listState.animateScrollToItem(targetIndex)
-    }
 
     Column(modifier = modifier) {
         // 分页导航条
@@ -84,7 +71,7 @@ fun <T> PaginatedList(
 
         // 分组列表内容
         LazyColumn(
-            state = listState,
+            state = state.listState,
             verticalArrangement = Arrangement.spacedBy(4.dp),
             modifier = Modifier.weight(1f),
             contentPadding = contentPadding,
