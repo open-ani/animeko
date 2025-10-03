@@ -59,8 +59,6 @@ fun PaginatedEpisodeList(
     val config = remember(episodes) {
         object : PaginatedGroupConfig<EpisodeCollectionInfo> {
             override val itemsPerGroup: Int = 100
-            override fun isPlaying(item: EpisodeCollectionInfo): Boolean =
-                episodeCarouselState.isPlaying(item)
 
             override fun generateGroupTitle(groupIndex: Int, itemsInGroup: List<EpisodeCollectionInfo>): String {
                 val startEp = groupIndex * itemsPerGroup + 1
@@ -76,10 +74,13 @@ fun PaginatedEpisodeList(
 
     val state = rememberPaginatedListState(episodes, config, episodes)
 
-    // 处理播放状态变化
+    // 统一的播放位置处理
     LaunchedEffect(playingEpisodeIndex) {
-        if (playingEpisodeIndex >= 0 && state.isInitialPositioning) {
-            state.updateInitialGroupFromPlayingState()
+        if (playingEpisodeIndex >= 0) {
+            val itemPosition = state.bringIntoView(playingEpisodeIndex)
+            if (itemPosition != null) {
+                listState.animateScrollToItem(itemPosition)
+            }
         }
     }
 
@@ -88,7 +89,6 @@ fun PaginatedEpisodeList(
         config = config,
         listState = listState,
         modifier = modifier,
-        playingItemIndex = playingEpisodeIndex,
         onItemClick = { episode ->
             episodeCarouselState.onSelect(episode)
         },

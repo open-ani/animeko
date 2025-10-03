@@ -35,7 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,7 +54,6 @@ import androidx.compose.ui.unit.dp
  * @param contentPadding 内容内边距
  * @param itemContent 列表项内容Composable
  * @param headerContent 分组标题内容Composable（可选）
- * @param playingItemIndex 需要自动滚动到的条目索引（可选）
  * @param onItemClick 列表项点击回调（可选）
  */
 @Composable
@@ -64,33 +63,16 @@ fun <T> PaginatedList(
     listState: LazyListState,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-    itemContent: @Composable (T) -> Unit,
-    headerContent: @Composable (String) -> Unit = { DefaultGroupHeader(title = it) },
-    playingItemIndex: Int = -1,
+    headerContent: @Composable (title: String) -> Unit = { DefaultGroupHeader(title = it) },
     onItemClick: ((T) -> Unit)? = null,
+    itemContent: @Composable (T) -> Unit,
 ) {
     val state = rememberPaginatedListState(items = items, config = config)
 
-    // 播放状态导航定位
-    LaunchedEffect(playingItemIndex) {
-        if (playingItemIndex >= 0 && state.isInitialPositioning) {
-            val targetGroupIndex = playingItemIndex / config.itemsPerGroup
-            state.navigateToGroup(targetGroupIndex)
-
-            val itemPosition = state.calculateItemPosition(playingItemIndex)
-            if (itemPosition != null) {
-                listState.animateScrollToItem(itemPosition)
-                state.isInitialPositioning = false
-            }
-        }
-    }
-
     // 分组切换时的滚动
     LaunchedEffect(state.currentGroupIndex) {
-        if (!state.isInitialPositioning) {
-            val targetIndex = state.groupStartIndices.getOrNull(state.currentGroupIndex) ?: 0
-            listState.animateScrollToItem(targetIndex)
-        }
+        val targetIndex = state.groupStartIndices.getOrNull(state.currentGroupIndex) ?: 0
+        listState.animateScrollToItem(targetIndex)
     }
 
     Column(modifier = modifier) {
@@ -108,7 +90,7 @@ fun <T> PaginatedList(
             contentPadding = contentPadding,
         ) {
             state.groups.forEach { group ->
-                item(key = "header_${group.groupIndex}") {
+                item(key = "PaginatedList_ header_${group.groupIndex}") {
                     headerContent(group.title)
                 }
 
@@ -137,11 +119,11 @@ fun <T> PaginatedList(
  * 分页列表导航组件
  */
 @Composable
-fun <T> PaginatedListNavigation(
+private fun <T> PaginatedListNavigation(
     state: PaginatedListState<T>,
     modifier: Modifier = Modifier,
 ) {
-    var showGroupSelector by remember { mutableStateOf(false) }
+    var showGroupSelector by rememberSaveable { mutableStateOf(false) }
 
     Row(
         modifier = modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -150,13 +132,13 @@ fun <T> PaginatedListNavigation(
     ) {
         // 上一组按钮
         IconButton(
-            onClick = { state.navigateToPrevious() },
-            enabled = state.canNavigateToPrevious,
+            onClick = { state.navigateToPreviousGroup() },
+            enabled = state.canNavigateToPreviousGroup,
         ) {
             Icon(
                 Icons.Outlined.ChevronLeft,
                 contentDescription = "上一组",
-                tint = if (state.canNavigateToPrevious) {
+                tint = if (state.canNavigateToPreviousGroup) {
                     MaterialTheme.colorScheme.onSurface
                 } else {
                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
@@ -223,13 +205,13 @@ fun <T> PaginatedListNavigation(
 
         // 下一组按钮
         IconButton(
-            onClick = { state.navigateToNext() },
-            enabled = state.canNavigateToNext,
+            onClick = { state.navigateToNextGroup() },
+            enabled = state.canNavigateToNextGroup,
         ) {
             Icon(
                 Icons.Outlined.ChevronRight,
                 contentDescription = "下一组",
-                tint = if (state.canNavigateToNext) {
+                tint = if (state.canNavigateToNextGroup) {
                     MaterialTheme.colorScheme.onSurface
                 } else {
                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)

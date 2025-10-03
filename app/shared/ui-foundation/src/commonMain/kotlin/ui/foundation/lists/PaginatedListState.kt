@@ -28,27 +28,9 @@ interface PaginatedGroupConfig<T> {
     val itemsPerGroup: Int
 
     /**
-     * 检查某个条目是否属于指定的播放状态
-     */
-    fun isPlaying(item: T): Boolean = false
-
-    /**
      * 生成指定分组的标题
      */
     fun generateGroupTitle(groupIndex: Int, itemsInGroup: List<T>): String
-}
-
-/**
- * 默认的分组配置实现
- */
-class DefaultPaginatedGroupConfig<T>(
-    override val itemsPerGroup: Int,
-    private val playingChecker: ((T) -> Boolean)? = null,
-    private val titleGenerator: (Int, List<T>) -> String,
-) : PaginatedGroupConfig<T> {
-    override fun isPlaying(item: T): Boolean = playingChecker?.invoke(item) ?: false
-    override fun generateGroupTitle(groupIndex: Int, itemsInGroup: List<T>): String =
-        titleGenerator(groupIndex, itemsInGroup)
 }
 
 /**
@@ -71,7 +53,6 @@ data class PaginatedGroup<T>(
 class PaginatedListState<T>(
     private val items: List<T>,
     private val config: PaginatedGroupConfig<T>,
-    initialPlayingIndex: Int = -1,
 ) {
     /**
      * 分组后的数据
@@ -89,28 +70,9 @@ class PaginatedListState<T>(
     }
 
     /**
-     * 当前播放条目的索引
-     */
-    val playingIndex: Int by derivedStateOf {
-        items.indexOfFirst { config.isPlaying(it) }
-    }
-
-    /**
      * 当前分组索引
      */
-    var currentGroupIndex by mutableStateOf(
-        if (initialPlayingIndex >= 0) initialPlayingIndex / config.itemsPerGroup else 0,
-    )
-
-    /**
-     * 是否显示分组选择器
-     */
-    var showGroupSelector by mutableStateOf(false)
-
-    /**
-     * 是否处于初始定位状态
-     */
-    var isInitialPositioning by mutableStateOf(true)
+    var currentGroupIndex by mutableStateOf(0)
 
     /**
      * 每个分组在列表中的起始索引
@@ -126,11 +88,6 @@ class PaginatedListState<T>(
     }
 
     /**
-     * 总条目数
-     */
-    val totalItemsCount: Int get() = items.size
-
-    /**
      * 总分组数
      */
     val totalGroupsCount: Int get() = groups.size
@@ -144,20 +101,20 @@ class PaginatedListState<T>(
     /**
      * 是否可以导航到上一组
      */
-    val canNavigateToPrevious: Boolean
+    val canNavigateToPreviousGroup: Boolean
         get() = currentGroupIndex > 0
 
     /**
      * 是否可以导航到下一组
      */
-    val canNavigateToNext: Boolean
+    val canNavigateToNextGroup: Boolean
         get() = currentGroupIndex < totalGroupsCount - 1
 
     /**
      * 导航到上一组
      */
-    fun navigateToPrevious() {
-        if (canNavigateToPrevious) {
+    fun navigateToPreviousGroup() {
+        if (canNavigateToPreviousGroup) {
             currentGroupIndex--
         }
     }
@@ -165,8 +122,8 @@ class PaginatedListState<T>(
     /**
      * 导航到下一组
      */
-    fun navigateToNext() {
-        if (canNavigateToNext) {
+    fun navigateToNextGroup() {
+        if (canNavigateToNextGroup) {
             currentGroupIndex++
         }
     }
@@ -183,11 +140,11 @@ class PaginatedListState<T>(
     /**
      * 计算指定条目在列表中的精确位置
      */
-    fun calculateItemPosition(targetItemIndex: Int): Int? {
-        if (targetItemIndex < 0 || targetItemIndex >= items.size) return null
+    fun calculateItemPosition(itemIndexInCurrentGroup: Int): Int? {
+        if (itemIndexInCurrentGroup < 0 || itemIndexInCurrentGroup >= items.size) return null
 
-        val targetGroupIndex = targetItemIndex / config.itemsPerGroup
-        val positionInGroup = targetItemIndex % config.itemsPerGroup
+        val targetGroupIndex = itemIndexInCurrentGroup / config.itemsPerGroup
+        val positionInGroup = itemIndexInCurrentGroup % config.itemsPerGroup
 
         var listIndex = 0
         // Add all previous groups (header + items)
@@ -201,39 +158,20 @@ class PaginatedListState<T>(
     }
 
     /**
-     * 根据播放状态自动设置初始分组
+     * 将指定条目滚动到可视区域
+     *
+     * @param itemIndex 要滚动到的条目索引
+     * @return 返回计算出的列表位置，如果没有对应的 LazyListState，需要外部自行滚动
      */
-    fun updateInitialGroupFromPlayingState() {
-        if (isInitialPositioning && playingIndex >= 0) {
-            val targetGroupIndex = playingIndex / config.itemsPerGroup
-            currentGroupIndex = targetGroupIndex
-        }
+    fun bringIntoView(itemIndex: Int): Int? {
+        if (itemIndex < 0 || itemIndex >= items.size) return null
+        val targetGroupIndex = itemIndex / config.itemsPerGroup
+        // 导航到对应的分组
+        currentGroupIndex = targetGroupIndex
+        val itemPosition = calculateItemPosition(itemIndex)
+        return itemPosition
     }
 
-    /**
-     * 获取指定分组的标题
-     */
-    fun getGroupTitle(groupIndex: Int): String? {
-        return groups.getOrNull(groupIndex)?.title ?: config.generateGroupTitle(groupIndex, emptyList())
-    }
-
-    companion object {
-        /**
-         * 创建简单的数字范围分组配置
-         */
-        fun <T> createRangeConfig(
-            itemsPerGroup: Int,
-            playingChecker: ((T) -> Boolean)? = null,
-        ): PaginatedGroupConfig<T> = DefaultPaginatedGroupConfig(
-            itemsPerGroup = itemsPerGroup,
-            playingChecker = playingChecker,
-            titleGenerator = { groupIndex, items ->
-                val startItem = groupIndex * itemsPerGroup + 1
-                val endItem = startItem + items.size - 1
-                "第 $startItem-$endItem 话"
-            },
-        )
-    }
 }
 
 /**
@@ -246,17 +184,4 @@ fun <T> rememberPaginatedListState(
     key: Any? = null,
 ): PaginatedListState<T> = remember(key) {
     PaginatedListState(items, config)
-}
-
-/**
- * 记住并创建基于播放状态的分页列表状态
- */
-@Composable
-fun <T> rememberPaginatedListStateWithPlaying(
-    items: List<T>,
-    itemsPerGroup: Int,
-    playingChecker: (T) -> Boolean = { false },
-    key: Any? = null,
-): PaginatedListState<T> = remember(key) {
-    PaginatedListState(items, PaginatedListState.createRangeConfig(itemsPerGroup, playingChecker))
 }
