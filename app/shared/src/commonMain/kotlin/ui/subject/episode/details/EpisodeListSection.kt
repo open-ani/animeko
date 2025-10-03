@@ -59,6 +59,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -71,7 +72,6 @@ import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.episode.details.components.EpisodeGrid
-import me.him188.ani.app.ui.subject.episode.details.components.EpisodeListItem
 import me.him188.ani.app.ui.subject.episode.details.components.PaginatedEpisodeList
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
@@ -179,9 +179,13 @@ private fun WideEpisodeListSection(
                                     items = episodeCarouselState.episodes,
                                     key = { it.episodeId },
                                 ) { episode ->
-                                    EpisodeListItem(
+                                    val isWatched = episode.collectionType.isDoneOrDropped()
+                                    val isPlaying = episodeCarouselState.isPlaying(episode)
+
+                                    EpisodeListSectionItem(
                                         episode = episode,
-                                        isPlaying = episodeCarouselState.isPlaying(episode),
+                                        isPlaying = isPlaying,
+                                        isWatched = isWatched,
                                         onClick = { episodeCarouselState.onSelect(episode) },
                                         onLongClick = {
                                             val newType = if (episode.collectionType.isDoneOrDropped()) {
@@ -446,4 +450,51 @@ private fun EpisodeCard(
             }
         }
     }
+}
+
+/**
+ * 剧集详情页专用的列表项组件。
+ */
+@Composable
+private fun EpisodeListSectionItem(
+    episode: EpisodeCollectionInfo,
+    isPlaying: Boolean,
+    isWatched: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    ListItem(
+        colors = ListItemDefaults.colors(
+            containerColor = when {
+                isPlaying -> MaterialTheme.colorScheme.primaryContainer
+                isWatched -> MaterialTheme.colorScheme.surfaceContainer
+                else -> MaterialTheme.colorScheme.surfaceContainer
+            },
+        ),
+        headlineContent = {
+            Text(
+                text = "${episode.episodeInfo.sort}  ${episode.episodeInfo.displayName}",
+                color = when {
+                    isPlaying -> MaterialTheme.colorScheme.primary
+                    isWatched -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    else -> LocalContentColor.current
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        trailingContent = {
+            if (isPlaying) {
+                PlayingIcon()
+            }
+        },
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.small)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+            ),
+    )
 }

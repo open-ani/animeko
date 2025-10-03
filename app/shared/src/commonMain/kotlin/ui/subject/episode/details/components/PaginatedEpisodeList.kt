@@ -88,7 +88,6 @@ fun PaginatedEpisodeList(
             episodeCarouselState.onSelect(episode)
         },
         headerContent = { title ->
-            // 使用剧集专用的分组标题样式
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
@@ -97,7 +96,7 @@ fun PaginatedEpisodeList(
             )
         },
         itemContent = { episode ->
-            EpisodeListItem(
+            EpisodeDetailsListItem(
                 episode = episode,
                 isPlaying = episodeCarouselState.isPlaying(episode),
                 onClick = { episodeCarouselState.onSelect(episode) },
@@ -118,7 +117,7 @@ fun PaginatedEpisodeList(
  * 剧集列表项组件，用于宽屏垂直列表中的单个剧集显示。
  */
 @Composable
-fun EpisodeListItem(
+private fun EpisodeDetailsListItem(
     episode: EpisodeCollectionInfo,
     isPlaying: Boolean,
     onClick: () -> Unit,
