@@ -113,7 +113,7 @@ private fun <T> PaginatedListNavigation(
     var showGroupSelector by rememberSaveable { mutableStateOf(false) }
 
     Row(
-        modifier = modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier = modifier,
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
