@@ -13,7 +13,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.FlowRowScope
@@ -34,7 +33,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Dataset
 import androidx.compose.material.icons.outlined.ExpandCircleDown
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CardDefaults
@@ -49,7 +47,6 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -76,7 +73,6 @@ import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeRequest
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.episode.share.MediaShareData
-import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
@@ -113,7 +109,6 @@ import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.utils.platform.isDesktop
 
 @Stable
 class EpisodeDetailsState(
@@ -164,6 +159,7 @@ fun EpisodeDetails(
     onRetryLoad: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+    danmakuListState: DanmakuListState? = null,
 ) {
     var showSubjectDetails by rememberSaveable {
         mutableStateOf(false)
@@ -175,7 +171,7 @@ fun EpisodeDetails(
         if (showSubjectDetails) {
             ModalBottomSheet(
                 { showSubjectDetails = false },
-                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = LocalPlatform.current.isDesktop()),
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = currentWindowAdaptiveInfo1().isWidthAtLeastMedium),
                 modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
                 contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
             ) {
@@ -194,20 +190,8 @@ fun EpisodeDetails(
     }
 
     var expandDanmakuStatistics by rememberSaveable { mutableStateOf(false) }
-
-    if (state.showEpisodes) {
-        ModalBottomSheet(
-            { state.showEpisodes = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = LocalPlatform.current.isDesktop()),
-            modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
-            contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
-        ) {
-            EpisodeCarousel(
-                episodeCarouselState,
-                contentPadding = PaddingValues(all = 16.dp),
-            )
-        }
-    }
+    var expandEpisodeList by rememberSaveable { mutableStateOf(false) }
+    var expandDanmakuList by rememberSaveable { mutableStateOf(false) }
 
     EditableSubjectCollectionTypeDialogsHost(editableSubjectCollectionTypeState)
 
@@ -245,12 +229,14 @@ fun EpisodeDetails(
             }
         },
         airingStatus = {
-            AiringLabel(
-                state.airingLabelState,
-                Modifier.align(Alignment.CenterVertically),
-                style = LocalTextStyle.current,
-                progressColor = LocalContentColor.current,
-            )
+            if (currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
+                AiringLabel(
+                    state.airingLabelState,
+                    Modifier.align(Alignment.CenterVertically),
+                    style = LocalTextStyle.current,
+                    progressColor = LocalContentColor.current,
+                )
+            }
         },
         subjectSuggestions = {
             // 推荐一些状态修改操作
@@ -281,10 +267,10 @@ fun EpisodeDetails(
         exposedEpisodeItem = { innerPadding ->
             var showMediaSelector by rememberSaveable { mutableStateOf(false) }
             if (showMediaSelector) {
-                val platform = LocalPlatform.current
+                val windowAdaptiveInfo = currentWindowAdaptiveInfo1()
                 val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(initialMediaSelectorViewKind) }
 
-                if (platform.isDesktop() && currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
+                if (windowAdaptiveInfo.isWidthAtLeastMedium) {
                     val sheetState = rememberModalSideSheetState()
                     ModalSideSheet(
                         { showMediaSelector = false },
@@ -339,7 +325,7 @@ fun EpisodeDetails(
                     }
                 } else {
                     val sheetState =
-                        rememberModalBottomSheetState(skipPartiallyExpanded = platform.isDesktop())
+                        rememberModalBottomSheetState(skipPartiallyExpanded = windowAdaptiveInfo.isWidthAtLeastMedium)
                     ModalBottomSheet(
                         { showMediaSelector = false },
                         sheetState = sheetState,
@@ -426,9 +412,29 @@ fun EpisodeDetails(
                 }
             }
         },
-        onShowEpisodes = {
-            state.showEpisodes = true
+        episodeListSection = {
+            EpisodeListSection(
+                episodeCarouselState = episodeCarouselState,
+                expanded = expandEpisodeList,
+                airingLabelState = state.airingLabelState,
+                onToggleExpanded = { expandEpisodeList = !expandEpisodeList },
+            )
         },
+        danmakuListSection = if (currentWindowAdaptiveInfo1().isWidthAtLeastMedium && danmakuListState != null) {
+            {
+                DanmakuListSection(
+                    state = danmakuListState,
+                    expanded = expandDanmakuList,
+                    onToggleExpanded = { expandDanmakuList = !expandDanmakuList },
+                    onSetEnabled = onSetDanmakuSourceEnabled,
+                    onManualMatch = { serviceId ->
+                        danmakuStatistics.fetchResults.find { it.serviceId == serviceId }?.let {
+                            onManualMatchDanmaku(it.providerId)
+                        }
+                    },
+                )
+            }
+        } else null,
         onExpandSubject = {
             showSubjectDetails = true
             state.subjectDetailsStateLoader.load(state.subjectId, state.subjectInfo.value)
@@ -470,10 +476,11 @@ fun EpisodeDetailsScaffold(
     exposedEpisodeItem: @Composable (contentPadding: PaddingValues) -> Unit,
     danmakuStatisticsSummary: @Composable () -> Unit,
     danmakuStatistics: @Composable (contentPadding: PaddingValues) -> Unit,
-    onShowEpisodes: () -> Unit,
+    episodeListSection: @Composable () -> Unit,
     onExpandSubject: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(all = 16.dp),
+    danmakuListSection: (@Composable () -> Unit)? = null,
 ) {
     val contentPaddingState by rememberUpdatedState(contentPadding)
     val layoutDirection by rememberUpdatedState(LocalLayoutDirection.current)
@@ -539,33 +546,44 @@ fun EpisodeDetailsScaffold(
             loadError()
         }
 
-        SectionTitle(
-            Modifier.padding(top = 12.dp, bottom = 8.dp),
-            actions = {
-                IconButton(onShowEpisodes) {
-                    Icon(Icons.Outlined.Dataset, null)
-                }
-            },
-        ) {
-            FlowRow(
-                Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+        if (currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
+            SectionTitle(
+                Modifier.padding(top = 12.dp, bottom = 8.dp),
             ) {
-                airingStatus()
+                FlowRow(
+                    Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+                ) {
+                    airingStatus()
+                }
             }
         }
 
-        Row {
+        Row(Modifier.paddingIfNotEmpty(top = 8.dp)) {
             exposedEpisodeItem(horizontalPaddingValues)
         }
 
-        SectionTitle(Modifier.padding(top = 16.dp, bottom = 8.dp)) {
-            danmakuStatisticsSummary()
+        danmakuListSection?.let {
+            Box(Modifier.paddingIfNotEmpty(top = 12.dp)) {
+                it()
+            }
         }
 
-        Row(Modifier.fillMaxWidth()) {
-            danmakuStatistics(horizontalPaddingValues)
+        Box(Modifier.paddingIfNotEmpty(top = 12.dp)) {
+            episodeListSection()
+        }
+
+        if (!currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
+            SectionTitle(Modifier.padding(top = 12.dp, bottom = 8.dp)) {
+                danmakuStatisticsSummary()
+            }
+
+            Row(Modifier.fillMaxWidth()) {
+                danmakuStatistics(horizontalPaddingValues)
+            }
         }
     }
 }
+
+

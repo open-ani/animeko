@@ -35,6 +35,7 @@ import me.him188.ani.app.domain.danmaku.GetDanmakuFetcherUseCase
 import me.him188.ani.app.domain.media.player.data.filenameOrNull
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
 import me.him188.ani.danmaku.api.DanmakuEvent
+import me.him188.ani.danmaku.api.DanmakuInfo
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.DanmakuSession
 import me.him188.ani.danmaku.api.TimeBasedDanmakuSession
@@ -226,6 +227,30 @@ class EpisodeDanmakuLoader(
     fun overrideResults(provider: DanmakuProviderId, result: List<DanmakuFetchResult>) {
         danmakuLoader.overrideResults(provider, result)
     }
+
+    /**
+     * 获取所有弹幕数据的流，用于弹幕列表显示
+     */
+    val allDanmakuFlow: Flow<List<DanmakuInfo>> = combine(
+        fetchResults,
+        danmakuLoader.fetchResultFlow.onStart { emit(null) }
+    ) { fetchResultsWithConfig, rawResults ->
+        rawResults?.flatMap { result ->
+            val configResult = fetchResultsWithConfig.find { it.serviceId == result.matchInfo.serviceId }
+            if (configResult?.config?.enabled == true) {
+                result.list.mapNotNull { danmaku ->
+                    val newText = sanitizeDanmakuText(danmaku.text) ?: return@mapNotNull null
+                    danmaku.copy(
+                        serviceId = result.matchInfo.serviceId,
+                        content = danmaku.content.copy(
+                            playTimeMillis = danmaku.playTimeMillis + configResult.config.shiftMillis,
+                            text = newText,
+                        ),
+                    )
+                }
+            } else emptyList()
+        } ?: emptyList()
+    }.shareIn(flowScope, started = SharingStarted.WhileSubscribed(5000), replay = 1)
 
     private companion object {
         private val logger = logger<EpisodeDanmakuLoader>()

@@ -124,6 +124,8 @@ import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
+import me.him188.ani.app.ui.subject.episode.details.DanmakuListState
+import me.him188.ani.app.ui.subject.episode.details.DanmakuListStateProducer
 import me.him188.ani.app.ui.subject.episode.details.EpisodeCarouselState
 import me.him188.ani.app.ui.subject.episode.details.EpisodeDetailsState
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuStatistics
@@ -395,7 +397,7 @@ class EpisodeViewModel(
 
 
     @OptIn(UnsafeEpisodeSessionApi::class)
-    val episodeDetailsState: EpisodeDetailsState = kotlin.run {
+    val episodeDetailsState: EpisodeDetailsState = run {
         EpisodeDetailsState(
             subjectInfo = subjectInfoFlow.produceState(SubjectInfo.Empty),
             airingLabelState = AiringLabelState(
@@ -413,7 +415,7 @@ class EpisodeViewModel(
      * 剧集列表
      */
     @OptIn(UnsafeEpisodeSessionApi::class)
-    val episodeCarouselState: EpisodeCarouselState = kotlin.run {
+    val episodeCarouselState: EpisodeCarouselState = run {
         val episodeCacheStatusListState by episodeCollectionsFlow.flatMapLatest { list ->
             if (list.isEmpty()) {
                 return@flatMapLatest flowOfEmptyList()
@@ -557,6 +559,48 @@ class EpisodeViewModel(
         started = SharingStarted.WhileSubscribed(5000), // Must be some time, because when switching full-screen (i.e. configuration change), UI may stop collect for some milliseconds.
         replay = 1,
     ) // This is lazy. If user puts app into background, queries will abort.
+    
+    val allDanmakuListFlow = combine(
+        danmakuLoader.allDanmakuFlow,
+        danmakuManager.selfId
+    ) { danmakuList, selfId ->
+        danmakuList.map { 
+            DanmakuPresentation(it, isSelf = selfId == it.senderId) 
+        }
+    }.shareInBackground(
+        started = SharingStarted.WhileSubscribed(5000),
+        replay = 1,
+    )
+
+    private val selectedDanmakuSources = MutableStateFlow<Set<DanmakuServiceId>>(emptySet())
+    
+    init {
+        launchInBackground {
+            danmakuLoader.fetchResults.collect { fetchResults ->
+                val availableSources = fetchResults.map { it.serviceId }.toSet()
+                if (availableSources.isNotEmpty() && selectedDanmakuSources.value.isEmpty()) {
+                    selectedDanmakuSources.value = availableSources
+                    // Enable all sources by default
+                    availableSources.forEach { serviceId ->
+                        setDanmakuSourceEnabled(serviceId, true)
+                    }
+                }
+            }
+        }
+    }
+
+    val danmakuListStateProducer = DanmakuListStateProducer(
+        danmakuFlow = allDanmakuListFlow,
+        fetchResultsFlow = danmakuLoader.fetchResults,
+        selectedSourcesFlow = selectedDanmakuSources,
+    )
+
+    val danmakuListState = danmakuListStateProducer.stateFlow
+        .stateIn(
+            backgroundScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = DanmakuListState.Loading,
+        )
 
 
     private val commentStateRestarter = FlowRestarter()
@@ -795,11 +839,6 @@ class EpisodeViewModel(
     }
 
     suspend fun switchEpisode(episodeId: Int) {
-        // 关闭弹窗
-        withContext(Dispatchers.Main.immediate) {
-            episodeDetailsState.showEpisodes = false
-        }
-
         // 在后台 dispatchers 中操作
         backgroundScope.launch {
             fetchPlayState.switchEpisode(episodeId)
@@ -932,6 +971,11 @@ class EpisodeViewModel(
 
     fun setDanmakuSourceEnabled(serviceId: DanmakuServiceId, enabled: Boolean) {
         danmakuLoader.setEnabled(serviceId, enabled)
+        selectedDanmakuSources.value = if (enabled) {
+            selectedDanmakuSources.value + serviceId
+        } else {
+            selectedDanmakuSources.value - serviceId
+        }
     }
 
     fun startMatchingDanmaku(id: DanmakuProviderId) {
