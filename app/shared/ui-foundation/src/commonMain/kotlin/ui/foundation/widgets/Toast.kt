@@ -63,7 +63,7 @@ interface Toaster {
 
 private val logger = logger<Toaster>()
 
-fun Toaster.showLoadError(error: LoadError) {
+fun Toaster.showLoadError(error: LoadError) { // TODO: localize
     when (error) {
         LoadError.NetworkError -> show("网络错误，请检查网络连接或稍后再试")
         LoadError.NoResults -> show("没有结果")
@@ -74,6 +74,13 @@ fun Toaster.showLoadError(error: LoadError) {
             show("发生未知错误，请在设置中反馈（附加日志）")
             logger.warn(error.throwable) {
                 "Toaster showing an LoadError.UnknownError"
+            }
+        }
+
+        is LoadError.RequestError -> {
+            show("请求错误: ${error.localized}")
+            logger.warn {
+                "Toaster showing an LoadError.RequestError: ${error.localized}"
             }
         }
     }

@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.repository.RepositoryAuthorizationException
 import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
+import me.him188.ani.app.data.repository.RepositoryRequestError
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
 import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.domain.mediasource.test.RefreshResult
@@ -132,7 +133,7 @@ object RefreshIndicationDefaults {
             Text(
                 when (result) {
                     is RefreshResult.ApiError -> {
-                        when (result.exception) {
+                        when (val ex = result.exception) {
                             is RepositoryAuthorizationException -> stringResource(Lang.settings_mediasource_unauthorized)
                             is RepositoryNetworkException -> stringResource(Lang.settings_mediasource_network_error)
                             is RepositoryRateLimitedException -> stringResource(Lang.settings_mediasource_rate_limited)
@@ -141,6 +142,8 @@ object RefreshIndicationDefaults {
                                 Lang.settings_mediasource_unknown_error,
                                 result.exception.toString(),
                             )
+
+                            is RepositoryRequestError -> ex.localizedMessage
                         }
                     }
 

@@ -27,7 +27,8 @@
     <string name="settings_tab_proxy">代理</string>
     <string name="settings_tab_bt">BitTorrent</string>
     <string name="settings_tab_cache">自動快取</string>
-    <string name="settings_tab_storage">儲存空間</string>
+    <string name="settings_tab_storage">儲存</string>
+    <string name="settings_tab_settings_backup">設定備份</string>
     <string name="settings_tab_log">日誌</string>
     <string name="settings_log_open_directory">打開日誌目錄</string>
     <string name="settings_tab_update">軟體更新</string>

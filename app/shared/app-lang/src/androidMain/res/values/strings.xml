@@ -28,6 +28,7 @@
     <string name="settings_tab_bt">BitTorrent</string>
     <string name="settings_tab_cache">Auto Cache</string>
     <string name="settings_tab_storage">Storage</string>
+    <string name="settings_tab_settings_backup">Settings Backup</string>
     <string name="settings_tab_log">Logs</string>
     <string name="settings_log_open_directory">Open log directory</string>
     <string name="settings_tab_update">App Updates</string>
@@ -189,6 +190,15 @@
     <string name="settings_storage_directory_not_exist">This directory does not exist</string>
     <string name="settings_storage_path_is_invalid">The path is invalid</string>
     <string name="settings_storage_directory_create_failed">Failed to create the directory</string>
+    <string name="settings_storage_backup_title">Backup</string>
+    <string name="settings_storage_backup_op_backup_title">Copy app settings to clipboard</string>
+    <string name="settings_storage_backup_op_backup_description">Copy all app settings to the clipboard. You can import them after reinstall to retain all settings.\nWarning: contains sensitive account information; do not share the backup.</string>
+    <string name="settings_storage_backup_op_backup_error">Unable to export app settings; check logs for details</string>
+    <string name="settings_storage_backup_op_restore">Import app settings from clipboard</string>
+    <string name="settings_storage_backup_op_restore_description">Importing settings will overwrite all current app settings.</string>
+    <string name="settings_storage_backup_op_restore_warning">Importing settings will overwrite all app settings and cannot be undone. Proceed?</string>
+    <string name="settings_storage_backup_op_restore_error">Clipboard content is invalid or not a settings backup</string>
+    <string name="settings_storage_backup_op_restore_succees">Settings imported successfully</string>
     <string name="settings_media_source_list">Data source list (%1$d)</string>
     <string name="settings_media_source_list_description">Disabled data sources won\'t be automatically queried during playback, but can be manually enabled if needed. Note that the sorting will prioritize the server order, so manual sorting within the same data source subscription may be ineffective.</string>
     <string name="settings_media_source_cancel_sort">Cancel sorting</string>
@@ -327,6 +337,14 @@
     <string name="settings_update_popup_continue_download">Continue Download</string>
     <string name="settings_update_popup_restart_update">Restart to Update</string>
     <string name="settings_update_popup_download_complete">Download Complete</string>
+
+    <!-- Version Expired Overlay -->
+    <string name="settings_update_version_expired_title">Version expired</string>
+    <string name="settings_update_version_expired_message">The current version is too old. For the best experience, please update to the latest version.\nThe latest version will be shown at the bottom-right; you can click to auto-update. If you cannot update, please download from the official website:</string>
+    <string name="settings_update_version_expired_message_with_latest">The current version is too old. For the best experience, please update to the latest version %1$s.\nThe latest version will be shown at the bottom-right; you can click to auto-update. If you cannot update, please download from the official website:</string>
+    <string name="settings_update_version_expired_import_settings_hint">If the new version requires importing settings, click:</string>
+    <string name="settings_update_version_expired_copied_to_clipboard">Copied to clipboard. In the new version, click Import</string>
+    <string name="settings_update_version_expired_export_settings">Export settings</string>
 
     <!-- ExplorationScreen -->
     <string name="exploration_title">Explore</string>

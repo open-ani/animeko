@@ -165,14 +165,20 @@ fun LoadErrorCard(
                 )
             }
 
-            is LoadError.UnknownError -> {
+            is LoadError.UnknownError,
+            is LoadError.RequestError -> {
+                val e = when (error) {
+                    is LoadError.UnknownError -> error.throwable
+                    is LoadError.RequestError -> error.throwable
+                    else -> null
+                }
                 ListItem(
                     leadingContent = { Icon(Icons.Rounded.ErrorOutline, null) },
                     headlineContent = { Text(renderLoadErrorMessage(error)) },
                     trailingContent = {
                         Row {
                             if (currentAniBuildConfig.isDebug) {
-                                TextButton({ error.throwable?.printStackTrace() }) {
+                                TextButton({ e?.printStackTrace() }) {
                                     Text("Dump", fontStyle = FontStyle.Italic)
                                 }
                             } else {
@@ -182,12 +188,12 @@ fun LoadErrorCard(
                                     {
                                         clipboard.setText(
                                             AnnotatedString(
-                                                error.throwable?.stackTraceToString() ?: "null",
+                                                e?.stackTraceToString() ?: "null",
                                             ),
                                         )
                                         @OptIn(DelicateCoroutinesApi::class)
                                         GlobalScope.launch {
-                                            logger<LoadError>().error(error.throwable) {
+                                            logger<LoadError>().error(e) {
                                                 "<User clicked copy, I'm just printing the stack trace>"
                                             }
                                         }
@@ -273,5 +279,7 @@ fun renderLoadErrorMessage(error: LoadError): String {
             error.throwable?.printStackTrace()
             "未知错误: ${error.throwable?.message ?: "无详细信息"}"
         }
+
+        is LoadError.RequestError -> "请求错误: ${error.localized}"
     }
 }

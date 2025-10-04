@@ -28,6 +28,7 @@ import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AnimeScheduleService
+import me.him188.ani.app.data.network.AutoSkipRepository
 import me.him188.ani.app.data.network.BangumiBangumiCommentServiceImpl
 import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.app.data.network.BangumiProfileService
@@ -81,6 +82,9 @@ import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeatur
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeatureHandler
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider.HoldingInstanceMatrix
+import me.him188.ani.app.domain.foundation.DefaultVersionExpiryService
+import me.him188.ani.app.domain.foundation.GlobalHttpEventBus
+import me.him188.ani.app.domain.foundation.GlobalHttpEvents
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.ServerListFeature
@@ -89,6 +93,8 @@ import me.him188.ani.app.domain.foundation.ServerListFeatureHandler
 import me.him188.ani.app.domain.foundation.UseAniTokenFeatureHandler
 import me.him188.ani.app.domain.foundation.UserAgentFeature
 import me.him188.ani.app.domain.foundation.UserAgentFeatureHandler
+import me.him188.ani.app.domain.foundation.VersionExpiryFeatureHandler
+import me.him188.ani.app.domain.foundation.VersionExpiryService
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.foundation.withValue
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
@@ -188,8 +194,19 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                     },
                 ),
                 ConvertSendCountExceedExceptionFeatureHandler,
+                VersionExpiryFeatureHandler, // handle 426 Upgrade Required -> show blocking dialog
             ),
         )
+    }
+    single<VersionExpiryService> { DefaultVersionExpiryService() }
+    // Wire Global HTTP event bus to VersionExpiryService
+    run {
+        val service = koin.inject<VersionExpiryService>()
+        GlobalHttpEventBus = object : GlobalHttpEvents {
+            override fun onVersionExpired(latestVersion: String?) {
+                service.value.onVersionExpired(latestVersion)
+            }
+        }
     }
     single<AniApiProvider> { AniApiProvider(get<HttpClientProvider>().get(useAniToken = true)) }
     single<TokenRepository> { TokenRepository(getContext().dataStores.tokenStore) }
@@ -326,6 +343,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<AnimeScheduleService> { AnimeScheduleService(get<AniApiProvider>().scheduleApi) }
     single<TrendsRepository> { TrendsRepository(get<AniApiProvider>().trendsApi, get<BangumiClient>().nextTrendingApi) }
     single<RecommendationRepository> { RecommendationRepository(get<TrendsRepository>()) }
+    single<AutoSkipRepository> { AutoSkipRepository(get<AniApiProvider>().autoSkipApi) }
 
     single<DanmakuManager> {
         DanmakuManager(

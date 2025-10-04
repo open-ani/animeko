@@ -174,6 +174,8 @@ enum class SettingsTab {
     //    CACHE, // 自动缓存, 4.10 删除
     STORAGE,
 
+    SETTINGS_BACKUP,
+
     ABOUT,
     LOG,
     DEBUG,

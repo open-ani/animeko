@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -15,6 +15,7 @@ import me.him188.ani.app.data.repository.RepositoryAuthorizationException
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
+import me.him188.ani.app.data.repository.RepositoryRequestError
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
 import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
@@ -99,6 +100,9 @@ class MediaSourceSubscriptionUpdater(
 
                     is RepositoryUnknownException ->
                         setResult(null, UpdateError(e.toString(), null))
+
+                    is RepositoryRequestError ->
+                        setResult(null, UpdateError(e.localizedMessage, null))
                 }
             } catch (e: Exception) {
                 logger.error(e) { "Failed to update subscription ${subscription.url}" }

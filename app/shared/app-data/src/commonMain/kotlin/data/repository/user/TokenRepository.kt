@@ -15,6 +15,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.domain.session.AccessTokenPair
@@ -89,6 +90,20 @@ class TokenRepository(
                 accessTokens = null,
             )
         }
+    }
+
+    /**
+     * for settings backup only
+     */
+    suspend fun getTokenSaveSnapshot(): TokenSave {
+        return dataStore.data.map { it }.first()
+    }
+
+    /**
+     * for settings restore only
+     */
+    suspend fun restoreFromTokenSave(save: TokenSave) {
+        dataStore.updateData { save }
     }
 }
 

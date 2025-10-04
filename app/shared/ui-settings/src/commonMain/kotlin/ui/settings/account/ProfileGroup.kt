@@ -137,6 +137,11 @@ fun SettingsScope.ProfileGroup(
         onResetAvatarUploadState = {
             vm.resetAvatarUploadState()
         },
+        onUnbindBangumi = {
+            asyncHandler.launch {
+                vm.unbindBangumi()
+            }
+        },
         modifier = modifier,
     )
 }
@@ -155,10 +160,12 @@ internal fun SettingsScope.ProfileGroupImpl(
     onLogout: () -> Unit,
     onNavigateToEmail: () -> Unit,
     onBangumiClick: () -> Unit,
+    onUnbindBangumi: () -> Unit,
     modifier: Modifier = Modifier,
     windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass,
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showUnbindBangumiDialog by remember { mutableStateOf(false) }
 
     val currentInfo = state.selfInfo.selfInfo
     val currentState by rememberUpdatedState(state.selfInfo)
@@ -246,6 +253,11 @@ internal fun SettingsScope.ProfileGroupImpl(
                             Image(Icons.Default.BangumiNext, contentDescription = "Bangumi Icon")
                         },
                         onClick = onBangumiClick,
+                        action = if (!currentInfo?.bangumiUsername.isNullOrEmpty()) {
+                            {
+                                TextButton(onClick = { showUnbindBangumiDialog = true }) { Text("解绑") }
+                            }
+                        } else null,
                         modifier = Modifier.placeholder(isPlaceholder),
                     )
                 }
@@ -260,6 +272,16 @@ internal fun SettingsScope.ProfileGroupImpl(
                 showLogoutDialog = false
             },
             onCancel = { showLogoutDialog = false },
+        )
+    }
+
+    if (showUnbindBangumiDialog) {
+        UnbindBangumiDialog(
+            onConfirm = {
+                onUnbindBangumi()
+                showUnbindBangumiDialog = false
+            },
+            onCancel = { showUnbindBangumiDialog = false },
         )
     }
 
@@ -284,6 +306,29 @@ internal fun SettingsScope.ProfileGroupImpl(
             modifier = Modifier.padding(8.dp),
         )
     }
+}
+
+@Composable
+private fun UnbindBangumiDialog(
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+    confirmEnabled: Boolean = true,
+) {
+    AlertDialog(
+        onCancel,
+        // icon omitted to reduce dependency on specific icon packs
+        text = { Text("确定要解绑 Bangumi 吗？解绑后将不再同步观看记录到 Bangumi。解绑后可以重新绑定。") },
+        confirmButton = {
+            TextButton(onConfirm, enabled = confirmEnabled) {
+                Text("解绑", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onCancel) {
+                Text("取消")
+            }
+        },
+    )
 }
 
 @Composable

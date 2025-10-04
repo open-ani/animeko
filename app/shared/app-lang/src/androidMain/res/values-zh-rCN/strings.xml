@@ -27,7 +27,8 @@
     <string name="settings_tab_proxy">代理</string>
     <string name="settings_tab_bt">BitTorrent</string>
     <string name="settings_tab_cache">自动缓存</string>
-    <string name="settings_tab_storage">存储空间</string>
+    <string name="settings_tab_storage">存储</string>
+    <string name="settings_tab_settings_backup">设置备份</string>
     <string name="settings_tab_log">日志</string>
     <string name="settings_log_open_directory">打开日志目录</string>
     <string name="settings_tab_update">软件更新</string>
@@ -193,6 +194,14 @@
     <string name="settings_player_long_press_fast_forward_speed">长按快进速度</string>
     <string name="settings_player_long_press_fast_forward_speed_description">长按快进时的速度倍率</string>
 
+    <!-- Version Expired Overlay -->
+    <string name="settings_update_version_expired_title">版本过期</string>
+    <string name="settings_update_version_expired_message">当前版本太旧，为了你的使用体验，请更新到最新版本。\n右下角将会显示最新版本，可以点击自动更新。如果无法更新，请前往官网下载：</string>
+    <string name="settings_update_version_expired_message_with_latest">当前版本太旧，为了你的使用体验，请更新到最新版本 %1$s。\n右下角将会显示最新版本，可以点击自动更新。如果无法更新，请前往官网下载：</string>
+    <string name="settings_update_version_expired_import_settings_hint">如果新版本要求导入设置，请点击：</string>
+    <string name="settings_update_version_expired_copied_to_clipboard">已复制到剪贴板，请到新版本点击导入</string>
+    <string name="settings_update_version_expired_export_settings">导出设置</string>
+
     <!-- Storage Settings -->
     <string name="settings_storage_title">存储设置</string>
     <string name="settings_storage_bt_cache_location">BT 视频缓存位置</string>
@@ -203,6 +212,16 @@
     <string name="settings_storage_directory_not_exist">该目录不存在</string>
     <string name="settings_storage_path_is_invalid">该路径无效</string>
     <string name="settings_storage_directory_create_failed">无法创建目录</string>
+    <string name="settings_storage_backup_title">备份</string>
+    <string name="settings_storage_backup_op_backup_title">复制应用设置到剪切板</string>
+    <string name="settings_storage_backup_op_backup_description">复制所有应用设置到剪切板，可以在重装后通过下方的导入来继承所有应用设置项。\n注意：包含账号敏感信息，请勿分享备份内容给他人。</string>
+    <string name="settings_storage_backup_op_backup_error">无法导出应用设置，请在日志查看错误信息</string>
+    <string name="settings_storage_backup_op_restore">从剪切板导入应用设置</string>
+    <string name="settings_storage_backup_op_restore_description">导入设置会覆盖当前应用的所有设置。</string>
+    <string name="settings_storage_backup_op_restore_warning">这会覆盖当前应用的所有设置，且无法撤销，确认导入吗？</string>
+    <string name="settings_storage_backup_op_restore_error">剪切板中内容无效或者不是设置备份内容</string>
+    <string name="settings_storage_backup_op_restore_succees">导入设置成功</string>
+    
 
     <!-- MediaSourceGroup -->
     <string name="settings_media_source_list">数据源列表 (%1$d)</string>

@@ -110,6 +110,7 @@ internal fun EpisodeVideoImpl(
     hasNextEpisode: Boolean,
     onClickNextEpisode: () -> Unit,
     playerControllerState: PlayerControllerState,
+    onClickSkip85: (currentPositionMillis: Long) -> Unit = { playerState.skip(85_000L) },
     title: @Composable () -> Unit,
     danmakuHost: @Composable () -> Unit,
     danmakuEnabled: Boolean,
@@ -172,7 +173,7 @@ internal fun EpisodeVideoImpl(
                             null
                         },
                         actions = {
-                            IconButton({ playerState.skip(85000L) }) {
+                            IconButton({ onClickSkip85(playerState.getCurrentPositionMillis()) }) {
                                 Icon(AniIcons.Forward85, "快进 85 秒")
                             }
                             if (expanded) {

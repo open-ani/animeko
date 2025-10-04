@@ -7,12 +7,13 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.settings.tabs.media
+package me.him188.ani.app.domain.foundation
 
-import androidx.compose.runtime.Composable
-import me.him188.ani.app.ui.settings.framework.components.SettingsScope
-
-@Composable
-actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
-    // TODO: IOS CacheDirectoryGroup
+/**
+ * Application-level global HTTP events, to keep app-data decoupled from UI/application layers.
+ */
+interface GlobalHttpEvents {
+    fun onVersionExpired(latestVersion: String?)
 }
+
+lateinit var GlobalHttpEventBus: GlobalHttpEvents

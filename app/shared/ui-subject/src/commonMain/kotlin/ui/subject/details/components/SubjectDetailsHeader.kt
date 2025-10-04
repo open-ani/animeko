@@ -36,13 +36,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImagePainter
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
@@ -65,6 +65,7 @@ internal fun SubjectDetailsHeader(
 ) {
     if (currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
         SubjectDetailsHeaderWide(
+            info?.subjectId,
             coverImageUrl = coverImageUrl,
             title = {
                 Text(
@@ -89,6 +90,7 @@ internal fun SubjectDetailsHeader(
         )
     } else {
         SubjectDetailsHeaderCompact(
+            info?.subjectId,
             coverImageUrl = coverImageUrl,
             title = { Text(info?.displayName ?: "") },
             subtitle = { Text(info?.name ?: "") },
@@ -107,6 +109,7 @@ internal fun SubjectDetailsHeader(
 // 适合手机, 窄
 @Composable
 fun SubjectDetailsHeaderCompact(
+    subjectId: Int?,
     coverImageUrl: String?,
     title: @Composable () -> Unit,
     subtitle: @Composable () -> Unit,
@@ -124,13 +127,17 @@ fun SubjectDetailsHeaderCompact(
 
             Box(Modifier.clip(MaterialTheme.shapes.medium)) {
                 AsyncImage(
-                    coverImageUrl,
+                    ImageRequest.Builder(LocalPlatformContext.current)
+                        .data(coverImageUrl)
+                        .memoryCacheKey(subjectId?.toString())
+                        .placeholderMemoryCacheKey(subjectId?.toString())
+                        .crossfade(300)
+                        .build(),
                     null,
                     Modifier
                         .width(imageWidth)
                         .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
                     contentScale = ContentScale.Crop,
-                    placeholder = if (currentAniBuildConfig.isDebug) remember { ColorPainter(Color.Gray) } else null,
                     onSuccess = onSuccess,
                 )
             }
@@ -191,6 +198,7 @@ fun SubjectDetailsHeaderCompact(
 
 @Composable
 fun SubjectDetailsHeaderWide(
+    subjectId: Int?,
     coverImageUrl: String?,
     title: @Composable () -> Unit,
     seasonTags: @Composable RowScope.() -> Unit,
@@ -210,13 +218,17 @@ fun SubjectDetailsHeaderWide(
 
             Box(Modifier.clip(MaterialTheme.shapes.medium)) {
                 AsyncImage(
-                    coverImageUrl,
+                    ImageRequest.Builder(LocalPlatformContext.current)
+                        .data(coverImageUrl)
+                        .memoryCacheKey(subjectId?.toString())
+                        .placeholderMemoryCacheKey(subjectId?.toString())
+                        .crossfade(300)
+                        .build(),
                     null,
                     Modifier
                         .width(imageWidth)
                         .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
                     contentScale = ContentScale.Crop,
-                    placeholder = if (currentAniBuildConfig.isDebug) remember { ColorPainter(Color.Gray) } else null,
                     onSuccess = onCoverImageSuccess,
                 )
             }

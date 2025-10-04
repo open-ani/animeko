@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -67,7 +67,8 @@ object EpisodeCompletionContext {
             return null // 误差在一天以内, 所以如果是每天更新的, 就无法支持
         }
 
-        val target = airDate.toLocalDateOrNull()!!.atTime(LocalTime(0, 0)).toInstant(UTC9)
+        val airDateAsLocalDate = airDate.toLocalDateOrNull() ?: return null
+        val target = airDateAsLocalDate.atTime(LocalTime(0, 0)).toInstant(UTC9)
 
         val subjectStart = recurrence.startTime
         if (target < subjectStart) {

@@ -160,6 +160,7 @@ sealed class LoadErrorCardRole {
             return when (problem) {
                 // Important error
                 is LoadError.UnknownError,
+                is LoadError.RequestError,
                 LoadError.ServiceUnavailable,
                 LoadError.NetworkError,
                     -> Important
