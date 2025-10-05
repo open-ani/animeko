@@ -22,22 +22,6 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-
-/**
- * 可分页列表的分组配置
- */
-interface PaginatedGroupConfig<T> {
-    /**
-     * 每个分组的最大条目数
-     */
-    val itemsPerGroup: Int
-
-    /**
-     * 生成指定分组的标题
-     */
-    fun generateGroupTitle(groupIndex: Int, itemsInGroup: List<T>): String
-}
-
 /**
  * 分页列表分组数据
  */
@@ -56,25 +40,13 @@ data class PaginatedGroup<T>(
  */
 @Stable
 class PaginatedListState<T>(
-    private val items: List<T>,
-    private val config: PaginatedGroupConfig<T>,
-    val listState: LazyListState = LazyListState(),
-    private val coroutineScope: CoroutineScope,
-) {
     /**
      * 分组后的数据
      */
-    val groups: List<PaginatedGroup<T>> by derivedStateOf {
-        items.chunked(config.itemsPerGroup).mapIndexed { groupIndex, chunk ->
-            val startItemIndex = groupIndex * config.itemsPerGroup
-            PaginatedGroup(
-                title = config.generateGroupTitle(groupIndex, chunk),
-                items = chunk,
-                startIndex = startItemIndex,
-                groupIndex = groupIndex,
-            )
-        }
-    }
+    val groups: List<PaginatedGroup<T>>,
+    val listState: LazyListState = LazyListState(),
+    private val coroutineScope: CoroutineScope,
+) {
 
     /**
      * 当前分组索引
@@ -152,22 +124,17 @@ class PaginatedListState<T>(
     /**
      * 计算指定条目在列表中的精确位置
      */
-    fun calculateItemPosition(itemIndexInCurrentGroup: Int): Int? {
-        if (itemIndexInCurrentGroup < 0 || itemIndexInCurrentGroup >= items.size) return null
+    fun calculateItemPosition(itemIndexInEpisodes: Int): Int? {
+        val groupIndex = findGroupIndexByItem(itemIndexInEpisodes) ?: return null
+        val group = groups[groupIndex]
+        val posInGroup = itemIndexInEpisodes - group.startIndex
 
-        val targetGroupIndex = itemIndexInCurrentGroup / config.itemsPerGroup
-        val positionInGroup = itemIndexInCurrentGroup % config.itemsPerGroup
+        // header 在最终列表中的索引
+        val headerListIndex = groupStartIndices.getOrNull(groupIndex) ?: return null
 
-        var listIndex = 0
-        // Add all previous groups (header + items)
-        for (i in 0 until targetGroupIndex) {
-            listIndex += 1 + (groups.getOrNull(i)?.items?.size ?: 0)
-        }
-        // Add current group header + item position
-        listIndex += 1 + positionInGroup
-
-        return listIndex
+        return headerListIndex + 1 + posInGroup
     }
+
 
     /**
      * 将指定条目滚动到可视区域
@@ -176,13 +143,9 @@ class PaginatedListState<T>(
      * @param animate 是否使用动画滚动
      */
     suspend fun bringIntoView(itemIndex: Int, animate: Boolean = true) {
-        if (itemIndex < 0 || itemIndex >= items.size) return
+        val groupIndex = findGroupIndexByItem(itemIndex) ?: return
+        currentGroupIndex = groupIndex
 
-        val targetGroupIndex = itemIndex / config.itemsPerGroup
-        // 导航到对应的分组
-        currentGroupIndex = targetGroupIndex
-
-        // 计算条目在列表中的精确位置并滚动
         val itemPosition = calculateItemPosition(itemIndex)
         if (itemPosition != null) {
             if (animate) {
@@ -193,6 +156,33 @@ class PaginatedListState<T>(
         }
     }
 
+    /**
+     * 二分查找
+     */
+    private fun findGroupIndexByItem(itemIndex: Int): Int? {
+        if (groups.isEmpty()) return null
+
+        val last = groups.last()
+        val totalItems = last.startIndex + last.items.size
+        if (itemIndex < 0 || itemIndex >= totalItems) return null
+
+        var low = 0
+        var high = groups.lastIndex
+        var result = 0
+
+        while (low <= high) {
+            val mid = (low + high) ushr 1
+            val midStart = groups[mid].startIndex
+            if (midStart <= itemIndex) {
+                result = mid
+                low = mid + 1
+            } else {
+                high = mid - 1
+            }
+        }
+
+        return result
+    }
 }
 
 /**
@@ -200,13 +190,12 @@ class PaginatedListState<T>(
  */
 @Composable
 fun <T> rememberPaginatedListState(
-    items: List<T>,
-    config: PaginatedGroupConfig<T>,
+    groups: List<PaginatedGroup<T>>,
     key: Any? = null,
     listState: LazyListState = rememberLazyListState(),
 ): PaginatedListState<T> {
     val coroutineScope = rememberCoroutineScope()
     return remember(key) {
-        PaginatedListState(items, config, listState, coroutineScope)
+        PaginatedListState(groups, listState, coroutineScope)
     }
 }

@@ -57,7 +57,7 @@ fun <T> PaginatedList(
     state: PaginatedListState<T>,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-    headerContent: @Composable (title: String) -> Unit = { DefaultGroupHeader(title = it) },
+    headerContent: @Composable (group: PaginatedGroup<T>) -> Unit = { DefaultGroupHeader(title = it.title) },
     onItemClick: ((T) -> Unit)? = null,
     itemContent: @Composable (T) -> Unit,
 ) {
@@ -78,7 +78,7 @@ fun <T> PaginatedList(
         ) {
             state.groups.forEach { group ->
                 item(key = "PaginatedList_ header_${group.groupIndex}") {
-                    headerContent(group.title)
+                    headerContent(group)
                 }
 
                 items(

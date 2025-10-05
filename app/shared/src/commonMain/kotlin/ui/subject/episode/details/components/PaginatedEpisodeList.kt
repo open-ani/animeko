@@ -23,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
@@ -30,7 +31,7 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.ui.foundation.icons.PlayingIcon
-import me.him188.ani.app.ui.foundation.lists.PaginatedGroupConfig
+import me.him188.ani.app.ui.foundation.lists.PaginatedGroup
 import me.him188.ani.app.ui.foundation.lists.PaginatedList
 import me.him188.ani.app.ui.foundation.lists.rememberPaginatedListState
 import me.him188.ani.app.ui.subject.episode.details.EpisodeCarouselState
@@ -55,24 +56,26 @@ fun PaginatedEpisodeList(
     listState: LazyListState,
     modifier: Modifier = Modifier
 ) {
-    // 分组配置
-    val config = remember(episodes) {
-        object : PaginatedGroupConfig<EpisodeCollectionInfo> {
-            override val itemsPerGroup: Int = 100
-
-            override fun generateGroupTitle(groupIndex: Int, itemsInGroup: List<EpisodeCollectionInfo>): String {
-                val startEp = groupIndex * itemsPerGroup + 1
-                val endEp = startEp + itemsInGroup.size - 1
-                return "第 $startEp-$endEp 话"
-            }
+    // 生成分组数据
+    val groups = remember(episodes) {
+        episodes.chunked(100).mapIndexed { groupIndex, chunk ->
+            val startItemIndex = groupIndex * 100
+            val startEp = groupIndex * 100 + 1
+            val endEp = startEp + chunk.size - 1
+            PaginatedGroup(
+                title = "第 $startEp-$endEp 话",
+                items = chunk,
+                startIndex = startItemIndex,
+                groupIndex = groupIndex,
+            )
         }
     }
 
-    val playingEpisodeIndex by remember(episodes) {
+    val playingEpisodeIndex by rememberSaveable(episodes) {
         derivedStateOf { episodes.indexOfFirst { episodeCarouselState.isPlaying(it) } }
     }
 
-    val state = rememberPaginatedListState(episodes, config, episodes, listState)
+    val state = rememberPaginatedListState(groups, episodes, listState)
 
     // 统一的播放位置处理
     LaunchedEffect(playingEpisodeIndex) {
@@ -87,9 +90,9 @@ fun PaginatedEpisodeList(
         onItemClick = { episode ->
             episodeCarouselState.onSelect(episode)
         },
-        headerContent = { title ->
+        headerContent = { group ->
             Text(
-                text = title,
+                text = group.title,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(vertical = 8.dp),
