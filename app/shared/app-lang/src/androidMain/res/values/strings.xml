@@ -350,9 +350,19 @@
     <string name="exploration_title">Explore</string>
     <string name="exploration_settings">Settings</string>
     <string name="exploration_search">Search</string>
+    <string name="exploration_search_keyword">Keyword</string>
+    <string name="exploration_search_back_to_top">Back to top</string>
+    <string name="exploration_search_nsfw_hint">NSFW content is hidden</string>
+    <string name="exploration_search_nsfw_show">Display</string>
+    <string name="exploration_search_res_empty">No results found</string>
+    <string name="exploration_search_res_cnt">Results: %1$d</string>
+    <string name="exploration_search_res_match">Match</string>
+    <string name="exploration_search_res_collection">Collection</string>
+    <string name="exploration_search_res_rank">Rank</string>
     <string name="exploration_trending">Trending</string>
     <string name="exploration_schedule">Anime Schedule</string>
     <string name="exploration_continue_watching">Continue Watching</string>
+    <string name="exploration_continue_watching_hint">Collect an anime as "Watching" and it will appear here</string>
     <string name="exploration_recommendations">Recommendations</string>
     <string name="exploration_horizontal_scroll_tip">Hold Shift + mouse wheel to scroll horizontally</string>
 
@@ -378,6 +388,8 @@
 
     <!-- ServerSelectionGroup -->
     <string name="settings_network_danmaku">Server Region</string>
+    <string name="settings_network_danmaku_auto">Auto</string>
+    <string name="settings_network_danmaku_auto_hint">Auto Select: %1$s</string>
     <string name="settings_network_danmaku_global_acceleration">Global Acceleration</string>
     <string name="settings_network_danmaku_global_acceleration_description">Improves speed when accessing global servers\nEnabling this within mainland China will slow it down</string>
     <string name="settings_network_danmaku_connection_test">Connection Speed Test</string>
@@ -408,9 +420,11 @@
     <string name="settings_network_proxy_title">Global Proxy Settings</string>
     <string name="settings_network_proxy_description">Applied to all data sources and Bangumi</string>
     <string name="settings_network_proxy_type">Proxy Type</string>
+    <string name="settings_network_proxy_mode_via">Using %1$s</string>
     <string name="settings_network_proxy_disabled">Disabled</string>
+    <string name="settings_network_proxy_disabled_hint">No proxy is used</string>
     <string name="settings_network_proxy_system">System Proxy</string>
-    <string name="settings_network_proxy_custom">Custom</string>
+    <string name="settings_network_proxy_custom">Custom Proxy</string>
     <string name="settings_network_proxy_detection_result">Auto-detection Result</string>
     <string name="settings_network_proxy_detecting">Detecting</string>
     <string name="settings_network_proxy_not_detected">No system proxy detected</string>
@@ -420,6 +434,18 @@
     <string name="settings_network_proxy_optional">Optional</string>
     <string name="settings_network_proxy_none">None</string>
     <string name="settings_network_proxy_password">Password</string>
+    <string name="settings_network_proxy_state_init">Testing connection, please wait…</string>
+    <string name="settings_network_proxy_state_running">Testing connection, please wait…</string>
+    <string name="settings_network_proxy_state_fail_np">Some services failed to connect, consider enabling proxy</string>
+    <string name="settings_network_proxy_state_fail_p">Some services failed to connect, consider changing proxy mode or address</string>
+    <string name="settings_network_proxy_state_success">All services connected successfully</string>
+    <string name="settings_network_proxy_retry">Retest</string>
+    <string name="settings_network_proxy_save_and_test">Save and Test</string>
+    <string name="settings_network_proxy_service_danmaku">Danmaku Service</string>
+    <string name="settings_network_proxy_service_collection">Collection Data Service</string>
+    <string name="settings_network_proxy_service_comments">Comments Service</string>
+    <string name="settings_network_proxy_service_connected_via">Connected successfully using %1$s</string>
+    <string name="settings_network_proxy_service_failed_via">Failed to connect using %1$s</string>
 
     <!-- TorrentEngineGroup -->
     <string name="settings_media_torrent_title">BT Settings</string>
@@ -446,7 +472,22 @@
     <string name="settings_media_auto_cache_recent_only">Only cache recently watched anime</string>
     <string name="settings_media_auto_cache_count">Cache count</string>
     <string name="settings_media_auto_cache_count_description">Current setting: Only cache the most recent %d anime</string>
-    <string name="settings_media_auto_cache_manage">Manage cached episodes</string><string name="settings_debug_logout">Logout</string><string name="settings_debug_logged_out">Logged out</string><string name="settings_tab_account">Account</string>
+    <string name="settings_media_auto_cache_manage">Manage cached episodes</string>
+    <string name="settings_tab_account">Account</string>
+    
+    <!-- AccountGroup -->
+    <string name="account_login">Login</string>
+    <string name="account_not_logged_in">Not logged in</string>
+    <string name="account_logout">Logout</string>
+    <string name="account_logout_hint">Are you sure you want to log out?</string>
+    <string name="account_logged_out">Logged out</string>
+    <string name="account_login_or_register">Login / Register</string>
+    <string name="account_edit_profile">Edit profile settings</string>
+    <string name="account_edit_avatar">Edit avatar</string>
+    
+    <!-- CommonUIGroup -->
+    <string name="ui_btn_cancel">Cancel</string>
+    <string name="ui_btn_edit">Edit</string>
 </resources>
 
 <!--@formatter:on-->

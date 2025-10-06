@@ -61,10 +61,13 @@ import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import me.him188.ani.app.ui.foundation.icons.BangumiNextIconColor
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.account_login_or_register
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
+import org.jetbrains.compose.resources.stringResource
 
 sealed interface AuthState {
     data class LoggedInAni(val bound: Boolean) : Idle
@@ -162,7 +165,7 @@ private fun AuthorizeButton(
                     }
 
                     is AuthState.Idle, is AuthState.Failed -> {
-                        Text("登录 / 注册")
+                        Text(stringResource(Lang.account_login_or_register))
                     }
 
                     is AuthState.AwaitingResult -> {
@@ -352,7 +355,7 @@ private fun SettingsScope.AuthorizeHelpQA(
                     content = { renderHelpOptionContent(option, contactActions) },
                     expanded = currentSelected == option,
                     showDivider = index != HelpOption.entries.lastIndex,
-                    onClick = { 
+                    onClick = {
                         val wasExpanded = currentSelected == option
                         currentSelected = if (wasExpanded) null else option
                         if (!wasExpanded) {
