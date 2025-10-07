@@ -17,15 +17,20 @@ import android.os.Build
 import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.lifecycle.ProcessLifecycleOwner
+import dev.gitlive.firebase.Firebase
+import dev.gitlive.firebase.analytics.analytics
+import dev.gitlive.firebase.initialize
 import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.android.activity.MainActivity
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
@@ -37,7 +42,6 @@ import me.him188.ani.app.platform.StartupTimeMonitor
 import me.him188.ani.app.platform.StepName
 import me.him188.ani.app.platform.create
 import me.him188.ani.app.platform.createAppRootCoroutineScope
-import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.platform.getCommonKoinModule
 import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.platform.trace.recordAppStart
@@ -143,26 +147,28 @@ class AniApplication : Application() {
         val koin = getKoin()
         val analyticsInitializer = scope.launch {
             val settingsRepository = koin.get<SettingsRepository>()
+            val userRepository = koin.get<UserRepository>()
             val settings = settingsRepository.analyticsSettings.flow.first()
-            if (settings.isInit) {
-                settingsRepository.analyticsSettings.update {
-                    copy(isInit = false) // save user id
-                }
+            settingsRepository.analyticsSettings.update { settings }
+            if (settings.isBugReportEnabled) {
+                AppStartupTasks.initializeSentry(settings.deviceId)
             }
-            if (settings.allowAnonymousBugReport) {
-                AppStartupTasks.initializeSentry(settings.userId)
-            }
-            if (settings.allowAnonymousAnalytics) {
+            if (settings.isAnalyticsEnabled) {
                 AppStartupTasks.initializeAnalytics {
                     AnalyticsImpl(
                         AnalyticsConfig.create(),
-                        userId = settings.userId,
                     ).apply {
-                        init(
-                            this@AniApplication,
-                            apiKey = currentAniBuildConfig.analyticsKey,
-                            host = currentAniBuildConfig.analyticsServer,
-                        )
+                        Firebase.initialize(applicationContext) // Use google-services.json
+                        init()
+            
+                        userRepository.selfInfoFlow.first()?.id?.let {
+                            Firebase.analytics.setUserId(it.toString())
+                        }
+                        scope.launch {
+                            userRepository.selfInfoFlow.map { it?.id }.collect {
+                                Firebase.analytics.setUserId(it?.toString())
+                            }
+                        }
                     }
                 }
             }

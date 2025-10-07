@@ -36,8 +36,6 @@
 @file:DependsOn("softprops:action-gh-release:v1")
 @file:DependsOn("snow-actions:qrcode:v1.0.0")
 
-import Secrets.ANALYTICS_KEY
-import Secrets.ANALYTICS_SERVER
 import Secrets.AWS_ACCESS_KEY_ID
 import Secrets.AWS_BASEURL
 import Secrets.AWS_BUCKET
@@ -45,7 +43,10 @@ import Secrets.AWS_REGION
 import Secrets.AWS_SECRET_ACCESS_KEY
 import Secrets.DANDANPLAY_APP_ID
 import Secrets.DANDANPLAY_APP_SECRET
+import Secrets.FIREBASE_GA_API_SECRET
+import Secrets.FIREBASE_GA_APP_ID
 import Secrets.GITHUB_REPOSITORY
+import Secrets.GOOGLE_SERVICES_JSON
 import Secrets.SENTRY_DSN
 import Secrets.SIGNING_RELEASE_KEYALIAS
 import Secrets.SIGNING_RELEASE_KEYPASSWORD
@@ -487,6 +488,7 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
         )
 
         val prepareSigningKey = prepareSigningKey()
+        prepareGoogleServicesJson()
         compileAndAssemble()
         prepareSigningKey?.let {
             buildAndroidApk(it)
@@ -1061,12 +1063,21 @@ class WithMatrix(
                 echo "ani.dandanplay.app.id=$${expr { secrets.DANDANPLAY_APP_ID }}" >> local.properties
                 echo "ani.dandanplay.app.secret=$${expr { secrets.DANDANPLAY_APP_SECRET }}" >> local.properties
                 echo "ani.sentry.dsn=$${expr { secrets.SENTRY_DSN }}" >> local.properties
-                echo "ani.analytics.server=$${expr { secrets.ANALYTICS_SERVER }}" >> local.properties
-                echo "ani.analytics.key=$${expr { secrets.ANALYTICS_KEY }}" >> local.properties
                 echo "kotlin.native.ignoreDisabledTargets=true" >> local.properties
             """.trimIndent(),
             ),
             continueOnError = true,
+        )
+        run(
+            command = shell(
+                $$"""
+                echo "ani.enable.firebase=true" >> local.properties
+                echo "firebase.ga.app.id=$${expr { secrets.FIREBASE_GA_APP_ID }}" >> local.properties
+                echo "firebase.ga.api.secret=$${expr { secrets.FIREBASE_GA_API_SECRET }}" >> local.properties
+            """.trimIndent(),
+            ),
+            continueOnError = true,
+            `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
         )
     }
 
@@ -1309,6 +1320,26 @@ class WithMatrix(
                     fileName_Untyped = "android_signing_key",
                     fileDir_Untyped = "./",
                     encodedString_Untyped = expr { secrets.SIGNING_RELEASE_STOREFILE },
+                ),
+                continueOnError = true,
+            )
+        } else {
+            null
+        }
+    }
+
+    /**
+     * Returns the action step if it's enabled, otherwise returns `null`.
+     */
+    fun JobBuilder<*>.prepareGoogleServicesJson(): ActionStep<Base64ToFile_Untyped.Outputs>? {
+        return if (matrix.uploadApk) {
+            uses(
+                name = "Prepare google-services.json",
+                `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+                action = Base64ToFile_Untyped(
+                    fileName_Untyped = "google-services.json",
+                    fileDir_Untyped = "./app/android",
+                    encodedString_Untyped = expr { secrets.GOOGLE_SERVICES_JSON },
                 ),
                 continueOnError = true,
             )
@@ -1830,6 +1861,10 @@ object Secrets {
     val SecretsContext.SENTRY_DSN by SecretsContext.propertyToExprPath
     val SecretsContext.ANALYTICS_SERVER by SecretsContext.propertyToExprPath
     val SecretsContext.ANALYTICS_KEY by SecretsContext.propertyToExprPath
+
+    val SecretsContext.GOOGLE_SERVICES_JSON by SecretsContext.propertyToExprPath
+    val SecretsContext.FIREBASE_GA_APP_ID by SecretsContext.propertyToExprPath
+    val SecretsContext.FIREBASE_GA_API_SECRET by SecretsContext.propertyToExprPath
 }
 
 /// EXTENSIONS

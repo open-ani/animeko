@@ -2,5 +2,8 @@ target 'Animeko' do
   use_frameworks!
   platform :ios, '16.0'
   pod 'application', :path => '../shared/application'
+  # Link Firebase iOS SDKs required by GitLive Firebase Kotlin SDK
+  pod 'FirebaseCore'
+  pod 'FirebaseAnalytics'
   pod 'Sentry', '~> 8.49.0'
 end

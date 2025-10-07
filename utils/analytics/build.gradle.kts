@@ -11,6 +11,7 @@
 
 plugins {
     kotlin("multiplatform")
+    kotlin("plugin.serialization")
     id("com.android.library")
     `ani-mpp-lib-targets`
 }
@@ -21,16 +22,20 @@ android {
 }
 
 kotlin {
-    sourceSets.commonMain.dependencies {
-        api(libs.kotlinx.coroutines.core)
-        api(projects.utils.logging)
-    }
-    sourceSets.androidMain.dependencies {
-//        api(libs.countly.sdk.android)
-        api(libs.posthog.android)
-    }
-    sourceSets.desktopMain.dependencies {
-//        api(libs.countly.sdk.java)
-        api(libs.posthog.java)
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                api(libs.kotlinx.coroutines.core)
+                api(projects.utils.logging)
+                api(libs.firebase.analytics)
+            }
+        }
+        val skikoMain by getting {
+            dependencies {
+                api(projects.utils.ktorClient)
+                api(projects.utils.serialization)
+                api(projects.utils.coroutines)
+            }
+        }
     }
 }

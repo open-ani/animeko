@@ -15,18 +15,16 @@ import kotlin.uuid.Uuid
 
 @Serializable
 data class AnalyticsSettings(
-    val allowAnonymousBugReport: Boolean,
-    val allowAnonymousAnalytics: Boolean,
-    val userId: String,
-    val isInit: Boolean,
+    val isBugReportEnabled: Boolean = true,
+    val isAnalyticsEnabled: Boolean = true,
+    /**
+     * 这其实是本地的唯一标识, 而不是 User.id
+     */
+    val deviceId: String = Uuid.random().toString(),
 ) {
     companion object {
         @OptIn(ExperimentalUuidApi::class)
-        fun default() = AnalyticsSettings(
-            allowAnonymousBugReport = true,
-            allowAnonymousAnalytics = true,
-            userId = Uuid.random().toString(),
-            isInit = true,
-        )
+        fun default() = AnalyticsSettings()
+
     }
 }

@@ -31,6 +31,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
@@ -61,9 +62,7 @@ import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.StartupTimeMonitor
 import me.him188.ani.app.platform.StepName
-import me.him188.ani.app.platform.create
 import me.him188.ani.app.platform.createAppRootCoroutineScope
-import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.platform.getCommonKoinModule
 import me.him188.ani.app.platform.rememberPlatformWindow
 import me.him188.ani.app.platform.startCommonKoinModule
@@ -81,7 +80,6 @@ import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
 import me.him188.ani.utils.analytics.Analytics
-import me.him188.ani.utils.analytics.AnalyticsConfig
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.io.SystemCacheDir
 import me.him188.ani.utils.io.SystemPath
@@ -129,31 +127,31 @@ fun startIosApp(): AniIosApplication {
         modules(getIosModules(context, context.files.dataDir.resolve("torrent"), scope))
     }.startCommonKoinModule(context, scope).koin
     startupTimeMonitor.mark(StepName.Modules)
+    val userRepository = koin.get<UserRepository>()
 
     val analyticsInitializer = scope.launch {
         val settingsRepository = koin.get<SettingsRepository>()
         val settings = settingsRepository.analyticsSettings.flow.first()
-        if (settings.isInit) {
-            settingsRepository.analyticsSettings.update {
-                copy(isInit = false) // save user id
-            }
+        settingsRepository.analyticsSettings.update { settings }
+        if (settings.isBugReportEnabled) {
+            AppStartupTasks.initializeSentry(settings.deviceId)
         }
-        if (settings.allowAnonymousBugReport) {
-            AppStartupTasks.initializeSentry(settings.userId)
-        }
-        if (settings.allowAnonymousAnalytics) {
-            AppStartupTasks.initializeAnalytics {
-                IosAnalyticsImpl(
-                    AnalyticsConfig.create(),
-                    settings.userId,
-                ).apply {
-                    init(
-                        apiKey = currentAniBuildConfig.analyticsKey,
-                        host = currentAniBuildConfig.analyticsServer,
-                    )
-                }
-            }
-        }
+//        if (settings.isAnalyticsEnabled) {
+//            AppStartupTasks.initializeAnalytics {
+//                AnalyticsImpl(
+//                    AnalyticsConfig.create(),
+//                    settings.deviceId,
+//                    userId = { userRepository.selfInfoFlow.first()?.id },
+//                    AnalyticsSecrets(
+//                        apiSecret = AniBuildConfigIos.firebaseGAApiSecret,
+//                        firebaseAppId = AniBuildConfigIos.firebaseGAAppId,
+//                    ),
+//                    scope.coroutineContext,
+//                ).apply {
+//                    init()
+//                }
+//            }
+//        }
     }
 
     koin.get<TorrentManager>() // start sharing, connect to DHT now
@@ -169,6 +167,7 @@ fun startIosApp(): AniIosApplication {
     startupTimeMonitor.mark(StepName.Analytics)
 
     scope.launch {
+        analyticsInitializer.join()
         Analytics.recordAppStart(startupTimeMonitor)
     }
 
@@ -295,7 +294,7 @@ fun getIosModules(
         )
     }
     single<UpdateInstaller> { IosUpdateInstaller }
-    
+
     single<MediaCacheMigrator> {
         MediaCacheMigrator(
             context = context,
@@ -314,7 +313,7 @@ fun getIosModules(
             },
             mediaCacheBaseDirProvider = get(),
             getNewBaseSaveDir = { null },
-            getLegacyTorrentSaveDir = { context.files.dataDir }
+            getLegacyTorrentSaveDir = { context.files.dataDir },
         )
     }
 }

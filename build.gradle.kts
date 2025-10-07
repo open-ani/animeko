@@ -26,6 +26,7 @@ plugins {
     id("org.jetbrains.compose") apply false
     id("com.android.library") apply false
     id("com.android.application") apply false
+    id("com.google.gms.google-services") version "4.4.2" apply false
     id("com.google.devtools.ksp") version libs.versions.ksp apply false
     id("androidx.room") version libs.versions.room apply false
     id("com.strumenta.antlr-kotlin") version libs.versions.antlr.kotlin apply false

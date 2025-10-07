@@ -106,6 +106,28 @@ buildConfig {
     outputDir.set(layout.buildDirectory.dir("generated/buildconfig"))
 
     // Desktop platform configuration
+    fun Build_config_gradle.BuildConfigPlatform.firebaseFields() {
+        fun getProp(name: String): String {
+            return if (enableFirebase) {
+                getProperty(name).also {
+                    check(it.isNotBlank()) { "Local property '$name' is not set. You must either set it or disable `ani.enable.firebase`." }
+                }
+            } else {
+                ""
+            }
+        }
+        stringField("firebaseGAAppId", getProp("firebase.ga.app.id"), isOverride = false)
+//        stringField("firebaseApiKey", getProp("firebase.api.key"), isOverride = false)
+        //            stringField("firebaseStorageBucket", getProperty("firebase.storage.bucket"), isOverride = false)
+        //            stringField("firebaseProjectId", getProperty("firebase.project.id"), isOverride = false)
+        //            stringField("firebaseGATrackingId", getProperty("firebase.ga.tracking.id"), isOverride = false)
+        //            
+        //            stringField("firebaseGAMeasurementId", getProperty("firebase.ga.measurement.id"), isOverride = false)
+        stringField("firebaseGAApiSecret", getProp("firebase.ga.api.secret"), isOverride = false)
+
+        booleanField("analyticsEnabled", enableFirebase)
+    }
+
     platform("desktop") {
         stringField("versionName", project.version.toString())
         expressionField(
@@ -118,6 +140,8 @@ buildConfig {
         stringField("analyticsKey", analyticsKey)
         stringField("analyticsServer", analyticsServer)
         stringField("overrideAniApiServer", overrideAniApiServer ?: "")
+
+        firebaseFields()
     }
 
     // Android platform configuration
@@ -130,6 +154,8 @@ buildConfig {
         stringField("analyticsKey", analyticsKey)
         stringField("analyticsServer", analyticsServer)
         stringField("overrideAniApiServer", overrideAniApiServer ?: "")
+
+        booleanField("analyticsEnabled", enableFirebase)
     }
 
     // iOS platform configuration (only if enabled)
@@ -144,11 +170,10 @@ buildConfig {
             stringField("analyticsServer", analyticsServer)
 
             val sentryEnabled = (getPropertyOrNull("ani.sentry.ios") ?: "true").toBooleanStrict()
-            val analyticsEnabled = (getPropertyOrNull("ani.analytics.ios") ?: "true").toBooleanStrict()
-
             booleanField("sentryEnabled", sentryEnabled)
-            booleanField("analyticsEnabled", analyticsEnabled)
             stringField("overrideAniApiServer", overrideAniApiServer ?: "")
+
+            firebaseFields()
         }
     }
 }

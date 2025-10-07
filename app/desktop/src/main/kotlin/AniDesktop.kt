@@ -53,6 +53,7 @@ import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.repository.SavedWindowState
 import me.him188.ani.app.data.repository.WindowStateRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.desktop.storage.AppFolderResolver
 import me.him188.ani.app.desktop.storage.AppInfo
 import me.him188.ani.app.desktop.window.WindowFrame
@@ -106,6 +107,7 @@ import me.him188.ani.desktop.generated.resources.a_round
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsConfig
 import me.him188.ani.utils.analytics.AnalyticsImpl
+import me.him188.ani.utils.analytics.AnalyticsSecrets
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -254,6 +256,7 @@ object AniDesktop {
             TestTasks.handleTestTask(taskName, args, context)
         }
         val settingsRepository = koin.koin.get<SettingsRepository>()
+        val userRepository = koin.koin.get<UserRepository>()
 
         val setLocaleJob = coroutineScope.launch {
             settingsRepository.uiSettings.flow.first().appLanguage?.platformLocale?.let {
@@ -264,24 +267,37 @@ object AniDesktop {
 
         val analyticsInitializer = coroutineScope.launch {
             val settings = settingsRepository.analyticsSettings.flow.first()
-            if (settings.isInit) {
-                settingsRepository.analyticsSettings.update {
-                    copy(isInit = false) // save user id
-                }
+            settingsRepository.analyticsSettings.update { settings }
+            if (settings.isBugReportEnabled) {
+                AppStartupTasks.initializeSentry(settings.deviceId)
             }
-            if (settings.allowAnonymousBugReport) {
-                AppStartupTasks.initializeSentry(settings.userId)
-            }
-            if (settings.allowAnonymousAnalytics) {
+            if (settings.isAnalyticsEnabled) {
                 AppStartupTasks.initializeAnalytics {
                     AnalyticsImpl(
                         AnalyticsConfig.create(),
-                        settings.userId,
+                        settings.deviceId,
+                        userId = { userRepository.selfInfoFlow.first()?.id },
+                        AnalyticsSecrets(
+                            apiSecret = AniBuildConfigDesktop.firebaseGAApiSecret,
+                            firebaseAppId = AniBuildConfigDesktop.firebaseGAAppId,
+                        ),
+                        coroutineScope.coroutineContext,
                     ).apply {
-                        init(
-                            apiKey = currentAniBuildConfig.analyticsKey,
-                            host = currentAniBuildConfig.analyticsServer,
-                        )
+//                        AniBuildConfigDesktop.fireabseApplicationId
+//                        FirebasePlatform.initializeFirebasePlatform(
+//                            AniFirebasePlatform(context.dataStoresDesktop.firebaseDataStore),
+//                        )
+//                        Firebase.initialize(
+//                            android.app.Activity(),
+//                            options = FirebaseOptions(
+//                                applicationId = AniBuildConfigDesktop.firebaseGAAppId,
+//                                apiKey = AniBuildConfigDesktop.firebaseApiKey,
+//                                storageBucket = AniBuildConfigDesktop.firebaseStorageBucket,
+//                                projectId = AniBuildConfigDesktop.firebaseProjectId,
+//                                gaTrackingId = AniBuildConfigDesktop.firebaseGATrackingId,
+//                            ),
+//                        )
+                        init()
                     }
                 }
             }
