@@ -105,7 +105,6 @@
 				7555FF79242A565900829871 /* Resources */,
 				CE9EDF4E63CCBE422D76C68A /* Frameworks */,
 				CD93AF9E4C4DD36BC419C279 /* [CP] Embed Pods Frameworks */,
-				DF98479392A193067E47F217 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -177,23 +176,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Animeko/Pods-Animeko-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		DF98479392A193067E47F217 /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Animeko/Pods-Animeko-resources-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Copy Pods Resources";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Animeko/Pods-Animeko-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Animeko/Pods-Animeko-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		F612592B2DDE7F3BDF276709 /* [CP] Check Pods Manifest.lock */ = {
