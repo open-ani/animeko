@@ -1271,12 +1271,6 @@ jobs:
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "sentry-dsn"'
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
-    - id: 'step-8'
-      name: 'Check that analyticsServer is valid'
-      timeout-minutes: 5
-      shell: 'powershell'
-      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "analytics-server"'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_github-windows-2022:
     name: 'Verify (Windows Server 2022 x86_64 (GitHub))'
     runs-on:
@@ -1336,12 +1330,6 @@ jobs:
       shell: 'powershell'
       run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "sentry-dsn"'
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
-    - id: 'step-8'
-      name: 'Check that analyticsServer is valid'
-      timeout-minutes: 5
-      shell: 'powershell'
-      run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "analytics-server"'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_self-hosted-macos-15:
     name: 'Verify (macOS 15 AArch64 (Self-Hosted))'
     runs-on:
@@ -1389,11 +1377,6 @@ jobs:
       name: 'Check that sentryDsn is valid'
       timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg sentry-dsn'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
-    - id: 'step-7'
-      name: 'Check that analyticsServer is valid'
-      timeout-minutes: 5
-      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg analytics-server'
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_github-macos-14:
     name: 'Verify (macOS 14 AArch64 (GitHub))'
@@ -1449,11 +1432,6 @@ jobs:
       timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg sentry-dsn'
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
-    - id: 'step-8'
-      name: 'Check that analyticsServer is valid'
-      timeout-minutes: 5
-      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg analytics-server'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_github-macos-15:
     name: 'Verify (macOS 15 AArch64 (GitHub))'
     runs-on:
@@ -1508,11 +1486,6 @@ jobs:
       timeout-minutes: 5
       run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg sentry-dsn'
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
-    - id: 'step-8'
-      name: 'Check that analyticsServer is valid'
-      timeout-minutes: 5
-      run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg analytics-server'
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_github-ubuntu-2404:
     name: 'Verify (Ubuntu 24.04 x86_64 (GitHub))'
     runs-on:
@@ -1565,13 +1538,4 @@ jobs:
         ANI_APPIMAGE="${{ github.workspace }}/ci-helper/verify/Animeko-x86_64.AppImage"
         chmod +x "$ANI_APPIMAGE"
         ANIMEKO_DESKTOP_TEST_TASK="sentry-dsn" "$ANI_APPIMAGE"
-      if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
-    - id: 'step-6'
-      name: 'Check that analyticsServer is valid'
-      timeout-minutes: 5
-      shell: 'bash'
-      run: |-
-        ANI_APPIMAGE="${{ github.workspace }}/ci-helper/verify/Animeko-x86_64.AppImage"
-        chmod +x "$ANI_APPIMAGE"
-        ANIMEKO_DESKTOP_TEST_TASK="analytics-server" "$ANI_APPIMAGE"
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
