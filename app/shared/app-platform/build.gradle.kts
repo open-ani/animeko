@@ -72,7 +72,6 @@ val aniAuthServerUrlRelease = getPropertyOrNull("ani.auth.server.url.release") ?
 val dandanplayAppId = getPropertyOrNull("ani.dandanplay.app.id") ?: ""
 val dandanplayAppSecret = getPropertyOrNull("ani.dandanplay.app.secret") ?: ""
 val sentryDsn = getPropertyOrNull("ani.sentry.dsn") ?: ""
-val analyticsServer = getPropertyOrNull("ani.analytics.server") ?: ""
 val analyticsKey = getPropertyOrNull("ani.analytics.key") ?: ""
 val overrideAniApiServer = getPropertyOrNull("ani.api.server")?.takeIf { it.isNotBlank() }
 
@@ -137,8 +136,6 @@ buildConfig {
         stringField("dandanplayAppId", dandanplayAppId)
         stringField("dandanplayAppSecret", dandanplayAppSecret)
         stringField("sentryDsn", sentryDsn)
-        stringField("analyticsKey", analyticsKey)
-        stringField("analyticsServer", analyticsServer)
         stringField("overrideAniApiServer", overrideAniApiServer ?: "")
 
         firebaseFields()
@@ -151,8 +148,6 @@ buildConfig {
         stringField("dandanplayAppId", dandanplayAppId)
         stringField("dandanplayAppSecret", dandanplayAppSecret)
         stringField("sentryDsn", sentryDsn)
-        stringField("analyticsKey", analyticsKey)
-        stringField("analyticsServer", analyticsServer)
         stringField("overrideAniApiServer", overrideAniApiServer ?: "")
 
         booleanField("analyticsEnabled", enableFirebase)
@@ -166,8 +161,6 @@ buildConfig {
             stringField("dandanplayAppId", dandanplayAppId)
             stringField("dandanplayAppSecret", dandanplayAppSecret)
             stringField("sentryDsn", sentryDsn)
-            stringField("analyticsKey", analyticsKey)
-            stringField("analyticsServer", analyticsServer)
 
             val sentryEnabled = (getPropertyOrNull("ani.sentry.ios") ?: "true").toBooleanStrict()
             booleanField("sentryEnabled", sentryEnabled)

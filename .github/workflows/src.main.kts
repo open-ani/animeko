@@ -593,11 +593,6 @@ fun getVerifyJobBody(
             step = "Check that sentryDsn is valid",
             `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
         ),
-        VerifyTask(
-            name = "analytics-server",
-            step = "Check that analyticsServer is valid",
-            `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
-        ),
     ).filter { task ->
         // Filter task that should execute on this runner.
 
