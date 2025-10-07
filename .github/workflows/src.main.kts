@@ -1332,20 +1332,16 @@ class WithMatrix(
      * Returns the action step if it's enabled, otherwise returns `null`.
      */
     fun JobBuilder<*>.prepareGoogleServicesJson(): ActionStep<Base64ToFile_Untyped.Outputs>? {
-        return if (matrix.uploadApk) {
-            uses(
-                name = "Prepare google-services.json",
-                `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
-                action = Base64ToFile_Untyped(
-                    fileName_Untyped = "google-services.json",
-                    fileDir_Untyped = "./app/android",
-                    encodedString_Untyped = expr { secrets.GOOGLE_SERVICES_JSON },
-                ),
-                continueOnError = true,
-            )
-        } else {
-            null
-        }
+        return uses(
+            name = "Prepare google-services.json",
+            `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
+            action = Base64ToFile_Untyped(
+                fileName_Untyped = "google-services.json",
+                fileDir_Untyped = "./app/android",
+                encodedString_Untyped = expr { secrets.GOOGLE_SERVICES_JSON },
+            ),
+            continueOnError = true,
+        )
     }
 
     fun JobBuilder<*>.enableSwap() {
