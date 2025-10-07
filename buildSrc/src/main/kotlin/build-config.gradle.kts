@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 import org.gradle.plugins.ide.idea.model.IdeaModel
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinNativeCompile
@@ -27,20 +36,20 @@ abstract class BuildConfigExtension {
 class BuildConfigPlatform(val name: String) {
     private val fields = mutableMapOf<String, BuildConfigField>()
 
-    fun stringField(name: String, value: String) {
-        fields[name] = BuildConfigField.StringField(name, value)
+    fun stringField(name: String, value: String, isOverride: Boolean = true) {
+        fields[name] = BuildConfigField.StringField(name, value, isOverride)
     }
 
-    fun booleanField(name: String, value: Boolean) {
-        fields[name] = BuildConfigField.BooleanField(name, value)
+    fun booleanField(name: String, value: Boolean, isOverride: Boolean = true) {
+        fields[name] = BuildConfigField.BooleanField(name, value, isOverride)
     }
 
-    fun integerField(name: String, value: Int) {
-        fields[name] = BuildConfigField.IntegerField(name, value)
+    fun integerField(name: String, value: Int, isOverride: Boolean = true) {
+        fields[name] = BuildConfigField.IntegerField(name, value, isOverride)
     }
 
-    fun expressionField(name: String, expression: String) {
-        fields[name] = BuildConfigField.ExpressionField(name, expression)
+    fun expressionField(name: String, expression: String, isOverride: Boolean = true) {
+        fields[name] = BuildConfigField.ExpressionField(name, expression, isOverride)
     }
 
     internal fun getFields(): Map<String, BuildConfigField> = fields.toMap()
@@ -52,20 +61,40 @@ class BuildConfigPlatform(val name: String) {
 sealed class BuildConfigField(val name: String) : Serializable {
     abstract fun generateKotlinCode(): String
 
-    data class StringField(val fieldName: String, val value: String) : BuildConfigField(fieldName) {
-        override fun generateKotlinCode(): String = "override val $name = \"$value\""
+    data class StringField(val fieldName: String, val value: String?, val isOverride: Boolean) :
+        BuildConfigField(fieldName) {
+        override fun generateKotlinCode(): String {
+            val override = if (isOverride) "override " else ""
+            return if (value == null) {
+                "${override}val $name = null"
+            } else {
+                "${override}val $name = \"$value\""
+            }
+        }
     }
 
-    data class BooleanField(val fieldName: String, val value: Boolean) : BuildConfigField(fieldName) {
-        override fun generateKotlinCode(): String = "override val $name = $value"
+    data class BooleanField(val fieldName: String, val value: Boolean, val isOverride: Boolean) :
+        BuildConfigField(fieldName) {
+        override fun generateKotlinCode(): String {
+            val override = if (isOverride) "override " else ""
+            return "${override}val $name = $value"
+        }
     }
 
-    data class IntegerField(val fieldName: String, val value: Int) : BuildConfigField(fieldName) {
-        override fun generateKotlinCode(): String = "override val $name = $value"
+    data class IntegerField(val fieldName: String, val value: Int, val isOverride: Boolean) :
+        BuildConfigField(fieldName) {
+        override fun generateKotlinCode(): String {
+            val override = if (isOverride) "override " else ""
+            return "${override}val $name = $value"
+        }
     }
 
-    data class ExpressionField(val fieldName: String, val expression: String) : BuildConfigField(fieldName) {
-        override fun generateKotlinCode(): String = "override val $name = $expression"
+    data class ExpressionField(val fieldName: String, val expression: String, val isOverride: Boolean) :
+        BuildConfigField(fieldName) {
+        override fun generateKotlinCode(): String {
+            val override = if (isOverride) "override " else ""
+            return "${override}val $name = $expression"
+        }
     }
 }
 
@@ -105,12 +134,12 @@ abstract class GenerateBuildConfigTask : DefaultTask() {
         }
 
         val content = """
-            package $packageNameValue
-            
-            object ${classNameValue}${platformNameValue.replaceFirstChar { it.uppercase() }} : $classNameValue {
-                $fieldsCode
-            }
-        """.trimIndent()
+package $packageNameValue
+
+object ${classNameValue}${platformNameValue.replaceFirstChar { it.uppercase() }} : $classNameValue {
+    $fieldsCode
+}
+""".trim() + "\n"
 
         outputFile.writeText(content)
     }
@@ -167,7 +196,7 @@ class BuildConfigPlugin : Plugin<Project> {
     private fun configureKotlinSourceSets(
         project: Project,
         platformName: String,
-        outputDir: org.gradle.api.provider.Provider<org.gradle.api.file.Directory>
+        outputDir: Provider<Directory>
     ) {
         // Try to find Kotlin Multiplatform extension
         val kotlinExtension = project.extensions.findByType<KotlinMultiplatformExtension>()

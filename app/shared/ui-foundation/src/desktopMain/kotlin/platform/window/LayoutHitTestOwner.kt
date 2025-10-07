@@ -20,10 +20,11 @@ import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.node.HitTestResult
 import androidx.compose.ui.node.RootNodeOwner
 import androidx.compose.ui.scene.ComposeScene
+import androidx.compose.ui.scene.ComposeSceneLayer
 import androidx.compose.ui.scene.CopiedList
 import androidx.compose.ui.scene.LocalComposeSceneContext
+import androidx.compose.ui.unit.round
 import androidx.compose.ui.util.fastForEachReversed
-import androidx.compose.ui.util.packFloats
 
 /**
  * 提供 [ComposeScene] 的点击测试.
@@ -151,13 +152,13 @@ private class CanvasLayersLayoutHitTestOwner(
                 trySetAccessible()
             }
 
-    private val layerIsInBoundMethod =
+    /*private val layerIsInBoundMethod =
         layerClass
             .declaredMethods
             .first { it.name.startsWith("isInBounds") }
             .apply {
                 trySetAccessible()
-            }
+            }*/
 
     override fun hitTest(
         x: Float,
@@ -165,7 +166,8 @@ private class CanvasLayersLayoutHitTestOwner(
     ): Boolean {
         layersCopyCacheRef.withCopy {
             it.fastForEachReversed { layer ->
-                if (layerIsInBoundMethod.invoke(layer, packFloats(x, y)) == true) {
+                // if (layerIsInBoundMethod.invoke(layer, packFloats(x, y)) == true) {
+                if ((layer as ComposeSceneLayer?)?.boundsInWindow?.contains(Offset(x, y).round()) == true) {
                     return (layerOwnerField.get(layer) as RootNodeOwner).layoutNodeHitTest(x, y)
                 } else if (layer == focusedLayerField.get(scene)) {
                     return false

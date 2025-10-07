@@ -114,6 +114,3 @@ private val zeroInsets = WindowInsets(0.dp) // single instance to be shared
 val WindowInsets.Companion.Zero: WindowInsets
     get() = zeroInsets
 
-// Workaround in CMP 1.8.0-alpha04. Remove in the future.
-fun WindowSizeClass.isWidthAtLeastBreakpoint(dp: Int) = containsWidthDp(dp)
-fun WindowSizeClass.isHeightAtLeastBreakpoint(dp: Int) = containsHeightDp(dp)

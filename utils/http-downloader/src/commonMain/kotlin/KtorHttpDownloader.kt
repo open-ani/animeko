@@ -41,11 +41,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
 import kotlinx.io.buffered
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
-import kotlinx.io.files.SystemPathSeparator
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.httpdownloader.DownloadStatus.CANCELED
 import me.him188.ani.utils.httpdownloader.DownloadStatus.COMPLETED
@@ -58,7 +56,6 @@ import me.him188.ani.utils.httpdownloader.m3u.DefaultM3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Playlist
 import me.him188.ani.utils.io.DEFAULT_BUFFER_SIZE
-import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.copyTo
 import me.him188.ani.utils.io.inSystem
@@ -71,6 +68,7 @@ import me.him188.ani.utils.platform.Uuid
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Clock
 
 /**
  * A simple implementation of [HttpDownloader] that uses Ktor and coroutines.

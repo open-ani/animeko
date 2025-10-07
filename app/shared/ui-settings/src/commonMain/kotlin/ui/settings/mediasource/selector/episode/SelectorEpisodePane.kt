@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -47,23 +47,25 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
+import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.FastLinearProgressIndicator
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
@@ -272,7 +274,8 @@ fun SelectorEpisodePaneContent(
             for (matchResult in filteredList) {
                 item(key = matchResult.key) {
                     val toaster = LocalToaster.current
-                    val clipboard = LocalClipboardManager.current
+                    val clipboard = LocalClipboard.current
+                    val scope = rememberCoroutineScope()
                     ListItem(
                         headlineContent = {
                             Text(
@@ -283,8 +286,10 @@ fun SelectorEpisodePaneContent(
                         },
                         Modifier.animateItem()
                             .clickable {
-                                clipboard.setText(AnnotatedString(matchResult.originalUrl))
-                                toaster.toast("已复制")
+                                scope.launch {
+                                    clipboard.setClipEntryText(matchResult.originalUrl)
+                                    toaster.toast("已复制")
+                                }
                             },
                         supportingContent = {
                             val m3u8 = matchResult.video?.m3u8Url
@@ -364,4 +369,3 @@ data class SelectorEpisodePaneLayout(
         }
     }
 }
-

@@ -204,7 +204,7 @@ private fun AuthorizeButton(
                 enabled = !awaitingResult,
                 modifier = Modifier.weight(1f),
                 content = content,
-                shape = if (awaitingResult) SplitButtonDefaults.leadingButtonShapes().shape else ButtonDefaults.shape,
+                shape = if (awaitingResult) SplitButtonDefaults.leadingButtonShapesFor(48.dp).shape else ButtonDefaults.shape,
             )
         }
         AniAnimatedVisibility(
@@ -215,7 +215,7 @@ private fun AuthorizeButton(
             FilledTonalButton(
                 onClick = onClickCancel,
                 content = { Text("取消") },
-                shape = SplitButtonDefaults.trailingButtonShapes().shape,
+                shape = SplitButtonDefaults.trailingButtonShapesFor(48.dp).shape,
             )
         }
     }
@@ -274,7 +274,7 @@ private fun renderHelpOptionTitle(option: HelpOption): String {
 }
 
 @Composable
-private fun renderHelpOptionContent(
+private fun RenderHelpOptionContent(
     option: HelpOption,
     contactActions: @Composable () -> Unit,
     modifier: Modifier = Modifier,
@@ -349,7 +349,7 @@ private fun SettingsScope.AuthorizeHelpQA(
                             fontWeight = if (currentSelected == option) FontWeight.SemiBold else null,
                         )
                     },
-                    content = { renderHelpOptionContent(option, contactActions) },
+                    content = { RenderHelpOptionContent(option, contactActions) },
                     expanded = currentSelected == option,
                     showDivider = index != HelpOption.entries.lastIndex,
                     onClick = { 

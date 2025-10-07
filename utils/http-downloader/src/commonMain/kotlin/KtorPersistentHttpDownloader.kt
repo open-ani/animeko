@@ -18,17 +18,16 @@ import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
-import kotlinx.datetime.Clock
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.httpdownloader.m3u.DefaultM3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Parser
-import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Clock
 
 /**
  * A persistent version of [KtorHttpDownloader] that automatically:

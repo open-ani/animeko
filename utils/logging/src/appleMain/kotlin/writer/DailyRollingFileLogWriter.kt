@@ -16,8 +16,6 @@ import kotlinx.cinterop.ObjCObjectVar
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -31,6 +29,8 @@ import me.him188.ani.utils.logging.LogLineFormatter
 import platform.Foundation.NSError
 import platform.Foundation.NSFileManager
 import kotlin.concurrent.Volatile
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 /**
  * A simple daily rolling file log writer:

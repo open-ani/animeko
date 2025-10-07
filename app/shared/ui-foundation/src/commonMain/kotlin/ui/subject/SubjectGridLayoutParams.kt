@@ -19,7 +19,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isHeightCompact
-import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastBreakpoint
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastExpanded
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isWidthCompact

@@ -40,14 +40,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodeListResult
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestSearchSubjectResult
@@ -55,6 +56,7 @@ import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.layout.cardHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.cardVerticalPadding
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.FastLinearProgressIndicator
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
@@ -149,14 +151,17 @@ fun SharedTransitionScope.SelectorTestPane(
                     )
 
                     val url = selectedSubject.subjectDetailsPageUrl
-                    val clipboard = LocalClipboardManager.current
+                    val clipboard = LocalClipboard.current
+                    val scope = rememberCoroutineScope()
                     val toaster = LocalToaster.current
                     val copiedText = stringResource(Lang.settings_mediasource_selector_test_copied)
                     Row(
                         Modifier.fillMaxWidth()
                             .clickable(onClickLabel = stringResource(Lang.settings_mediasource_selector_test_copy_link)) {
-                                clipboard.setText(AnnotatedString(url))
-                                toaster.toast(copiedText)
+                                scope.launch {
+                                    clipboard.setClipEntryText(url)
+                                    toaster.toast(copiedText)
+                                }
                             },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

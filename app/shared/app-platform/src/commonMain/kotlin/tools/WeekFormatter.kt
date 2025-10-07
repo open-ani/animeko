@@ -1,13 +1,23 @@
+/*
+ * Copyright (C) 2024-2025 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.tools
 
-import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
+import kotlinx.datetime.number
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 class WeekFormatter(
     private val getTimeNow: () -> Instant = { Clock.System.now() },
@@ -31,7 +41,7 @@ class WeekFormatter(
         val startOfNextWeek = startOfThisWeek.plus(7, DateTimeUnit.DAY)
 
         return when {
-            targetDate >= startOfThisWeek && targetDate < startOfNextWeek -> {
+            targetDate in startOfThisWeek..<startOfNextWeek -> {
                 val dayOfWeek = targetDate.dayOfWeek
                 when (dayOfWeek.ordinal - now.dayOfWeek.ordinal) {
                     0 -> "今天"
@@ -48,9 +58,9 @@ class WeekFormatter(
 
             else -> {
                 if (targetDate.year == now.year) {
-                    "${targetDate.monthNumber} 月 ${targetDate.dayOfMonth} 日"
+                    "${targetDate.month.number} 月 ${targetDate.day} 日"
                 } else {
-                    "${targetDate.year} 年 ${targetDate.monthNumber} 月 ${targetDate.dayOfMonth} 日"
+                    "${targetDate.year} 年 ${targetDate.month.number} 月 ${targetDate.day} 日"
                 }
             }
         }

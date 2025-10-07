@@ -27,10 +27,6 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.browser)
 
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.viewbinding)
-    implementation(libs.androidx.compose.foundation)
-    implementation(libs.androidx.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
 //    implementation(libs.log4j.core)

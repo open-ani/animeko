@@ -10,7 +10,7 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.compose.desktop.application.tasks.AbstractJLinkTask
 import org.jetbrains.compose.desktop.application.tasks.AbstractJPackageTask
-import org.jetbrains.compose.reload.ComposeHotRun
+import org.jetbrains.compose.reload.gradle.ComposeHotRun
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import java.util.UUID
 import java.util.zip.ZipEntry
@@ -327,7 +327,7 @@ idea {
     }
 }
 
-tasks.register<ComposeHotRun>("runHot") {
+tasks.withType<ComposeHotRun> {
     configureDevProperties()
 }
 

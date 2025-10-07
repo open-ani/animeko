@@ -35,12 +35,12 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -51,11 +51,13 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.player.data.filenameOrNull
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.player.VideoLoadingState
+import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.media.renderProperties
 import me.him188.ani.app.ui.mediafetch.MediaSourceInfoProvider
@@ -215,7 +217,8 @@ fun VideoStatistics(
     state: VideoStatistics,
     modifier: Modifier = Modifier
 ) {
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
             when (val loadingState = state.videoLoadingState) {
@@ -231,7 +234,11 @@ fun VideoStatistics(
                 is VideoLoadingState.UnknownError -> {
                     ErrorTextBox(
                         remember(loadingState) { loadingState.cause.toString() },
-                        { clipboard.setText(AnnotatedString(loadingState.cause.stackTraceToString())) },
+                        {
+                            scope.launch {
+                                clipboard.setClipEntryText(loadingState.cause.stackTraceToString())
+                            }
+                        },
                         Modifier.padding(top = 8.dp).fillMaxWidth(),
                     )
                 }

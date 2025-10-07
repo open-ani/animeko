@@ -56,11 +56,15 @@ interface WindowUtils {
     fun setCursorVisible(window: ComposeWindow, visible: Boolean) {
     }
 
-    companion object : WindowUtils by (when (me.him188.ani.utils.platform.currentPlatformDesktop()) {
-        is Platform.MacOS -> MacosWindowUtils()
-        is Platform.Windows -> WindowsWindowUtils.instance
-        is Platform.Linux -> LinuxWindowUtils()
-    })
+    companion object {
+        val instance by lazy {
+            when (currentPlatformDesktop()) {
+                is Platform.MacOS -> MacosWindowUtils()
+                is Platform.Windows -> WindowsWindowUtils.instance
+                is Platform.Linux -> LinuxWindowUtils()
+            }
+        }
+    }
 }
 
 abstract class AwtWindowUtils : WindowUtils {
@@ -98,9 +102,9 @@ fun ComposeWindow.setTitleBar(color: Color, dark: Boolean) {
 
         if (winBuild == null) return
         if (winBuild >= 22000) {
-            WindowUtils.setTitleBarColor(windowHandle, color)
+            WindowUtils.instance.setTitleBarColor(windowHandle, color)
         } else {
-            WindowUtils.setDarkTitleBar(windowHandle, dark)
+            WindowUtils.instance.setDarkTitleBar(windowHandle, dark)
         }
     }
 }

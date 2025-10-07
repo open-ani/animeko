@@ -48,8 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
@@ -83,9 +82,17 @@ import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isTopRight
 import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
+import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_update_version_expired_copied_to_clipboard
+import me.him188.ani.app.ui.lang.settings_update_version_expired_export_settings
+import me.him188.ani.app.ui.lang.settings_update_version_expired_import_settings_hint
+import me.him188.ani.app.ui.lang.settings_update_version_expired_message
+import me.him188.ani.app.ui.lang.settings_update_version_expired_message_with_latest
+import me.him188.ani.app.ui.lang.settings_update_version_expired_title
 import me.him188.ani.app.ui.settings.SettingsViewModel
 import me.him188.ani.app.ui.settings.account.ProfilePopup
 import me.him188.ani.app.ui.settings.account.ProfileViewModel
@@ -95,16 +102,9 @@ import me.him188.ani.app.ui.update.AppUpdateViewModel
 import me.him188.ani.app.ui.update.UpdateNotifier
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.utils.platform.isAndroid
-import org.koin.mp.KoinPlatform
-import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.settings_update_version_expired_title
-import me.him188.ani.app.ui.lang.settings_update_version_expired_message
-import me.him188.ani.app.ui.lang.settings_update_version_expired_message_with_latest
-import me.him188.ani.app.ui.lang.settings_update_version_expired_import_settings_hint
-import me.him188.ani.app.ui.lang.settings_update_version_expired_copied_to_clipboard
-import me.him188.ani.app.ui.lang.settings_update_version_expired_export_settings
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
+import org.koin.mp.KoinPlatform
 
 
 @Composable
@@ -398,7 +398,7 @@ private fun BoxScope.UpdateNotifierWithVersionExpiryCheck() {
                 val settingsVm = viewModel<SettingsViewModel> { SettingsViewModel() }
                 val asyncHandler = rememberAsyncHandler()
                 val toaster = LocalToaster.current
-                val clipboard = LocalClipboardManager.current
+                val clipboard = LocalClipboard.current
 
                 Row(
                     Modifier.padding(horizontal = 24.dp).padding(top = 24.dp),
@@ -414,7 +414,7 @@ private fun BoxScope.UpdateNotifierWithVersionExpiryCheck() {
                         {
                             asyncHandler.launch {
                                 val data = settingsVm.cacheDirectoryGroupState.onGetBackupData()
-                                clipboard.setText(AnnotatedString(data))
+                                clipboard.setClipEntryText(data)
                                 toaster.toast(getString(Lang.settings_update_version_expired_copied_to_clipboard))
                             }
                         },

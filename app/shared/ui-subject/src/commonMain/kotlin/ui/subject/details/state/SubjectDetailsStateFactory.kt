@@ -38,7 +38,6 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
 import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
@@ -67,6 +66,7 @@ import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
 interface SubjectDetailsStateFactory {

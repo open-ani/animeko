@@ -10,10 +10,10 @@
 package me.him188.ani.app.platform
 
 import io.ktor.http.Url
-import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.UtcOffset
 import kotlinx.datetime.offsetAt
+import kotlin.time.Clock
 
 data class AniServer(
     val id: String,

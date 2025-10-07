@@ -1,11 +1,11 @@
 [versions]
-kotlin = "2.1.21"
-android-gradle-plugin = "8.9.2"
+kotlin = "2.2.20"
+android-gradle-plugin = "8.9.3"
 
 ### KOTLINX ###
 kotlinx-coroutines = "1.10.2" # https://github.com/Kotlin/kotlinx.coroutines/releases
-kotlinx-serialization = "1.8.1" # https://github.com/Kotlin/kotlinx.serialization/releases
-kotlinx-datetime = "0.6.2" # https://github.com/Kotlin/kotlinx-datetime/releases
+kotlinx-serialization = "1.9.0" # https://github.com/Kotlin/kotlinx.serialization/releases
+kotlinx-datetime = "0.7.1" # https://github.com/Kotlin/kotlinx-datetime/releases
 kotlinx-atomicfu = "0.27.0" # https://github.com/Kotlin/kotlinx-atomicfu/releases
 kotlinx-io = "0.7.0" # https://github.com/Kotlin/kotlinx-io/releases
 kotlinx-collections-immutable = "0.3.8" # https://github.com/Kotlin/kotlinx.collections.immutable/releases
@@ -16,32 +16,33 @@ androidx-media3 = "1.6.1" # https://developer.android.com/jetpack/androidx/relea
 androidx-lifecycle = "2.8.7" # https://developer.android.com/jetpack/androidx/releases/lifecycle
 paging = "3.3.6" # https://developer.android.com/jetpack/androidx/releases/paging
 datastore = "1.1.3" # https://developer.android.com/jetpack/androidx/releases/datastore
-ksp = "2.1.21-2.0.1" # https://github.com/google/ksp/releases
+ksp = "2.2.20-2.0.3" # https://github.com/google/ksp/releases
 # note: room 2.7.0-rc01 cannot compile
-room = "2.7.1" # https://developer.android.com/jetpack/androidx/releases/room#declaring_dependencies
+room = "2.8.1" # https://developer.android.com/jetpack/androidx/releases/room#declaring_dependencies
 sentry-kotlin-multiplatform = "0.11.0"
 sqlite = "2.5.0"
 androidx-activity = "1.10.1"
 androidx-core = "1.15.0"
-androidx-window = { strictly = "1.4.0-beta02" }
 
 ### COMPOSE ###
 # How to upgrade them? Check compose multiplatform release notes and find the corresponding versions for each library.
 
 # https://github.com/JetBrains/compose-multiplatform/releases
-compose-multiplatform = "1.8.0"
-compose-hot-reload = "1.0.0-alpha05" # https://github.com/JetBrains/compose-hot-reload/releases
+compose-multiplatform = "1.9.0"
+compose-hot-reload = "1.0.0-rc01" # https://github.com/JetBrains/compose-hot-reload/releases
 
 # JetBrains compose libraries. Follow the release notes for main Compose Multiplatform for versoins.
-compose-lifecycle = "2.9.0-beta01"
-compose-navigation = "2.9.0-beta01"
-compose-material3-adaptive = "1.1.0"
+compose-lifecycle = "2.9.4"
+compose-navigation = "2.9.0"
+compose-material3 = "1.10.0-alpha01"
+compose-material3-adaptive = "1.2.0-alpha06"
+compose-window-core = "1.4.0" # used dynamically, don't remove
 
 # Jetpack Compose libraries. Use the exact version mentioned from Compose Multiplatfrom release notes.
 # https://developer.android.com/jetpack/androidx/releases/compose-material3
-compose-material3 = "1.4.0-alpha07"
-jetpack-compose = "1.8.0"
-androidx-compose-material3-adaptive = "1.1.0"
+jetpack-compose-material3 = "1.4.0-alpha07"
+jetpack-compose = "1.9.0"
+androidx-compose-material3-adaptive = "1.2.0-alpha11"
 
 ### OTHERS ###
 
@@ -74,7 +75,7 @@ materialkolor = "2.0.2"
 mockito = "5.12.0"
 mockito-kotlin = "5.4.0"
 sentry-kmp = "0.12.0" # used in plugins, don't remove # https://mvnrepository.com/artifact/io.sentry/sentry-kotlin-multiplatform-gradle-plugin
-sentry-compose-android = "8.3.0" # https://docs.sentry.io/platforms/android/integrations/jetpack-compose/
+sentry-compose-android = "8.23.0" # https://docs.sentry.io/platforms/android/integrations/jetpack-compose/
 #gitlive-firebase = "2.1.0"
 posthog-android = "3.11.3"
 posthog-java = "1.2.0"
@@ -185,21 +186,15 @@ compose-navigation-runtime = { module = "org.jetbrains.androidx.navigation:navig
 compose-material3-adaptive-core = { module = "org.jetbrains.compose.material3.adaptive:adaptive", version.ref = "compose-material3-adaptive" }
 compose-material3-adaptive-layout = { module = "org.jetbrains.compose.material3.adaptive:adaptive-layout", version.ref = "compose-material3-adaptive" }
 compose-material3-adaptive-navigation0 = { module = "org.jetbrains.compose.material3.adaptive:adaptive-navigation", version.ref = "compose-material3-adaptive" }
-compose-material3-adaptive-navigation-suite = { module = "org.jetbrains.compose.material3:material3-adaptive-navigation-suite", version.ref = "compose-multiplatform" }
+compose-material3-adaptive-navigation-suite = { module = "org.jetbrains.compose.material3:material3-adaptive-navigation-suite", version.ref = "compose-material3" }
 
 # Jetpack Compose
-androidx-compose-ui = { module = "androidx.compose.ui:ui", version.ref = "jetpack-compose" }
 androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling", version.ref = "jetpack-compose" }
-androidx-compose-ui-viewbinding = { module = "androidx.compose.ui:ui-viewbinding", version.ref = "jetpack-compose" }
-androidx-compose-foundation = { module = "androidx.compose.foundation:foundation", version.ref = "jetpack-compose" }
-androidx-compose-material = { module = "androidx.compose.material:material", version.ref = "jetpack-compose" }
-androidx-compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "compose-material3" }
 androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "jetpack-compose" }
 androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "androidx-annotation" }
 androidx-compose-material3-adaptive = { module = "androidx.compose.material3.adaptive:adaptive", version.ref = "androidx-compose-material3-adaptive" }
 androidx-compose-material3-adaptive-layout = { module = "androidx.compose.material3.adaptive:adaptive-layout", version.ref = "androidx-compose-material3-adaptive" }
 androidx-compose-material3-adaptive-navigation = { module = "androidx.compose.material3.adaptive:adaptive-navigation", version.ref = "androidx-compose-material3-adaptive" }
-androidx-window-core = { module = "androidx.window:window-core", version.ref = "androidx-window" }
 
 # Androidx
 # Each library has its own version, so we don't use `Versions` here.

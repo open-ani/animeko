@@ -46,8 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -55,6 +54,7 @@ import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.tools.formatDateTime
+import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_debug_copied
@@ -83,7 +83,7 @@ internal fun MediaSelectorItem(
 ) {
     // We use the first media for display because the group has the same info.
     val media: Media = group.first.original
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
 
@@ -113,7 +113,7 @@ internal fun MediaSelectorItem(
             }
             scope.launch {
                 val downloadUri = media.download.uri
-                clipboard.setText(AnnotatedString(downloadUri))
+                clipboard.setClipEntryText(downloadUri)
                 toaster.toast(getString(Lang.settings_debug_copied, downloadUri))
             }
         },

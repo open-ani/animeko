@@ -32,11 +32,11 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
@@ -47,6 +47,7 @@ import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.icons.Passkey_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24
+import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
@@ -182,15 +183,16 @@ fun LoadErrorCard(
                                     Text("Dump", fontStyle = FontStyle.Italic)
                                 }
                             } else {
-                                val clipboard = LocalClipboardManager.current
+                                val clipboard = LocalClipboard.current
+                                val scope = rememberCoroutineScope()
                                 val toaster = LocalToaster.current
                                 TextButton(
                                     {
-                                        clipboard.setText(
-                                            AnnotatedString(
+                                        scope.launch {
+                                            clipboard.setClipEntryText(
                                                 e?.stackTraceToString() ?: "null",
-                                            ),
-                                        )
+                                            )
+                                        }
                                         @OptIn(DelicateCoroutinesApi::class)
                                         GlobalScope.launch {
                                             logger<LoadError>().error(e) {

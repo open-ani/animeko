@@ -96,7 +96,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
 import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
@@ -134,6 +133,7 @@ import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.platform.hasScrollingBug
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
+import kotlin.time.Clock
 
 
 // 有顺序, https://github.com/Him188/ani/issues/73

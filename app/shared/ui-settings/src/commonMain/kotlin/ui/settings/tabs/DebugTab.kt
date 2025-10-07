@@ -14,8 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.toRoute
 import kotlinx.coroutines.launch
@@ -31,6 +30,7 @@ import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.findLast
 import me.him188.ani.app.platform.MeteredNetworkDetector
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_debug_copied
@@ -69,7 +69,7 @@ fun DebugTab(
     val toaster = LocalToaster.current
     val navigator = LocalNavigator.current
     val scope = rememberCoroutineScope()
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
 
     SettingsTab(modifier) {
         Group(
@@ -152,7 +152,7 @@ fun DebugTab(
                         val value =
                             (GlobalKoin.get<SessionManager>().sessionFlow.value as? AccessTokenSession)?.tokens?.aniAccessToken
                         toaster.toast(getString(Lang.settings_debug_copied, value.toString()))
-                        clipboard.setText(AnnotatedString(value.toString()))
+                        clipboard.setClipEntryText(value.toString())
                     }
                 },
             )

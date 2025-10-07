@@ -21,9 +21,9 @@ actual suspend fun Context.setRequestFullScreen(window: PlatformWindow, fullscre
 
     // hi, 相信前人的智慧, 如果操作不当会导致某些 Windows 设备上全屏会白屏 (你的电脑不一定能复现)
     if (fullscreen) {
-        WindowUtils.setUndecoratedFullscreen(window, windowState, true)
+        WindowUtils.instance.setUndecoratedFullscreen(window, windowState, true)
     } else {
-        WindowUtils.setUndecoratedFullscreen(window, windowState, false)
+        WindowUtils.instance.setUndecoratedFullscreen(window, windowState, false)
     }
 }
 

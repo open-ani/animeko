@@ -29,12 +29,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.unit.dp
 import io.ktor.http.decodeURLQueryComponent
+import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.foundation.interaction.onRightClickIfSupported
+import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_copied_to_clipboard
@@ -71,15 +73,18 @@ fun RssOverviewCard(
     val encodedUrl = result.encodedUrl
     Card(modifier, colors = colors, shape = MaterialTheme.shapes.large) {
         val toaster = LocalToaster.current
-        val clipboard = LocalClipboardManager.current
+        val clipboard = LocalClipboard.current
+        val scope = rememberCoroutineScope()
         val textCopied = stringResource(Lang.settings_mediasource_rss_copied_to_clipboard)
         val copy = { str: String ->
-            clipboard.setText(AnnotatedString(str))
-            toaster.toast(textCopied)
+            scope.launch {
+                clipboard.setClipEntryText(str)
+                toaster.toast(textCopied)
+            }
         }
 
         fun Modifier.copyable(value: () -> String): Modifier {
-            val func = { copy(value()) }
+            val func: () -> Unit = { copy(value()) }
             return combinedClickable(
                 onLongClick = func,
                 onLongClickLabel = "复制",

@@ -22,11 +22,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboard
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.platform.PermissionManager
+import me.him188.ani.app.ui.foundation.getClipEntryText
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
+import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_danmaku_cancel
@@ -60,7 +61,7 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
     var showRestoreDialog by remember { mutableStateOf(false) }
 
     val scope = rememberAsyncHandler()
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
     val toaster = LocalToaster.current
 
     Group({ Text(stringResource(Lang.settings_storage_backup_title)) }) {
@@ -70,7 +71,7 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
             onClick = {
                 scope.launch {
                     val data = state.onGetBackupData()
-                    clipboard.setText(AnnotatedString(data))
+                    clipboard.setClipEntryText(data)
                     toaster.toast(getString(Lang.settings_mediasource_rss_copied_to_clipboard))
                 }
             },
@@ -97,7 +98,7 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                 TextButton(
                     {
                         scope.launch {
-                            val clipboardText = clipboard.getText()?.text
+                            val clipboardText = clipboard.getClipEntryText()
                                 ?.takeIf { it.isNotBlank() && it.isNotEmpty() }
                             val result = clipboardText?.let { state.onRestoreSettings(it) } == true
 

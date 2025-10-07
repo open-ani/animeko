@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.subject.collection.components
 
-import kotlinx.datetime.Instant
 import me.him188.ani.app.data.models.subject.ContinueWatchingStatus
 import me.him188.ani.app.data.models.subject.ContinueWatchingStatus.Done
 import me.him188.ani.app.data.models.subject.ContinueWatchingStatus.NotOnAir
@@ -31,6 +30,7 @@ import me.him188.ani.test.TestContainer
 import me.him188.ani.test.TestFactory
 import me.him188.ani.test.runDynamicTests
 import kotlin.test.assertEquals
+import kotlin.time.Instant
 
 /**
  * Test [AiringLabelState] and [SubjectProgressState]

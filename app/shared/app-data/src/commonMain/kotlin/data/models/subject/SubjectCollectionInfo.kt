@@ -10,7 +10,6 @@
 package me.him188.ani.app.data.models.subject
 
 import androidx.compose.runtime.Immutable
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
@@ -28,6 +27,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.math.abs
 import kotlin.random.Random
 import kotlin.time.Duration
+import kotlin.time.Instant
 
 /**
  * 用户对一个条目的收藏情况

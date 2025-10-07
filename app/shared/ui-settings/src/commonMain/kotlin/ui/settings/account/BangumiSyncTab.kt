@@ -32,7 +32,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.datetime.Clock
 import me.him188.ani.app.data.models.bangumi.BangumiSyncCommand
 import me.him188.ani.app.data.models.bangumi.BangumiSyncOp
 import me.him188.ani.app.data.models.bangumi.BangumiSyncState
@@ -59,6 +58,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds

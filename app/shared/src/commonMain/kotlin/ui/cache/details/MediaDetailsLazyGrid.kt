@@ -38,9 +38,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.ktor.http.Url
@@ -51,6 +50,7 @@ import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.features.getComponentAccessors
 import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.media.MediaDetailsRenderer
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcon
@@ -165,7 +165,7 @@ fun MediaDetailsLazyGrid(
     showSourceInfo: Boolean = true,
 ) {
     val uriHandler = LocalUriHandler.current
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
     val fileRevealer = LocalContext.current.getComponentAccessors().fileRevealer
     val scope = rememberCoroutineScope()
 
@@ -177,8 +177,10 @@ fun MediaDetailsLazyGrid(
         val copyContent = @Composable { value: () -> String ->
             IconButton(
                 {
-                    clipboard.setText(AnnotatedString(value()))
-                    toaster.toast("已复制")
+                    scope.launch {
+                        clipboard.setClipEntryText(value())
+                        toaster.toast("已复制")
+                    }
                 },
             ) {
                 Icon(Icons.Rounded.ContentCopy, contentDescription = "复制")
@@ -190,8 +192,10 @@ fun MediaDetailsLazyGrid(
                     if (runCatching { Url(url) }.isSuccess) {
                         uriHandler.openUri(url)
                     } else {
-                        clipboard.setText(AnnotatedString(url))
-                        toaster.toast("已复制")
+                        scope.launch {
+                            clipboard.setClipEntryText(url)
+                            toaster.toast("已复制")
+                        }
                     }
                 },
             ) {

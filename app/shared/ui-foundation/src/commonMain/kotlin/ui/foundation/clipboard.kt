@@ -7,15 +7,12 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.data.persistent.database.converters
+package me.him188.ani.app.ui.foundation
 
-import androidx.room.TypeConverter
-import kotlin.time.Instant
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.Clipboard
 
-class InstantConverter {
-    @TypeConverter
-    fun toInstant(value: Long): Instant = Instant.fromEpochMilliseconds(value)
+expect fun textClipEntryOf(text: String): ClipEntry
 
-    @TypeConverter
-    fun fromInstant(value: Instant): Long = value.toEpochMilliseconds()
-}
+suspend inline fun Clipboard.setClipEntryText(text: String) = setClipEntry(textClipEntryOf(text))
+expect suspend fun Clipboard.getClipEntryText(): String?

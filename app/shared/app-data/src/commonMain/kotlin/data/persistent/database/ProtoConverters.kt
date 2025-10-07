@@ -33,17 +33,17 @@ interface ProtoConverter<T> {
 }
 
 object ProtoConverters {
-    object StringList : ProtoConverter<List<String>> {
+    class StringList {
         @Serializable
         private class Node(val value: List<String>)
 
         @TypeConverter
-        override fun fromByteArray(value: ByteArray): List<String> {
+        fun fromByteArray(value: ByteArray): List<String> {
             return protobuf.decodeFromByteArray(Node.serializer(), value).value
         }
 
         @TypeConverter
-        override fun fromList(list: List<String>): ByteArray {
+        fun fromList(list: List<String>): ByteArray {
             return protobuf.encodeToByteArray(Node.serializer(), Node(list))
         }
     }

@@ -7,6 +7,8 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+@file:OptIn(ExperimentalKotlinGradlePluginApi::class)
+
 import com.android.build.api.dsl.CommonExtension
 import com.android.build.api.dsl.LibraryExtension
 import org.jetbrains.compose.ComposeExtension
@@ -74,6 +76,10 @@ configure<KotlinMultiplatformExtension> {
                     withJvm()
                     withNative()
                 }
+                group("mobile") {
+                    withAndroidTarget()
+                    withIos()
+                }
             }
         }
 
@@ -104,19 +110,9 @@ configure<KotlinMultiplatformExtension> {
             api(compose.animation)
             api(compose.ui)
 
-//            api(compose.material3)
-            // workaround in CMP 1.8.0-alpha04. Remove in the future.
-            api("org.jetbrains.compose.material3:material3") {
-                version {
-                    strictly("1.8.0-alpha03")
-                }
-            }
-            // workaround in CMP 1.8.0-alpha04. Remove in the future.
-            api("org.jetbrains.androidx.window:window-core") {
-                version {
-                    strictly("1.4.0-alpha03")
-                }
-            }
+            val libs = versionCatalogs.named("libs")
+            api("org.jetbrains.compose.material3:material3:${libs.findVersion("compose-material3").get()}")
+            api("org.jetbrains.androidx.window:window-core:${libs.findVersion("compose-window-core").get()}")
 
             api(compose.materialIconsExtended)
             api(compose.runtime)
@@ -157,7 +153,7 @@ configure<KotlinMultiplatformExtension> {
             }
         }
 
-        dependencies {
+        project.dependencies {
             "debugImplementation"("androidx.compose.ui:ui-test-manifest:${composeVersion}")
         }
     }
@@ -170,13 +166,6 @@ configure<KotlinMultiplatformExtension> {
             androidExtension.sourceSets["main"].aidl.srcDirs(androidMainSourceSetDir.resolve("aidl"))
             // add more sourceSet dirs if necessary.
         }
-    }
-}
-
-if (enableHotReload && composeCompilerExtension != null) {
-    composeCompilerExtension.apply {
-        // Required by Compose hot reload
-        featureFlags.add(ComposeFeatureFlag.OptimizeNonSkippingGroups)
     }
 }
 

@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.format.char
+import kotlinx.datetime.number
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
 import me.him188.ani.datasources.api.EpisodeSort
@@ -185,7 +186,7 @@ object ScheduleItemDefaults {
         val timeString = timeFormatter.format(time)
 
         return if (futureStartDate != null) {
-            "${futureStartDate.monthNumber}/${futureStartDate.dayOfMonth} 起\n${timeString}"
+            "${futureStartDate.month.number}/${futureStartDate.day} 起\n${timeString}"
         } else {
             timeString
         }

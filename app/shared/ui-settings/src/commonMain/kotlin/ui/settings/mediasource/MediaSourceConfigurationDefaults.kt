@@ -27,8 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboard
 import me.him188.ani.app.domain.mediasource.codec.FactoryNotFoundException
 import me.him188.ani.app.domain.mediasource.codec.InvalidMediaSourceContentException
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceArguments
@@ -37,7 +36,10 @@ import me.him188.ani.app.domain.mediasource.codec.MediaSourceDecodeException
 import me.him188.ani.app.domain.mediasource.codec.UnsupportedVersionException
 import me.him188.ani.app.domain.mediasource.codec.decodeFromStringOrNull
 import me.him188.ani.app.domain.mediasource.codec.serializeToString
+import me.him188.ani.app.ui.foundation.getClipEntryText
 import me.him188.ani.app.ui.foundation.isInDebugMode
+import me.him188.ani.app.ui.foundation.rememberAsyncHandler
+import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_mediasource_cancel
@@ -168,10 +170,15 @@ fun <T : MediaSourceArguments> MediaSourceConfigurationDefaults.DropdownMenuImpo
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val asyncHandler = rememberAsyncHandler()
     DropdownMenuItem(
         text = { Text(stringResource(Lang.settings_mediasource_import_from_clipboard)) },
-        onClick = { state.parseContent(clipboard.getText()?.text) },
+        onClick = {
+            asyncHandler.launch {
+                state.parseContent(clipboard.getClipEntryText())
+            }
+        },
         modifier,
         leadingIcon = { Icon(Icons.Rounded.ContentPaste, null) },
         enabled = enabled,
@@ -250,20 +257,24 @@ fun MediaSourceConfigurationDefaults.DropdownMenuExport(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
     val toaster = LocalToaster.current
     val copiedToClipboard = stringResource(Lang.settings_mediasource_copied_to_clipboard)
     val cannotExport = stringResource(Lang.settings_mediasource_export_failed)
+    val asyncHandler = rememberAsyncHandler()
     DropdownMenuItem(
         text = { Text(stringResource(Lang.settings_mediasource_export)) },
         onClick = {
-            state.serializeToString()?.let {
-                clipboard.setText(AnnotatedString(it))
-                toaster.toast(copiedToClipboard)
-            } ?: kotlin.run {
-                toaster.toast(cannotExport)
+            asyncHandler.launch {
+                val serialized = state.serializeToString()
+                if (serialized != null) {
+                    clipboard.setClipEntryText(serialized)
+                    toaster.toast(copiedToClipboard)
+                } else {
+                    toaster.toast(cannotExport)
+                }
+                onDismissRequest()
             }
-            onDismissRequest()
         },
         modifier,
         leadingIcon = { Icon(Icons.Rounded.Share, null) },
@@ -273,13 +284,16 @@ fun MediaSourceConfigurationDefaults.DropdownMenuExport(
         DropdownMenuItem(
             text = { Text(stringResource(Lang.settings_mediasource_export_single)) },
             onClick = {
-                state.serializeSingleToString()?.let {
-                    clipboard.setText(AnnotatedString(it))
-                    toaster.toast(copiedToClipboard)
-                } ?: kotlin.run {
-                    toaster.toast(cannotExport)
+                asyncHandler.launch {
+                    val serialized = state.serializeSingleToString()
+                    if (serialized != null) {
+                        clipboard.setClipEntryText(serialized)
+                        toaster.toast(copiedToClipboard)
+                    } else {
+                        toaster.toast(cannotExport)
+                    }
+                    onDismissRequest()
                 }
-                onDismissRequest()
             },
             modifier,
             leadingIcon = { Icon(Icons.Rounded.Share, null) },

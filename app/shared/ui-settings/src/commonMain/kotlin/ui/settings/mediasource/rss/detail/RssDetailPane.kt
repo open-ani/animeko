@@ -37,14 +37,16 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.mediasource.test.rss.RssItemInfo
 import me.him188.ani.app.tools.formatDateTime
+import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_close
@@ -124,7 +126,8 @@ private fun RssItemDetailColumn(
     modifier: Modifier = Modifier,
 ) {
     val browser = LocalUriHandler.current
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     val toaster = LocalToaster.current
 
     // Load string resources in composable context
@@ -138,8 +141,10 @@ private fun RssItemDetailColumn(
         val copyContent = @Composable { value: () -> String ->
             IconButton(
                 {
-                    clipboard.setText(AnnotatedString(value()))
-                    toaster.toast(copiedText)
+                    scope.launch {
+                        clipboard.setClipEntryText(value())
+                        toaster.toast(copiedText)
+                    }
                 },
             ) {
                 Icon(

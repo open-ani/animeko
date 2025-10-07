@@ -9,7 +9,7 @@
 
 package me.him188.ani.app.domain.session
 
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
 
 /**

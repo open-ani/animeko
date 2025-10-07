@@ -9,12 +9,12 @@
 
 package me.him188.ani.app.data.models.bangumi
 
-import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import me.him188.ani.client.models.AniCollectionType
 import me.him188.ani.client.models.AniEpisodeCollectionType
 import me.him188.ani.client.models.AniSelfRatingInfo
+import kotlin.time.Instant
 
 // 注意, 这些 schema 都是对应 server v5.0.0 的, 不能修改参数名称.
 

@@ -10,13 +10,13 @@
 package me.him188.ani.app.ui.subject.episode.list
 
 import androidx.compose.runtime.Immutable
-import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.serialization.BigNum
+import kotlin.time.Instant
 
 @Immutable
 data class EpisodeListUiState(
@@ -29,7 +29,7 @@ data class EpisodeListUiState(
         fun from(
             collection: SubjectCollectionInfo,
             currentTime: Instant,
-            zone: TimeZone = TimeZone.Companion.currentSystemDefault()
+            zone: TimeZone = TimeZone.currentSystemDefault()
         ): EpisodeListUiState {
             val (mainEpisodes, otherEpisodes) = collection.episodes.map { episode ->
                 EpisodeListItem.from(

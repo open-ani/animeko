@@ -442,12 +442,12 @@ private fun DanmakuConfig(
                 )
 
                 val isDesktop =
-                    currentWindowAdaptiveInfo().windowSizeClass.containsWidthDp(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+                    currentWindowAdaptiveInfo().windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
 
                 @SuppressLint("RememberReturnType")
                 val displayDensityRange = remember(isDesktop) {
                     // 100% .. 0%
-                    36.dp..(if (isDesktop) 720.dp else 240.dp)
+                    36.dp..if (isDesktop) 720.dp else 240.dp
                 }
                 var displayDensity by remember(danmakuConfig) {
                     mutableFloatStateOf(
@@ -467,8 +467,8 @@ private fun DanmakuConfig(
                         setDanmakuConfig(
                             danmakuConfig.copy(
                                 safeSeparation = displayDensityRange.start +
-                                        ((displayDensityRange.endInclusive - displayDensityRange.start + 1.dp)
-                                            .times((1 - displayDensity * 0.1f))),
+                                        (displayDensityRange.endInclusive - displayDensityRange.start + 1.dp)
+                                            .times((1 - displayDensity * 0.1f)),
                             ),
                         )
                     },

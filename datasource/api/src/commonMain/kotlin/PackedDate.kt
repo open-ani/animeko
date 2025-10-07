@@ -11,10 +11,10 @@
 
 package me.him188.ani.datasources.api
 
-import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import me.him188.ani.datasources.api.PackedDate.Companion.Invalid
@@ -23,6 +23,7 @@ import kotlin.contracts.contract
 import kotlin.jvm.JvmField
 import kotlin.jvm.JvmInline
 import kotlin.jvm.JvmStatic
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -85,8 +86,8 @@ value class PackedDate(
             val calendar = Clock.System.now().toLocalDateTime(timeZone)
 
             val year = calendar.year
-            val month = calendar.monthNumber
-            val day = calendar.dayOfMonth
+            val month = calendar.month.number
+            val day = calendar.day
             return PackedDate(year, month, day)
         }
     }

@@ -9,10 +9,10 @@
 
 package me.him188.ani.app.data.models.schedule
 
-import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.models.subject.SubjectRecurrence
 import me.him188.ani.utils.platform.collections.tupleOf
+import kotlin.time.Instant
 
 data class AnimeScheduleInfo(
     val seasonId: AnimeSeasonId,

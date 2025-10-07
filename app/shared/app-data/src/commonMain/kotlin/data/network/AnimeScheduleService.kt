@@ -14,7 +14,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.util.reflect.typeInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Instant
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -35,6 +34,7 @@ import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.ktor.ApiInvoker
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Instant
 
 class AnimeScheduleService(
     private val scheduleApi: ApiInvoker<ScheduleAniApi>,

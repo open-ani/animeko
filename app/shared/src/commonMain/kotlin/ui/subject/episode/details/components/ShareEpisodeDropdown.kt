@@ -19,13 +19,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.AnnotatedString
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
 import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.rememberAsyncHandler
+import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.utils.platform.isAndroid
 
@@ -36,7 +37,8 @@ fun ShareEpisodeDropdown(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberAsyncHandler()
     val uriHandler = LocalUriHandler.current
     val browserNavigator = rememberAsyncBrowserNavigator()
     val context = LocalContext.current
@@ -60,7 +62,9 @@ fun ShareEpisodeDropdown(
                 },
                 onClick = {
                     onDismissRequest()
-                    clipboard.setText(AnnotatedString(download.uri))
+                    scope.launch {
+                        clipboard.setClipEntryText(download.uri)
+                    }
                 },
                 leadingIcon = { Icon(Icons.Rounded.ContentCopy, null) },
             )
@@ -89,7 +93,9 @@ fun ShareEpisodeDropdown(
                 text = { Text("复制数据源页面链接") },
                 onClick = {
                     onDismissRequest()
-                    clipboard.setText(AnnotatedString(websiteUrl))
+                    scope.launch {
+                        clipboard.setClipEntryText(websiteUrl)
+                    }
                 },
                 leadingIcon = { Icon(Icons.Rounded.ContentCopy, null) },
             )
@@ -104,4 +110,3 @@ fun ShareEpisodeDropdown(
         }
     }
 }
-

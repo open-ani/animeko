@@ -45,8 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -57,6 +56,7 @@ import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscription
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
+import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_media_source_cancel
@@ -265,16 +265,16 @@ private fun SettingsScope.SubscriptionItem(
             }
             DropdownMenu(showDropdown, { showDropdown = false }) {
                 val uiScope = rememberCoroutineScope()
-                val clipboard = LocalClipboardManager.current
+                val clipboard = LocalClipboard.current
                 val toaster = LocalToaster.current
 
                 DropdownMenuItem(
                     leadingIcon = { Icon(Icons.Rounded.Share, null) },
                     text = { Text(stringResource(Lang.settings_media_source_subscription_copy_link)) },
                     onClick = {
-                        clipboard.setText(AnnotatedString(subscription.url))
                         showDropdown = false
                         uiScope.launch {
+                            clipboard.setClipEntryText(subscription.url)
                             toaster.toast(getString(Lang.settings_media_source_subscription_copied))
                         }
                     },
@@ -287,7 +287,7 @@ private fun SettingsScope.SubscriptionItem(
                     onClick = {
                         uiScope.launch {
                             val string = state.exportToString(subscription)
-                            clipboard.setText(AnnotatedString(string))
+                            clipboard.setClipEntryText(string)
                             showDropdown = false
                             toaster.toast(getString(Lang.settings_media_source_subscription_copied))
                         }

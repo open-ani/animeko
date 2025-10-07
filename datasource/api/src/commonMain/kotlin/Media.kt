@@ -290,6 +290,7 @@ data class MediaProperties @SerializationOnly constructor(
     @Suppress("unused")
     @Transient private val _primaryConstructorMarker: Unit = Unit,
 ) {
+    @OptIn(SerializationOnly::class)
     constructor(
         // so that caller still need to provide all properties despite we have default values for compatibility
         subjectName: String?,

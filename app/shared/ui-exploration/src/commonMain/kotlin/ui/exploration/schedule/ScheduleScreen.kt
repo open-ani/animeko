@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.number
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.HorizontalScrollControlScaffoldOnDesktop
 import me.him188.ani.app.ui.foundation.HorizontalScrollControlState
@@ -376,7 +377,7 @@ object ScheduleScreenDefaults {
 private fun renderScheduleDay(day: ScheduleDay): String {
     val date = day.date
     return """
-        ${date.monthNumber}/${date.dayOfMonth}
+        ${date.month.number}/${date.day}
         ${renderDayOfWeek(day.dayOfWeek, day.kind)}
     """.trimIndent()
 }

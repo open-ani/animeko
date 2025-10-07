@@ -17,19 +17,22 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.BuildConfig
 import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.ui.foundation.setClipEntryText
 import java.io.File
 
 
 @Composable
 internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemColors) {
     val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
 
     ListItem(
         headlineContent = { Text("分享当日日志文件") },
@@ -53,7 +56,9 @@ internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemCol
     ListItem(
         headlineContent = { Text("复制当日日志内容 (很大)") },
         Modifier.clickable {
-            clipboard.setText(AnnotatedString(context.getCurrentLogFile().readText()))
+            scope.launch {
+                clipboard.setClipEntryText(context.getCurrentLogFile().readText())
+            }
         },
         colors = listItemColors,
     )

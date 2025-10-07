@@ -78,8 +78,8 @@ fun ImageViewer(
     val scope = rememberCoroutineScope()
     val model by handler.imageModel.collectAsStateWithLifecycle()
 
-    var contentSizeX by rememberSaveable(key = model.toString()) { mutableStateOf(0f) }
-    var contentSizeY by rememberSaveable(key = model.toString()) { mutableStateOf(0f) }
+    var contentSizeX by rememberSaveable(model.toString()) { mutableStateOf(0f) }
+    var contentSizeY by rememberSaveable(model.toString()) { mutableStateOf(0f) }
     val contentSize by derivedStateOf { Size(contentSizeX, contentSizeY) }
 
     val zoomableState = rememberZoomableState(key = handler.viewing.value)

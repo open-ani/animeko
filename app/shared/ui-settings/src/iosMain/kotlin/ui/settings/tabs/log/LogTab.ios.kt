@@ -15,13 +15,15 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.uikit.LocalUIViewController
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.coroutines.launch
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemTemporaryDirectory
+import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.copyTo
@@ -40,7 +42,8 @@ import platform.UIKit.popoverPresentationController
 internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemColors) {
     val toaster = LocalToaster.current
     val uiViewController = LocalUIViewController.current
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
 
     ListItem(
         headlineContent = {
@@ -66,7 +69,9 @@ internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemCol
             if (file == null) {
                 toaster.toast("未找到文件")
             } else {
-                clipboard.setText(AnnotatedString(file.inSystem.readText()))
+                scope.launch {
+                    clipboard.setClipEntryText(file.inSystem.readText())
+                }
             }
         },
         colors = listItemColors,

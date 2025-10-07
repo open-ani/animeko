@@ -56,12 +56,13 @@ fun CarouselAutoAdvanceEffect(
                     @Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
                     launch(start = CoroutineStart.UNDISPATCHED) {
                         // 实际测试, currentPage 只会到 pageCount - 2, 所以我们用  % (pageCount - 1)
+                        // TODO: 自 CMP 1.9, 在宽屏上需要用 -2, 但在手机窄屏上会导致跳过最后两个项目
                         val targetPage =
-                            (carouselState.pagerState.currentPage + 1) % (carouselState.pagerState.pageCount - 1)
+                            (carouselState.pagerState.currentPage + 1) % (carouselState.pagerState.pageCount - 2)
                         if (targetPage < 0 || targetPage >= carouselState.pagerState.pageCount) {
                             return@launch // prevent crash
                         }
-                        carouselState.pagerState.animateScrollToPage(
+                        carouselState.animateScrollToItem(
                             targetPage,
                             animationSpec = animationSpec,
                         )

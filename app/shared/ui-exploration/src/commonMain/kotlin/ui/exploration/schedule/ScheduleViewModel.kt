@@ -12,7 +12,6 @@ package me.him188.ani.app.ui.exploration.schedule
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.datetime.Clock
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -26,6 +25,7 @@ import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.catching
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.koin.core.Koin
+import kotlin.time.Clock
 
 class ScheduleViewModel(
     koin: Koin = GlobalKoin,

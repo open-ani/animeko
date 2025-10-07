@@ -15,13 +15,13 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.client.apis.AutoSkipAniApi
 import me.him188.ani.client.models.AutoSkipReportRequest
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.ktor.ApiInvoker
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Clock
 
 /**
  * Client-side helper for AutoSkip reporting and querying rules.

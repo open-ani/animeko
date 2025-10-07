@@ -313,8 +313,8 @@ private fun calculateMinimumPaneWidth(
     windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
 ): Dp {
     return when {
-        windowSizeClass.containsWidthDp(1200) -> 412.dp // Large, M3 spec 
-        windowSizeClass.containsWidthDp(840) -> 360.dp // Expanded, M3 spec
+        windowSizeClass.isWidthAtLeastBreakpoint(1200) -> 412.dp // Large, M3 spec 
+        windowSizeClass.isWidthAtLeastBreakpoint(840) -> 360.dp // Expanded, M3 spec
         else -> {
             // M3 spec
             (((windowSizeClass.minWidthDp - 24 * 3).toFloat() / 2).dp).coerceAtLeast(360.dp)

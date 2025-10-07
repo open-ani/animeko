@@ -10,14 +10,12 @@
 
 package me.him188.ani.app.ui.foundation.widgets
 
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
@@ -26,9 +24,6 @@ import androidx.compose.material3.DrawerDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.contentColorFor
-import androidx.compose.material3.ModalBottomSheetDialog
-import androidx.compose.material3.ModalBottomSheetProperties
-import androidx.compose.material3.isDark
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -50,6 +45,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
@@ -127,13 +123,8 @@ fun ModalSideSheet(
             .collect { if (it) animateToDismiss() }
     }
 
-    ModalBottomSheetDialog(
+    Dialog(
         onDismissRequest = animateToDismiss,
-        properties = ModalBottomSheetProperties(
-            isAppearanceLightStatusBars = contentColor.isDark(),
-            isAppearanceLightNavigationBars = contentColor.isDark(),
-        ),
-        predictiveBackProgress = remember { Animatable(initialValue = 0f) },
     ) {
         Box(Modifier.fillMaxSize().imePadding()) {
             Canvas(

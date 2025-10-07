@@ -21,8 +21,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.carousel.CarouselDefaults
+import androidx.compose.material3.carousel.CarouselItemScope
 import androidx.compose.material3.carousel.CarouselState
-import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
+import androidx.compose.material3.carousel.HorizontalCenteredHeroCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -60,16 +61,7 @@ fun TrendingSubjectsCarousel(
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     Box(modifier.padding(contentPadding).hoverable(interactionSource)) {
-        HorizontalMultiBrowseCarousel(
-            carouselState,
-            preferredItemWidth = size.preferredWidth,
-            Modifier.fillMaxWidth(),
-            itemSpacing = itemSpacing,
-            flingBehavior = CarouselDefaults.multiBrowseFlingBehavior(
-                carouselState,
-                snapAnimationSpec = spring(stiffness = Spring.StiffnessMedium),
-            ),
-        ) { index ->
+        val content: @Composable CarouselItemScope.(Int) -> Unit = { index ->
             val item = if (items.isLoadingFirstPageOrRefreshing) null else items[index]
             CarouselItem(
                 label = { CarouselItemDefaults.Text(item?.nameCn ?: "") },
@@ -89,6 +81,46 @@ fun TrendingSubjectsCarousel(
                 }
             }
         }
+
+        HorizontalCenteredHeroCarousel(
+            carouselState,
+            //            preferredItemWidth = size.preferredWidth,
+            Modifier.fillMaxWidth(),
+            maxItemWidth = 300.dp,
+            itemSpacing = itemSpacing,
+            flingBehavior = CarouselDefaults.multiBrowseFlingBehavior(
+                carouselState,
+                snapAnimationSpec = spring(stiffness = Spring.StiffnessMedium),
+            ),
+            content = content,
+        )
+
+//        if (currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
+//            HorizontalMultiBrowseCarousel(
+//                carouselState,
+//                preferredItemWidth = size.preferredWidth,
+//                Modifier.fillMaxWidth(),
+//                itemSpacing = itemSpacing,
+//                flingBehavior = CarouselDefaults.multiBrowseFlingBehavior(
+//                    carouselState,
+//                    snapAnimationSpec = spring(stiffness = Spring.StiffnessMedium),
+//                ),
+//                content = content,
+//            )
+//        } else {
+//            HorizontalCenteredHeroCarousel(
+//                carouselState,
+//                //            preferredItemWidth = size.preferredWidth,
+//                Modifier.fillMaxWidth(),
+//                maxItemWidth = size.preferredWidth,
+//                itemSpacing = itemSpacing,
+//                flingBehavior = CarouselDefaults.multiBrowseFlingBehavior(
+//                    carouselState,
+//                    snapAnimationSpec = spring(stiffness = Spring.StiffnessMedium),
+//                ),
+//                content = content,
+//            )
+//        }
         CarouselAutoAdvanceEffect(enabled = !isHovered, carouselState)
 
         if (items.loadState.hasError) {

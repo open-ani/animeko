@@ -58,9 +58,9 @@ data class SubjectCollectionEntity(
      */
     val totalEpisodes: Int,
     val airDate: PackedDate,
-    @all:TypeConverters(ProtoConverters.StringList::class)
+    @field:TypeConverters(ProtoConverters.StringList::class)
     val aliases: List<String>,
-    @all:TypeConverters(ProtoConverters.TagList::class)
+    @field:TypeConverters(ProtoConverters.TagList::class)
     val tags: List<Tag>,
     @Embedded(prefix = "collection_stats_")
     val collectionStats: SubjectCollectionStats,
@@ -104,16 +104,16 @@ data class SubjectCollectionEntity(
 @Immutable // don't change field name, stored in database
 data class SubjectRelations(
     @ColumnInfo(defaultValue = "'[]'")
-    @all:TypeConverters(ProtoConverters.IntList::class)
+    @field:TypeConverters(ProtoConverters.IntList::class)
     val seriesMainSubjectIds: List<Int>,
     @ColumnInfo(defaultValue = "'[]'")
-    @all:TypeConverters(ProtoConverters.StringList::class)
+    @field:TypeConverters(ProtoConverters.StringList::class)
     val seriesMainSubjectNames: List<String>,
     @ColumnInfo(defaultValue = "'[]'")
-    @all:TypeConverters(ProtoConverters.IntList::class)
+    @field:TypeConverters(ProtoConverters.IntList::class)
     val sequelSubjects: List<Int>,
     @ColumnInfo(defaultValue = "'[]'")
-    @all:TypeConverters(ProtoConverters.StringList::class)
+    @field:TypeConverters(ProtoConverters.StringList::class)
     val sequelSubjectNames: List<String>,
 ) {
     companion object {

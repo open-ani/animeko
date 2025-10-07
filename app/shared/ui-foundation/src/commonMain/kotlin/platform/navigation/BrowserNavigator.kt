@@ -12,14 +12,13 @@ package me.him188.ani.app.platform.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
-import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalClipboard
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.OpenBrowserResult
 import me.him188.ani.app.platform.Context
+import me.him188.ani.app.ui.foundation.rememberAsyncHandler
+import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
@@ -44,12 +43,12 @@ private val logger = logger<BrowserNavigator>()
 fun rememberAsyncBrowserNavigator(): BrowserNavigator {
     val navigator = LocalBrowserNavigator.current
     val toaster = LocalToaster.current
-    val clipboard = LocalClipboardManager.current
-    val scope = rememberCoroutineScope()
+    val clipboard = LocalClipboard.current
+    val scope = rememberAsyncHandler()
 
-    val failureAction = remember {
-        { failure: OpenBrowserResult.Failure ->
-            clipboard.setText(AnnotatedString(failure.dest))
+    val failureAction: suspend (OpenBrowserResult.Failure) -> Unit = remember(clipboard, toaster) {
+        { failure ->
+            clipboard.setClipEntryText(failure.dest)
             toaster.toast("无法打开链接，已将链接复制到剪贴板，请打开浏览器访问")
             logger.error(failure.throwable) { "Failed to open ${failure.dest}" }
         }
