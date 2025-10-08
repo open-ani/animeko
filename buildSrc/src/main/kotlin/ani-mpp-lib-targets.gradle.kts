@@ -261,13 +261,18 @@ if (enableIos) {
                 homepage = "https://github.com/open-ani/animeko"
                 name = project.name
 
-                ios.deploymentTarget = "13.0"
+                ios.deploymentTarget = "16.0"
 
                 // Maps custom Xcode configuration to NativeBuildType
                 xcodeConfigurationToNativeBuildType["CUSTOM_DEBUG"] = NativeBuildType.DEBUG
                 xcodeConfigurationToNativeBuildType["CUSTOM_RELEASE"] = NativeBuildType.RELEASE
 
-                pod("FirebaseCore")
+                val firebaseVersion = "12.4.0"
+                pod("GoogleAppMeasurement", version = firebaseVersion, linkOnly = true)
+                pod("FirebaseCore", version = firebaseVersion, linkOnly = true)
+                pod("FirebaseAnalytics", version = firebaseVersion, linkOnly = true)
+                pod("GoogleUtilities", version = "8.1", linkOnly = true)
+                pod("FirebaseInstallations", version = firebaseVersion, linkOnly = true)
             }
         }
     }
