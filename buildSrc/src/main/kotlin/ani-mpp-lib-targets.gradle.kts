@@ -265,14 +265,7 @@ if (enableIos) {
 
                 // Maps custom Xcode configuration to NativeBuildType
                 xcodeConfigurationToNativeBuildType["CUSTOM_DEBUG"] = NativeBuildType.DEBUG
-                xcodeConfigurationToNativeBuildType["CUSTOM_RELEASE"] = NativeBuildType.RELEASE
-
-                val firebaseVersion = "12.4.0"
-                pod("GoogleAppMeasurement", version = firebaseVersion, linkOnly = true)
-                pod("FirebaseCore", version = firebaseVersion, linkOnly = true)
-                pod("FirebaseAnalytics", version = firebaseVersion, linkOnly = true)
-                pod("GoogleUtilities", version = "8.1", linkOnly = true)
-                pod("FirebaseInstallations", version = firebaseVersion, linkOnly = true)
+                xcodeConfigurationToNativeBuildType["CUSTOM_RELEASE"] = NativeBuildType.RELEASE 
             }
         }
     }

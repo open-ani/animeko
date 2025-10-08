@@ -27,7 +27,6 @@ kotlin {
             dependencies {
                 api(libs.kotlinx.coroutines.core)
                 api(projects.utils.logging)
-                api(libs.firebase.analytics)
             }
         }
         val skikoMain by getting {
@@ -35,6 +34,11 @@ kotlin {
                 api(projects.utils.ktorClient)
                 api(projects.utils.serialization)
                 api(projects.utils.coroutines)
+            }
+        }
+        val jvmMain by getting {
+            dependencies {
+                api(libs.firebase.analytics)
             }
         }
         val androidMain by getting {

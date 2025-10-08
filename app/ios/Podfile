@@ -4,6 +4,4 @@ target 'Animeko' do
   pod 'application', :path => '../shared/application'
 
   pod 'Sentry', '~> 8.49.0'
-  pod 'FirebaseCore', '~> 12.4.0'
-  pod 'FirebaseAnalytics', '~> 12.4.0'
 end
