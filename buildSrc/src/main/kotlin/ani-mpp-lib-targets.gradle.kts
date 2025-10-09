@@ -211,6 +211,7 @@ if (android != null) {
             minSdk = getIntProperty("android.min.sdk")
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
             testInstrumentationRunnerArguments.set("runnerBuilder", "de.mannodermaus.junit5.AndroidJUnit5Builder")
+            testInstrumentationRunnerArguments["package"] = "me.him188"
         }
         packaging {
             resources {
