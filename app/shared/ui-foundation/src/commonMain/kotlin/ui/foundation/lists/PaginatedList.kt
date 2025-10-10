@@ -77,7 +77,7 @@ fun <T> PaginatedList(
             contentPadding = contentPadding,
         ) {
             state.groups.forEach { group ->
-                item(key = "PaginatedList_ header_${group.groupIndex}") {
+                item(key = "PaginatedList_header_${group.groupIndex}") {
                     headerContent(group)
                 }
 
