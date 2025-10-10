@@ -15,7 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -51,7 +51,7 @@ class PaginatedListState<T>(
     /**
      * 当前分组索引
      */
-    var currentGroupIndex by mutableStateOf(0)
+    var currentGroupIndex by mutableIntStateOf(0)
 
     /**
      * 导航到指定分组，并自动滚动到对应位置
