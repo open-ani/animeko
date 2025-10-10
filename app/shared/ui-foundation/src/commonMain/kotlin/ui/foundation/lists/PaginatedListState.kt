@@ -166,23 +166,19 @@ class PaginatedListState<T>(
         val totalItems = last.startIndex + last.items.size
         if (itemIndex < 0 || itemIndex >= totalItems) return null
 
-        var low = 0
-        var high = groups.lastIndex
-        var result = 0
-
-        while (low <= high) {
-            val mid = (low + high) ushr 1
-            val midStart = groups[mid].startIndex
-            if (midStart <= itemIndex) {
-                result = mid
-                low = mid + 1
-            } else {
-                high = mid - 1
+        val result = groups.binarySearch { it.startIndex.compareTo(itemIndex) }
+        return if (result >= 0) {
+            var idx = result
+            while (idx < groups.lastIndex && groups[idx + 1].startIndex <= itemIndex) {
+                idx++
             }
+            idx
+        } else {
+            val insertionPoint = -result - 1
+            if (insertionPoint > 0) insertionPoint - 1 else null
         }
-
-        return result
     }
+
 }
 
 /**
