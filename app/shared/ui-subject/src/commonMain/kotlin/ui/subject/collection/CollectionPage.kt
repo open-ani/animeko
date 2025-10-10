@@ -67,7 +67,6 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -84,8 +83,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.paging.CombinedLoadStates
-import androidx.paging.LoadState
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectWithLifecycle
@@ -152,7 +149,6 @@ class UserCollectionsState(
     collectionCountsState: State<SubjectCollectionCounts?>,
     val subjectProgressStateFactory: SubjectProgressStateFactory,
     val createEditableSubjectCollectionTypeState: (subjectCollection: SubjectCollectionInfo) -> EditableSubjectCollectionTypeState,
-    val onPagerFetchingAnyRemoteSource: (Boolean) -> Unit,
     private val backgroundScope: CoroutineScope,
     defaultQuery: CollectionsFilterQuery = CollectionsFilterQuery(
         type = UnifiedCollectionType.DOING,
@@ -177,13 +173,6 @@ class UserCollectionsState(
 
     private val restarter = FlowRestarter()
 
-    // true 表示这个 PagingData 的 remote mediator 正在加载, 即正在从 ani server 获取数据.
-    // 从 server 获取收藏数据时可能会触发 user 的 full sync 操作, 需要等待 full sync 完成后才能获取到收藏数据.
-    // 
-    // 记录每个 type 的 remote mediator 是否正在加载
-    // 只要有一个在加载, 我们就通知 view model 轮询获取 full sync 状态.
-    private val remotePagingStates = mutableStateMapOf<Int, Boolean>()
-
     fun selectTypeIndex(index: Int) {
         currentQuery = currentQuery.copy(type = availableTypes[index])
     }
@@ -203,28 +192,8 @@ class UserCollectionsState(
                     emitAll(startSearch(query))
                 }
 
-            LazyPagingItems(pagingFlow).apply {
-                addLoadStateListener { checkPagingState(typeIndex, it) }
-            }
+            LazyPagingItems(pagingFlow)
         }
-    }
-
-    // listener is called on main thread
-    private fun checkPagingState(typeIndex: Int, loadState: CombinedLoadStates) {
-        val ms = loadState.mediator
-        if (ms == null) {
-            // 没有 remote mediator state, 说明没从 server 获取数据.
-            remotePagingStates[typeIndex] = false
-            onPagerFetchingAnyRemoteSource(remotePagingStates.values.any { it })
-            return
-        }
-        remotePagingStates.put(
-            typeIndex,
-            // 加载中的状态, 正在从 server 获取数据.
-            !ms.isIdle && !ms.hasError && ms.refresh is LoadState.Loading,
-        )
-
-        onPagerFetchingAnyRemoteSource(remotePagingStates.values.any { it })
     }
 
     fun refresh() {

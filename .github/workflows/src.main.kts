@@ -911,6 +911,7 @@ workflow(
             )
 
             val prepareSigningKey = prepareSigningKey()
+            prepareGoogleServicesJson()
             compileAndAssemble()
 
             prepareSigningKey?.let {
