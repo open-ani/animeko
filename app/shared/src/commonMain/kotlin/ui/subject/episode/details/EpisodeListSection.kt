@@ -163,7 +163,7 @@ private fun WideEpisodeListSection(
 
                         if (episodeCarouselState.episodes.size > 100) {
                             PaginatedEpisodeList(
-                                episodes = episodeCarouselState.episodes,
+                                groups = episodeCarouselState.groups,
                                 episodeCarouselState = episodeCarouselState,
                                 listState = listState,
                                 modifier = Modifier.height(360.dp),

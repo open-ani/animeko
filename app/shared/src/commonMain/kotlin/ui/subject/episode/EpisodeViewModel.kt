@@ -109,6 +109,7 @@ import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
 import me.him188.ani.app.ui.foundation.launchInBackground
+import me.him188.ani.app.ui.foundation.lists.PaginatedGroup
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState
 import me.him188.ani.app.ui.mediafetch.MediaSourceInfoProvider
@@ -412,6 +413,24 @@ class EpisodeViewModel(
     }
 
     /**
+     * 剧集列表分页分组
+     */
+    @OptIn(UnsafeEpisodeSessionApi::class)
+    val episodeGroups = episodeCollectionsFlow.map { episodes ->
+        episodes.chunked(100).mapIndexed { groupIndex, chunk ->
+            val startItemIndex = groupIndex * 100
+            val startEp = groupIndex * 100 + 1
+            val endEp = startEp + chunk.size - 1
+            PaginatedGroup(
+                title = "第 $startEp-$endEp 话",
+                items = chunk,
+                startIndex = startItemIndex,
+                groupIndex = groupIndex,
+            )
+        }
+    }.produceState(emptyList())
+
+    /**
      * 剧集列表
      */
     @OptIn(UnsafeEpisodeSessionApi::class)
@@ -462,6 +481,7 @@ class EpisodeViewModel(
                 }
             },
             backgroundScope = backgroundScope,
+            groupsState = episodeGroups,
         )
     }
 

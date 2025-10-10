@@ -22,7 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,31 +50,21 @@ import me.him188.ani.datasources.api.topic.isDoneOrDropped
  */
 @Composable
 fun PaginatedEpisodeList(
-    episodes: List<EpisodeCollectionInfo>,
+    groups: List<PaginatedGroup<EpisodeCollectionInfo>>,
     episodeCarouselState: EpisodeCarouselState,
     listState: LazyListState,
     modifier: Modifier = Modifier
 ) {
-    // 生成分组数据
-    val groups = remember(episodes) {
-        episodes.chunked(100).mapIndexed { groupIndex, chunk ->
-            val startItemIndex = groupIndex * 100
-            val startEp = groupIndex * 100 + 1
-            val endEp = startEp + chunk.size - 1
-            PaginatedGroup(
-                title = "第 $startEp-$endEp 话",
-                items = chunk,
-                startIndex = startItemIndex,
-                groupIndex = groupIndex,
-            )
-        }
+
+    val allEpisodes = rememberSaveable(groups) {
+        groups.flatMap { it.items }
     }
 
-    val playingEpisodeIndex by rememberSaveable(episodes) {
-        derivedStateOf { episodes.indexOfFirst { episodeCarouselState.isPlaying(it) } }
+    val playingEpisodeIndex by rememberSaveable(allEpisodes) {
+        derivedStateOf { allEpisodes.indexOfFirst { episodeCarouselState.isPlaying(it) } }
     }
 
-    val state = rememberPaginatedListState(groups, episodes, listState)
+    val state = rememberPaginatedListState(groups, allEpisodes, listState)
 
     // 统一的播放位置处理
     LaunchedEffect(playingEpisodeIndex) {
