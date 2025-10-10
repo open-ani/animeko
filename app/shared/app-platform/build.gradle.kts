@@ -72,7 +72,6 @@ val aniAuthServerUrlRelease = getPropertyOrNull("ani.auth.server.url.release") ?
 val dandanplayAppId = getPropertyOrNull("ani.dandanplay.app.id") ?: ""
 val dandanplayAppSecret = getPropertyOrNull("ani.dandanplay.app.secret") ?: ""
 val sentryDsn = getPropertyOrNull("ani.sentry.dsn") ?: ""
-val analyticsServer = getPropertyOrNull("ani.analytics.server") ?: ""
 val analyticsKey = getPropertyOrNull("ani.analytics.key") ?: ""
 val overrideAniApiServer = getPropertyOrNull("ani.api.server")?.takeIf { it.isNotBlank() }
 
@@ -106,6 +105,28 @@ buildConfig {
     outputDir.set(layout.buildDirectory.dir("generated/buildconfig"))
 
     // Desktop platform configuration
+    fun Build_config_gradle.BuildConfigPlatform.firebaseFields() {
+        fun getProp(name: String): String {
+            return if (enableFirebase) {
+                getProperty(name).also {
+                    check(it.isNotBlank()) { "Local property '$name' is not set. You must either set it or disable `ani.enable.firebase`." }
+                }
+            } else {
+                ""
+            }
+        }
+        stringField("firebaseGAAppId", getProp("firebase.ga.app.id"), isOverride = false)
+//        stringField("firebaseApiKey", getProp("firebase.api.key"), isOverride = false)
+        //            stringField("firebaseStorageBucket", getProperty("firebase.storage.bucket"), isOverride = false)
+        //            stringField("firebaseProjectId", getProperty("firebase.project.id"), isOverride = false)
+        //            stringField("firebaseGATrackingId", getProperty("firebase.ga.tracking.id"), isOverride = false)
+        //            
+        //            stringField("firebaseGAMeasurementId", getProperty("firebase.ga.measurement.id"), isOverride = false)
+        stringField("firebaseGAApiSecret", getProp("firebase.ga.api.secret"), isOverride = false)
+
+        booleanField("analyticsEnabled", enableFirebase)
+    }
+
     platform("desktop") {
         stringField("versionName", project.version.toString())
         expressionField(
@@ -115,9 +136,9 @@ buildConfig {
         stringField("dandanplayAppId", dandanplayAppId)
         stringField("dandanplayAppSecret", dandanplayAppSecret)
         stringField("sentryDsn", sentryDsn)
-        stringField("analyticsKey", analyticsKey)
-        stringField("analyticsServer", analyticsServer)
         stringField("overrideAniApiServer", overrideAniApiServer ?: "")
+
+        firebaseFields()
     }
 
     // Android platform configuration
@@ -127,9 +148,9 @@ buildConfig {
         stringField("dandanplayAppId", dandanplayAppId)
         stringField("dandanplayAppSecret", dandanplayAppSecret)
         stringField("sentryDsn", sentryDsn)
-        stringField("analyticsKey", analyticsKey)
-        stringField("analyticsServer", analyticsServer)
         stringField("overrideAniApiServer", overrideAniApiServer ?: "")
+
+        booleanField("analyticsEnabled", enableFirebase)
     }
 
     // iOS platform configuration (only if enabled)
@@ -140,15 +161,12 @@ buildConfig {
             stringField("dandanplayAppId", dandanplayAppId)
             stringField("dandanplayAppSecret", dandanplayAppSecret)
             stringField("sentryDsn", sentryDsn)
-            stringField("analyticsKey", analyticsKey)
-            stringField("analyticsServer", analyticsServer)
 
             val sentryEnabled = (getPropertyOrNull("ani.sentry.ios") ?: "true").toBooleanStrict()
-            val analyticsEnabled = (getPropertyOrNull("ani.analytics.ios") ?: "true").toBooleanStrict()
-
             booleanField("sentryEnabled", sentryEnabled)
-            booleanField("analyticsEnabled", analyticsEnabled)
             stringField("overrideAniApiServer", overrideAniApiServer ?: "")
+
+            firebaseFields()
         }
     }
 }

@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import me.him188.ani.app.ui.foundation.dialogs.PlatformDialogProperties
 
 @Composable
 fun rememberModalSideSheetState(): ModalSideSheetState {
@@ -125,6 +126,12 @@ fun ModalSideSheet(
 
     Dialog(
         onDismissRequest = animateToDismiss,
+        properties = PlatformDialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false,
+            usePlatformInsets = false,
+        ),
     ) {
         Box(Modifier.fillMaxSize().imePadding()) {
             Canvas(

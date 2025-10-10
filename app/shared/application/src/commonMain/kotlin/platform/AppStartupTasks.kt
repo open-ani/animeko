@@ -34,8 +34,8 @@ object AppStartupTasks {
         }
     }
 
-    fun initializeAnalytics(instance: () -> IAnalytics) {
-        if (!currentAniBuildConfig.isDebug && currentAniBuildConfig.analyticsEnabled) {
+    inline fun initializeAnalytics(instance: () -> IAnalytics) {
+        if (currentAniBuildConfig.analyticsEnabled) {
             AnalyticsHolder.init(instance())
         }
     }

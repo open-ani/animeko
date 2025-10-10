@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.ui.subject.cache
+package me.him188.ani.app.ui.cache.subject
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer

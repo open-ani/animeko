@@ -15,6 +15,8 @@ import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.platform.DesktopContext
@@ -25,7 +27,9 @@ import me.him188.ani.utils.io.toKtPath
 actual fun Context.createPlatformDataStoreManager(): PlatformDataStoreManager =
     PlatformDataStoreManagerDesktop(this as DesktopContext)
 
-internal class PlatformDataStoreManagerDesktop(
+val Context.dataStoresDesktop: PlatformDataStoreManagerDesktop get() = dataStores as PlatformDataStoreManagerDesktop
+
+class PlatformDataStoreManagerDesktop(
     private val context: DesktopContext,
 ) : PlatformDataStoreManager() {
     override val legacyTokenStore: DataStore<Preferences> =
@@ -46,6 +50,20 @@ internal class PlatformDataStoreManagerDesktop(
             serializer = ListSerializer(MediaCacheSave.serializer()).asDataStoreSerializer({ emptyList() }),
             produceFile = { context.dataStoreDir.resolve("mediaCacheMetadata") },
             corruptionHandler = ReplaceFileCorruptionHandler { emptyList() },
+        )
+    }
+
+    /**
+     * @since 5.0.2
+     */
+    val firebaseDataStore by lazy {
+        DataStoreFactory.create(
+            serializer = MapSerializer(
+                String.serializer(),
+                String.serializer(),
+            ).asDataStoreSerializer({ emptyMap() }),
+            produceFile = { context.dataStoreDir.resolve("firebaseDataStore") },
+            corruptionHandler = ReplaceFileCorruptionHandler { emptyMap() },
         )
     }
 

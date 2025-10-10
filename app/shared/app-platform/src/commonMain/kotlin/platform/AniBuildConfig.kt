@@ -23,8 +23,6 @@ interface AniBuildConfig {
     val dandanplayAppId: String
     val dandanplayAppSecret: String
     val sentryDsn: String
-    val analyticsServer: String
-    val analyticsKey: String
     val overrideAniApiServer: String
         get() = ""
 

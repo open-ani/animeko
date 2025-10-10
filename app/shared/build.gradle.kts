@@ -59,6 +59,7 @@ kotlin {
         api(projects.app.shared.uiSettings)
         api(projects.app.shared.uiExploration)
         api(projects.app.shared.uiSubject)
+        api(projects.app.shared.uiCache)
         api(projects.app.shared.uiAdaptive)
         api(projects.app.shared.uiOnboarding)
         api(projects.app.shared.uiEpisode)

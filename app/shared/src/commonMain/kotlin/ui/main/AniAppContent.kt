@@ -66,6 +66,8 @@ import me.him188.ani.app.ui.cache.details.MediaCacheDetailsPageViewModel
 import me.him188.ani.app.ui.cache.details.MediaCacheDetailsScreen
 import me.him188.ani.app.ui.cache.details.MediaDetails
 import me.him188.ani.app.ui.cache.details.MediaDetailsLazyGrid
+import me.him188.ani.app.ui.cache.subject.SubjectCacheScreen
+import me.him188.ani.app.ui.cache.subject.SubjectCacheViewModelImpl
 import me.him188.ani.app.ui.exploration.schedule.ScheduleScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
@@ -96,8 +98,6 @@ import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourc
 import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourceViewModel
 import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsScreen
 import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsViewModel
-import me.him188.ani.app.ui.subject.cache.SubjectCacheScreen
-import me.him188.ani.app.ui.subject.cache.SubjectCacheViewModelImpl
 import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
 import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
 import me.him188.ani.app.ui.subject.episode.EpisodeScreen

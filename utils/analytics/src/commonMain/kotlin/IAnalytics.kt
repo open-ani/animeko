@@ -42,8 +42,9 @@ inline fun IAnalytics.recordEvent(
 @JvmInline
 value class AnalyticsEvent(val event: String) {
     companion object {
-        val Screen = AnalyticsEvent($$"$screen")
+        val Screen = AnalyticsEvent("screen")
         val AppStart = Screen // compatibility
+        val SessionStart = AnalyticsEvent("session_start")
 
         val OnboardingStart = AnalyticsEvent("onboarding_start")
         val OnboardingNetworkEnter = AnalyticsEvent("onboarding_network_enter")
@@ -97,6 +98,20 @@ abstract class CommonAnalyticsImpl(
     }
 
     protected abstract fun recordEventImpl(event: AnalyticsEvent, properties: Map<String, Any> = emptyMap())
+
+
+    protected fun sanitizeEventName(name: String): String {
+        val cleaned = name.replace(Regex("[^A-Za-z0-9_-]+"), "_")
+            .trim('_')
+        return cleaned.ifEmpty { "event" }.take(40)
+    }
+
+    protected fun sanitizeParamKey(name: String): String {
+        val noDollar = name.removePrefix("$")
+        val cleaned = noDollar.replace(Regex("[^A-Za-z0-9_]+"), "_")
+        val startAlpha = if (cleaned.firstOrNull()?.isLetter() == true) cleaned else "p_$cleaned"
+        return startAlpha.take(40)
+    }
 }
 
 object AnalyticsHolder {

@@ -67,18 +67,6 @@ object TestTasks {
                 exitProcess(0)
             }
 
-            "analytics-server" -> {
-                if (currentAniBuildConfig.analyticsServer.isBlank()) {
-                    logger.error { "analyticsServer is empty" }
-                    exitProcess(1)
-                }
-                if (currentAniBuildConfig.analyticsKey.isBlank()) {
-                    logger.error { "analyticsKey is empty" }
-                    exitProcess(1)
-                }
-                exitProcess(0)
-            }
-
             else -> {
                 logger.error { "Unknown test task: $taskName" }
                 exitProcess(1)

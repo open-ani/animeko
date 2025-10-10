@@ -54,10 +54,7 @@ kotlin {
                     transitiveExport = false
                     export(projects.app.shared.appPlatform)
                 }
-                pod("PostHog") {
-                    version = "~> 3.0"
-                    extraOpts += listOf("-compiler-option", "-fmodules")
-                }
+                // iOS Firebase SDKs are linked from the host Podfile
             }
         }
     }

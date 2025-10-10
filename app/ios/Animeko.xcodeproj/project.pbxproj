@@ -17,13 +17,13 @@
 /* Begin PBXFileReference section */
 		058557BA273AAA24004C7B11 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		0E62CA675B735DF3B0C16EC1 /* Pods-Animeko.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Animeko.debug.xcconfig"; path = "Target Support Files/Pods-Animeko/Pods-Animeko.debug.xcconfig"; sourceTree = "<group>"; };
 		2152FB032600AC8F00CF470E /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
-		313A2DD1CD1B1E06D9778672 /* Pods-Animeko.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Animeko.release.xcconfig"; path = "Target Support Files/Pods-Animeko/Pods-Animeko.release.xcconfig"; sourceTree = "<group>"; };
 		7555FF7B242A565900829871 /* Animeko.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Animeko.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7555FF82242A565900829871 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		7555FF8C242A565B00829871 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9394AA604B73CA09673A25D5 /* Pods_Animeko.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Animeko.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		B3C4AD774CBD2DC7975F131C /* Pods-Animeko.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Animeko.debug.xcconfig"; path = "Target Support Files/Pods-Animeko/Pods-Animeko.debug.xcconfig"; sourceTree = "<group>"; };
+		F249EC154975837B7E34C6F8 /* Pods-Animeko.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Animeko.release.xcconfig"; path = "Target Support Files/Pods-Animeko/Pods-Animeko.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -59,8 +59,8 @@
 			children = (
 				7555FF7D242A565900829871 /* Animeko */,
 				7555FF7C242A565900829871 /* Products */,
-				BB8E6AB31E345FC33DFDCB55 /* Pods */,
 				6967FD3DE1F113A1DCC2353C /* Frameworks */,
+				8C0969B926C1FC8560DC68FB /* Pods */,
 			);
 			sourceTree = "<group>";
 		};
@@ -84,12 +84,13 @@
 			path = Animeko;
 			sourceTree = "<group>";
 		};
-		BB8E6AB31E345FC33DFDCB55 /* Pods */ = {
+		8C0969B926C1FC8560DC68FB /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				B3C4AD774CBD2DC7975F131C /* Pods-Animeko.debug.xcconfig */,
-				313A2DD1CD1B1E06D9778672 /* Pods-Animeko.release.xcconfig */,
+				0E62CA675B735DF3B0C16EC1 /* Pods-Animeko.debug.xcconfig */,
+				F249EC154975837B7E34C6F8 /* Pods-Animeko.release.xcconfig */,
 			);
+			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -105,7 +106,7 @@
 				7555FF79242A565900829871 /* Resources */,
 				CE9EDF4E63CCBE422D76C68A /* Frameworks */,
 				CD93AF9E4C4DD36BC419C279 /* [CP] Embed Pods Frameworks */,
-				DF98479392A193067E47F217 /* [CP] Copy Pods Resources */,
+				32AED4EACB5E805DA85594C8 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -162,6 +163,23 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		32AED4EACB5E805DA85594C8 /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Animeko/Pods-Animeko-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Animeko/Pods-Animeko-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Animeko/Pods-Animeko-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 		CD93AF9E4C4DD36BC419C279 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -177,23 +195,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Animeko/Pods-Animeko-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		DF98479392A193067E47F217 /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Animeko/Pods-Animeko-resources-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Copy Pods Resources";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Animeko/Pods-Animeko-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Animeko/Pods-Animeko-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		F612592B2DDE7F3BDF276709 /* [CP] Check Pods Manifest.lock */ = {
@@ -352,7 +353,7 @@
 		};
 		7555FFA6242A565B00829871 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = B3C4AD774CBD2DC7975F131C /* Pods-Animeko.debug.xcconfig */;
+			baseConfigurationReference = 0E62CA675B735DF3B0C16EC1 /* Pods-Animeko.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
@@ -376,7 +377,7 @@
 		};
 		7555FFA7242A565B00829871 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 313A2DD1CD1B1E06D9778672 /* Pods-Animeko.release.xcconfig */;
+			baseConfigurationReference = F249EC154975837B7E34C6F8 /* Pods-Animeko.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;

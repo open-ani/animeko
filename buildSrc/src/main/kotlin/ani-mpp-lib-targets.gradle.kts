@@ -211,6 +211,7 @@ if (android != null) {
             minSdk = getIntProperty("android.min.sdk")
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
             testInstrumentationRunnerArguments.set("runnerBuilder", "de.mannodermaus.junit5.AndroidJUnit5Builder")
+            testInstrumentationRunnerArguments["package"] = "me.him188"
         }
         packaging {
             resources {
@@ -261,11 +262,11 @@ if (enableIos) {
                 homepage = "https://github.com/open-ani/animeko"
                 name = project.name
 
-                ios.deploymentTarget = "13.0"
+                ios.deploymentTarget = "16.0"
 
                 // Maps custom Xcode configuration to NativeBuildType
                 xcodeConfigurationToNativeBuildType["CUSTOM_DEBUG"] = NativeBuildType.DEBUG
-                xcodeConfigurationToNativeBuildType["CUSTOM_RELEASE"] = NativeBuildType.RELEASE
+                xcodeConfigurationToNativeBuildType["CUSTOM_RELEASE"] = NativeBuildType.RELEASE 
             }
         }
     }

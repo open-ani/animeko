@@ -265,7 +265,7 @@ fun MediaDetailsLazyGrid(
                         }
                         SelectionContainer { Text("[$kind] ${details.sourceInfo?.displayName ?: "未知"}") }
                     },
-                    trailingContent = kotlin.run {
+                    trailingContent = run {
                         val originalUrl by rememberUpdatedState(details.originalUrl)
                         if (details.isUrlLegal) {
                             {

@@ -97,7 +97,7 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
 
     val lazyGridState: CacheGroupGridLayoutState = LazyStaggeredGridState()
 
-    val stateFlow = kotlin.run {
+    val stateFlow = run {
         val overallStatsFlow = cacheManager.enabledStorages
             .flatMapLatest { list ->
                 list.map { it.stats }.sum()

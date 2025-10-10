@@ -35,6 +35,10 @@ import me.him188.ani.app.domain.media.cache.requester.EpisodeCacheRequester
 import me.him188.ani.app.domain.media.selector.MediaSelectorFactory
 import me.him188.ani.app.tools.Progress
 import me.him188.ani.app.tools.toProgress
+import me.him188.ani.app.ui.cache.subject.EpisodeCacheActionIcon
+import me.him188.ani.app.ui.cache.subject.EpisodeCacheInfo
+import me.him188.ani.app.ui.cache.subject.EpisodeCacheItem
+import me.him188.ani.app.ui.cache.subject.EpisodeCacheState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.settings.SettingsTab

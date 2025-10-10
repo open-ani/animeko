@@ -33,12 +33,13 @@ import me.him188.ani.app.domain.media.cache.storage.TestMediaCacheStorage
 import me.him188.ani.app.domain.media.fetch.MediaFetcherConfig
 import me.him188.ani.app.domain.media.fetch.MediaSourceMediaFetcher
 import me.him188.ani.app.domain.media.framework.TestMediaSelector
-import me.him188.ani.app.domain.media.selector.MatchMetadata
 import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorFactory
 import me.him188.ani.app.domain.media.selector.TestMatchMetadata
 import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstance
+import me.him188.ani.app.ui.cache.subject.EpisodeCacheInfo
+import me.him188.ani.app.ui.cache.subject.EpisodeCacheState
 import me.him188.ani.app.ui.foundation.produceState
 import me.him188.ani.app.ui.framework.runComposeStateTest
 import me.him188.ani.app.ui.framework.takeSnapshot
@@ -59,7 +60,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 /**
- * @see EpisodeCacheState
+ * @see me.him188.ani.app.ui.cache.subject.EpisodeCacheState
  */
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 class EpisodeCacheStateTest {
