@@ -17,12 +17,14 @@ import me.him188.ani.app.domain.episode.DanmakuFetchResultWithConfig
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.danmaku.ui.DanmakuPresentation
+import me.him188.ani.utils.platform.Uuid
 
 /**
  * 弹幕列表项数据类，用于在UI中显示单条弹幕信息。
  */
 data class DanmakuListItem(
     val id: String,
+    val randomId: Uuid,
     val content: String,
     val timeMillis: Long,
     val serviceId: DanmakuServiceId,
@@ -83,6 +85,7 @@ class DanmakuListStateProducer(
         val danmakuItems = danmakuList.map { presentation ->
             DanmakuListItem(
                 id = presentation.danmaku.id,
+                randomId = Uuid.random(),
                 content = presentation.danmaku.text,
                 timeMillis = presentation.danmaku.playTimeMillis,
                 serviceId = presentation.danmaku.serviceId,
