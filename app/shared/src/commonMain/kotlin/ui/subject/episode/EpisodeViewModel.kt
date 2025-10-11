@@ -33,7 +33,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -625,7 +624,7 @@ class EpisodeViewModel(
     private val combinedChaptersFlow: Flow<List<Chapter>> =
         combine(
             (player.chapters ?: flowOf(emptyList())),
-            if (enableAutoSkip) autoSkipChaptersFlow else emptyFlow(),
+            if (enableAutoSkip) autoSkipChaptersFlow else flowOf(emptyList()),
         ) { a, b -> if (b.isEmpty()) a else (a + b) }
 
     // Chapters to be displayed on progress slider (merged with AutoSkip rules)
