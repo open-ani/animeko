@@ -524,10 +524,9 @@ private fun EpisodeScreenTabletVeryWide(
                                     shareData = page.shareData,
                                     page.loadError,
                                     onRetryLoad = {
-                                        page.loadError?.let {
-                                            vm.retryLoad(it)
-                                        }
+                                        page.loadError?.let { vm.retryLoad(it) }
                                     },
+                                    danmakuListState = vm.danmakuListState.collectAsStateWithLifecycle().value,
                                 )
                             }
                         }
@@ -669,6 +668,7 @@ private fun EpisodeScreenContentPhone(
                         page.loadError?.let { vm.retryLoad(it) }
                     },
                     modifier = Modifier.fillMaxSize(),
+                    danmakuListState = vm.danmakuListState.collectAsStateWithLifecycle().value,
                 )
             }
         },

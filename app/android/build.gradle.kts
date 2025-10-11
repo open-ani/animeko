@@ -135,7 +135,7 @@ idea {
 }
 
 googleServices {
-    missingGoogleServicesStrategy = (getLocalProperty("ani.enable.firebase") ?: "true").toBooleanStrict()
+    missingGoogleServicesStrategy = (getLocalProperty("ani.enable.firebase") ?: "false").toBooleanStrict()
         .let {
             if (it) MissingGoogleServicesStrategy.ERROR else MissingGoogleServicesStrategy.IGNORE
         }
