@@ -164,7 +164,7 @@ fun SettingsScreen(
     onNavigateToBangumiOAuth: () -> Unit,
     modifier: Modifier = Modifier,
     initialTab: SettingsTab? = null,
-    windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    windowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
     navigationIcon: @Composable () -> Unit = {},
 ) {
     var lastSelectedTab by rememberSaveable {
@@ -192,7 +192,7 @@ fun SettingsScreen(
 
     SettingsPageLayout(
         navigator,
-        // TODO: 2025/2/14 We should have a SettingsNavController or so to control the tab state 
+        // TODO: 2025/2/14 We should have a SettingsNavController or so to control the tab state
         { lastSelectedTab },
         onSelectedTab = { tab ->
             navigateToTab(tab)
@@ -368,7 +368,7 @@ internal fun SettingsPageLayout(
     navItems: @Composable (SettingsDrawerScope.() -> Unit),
     tabContent: @Composable SettingsDetailPaneScope.(currentTab: SettingsTab?) -> Unit, // inside Column verticalScroll
     modifier: Modifier = Modifier,
-    contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    contentWindowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
     containerColor: Color = AniThemeDefaults.pageContentBackgroundColor,
     layoutParameters: ListDetailLayoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective),
     navigationIcon: @Composable () -> Unit = {},
