@@ -581,7 +581,7 @@ fun SubjectDetailsLayout(
         // 在背景之上显示的封面和标题等信息
         val headerContentPadding = scaffoldPadding.only(PaddingValuesSides.Horizontal + PaddingValuesSides.Top)
         // 从 tab row 开始的区域
-        val remainingContentPadding = scaffoldPadding.only(PaddingValuesSides.Horizontal + PaddingValuesSides.Bottom)
+        val remainingContentPadding = scaffoldPadding.only(PaddingValuesSides.Horizontal)
 
         Box(
             Modifier.fillMaxSize(),
