@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -173,7 +174,10 @@ fun EpisodeDetails(
                 { showSubjectDetails = false },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = currentWindowAdaptiveInfo1().isWidthAtLeastMedium),
                 modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
-                contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
+                contentWindowInsets = {
+                    BottomSheetDefaults.windowInsets
+                        .add(WindowInsets.desktopTitleBar())
+                        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top) },
             ) {
                 SubjectDetailsScreen(
                     subjectDetailsState,
@@ -504,7 +508,7 @@ fun EpisodeDetailsScaffold(
     }
 
     Column(
-        modifier.padding(top = topPadding, bottom = bottomPadding).background(MaterialTheme.colorScheme.background),
+        modifier.padding(top = topPadding, bottom = 0.dp).background(MaterialTheme.colorScheme.background),
     ) {
         // header
         Column(
@@ -583,6 +587,11 @@ fun EpisodeDetailsScaffold(
                 danmakuStatistics(horizontalPaddingValues)
             }
         }
+
+
+        Spacer(
+            Modifier.height(bottomPadding)
+        )
     }
 }
 
