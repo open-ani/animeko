@@ -522,8 +522,8 @@ internal fun SettingsPageLayout(
 
                         // 滚动容器底部留出安全区域
                         Spacer(
-                            Modifier.windowInsetsBottomHeight(
-                                WindowInsets.systemBars
+                            Modifier.height(
+                                WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                             )
                         )
                     }
