@@ -523,7 +523,7 @@ internal fun SettingsPageLayout(
                         // 滚动容器底部留出安全区域
                         Spacer(
                             Modifier.height(
-                                WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                                AniWindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()
                             )
                         )
                     }
