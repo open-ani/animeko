@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -522,8 +523,8 @@ internal fun SettingsPageLayout(
 
                         // 滚动容器底部留出安全区域
                         Spacer(
-                            Modifier.height(
-                                AniWindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()
+                            Modifier.windowInsetsBottomHeight(
+                                AniWindowInsets.safeDrawing
                             )
                         )
                     }
