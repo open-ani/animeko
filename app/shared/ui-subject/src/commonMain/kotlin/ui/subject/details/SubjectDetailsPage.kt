@@ -736,8 +736,10 @@ private fun SubjectDetailsContentPager(
                 val type = SubjectDetailsTab.entries[index]
                 Column(Modifier.padding()) {
                     val panePaddingValues =
-                        PaddingValues(bottom = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding) 
-                            + WindowInsets.navigationBars.asPaddingValues()
+                        PaddingValues(
+                            bottom = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding
+                                    + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                        ) 
                     when (type) {
                         SubjectDetailsTab.DETAILS -> detailsTab(panePaddingValues)
                         SubjectDetailsTab.COMMENTS -> commentsTab(panePaddingValues)
