@@ -519,6 +519,13 @@ internal fun SettingsPageLayout(
                             .widthIn(max = 1000.dp),
                     ) {
                         scope.content()
+
+                        // 滚动容器底部留出安全区域
+                        Spacer(
+                            Modifier.windowInsetsBottomHeight(
+                                WindowInsets.systemBars
+                            )
+                        )
                     }
                 }
 
