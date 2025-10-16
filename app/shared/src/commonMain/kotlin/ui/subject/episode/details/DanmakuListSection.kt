@@ -121,7 +121,7 @@ fun DanmakuListSection(
                             ) {
                                 items(
                                     items = state.danmakuItems,
-                                    key = { it.randomId },
+                                    key = { it.randomId.toString() },
                                 ) { danmaku ->
                                     DanmakuListItemView(danmaku)
                                 }
