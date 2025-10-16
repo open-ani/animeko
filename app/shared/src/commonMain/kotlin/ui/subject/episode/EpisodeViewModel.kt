@@ -592,12 +592,14 @@ class EpisodeViewModel(
     )
 
     private val selectedDanmakuSources = MutableStateFlow<Set<DanmakuServiceId>>(emptySet())
+    private var danmakuSourcesInitialized = false
     
     init {
         launchInBackground {
             danmakuLoader.fetchResults.collect { fetchResults ->
                 val availableSources = fetchResults.map { it.serviceId }.toSet()
-                if (availableSources.isNotEmpty() && selectedDanmakuSources.value.isEmpty()) {
+                if (availableSources.isNotEmpty() && selectedDanmakuSources.value.isEmpty() && !danmakuSourcesInitialized) {
+                    danmakuSourcesInitialized = true
                     selectedDanmakuSources.value = availableSources
                     // Enable all sources by default
                     availableSources.forEach { serviceId ->
