@@ -140,7 +140,7 @@ fun ScheduleScreen(
             )
         },
         containerColor = AniThemeDefaults.pageContentBackgroundColor,
-        contentWindowInsets = windowInsets.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
+        contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal),
     ) { paddingValues ->
         if (presentation.error != null) {
             LoadErrorCard(

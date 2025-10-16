@@ -27,12 +27,11 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
@@ -337,7 +336,11 @@ fun EpisodeDetails(
                         { showMediaSelector = false },
                         sheetState = sheetState,
                         modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
-                        contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
+                        contentWindowInsets = { 
+                            BottomSheetDefaults.windowInsets
+                                .add(WindowInsets.desktopTitleBar())
+                                .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
+                                              },
                     ) {
                         MediaSelectorView(
                             mediaSelectorState,
@@ -348,9 +351,9 @@ fun EpisodeDetails(
                             mediaSourceResultListPresentation(),
                             onRestartSource = onRestartSource,
                             onRefresh = onRefreshMediaSources,
-                            modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp)
-                                .fillMaxWidth()
-                                .navigationBarsPadding(),
+                            modifier = Modifier.padding(top = 12.dp)
+                                .padding(horizontal = 16.dp)
+                                .fillMaxWidth(),
                             stickyHeaderBackgroundColor = BottomSheetDefaults.ContainerColor,
                             onClickItem = {
                                 mediaSelectorState.select(it)
@@ -511,7 +514,7 @@ fun EpisodeDetailsScaffold(
     }
 
     Column(
-        modifier.padding(top = topPadding, bottom = 0.dp).background(MaterialTheme.colorScheme.background),
+        modifier.padding(top = topPadding, bottom = bottomPadding).background(MaterialTheme.colorScheme.background),
     ) {
         // header
         Column(
@@ -591,9 +594,10 @@ fun EpisodeDetailsScaffold(
             }
         }
 
-
         Spacer(
-            Modifier.height(bottomPadding)
+            Modifier.windowInsetsBottomHeight(
+                AniWindowInsets.safeDrawing
+            )
         )
     }
 }

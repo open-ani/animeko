@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
@@ -683,7 +682,7 @@ private fun EpisodeScreenContentPhone(
                 gridState = vm.commentLazyGirdState,
             )
         },
-        modifier.then(if (vm.isFullscreen) Modifier.fillMaxSize() else Modifier.navigationBarsPadding()),
+        modifier.then(if (vm.isFullscreen) Modifier.fillMaxSize() else Modifier),
         tabRowContent = {
             DummyDanmakuEditor(
                 onClick = {
