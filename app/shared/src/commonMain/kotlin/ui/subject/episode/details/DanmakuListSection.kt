@@ -402,7 +402,7 @@ private fun DanmakuListItemView(danmaku: DanmakuListItem) {
                 )
                 DanmakuServiceIcon(
                     serviceId = danmaku.serviceId,
-                    size = 20,
+                    size = 24,
                 )
             }
         }
