@@ -13,6 +13,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -57,15 +59,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import me.him188.ani.app.ui.foundation.Res
 import me.him188.ani.app.ui.foundation.a
-import me.him188.ani.app.ui.foundation.acfun
-import me.him188.ani.app.ui.foundation.baha
-import me.him188.ani.app.ui.foundation.bilibili
-import me.him188.ani.app.ui.foundation.dandanplay
-import me.him188.ani.app.ui.foundation.tucao
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import org.jetbrains.compose.resources.painterResource
 
@@ -233,12 +233,9 @@ private fun DanmakuSourceChip(
                 }
             },
             leadingIcon = {
-                Image(
-                    painter = painterResource(getDanmakuServiceIcon(sourceItem.serviceId)),
-                    contentDescription = renderDanmakuServiceId(sourceItem.serviceId),
-                    modifier = Modifier
-                        .height(20.dp)
-                        .clip(CircleShape),
+                DanmakuServiceIcon(
+                    serviceId = sourceItem.serviceId,
+                    size = 24,
                 )
             },
             colors = if (sourceItem.enabled && sourceItem.isFuzzyMatch) {
@@ -265,12 +262,9 @@ private fun DanmakuSourceChip(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Image(
-                            painter = painterResource(getDanmakuServiceIcon(sourceItem.serviceId)),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .height(20.dp)
-                                .clip(CircleShape),
+                        DanmakuServiceIcon(
+                            serviceId = sourceItem.serviceId,
+                            size = 24,
                         )
                         Text(
                             text = renderDanmakuServiceId(sourceItem.serviceId),
@@ -302,14 +296,44 @@ private fun DanmakuSourceChip(
     }
 }
 
-private fun getDanmakuServiceIcon(serviceId: DanmakuServiceId) = when (serviceId) {
-    DanmakuServiceId.Animeko -> Res.drawable.a
-    DanmakuServiceId.AcFun -> Res.drawable.acfun
-    DanmakuServiceId.Baha -> Res.drawable.baha
-    DanmakuServiceId.Bilibili -> Res.drawable.bilibili
-    DanmakuServiceId.Dandanplay -> Res.drawable.dandanplay
-    DanmakuServiceId.Tucao -> Res.drawable.tucao
-    else -> Res.drawable.a
+@Composable
+private fun DanmakuServiceIcon(
+    serviceId: DanmakuServiceId,
+    size: Int,
+    modifier: Modifier = Modifier,
+) {
+    when (serviceId) {
+        DanmakuServiceId.Animeko -> {
+            Image(
+                painter = painterResource(Res.drawable.a),
+                contentDescription = renderDanmakuServiceId(serviceId),
+                modifier = modifier
+                    .size(size.dp)
+                    .clip(CircleShape),
+            )
+        }
+
+        else -> {
+            val text = getDanmakuServiceIconInfo(serviceId)
+            Box(
+                modifier = modifier
+                    .size(size.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = CircleShape,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = text,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontSize = (size * 0.6).sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                )
+            }
+        }
+    }
 }
 
 private fun renderDanmakuServiceId(serviceId: DanmakuServiceId): String = when (serviceId) {
@@ -320,6 +344,21 @@ private fun renderDanmakuServiceId(serviceId: DanmakuServiceId): String = when (
     DanmakuServiceId.Dandanplay -> "弹弹play"
     DanmakuServiceId.Tucao -> "Tucao"
     else -> serviceId.value
+}
+
+/**
+ * 弹幕源的显示文字
+ */
+@Composable
+private fun getDanmakuServiceIconInfo(serviceId: DanmakuServiceId): String {
+    return when (serviceId) {
+        DanmakuServiceId.Bilibili -> "哔"
+        DanmakuServiceId.Dandanplay -> "弹"
+        DanmakuServiceId.AcFun -> "Ac"
+        DanmakuServiceId.Baha -> "巴"
+        DanmakuServiceId.Tucao -> "TC"
+        else -> "?"
+    }
 }
 
 /**
@@ -361,12 +400,9 @@ private fun DanmakuListItemView(danmaku: DanmakuListItem) {
                     style = MaterialTheme.typography.bodySmall,
                     color = if (danmaku.isSelf) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Image(
-                    painter = painterResource(getDanmakuServiceIcon(danmaku.serviceId)),
-                    contentDescription = renderDanmakuServiceId(danmaku.serviceId),
-                    modifier = Modifier
-                        .height(20.dp)
-                        .clip(CircleShape),
+                DanmakuServiceIcon(
+                    serviceId = danmaku.serviceId,
+                    size = 20,
                 )
             }
         }
