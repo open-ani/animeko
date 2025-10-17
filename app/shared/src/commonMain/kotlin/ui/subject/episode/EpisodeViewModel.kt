@@ -578,13 +578,13 @@ class EpisodeViewModel(
         started = SharingStarted.WhileSubscribed(5000), // Must be some time, because when switching full-screen (i.e. configuration change), UI may stop collect for some milliseconds.
         replay = 1,
     ) // This is lazy. If user puts app into background, queries will abort.
-    
+
     val allDanmakuListFlow = combine(
         danmakuLoader.allDanmakuFlow,
-        danmakuManager.selfId
+        danmakuManager.selfId,
     ) { danmakuList, selfId ->
-        danmakuList.map { 
-            DanmakuPresentation(it, isSelf = selfId == it.senderId) 
+        danmakuList.map {
+            DanmakuPresentation(it, isSelf = selfId == it.senderId)
         }
     }.shareInBackground(
         started = SharingStarted.WhileSubscribed(5000),
@@ -592,21 +592,21 @@ class EpisodeViewModel(
     )
 
     private val selectedDanmakuSources = MutableStateFlow<Set<DanmakuServiceId>>(emptySet())
-    private var danmakuSourcesInitialized = false
-    
+
     init {
         launchInBackground {
-            danmakuLoader.fetchResults.collect { fetchResults ->
-                val availableSources = fetchResults.map { it.serviceId }.toSet()
-                if (availableSources.isNotEmpty() && selectedDanmakuSources.value.isEmpty() && !danmakuSourcesInitialized) {
-                    danmakuSourcesInitialized = true
-                    selectedDanmakuSources.value = availableSources
-                    // Enable all sources by default
-                    availableSources.forEach { serviceId ->
-                        setDanmakuSourceEnabled(serviceId, true)
+            // 只在源列表变化时初始化，而不是配置变化时 #2602
+            danmakuLoader.fetchResults
+                .map { results -> results.map { it.serviceId }.toSet() }
+                .distinctUntilChanged()
+                .collect { availableSources ->
+                    if (availableSources.isNotEmpty() && selectedDanmakuSources.value.isEmpty()) {
+                        selectedDanmakuSources.value = availableSources
+                        availableSources.forEach { serviceId ->
+                            setDanmakuSourceEnabled(serviceId, true)
+                        }
                     }
                 }
-            }
         }
     }
 
