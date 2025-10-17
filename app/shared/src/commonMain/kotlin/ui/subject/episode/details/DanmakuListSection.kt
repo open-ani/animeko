@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.subject.episode.details
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.FeaturedPlayList
 import androidx.compose.material.icons.outlined.ExpandLess
@@ -52,10 +54,19 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.Res
+import me.him188.ani.app.ui.foundation.a
+import me.him188.ani.app.ui.foundation.acfun
+import me.him188.ani.app.ui.foundation.baha
+import me.him188.ani.app.ui.foundation.bilibili
+import me.him188.ani.app.ui.foundation.dandanplay
+import me.him188.ani.app.ui.foundation.tucao
 import me.him188.ani.danmaku.api.DanmakuServiceId
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 弹幕列表区域组件，提供弹幕源选择和弹幕列表显示功能。
@@ -187,7 +198,7 @@ private fun DanmakuSourceChips(
 }
 
 /**
- * 单个弹幕源选择 Chip 组件，显示弹幕源名称和状态。
+ * 单个弹幕源选择 Chip 组件，显示弹幕源图标和弹幕数量。
  */
 @Composable
 private fun DanmakuSourceChip(
@@ -205,9 +216,10 @@ private fun DanmakuSourceChip(
             label = {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = if (!isAnimeko) Modifier.offset(x = (8).dp) else Modifier,
                 ) {
-                    Text(renderDanmakuServiceId(sourceItem.serviceId))
+                    Text("${sourceItem.count}")
 
                     if (!isAnimeko) {
                         Icon(
@@ -217,6 +229,15 @@ private fun DanmakuSourceChip(
                         )
                     }
                 }
+            },
+            leadingIcon = {
+                Image(
+                    painter = painterResource(getDanmakuServiceIcon(sourceItem.serviceId)),
+                    contentDescription = renderDanmakuServiceId(sourceItem.serviceId),
+                    modifier = Modifier
+                        .height(20.dp)
+                        .clip(CircleShape),
+                )
             },
             colors = if (sourceItem.enabled && sourceItem.isFuzzyMatch) {
                 FilterChipDefaults.filterChipColors(
@@ -250,6 +271,16 @@ private fun DanmakuSourceChip(
             }
         }
     }
+}
+
+private fun getDanmakuServiceIcon(serviceId: DanmakuServiceId) = when (serviceId) {
+    DanmakuServiceId.Animeko -> Res.drawable.a
+    DanmakuServiceId.AcFun -> Res.drawable.acfun
+    DanmakuServiceId.Baha -> Res.drawable.baha
+    DanmakuServiceId.Bilibili -> Res.drawable.bilibili
+    DanmakuServiceId.Dandanplay -> Res.drawable.dandanplay
+    DanmakuServiceId.Tucao -> Res.drawable.tucao
+    else -> Res.drawable.a
 }
 
 private fun renderDanmakuServiceId(serviceId: DanmakuServiceId): String = when (serviceId) {
