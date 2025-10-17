@@ -216,16 +216,17 @@ private fun DanmakuSourceChip(
             label = {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = if (!isAnimeko) Modifier.offset(x = (8).dp) else Modifier,
+                    horizontalArrangement = Arrangement.spacedBy(if (isAnimeko) 4.dp else (-4).dp),
                 ) {
-                    Text(if (sourceItem.count == 0) "${sourceItem.serviceId}" else "${sourceItem.count}")
+                    Text(if (sourceItem.count == 0) renderDanmakuServiceId(sourceItem.serviceId) else "${sourceItem.count}")
 
                     if (!isAnimeko) {
                         Icon(
                             Icons.Rounded.MoreVert,
                             contentDescription = "更多选项",
-                            modifier = Modifier.clickable { showDropdown = true },
+                            modifier = Modifier
+                                .offset(x = 8.dp)
+                                .clickable { showDropdown = true },
                         )
                     }
                 }
@@ -316,13 +317,30 @@ private fun DanmakuListItemView(danmaku: DanmakuListItem) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (danmaku.isSelf) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
             )
-            Text(
-                text = "${(danmaku.timeMillis / 1000 / 60).toInt()}:${
-                    (danmaku.timeMillis / 1000 % 60).toInt().toString().padStart(2, '0')
-                } · ${renderDanmakuServiceId(danmaku.serviceId)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = if (danmaku.isSelf) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = "${(danmaku.timeMillis / 1000 / 60).toInt()}:${
+                        (danmaku.timeMillis / 1000 % 60).toInt().toString().padStart(2, '0')
+                    }",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (danmaku.isSelf) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "·",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (danmaku.isSelf) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Image(
+                    painter = painterResource(getDanmakuServiceIcon(danmaku.serviceId)),
+                    contentDescription = renderDanmakuServiceId(danmaku.serviceId),
+                    modifier = Modifier
+                        .height(20.dp)
+                        .clip(CircleShape),
+                )
+            }
         }
     }
 }
