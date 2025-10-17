@@ -219,7 +219,7 @@ private fun DanmakuSourceChip(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = if (!isAnimeko) Modifier.offset(x = (8).dp) else Modifier,
                 ) {
-                    Text("${sourceItem.count}")
+                    Text(if (sourceItem.count == 0) "${sourceItem.serviceId}" else "${sourceItem.count}")
 
                     if (!isAnimeko) {
                         Icon(
