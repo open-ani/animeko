@@ -31,9 +31,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.FeaturedPlayList
+import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -41,6 +41,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -222,7 +223,7 @@ private fun DanmakuSourceChip(
 
                     if (!isAnimeko) {
                         Icon(
-                            Icons.Rounded.MoreVert,
+                            Icons.Outlined.ArrowDropDown,
                             contentDescription = "更多选项",
                             modifier = Modifier
                                 .offset(x = 8.dp)
@@ -255,6 +256,33 @@ private fun DanmakuSourceChip(
                 expanded = showDropdown,
                 onDismissRequest = { showDropdown = false },
             ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Image(
+                            painter = painterResource(getDanmakuServiceIcon(sourceItem.serviceId)),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .height(20.dp)
+                                .clip(CircleShape),
+                        )
+                        Text(
+                            text = renderDanmakuServiceId(sourceItem.serviceId),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+
+                HorizontalDivider()
+
+                // 操作菜单项
                 DropdownMenuItem(
                     text = { Text(if (sourceItem.enabled) "禁用" else "启用") },
                     onClick = {
