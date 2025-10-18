@@ -10,8 +10,11 @@
 package me.him188.ani.app.ui.subject.episode.comments
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -61,7 +64,7 @@ fun EpisodeCommentColumn(
             state.list.collectAsLazyPagingItemsWithLifecycle(),
             state = gridState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 72.dp), // 允许滚动到 FAB 上面
+            contentPadding = PaddingValues(bottom = 72.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()), // 允许滚动到 FAB 上面
         ) { _, comment ->
             EpisodeComment(
                 comment = comment,

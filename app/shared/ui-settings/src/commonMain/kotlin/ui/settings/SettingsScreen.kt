@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -164,7 +165,7 @@ fun SettingsScreen(
     onNavigateToBangumiOAuth: () -> Unit,
     modifier: Modifier = Modifier,
     initialTab: SettingsTab? = null,
-    windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    windowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
     navigationIcon: @Composable () -> Unit = {},
 ) {
     var lastSelectedTab by rememberSaveable {
@@ -192,7 +193,7 @@ fun SettingsScreen(
 
     SettingsPageLayout(
         navigator,
-        // TODO: 2025/2/14 We should have a SettingsNavController or so to control the tab state 
+        // TODO: 2025/2/14 We should have a SettingsNavController or so to control the tab state
         { lastSelectedTab },
         onSelectedTab = { tab ->
             navigateToTab(tab)
@@ -368,7 +369,7 @@ internal fun SettingsPageLayout(
     navItems: @Composable (SettingsDrawerScope.() -> Unit),
     tabContent: @Composable SettingsDetailPaneScope.(currentTab: SettingsTab?) -> Unit, // inside Column verticalScroll
     modifier: Modifier = Modifier,
-    contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    contentWindowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
     containerColor: Color = AniThemeDefaults.pageContentBackgroundColor,
     layoutParameters: ListDetailLayoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective),
     navigationIcon: @Composable () -> Unit = {},
@@ -519,6 +520,13 @@ internal fun SettingsPageLayout(
                             .widthIn(max = 1000.dp),
                     ) {
                         scope.content()
+
+                        // 滚动容器底部留出安全区域
+                        Spacer(
+                            Modifier.windowInsetsBottomHeight(
+                                AniWindowInsets.safeDrawing
+                            )
+                        )
                     }
                 }
 

@@ -14,7 +14,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -44,6 +47,7 @@ import kotlinx.datetime.LocalTime
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
+import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.datasources.api.EpisodeSort
 
@@ -73,7 +77,7 @@ fun ScheduleDayColumn(
         LazyColumn(
             Modifier.padding(layoutParams.listPadding),
             state = state,
-            contentPadding = PaddingValues(vertical = 8.dp),
+            contentPadding = PaddingValues(vertical = 8.dp).plus(WindowInsets.navigationBars.asPaddingValues()),
             verticalArrangement = Arrangement.spacedBy(layoutParams.listVerticalSpacing),
         ) {
             items(

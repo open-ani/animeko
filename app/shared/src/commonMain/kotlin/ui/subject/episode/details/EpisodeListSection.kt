@@ -20,10 +20,12 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -350,7 +352,7 @@ private fun NarrowEpisodeListSection(
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            contentWindowInsets = { BottomSheetDefaults.windowInsets },
+            contentWindowInsets = { BottomSheetDefaults.windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal) },
             dragHandle = null,
             modifier = modifier,
         ) {

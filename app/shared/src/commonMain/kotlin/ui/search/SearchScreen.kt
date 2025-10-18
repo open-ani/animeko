@@ -93,7 +93,7 @@ fun SearchScreen(
             )
         },
         modifier.fillMaxSize(),
-        contentWindowInsets = windowInsets,
+        contentWindowInsets = windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
         onSelect = { index, item ->
             vm.searchPageState.selectedItemIndex = index
             vm.viewSubjectDetails(item)

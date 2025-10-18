@@ -15,9 +15,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -39,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.ui.foundation.icons.PlayingIcon
+import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.subject.episode.details.EpisodeCarouselState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
@@ -73,7 +77,7 @@ fun EpisodeGrid(
         state = gridState,
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(all = 16.dp).plus(WindowInsets.navigationBars.asPaddingValues()),
         userScrollEnabled = true,
         modifier = modifier.heightIn(max = 500.dp)
     ) {

@@ -139,6 +139,15 @@ object AniWindowInsets {
     @Composable
     inline fun forPageContent() = safeDrawing
 
+    /**
+     * 用于可滚动列的页面内容，排除 navigation bar 以实现 edge-to-edge 效果。
+     * 内容可以延伸到 navigation bar 下方，通过在滚动内容底部添加空间来确保所有内容可见。
+     */
+    @Composable
+    fun forColumnPageContent() = safeDrawing.only(
+        WindowInsetsSides.Horizontal + WindowInsetsSides.Top
+    )
+
     @Composable
     inline fun forSearchBar() = safeDrawing
 

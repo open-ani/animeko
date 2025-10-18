@@ -36,3 +36,4 @@ out/
 .DS_Store
 
 .env
+kls_database.db

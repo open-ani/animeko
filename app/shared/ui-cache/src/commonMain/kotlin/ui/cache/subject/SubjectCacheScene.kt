@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
@@ -335,7 +336,7 @@ fun SubjectCachePageScaffold(
                 )
             }
         },
-        contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+        contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal),
     ) { paddingValues ->
         Column(Modifier.padding(paddingValues).verticalScroll(rememberScrollState())) {
 //            Surface(Modifier.fillMaxWidth(), color = appBarColors.containerColor) {
@@ -352,6 +353,8 @@ fun SubjectCachePageScaffold(
                 cacheListGroup()
                 Spacer(Modifier.fillMaxWidth()) // tab has spacedBy arrangement
             }
+            
+            Spacer(Modifier.windowInsetsBottomHeight(windowInsets))
         }
     }
 }

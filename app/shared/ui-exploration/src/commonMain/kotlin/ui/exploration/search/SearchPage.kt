@@ -16,7 +16,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -173,7 +175,8 @@ fun SearchPage(
                         ),
                     ),
                     contentPadding = PaddingValues(
-                        bottom = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding,
+                        bottom = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding 
+                                + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
                     ),
                 )
             }
@@ -263,6 +266,11 @@ internal fun SearchPageListDetailScaffold(
                 },
                 windowInsets = paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
                 scrollBehavior = topAppBarScrollBehavior,
+                // 此处 TopAppBar 滚动后会折叠，滚动前后使用相同的配色避免界面与状态栏颜色不同
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                )
             )
         },
         listPaneContent = {

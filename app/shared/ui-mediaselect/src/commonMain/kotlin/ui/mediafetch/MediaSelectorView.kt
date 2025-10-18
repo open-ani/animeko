@@ -77,6 +77,7 @@ import me.him188.ani.app.domain.media.selector.MediaSelectorContext
 import me.him188.ani.app.domain.media.selector.TestMatchMetadata
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
 import me.him188.ani.app.platform.currentAniBuildConfig
+import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.icons.EditSquare
@@ -91,6 +92,7 @@ import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.utils.platform.annotations.TestOnly
+import me.him188.ani.utils.platform.isMobile
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.PreviewLightDark
 
@@ -150,6 +152,7 @@ fun MediaSelectorView(
             transitionSpec = LocalAniMotionScheme.current.animatedContent.topLevel,
             contentAlignment = Alignment.TopCenter,
         ) { target ->
+            val bottomPadding = if (LocalPlatform.current.isMobile()) 0.dp else WINDOW_VERTICAL_PADDING
             when (target) {
                 ViewKind.WEB -> {
                     MediaSelectorWebSourcesColumn(
@@ -161,7 +164,7 @@ fun MediaSelectorView(
                         },
                         onRefresh = { onRestartSource(it.instanceId) },
                         onRequestQueryEdit = { showEditRequest = true },
-                        Modifier.padding(bottom = WINDOW_VERTICAL_PADDING)
+                        Modifier.padding(bottom = bottomPadding)
                             .weight(1f, fill = false)
                             .fillMaxWidth()
                             .ifThen(scrollable) { verticalScroll(rememberScrollState()) },
@@ -188,7 +191,7 @@ fun MediaSelectorView(
                             onClickItem,
                             showExcluded,
                             onShowExcludedChange = { showExcluded = !showExcluded },
-                            Modifier.padding(bottom = WINDOW_VERTICAL_PADDING)
+                            Modifier.padding(bottom = bottomPadding)
                                 .fillMaxWidth()
                                 .weight(1f, fill = false),
                         )
