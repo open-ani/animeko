@@ -58,6 +58,7 @@ data class DanmakuSourceItem(
     val displayName: String,
     val enabled: Boolean,
     val isFuzzyMatch: Boolean,
+    val count: Int,
 )
 
 /**
@@ -79,6 +80,7 @@ class DanmakuListStateProducer(
                 displayName = result.matchInfo.serviceId.value,
                 enabled = result.serviceId in selectedSources,
                 isFuzzyMatch = !result.matchInfo.method.isExactMatch(),
+                count = danmakuList.count { presentation -> presentation.danmaku.serviceId == result.serviceId },
             )
         }
 
