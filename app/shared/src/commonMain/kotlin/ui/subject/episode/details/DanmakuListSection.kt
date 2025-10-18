@@ -319,14 +319,14 @@ private fun DanmakuServiceIcon(
                 modifier = modifier
                     .size(size.dp)
                     .background(
-                        color = MaterialTheme.colorScheme.primaryContainer,
+                        color = MaterialTheme.colorScheme.secondaryContainer,
                         shape = CircleShape,
                     ),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = text,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = (size * 0.6).sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
