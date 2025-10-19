@@ -105,6 +105,7 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.only
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
+import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.foundation.layout.rememberConnectedScrollState
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
@@ -738,8 +739,7 @@ private fun SubjectDetailsContentPager(
                     val panePaddingValues =
                         PaddingValues(
                             bottom = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding
-                                    + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                        ) 
+                        ).plus(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom).asPaddingValues())
                     when (type) {
                         SubjectDetailsTab.DETAILS -> detailsTab(panePaddingValues)
                         SubjectDetailsTab.COMMENTS -> commentsTab(panePaddingValues)

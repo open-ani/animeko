@@ -58,6 +58,7 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
+import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.search.collectHasQueryAsState
@@ -174,10 +175,8 @@ fun SearchPage(
                             currentWindowAdaptiveInfo1().windowPosture,
                         ),
                     ),
-                    contentPadding = PaddingValues(
-                        bottom = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding 
-                                + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
-                    ),
+                    contentPadding = PaddingValues(bottom = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding)
+                        .plus(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom).asPaddingValues()),
                 )
             }
         },
