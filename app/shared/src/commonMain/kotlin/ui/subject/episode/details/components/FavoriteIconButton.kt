@@ -9,33 +9,19 @@
 
 package me.him188.ani.app.ui.subject.episode.details.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.minimumInteractiveComponentSize
-import androidx.compose.material3.ripple
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.Role
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
-import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.subject.collection.components.EditCollectionTypeDropDown
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
@@ -54,43 +40,24 @@ fun FavoriteIconButton(
         else -> false
     }
 
-    Box(
-        modifier = modifier
-            .minimumInteractiveComponentSize()
-            .size(IconButtonDefaults.smallContainerSize())
-            .clip(CircleShape)
-            .background(
-                color = if (collectionAtLeastWatching) MaterialTheme.colorScheme.primaryContainer else
-                    MaterialTheme.colorScheme.surfaceVariant,
-                shape = CircleShape,
-            )
-            .combinedClickable(
-                enabled = true,
-                onClick = {
-                    tasker.launch {
-                        if (collectionAtLeastWatching) {
-                            state.setSelfCollectionType(UnifiedCollectionType.NOT_COLLECTED)
-                        } else {
-                            state.setSelfCollectionType(UnifiedCollectionType.DOING)
-                        }
-                    }
-                },
-                onLongClick = { showEditCollectionTypeDropDown = true },
-                role = Role.Button,
-                interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(),
-            ),
-        contentAlignment = Alignment.Center,
+    IconToggleButton(
+        checked = collectionAtLeastWatching,
+        onCheckedChange = {
+            tasker.launch {
+                if (collectionAtLeastWatching) {
+                    showEditCollectionTypeDropDown = true
+                } else {
+                    state.setSelfCollectionType(UnifiedCollectionType.DOING)
+                }
+            }
+        },
+        modifier = modifier,
+        enabled = !tasker.isWorking,
     ) {
-        ProvideContentColor(
-            if (collectionAtLeastWatching) MaterialTheme.colorScheme.onPrimaryContainer else
-                MaterialTheme.colorScheme.onSurfaceVariant,
-        ) {
-            Icon(
-                if (collectionAtLeastWatching) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                contentDescription = null,
-            )
-        }
+        Icon(
+            if (collectionAtLeastWatching) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+            contentDescription = null,
+        )
     }
 
     EditCollectionTypeDropDown(
