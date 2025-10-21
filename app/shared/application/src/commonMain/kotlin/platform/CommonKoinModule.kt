@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -159,6 +160,23 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<SessionStateProvider> {
         get<SessionManager>().stateProvider
     }
+    single<ServerSelector> {
+        val scope = coroutineScope.childScope()
+        ServerSelector(
+            settingsRepository.danmakuSettings.flow.map { it.useGlobal },
+            DefaultHttpClientProvider(
+                get(), scope,
+                featureHandlers = listOf(
+                    UserAgentFeatureHandler,
+                    ConvertSendCountExceedExceptionFeatureHandler,
+                    VersionExpiryFeatureHandler, // handle 426 Upgrade Required -> show blocking dialog
+                ),
+            ),
+            coroutineScope,
+        ).also {
+            scope.cancel()
+        }
+    }
     single<HttpClientProvider> {
         val sessionManager by inject<SessionManager>()
         DefaultHttpClientProvider(
@@ -172,26 +190,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                     onRefresh = { null },
                 ),
                 ServerListFeatureHandler(
-                    settingsRepository.danmakuSettings.flow.map { danmakuSettings ->
-                        when (danmakuSettings.useGlobal) {
-                            true -> {
-                                AniServers.optimizedForGlobal
-                            }
-
-                            false -> {
-                                AniServers.optimizedForCN
-                            }
-
-                            null -> {
-                                // 根据时区推断
-                                if (AniServers.shouldUseGlobalServer()) {
-                                    AniServers.optimizedForGlobal
-                                } else {
-                                    AniServers.optimizedForCN
-                                }
-                            }
-                        }
-                    },
+                    get<ServerSelector>().flow,
                 ),
                 ConvertSendCountExceedExceptionFeatureHandler,
                 VersionExpiryFeatureHandler, // handle 426 Upgrade Required -> show blocking dialog

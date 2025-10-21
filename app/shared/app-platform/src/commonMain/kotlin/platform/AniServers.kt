@@ -21,45 +21,42 @@ data class AniServer(
 )
 
 object AniServers {
-    val optimizedForCNWithName: List<AniServer>
-    val optimizedForGlobalWithName: List<AniServer>
+    val allServers: List<AniServer>
+
+    val overrideServer = currentAniBuildConfig.overrideAniApiServer.takeIf { it.isNotBlank() }
+    const val DANMAKU_CN_MYANI_ORG = "https://danmaku-cn.myani.org"
+    const val API_ANIMEKO_ORG = "https://api.animeko.org"
+    const val DANMAKU_GLOBAL_MYANI_ORG = "https://danmaku-global.myani.org"
+    const val S1_ANIMEKO_OPENANI_ORG = "https://s1.animeko.openani.org"
+
+    val preferGlobal = listOf(
+        AniServer("danmaku-global", Url(DANMAKU_GLOBAL_MYANI_ORG)),
+        AniServer("api", Url(API_ANIMEKO_ORG)),
+        AniServer("s1-animeko", Url(S1_ANIMEKO_OPENANI_ORG)),
+        AniServer("danmaku-cn", Url(DANMAKU_CN_MYANI_ORG)),
+    )
+
+    val preferDirect = listOf(
+        AniServer("api", Url(API_ANIMEKO_ORG)),
+        AniServer("danmaku-global", Url(DANMAKU_GLOBAL_MYANI_ORG)),
+        AniServer("danmaku-cn", Url(DANMAKU_CN_MYANI_ORG)),
+        AniServer("s1-animeko", Url(S1_ANIMEKO_OPENANI_ORG)),
+    )
 
     init {
-        val override = currentAniBuildConfig.overrideAniApiServer.takeIf { it.isNotBlank() }
-
-        val (cn, global) = if (override != null) {
+        val override = overrideServer
+        allServers = if (override != null) {
             val server = AniServer("api", Url(override))
-            Pair(listOf(server), listOf(server))
+            listOf(server)
         } else {
-            getServers()
+            listOf(
+                AniServer("api", Url(API_ANIMEKO_ORG)),
+                AniServer("danmaku-cn", Url(DANMAKU_CN_MYANI_ORG)),
+                AniServer("danmaku-global", Url(DANMAKU_GLOBAL_MYANI_ORG)),
+                AniServer("s1-animeko", Url(S1_ANIMEKO_OPENANI_ORG)),
+            )
         }
-        optimizedForCNWithName = cn
-        optimizedForGlobalWithName = global
     }
-
-    private fun getServers(): Pair<List<AniServer>, List<AniServer>> {
-        val api = AniServer("api", Url("https://api.animeko.org"))
-        val danmakuCn = AniServer("danmaku-cn", Url("https://danmaku-cn.myani.org"))
-        val s1 = AniServer("s1", Url("https://s1.animeko.openani.org"))
-        val danmakuGlobal = AniServer("danmaku-global", Url("https://danmaku-global.myani.org"))
-
-        val cn = buildList(4) {
-            add(api)
-            add(danmakuGlobal)
-            add(s1)
-            add(danmakuCn)
-        }
-        val global = buildList(4) {
-            add(danmakuGlobal)
-            add(api)
-            add(s1)
-            add(danmakuCn)
-        }
-        return Pair(cn, global)
-    }
-
-    val optimizedForCN: List<Url> = optimizedForCNWithName.map { it.url }
-    val optimizedForGlobal: List<Url> = optimizedForGlobalWithName.map { it.url }
 
     fun shouldUseGlobalServer(): Boolean {
         return TimeZone.currentSystemDefault().offsetAt(Clock.System.now()) != UtcOffset(8)
