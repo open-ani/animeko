@@ -9,15 +9,20 @@
 
 package me.him188.ani.app.ui.subject.collection.components
 
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -68,6 +73,7 @@ fun EditCollectionTypeDropDown(
     actions: List<SubjectCollectionAction> = SubjectCollectionActionsForEdit,
     showDelete: Boolean = currentType != UnifiedCollectionType.NOT_COLLECTED,
 ) {
+    var showConfirmDeleteDialog by rememberSaveable { mutableStateOf(false) }
     DropdownMenu(
         expanded,
         onDismissRequest = onDismissRequest,
@@ -77,8 +83,6 @@ fun EditCollectionTypeDropDown(
         for (action in actions) {
             if (!showDelete && action == SubjectCollectionActions.DeleteCollection) continue
 
-            val onClickState by rememberUpdatedState(onClick)
-            val onDismissRequestState by rememberUpdatedState(onDismissRequest)
             val color = action.colorForCurrent(currentType)
             DropdownMenuItem(
                 text = {
@@ -92,8 +96,39 @@ fun EditCollectionTypeDropDown(
                     }
                 },
                 onClick = {
-                    onClickState(action)
-                    onDismissRequestState()
+                    if (action == SubjectCollectionActions.DeleteCollection) {
+                        showConfirmDeleteDialog = true
+                    } else {
+                        onClick(action)
+                        onDismissRequest()
+                    }
+                },
+            )
+        }
+
+        if (showConfirmDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showConfirmDeleteDialog = false },
+                title = { Text("取消追番") },
+                text = { Text("这将会清除你的观看进度和评价。此操作无法撤销。确定要取消追番吗？") },
+                icon = { SubjectCollectionActions.DeleteCollection.icon() },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            onClick(SubjectCollectionActions.DeleteCollection)
+                            onDismissRequest()
+                            showConfirmDeleteDialog = false
+                        },
+                    ) {
+                        Text("删除", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showConfirmDeleteDialog = false },
+                    ) {
+                        Text("取消")
+                    }
                 },
             )
         }
