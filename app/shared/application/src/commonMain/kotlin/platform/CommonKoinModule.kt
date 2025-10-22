@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -160,11 +161,11 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         get<SessionManager>().stateProvider
     }
     single<ServerSelector> {
+        val scope = coroutineScope.childScope()
         ServerSelector(
             settingsRepository.danmakuSettings.flow.map { it.useGlobal },
             DefaultHttpClientProvider(
-                get(),
-                coroutineScope.childScope(),
+                get(), scope,
                 featureHandlers = listOf(
                     UserAgentFeatureHandler,
                     ConvertSendCountExceedExceptionFeatureHandler,
@@ -172,7 +173,9 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                 ),
             ),
             coroutineScope,
-        )
+        ).also {
+            scope.cancel()
+        }
     }
     single<HttpClientProvider> {
         val sessionManager by inject<SessionManager>()
