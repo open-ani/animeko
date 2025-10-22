@@ -225,6 +225,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                 )
             },
             this,
+            subjectId,
         )
 
 

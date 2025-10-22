@@ -121,6 +121,10 @@ import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectRecommendationClick
+import me.him188.ani.utils.analytics.recordEvent
 
 @Stable
 class EpisodeDetailsState(
@@ -484,6 +488,15 @@ fun EpisodeDetails(
                         {
                             val uri = recommendation.uri
                             val targetSubjectId = recommendation.subjectId?.toInt()
+                            Analytics.recordEvent(SubjectRecommendationClick) {
+                                targetSubjectId?.let { put("subject_id", it) }
+                                uri?.let { put("target_uri", it) }
+                            }
+                            Analytics.recordEvent(SubjectEnter) {
+                                put("source", "episode_recommendation")
+                                targetSubjectId?.let { put("subject_id", it) }
+                                uri?.let { put("target_uri", it) }
+                            }
                             if (uri != null) {
                                 browserNavigator.openBrowser(context, uri)
                             } else if (targetSubjectId != null) {
@@ -697,5 +710,3 @@ fun EpisodeDetailsScaffold(
         }
     }
 }
-
-
