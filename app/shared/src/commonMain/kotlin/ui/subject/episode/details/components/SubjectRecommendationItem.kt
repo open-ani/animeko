@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -62,7 +63,7 @@ fun SubjectRecommendationCard(
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
-                    item.nameCn ?: item.name,
+                    remember(item) { item.nameCn.takeIf { !it.isNullOrBlank() } ?: item.name },
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
