@@ -162,15 +162,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<ServerSelector> {
         ServerSelector(
             settingsRepository.danmakuSettings.flow.map { it.useGlobal },
-            DefaultHttpClientProvider(
-                get(),
-                coroutineScope.childScope(),
-                featureHandlers = listOf(
-                    UserAgentFeatureHandler,
-                    ConvertSendCountExceedExceptionFeatureHandler,
-                    VersionExpiryFeatureHandler, // handle 426 Upgrade Required -> show blocking dialog
-                ),
-            ),
+            proxyProvider = get(),
             coroutineScope,
         )
     }

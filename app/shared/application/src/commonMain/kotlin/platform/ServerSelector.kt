@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.platform
 
+import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.http.Url
@@ -16,6 +17,7 @@ import io.ktor.http.appendPathSegments
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,11 +25,16 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.selects.select
-import me.him188.ani.app.domain.foundation.HttpClientProvider
+import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeatureHandler
+import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
+import me.him188.ani.app.domain.foundation.UserAgentFeatureHandler
+import me.him188.ani.app.domain.foundation.VersionExpiryFeatureHandler
 import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent
 import me.him188.ani.utils.analytics.recordEvent
+import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import kotlin.coroutines.cancellation.CancellationException
@@ -36,8 +43,8 @@ import kotlin.time.measureTimedValue
 
 class ServerSelector(
     preferGlobalServerFlow: Flow<Boolean?>,
-    private val httpClientProvider: HttpClientProvider,
-    scope: CoroutineScope,
+    private val proxyProvider: ProxyProvider,
+    private val scope: CoroutineScope,
 ) {
     private val logger = logger<ServerSelector>()
 
@@ -94,54 +101,74 @@ class ServerSelector(
         }
     }
 
-    private suspend fun getFastestServer(): TimedValue<AniServer> = measureTimedValue {
-        coroutineScope {
-            val deferreds = AniServers.allServers.map { server ->
-                async {
-                    try {
-                        connect(server.url.toString())
-                        Result.success(server)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Throwable) {
-                        Result.failure(e)
-                    }
-                }
-            }.toMutableList()
-
-            var lastFailure: Throwable? = null
-
-            try {
-                while (deferreds.isNotEmpty()) {
-                    var selected: Deferred<Result<AniServer>>? = null
-                    val result = select {
-                        deferreds.forEach { deferred ->
-                            deferred.onAwait { value ->
-                                selected = deferred
-                                value
-                            }
-                        }
-                    }
-                    selected?.let { deferreds.remove(it) }
-                    if (result.isSuccess) {
-                        return@coroutineScope result.getOrThrow()
-                    } else {
-                        lastFailure = result.exceptionOrNull()
-                    }
-                }
-            } finally {
-                deferreds.forEach { it.cancel() }
+    private inline fun <R> useHttpClient(action: (HttpClient) -> R): R {
+        val myScope = scope.childScope()
+        try {
+            return DefaultHttpClientProvider(
+                proxyProvider,
+                myScope,
+                featureHandlers = listOf(
+                    UserAgentFeatureHandler,
+                    ConvertSendCountExceedExceptionFeatureHandler,
+                    VersionExpiryFeatureHandler,
+                ),
+            ).get().use {
+                val client = this
+                action(client)
             }
-
-            throw lastFailure ?: IllegalStateException("No server completed successfully")
+        } finally {
+            myScope.cancel()
         }
     }
 
-    private suspend fun connect(url: String) {
-        httpClientProvider.get().use {
-            get(url) {
-                url { appendPathSegments("status") }
-            }.body<Unit>()
+    private suspend fun getFastestServer(): TimedValue<AniServer> = measureTimedValue {
+        useHttpClient { httpClient ->
+            coroutineScope {
+                val deferreds = AniServers.allServers.map { server ->
+                    async {
+                        try {
+                            httpClient.connect(server.url.toString())
+                            Result.success(server)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Throwable) {
+                            Result.failure(e)
+                        }
+                    }
+                }.toMutableList()
+
+                var lastFailure: Throwable? = null
+
+                try {
+                    while (deferreds.isNotEmpty()) {
+                        var selected: Deferred<Result<AniServer>>? = null
+                        val result = select {
+                            deferreds.forEach { deferred ->
+                                deferred.onAwait { value ->
+                                    selected = deferred
+                                    value
+                                }
+                            }
+                        }
+                        selected?.let { deferreds.remove(it) }
+                        if (result.isSuccess) {
+                            return@coroutineScope result.getOrThrow()
+                        } else {
+                            lastFailure = result.exceptionOrNull()
+                        }
+                    }
+                } finally {
+                    deferreds.forEach { it.cancel() }
+                }
+
+                throw lastFailure ?: IllegalStateException("No server completed successfully")
+            }
         }
+    }
+
+    private suspend fun HttpClient.connect(url: String) {
+        get(url) {
+            url { appendPathSegments("status") }
+        }.body<Unit>()
     }
 }
