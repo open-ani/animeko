@@ -955,6 +955,7 @@ private fun EpisodeVideo(
         playbackSpeedControllerState = remember {
             vm.player.features[PlaybackSpeed]?.let { PlaybackSpeedControllerState(it, scope = scope) }
         },
+        aspectRatioControllerState = vm.aspectRatioControllerState,
         leftBottomTips = {
             AniAnimatedVisibility(
                 visible = vm.playerSkipOpEdState.showSkipTips,
