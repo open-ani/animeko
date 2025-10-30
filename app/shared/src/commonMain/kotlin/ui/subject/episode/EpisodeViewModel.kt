@@ -678,9 +678,19 @@ class EpisodeViewModel(
             if (durationMillis == 0L) {
                 emptyList()
             } else {
-                times.map { t ->
+                times.mapIndexed { index, t ->
+                    val name = if (times.size == 2) {
+                        val anotherIndex = if (index == 0) 1 else 0
+                        if (t <= times[anotherIndex]) {
+                            "OP"
+                        } else {
+                            "ED"
+                        }
+                    } else {
+                        "Ch ${index + 1}"
+                    }
                     Chapter(
-                        "AutoSkip",
+                        name,
                         durationMillis,
                         t.toLong() * 1000L,
                     )
