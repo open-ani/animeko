@@ -237,6 +237,7 @@
     <string name="settings_media_source_subscription_refresh_all">刷新全部</string>
     <string name="settings_media_source_subscription_add_dialog">添加訂閱</string>
     <string name="settings_media_source_subscription_add_confirm">添加</string>
+    <string name="settings_media_source_subscription_paste">貼上</string>
     <string name="settings_media_source_subscription_cancel">取消</string>
     <string name="settings_media_source_subscription_url">URL (HTTP)</string>
     <string name="settings_media_source_subscription_auto_update">每 %1$s 自動更新，</string>

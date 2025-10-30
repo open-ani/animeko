@@ -228,6 +228,7 @@
     <string name="settings_media_source_subscription_refresh_all">Refresh all</string>
     <string name="settings_media_source_subscription_add_dialog">Add subscription</string>
     <string name="settings_media_source_subscription_add_confirm">Add</string>
+    <string name="settings_media_source_subscription_paste">Paste</string>
     <string name="settings_media_source_subscription_cancel">Cancel</string>
     <string name="settings_media_source_subscription_url">URL (HTTP)</string>
     <string name="settings_media_source_subscription_auto_update">Auto update every %1$s,</string>
