@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -693,7 +694,10 @@ class EpisodeViewModel(
     private val combinedChaptersFlow: Flow<List<Chapter>> =
         combine(
             (player.chapters ?: flowOf(emptyList())),
-            autoSkipChaptersFlow,
+            flow {
+                emit(emptyList()) // 先给个空列表, 避免刚开始时因为等待网络而没有进度
+                emitAll(autoSkipChaptersFlow)
+            },
         ) { a, b -> if (b.isEmpty()) a else (a + b) }
 
     // Chapters to be displayed on progress slider (merged with AutoSkip rules)
