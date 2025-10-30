@@ -342,14 +342,23 @@ fun MediaProgressSlider(
 
             Canvas(Modifier.matchParentSize()) {
                 if (state.totalDurationMillis == 0L) return@Canvas
-                state.chapters.forEach {
-                    val percent = it.offsetMillis.toFloat().div(state.totalDurationMillis)
-                    drawCircle(
-                        color = colors.chapterColor,
-                        radius = 2.dp.toPx(),
-                        center = Offset(size.width * percent, this.center.y),
-                        blendMode = BlendMode.Src, // override background
-                    )
+                state.chapters.forEach { chapter ->
+                    fun drawChapterMarker(millis: Long) {
+                        val percent = millis.toFloat().div(state.totalDurationMillis)
+                        drawCircle(
+                            color = colors.chapterColor,
+                            radius = 2.dp.toPx(),
+                            center = Offset(size.width * percent, this.center.y),
+                            blendMode = BlendMode.Src, // override background
+                        )
+                    }
+                    drawChapterMarker(chapter.offsetMillis)
+
+                    // also draw end marker
+                    val endMillis = chapter.offsetMillis + chapter.durationMillis
+                    if (state.chapters.none { it.offsetMillis == endMillis }) {
+                        drawChapterMarker(endMillis)
+                    }
                 }
             }
         }
