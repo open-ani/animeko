@@ -27,6 +27,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -684,14 +685,15 @@ class EpisodeViewModel(
                     )
                 }
             }
+        }.catch {
+            logger.warn(it) { "Failed to fetch AutoSkip chapters" }
         }
 
-    private val enableAutoSkip = false
 
     private val combinedChaptersFlow: Flow<List<Chapter>> =
         combine(
             (player.chapters ?: flowOf(emptyList())),
-            if (enableAutoSkip) autoSkipChaptersFlow else flowOf(emptyList()),
+            autoSkipChaptersFlow,
         ) { a, b -> if (b.isEmpty()) a else (a + b) }
 
     // Chapters to be displayed on progress slider (merged with AutoSkip rules)
@@ -700,7 +702,9 @@ class EpisodeViewModel(
     val playerSkipOpEdState: PlayerSkipOpEdState = PlayerSkipOpEdState(
         chapters = combinedChaptersFlow.produceState(emptyList()),
         onSkip = {
-            player.seekTo(it)
+            launchInBackground(Dispatchers.Main) {
+                player.seekTo(it)
+            }
         },
         videoLength = player.mediaProperties.mapNotNull { it?.durationMillis?.milliseconds }
             .produceState(0.milliseconds),
