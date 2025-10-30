@@ -11,6 +11,7 @@ package me.him188.ani.app.domain.episode
 
 import me.him188.ani.app.data.network.SubjectService
 import me.him188.ani.app.domain.usecase.UseCase
+import me.him188.ani.utils.platform.Uuid
 
 
 class SubjectRecommendation(
@@ -21,7 +22,9 @@ class SubjectRecommendation(
     val desc2: String,
     val imageUrl: String,
     val uri: String?,
-)
+) {
+    val uniqueId: String = Uuid.randomString()
+}
 
 fun interface GetSubjectRecommendationUseCase : UseCase {
     suspend operator fun invoke(subjectId: Int): List<SubjectRecommendation>

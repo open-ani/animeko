@@ -483,7 +483,7 @@ fun EpisodeDetails(
                 }
             }
             for (recommendation in subjectRecommendations) {
-                item("subject_recommendation_${recommendation.subjectId}") {
+                item("subject_recommendation_${recommendation.uniqueId}") {
                     SubjectRecommendationCard(
                         {
                             val uri = recommendation.uri
