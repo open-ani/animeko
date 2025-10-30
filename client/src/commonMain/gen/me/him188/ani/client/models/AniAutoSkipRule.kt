@@ -33,13 +33,13 @@ import kotlinx.serialization.Serializable
 /**
  * 
  *
- * @param time 
+ * @param timeMs 
  */
 @Serializable
 
 data class AniAutoSkipRule (
 
-    @SerialName(value = "time") @Required val time: kotlin.Int
+    @SerialName(value = "timeMs") @Required val timeMs: kotlin.Long
 
 ) {
 

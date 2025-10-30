@@ -35,6 +35,7 @@ import kotlinx.serialization.Serializable
  *
  * @param mediaSourceId 
  * @param time 
+ * @param timeMs 
  */
 @Serializable
 
@@ -42,7 +43,9 @@ data class AniReportAutoSkipRequest (
 
     @SerialName(value = "mediaSourceId") @Required val mediaSourceId: kotlin.String,
 
-    @SerialName(value = "time") @Required val time: kotlin.Int
+    @SerialName(value = "time") @Required val time: kotlin.Int,
+
+    @SerialName(value = "timeMs") val timeMs: kotlin.Long? = null
 
 ) {
 
