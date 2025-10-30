@@ -16,8 +16,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.Repository
-import me.him188.ani.client.apis.AutoSkipAniApi
-import me.him188.ani.client.models.AutoSkipReportRequest
+import me.him188.ani.client.apis.EpisodesAniApi
+import me.him188.ani.client.models.AniReportAutoSkipRequest
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.ktor.ApiInvoker
 import kotlin.coroutines.CoroutineContext
@@ -27,7 +27,7 @@ import kotlin.time.Clock
  * Client-side helper for AutoSkip reporting and querying rules.
  */
 class AutoSkipRepository(
-    private val api: ApiInvoker<AutoSkipAniApi>,
+    private val api: ApiInvoker<EpisodesAniApi>,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : Repository() {
 
@@ -38,7 +38,7 @@ class AutoSkipRepository(
      * Report a manual skip action.
      * Client-side throttling: at most 2 reports per episode, and at most once per 10 minutes per episode.
      */
-    suspend fun reportSkip(episodeId: Int, mediaSourceId: String, timeSeconds: Int) = lock.withLock {
+    suspend fun reportSkip(episodeId: Int, mediaSourceId: String, timeSeconds: Int, timeMillis: Long) = lock.withLock {
         val now = Clock.System.now().toEpochMilliseconds()
         val state = reportStates.getOrPut(episodeId) { EpisodeReportState(0, 0L) }
         if (state.count >= 2) return
@@ -46,9 +46,9 @@ class AutoSkipRepository(
 
         withContext(ioDispatcher) {
             api {
-                reportSkip(
+                this.reportAutoSkip(
                     episodeId.toLong(),
-                    AutoSkipReportRequest(mediaSourceId = mediaSourceId, time = timeSeconds),
+                    AniReportAutoSkipRequest(mediaSourceId = mediaSourceId, time = timeSeconds, timeMs = timeMillis),
                 ).body()
             }
         }
@@ -59,9 +59,9 @@ class AutoSkipRepository(
     /**
      * Fetch autoskip rules for an episode. Emits once.
      */
-    fun rulesFlow(episodeId: Int): Flow<List<Int>> = flow {
+    fun rulesFlow(episodeId: Int): Flow<List<Long>> = flow {
         val rules = withContext(ioDispatcher) {
-            api { getAutoSkipRules(episodeId.toLong()).body().rules.map { it.time } }
+            api { this.getAutoSkipRules(episodeId.toLong()).body().rules.map { it.timeMs } }
         }
         emit(rules)
     }

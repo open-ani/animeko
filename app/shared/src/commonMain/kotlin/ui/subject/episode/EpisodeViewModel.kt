@@ -669,7 +669,7 @@ class EpisodeViewModel(
             autoSkipRepository.rulesFlow(session.episodeId)
         }.combine(
             player.mediaProperties.mapNotNull { it?.durationMillis?.milliseconds },
-        ) { times, videoLength ->
+        ) { millisecondTimes, videoLength ->
             val durationMillis = when {
                 videoLength > 20.minutes -> 85_000L
                 videoLength > 10.minutes -> 55_000L
@@ -678,10 +678,10 @@ class EpisodeViewModel(
             if (durationMillis == 0L) {
                 emptyList()
             } else {
-                times.mapIndexed { index, t ->
-                    val name = if (times.size == 2) {
+                millisecondTimes.mapIndexed { index, t ->
+                    val name = if (millisecondTimes.size == 2) {
                         val anotherIndex = if (index == 0) 1 else 0
-                        if (t <= times[anotherIndex]) {
+                        if (t <= millisecondTimes[anotherIndex]) {
                             "OP"
                         } else {
                             "ED"
@@ -692,7 +692,7 @@ class EpisodeViewModel(
                     Chapter(
                         name,
                         durationMillis,
-                        t.toLong() * 1000L,
+                        t,
                     )
                 }
             }
@@ -943,7 +943,7 @@ class EpisodeViewModel(
                 logger.warn { "Refusing to report skip 85 at invalid time ${timeSeconds}s" }
                 return@launchInBackground
             }
-            autoSkipRepository.reportSkip(episodeId, mediaSourceId, timeSeconds)
+            autoSkipRepository.reportSkip(episodeId, mediaSourceId, timeSeconds, currentPositionMillis)
         }
     }
 
