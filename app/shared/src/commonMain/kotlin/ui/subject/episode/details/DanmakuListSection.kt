@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.him188.ani.app.ui.foundation.Res
 import me.him188.ani.app.ui.foundation.a
+import me.him188.ani.app.ui.subject.episode.details.components.renderDanmakuServiceId
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import org.jetbrains.compose.resources.painterResource
 
@@ -334,16 +335,6 @@ private fun DanmakuServiceIcon(
             }
         }
     }
-}
-
-private fun renderDanmakuServiceId(serviceId: DanmakuServiceId): String = when (serviceId) {
-    DanmakuServiceId.Animeko -> "Animeko"
-    DanmakuServiceId.AcFun -> "AcFun"
-    DanmakuServiceId.Baha -> "Baha"
-    DanmakuServiceId.Bilibili -> "哔哩哔哩"
-    DanmakuServiceId.Dandanplay -> "弹弹play"
-    DanmakuServiceId.Tucao -> "Tucao"
-    else -> serviceId.value
 }
 
 /**

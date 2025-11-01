@@ -218,6 +218,7 @@ private fun PreviewEpisodeDetailsImpl(
             onRefreshMediaSources = {},
             onRestartSource = {},
             onSetDanmakuSourceEnabled = { _, _ -> },
+            onAdjustDanmakuSourceShift = { _, _ -> },
             onClickLogin = { },
             onClickTag = {},
             onManualMatchDanmaku = {

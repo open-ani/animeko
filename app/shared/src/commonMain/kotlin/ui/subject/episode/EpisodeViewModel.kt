@@ -1018,6 +1018,10 @@ class EpisodeViewModel(
         }
     }
 
+    fun setDanmakuSourceShiftMillis(serviceId: DanmakuServiceId, shiftMillis: Long) {
+        danmakuLoader.setShiftMillis(serviceId, shiftMillis)
+    }
+
     fun startMatchingDanmaku(id: DanmakuProviderId) {
         matchingDanmakuProviderId.value = id
     }
