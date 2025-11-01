@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
@@ -615,6 +614,10 @@ private fun EpisodeScreenContentPhone(
 ) {
     var showDanmakuEditor by rememberSaveable { mutableStateOf(false) }
     val toaster = LocalToaster.current
+    val videoWindowInsets = windowInsets
+        .union(WindowInsets.desktopTitleBar)
+        .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+    val columnInsets = videoWindowInsets.only(WindowInsetsSides.Horizontal)
 
     EpisodeScreenContentPhoneScaffold(
         videoOnly = vm.isFullscreen,
@@ -624,7 +627,7 @@ private fun EpisodeScreenContentPhone(
                 vm, page,
                 danmakuHostState,
                 danmakuEditorState, vm.playerControllerState, vm.isFullscreen,
-                windowInsets = ScaffoldDefaults.contentWindowInsets.union(WindowInsets.desktopTitleBar),
+                windowInsets = videoWindowInsets,
             )
         },
         episodeDetails = {
@@ -689,7 +692,13 @@ private fun EpisodeScreenContentPhone(
                 gridState = vm.commentLazyGirdState,
             )
         },
-        modifier.then(if (vm.isFullscreen) Modifier.fillMaxSize() else Modifier.navigationBarsPadding()),
+        modifier.then(
+            if (vm.isFullscreen) {
+                Modifier.fillMaxSize()
+            } else {
+                Modifier.windowInsetsPadding(columnInsets)
+            },
+        ),
         tabRowContent = {
             DummyDanmakuEditor(
                 onClick = {
