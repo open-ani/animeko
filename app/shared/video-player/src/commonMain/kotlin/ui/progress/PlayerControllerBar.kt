@@ -100,9 +100,11 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
+import me.him188.ani.app.videoplayer.ui.AspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.top.needWorkaroundForFocusManager
+import org.openani.mediamp.features.AspectRatioMode
 import kotlin.math.roundToInt
 
 const val TAG_SELECT_EPISODE_ICON_BUTTON = "SelectEpisodeIconButton"
@@ -490,6 +492,34 @@ object PlayerControllerDefaults {
             ),
             textButtonTestTag = TAG_SPEED_SWITCHER_TEXT_BUTTON,
             dropdownMenuTestTag = TAG_SPEED_SWITCHER_DROPDOWN_MENU,
+            onExpandedChanged = onExpandedChanged,
+        )
+    }
+
+    @Composable
+    fun AspectRatioSwitcher(
+        aspectRatioControllerState: AspectRatioControllerState,
+        modifier: Modifier = Modifier,
+        onExpandedChanged: (expanded: Boolean) -> Unit = {},
+    ) {
+        return OptionsSwitcher(
+            value = aspectRatioControllerState.currentMode,
+            onValueChange = { aspectRatioControllerState.setMode(it) },
+            optionsProvider = { AspectRatioMode.entries },
+            renderValue = {
+                Text(
+                    when (it) {
+                        AspectRatioMode.FIT -> "适应"
+                        AspectRatioMode.STRETCH -> "拉伸"
+                        AspectRatioMode.CROP -> "填充"
+                    },
+                )
+            },
+            renderValueExposed = { Text("画面") },
+            modifier,
+            properties = PlatformPopupProperties(
+                clippingEnabled = false,
+            ),
             onExpandedChanged = onExpandedChanged,
         )
     }

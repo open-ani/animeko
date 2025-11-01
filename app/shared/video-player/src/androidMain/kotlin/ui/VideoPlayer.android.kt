@@ -15,49 +15,62 @@ import android.view.View
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView.ControllerVisibilityListener
+import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.exoplayer.ExoPlayerMediampPlayer
 import org.openani.mediamp.exoplayer.compose.ExoPlayerMediampPlayerSurface
+import org.openani.mediamp.features.AspectRatioMode
+import org.openani.mediamp.features.VideoAspectRatio
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 actual fun VideoPlayer(
     player: MediampPlayer,
-    modifier: Modifier
+    modifier: Modifier,
+    aspectRatioMode: AspectRatioMode,
 ) {
-    val isPreviewing by rememberUpdatedState(me.him188.ani.app.ui.foundation.LocalIsPreviewing.current)
+    val isPreviewing by rememberUpdatedState(LocalIsPreviewing.current)
 
     if (isPreviewing) {
         Box(modifier)
     } else {
-        ExoPlayerMediampPlayerSurface(player as ExoPlayerMediampPlayer, modifier) {
-            controllerAutoShow = false
-            useController = false
-            controllerHideOnTouch = false
-            subtitleView?.apply {
-                this.setStyle(
-                    CaptionStyleCompat(
-                        Color.WHITE,
-                        0x000000FF,
-                        0x00000000,
-                        CaptionStyleCompat.EDGE_TYPE_OUTLINE,
-                        Color.BLACK,
-                        Typeface.DEFAULT,
-                    ),
+        key(aspectRatioMode) {
+            // 设置 mediamp 的 aspect ratio mode
+            player.features[VideoAspectRatio.Key]?.setMode(aspectRatioMode)
+
+            ExoPlayerMediampPlayerSurface(player as ExoPlayerMediampPlayer, modifier) {
+                controllerAutoShow = false
+                useController = false
+                controllerHideOnTouch = false
+                controllerAutoShow = false
+                useController = false
+                controllerHideOnTouch = false
+                subtitleView?.apply {
+                    this.setStyle(
+                        CaptionStyleCompat(
+                            Color.WHITE,
+                            0x000000FF,
+                            0x00000000,
+                            CaptionStyleCompat.EDGE_TYPE_OUTLINE,
+                            Color.BLACK,
+                            Typeface.DEFAULT,
+                        ),
+                    )
+                }
+                setControllerVisibilityListener(
+                    ControllerVisibilityListener { visibility ->
+                        if (visibility == View.VISIBLE) {
+                            hideController()
+                        }
+                    },
                 )
             }
-            setControllerVisibilityListener(
-                ControllerVisibilityListener { visibility ->
-                    if (visibility == View.VISIBLE) {
-                        hideController()
-                    }
-                },
-            )
         }
     }
 }
