@@ -439,7 +439,7 @@ private fun EpisodeScreenTabletVeryWide(
                         width = (maxWidth * 0.25f)
                             .coerceIn(340.dp, 460.dp),
                     )
-                    .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Right + WindowInsetsSides.Bottom))
+                    .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Right))
                     .background(MaterialTheme.colorScheme.background), // scrollable background
             ) {
 

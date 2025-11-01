@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -66,6 +67,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -581,25 +583,22 @@ fun EpisodeDetailsScaffold(
             )
         }
     }
-    val topPadding by remember {
-        derivedStateOf {
-            (contentPaddingState.calculateTopPadding() - 8.dp).coerceAtLeast(0.dp)
-        }
-    }
-    val bottomPadding by remember {
-        derivedStateOf {
-            contentPaddingState.calculateBottomPadding()
-        }
-    }
-
     val atLeastMedium = currentWindowAdaptiveInfo1().isWidthAtLeastMedium
     val currentDanmakuListSelection by rememberUpdatedState(danmakuListSection)
 
     LazyColumn(
         modifier = modifier
-            .padding(top = topPadding, bottom = bottomPadding)
             .background(MaterialTheme.colorScheme.background),
     ) {
+        item {
+            val topPadding by remember {
+                derivedStateOf {
+                    (contentPaddingState.calculateTopPadding() - 8.dp).coerceAtLeast(0.dp)
+                }
+            }
+            Spacer(Modifier.height(topPadding))
+        }
+
         item("episode_detail_header") {
             // header
             Column(
@@ -705,7 +704,7 @@ fun EpisodeDetailsScaffold(
             Spacer(
                 Modifier.windowInsetsBottomHeight(
                     AniWindowInsets.safeDrawing,
-                ),
+                ).heightIn(min = Dp.Hairline),
             )
         }
     }
