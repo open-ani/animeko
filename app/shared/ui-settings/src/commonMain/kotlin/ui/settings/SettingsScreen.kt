@@ -168,9 +168,6 @@ fun SettingsScreen(
     windowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
     navigationIcon: @Composable () -> Unit = {},
 ) {
-    var lastSelectedTab by rememberSaveable {
-        mutableStateOf(initialTab)
-    }
     val navigator: ThreePaneScaffoldNavigator<Nothing?> = rememberListDetailPaneScaffoldNavigator(
         initialDestinationHistory = buildList {
             add(ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.List))
@@ -180,6 +177,18 @@ fun SettingsScreen(
         },
     )
     val layoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective)
+    var lastSelectedTab by rememberSaveable(initialTab, layoutParameters) {
+        mutableStateOf(
+            if (initialTab != null) {
+                initialTab
+            } else if (!layoutParameters.preferSinglePane) {
+                // 宽屏模式（双页布局）且无初始 tab：默认选中 APPEARANCE
+                SettingsTab.APPEARANCE
+            } else {
+                null
+            },
+        )
+    }
     val coroutineScope = rememberCoroutineScope()
     val browserNavigator = rememberAsyncBrowserNavigator()
     val context = LocalContext.current
