@@ -9,8 +9,12 @@
 
 package me.him188.ani.utils.httpdownloader
 
+import androidx.room.ColumnInfo
+import androidx.room.Embedded
+import androidx.room.Entity
+import androidx.room.Index
+import androidx.room.TypeConverters
 import kotlinx.coroutines.flow.Flow
-import kotlinx.io.files.Path
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
@@ -132,7 +136,6 @@ enum class DownloadErrorCode {
 @Serializable
 data class DownloadError(
     val code: DownloadErrorCode,
-    val params: Map<String, String> = emptyMap(),
     val technicalMessage: String? = null,
 )
 
@@ -159,20 +162,35 @@ enum class DownloadStatus {
     CANCELED
 }
 
+@Entity(
+    tableName = "http_cache_download_state",
+    primaryKeys = ["downloadId"],
+    indices = [
+        Index(value = ["downloadId"], unique = true),
+    ],
+)
 @Serializable // saved in data store
 data class DownloadState(
+    @field:TypeConverters(DownloadIdConverter::class)
     val downloadId: DownloadId,
     val url: String,
+    @ColumnInfo("path")
     @SerialName("outputPath")
     val relativeOutputPath: String,
+    @field:TypeConverters(SegmentInfoListConverter::class)
     val segments: List<SegmentInfo>,
     val totalSegments: Int,
     val downloadedBytes: Long,
     val timestamp: Long,
+    @field:TypeConverters(DownloadStatusConverter::class)
     val status: DownloadStatus,
+    @Embedded(prefix = "error_")
     val error: DownloadError? = null,
     @SerialName("segmentCacheDir")
+    @ColumnInfo("segmentDir")
     val relativeSegmentCacheDir: String,
+    @field:TypeConverters(StringMapConverter::class)
+    val requestHeaders: Map<String, String>,
     val mediaType: MediaType,
 )
 
@@ -204,3 +222,4 @@ data class DownloadOptions(
     val maxRetriesPerSegment: Int = 100,
     val baseRetryDelayMillis: Long = 1000L,
 )
+

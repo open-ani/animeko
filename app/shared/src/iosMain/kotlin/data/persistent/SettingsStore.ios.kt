@@ -51,7 +51,7 @@ private class IosPlatformDataStoreManager(
     override val mediaCacheMetadataStore: DataStore<List<MediaCacheSave>> by lazy {
         DataStoreFactory.create(
             serializer = ListSerializer(MediaCacheSave.serializer()).asDataStoreSerializer({ emptyList() }),
-            produceFile = { resolveDataStoreFile("mediaCacheMetadata") },
+            produceFile = { resolveDataStoreFile("mediaCacheMetadataV2") },
             corruptionHandler = ReplaceFileCorruptionHandler { emptyList() },
         )
     }

@@ -48,7 +48,7 @@ class PlatformDataStoreManagerDesktop(
     override val mediaCacheMetadataStore: DataStore<List<MediaCacheSave>> by lazy {
         DataStoreFactory.create(
             serializer = ListSerializer(MediaCacheSave.serializer()).asDataStoreSerializer({ emptyList() }),
-            produceFile = { context.dataStoreDir.resolve("mediaCacheMetadata") },
+            produceFile = { context.dataStoreDir.resolve("mediaCacheMetadataV2") },
             corruptionHandler = ReplaceFileCorruptionHandler { emptyList() },
         )
     }

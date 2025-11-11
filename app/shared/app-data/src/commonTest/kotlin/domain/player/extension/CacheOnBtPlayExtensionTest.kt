@@ -196,7 +196,7 @@ class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
         state.mediaSelectorFlow.filterNotNull().first().select(media)
         advanceUntilIdle()
         assertEquals(1, storage.cacheCalls)
-        assertEquals("true", storage.lastMetadata.extra[CacheOnBtPlayExtension.EXTRA_AUTO_CACHE])
+        assertEquals(storage.lastMetadata.autoCached, true)
         scope.cancel()
     }
 

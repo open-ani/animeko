@@ -11,19 +11,16 @@ package me.him188.ani.app.domain.media.cache.storage
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
-import me.him188.ani.app.domain.media.cache.engine.InvalidMediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
@@ -32,7 +29,16 @@ import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.datasources.api.CachedMedia
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
+import me.him188.ani.datasources.api.paging.SinglePagePagedSource
+import me.him188.ani.datasources.api.paging.SizedSource
+import me.him188.ani.datasources.api.source.ConnectionStatus
+import me.him188.ani.datasources.api.source.MediaFetchRequest
+import me.him188.ani.datasources.api.source.MediaMatch
 import me.him188.ani.datasources.api.source.MediaSource
+import me.him188.ani.datasources.api.source.MediaSourceInfo
+import me.him188.ani.datasources.api.source.MediaSourceKind
+import me.him188.ani.datasources.api.source.MediaSourceLocation
+import me.him188.ani.datasources.api.source.matches
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.flowOfFileSizeZero
@@ -124,39 +130,6 @@ data class MediaCacheSave(
      */
     val engine: MediaCacheEngineKey,
 ) {
-    @InvalidMediaCacheEngineKey
-    constructor(origin: Media, metadata: MediaCacheMetadata) :
-            this(origin, metadata, MediaCacheEngineKey.Invalid)
-}
-
-@InvalidMediaCacheEngineKey
-object LegacyMediaCacheSaveSerializer : KSerializer<MediaCacheSave> {
-    private val currentSerializer = MediaCacheSave.serializer()
-
-    // Create a serializer for the legacy format (without engine)
-    @Serializable
-    private data class LegacyMediaCacheSave(
-        val origin: Media,
-        val metadata: MediaCacheMetadata
-    )
-
-    private val legacySerializer = LegacyMediaCacheSave.serializer()
-
-    override val descriptor = currentSerializer.descriptor
-
-    override fun serialize(encoder: Encoder, value: MediaCacheSave) {
-        throw IllegalStateException("Legacy serializer should not be used for serialization.")
-    }
-
-    override fun deserialize(decoder: Decoder): MediaCacheSave {
-        try {
-            val legacy = legacySerializer.deserialize(decoder)
-            // Convert legacy format to current format with invalid engine
-            return MediaCacheSave(origin = legacy.origin, metadata = legacy.metadata)
-        } catch (e: Exception) {
-            throw e
-        }
-    }
 }
 
 /**
@@ -192,6 +165,37 @@ suspend inline fun MediaCacheStorage.contains(cache: MediaCache): Boolean =
 interface MediaSaveDirProvider {
     val saveDir: String
 }
+
+/**
+ * 将 [MediaCacheStorage] 作为 [MediaSource], 这样可以被 [MediaFetcher] 搜索到以播放.
+ */
+class MediaCacheStorageSource(
+    private val storage: MediaCacheStorage,
+    private val displayName: String,
+    override val location: MediaSourceLocation = MediaSourceLocation.Local,
+) : MediaSource {
+    override val mediaSourceId: String get() = storage.mediaSourceId
+    override val kind: MediaSourceKind get() = MediaSourceKind.LocalCache
+
+    override suspend fun checkConnection(): ConnectionStatus = ConnectionStatus.SUCCESS
+
+    override suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch> {
+        return SinglePagePagedSource {
+            storage.listFlow.first().mapNotNull { cache ->
+                val kind = query.matches(cache.metadata)
+                if (kind == null) null
+                else MediaMatch(cache.getCachedMedia(), kind)
+            }.asFlow()
+        }
+    }
+
+    override val info: MediaSourceInfo = MediaSourceInfo(
+        displayName,
+        "本地缓存",
+        isSpecial = true,
+    )
+}
+
 
 class TestMediaCacheStorage : MediaCacheStorage {
     override val mediaSourceId: String

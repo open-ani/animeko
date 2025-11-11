@@ -40,6 +40,7 @@ android {
 
 dependencies {
     commonMainApi(libs.kotlinx.serialization.json)
+    commonMainApi(libs.kotlinx.serialization.protobuf)
 }
 
 kotlin {

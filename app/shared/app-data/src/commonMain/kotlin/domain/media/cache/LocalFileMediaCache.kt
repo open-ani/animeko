@@ -14,8 +14,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
-import me.him188.ani.app.domain.media.cache.storage.DataStoreMediaCacheStorage
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
+import me.him188.ani.app.domain.media.cache.storage.TorrentMediaCacheStorage
 import me.him188.ani.app.tools.Progress
 import me.him188.ani.datasources.api.CachedMedia
 import me.him188.ani.datasources.api.Media
@@ -32,7 +32,7 @@ import me.him188.ani.utils.io.length
  * 存储于本地文件的 [MediaCache], [MediaCacheEngine] 在[恢复][MediaCacheEngine.restore] 时可以根据其参数
  * [Media] 和 [MediaCacheMetadata] 判断是否需要返回此类型的 MediaCache.
  *
- * [MediaCacheStorage] 可能会特殊处理此类型的 MediaCache, 例如 [DataStoreMediaCacheStorage].
+ * [MediaCacheStorage] 可能会特殊处理此类型的 MediaCache, 例如 [TorrentMediaCacheStorage].
  *
  * 调用 [LocalFileMediaCache] 的 [pause], [close] 和 [resume] 没有效果.
  * 调用 [closeAndDeleteFiles] 默认后会删除 [file] 对应的文件, 通过 [onCloseAndDeleteFiles] 来实现其他逻辑.

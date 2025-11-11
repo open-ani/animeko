@@ -35,7 +35,6 @@ kotlin {
         implementation(libs.kotlinx.serialization.json.io)
         api(libs.kotlinx.coroutines.core)
         api(libs.kotlinx.serialization.core)
-        implementation(libs.kotlinx.serialization.protobuf)
         api(libs.kotlinx.collections.immutable)
         implementation(libs.kotlinx.serialization.json)
         implementation(projects.utils.io)
@@ -47,6 +46,7 @@ kotlin {
         api(projects.utils.ipParser)
         api(projects.utils.jsonpath)
         api(projects.utils.httpDownloader)
+        api(projects.utils.serialization)
 
         api(projects.torrent.torrentApi)
         api(projects.torrent.anitorrent)

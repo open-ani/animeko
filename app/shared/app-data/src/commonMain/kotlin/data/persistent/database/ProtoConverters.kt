@@ -11,18 +11,9 @@ package me.him188.ani.app.data.persistent.database
 
 import androidx.room.TypeConverter
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.IntArraySerializer
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.protobuf.ProtoBuf
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.datasources.api.EpisodeSort
-
-private val protobuf
-    get() = ProtoBuf {
-        serializersModule = SerializersModule {
-            contextual(IntArray::class, IntArraySerializer())
-        }
-    }
+import me.him188.ani.utils.serialization.DatabaseProtoBuf
 
 interface ProtoConverter<T> {
     @TypeConverter
@@ -39,12 +30,12 @@ object ProtoConverters {
 
         @TypeConverter
         fun fromByteArray(value: ByteArray): List<String> {
-            return protobuf.decodeFromByteArray(Node.serializer(), value).value
+            return DatabaseProtoBuf.decodeFromByteArray(Node.serializer(), value).value
         }
 
         @TypeConverter
         fun fromList(list: List<String>): ByteArray {
-            return protobuf.encodeToByteArray(Node.serializer(), Node(list))
+            return DatabaseProtoBuf.encodeToByteArray(Node.serializer(), Node(list))
         }
     }
 
@@ -55,12 +46,12 @@ object ProtoConverters {
 
         @TypeConverter
         override fun fromByteArray(value: ByteArray): List<Int> {
-            return protobuf.decodeFromByteArray(Node.serializer(), value).value
+            return DatabaseProtoBuf.decodeFromByteArray(Node.serializer(), value).value
         }
 
         @TypeConverter
         override fun fromList(list: List<Int>): ByteArray {
-            return protobuf.encodeToByteArray(Node.serializer(), Node(list))
+            return DatabaseProtoBuf.encodeToByteArray(Node.serializer(), Node(list))
         }
     }
 
@@ -70,12 +61,12 @@ object ProtoConverters {
 
         @TypeConverter
         override fun fromByteArray(value: ByteArray): List<Tag> {
-            return protobuf.decodeFromByteArray(Node.serializer(), value).value
+            return DatabaseProtoBuf.decodeFromByteArray(Node.serializer(), value).value
         }
 
         @TypeConverter
         override fun fromList(list: List<Tag>): ByteArray {
-            return protobuf.encodeToByteArray(Node.serializer(), Node(list))
+            return DatabaseProtoBuf.encodeToByteArray(Node.serializer(), Node(list))
         }
     }
 
@@ -85,12 +76,12 @@ object ProtoConverters {
 
         @TypeConverter
         override fun fromByteArray(value: ByteArray): IntArray {
-            return protobuf.decodeFromByteArray(Node.serializer(), value).value
+            return DatabaseProtoBuf.decodeFromByteArray(Node.serializer(), value).value
         }
 
         @TypeConverter
         override fun fromList(list: IntArray): ByteArray {
-            return protobuf.encodeToByteArray(Node.serializer(), Node(list))
+            return DatabaseProtoBuf.encodeToByteArray(Node.serializer(), Node(list))
         }
     }
 }

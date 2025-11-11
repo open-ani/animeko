@@ -38,5 +38,5 @@ interface ContextFiles {
      * * Desktop: [dataDir]`/media-downloads` by default, can be changed by settings.
      * * iOS: [dataDir]
      */
-    val defaultBaseMediaCacheDir: SystemPath
+    val defaultMediaCacheBaseDir: SystemPath
 }

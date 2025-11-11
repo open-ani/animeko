@@ -18,7 +18,6 @@ import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.datasources.api.MediaCacheMetadata
-import me.him188.ani.datasources.api.MetadataKey
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -54,14 +53,13 @@ class CacheOnBtPlayExtension(
                                 logger.warn { "TorrentMediaCacheEngine is not found in MediaCachedManager." }
                                 return@collectLatest
                             }
-                            
+
                             logger.info { "Auto cache BitTorrent media on play: $media" }
 
-                            val metadata = MediaCacheMetadata(bundle.mediaFetchSession.request.first())
-                                .withExtra(mapOf(EXTRA_AUTO_CACHE to "true"))
-
+                            val metadata =
+                                MediaCacheMetadata(bundle.mediaFetchSession.request.first(), autoCached = true)
                             val cache = storage.cache(media, metadata, episodeMetadata, resume = true)
-                            if (cache.metadata.extra[EXTRA_AUTO_CACHE] == "true") {
+                            if (cache.metadata.autoCached) {
                                 currentCache = cache
                             }
                         }
@@ -91,7 +89,6 @@ class CacheOnBtPlayExtension(
 
     companion object : EpisodePlayerExtensionFactory<CacheOnBtPlayExtension> {
         private val logger = logger<CacheOnBtPlayExtension>()
-        val EXTRA_AUTO_CACHE = MetadataKey("autoCache")
         override fun create(context: PlayerExtensionContext, koin: Koin): CacheOnBtPlayExtension {
             return CacheOnBtPlayExtension(context, koin)
         }

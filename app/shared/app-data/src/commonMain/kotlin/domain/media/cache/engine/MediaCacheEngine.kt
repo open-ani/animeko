@@ -100,25 +100,11 @@ interface MediaCacheEngine {
 
 /**
  * 每个 [MediaCacheEngine] 使用独一无二的 key，存储于 [MediaCacheSave] 用于区分不同的引擎创建的 [MediaCache].
- *
- * 对于从 4.8 版本以前从文件中迁移过来的缓存, 会使用引擎的文件夹名称作为 key.
  */
 @Serializable
 @JvmInline
 value class MediaCacheEngineKey(val key: String) {
     companion object {
-        /**
-         * For serialization compatibility only.
-         */
-        @InvalidMediaCacheEngineKey
-        val Invalid = MediaCacheEngineKey("Invalid")
-
         val Anitorrent = MediaCacheEngineKey(TorrentEngineType.Anitorrent.id)
     }
 }
-
-@RequiresOptIn(
-    message = "For serialization compatibility only. Don't use it.",
-    level = RequiresOptIn.Level.ERROR,
-)
-annotation class InvalidMediaCacheEngineKey

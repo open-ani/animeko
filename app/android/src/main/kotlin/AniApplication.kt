@@ -15,7 +15,6 @@ import android.content.ComponentName
 import android.content.Intent
 import android.os.Build
 import android.util.Log
-import androidx.datastore.core.DataStore
 import androidx.lifecycle.ProcessLifecycleOwner
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.analytics.analytics
@@ -28,10 +27,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.android.activity.MainActivity
-import me.him188.ani.app.data.persistent.dataStores
+import me.him188.ani.app.data.persistent.database.AniDatabase
+import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoDao
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.UserRepository
-import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.torrent.service.AniTorrentService
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager
@@ -112,11 +111,11 @@ class AniApplication : Application() {
 
         val scope = createAppRootCoroutineScope()
 
-        val mediaCacheDataStore: MutableStateFlow<DataStore<List<MediaCacheSave>>?> = MutableStateFlow(null)
+        val torrentCacheDao: MutableStateFlow<TorrentCacheInfoDao?> = MutableStateFlow(null)
         val mediaCacheBaseSaveDir: MutableStateFlow<File?> = MutableStateFlow(null)
         val connectionManager = TorrentServiceConnectionManager(
             this,
-            dataStoreFlow = mediaCacheDataStore,
+            torrentCacheInfoDao = torrentCacheDao,
             mediaCacheBaseSaveDirFlow = mediaCacheBaseSaveDir,
             startServiceImpl = ::startAniTorrentService,
             stopServiceImpl = ::stopService,
@@ -160,7 +159,7 @@ class AniApplication : Application() {
                     ).apply {
                         Firebase.initialize(applicationContext) // Use google-services.json
                         init()
-            
+
                         userRepository.selfInfoFlow.first()?.id?.let {
                             Firebase.analytics.setUserId(it.toString())
                         }
@@ -174,7 +173,7 @@ class AniApplication : Application() {
             }
         }
 
-        mediaCacheDataStore.value = applicationContext.dataStores.mediaCacheMetadataStore
+        torrentCacheDao.value = koin.get<AniDatabase>().torrentCacheInfoDao()
         mediaCacheBaseSaveDir.value = File(koin.get<MediaSaveDirProvider>().saveDir)
         connectionManager.launchCheckLoop()
 
