@@ -12,6 +12,8 @@ package me.him188.ani.app.videoplayer.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import org.openani.mediamp.MediampPlayer
+import org.openani.mediamp.features.AspectRatioMode
+import org.openani.mediamp.features.VideoAspectRatio
 import org.openani.mediamp.vlc.VlcMediampPlayer
 import org.openani.mediamp.vlc.compose.VlcMediampPlayerSurface
 
@@ -19,8 +21,11 @@ import org.openani.mediamp.vlc.compose.VlcMediampPlayerSurface
 actual fun VideoPlayer(
     player: MediampPlayer,
     modifier: Modifier,
+    aspectRatioMode: AspectRatioMode,
 ) {
     check(player is VlcMediampPlayer)
 
-    VlcMediampPlayerSurface(player, modifier = modifier)
+    // 设置 mediamp 的 aspect ratio mode
+    player.features[VideoAspectRatio.Key]?.setMode(aspectRatioMode)
+    VlcMediampPlayerSurface(player, modifier)
 }
