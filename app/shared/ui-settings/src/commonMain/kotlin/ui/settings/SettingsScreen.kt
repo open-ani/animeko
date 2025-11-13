@@ -58,6 +58,7 @@ import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -177,17 +178,14 @@ fun SettingsScreen(
         },
     )
     val layoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective)
-    var lastSelectedTab by rememberSaveable(initialTab, layoutParameters) {
-        mutableStateOf(
-            if (initialTab != null) {
-                initialTab
-            } else if (!layoutParameters.preferSinglePane) {
-                // 宽屏模式（双页布局）且无初始 tab：默认选中 APPEARANCE
-                SettingsTab.APPEARANCE
-            } else {
-                null
-            },
-        )
+    var lastSelectedTab by rememberSaveable(initialTab) {
+        mutableStateOf(initialTab)
+    }
+
+    LaunchedEffect(Unit) {
+        if (lastSelectedTab == null && !layoutParameters.preferSinglePane) {
+            lastSelectedTab = SettingsTab.APPEARANCE
+        }
     }
     val coroutineScope = rememberCoroutineScope()
     val browserNavigator = rememberAsyncBrowserNavigator()
