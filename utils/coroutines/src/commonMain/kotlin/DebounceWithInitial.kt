@@ -23,6 +23,7 @@ fun <T> Flow<T>.debounceWithInitial(
     }
     return debounce {
         if (isInitial.value) {
+            isInitial.value =  true
             Duration.ZERO
         } else {
             timeout()
