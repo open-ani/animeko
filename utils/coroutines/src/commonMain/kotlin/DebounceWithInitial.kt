@@ -19,11 +19,11 @@ fun <T> Flow<T>.debounceWithInitial(
 ): Flow<T> {
     val isInitial = object {
         @Volatile
-        var value = false
+        var value = true
     }
     return debounce {
         if (isInitial.value) {
-            isInitial.value =  true
+            isInitial.value =  false
             Duration.ZERO
         } else {
             timeout()
