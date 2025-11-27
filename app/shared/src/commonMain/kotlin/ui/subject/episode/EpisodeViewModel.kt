@@ -600,16 +600,18 @@ class EpisodeViewModel(
 
     init {
         launchInBackground {
-            danmakuLoader.fetchResults.collect { fetchResults ->
-                val availableSources = fetchResults.map { it.serviceId }.toSet()
-                if (availableSources.isNotEmpty() && selectedDanmakuSources.value.isEmpty()) {
-                    selectedDanmakuSources.value = availableSources
-                    // Enable all sources by default
-                    availableSources.forEach { serviceId ->
-                        setDanmakuSourceEnabled(serviceId, true)
+            // 只在源列表变化时初始化，而不是配置变化时 #2602
+            danmakuLoader.fetchResults
+                .map { results -> results.map { it.serviceId }.toSet() }
+                .distinctUntilChanged()
+                .collect { availableSources ->
+                    if (availableSources.isNotEmpty() && selectedDanmakuSources.value.isEmpty()) {
+                        selectedDanmakuSources.value = availableSources
+                        availableSources.forEach { serviceId ->
+                            setDanmakuSourceEnabled(serviceId, true)
+                        }
                     }
                 }
-            }
         }
     }
 
