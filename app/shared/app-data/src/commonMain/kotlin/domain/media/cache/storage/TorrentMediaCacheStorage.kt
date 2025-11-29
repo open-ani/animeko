@@ -11,6 +11,7 @@ package me.him188.ani.app.domain.media.cache.storage
 
 import androidx.datastore.core.DataStore
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -57,7 +58,7 @@ class TorrentMediaCacheStorage(
 
 
     init {
-        scope.launch {
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
             val startupRestored = CompletableDeferred<Unit>()
             val serviceConnected = torrentEngine.isServiceConnected.buffer(Channel.RENDEZVOUS).produceIn(this)
             val requestStartupRestore = requestStartupRestoreFlow.produceIn(this)
