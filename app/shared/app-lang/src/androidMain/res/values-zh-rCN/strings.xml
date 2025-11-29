@@ -221,6 +221,10 @@
     <string name="settings_storage_backup_op_restore_warning">这会覆盖当前应用的所有设置，且无法撤销，确认导入吗？</string>
     <string name="settings_storage_backup_op_restore_error">剪切板中内容无效或者不是设置备份内容</string>
     <string name="settings_storage_backup_op_restore_succees">导入设置成功</string>
+    <string name="settings_storage_danmaku_cache_strategy_title">弹幕缓存策略</string>
+    <string name="settings_storage_danmaku_cache_strategy_description_do_not_cache">不缓存弹幕，每次播放都从网络获取。</string>
+    <string name="settings_storage_danmaku_cache_strategy_description_cache_on_collection_doing_media_play">在播放收藏状态为“在看”的条目剧集时缓存弹幕。如果该条目的收藏状态更改为其他状态，则删除对应的弹幕缓存。</string>
+    <string name="settings_storage_danmaku_cache_strategy_description_cache_on_media_cache">在将对应的媒体缓存到本地时缓存弹幕。如果媒体缓存被删除，则删除对应的弹幕缓存。</string>
     
 
     <!-- MediaSourceGroup -->
