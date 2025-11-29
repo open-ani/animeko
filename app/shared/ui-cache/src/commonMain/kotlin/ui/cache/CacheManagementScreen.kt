@@ -47,6 +47,7 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
+import me.him188.ani.app.domain.media.cache.DeleteCacheByCacheIdUseCase
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.MediaCacheState
@@ -91,6 +92,7 @@ typealias CacheGroupGridLayoutState = LazyStaggeredGridState
 @Stable
 class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
     private val cacheManager: MediaCacheManager by inject()
+    private val deleteCacheByCacheIdUseCase: DeleteCacheByCacheIdUseCase by inject()
 
     val lazyGridState: CacheGroupGridLayoutState = LazyStaggeredGridState()
 
@@ -271,7 +273,7 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
 
     fun deleteCache(cache: CacheEpisodeState) {
         backgroundScope.launch {
-            cacheManager.deleteFirstCache { it.cacheId == cache.cacheId }
+            deleteCacheByCacheIdUseCase(cache.subjectId, cache.episodeId, cache.cacheId)
         }
     }
 }

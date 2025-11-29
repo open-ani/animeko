@@ -24,6 +24,7 @@ import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
+import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.LoadError
@@ -52,6 +53,7 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
     private val animeScheduleRepository: AnimeScheduleRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val sessionStateProvider: SessionStateProvider by inject()
+    private val setSubjectCollectionTypeOrDeleteUseCase: SetSubjectCollectionTypeOrDeleteUseCase by inject()
 
     val lazyGridState = LazyGridState()
 
@@ -84,9 +86,7 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
                         .firstOrNull() ?: return@hasAnyUnwatched true
                 collections.any { !it.collectionType.isDoneOrDropped() }
             },
-            onSetSelfCollectionType = {
-                subjectCollectionRepository.setSubjectCollectionTypeOrDelete(collection.subjectId, it)
-            },
+            onSetSelfCollectionType = { setSubjectCollectionTypeOrDeleteUseCase(collection.subjectId, it) },
             onSetAllEpisodesWatched = {
                 episodeCollectionRepository.setAllEpisodesWatched(collection.subjectId)
             },

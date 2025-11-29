@@ -199,6 +199,10 @@
     <string name="settings_storage_backup_op_restore_warning">Importing settings will overwrite all app settings and cannot be undone. Proceed?</string>
     <string name="settings_storage_backup_op_restore_error">Clipboard content is invalid or not a settings backup</string>
     <string name="settings_storage_backup_op_restore_succees">Settings imported successfully</string>
+    <string name="settings_storage_danmaku_cache_strategy_title">Danmaku cache strategy</string>
+    <string name="settings_storage_danmaku_cache_strategy_description_do_not_cache">Don\'t cache danmakus, fetch from network on every play.</string>
+    <string name="settings_storage_danmaku_cache_strategy_description_cache_on_collection_doing_media_play">Cache danmakus on playing episodes which subject collection state is watching. Delete danmaku caches if subject collection state changed to others.</string>
+    <string name="settings_storage_danmaku_cache_strategy_description_cache_on_media_cache">Cache danmakus on caching the corresponding media to local. Delete danmaku caches if the media cache is deleted.</string>
     <string name="settings_media_source_list">Data source list (%1$d)</string>
     <string name="settings_media_source_list_description">Disabled data sources won\'t be automatically queried during playback, but can be manually enabled if needed. Note that the sorting will prioritize the server order, so manual sorting within the same data source subscription may be ineffective.</string>
     <string name="settings_media_source_cancel_sort">Cancel sorting</string>
@@ -447,7 +451,10 @@
     <string name="settings_media_auto_cache_recent_only">Only cache recently watched anime</string>
     <string name="settings_media_auto_cache_count">Cache count</string>
     <string name="settings_media_auto_cache_count_description">Current setting: Only cache the most recent %d anime</string>
-    <string name="settings_media_auto_cache_manage">Manage cached episodes</string><string name="settings_debug_logout">Logout</string><string name="settings_debug_logged_out">Logged out</string><string name="settings_tab_account">Account</string>
+    <string name="settings_media_auto_cache_manage">Manage cached episodes</string>
+    <string name="settings_debug_logout">Logout</string>
+    <string name="settings_debug_logged_out">Logged out</string>
+    <string name="settings_tab_account">Account</string>
 </resources>
 
 <!--@formatter:on-->

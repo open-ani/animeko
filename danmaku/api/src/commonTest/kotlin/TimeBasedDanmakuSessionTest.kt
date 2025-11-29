@@ -24,20 +24,21 @@ import kotlin.time.Duration.Companion.seconds
  */
 internal class TimeBasedDanmakuSessionTest {
     suspend fun create(
-        sequence: Sequence<DanmakuInfo>,
+        sequence: List<DanmakuInfo>,
     ): DanmakuCollection = TimeBasedDanmakuSession.create(
-        sequence, coroutineContext = currentCoroutineContext()[ContinuationInterceptor] ?: EmptyCoroutineContext,
+        flowOf(sequence),
+        coroutineContext = currentCoroutineContext()[ContinuationInterceptor] ?: EmptyCoroutineContext,
     )
 
     @Test
     fun empty() = runTest {
-        create(emptySequence())
+        create(emptyList())
     }
 
     @Test
     fun `before all`() = runTest {
         val instance = create(
-            sequenceOf(
+            listOf(
                 dummyDanmaku(1.0),
                 dummyDanmaku(2.0),
             ),

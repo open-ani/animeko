@@ -116,4 +116,5 @@ actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
             },
         )
     }
+    DanmakuCacheSettings(state)
 }

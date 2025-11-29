@@ -97,3 +97,15 @@ class EpisodeSortConverter {
         return sort.toString()
     }
 }
+
+class DanmakuServiceIdConverter {
+    @TypeConverter
+    fun fromString(value: String): me.him188.ani.danmaku.api.DanmakuServiceId {
+        return me.him188.ani.danmaku.api.DanmakuServiceId(value)
+    }
+
+    @TypeConverter
+    fun fromDanmakuServiceId(id: me.him188.ani.danmaku.api.DanmakuServiceId): String {
+        return id.value
+    }
+}

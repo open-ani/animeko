@@ -12,17 +12,26 @@ package me.him188.ani.app.domain.danmaku
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
 import me.him188.ani.app.data.network.danmaku.AniDanmakuProvider
 import me.him188.ani.app.data.network.danmaku.AniDanmakuSender
+import me.him188.ani.app.data.persistent.database.dao.DanmakuDao
+import me.him188.ani.app.data.persistent.database.dao.DanmakuEntity
+import me.him188.ani.app.data.persistent.database.dao.LocalDanmakuProvider
 import me.him188.ani.app.data.repository.RepositoryException
+import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.episode.GetSubjectEpisodeInfoBundleFlowUseCase
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.app.domain.media.cache.GetMediaCacheUseCase
+import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.BackgroundScope
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
@@ -34,14 +43,16 @@ import me.him188.ani.danmaku.api.provider.DanmakuFetchResult
 import me.him188.ani.danmaku.api.provider.DanmakuMatchInfo
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.danmaku.api.provider.DanmakuProvider
+import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.danmaku.api.provider.MatchingDanmakuProvider
 import me.him188.ani.danmaku.api.provider.SimpleDanmakuProvider
 import me.him188.ani.danmaku.dandanplay.DandanplayDanmakuProvider
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.ktor.ApiInvoker
+import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
+import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
-import org.koin.core.component.KoinComponent
-import org.koin.core.component.inject
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
@@ -50,13 +61,19 @@ import kotlin.time.Duration.Companion.seconds
 /**
  * 管理多个弹幕源 [DanmakuProvider]
  */
-class DanmakuManager(
+class DanmakuRepository(
     parentCoroutineContext: CoroutineContext = EmptyCoroutineContext,
-    val danmakuApi: ApiInvoker<DanmakuAniApi>,
-) : KoinComponent, HasBackgroundScope by BackgroundScope(parentCoroutineContext) {
-    private val httpClientProvider: HttpClientProvider by inject()
+    danmakuApi: ApiInvoker<DanmakuAniApi>,
+    private val danmakuDao: DanmakuDao,
+    httpClientProvider: HttpClientProvider,
+    private val getMediaCacheUseCase: GetMediaCacheUseCase,
+    private val getSubjectEpisodeInfoBundleFlowUseCase: GetSubjectEpisodeInfoBundleFlowUseCase,
+    private val settingsRepository: SettingsRepository,
+) : HasBackgroundScope by BackgroundScope(parentCoroutineContext) {
 
-    private val providers by lazy {
+    private val sender by lazy { AniDanmakuSender(danmakuApi) }
+    private val localProvider = LocalDanmakuProvider(danmakuDao)
+    private val remoteProviders by lazy {
         listOf(
             AniDanmakuProvider(danmakuApi),
             DandanplayDanmakuProvider(
@@ -67,13 +84,90 @@ class DanmakuManager(
         )
     }
 
-    private val sender by lazy { AniDanmakuSender(danmakuApi) }
-
     val selfId: Flow<String?> get() = sender.selfId
 
-    fun createFetchers(): List<DanmakuFetcher> {
-        return providers.map {
-            DanmakuFetcher(it)
+    fun getInteractiveDanmakuFetcherOrNull(providerId: DanmakuProviderId): DanmakuFetcher? {
+        return remoteProviders
+            .firstOrNull { it is MatchingDanmakuProvider && it.providerId == providerId }
+            ?.let { DanmakuFetcher(it) }
+    }
+
+    fun fetchFromAllRemotes(request: DanmakuFetchRequest): Flow<List<DanmakuFetchResult>> {
+        return flow {
+            val fetchers = remoteProviders.map { DanmakuFetcher(it) }
+            val results = fetchers.map { fetcher ->
+                fetcher.fetch(request)
+            }
+            emit(results.flatten())
+        }
+    }
+
+    fun fetchFromLocal(request: DanmakuFetchRequest): Flow<List<DanmakuFetchResult>> {
+        return flow {
+            val result = localProvider.fetchAutomatic(request)
+            emit(result)
+        }
+    }
+
+    fun cacheDanmakuIfNeeded(request: DanmakuFetchRequest) = backgroundScope.launch {
+        if (shouldCache(request.subjectId, request.episodeId)) {
+            val remotes = fetchFromAllRemotes(request)
+            saveToLocal(request.subjectId, request.episodeId, remotes.first())
+        }
+    }
+
+    fun cacheDanmakuIfNeeded(subjectId: Int, episodeId: Int, list: List<DanmakuFetchResult>) = backgroundScope.launch {
+        if (shouldCache(subjectId, episodeId)) {
+            saveToLocal(subjectId, episodeId, list)
+        }
+    }
+
+    fun deleteDanmakuIfDontNeeded(subjectId: Int, episodeId: Int) = backgroundScope.launch {
+        if (!shouldCache(subjectId, episodeId)) {
+            logger.info { "deleteBySubjectAndEpisode, subjectId: $subjectId, episodeId: $episodeId" }
+            danmakuDao.deleteBySubjectAndEpisode(subjectId, episodeId)
+        }
+    }
+
+    private suspend fun saveToLocal(
+        subjectId: Int,
+        episodeId: Int,
+        list: List<DanmakuFetchResult>
+    ) {
+        val entriesWithoutLocalSource = list
+            .filter { it.providerId != DanmakuProviderId.Local }
+            .flatMap { it.toEntityList(subjectId, episodeId) }
+        logger.info { "saveToLocal, subjectId: $subjectId, episodeId: $episodeId, danmaku size: ${entriesWithoutLocalSource.size}" }
+
+        if (entriesWithoutLocalSource.isNotEmpty()) {
+            danmakuDao.upsertAll(entriesWithoutLocalSource)
+            // todo: db 里可能有已经被删除的弹幕, 可能需要清理一下
+        }
+    }
+
+    /**
+     * 是否需要缓存这个剧集的弹幕到本地.
+     * 
+     * * 如果 strategy 不是 [DanmakuCacheStrategy.DON_NOT_CACHE], 只要有对应的 [MediaCache] 就一定缓存.
+     * * 如果 strategy 是 [DanmakuCacheStrategy.CACHE_ON_MEDIA_CACHE], 只考虑是否有 [MediaCache].
+     * * 如果 strategy 是 [DanmakuCacheStrategy.CACHE_ON_COLLECTION_DOING_MEDIA_PLAY], 不仅要考虑 [MediaCache], 还要考虑 [UnifiedCollectionType].
+     */
+    private suspend fun shouldCache(subjectId: Int, episodeId: Int): Boolean {
+        val strategy = settingsRepository.mediaCacheSettings.flow.first().danmakuCacheStrategy
+        val hasMediaCache = getMediaCacheUseCase(subjectId, episodeId).isNotEmpty()
+        val isCollectionDoing = getSubjectEpisodeInfoBundleFlowUseCase(
+            flowOf(GetSubjectEpisodeInfoBundleFlowUseCase.SubjectIdAndEpisodeId(subjectId, episodeId)),
+        ).first().subjectCollectionInfo.collectionType == UnifiedCollectionType.DOING
+
+        logger.debug {
+            "shouldCache, subjectId: ${subjectId}, episodeId: ${episodeId}, strategy: $strategy, " +
+                    "hasMediaCache: $hasMediaCache, isCollectionDoing: $isCollectionDoing"
+        }
+
+        return when (strategy) {
+            DanmakuCacheStrategy.DON_NOT_CACHE -> false
+            DanmakuCacheStrategy.CACHE_ON_MEDIA_CACHE -> hasMediaCache
+            DanmakuCacheStrategy.CACHE_ON_COLLECTION_DOING_MEDIA_PLAY -> hasMediaCache || isCollectionDoing
         }
     }
 
@@ -88,16 +182,23 @@ class DanmakuManager(
         }
     }
 
-    fun fetchFromAll(request: DanmakuFetchRequest): Flow<List<DanmakuFetchResult>> {
-        return combine(
-            createFetchers()
-                .map {
-                    flow { emit(it.fetch(request)) }
-                        .catch { emit(emptyList()) }
-                },
-        ) {
-            it.toList().flatten()
+    private fun DanmakuFetchResult.toEntityList(subjectId: Int, episodeId: Int): List<DanmakuEntity> {
+        return list.map {
+            DanmakuEntity(
+                id = it.id,
+                subjectId = subjectId,
+                episodeId = episodeId,
+                serviceId = it.serviceId,
+                presentationServiceId = matchInfo.serviceId,
+                senderId = it.senderId,
+                content = it.content,
+            )
         }
+    }
+
+
+    companion object {
+        private val logger = logger<DanmakuRepository>()
     }
 }
 

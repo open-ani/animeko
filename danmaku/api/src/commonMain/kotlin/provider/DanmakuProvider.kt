@@ -44,6 +44,7 @@ value class DanmakuProviderId(
     companion object {
         val Animeko = DanmakuProviderId("animeko")
         val Dandanplay = DanmakuProviderId("dandanplay")
+        val Local = DanmakuProviderId("local")
     }
 }
 

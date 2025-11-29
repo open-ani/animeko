@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -150,7 +150,6 @@ import me.him188.ani.app.ui.settings.tabs.network.ConfigureProxyGroup
 import me.him188.ani.app.ui.settings.tabs.network.ServerSelectionGroup
 import me.him188.ani.app.ui.settings.tabs.theme.ThemeGroup
 import me.him188.ani.utils.platform.hasScrollingBug
-import me.him188.ani.utils.platform.isDesktop
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
@@ -245,9 +244,7 @@ fun SettingsScreen(
             Item(SettingsTab.PROXY)
             Item(SettingsTab.BT)
 //            Item(SettingsTab.CACHE)
-            if (LocalPlatform.current.isDesktop()) {
-                Item(SettingsTab.STORAGE)
-            }
+            Item(SettingsTab.STORAGE)
 
             Title(stringResource(Lang.settings_category_others))
             Item(SettingsTab.UPDATE)
@@ -531,8 +528,8 @@ internal fun SettingsPageLayout(
                         // 滚动容器底部留出安全区域
                         Spacer(
                             Modifier.windowInsetsBottomHeight(
-                                AniWindowInsets.safeDrawing
-                            )
+                                AniWindowInsets.safeDrawing,
+                            ),
                         )
                     }
                 }

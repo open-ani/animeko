@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import me.him188.ani.app.domain.episode.EpisodeSession
+import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
@@ -32,6 +33,7 @@ class CacheOnBtPlayExtension(
     koin: Koin,
 ) : PlayerExtension("CacheOnBtPlay") {
     private val mediaCacheManager: MediaCacheManager by koin.inject()
+    private val deleteCacheUseCase: DeleteCacheUseCase by koin.inject()
 
     private var currentCache: MediaCache? = null
 
@@ -82,7 +84,7 @@ class CacheOnBtPlayExtension(
         val progress = cache.fileStats.first().downloadedBytes.inBytes
         if (progress == 0L) {
             logger.info { "Auto-cached media ${cache.metadata} hasn't started downloading, deleting it." }
-            mediaCacheManager.deleteCache(cache)
+            deleteCacheUseCase(cache)
         }
         currentCache = null
     }

@@ -76,7 +76,7 @@ import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.TokenRepository
 import me.him188.ani.app.domain.comment.TurnstileState
-import me.him188.ani.app.domain.danmaku.DanmakuManager
+import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeature
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeatureHandler
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
@@ -331,10 +331,15 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<RecommendationRepository> { RecommendationRepository(get<TrendsRepository>()) }
     single<AutoSkipRepository> { AutoSkipRepository(get<AniApiProvider>().episodesApi) }
 
-    single<DanmakuManager> {
-        DanmakuManager(
+    single<DanmakuRepository> {
+        DanmakuRepository(
             parentCoroutineContext = coroutineScope.coroutineContext,
             danmakuApi = aniApiProvider.danmakuApi,
+            danmakuDao = database.danmakuDao(),
+            httpClientProvider = get(),
+            getMediaCacheUseCase = get(),
+            getSubjectEpisodeInfoBundleFlowUseCase = get(),
+            settingsRepository = get(),
         )
     }
     single<UpdateManager> {

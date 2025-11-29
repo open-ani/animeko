@@ -59,11 +59,11 @@ import me.him188.ani.app.data.network.AutoSkipRepository
 import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
-import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
+import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.comment.PostCommentUseCase
 import me.him188.ani.app.domain.comment.TurnstileState
-import me.him188.ani.app.domain.danmaku.DanmakuManager
+import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.app.domain.episode.EpisodeDanmakuLoader
@@ -94,6 +94,7 @@ import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
 import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
 import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
 import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
+import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsUseCase
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.platform.Context
@@ -240,10 +241,9 @@ class EpisodeViewModel(
 ) : KoinComponent, AbstractViewModel(), HasBackgroundScope {
     // region dependencies
     private val playerStateFactory: MediampPlayerFactory<*> by inject()
-    private val subjectCollectionRepository: SubjectCollectionRepository by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
     private val mediaCacheManager: MediaCacheManager by inject()
-    private val danmakuManager: DanmakuManager by inject()
+    private val danmakuRepository: DanmakuRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
     private val danmakuRegexFilterRepository: DanmakuRegexFilterRepository by inject()
     private val mediaSourceManager: MediaSourceManager by inject()
@@ -257,6 +257,8 @@ class EpisodeViewModel(
     val turnstileState: TurnstileState by inject()
     val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase by inject()
     private val getSubjectRecommendations: GetSubjectRecommendationUseCase by inject()
+    private val getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase by inject()
+    private val setSubjectCollectionTypeOrDeleteUseCase: SetSubjectCollectionTypeOrDeleteUseCase by inject()
     // endregion
 
     private val tasker = SingleTaskExecutor(backgroundScope.coroutineContext)
@@ -499,7 +501,7 @@ class EpisodeViewModel(
                     episodeCollectionsFlow.firstOrNull() ?: return@EditableSubjectCollectionTypeState true
                 collections.any { !it.collectionType.isDoneOrDropped() }
             },
-            onSetSelfCollectionType = { subjectCollectionRepository.setSubjectCollectionTypeOrDelete(subjectId, it) },
+            onSetSelfCollectionType = { setSubjectCollectionTypeOrDeleteUseCase(subjectId, it) },
             onSetAllEpisodesWatched = {
                 episodeCollectionRepository.setAllEpisodesWatched(subjectId)
             },
@@ -531,7 +533,7 @@ class EpisodeViewModel(
 
 
     @OptIn(UnsafeEpisodeSessionApi::class)
-    private val danmakuLoader = EpisodeDanmakuLoader(
+    private val episodeDanmakuLoader = EpisodeDanmakuLoader(
         player = player,
         // TODO: 2025/1/6 this is not very good. May see old data. 
         selectedMedia = fetchPlayState.mediaSelectorFlow.transformLatest {
@@ -542,21 +544,22 @@ class EpisodeViewModel(
             }
         },
         bundleFlow = fetchPlayState.infoBundleFlow.filterNotNull().distinctUntilChanged(),
+        danmakuRepository = danmakuRepository,
+        getDanmakuRegexFilterListFlowUseCase = getDanmakuRegexFilterListFlowUseCase,
         backgroundScope,
-        koin,
         sharingStarted = SharingStarted.WhileSubscribed(5_000),
     )
 
     /**
      * Danmaku event flow to be processed by UI DanmakuHost.
      */
-    val uiDanmakuEventFlow = danmakuManager.selfId.flatMapLatest { selfId ->
+    val uiDanmakuEventFlow = danmakuRepository.selfId.flatMapLatest { selfId ->
         fun createDanmakuPresentation(
             data: DanmakuInfo,
             selfId: String?,
         ) = DanmakuPresentation(data, isSelf = selfId == data.senderId)
 
-        danmakuLoader.danmakuEventFlow.mapNotNull { event ->
+        episodeDanmakuLoader.danmakuEventFlow.mapNotNull { event ->
             when (event) {
                 is DanmakuEvent.Add -> {
                     val data = event.danmaku
@@ -585,8 +588,8 @@ class EpisodeViewModel(
     ) // This is lazy. If user puts app into background, queries will abort.
 
     val allDanmakuListFlow = combine(
-        danmakuLoader.allDanmakuFlow,
-        danmakuManager.selfId,
+        episodeDanmakuLoader.allDanmakuFlow,
+        danmakuRepository.selfId,
     ) { danmakuList, selfId ->
         danmakuList.map {
             DanmakuPresentation(it, isSelf = selfId == it.senderId)
@@ -600,7 +603,7 @@ class EpisodeViewModel(
 
     init {
         launchInBackground {
-            danmakuLoader.fetchResults.collect { fetchResults ->
+            episodeDanmakuLoader.fetchResults.collect { fetchResults ->
                 val availableSources = fetchResults.map { it.serviceId }.toSet()
                 if (availableSources.isNotEmpty() && selectedDanmakuSources.value.isEmpty()) {
                     selectedDanmakuSources.value = availableSources
@@ -615,7 +618,7 @@ class EpisodeViewModel(
 
     val danmakuListStateProducer = DanmakuListStateProducer(
         danmakuFlow = allDanmakuListFlow,
-        fetchResultsFlow = danmakuLoader.fetchResults,
+        fetchResultsFlow = episodeDanmakuLoader.fetchResults,
         selectedSourcesFlow = selectedDanmakuSources,
     )
 
@@ -758,14 +761,10 @@ class EpisodeViewModel(
             .shareIn(this, SharingStarted.Lazily, replay = 1)
 
         val matchingDanmakuPresenter = matchingDanmakuProviderId.map { providerId ->
-            danmakuLoader.fetchers
-                .find { fetcher ->
-                    fetcher.providerId == providerId && fetcher.supportsInteractiveMatching
-                }
+            episodeDanmakuLoader
+                .getInteractiveDanmakuFetcherOrNull(providerId)
                 ?.startInteractiveMatch()
-                ?.let {
-                    MatchingDanmakuPresenter(it, this)
-                }
+                ?.let { MatchingDanmakuPresenter(it, this) }
         }.shareIn(this, started = SharingStarted.Lazily, replay = 1)
 
         val mediaSelectorSummaryStateProducer = MediaSelectorSummaryStateProducer(
@@ -789,8 +788,8 @@ class EpisodeViewModel(
             episodeSession.infoLoadErrorStateFlow,
             episodeSession.fetchSelectFlow,
             combine(
-                danmakuLoader.danmakuLoadingStateFlow,
-                danmakuLoader.fetchResults,
+                episodeDanmakuLoader.danmakuLoadingStateFlow,
+                episodeDanmakuLoader.fetchResults,
                 settingsRepository.danmakuEnabled.flow,
                 ::DanmakuStatistics,
             ).distinctUntilChanged(),
@@ -888,7 +887,7 @@ class EpisodeViewModel(
     @OptIn(UnsafeEpisodeSessionApi::class)
     suspend fun postDanmaku(danmaku: DanmakuContent): DanmakuInfo {
         return withContext(Dispatchers.Default) {
-            danmakuManager.post(fetchPlayState.getCurrentEpisodeId(), danmaku)
+            danmakuRepository.post(fetchPlayState.getCurrentEpisodeId(), danmaku)
         }
     }
 
@@ -1010,7 +1009,7 @@ class EpisodeViewModel(
     override fun getKoin(): Koin = koin
 
     fun setDanmakuSourceEnabled(serviceId: DanmakuServiceId, enabled: Boolean) {
-        danmakuLoader.setEnabled(serviceId, enabled)
+        episodeDanmakuLoader.setEnabled(serviceId, enabled)
         selectedDanmakuSources.value = if (enabled) {
             selectedDanmakuSources.value + serviceId
         } else {
@@ -1019,7 +1018,7 @@ class EpisodeViewModel(
     }
 
     fun setDanmakuSourceShiftMillis(serviceId: DanmakuServiceId, shiftMillis: Long) {
-        danmakuLoader.setShiftMillis(serviceId, shiftMillis)
+        episodeDanmakuLoader.setShiftMillis(serviceId, shiftMillis)
     }
 
     fun startMatchingDanmaku(id: DanmakuProviderId) {
@@ -1031,7 +1030,7 @@ class EpisodeViewModel(
     }
 
     fun onMatchingDanmakuComplete(provider: DanmakuProviderId, result: List<DanmakuFetchResult>) {
-        danmakuLoader.overrideResults(provider, result)
+        episodeDanmakuLoader.overrideResults(provider, result)
         cancelMatchingDanmaku()
     }
 

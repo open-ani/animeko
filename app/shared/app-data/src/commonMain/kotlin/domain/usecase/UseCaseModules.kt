@@ -11,12 +11,10 @@ package me.him188.ani.app.domain.usecase
 
 import me.him188.ani.app.data.repository.subject.GetEpisodeTypeFiltersUseCase
 import me.him188.ani.app.data.repository.subject.GetEpisodeTypeFiltersUseCaseImpl
+import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
+import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCaseImpl
 import me.him188.ani.app.domain.comment.PostCommentUseCase
 import me.him188.ani.app.domain.comment.PostCommentUseCaseImpl
-import me.him188.ani.app.domain.danmaku.GetDanmakuFetcherUseCase
-import me.him188.ani.app.domain.danmaku.GetDanmakuFetcherUseCaseImpl
-import me.him188.ani.app.domain.danmaku.SearchDanmakuUseCase
-import me.him188.ani.app.domain.danmaku.SearchDanmakuUseCaseImpl
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCaseImpl
 import me.him188.ani.app.domain.episode.CreateMediaFetchSelectBundleFlowUseCase
@@ -33,6 +31,14 @@ import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCase
 import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCaseImpl
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCaseImpl
+import me.him188.ani.app.domain.media.cache.DeleteCacheByCacheIdUseCase
+import me.him188.ani.app.domain.media.cache.DeleteCacheByCacheIdUseCaseImpl
+import me.him188.ani.app.domain.media.cache.DeleteCacheByEpisodeIdUseCase
+import me.him188.ani.app.domain.media.cache.DeleteCacheByEpisodeIdUseCaseImpl
+import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
+import me.him188.ani.app.domain.media.cache.DeleteCacheUseCaseImpl
+import me.him188.ani.app.domain.media.cache.GetMediaCacheUseCase
+import me.him188.ani.app.domain.media.cache.GetMediaCacheUseCaseImpl
 import me.him188.ani.app.domain.media.selector.GetPreferredMediaSourceSortingUseCase
 import me.him188.ani.app.domain.media.selector.GetPreferredMediaSourceSortingUseCaseImpl
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
@@ -59,7 +65,6 @@ import org.koin.mp.KoinPlatform
 
 fun KoinApplication.useCaseModules() = module {
     single<GetEpisodeCollectionInfoFlowUseCase> { GetEpisodeCollectionInfoFlowUseCaseImpl() }
-    single<SearchDanmakuUseCase> { SearchDanmakuUseCaseImpl() }
     single<GetDanmakuRegexFilterListFlowUseCase> { GetDanmakuRegexFilterListFlowUseCaseImpl() }
     single<MediaSelectorAutoSelectUseCase> { MediaSelectorAutoSelectUseCaseImpl() }
     single<MediaSelectorEventSavePreferenceUseCase> { MediaSelectorEventSavePreferenceUseCaseImpl }
@@ -69,17 +74,21 @@ fun KoinApplication.useCaseModules() = module {
     single<GetMediaSelectorSettingsFlowUseCase> { GetMediaSelectorSettingsFlowUseCaseImpl }
     single<GetVideoScaffoldConfigUseCase> { GetVideoScaffoldConfigUseCaseImpl }
     single<SetDanmakuEnabledUseCase> { SetDanmakuEnabledUseCaseImpl(koin) }
+    single<SetSubjectCollectionTypeOrDeleteUseCase> { SetSubjectCollectionTypeOrDeleteUseCaseImpl(get(), get(), get()) }
     single<SetEpisodeCollectionTypeUseCase> { SetEpisodeCollectionTypeUseCaseImpl(koin) }
     single<GetEpisodeCollectionTypeUseCase> { GetEpisodeCollectionTypeUseCaseImpl(koin) }
     single<GetAnimeScheduleFlowUseCase> { GetAnimeScheduleFlowUseCaseImpl(get(), get()) }
     single<PostCommentUseCase> { PostCommentUseCaseImpl(get(), get()) }
     single<GetPreferredMediaSourceSortingUseCase> { GetPreferredMediaSourceSortingUseCaseImpl(get()) }
     single<GetMediaSelectorSourceTiersUseCase> { GetMediaSelectorSourceTiersUseCaseImpl(get()) }
-    single<GetDanmakuFetcherUseCase> { GetDanmakuFetcherUseCaseImpl(get()) }
     single<GetEpisodeTypeFiltersUseCase> { GetEpisodeTypeFiltersUseCaseImpl(get()) }
     single<GetMediaSelectorSettingsUseCase> { GetMediaSelectorSettingsUseCaseImpl(get()) }
     single<GetMediaSourceInstancesUseCase> { GetMediaSourceInstancesUseCaseImpl(get()) }
     single<GetSubjectRecommendationUseCase> { GetSubjectRecommendationUseCaseImpl(get()) }
+    single<GetMediaCacheUseCase> { GetMediaCacheUseCaseImpl(get()) }
+    single<DeleteCacheUseCase> { DeleteCacheUseCaseImpl(get(), get()) }
+    single<DeleteCacheByCacheIdUseCase> { DeleteCacheByCacheIdUseCaseImpl(get(), get()) }
+    single<DeleteCacheByEpisodeIdUseCase> { DeleteCacheByEpisodeIdUseCaseImpl(get(), get()) }
 }
 
 val GlobalKoin get() = KoinPlatform.getKoin()
