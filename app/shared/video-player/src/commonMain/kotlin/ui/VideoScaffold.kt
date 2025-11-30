@@ -108,14 +108,13 @@ fun VideoScaffold(
         contentAlignment = Alignment.Center,
     ) { // 16:9 box
         Box(
-            Modifier
-                .then(
-                    if (!maintainAspectRatio) {
-                        Modifier.fillMaxSize()
-                    } else {
-                        Modifier.fillMaxWidth().height(maxWidth * 9 / 16) // 16:9 box
-                    },
-                ),
+            Modifier.then(
+                if (!maintainAspectRatio) {
+                    Modifier.fillMaxSize()
+                } else {
+                    Modifier.fillMaxWidth().height(this@BoxWithConstraints.maxWidth * 9f / 16f)
+                },
+            ),
         ) {
             Box(
                 Modifier

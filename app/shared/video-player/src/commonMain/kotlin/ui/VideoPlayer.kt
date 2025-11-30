@@ -12,6 +12,7 @@ package me.him188.ani.app.videoplayer.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import org.openani.mediamp.MediampPlayer
+import org.openani.mediamp.features.AspectRatioMode
 
 
 /**
@@ -24,4 +25,5 @@ import org.openani.mediamp.MediampPlayer
 expect fun VideoPlayer(
     player: MediampPlayer,
     modifier: Modifier,
+    aspectRatioMode: AspectRatioMode = AspectRatioMode.FIT,
 )
