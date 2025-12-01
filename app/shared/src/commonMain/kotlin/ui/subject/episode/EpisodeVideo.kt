@@ -60,6 +60,7 @@ import me.him188.ani.app.ui.subject.episode.video.components.rememberStatusBarHe
 import me.him188.ani.app.ui.subject.episode.video.loading.EpisodeVideoLoadingIndicator
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.VideoPlayer
 import me.him188.ani.app.videoplayer.ui.VideoScaffold
 import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
@@ -77,6 +78,7 @@ import me.him188.ani.app.videoplayer.ui.progress.MediaProgressIndicatorText
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBar
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.SpeedSwitcher
+import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.VideoAspectRatioSelector
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.SubtitleSwitcher
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
@@ -128,6 +130,7 @@ internal fun EpisodeVideoImpl(
     audioController: LevelController,
     brightnessController: LevelController,
     playbackSpeedControllerState: PlaybackSpeedControllerState?,
+    videoAspectRatioControllerState: VideoAspectRatioControllerState?,
     leftBottomTips: @Composable () -> Unit,
     fullscreenSwitchButton: @Composable () -> Unit,
     sideSheets: @Composable (controller: VideoSideSheetsController<EpisodeVideoSideSheetPage>) -> Unit,
@@ -384,13 +387,26 @@ internal fun EpisodeVideoImpl(
                                 PlayerControllerDefaults.SubtitleSwitcher(it)
                             }
 
-                            val alwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "speedSwitcher")
+                            val videoAspectRatioAlwaysOnRequester =
+                                rememberAlwaysOnRequester(playerControllerState, "videoAspectRatioSelector")
+                            videoAspectRatioControllerState?.also { controller ->
+                                VideoAspectRatioSelector(controller) {
+                                    if (it) {
+                                        videoAspectRatioAlwaysOnRequester.request()
+                                    } else {
+                                        videoAspectRatioAlwaysOnRequester.cancelRequest()
+                                    }
+                                }
+                            }
+
+                            val playbackSpeedAlwaysOnRequester =
+                                rememberAlwaysOnRequester(playerControllerState, "speedSwitcher")
                             playbackSpeedControllerState?.also { controller ->
                                 SpeedSwitcher(controller) {
                                     if (it) {
-                                        alwaysOnRequester.request()
+                                        playbackSpeedAlwaysOnRequester.request()
                                     } else {
-                                        alwaysOnRequester.cancelRequest()
+                                        playbackSpeedAlwaysOnRequester.cancelRequest()
                                     }
                                 }
                             }

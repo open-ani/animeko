@@ -102,6 +102,8 @@ import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
+import me.him188.ani.app.videoplayer.ui.renderAspectRatioMode
 import me.him188.ani.app.videoplayer.ui.top.needWorkaroundForFocusManager
 import kotlin.math.roundToInt
 
@@ -109,6 +111,8 @@ const val TAG_SELECT_EPISODE_ICON_BUTTON = "SelectEpisodeIconButton"
 const val TAG_SPEED_SWITCHER_TEXT_BUTTON = "SpeedSwitcherTextButton"
 const val TAG_SPEED_SWITCHER_DROPDOWN_MENU = "SpeedSwitcherDropdownMenu"
 const val TAG_DANMAKU_ICON_BUTTON = "DanmakuIconButton"
+const val TAG_VIDEO_ASPECT_RATIO_SELECTOR_TEXT_BUTTON = "VideoAspectRatioTextButton"
+const val TAG_VIDEO_ASPECT_RATIO_SELECTOR_DROPDOWN_MENU = "VideoAspectRatioDropdownMenu"
 
 @Stable
 object PlayerControllerDefaults {
@@ -490,6 +494,32 @@ object PlayerControllerDefaults {
             ),
             textButtonTestTag = TAG_SPEED_SWITCHER_TEXT_BUTTON,
             dropdownMenuTestTag = TAG_SPEED_SWITCHER_DROPDOWN_MENU,
+            onExpandedChanged = onExpandedChanged,
+        )
+    }
+
+    /**
+     * Video aspect ratio selector
+     */
+
+    @Composable
+    fun VideoAspectRatioSelector(
+        videoAspectRatioControllerState: VideoAspectRatioControllerState,
+        modifier: Modifier = Modifier,
+        onExpandedChanged: (expanded: Boolean) -> Unit = {},
+    ) {
+        return OptionsSwitcher(
+            value = videoAspectRatioControllerState.currentMode,
+            onValueChange = { videoAspectRatioControllerState.setMode(it) },
+            optionsProvider = { VideoAspectRatioControllerState.Entries },
+            renderValue = { Text(renderAspectRatioMode(it)) },
+            renderValueExposed = { Text(renderAspectRatioMode(it)) },
+            modifier,
+            properties = PlatformPopupProperties(
+                clippingEnabled = false,
+            ),
+            textButtonTestTag = TAG_VIDEO_ASPECT_RATIO_SELECTOR_TEXT_BUTTON,
+            dropdownMenuTestTag = TAG_VIDEO_ASPECT_RATIO_SELECTOR_DROPDOWN_MENU,
             onExpandedChanged = onExpandedChanged,
         )
     }

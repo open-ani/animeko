@@ -139,6 +139,7 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.asLevelController
@@ -156,6 +157,7 @@ import me.him188.ani.utils.platform.isMobile
 import org.openani.mediamp.features.AudioLevelController
 import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.Screenshots
+import org.openani.mediamp.features.VideoAspectRatio
 import org.openani.mediamp.features.toggleMute
 
 
@@ -969,6 +971,9 @@ private fun EpisodeVideo(
         }.value,
         playbackSpeedControllerState = remember {
             vm.player.features[PlaybackSpeed]?.let { PlaybackSpeedControllerState(it, scope = scope) }
+        },
+        videoAspectRatioControllerState = remember {
+            vm.player.features[VideoAspectRatio]?.let { VideoAspectRatioControllerState(it, scope = scope) }
         },
         leftBottomTips = {
             AniAnimatedVisibility(
