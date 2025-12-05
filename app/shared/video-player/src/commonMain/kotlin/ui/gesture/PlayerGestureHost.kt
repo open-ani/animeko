@@ -491,13 +491,14 @@ fun PlayerGestureHost(
                         )
                     }
                     .ifThen(family.keyboardLeftRightToSeek) {
-                        onKeyboardHorizontalDirection(
-                            onBackward = {
+                        keyboardSeekAndFastForward(
+                            onSeekBackward = {
                                 seekerState.onSeek(-5)
                             },
-                            onForward = {
+                            onSeekForward = {
                                 seekerState.onSeek(5)
                             },
+                            fastSkipState = fastSkipState,
                         )
                     }
                     .ifThen(family.keyboardUpDownForVolume && audioLevelController != null) {
@@ -773,13 +774,14 @@ fun PlayerGestureHost(
                         }
                     }
                     .ifThen(family.keyboardLeftRightToSeek) {
-                        onKeyboardHorizontalDirection(
-                            onBackward = {
+                        keyboardSeekAndFastForward(
+                            onSeekBackward = {
                                 seekerState.onSeek(-5)
                             },
-                            onForward = {
+                            onSeekForward = {
                                 seekerState.onSeek(5)
                             },
+                            fastSkipState = fastSkipState,
                         )
                     }
                     .ifThen(family.keyboardUpDownForVolume) {
