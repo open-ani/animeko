@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.videoplayer.ui.top
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -26,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
@@ -42,6 +44,7 @@ import me.him188.ani.utils.platform.isDesktop
 fun PlayerTopBar(
     modifier: Modifier = Modifier,
     title: @Composable (() -> Unit)? = null,
+    centerContent: @Composable (() -> Unit)? = null,
     actions: @Composable (RowScope.() -> Unit) = {},
     color: Color = MaterialTheme.colorScheme.onBackground,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
@@ -49,8 +52,15 @@ fun PlayerTopBar(
     TopAppBar(
         title = {
             CompositionLocalProvider(LocalContentColor provides color) {
-                if (title != null) {
-                    title()
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    if (title != null) {
+                        title()
+                    }
+                    if (centerContent != null) {
+                        Box(modifier = Modifier.align(Alignment.TopCenter)) {
+                            centerContent()
+                        }
+                    }
                 }
             }
         },
