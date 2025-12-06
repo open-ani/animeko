@@ -27,7 +27,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
@@ -44,7 +43,6 @@ import me.him188.ani.utils.platform.isDesktop
 fun PlayerTopBar(
     modifier: Modifier = Modifier,
     title: @Composable (() -> Unit)? = null,
-    centerContent: @Composable (() -> Unit)? = null,
     actions: @Composable (RowScope.() -> Unit) = {},
     color: Color = MaterialTheme.colorScheme.onBackground,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
@@ -55,11 +53,6 @@ fun PlayerTopBar(
                 Box(modifier = Modifier.fillMaxWidth()) {
                     if (title != null) {
                         title()
-                    }
-                    if (centerContent != null) {
-                        Box(modifier = Modifier.align(Alignment.TopCenter)) {
-                            centerContent()
-                        }
                     }
                 }
             }

@@ -177,11 +177,6 @@ internal fun EpisodeVideoImpl(
                         } else {
                             null
                         },
-                        centerContent = if (expanded && LocalPlatform.current.isMobile()) {
-                            { SystemTime() }
-                        } else {
-                            null
-                        },
                         actions = {
                             IconButton({ onClickSkip85(playerState.getCurrentPositionMillis()) }) {
                                 Icon(AniIcons.Forward85, "快进 85 秒")
@@ -216,6 +211,11 @@ internal fun EpisodeVideoImpl(
                         windowInsets = contentWindowInsets,
                     )
                 }
+            },
+            centerOverlay = if (expanded && LocalPlatform.current.isMobile()) {
+                { SystemTime() }
+            } else {
+                {}
             },
             video = {
                 if (LocalIsPreviewing.current) {
