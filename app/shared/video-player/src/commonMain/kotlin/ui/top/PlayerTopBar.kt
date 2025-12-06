@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.videoplayer.ui.top
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -50,10 +49,8 @@ fun PlayerTopBar(
     TopAppBar(
         title = {
             CompositionLocalProvider(LocalContentColor provides color) {
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    if (title != null) {
-                        title()
-                    }
+                if (title != null) {
+                    title()
                 }
             }
         },
