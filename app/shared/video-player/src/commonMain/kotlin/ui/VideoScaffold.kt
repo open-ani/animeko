@@ -96,6 +96,7 @@ fun VideoScaffold(
     floatingBottomEnd: @Composable RowScope.() -> Unit = {},
     rhsSheet: @Composable () -> Unit = {},
     leftBottomTips: @Composable () -> Unit = {},
+    centerOverlay: @Composable BoxScope.() -> Unit = {},
 ) {
     val controllerVisibility = controllerState.visibility
         .withGestureLocked(gestureLocked)
@@ -177,8 +178,7 @@ fun VideoScaffold(
                                     modifier = Modifier.fillMaxWidth()
                                         .pointerInput(Unit) {}
                                         .windowInsetsPadding(desktopTitleBarInsets),
-
-                                    )
+                                )
                                 Row(
                                     Modifier.fillMaxWidth()
                                         .consumeWindowInsets(desktopTitleBarInsets)
@@ -192,6 +192,14 @@ fun VideoScaffold(
                                 Spacer(Modifier.height(16.dp))
                             }
 
+                            Box(
+                                Modifier.matchParentSize()
+                                    .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Top))
+                                    .padding(top = 8.dp),
+                                contentAlignment = Alignment.TopCenter,
+                            ) {
+                                centerOverlay()
+                            }
                         }
                     }
 

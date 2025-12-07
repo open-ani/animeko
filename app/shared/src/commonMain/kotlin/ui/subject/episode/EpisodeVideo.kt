@@ -84,8 +84,10 @@ import me.him188.ani.app.videoplayer.ui.progress.SubtitleSwitcher
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.rememberVideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
+import me.him188.ani.app.videoplayer.ui.top.SystemTime
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isDesktop
+import me.him188.ani.utils.platform.isMobile
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.audioTracks
 import org.openani.mediamp.features.subtitleTracks
@@ -209,6 +211,11 @@ internal fun EpisodeVideoImpl(
                         windowInsets = contentWindowInsets,
                     )
                 }
+            },
+            centerOverlay = if (expanded && LocalPlatform.current.isMobile()) {
+                { SystemTime() }
+            } else {
+                {}
             },
             video = {
                 if (LocalIsPreviewing.current) {
