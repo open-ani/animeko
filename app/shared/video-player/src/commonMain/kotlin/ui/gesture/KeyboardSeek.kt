@@ -13,7 +13,6 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -24,9 +23,9 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.effects.ComposeKey
 import me.him188.ani.app.ui.foundation.effects.onKey
 
@@ -82,7 +81,6 @@ fun Modifier.keyboardSeekAndFastForward(
         name = "keyboardSeekAndFastForward"
     },
 ) {
-    val scope = rememberCoroutineScope()
     val layoutDirection = LocalLayoutDirection.current
     val backwardKey = if (layoutDirection == LayoutDirection.Ltr) {
         ComposeKey.DirectionLeft
@@ -98,8 +96,7 @@ fun Modifier.keyboardSeekAndFastForward(
     val onBackwardState by rememberUpdatedState(onSeekBackward)
     val onForwardState by rememberUpdatedState(onSeekForward)
 
-    var isLongPressing by remember { mutableStateOf(false) }
-    var longPressJob by remember { mutableStateOf<Job?>(null) }
+    val tasker = rememberUiMonoTasker()
     var ticket by remember { mutableStateOf<Int?>(null) }
 
     onPreviewKeyEvent { event ->
@@ -114,27 +111,27 @@ fun Modifier.keyboardSeekAndFastForward(
 
         if (event.key == forwardKey) {
             if (event.type == KeyEventType.KeyDown) {
-                if (longPressJob == null && !isLongPressing) {
-                    longPressJob = scope.launch {
-                        delay(200)
-                        isLongPressing = true
-                        fastSkipState?.let {
-                            ticket = it.startSkipping(SkipDirection.FORWARD)
+                if (!tasker.isRunning.value) {
+                    tasker.launch {
+                        try {
+                            delay(200)
+                            fastSkipState?.let {
+                                ticket = it.startSkipping(SkipDirection.FORWARD)
+                            }
+                            awaitCancellation()
+                        } finally {
+                            ticket?.let {
+                                fastSkipState?.stopSkipping(it)
+                            }
+                            ticket = null
                         }
                     }
                 }
                 return@onPreviewKeyEvent true
             } else if (event.type == KeyEventType.KeyUp) {
-                longPressJob?.cancel()
-                longPressJob = null
-
-                if (isLongPressing) {
-                    ticket?.let {
-                        fastSkipState?.stopSkipping(it)
-                    }
-                    ticket = null
-                    isLongPressing = false
-                } else {
+                val isSkipping = ticket != null
+                tasker.cancel()
+                if (!isSkipping) {
                     onForwardState()
                 }
                 return@onPreviewKeyEvent true
