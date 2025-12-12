@@ -41,6 +41,7 @@ import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.client.models.AniCollectionType
 import me.him188.ani.client.models.AniPerson
 import me.him188.ani.client.models.AniSubjectCollection
+import me.him188.ani.client.models.AniSubjectRecommendation
 import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.apis.DefaultApi
@@ -92,6 +93,8 @@ interface SubjectService {
 
     suspend fun patchSubjectCollection(subjectId: Int, payload: AniUpdateSubjectCollectionRequest)
     suspend fun deleteSubjectCollection(subjectId: Int)
+
+    suspend fun getSubjectRecommendations(subjectId: Int, limit: Int): List<AniSubjectRecommendation>
 
     /**
      * 获取各个收藏分类的数量.
@@ -300,6 +303,12 @@ class RemoteSubjectService(
             }
         }
         subjectCountStatsRestarter.restart()
+    }
+
+    override suspend fun getSubjectRecommendations(subjectId: Int, limit: Int): List<AniSubjectRecommendation> {
+        return subjectApi {
+            this.getSubjectRecommendations(subjectId.toLong(), limit = limit).body()
+        }
     }
 
     override suspend fun deleteSubjectCollection(subjectId: Int) {

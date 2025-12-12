@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.data.persistent.dataStores
+import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.repository.WindowStateRepository
 import me.him188.ani.app.data.repository.WindowStateRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -23,7 +24,6 @@ import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
-import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.DesktopWebMediaResolver
@@ -45,10 +45,7 @@ import me.him188.ani.app.tools.update.DesktopUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.io.absolutePath
-import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
-import me.him188.ani.utils.io.list
-import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -66,7 +63,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
 
     single<MediaSaveDirProvider> {
         val settings = get<SettingsRepository>().mediaCacheSettings
-        val defaultTorrentCachePath = getContext().files.defaultBaseMediaCacheDir
+        val defaultTorrentCachePath = getContext().files.defaultMediaCacheBaseDir
 
         val baseSaveDir = runBlocking {
             val saveDirSettings = settings.flow.first().saveDir
@@ -110,55 +107,11 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
         logger<TorrentManager>().info { "HttpMediaCacheEngine base save dir: $saveDir" }
 
         HttpMediaCacheEngine(
+            dao = get<AniDatabase>().httpCacheDownloadStateDao(),
             mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
             downloader = get<HttpDownloader>(),
             saveDir = saveDir.toKtPath(),
             mediaResolver = get<MediaResolver>(),
-        )
-    }
-
-    single<MediaCacheMigrator> {
-        get<TorrentManager>()
-        get<HttpMediaCacheEngine>()
-
-        MediaCacheMigrator(
-            context = getContext(),
-            metadataStore = getContext().dataStores.mediaCacheMetadataStore,
-            m3u8DownloaderStore = getContext().dataStores.m3u8DownloaderStore,
-            mediaCacheManager = get(),
-            settingsRepo = get(),
-            appTerminator = get(),
-            mediaCacheBaseDirProvider = get(),
-            migrationChecker = object : MediaCacheMigrator.MigrationChecker {
-                override suspend fun requireMigrateTorrentCache(): Boolean {
-                    return false
-                }
-
-                override suspend fun requireMigrateWebM3uCache(): Boolean {
-                    val baseSaveDir = get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir
-                        ?: getContext().files.defaultBaseMediaCacheDir.absolutePath
-
-                    @Suppress("DEPRECATION")
-                    val legacySaveDir = getContext().files.dataDir.resolve(HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR)
-
-                    // 旧的缓存目录如果有内容，则考虑需要迁移
-                    if (legacySaveDir.exists() && legacySaveDir.list().isNotEmpty()) {
-                        // 有权限才去迁移
-                        if (File(baseSaveDir).run { canRead() && canWrite() }) {
-                            return true
-                        }
-                    }
-
-                    return false
-                }
-            },
-            getNewBaseSaveDir = {
-                get<SettingsRepository>().mediaCacheSettings.flow.first().saveDir
-                    ?.let { kotlinx.io.files.Path(it).inSystem }
-            },
-            getLegacyTorrentSaveDir = {
-                error("Media caches on desktop should not be migrated by MediaCacheMigrator")
-            },
         )
     }
 

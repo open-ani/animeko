@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalClipboard
+import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.ui.foundation.getClipEntryText
@@ -42,7 +43,12 @@ import me.him188.ani.app.ui.lang.settings_storage_backup_op_restore_error
 import me.him188.ani.app.ui.lang.settings_storage_backup_op_restore_succees
 import me.him188.ani.app.ui.lang.settings_storage_backup_op_restore_warning
 import me.him188.ani.app.ui.lang.settings_storage_backup_title
+import me.him188.ani.app.ui.lang.settings_storage_danmaku_cache_strategy_description_cache_on_collection_doing_media_play
+import me.him188.ani.app.ui.lang.settings_storage_danmaku_cache_strategy_description_cache_on_media_cache
+import me.him188.ani.app.ui.lang.settings_storage_danmaku_cache_strategy_description_do_not_cache
+import me.him188.ani.app.ui.lang.settings_storage_danmaku_cache_strategy_title
 import me.him188.ani.app.ui.settings.framework.SettingsState
+import me.him188.ani.app.ui.settings.framework.components.DropdownItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import org.jetbrains.compose.resources.getString
@@ -117,6 +123,42 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
             },
         )
     }
+}
+
+@Composable
+fun SettingsScope.DanmakuCacheSettings(state: CacheDirectoryGroupState) {
+    val mediaCacheSettings by state.mediaCacheSettingsState
+    val tasker = rememberAsyncHandler()
+
+    DropdownItem(
+        title = { Text(stringResource(Lang.settings_storage_danmaku_cache_strategy_title)) },
+        selected = { mediaCacheSettings.danmakuCacheStrategy },
+        values = { DanmakuCacheStrategy.entries },
+        description = {
+            Text(
+                when (mediaCacheSettings.danmakuCacheStrategy) {
+                    DanmakuCacheStrategy.DON_NOT_CACHE ->
+                        stringResource(Lang.settings_storage_danmaku_cache_strategy_description_do_not_cache)
+
+                    DanmakuCacheStrategy.CACHE_ON_COLLECTION_DOING_MEDIA_PLAY ->
+                        stringResource(Lang.settings_storage_danmaku_cache_strategy_description_cache_on_collection_doing_media_play)
+
+                    DanmakuCacheStrategy.CACHE_ON_MEDIA_CACHE ->
+                        stringResource(Lang.settings_storage_danmaku_cache_strategy_description_cache_on_media_cache)
+                },
+            )
+        },
+        itemText = {
+            Text(it.toString())
+        },
+        onSelect = { newStrategy ->
+            tasker.launch {
+                state.mediaCacheSettingsState.updateSuspended(
+                    mediaCacheSettings.copy(danmakuCacheStrategy = newStrategy),
+                )
+            }
+        },
+    )
 }
 
 @Composable

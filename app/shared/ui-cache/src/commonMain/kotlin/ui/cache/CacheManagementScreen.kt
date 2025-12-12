@@ -47,6 +47,7 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
+import me.him188.ani.app.domain.media.cache.DeleteCacheByCacheIdUseCase
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.MediaCacheState
@@ -73,9 +74,6 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
-import me.him188.ani.datasources.api.creationTimeOrNull
-import me.him188.ani.datasources.api.episodeIdInt
-import me.him188.ani.datasources.api.subjectIdInt
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.unwrapCached
@@ -94,6 +92,7 @@ typealias CacheGroupGridLayoutState = LazyStaggeredGridState
 @Stable
 class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
     private val cacheManager: MediaCacheManager by inject()
+    private val deleteCacheByCacheIdUseCase: DeleteCacheByCacheIdUseCase by inject()
 
     val lazyGridState: CacheGroupGridLayoutState = LazyStaggeredGridState()
 
@@ -170,7 +169,7 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
                 }.shareInBackground()
 
                 val commonInfo = createGroupCommonInfo(
-                    subjectId = firstCache.metadata.subjectIdInt,
+                    subjectId = firstCache.metadata.subjectId.toInt(),
                     firstCache = firstCache,
                     subjectDisplayName = firstCache.metadata.subjectNameCN
                         ?: firstCache.metadata.subjectNames.firstOrNull()
@@ -239,15 +238,15 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
 
         val metadata = mediaCache.metadata
         return combine(statsFlow, stateFlow, mediaCache.canPlay) { stats, state, canPlay ->
-            val subjectId = metadata.subjectIdInt
-            val episodeId = metadata.episodeIdInt
+            val subjectId = metadata.subjectId.toInt()
+            val episodeId = metadata.episodeId.toInt()
             CacheEpisodeState(
                 subjectId = subjectId,
                 episodeId = episodeId,
                 cacheId = mediaCache.cacheId,
                 sort = metadata.episodeSort,
                 displayName = metadata.episodeName,
-                creationTime = metadata.creationTimeOrNull,
+                creationTime = metadata.creationTime,
                 screenShots = emptyList(),
                 stats = stats,
                 state = state,
@@ -274,7 +273,7 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
 
     fun deleteCache(cache: CacheEpisodeState) {
         backgroundScope.launch {
-            cacheManager.deleteFirstCache { it.cacheId == cache.cacheId }
+            deleteCacheByCacheIdUseCase(cache.subjectId, cache.episodeId, cache.cacheId)
         }
     }
 }

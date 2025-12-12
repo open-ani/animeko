@@ -104,6 +104,9 @@ import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
 import me.him188.ani.app.ui.search.rememberLoadErrorState
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
+import me.him188.ani.utils.analytics.recordEvent
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.hasScrollingBug
 import org.jetbrains.compose.resources.stringResource
@@ -268,6 +271,10 @@ fun ExplorationScreen(
                         TrendingSubjectsCarousel(
                             state.trendingSubjectInfoPager,
                             onClick = {
+                                Analytics.recordEvent(SubjectEnter) {
+                                    put("source", "home_trending")
+                                    put("subject_id", it.bangumiId)
+                                }
                                 navigator.navigateSubjectDetails(
                                     subjectId = it.bangumiId,
                                     placeholder = SubjectDetailPlaceholder(
@@ -311,6 +318,10 @@ fun ExplorationScreen(
                         FollowedSubjectsLazyRow(
                             followedSubjectsPager,
                             onClick = {
+                                Analytics.recordEvent(SubjectEnter) {
+                                    put("source", "home_followed")
+                                    put("subject_id", it.subjectInfo.subjectId)
+                                }
                                 navigator.navigateSubjectDetails(
                                     subjectId = it.subjectInfo.subjectId,
                                     placeholder = it.subjectInfo.toNavPlaceholder(),
@@ -342,6 +353,10 @@ fun ExplorationScreen(
                 onClick = { info ->
                     when (info) {
                         is RecommendedSubjectInfo -> {
+                            Analytics.recordEvent(SubjectEnter) {
+                                put("source", "home_recommendation")
+                                put("subject_id", info.bangumiId)
+                            }
                             navigator.navigateSubjectDetails(
                                 subjectId = info.bangumiId,
                                 placeholder = info.toNavPlaceholder(),

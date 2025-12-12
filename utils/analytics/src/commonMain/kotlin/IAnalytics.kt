@@ -46,6 +46,10 @@ value class AnalyticsEvent(val event: String) {
         val AppStart = Screen // compatibility
         val SessionStart = AnalyticsEvent("session_start")
 
+        val AppServerTestSuccess = AnalyticsEvent("app_server_test_success")
+        val AppServerTestError = AnalyticsEvent("app_server_test_error")
+        val AppServerSelectError = AnalyticsEvent("app_server_select_error")
+
         val OnboardingStart = AnalyticsEvent("onboarding_start")
         val OnboardingNetworkEnter = AnalyticsEvent("onboarding_network_enter")
         val OnboardingLoginEnter = AnalyticsEvent("onboarding_login_enter")
@@ -61,6 +65,13 @@ value class AnalyticsEvent(val event: String) {
         val EpisodePlaying = AnalyticsEvent("episode_playing")
 
         val CacheCreate = AnalyticsEvent("cache_create")
+
+        val RatingEnter = AnalyticsEvent("rating_enter")
+        val RatingSubmit = AnalyticsEvent("rating_submit")
+
+        val SearchStart = AnalyticsEvent("search_start")
+        val SubjectEnter = AnalyticsEvent("subject_enter")
+        val SubjectRecommendationClick = AnalyticsEvent("subject_recommendation_click")
     }
 }
 

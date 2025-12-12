@@ -11,6 +11,9 @@ package me.him188.ani.app.domain.danmaku
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,16 +21,21 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.repository.danmaku.SearchDanmakuRequest
 import me.him188.ani.danmaku.api.DanmakuCollection
+import me.him188.ani.danmaku.api.provider.DanmakuFetchRequest
 import me.him188.ani.danmaku.api.provider.DanmakuFetchResult
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
+import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import me.him188.ani.utils.platform.collections.tupleOf
-import org.koin.core.Koin
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * A general danmaku loader, that fetches danmaku from the network and cache and provides a [Flow] of [DanmakuCollection]
@@ -40,10 +48,11 @@ sealed interface DanmakuLoader {
 class DanmakuLoaderImpl(
     requestFlow: Flow<SearchDanmakuRequest?>,
     flowScope: CoroutineScope,
-    koin: Koin,
+    danmakuRepository: DanmakuRepository,
     sharingStarted: SharingStarted = SharingStarted.WhileSubscribed()
 ) : DanmakuLoader {
-    private val searchDanmakuUseCase: SearchDanmakuUseCase by koin.inject()
+
+    private val saveDanmakuTasker = SingleTaskExecutor(flowScope.coroutineContext)
 
     override val danmakuLoadingStateFlow: MutableStateFlow<DanmakuLoadingState> =
         MutableStateFlow(DanmakuLoadingState.Idle)
@@ -59,9 +68,22 @@ class DanmakuLoaderImpl(
         }
         danmakuLoadingStateFlow.value = DanmakuLoadingState.Loading
         try {
-            val result = searchDanmakuUseCase(request)
-            danmakuLoadingStateFlow.value = DanmakuLoadingState.Success
-            emit(result)
+            coroutineScope {
+                var remoteFetched = false
+                launch(start = CoroutineStart.ATOMIC) {
+                    val result = danmakuRepository.fetchFromLocal(request.toFetchRequest()).first()
+                    if (!remoteFetched && result.isNotEmpty()) {
+                        emit(result)
+                        danmakuLoadingStateFlow.value = DanmakuLoadingState.Success
+                    }
+                }
+                launch {
+                    val result = danmakuRepository.fetchFromAllRemotes(request.toFetchRequest()).first()
+                    danmakuLoadingStateFlow.value = DanmakuLoadingState.Success
+                    remoteFetched = true
+                    emit(result)
+                }
+            }
         } catch (e: CancellationException) {
             danmakuLoadingStateFlow.value = DanmakuLoadingState.Idle
             throw e
@@ -74,32 +96,68 @@ class DanmakuLoaderImpl(
     override val fetchResultFlow: Flow<List<DanmakuFetchResult>?> = requestFlow
         .distinctUntilChangedBy {
             tupleOf(it?.subjectInfo?.subjectId, it?.episodeInfo?.episodeId)
-        }.flatMapLatest { _ ->
+        }.flatMapLatest { req ->
             // 每次切换剧集时, 这里会重新执行.
             overrideResultsFlow.value = emptyMap() // 清空覆盖
 
             combine(originalFetchResultFlow, overrideResultsFlow) { original, overrideResults ->
-                if (original == null) {
-                    overrideResults.values.flatten()
-                } else {
-                    // Combine and replace
-                    LinkedHashMap<DanmakuProviderId, List<DanmakuFetchResult>>().apply {
-                        original.groupBy { it.providerId }.forEach { (providerId, result) ->
-                            put(providerId, result)
+                val accumulatedResults = computeFinalDanmakuResult(original, overrideResults)
+                if (accumulatedResults.isNotEmpty()) {
+                    val subjectId = req?.subjectInfo?.subjectId
+                    val episodeId = req?.episodeInfo?.episodeId
+                    if (subjectId != null && episodeId != null) {
+                        flowScope.launch {
+                            saveDanmakuTasker.invoke {
+                                delay(3.seconds)
+                                danmakuRepository.cacheDanmakuIfNeeded(subjectId, episodeId, accumulatedResults)
+                            }
                         }
-                        for ((providerId, result) in overrideResults) {
-                            put(providerId, result)
-                        }
-                    }.values.flatten()
+                    }
                 }
+                accumulatedResults
             }
         }
 
+    private fun computeFinalDanmakuResult(
+        original: List<DanmakuFetchResult>?,
+        override: Map<DanmakuProviderId, List<DanmakuFetchResult>>,
+    ): List<DanmakuFetchResult> {
+        return if (original == null) {
+            override.values.flatten()
+        } else {
+            // Combine and replace
+            LinkedHashMap<DanmakuProviderId, List<DanmakuFetchResult>>().apply {
+                original.groupBy { it.providerId }.forEach { (providerId, result) ->
+                    put(providerId, result)
+                }
+                for ((providerId, result) in override) {
+                    put(providerId, result)
+                }
+            }.values.flatten()
+        }
+    }
 
     fun overrideResults(provider: DanmakuProviderId, result: List<DanmakuFetchResult>) {
         overrideResultsFlow.update {
             it + (provider to result)
         }
+    }
+
+    private fun SearchDanmakuRequest.toFetchRequest(): DanmakuFetchRequest {
+        return DanmakuFetchRequest(
+            subjectId = subjectInfo.subjectId,
+            subjectPrimaryName = subjectInfo.displayName,
+            subjectNames = subjectInfo.allNames,
+            subjectPublishDate = subjectInfo.airDate,
+            episodeId = episodeInfo.episodeId,
+            episodeSort = episodeInfo.sort,
+            episodeEp = episodeInfo.ep,
+            episodeName = episodeInfo.displayName,
+            filename = filename,
+            fileHash = fileHash,
+            fileSize = fileLength,
+            videoDuration = videoDuration,
+        )
     }
 }
 

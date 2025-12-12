@@ -21,10 +21,9 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
-import me.him188.ani.app.data.persistent.DataStoreJson
+import me.him188.ani.app.data.persistent.database.dao.HttpCacheDownloadStateDao
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
-import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine.Companion.EXTRA_URI
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.tools.Progress
@@ -35,7 +34,6 @@ import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
 import me.him188.ani.datasources.api.MediaCacheProperties
-import me.him188.ani.datasources.api.MetadataKey
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
@@ -49,11 +47,10 @@ import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.actualSize
 import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.inSystem
-import me.him188.ani.utils.io.resolve
+import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
-import me.him188.ani.utils.platform.Uuid
 import org.openani.mediamp.source.SeekableInputMediaData
 import org.openani.mediamp.source.UriMediaData
 import kotlin.coroutines.CoroutineContext
@@ -63,9 +60,8 @@ class HttpMediaCacheEngine(
     private val saveDir: Path,
     private val mediaResolver: MediaResolver,
     private val mediaSourceId: String,
+    private val dao: HttpCacheDownloadStateDao,
 ) : MediaCacheEngine {
-    private val json get() = DataStoreJson
-
     override val engineKey: MediaCacheEngineKey = Companion.engineKey
 
     override val stats: Flow<MediaStats> = run {
@@ -118,10 +114,7 @@ class HttpMediaCacheEngine(
         if (!supports(origin)) throw UnsupportedOperationException("Media is not supported by this engine $this: ${origin.download}")
 
         logger.info { "Restarting cache '${origin.mediaId}'" }
-
-        val downloadId = metadata.extra[EXTRA_DOWNLOAD_ID]?.let { DownloadId(it) } ?: return null
-        val uri = metadata.extra[EXTRA_URI] ?: return null
-        val headers = json.decodeFromString<Map<String, String>>(metadata.extra[EXTRA_HEADERS] ?: return null)
+        val downloadId = DownloadId(origin.mediaId)
 
         // 注意, getState 一般不会返回 null, 除非 downloader 的 persistent datastore 出问题了 (例如文件损坏).
         if (downloader.getState(downloadId) != null) {
@@ -131,11 +124,16 @@ class HttpMediaCacheEngine(
             return HttpMediaCache(origin, downloadId, metadata)
         }
 
+        val persistentState = dao.getById(downloadId) ?: kotlin.run {
+            logger.error { "Failed to find download state $downloadId from persistent storage while recreating cache." }
+            return null
+        }
+
         logger.info { "Download not found, recreating $downloadId" }
         downloader.downloadWithId(
             downloadId = downloadId,
-            uri,
-            options = DownloadOptions(headers = headers),
+            persistentState.url,
+            options = DownloadOptions(headers = persistentState.requestHeaders),
         )
         return HttpMediaCache(origin, downloadId, metadata)
     }
@@ -156,7 +154,8 @@ class HttpMediaCacheEngine(
             }
 
             is UriMediaData -> {
-                val downloadId = DownloadId(Uuid.randomString())
+                // TODO: 用 [Media.mediaId] 当作 DownloadId 好吗?
+                val downloadId = DownloadId(origin.mediaId)
                 val state = downloader.downloadWithId(
                     downloadId = downloadId,
                     mediaData.uri,
@@ -166,14 +165,7 @@ class HttpMediaCacheEngine(
                 return HttpMediaCache(
                     origin,
                     downloadId,
-                    metadata.copy(
-                        extra = metadata.extra.toMutableMap().apply {
-                            put(EXTRA_DOWNLOAD_ID, downloadId.value)
-                            put(EXTRA_URI, mediaData.uri)
-                            put(EXTRA_OUTPUT_PATH, state.relativeOutputPath)
-                            put(EXTRA_HEADERS, json.encodeToString(mediaData.headers))
-                        },
-                    ),
+                    metadata,
                 )
             }
         }
@@ -185,10 +177,10 @@ class HttpMediaCacheEngine(
 
         val allowedAbsolute = buildSet {
             for (mediaCache in all.filterIsInstance<HttpMediaCache>()) {
-                mediaCache.metadata.extra[EXTRA_OUTPUT_PATH]
-                    ?.let { add(Path(saveDir, it).inSystem.absolutePath) }
-                downloader.getState(mediaCache.downloadId)
-                    ?.let { add(Path(saveDir, it.relativeSegmentCacheDir).inSystem.absolutePath) }
+                downloader.getState(mediaCache.downloadId)?.let { state ->
+                    add(Path(saveDir, state.relativeOutputPath).inSystem.absolutePath)
+                    add(Path(saveDir, state.relativeSegmentCacheDir).inSystem.absolutePath)
+                }
             }
         }
         withContext(Dispatchers.IO_) {
@@ -292,7 +284,7 @@ class HttpMediaCacheEngine(
                         download = ResourceLocation.LocalFile(
                             Path(saveDir, state.relativeOutputPath).inSystem.absolutePath,
                             state.mediaType.toFileType(),
-                            originalUri = metadata.extra[EXTRA_URI],
+                            originalUri = state.url,
                         ),
                         properties = origin.properties.copy(
                             size = if (actualFileSize.isUnspecified) {
@@ -343,15 +335,6 @@ class HttpMediaCacheEngine(
     }
 
     companion object {
-        internal val EXTRA_DOWNLOAD_ID = MetadataKey("downloadId")
-        internal val EXTRA_URI = MetadataKey("uri")
-
-        /**
-         * 缓存的相对路径, 相对于 [HttpMediaCacheEngine.saveDir].
-         */
-        internal val EXTRA_OUTPUT_PATH = MetadataKey("outputPath")
-        internal val EXTRA_HEADERS = MetadataKey("headers")
-
         val engineKey = MediaCacheEngineKey("web-m3u")
 
         private val logger = logger<HttpMediaCacheEngine>()

@@ -64,6 +64,7 @@ class SearchPageState(
         onStartSearch = { query ->
             onStartSearch(query)
         },
+        tagsProvider = { queryFlow.value.tags.orEmpty() },
         backgroundScope = backgroundScope,
     )
     val gridState = LazyGridState()

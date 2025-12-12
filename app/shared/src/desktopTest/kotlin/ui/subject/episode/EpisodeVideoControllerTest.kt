@@ -63,8 +63,10 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeSelectorState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.NoOpPlaybackSpeedController
+import me.him188.ani.app.videoplayer.ui.NoOpVideoAspectRatio
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.gesture.GestureFamily
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION
@@ -213,6 +215,9 @@ class EpisodeVideoControllerTest {
                 brightnessController = NoOpLevelController,
                 playbackSpeedControllerState = remember {
                     PlaybackSpeedControllerState(NoOpPlaybackSpeedController, scope = scope)
+                },
+                videoAspectRatioControllerState = remember {
+                    VideoAspectRatioControllerState(NoOpVideoAspectRatio, scope)
                 },
                 leftBottomTips = {},
                 fullscreenSwitchButton = {

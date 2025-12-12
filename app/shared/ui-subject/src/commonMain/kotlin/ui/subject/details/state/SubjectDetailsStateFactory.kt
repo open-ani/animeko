@@ -47,6 +47,7 @@ import me.him188.ani.app.data.network.BangumiRelatedPeopleService
 import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
+import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
 import me.him188.ani.app.ui.comment.CommentMapperContext.parseToUIComment
@@ -92,6 +93,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
     private val bangumiRelatedPeopleService: BangumiRelatedPeopleService by inject()
     private val subjectRelationsRepository: SubjectRelationsRepository by inject()
     private val bangumiCommentRepository: BangumiCommentRepository by inject()
+    private val setSubjectCollectionTypeOrDeleteUseCase: SetSubjectCollectionTypeOrDeleteUseCase by inject()
 
     override fun create(
         subjectInfoFlow: Flow<SubjectInfo>
@@ -195,10 +197,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                 collections.any { !it.collectionType.isDoneOrDropped() }
             },
             onSetSelfCollectionType = {
-                subjectCollectionRepository.setSubjectCollectionTypeOrDelete(
-                    subjectId,
-                    it,
-                )
+                setSubjectCollectionTypeOrDeleteUseCase(subjectId, it)
             },
             onSetAllEpisodesWatched = {
                 episodeCollectionRepository.setAllEpisodesWatched(subjectId)
@@ -225,6 +224,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
                 )
             },
             this,
+            subjectId,
         )
 
 

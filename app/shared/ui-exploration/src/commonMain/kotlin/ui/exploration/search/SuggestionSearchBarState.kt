@@ -50,6 +50,9 @@ import me.him188.ani.app.ui.foundation.interaction.onEnterKeyEvent
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.search.SearchState
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SearchStart
+import me.him188.ani.utils.analytics.recordEvent
 
 @Stable
 class SuggestionSearchBarState<T : Any>(
@@ -60,6 +63,7 @@ class SuggestionSearchBarState<T : Any>(
     queryFlow: Flow<String>,
     private val setQueryValue: (String) -> Unit,
     private val onStartSearch: (query: String) -> Unit = {},
+    private val tagsProvider: () -> List<String> = { emptyList() },
     backgroundScope: CoroutineScope,
 ) {
     // 不能直接采用 presentation.query, 因为编辑框内容需要在 UI 线程即使处理用户输入, 不能切换到后台运行, 否则 PC 上IME 输入可能有问题
@@ -101,9 +105,18 @@ class SuggestionSearchBarState<T : Any>(
     }
 
     fun startSearch() {
+        val query = presentationFlow.value.query
+        val tags = tagsProvider()
+        Analytics.recordEvent(SearchStart) {
+            put("query", query)
+            put("query_length", query.length)
+            put("has_query", query.isNotEmpty())
+            put("tags", tags.joinToString(","))
+            put("tag_count", tags.size)
+        }
         searchState.startSearch()
         expanded = false
-        onStartSearch(presentationFlow.value.query)
+        onStartSearch(query)
     }
 
     private val removeHistoryTasker = MonoTasker(backgroundScope)

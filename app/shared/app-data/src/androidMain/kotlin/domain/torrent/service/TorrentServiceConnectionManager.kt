@@ -19,7 +19,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.Message
 import androidx.core.content.ContextCompat
-import androidx.datastore.core.DataStore
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -39,11 +38,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
+import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoDao
+import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoEntity
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
-import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.UnsafeTorrentEngineAccessApi
-import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.update
@@ -77,7 +75,7 @@ import kotlin.coroutines.CoroutineContext
  */
 class TorrentServiceConnectionManager(
     context: Context,
-    private val dataStoreFlow: StateFlow<DataStore<List<MediaCacheSave>>?>,
+    private val torrentCacheInfoDao: StateFlow<TorrentCacheInfoDao?>,
     private val mediaCacheBaseSaveDirFlow: StateFlow<File?>,
     startServiceImpl: () -> ComponentName?,
     private val stopServiceImpl: () -> Unit,
@@ -168,8 +166,8 @@ class TorrentServiceConnectionManager(
     private fun startObserveServiceLifecycle() {
         scope.launch {
             combine(
-                dataStoreFlow.flatMapLatest {
-                    it?.data?.map(::allTorrentMediaCacheCompleted) ?: emptyFlow()
+                torrentCacheInfoDao.flatMapLatest {
+                    it?.getAll()?.map(::allTorrentMediaCacheCompleted) ?: emptyFlow()
                 },
                 requestQueue.map { it.isNotEmpty() },
                 isServiceConnected,
@@ -207,20 +205,13 @@ class TorrentServiceConnectionManager(
     /**
      * Check if all torrent media cache is completed. If not, the service will be kept alive.
      */
-    private fun allTorrentMediaCacheCompleted(list: List<MediaCacheSave>): Boolean {
+    private fun allTorrentMediaCacheCompleted(list: List<TorrentCacheInfoEntity>): Boolean {
         val baseSaveDir = mediaCacheBaseSaveDirFlow.value ?: return true
-        list.forEach { save ->
-            if (save.engine != MediaCacheEngineKey.Anitorrent) {
-                return@forEach
-            }
+        list.forEach { entity ->
+            if (!entity.completed) return false
+            val pathInTorrent = entity.pathInTorrent.takeIf { it.isNotEmpty() } ?: return false
 
-            val extra = save.metadata.extra
-
-            if (extra[TorrentMediaCacheEngine.EXTRA_TORRENT_COMPLETED] != "true") return false
-            val cacheDir = extra[TorrentMediaCacheEngine.EXTRA_TORRENT_CACHE_DIR] ?: return false
-            val cacheRelativeFilePath = extra[TorrentMediaCacheEngine.EXTRA_TORRENT_CACHE_FILE] ?: return false
-
-            val file = File(baseSaveDir, cacheDir).resolve(cacheRelativeFilePath)
+            val file = File(baseSaveDir, entity.relativeDir).resolve(pathInTorrent)
             if (!file.exists() || file.isDirectory()) {
                 return false
             }

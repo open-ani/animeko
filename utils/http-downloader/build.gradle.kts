@@ -34,6 +34,10 @@ kotlin {
         implementation(projects.utils.logging)
         implementation(projects.utils.ktorClient)
         api(libs.datastore.core)
+        implementation(libs.androidx.room.common)
+        implementation(projects.utils.serialization)
+        implementation(libs.kotlinx.serialization.protobuf)
+        implementation(libs.kotlinx.collections.immutable)
     }
     sourceSets.desktopMain.dependencies {
 //        runtimeOnly(libs.slf4j.simple)

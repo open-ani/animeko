@@ -11,7 +11,6 @@ package me.him188.ani.app.data.repository
 
 import me.him188.ani.app.data.network.AniApiProvider
 import me.him188.ani.app.data.persistent.PlatformDataStoreManager
-import me.him188.ani.app.data.repository.danmaku.DanmakuRepository
 import me.him188.ani.app.data.repository.subject.BangumiSyncCommandRepository
 import me.him188.ani.app.data.repository.user.UserRepository
 import org.koin.core.KoinApplication
@@ -23,7 +22,6 @@ val Scope.aniApiProvider get() = get<AniApiProvider>()
 @Suppress("UnusedReceiverParameter")
 fun KoinApplication.repositoryModules(dataStores: PlatformDataStoreManager) = module {
     // Note, only new repositories are added here. old ones are still in [otherModules]. 
-    single<DanmakuRepository> { DanmakuRepository(get()) }
     single<UserRepository> {
         UserRepository(
             dataStores.selfInfoStore,

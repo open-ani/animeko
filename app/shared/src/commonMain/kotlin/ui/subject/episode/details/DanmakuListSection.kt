@@ -12,6 +12,8 @@ package me.him188.ani.app.ui.subject.episode.details
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,14 +26,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.FeaturedPlayList
+import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,6 +43,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -52,10 +57,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import me.him188.ani.app.ui.foundation.Res
+import me.him188.ani.app.ui.foundation.a
+import me.him188.ani.app.ui.subject.episode.details.components.renderDanmakuServiceId
 import me.him188.ani.danmaku.api.DanmakuServiceId
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * 弹幕列表区域组件，提供弹幕源选择和弹幕列表显示功能。
@@ -121,7 +134,7 @@ fun DanmakuListSection(
                             ) {
                                 items(
                                     items = state.danmakuItems,
-                                    key = { it.randomId },
+                                    key = { it.randomId.toString() },
                                 ) { danmaku ->
                                     DanmakuListItemView(danmaku)
                                 }
@@ -187,7 +200,7 @@ private fun DanmakuSourceChips(
 }
 
 /**
- * 单个弹幕源选择 Chip 组件，显示弹幕源名称和状态。
+ * 单个弹幕源选择 Chip 组件，显示弹幕源图标和弹幕数量。
  */
 @Composable
 private fun DanmakuSourceChip(
@@ -205,18 +218,26 @@ private fun DanmakuSourceChip(
             label = {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(if (isAnimeko) 4.dp else (-4).dp),
                 ) {
-                    Text(renderDanmakuServiceId(sourceItem.serviceId))
+                    Text(if (sourceItem.count == 0) renderDanmakuServiceId(sourceItem.serviceId) else "${sourceItem.count}")
 
                     if (!isAnimeko) {
                         Icon(
-                            Icons.Rounded.MoreVert,
+                            Icons.Outlined.ArrowDropDown,
                             contentDescription = "更多选项",
-                            modifier = Modifier.clickable { showDropdown = true },
+                            modifier = Modifier
+                                .offset(x = 8.dp)
+                                .clickable { showDropdown = true },
                         )
                     }
                 }
+            },
+            leadingIcon = {
+                DanmakuServiceIcon(
+                    serviceId = sourceItem.serviceId,
+                    size = 24,
+                )
             },
             colors = if (sourceItem.enabled && sourceItem.isFuzzyMatch) {
                 FilterChipDefaults.filterChipColors(
@@ -233,6 +254,30 @@ private fun DanmakuSourceChip(
                 expanded = showDropdown,
                 onDismissRequest = { showDropdown = false },
             ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        DanmakuServiceIcon(
+                            serviceId = sourceItem.serviceId,
+                            size = 24,
+                        )
+                        Text(
+                            text = renderDanmakuServiceId(sourceItem.serviceId),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+
+                HorizontalDivider()
+
+                // 操作菜单项
                 DropdownMenuItem(
                     text = { Text(if (sourceItem.enabled) "禁用" else "启用") },
                     onClick = {
@@ -252,14 +297,59 @@ private fun DanmakuSourceChip(
     }
 }
 
-private fun renderDanmakuServiceId(serviceId: DanmakuServiceId): String = when (serviceId) {
-    DanmakuServiceId.Animeko -> "Animeko"
-    DanmakuServiceId.AcFun -> "AcFun"
-    DanmakuServiceId.Baha -> "Baha"
-    DanmakuServiceId.Bilibili -> "哔哩哔哩"
-    DanmakuServiceId.Dandanplay -> "弹弹play"
-    DanmakuServiceId.Tucao -> "Tucao"
-    else -> serviceId.value
+@Composable
+private fun DanmakuServiceIcon(
+    serviceId: DanmakuServiceId,
+    size: Int,
+    modifier: Modifier = Modifier,
+) {
+    when (serviceId) {
+        DanmakuServiceId.Animeko -> {
+            Image(
+                painter = painterResource(Res.drawable.a),
+                contentDescription = renderDanmakuServiceId(serviceId),
+                modifier = modifier
+                    .size(size.dp)
+                    .clip(CircleShape),
+            )
+        }
+
+        else -> {
+            val text = getDanmakuServiceIconInfo(serviceId)
+            Box(
+                modifier = modifier
+                    .size(size.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = CircleShape,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = text,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = (size * 0.6).sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 弹幕源的显示文字
+ */
+@Composable
+private fun getDanmakuServiceIconInfo(serviceId: DanmakuServiceId): String {
+    return when (serviceId) {
+        DanmakuServiceId.Bilibili -> "哔"
+        DanmakuServiceId.Dandanplay -> "弹"
+        DanmakuServiceId.AcFun -> "Ac"
+        DanmakuServiceId.Baha -> "巴"
+        DanmakuServiceId.Tucao -> "TC"
+        else -> "?"
+    }
 }
 
 /**
@@ -285,13 +375,27 @@ private fun DanmakuListItemView(danmaku: DanmakuListItem) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (danmaku.isSelf) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
             )
-            Text(
-                text = "${(danmaku.timeMillis / 1000 / 60).toInt()}:${
-                    (danmaku.timeMillis / 1000 % 60).toInt().toString().padStart(2, '0')
-                } · ${renderDanmakuServiceId(danmaku.serviceId)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = if (danmaku.isSelf) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = "${(danmaku.timeMillis / 1000 / 60).toInt()}:${
+                        (danmaku.timeMillis / 1000 % 60).toInt().toString().padStart(2, '0')
+                    }",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (danmaku.isSelf) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "·",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (danmaku.isSelf) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                DanmakuServiceIcon(
+                    serviceId = danmaku.serviceId,
+                    size = 24,
+                )
+            }
         }
     }
 }

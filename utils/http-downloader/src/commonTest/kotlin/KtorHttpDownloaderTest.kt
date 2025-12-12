@@ -19,8 +19,10 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.core.readAvailable
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -237,10 +239,10 @@ class KtorHttpDownloaderTest {
         downloader = KtorHttpDownloader(
             client = mockClient.asScopedHttpClient(),
             fileSystem = fileSystem,
-            ioDispatcher = testDispatcher,
-            computeDispatcher = testDispatcher,
             clock = mockClock,
             baseSaveDir = Path(tempDir),
+            parentScope = CoroutineScope(SupervisorJob() + testDispatcher),
+            ioDispatcher = testDispatcher,
         )
     }
 

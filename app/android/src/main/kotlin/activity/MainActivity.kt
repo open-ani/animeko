@@ -17,17 +17,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
 import androidx.core.os.LocaleListCompat
 import androidx.core.view.WindowCompat
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.repository.user.SettingsRepository
-import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.platform.rememberPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
@@ -36,7 +32,6 @@ import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
-import me.him188.ani.app.ui.media.cache.storage.MediaCacheMigrationDialog
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import org.koin.android.ext.android.inject
@@ -45,8 +40,6 @@ class MainActivity : AniComponentActivity() {
     private val logger = logger<MainActivity>()
     private val aniNavigator = AniNavigator()
 
-    private val mediaCacheMigrator: MediaCacheMigrator by inject()
-    private val migrationStatus: StateFlow<MediaCacheMigrator.Status?> by lazy { mediaCacheMigrator.status }
     private val settingsRepository: SettingsRepository by inject()
 
     override fun onNewIntent(intent: Intent) {
@@ -111,9 +104,6 @@ class MainActivity : AniComponentActivity() {
                 ) {
                     AniAppContent(aniNavigator)
                 }
-
-                val migrationStatus by migrationStatus.collectAsStateWithLifecycle()
-                migrationStatus?.let { MediaCacheMigrationDialog(status = it) }
             }
         }
     }

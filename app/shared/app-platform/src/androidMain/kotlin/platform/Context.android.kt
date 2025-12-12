@@ -31,7 +31,7 @@ class AndroidContextFiles(context: android.content.Context) : ContextFiles {
 
     val fallbackInternalBaseMediaCacheDir = dataDir.resolve("media-downloads")
 
-    override val defaultBaseMediaCacheDir: SystemPath =
+    override val defaultMediaCacheBaseDir: SystemPath =
         context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)?.toKtPath()?.inSystem
             ?: fallbackInternalBaseMediaCacheDir
 }

@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
@@ -37,8 +36,6 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -142,6 +139,7 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.asLevelController
@@ -159,6 +157,7 @@ import me.him188.ani.utils.platform.isMobile
 import org.openani.mediamp.features.AudioLevelController
 import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.Screenshots
+import org.openani.mediamp.features.VideoAspectRatio
 import org.openani.mediamp.features.toggleMute
 
 
@@ -442,7 +441,7 @@ private fun EpisodeScreenTabletVeryWide(
                         width = (maxWidth * 0.25f)
                             .coerceIn(340.dp, 460.dp),
                     )
-                    .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Right + WindowInsetsSides.Bottom))
+                    .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Right))
                     .background(MaterialTheme.colorScheme.background), // scrollable background
             ) {
 
@@ -454,14 +453,21 @@ private fun EpisodeScreenTabletVeryWide(
                 }
                 // 如果当前不是 dark theme 并且 是安卓平台 并且 没有设置播放页始终使用暗色主题，则加一个渐变色避免看不清状态栏
                 // ios 宽屏模式下会自动隐藏状态栏, 无需处理
-                val needShadeBackground = !isEpPageDarkTheme && LocalPlatform.current.isAndroid() 
+                val needShadeBackground = !isEpPageDarkTheme && LocalPlatform.current.isAndroid()
                 // 填充 insets 背景颜色
                 Spacer(
                     Modifier
                         .fillMaxWidth()
                         .background(MaterialTheme.colorScheme.surfaceContainerLow)
                         .ifThen(needShadeBackground) {
-                            background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.scrim, Color.Transparent)))
+                            background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        MaterialTheme.colorScheme.scrim,
+                                        Color.Transparent,
+                                    ),
+                                ),
+                            )
                         }
                         .windowInsetsPadding(
                             // Consider #1767
@@ -481,7 +487,7 @@ private fun EpisodeScreenTabletVeryWide(
                     userScrollEnabled = LocalPlatform.current.isMobile(),
                 ) { index ->
                     when (index) {
-                        0 -> Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                        0 -> Box(Modifier.fillMaxSize()) {
                             val navigator = LocalNavigator.current
                             val pageState by vm.pageState.collectAsStateWithLifecycle()
                             val toaster = LocalToaster.current
@@ -499,6 +505,7 @@ private fun EpisodeScreenTabletVeryWide(
                                     page.mediaSelectorState,
                                     { page.mediaSourceResultListPresentation },
                                     page.selfInfo,
+                                    modifier = Modifier.fillMaxSize(),
                                     onSwitchEpisode = { episodeId ->
                                         if (!vm.episodeSelectorState.selectEpisodeId(episodeId)) {
                                             navigator.navigateEpisodeDetails(vm.subjectId, episodeId)
@@ -508,6 +515,9 @@ private fun EpisodeScreenTabletVeryWide(
                                     onRestartSource = { vm.restartSource(it) },
                                     onSetDanmakuSourceEnabled = { providerId, enabled ->
                                         vm.setDanmakuSourceEnabled(providerId, enabled)
+                                    },
+                                    onAdjustDanmakuSourceShift = { serviceId, shiftMillis ->
+                                        vm.setDanmakuSourceShiftMillis(serviceId, shiftMillis)
                                     },
                                     onClickLogin = { navigator.navigateBangumiAuthorize() },
                                     onClickTag = { navigator.navigateSubjectSearch(it.name) },
@@ -522,7 +532,7 @@ private fun EpisodeScreenTabletVeryWide(
                                         }
                                     },
                                     shareData = page.shareData,
-                                    page.loadError,
+                                    loadError = page.loadError,
                                     onRetryLoad = {
                                         page.loadError?.let { vm.retryLoad(it) }
                                     },
@@ -609,6 +619,10 @@ private fun EpisodeScreenContentPhone(
 ) {
     var showDanmakuEditor by rememberSaveable { mutableStateOf(false) }
     val toaster = LocalToaster.current
+    val videoWindowInsets = windowInsets
+        .union(WindowInsets.desktopTitleBar)
+        .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+    val columnInsets = videoWindowInsets.only(WindowInsetsSides.Horizontal)
 
     EpisodeScreenContentPhoneScaffold(
         videoOnly = vm.isFullscreen,
@@ -618,7 +632,7 @@ private fun EpisodeScreenContentPhone(
                 vm, page,
                 danmakuHostState,
                 danmakuEditorState, vm.playerControllerState, vm.isFullscreen,
-                windowInsets = ScaffoldDefaults.contentWindowInsets.union(WindowInsets.desktopTitleBar),
+                windowInsets = videoWindowInsets,
             )
         },
         episodeDetails = {
@@ -649,6 +663,9 @@ private fun EpisodeScreenContentPhone(
                     onRestartSource = { vm.restartSource(it) },
                     onSetDanmakuSourceEnabled = { providerId, enabled ->
                         vm.setDanmakuSourceEnabled(providerId, enabled)
+                    },
+                    onAdjustDanmakuSourceShift = { serviceId, shiftMillis ->
+                        vm.setDanmakuSourceShiftMillis(serviceId, shiftMillis)
                     },
                     onClickLogin = { navigator.navigateBangumiAuthorize() },
                     onClickTag = { navigator.navigateSubjectSearch(it.name) },
@@ -683,7 +700,13 @@ private fun EpisodeScreenContentPhone(
                 gridState = vm.commentLazyGirdState,
             )
         },
-        modifier.then(if (vm.isFullscreen) Modifier.fillMaxSize() else Modifier.navigationBarsPadding()),
+        modifier.then(
+            if (vm.isFullscreen) {
+                Modifier.fillMaxSize()
+            } else {
+                Modifier.windowInsetsPadding(columnInsets)
+            },
+        ),
         tabRowContent = {
             DummyDanmakuEditor(
                 onClick = {
@@ -794,13 +817,15 @@ fun EpisodeScreenContentPhoneScaffold(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.weaken())
 
             HorizontalPager(state = pagerState, Modifier.fillMaxSize()) { index ->
-                when (index) {
-                    0 -> Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                        episodeDetails()
-                    }
+                Box(Modifier.fillMaxSize()) {
+                    when (index) {
+                        0 -> {
+                            episodeDetails()
+                        }
 
-                    1 -> Box(Modifier.fillMaxSize()) {
-                        commentColumn()
+                        1 -> {
+                            commentColumn()
+                        }
                     }
                 }
             }
@@ -946,6 +971,9 @@ private fun EpisodeVideo(
         }.value,
         playbackSpeedControllerState = remember {
             vm.player.features[PlaybackSpeed]?.let { PlaybackSpeedControllerState(it, scope = scope) }
+        },
+        videoAspectRatioControllerState = remember {
+            vm.player.features[VideoAspectRatio]?.let { VideoAspectRatioControllerState(it, scope = scope) }
         },
         leftBottomTips = {
             AniAnimatedVisibility(

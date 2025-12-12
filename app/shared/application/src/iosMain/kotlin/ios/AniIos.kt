@@ -29,7 +29,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.SystemFileSystem
-import me.him188.ani.app.data.persistent.dataStores
+import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
@@ -38,7 +38,6 @@ import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
-import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -54,7 +53,6 @@ import me.him188.ani.app.navigation.IosBrowserNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.platform.AniHostingUIViewController
 import me.him188.ani.app.platform.AppStartupTasks
-import me.him188.ani.app.platform.AppTerminator
 import me.him188.ani.app.platform.GrantedPermissionManager
 import me.him188.ani.app.platform.IosContext
 import me.him188.ani.app.platform.IosContextFiles
@@ -266,10 +264,11 @@ fun getIosModules(
     single<HttpMediaCacheEngine> {
         @Suppress("DEPRECATION")
         HttpMediaCacheEngine(
+            dao = get<AniDatabase>().httpCacheDownloadStateDao(),
             mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
             downloader = get<HttpDownloader>(),
-            saveDir = context.files.defaultBaseMediaCacheDir
-                .resolve(HttpMediaCacheEngine.LEGACY_MEDIA_CACHE_DIR).path,
+            saveDir = context.files.defaultMediaCacheBaseDir
+                .resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR).path,
             mediaResolver = get<MediaResolver>(),
         )
     }
@@ -279,7 +278,7 @@ fun getIosModules(
     single<MediaSaveDirProvider> {
         object : MediaSaveDirProvider {
             override val saveDir: String
-                get() = context.files.defaultBaseMediaCacheDir.absolutePath
+                get() = context.files.defaultMediaCacheBaseDir.absolutePath
         }
     }
 
@@ -294,26 +293,4 @@ fun getIosModules(
         )
     }
     single<UpdateInstaller> { IosUpdateInstaller }
-
-    single<MediaCacheMigrator> {
-        MediaCacheMigrator(
-            context = context,
-            metadataStore = context.dataStores.mediaCacheMetadataStore,
-            m3u8DownloaderStore = context.dataStores.m3u8DownloaderStore,
-            mediaCacheManager = get(),
-            settingsRepo = get(),
-            appTerminator = object : AppTerminator {
-                override fun exitApp(context: me.him188.ani.app.platform.ContextMP, status: Int): Nothing {
-                    throw UnsupportedOperationException("iOS does not support app termination")
-                }
-            },
-            migrationChecker = object : MediaCacheMigrator.MigrationChecker {
-                override suspend fun requireMigrateTorrentCache(): Boolean = false
-                override suspend fun requireMigrateWebM3uCache(): Boolean = false
-            },
-            mediaCacheBaseDirProvider = get(),
-            getNewBaseSaveDir = { null },
-            getLegacyTorrentSaveDir = { context.files.dataDir },
-        )
-    }
 }

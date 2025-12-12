@@ -16,6 +16,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Refresh
@@ -56,6 +57,7 @@ import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscription
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
+import me.him188.ani.app.ui.foundation.getClipEntryText
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
@@ -75,6 +77,7 @@ import me.him188.ani.app.ui.lang.settings_media_source_subscription_description
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_export_all
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_network_error
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_not_updated
+import me.him188.ani.app.ui.lang.settings_media_source_subscription_paste
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_refresh_all
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_service_unavailable
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_unauthorized
@@ -82,6 +85,7 @@ import me.him188.ani.app.ui.lang.settings_media_source_subscription_unknown_erro
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_update_failed
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_update_success
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_url
+import me.him188.ani.app.ui.lang.settings_mediasource_clipboard_empty
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.utils.platform.Uuid
 import org.jetbrains.compose.resources.getString
@@ -191,6 +195,9 @@ internal fun SettingsScope.MediaSourceSubscriptionGroup(
 
         if (showAddDialog) {
             val textFieldFocus = remember { FocusRequester() }
+            val clipboard = LocalClipboard.current
+            val uiScope = rememberCoroutineScope()
+            val toaster = LocalToaster.current
             val confirmAdd = {
                 showAddDialog = false
                 state.addNew(state.editingUrl)
@@ -231,6 +238,26 @@ internal fun SettingsScope.MediaSourceSubscriptionGroup(
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { confirmAdd() }),
                         label = { Text(stringResource(Lang.settings_media_source_subscription_url)) },
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    uiScope.launch {
+                                        val clipText = clipboard.getClipEntryText()
+                                        if (clipText.isNullOrBlank()) {
+                                            toaster.toast(getString(Lang.settings_mediasource_clipboard_empty))
+                                            return@launch
+                                        }
+                                        state.setEditingUrl(clipText)
+                                    }
+                                },
+                                enabled = !isAddInProgressState.value,
+                            ) {
+                                Icon(
+                                    Icons.Rounded.ContentPaste,
+                                    contentDescription = stringResource(Lang.settings_media_source_subscription_paste),
+                                )
+                            }
+                        },
                     )
                     SideEffect {
                         textFieldFocus.requestFocus()

@@ -31,6 +31,9 @@ import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.app.ui.main.SearchViewModel
 import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
+import me.him188.ani.utils.analytics.recordEvent
 
 @Composable
 fun SearchScreen(
@@ -93,8 +96,13 @@ fun SearchScreen(
             )
         },
         modifier.fillMaxSize(),
-        contentWindowInsets = windowInsets,
+        contentWindowInsets = windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
         onSelect = { index, item ->
+            Analytics.recordEvent(SubjectEnter) {
+                put("source", "search")
+                put("subject_id", item.subjectId)
+                put("position", index)
+            }
             vm.searchPageState.selectedItemIndex = index
             vm.viewSubjectDetails(item)
         },

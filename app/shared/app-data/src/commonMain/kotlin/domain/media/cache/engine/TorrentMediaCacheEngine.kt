@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.domain.media.cache.engine
 
-import androidx.datastore.core.DataStore
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
@@ -36,14 +35,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.io.IOException
 import kotlinx.io.files.FileNotFoundException
 import kotlinx.io.files.Path
+import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoDao
+import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoEntity
 import me.him188.ani.app.domain.media.cache.LocalFileMediaCache
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
-import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine.Companion.EXTRA_TORRENT_CACHE_DIR
-import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine.Companion.EXTRA_TORRENT_CACHE_FILE_SIZE
-import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine.Companion.EXTRA_TORRENT_CACHE_UPLOADED_SIZE
-import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine.Companion.EXTRA_TORRENT_DATA
-import me.him188.ani.app.domain.media.cache.storage.MediaCacheSave
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
@@ -58,7 +54,6 @@ import me.him188.ani.app.torrent.api.files.isFinished
 import me.him188.ani.datasources.api.CachedMedia
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
-import me.him188.ani.datasources.api.MetadataKey
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
@@ -72,7 +67,6 @@ import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.isDirectory
 import me.him188.ani.utils.io.resolve
-import me.him188.ani.utils.io.resolveSibling
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
@@ -98,27 +92,12 @@ class TorrentMediaCacheEngine(
     override val engineKey: MediaCacheEngineKey,
     val torrentEngine: TorrentEngine,
     private val engineAccess: TorrentEngineAccess,
-    private val mediaCacheMetadataStore: DataStore<List<MediaCacheSave>>,
-    private val shareRatioLimitFlow: Flow<Float>,
+    private val dao: TorrentCacheInfoDao,
     val flowDispatcher: CoroutineContext = Dispatchers.Default,
     private val baseSaveDirProvider: MediaSaveDirProvider,
     private val onDownloadStarted: suspend (session: TorrentSession) -> Unit = {},
 ) : MediaCacheEngine, AutoCloseable {
     companion object {
-        private val EXTRA_TORRENT_DATA = MetadataKey("torrentData")
-
-        /**
-         * 种子的缓存目录, 相对于 [MediaSaveDirProvider.saveDir] 的相对路径.
-         *
-         * 注意, 一个 MediaCache 可能只对应该种子资源的其中一个文件
-         */
-        val EXTRA_TORRENT_CACHE_DIR = MetadataKey("torrentCacheDir")
-        val EXTRA_TORRENT_COMPLETED = MetadataKey("torrentCompleted") // torrent 是否已经完成, 意味着已经下载完并达到分享率
-        val EXTRA_TORRENT_CACHE_FILE =
-            MetadataKey("torrentCacheFile") // MediaCache 所对应的视频文件相对路径. 该文件一定是 [EXTRA_TORRENT_CACHE_DIR] 目录中的文件 (的其中一个)
-        val EXTRA_TORRENT_CACHE_FILE_SIZE = MetadataKey("torrentFileSize") // 种子缓存目录中的文件大小
-        val EXTRA_TORRENT_CACHE_UPLOADED_SIZE = MetadataKey("torrentFileUploadedSize") // 上传过的流量大小
-
         private val logger = logger<TorrentMediaCacheEngine>()
         private val unspecifiedFileStatsFlow = flowOf(MediaCache.FileStats.Unspecified)
         private val unspecifiedSessionStatsFlow = flowOf(MediaCache.SessionStats.Unspecified)
@@ -147,11 +126,6 @@ class TorrentMediaCacheEngine(
 
     inner class TorrentMediaCache(
         override val origin: Media,
-        /**
-         * Required:
-         * @see EXTRA_TORRENT_CACHE_DIR
-         * @see EXTRA_TORRENT_DATA
-         */
         override val metadata: MediaCacheMetadata, // 注意, 我们不能写 check 检查这些属性, 因为可能会有旧版本的数据
         val fileHandle: FileHandle
     ) : MediaCache, SynchronizedObject() {
@@ -281,12 +255,13 @@ class TorrentMediaCacheEngine(
                     logger.info { "Torrent cache does not exist, ignoring: $file" }
                 }
             }
+            dao.deleteByMediaId(origin.mediaId)
         }
 
         /**
          * 订阅当前 TorrentMediaCache 的统计信息以更新它的 metadata.
          */
-        suspend fun subscribeStats(onUpdateMetadata: suspend (Map<MetadataKey, String>) -> Unit) {
+        suspend fun subscribeStats(shareRatioLimitFlow: Flow<Float>) {
             isServiceConnected.collectLatest { serviceStarted ->
                 if (!serviceStarted) return@collectLatest
 
@@ -305,19 +280,20 @@ class TorrentMediaCacheEngine(
                     val currentShareRatio = sessionStats.uploadedBytes /
                             entryFileStats.downloadedBytes.coerceAtLeast(1).toFloat()
 
-                    val finished = metadata.extra[EXTRA_TORRENT_COMPLETED] == "true" || // metadata 已记录 true 表示已完成
+                    val entity = dao.get(origin.mediaId)
+                        ?: error("No entity with id ${origin.mediaId} exists while subscribing cache.")
+
+                    val finished = entity.completed || // metadata 已记录 true 表示已完成
                             (entryFileStats.isDownloadFinished && currentShareRatio >= currentShareRatioLimit) // 统计判断达到条件也是完成
 
                     // 无论如何都先更新一次数据
-                    onUpdateMetadata(
-                        buildMap {
-                            if (finished) {
-                                put(EXTRA_TORRENT_COMPLETED, "true")
-                            }
-                            put(EXTRA_TORRENT_CACHE_FILE, fileEntry.pathInTorrent)
-                            put(EXTRA_TORRENT_CACHE_FILE_SIZE, entryFileStats.downloadedBytes.toString())
-                            put(EXTRA_TORRENT_CACHE_UPLOADED_SIZE, sessionStats.uploadedBytes.toString())
-                        },
+                    dao.upsert(
+                        entity.copy(
+                            completed = finished,
+                            pathInTorrent = fileEntry.pathInTorrent,
+                            downloadSize = entryFileStats.downloadedBytes,
+                            uploadSize = sessionStats.uploadedBytes,
+                        ),
                     )
 
                     // 如果种子任务已经完成了就不启动了
@@ -365,11 +341,11 @@ class TorrentMediaCacheEngine(
                                 // 如果距离上次上传活动大于 10 分钟, 直接更新 metadata
                             }
 
-                            onUpdateMetadata(
-                                mapOf(
-                                    EXTRA_TORRENT_COMPLETED to "true",
-                                    EXTRA_TORRENT_CACHE_FILE_SIZE to fileStats.downloadedBytes.toString(),
-                                    EXTRA_TORRENT_CACHE_UPLOADED_SIZE to sessionStats.uploadedBytes.toString(),
+                            dao.upsert(
+                                entity.copy(
+                                    completed = true,
+                                    downloadSize = fileStats.downloadedBytes,
+                                    uploadSize = sessionStats.uploadedBytes,
                                 ),
                             )
 
@@ -397,15 +373,13 @@ class TorrentMediaCacheEngine(
 
     override val stats: Flow<MediaStats> = engineAccess.isServiceConnected
         .flatMapLatest { useEngine ->
-            val finishedMediaStats = mediaCacheMetadataStore.data.map { saveList ->
+            val finishedMediaStats = dao.getAll().map { saveList ->
                 var totalFinishedDownloaded = 0L.bytes
                 var totalFinishedUploaded = 0L.bytes
 
-                saveList.forEach { save ->
-                    if (save.engine != engineKey) return@forEach
-
-                    val downloaded = save.metadata.torrentDownloaded
-                    val uploaded = save.metadata.torrentUploaded
+                saveList.filter { it.completed }.forEach { save ->
+                    val downloaded = save.downloadSize.bytes
+                    val uploaded = save.uploadSize.bytes
 
                     if (downloaded != FileSize.Unspecified) totalFinishedDownloaded += downloaded
                     if (uploaded != FileSize.Unspecified) totalFinishedUploaded += uploaded
@@ -449,9 +423,9 @@ class TorrentMediaCacheEngine(
         parentContext: CoroutineContext
     ): MediaCache? {
         if (!supports(origin)) throw UnsupportedOperationException("Media is not supported by this engine $this: ${origin.download}")
-        val data = metadata.extra[EXTRA_TORRENT_DATA]?.hexToByteArray() ?: return null
+        val data = dao.get(origin.mediaId)?.torrentData ?: return null
 
-        val localFile = metadata.resolveCompletedFromDataStore()
+        val localFile = origin.resolveCompletedFromDataStore()
         if (localFile != null) {
             return LocalFileMediaCache(origin, metadata, localFile) {
                 @OptIn(DelicateCoroutinesApi::class)
@@ -540,17 +514,19 @@ class TorrentMediaCacheEngine(
         metadata: MediaCacheMetadata,
         episodeMetadata: EpisodeMetadata,
         parentContext: CoroutineContext
-    ): MediaCache {
+    ): TorrentMediaCache {
         if (!supports(origin)) throw UnsupportedOperationException("Media is not supported by this engine $this: ${origin.download}")
         // 创建缓存需要保证 torrent engine 一直可用, 所以 getFileHandle 直接启动协程创建好缓存.
         @OptIn(EnsureTorrentEngineIsAccessible::class)
         engineAccess.withServiceRequest("TorrentMediaCacheEngine#$this-createCache:${origin.mediaId}") {
             val downloader = torrentEngine.getDownloader()
             val data = downloader.fetchTorrent(origin.download.uri)
-            val newMetadata = metadata.withExtra(
-                mapOf(
-                    EXTRA_TORRENT_DATA to data.data.toHexString(),
-                    EXTRA_TORRENT_CACHE_DIR to downloader.getSaveDirForTorrent(data).absolutePath.let { path ->
+
+            dao.upsert(
+                TorrentCacheInfoEntity(
+                    mediaId = origin.mediaId,
+                    torrentData = data.data,
+                    relativeDir = downloader.getSaveDirForTorrent(data).absolutePath.let { path ->
                         val stripped = path.substringAfter(baseSaveDirProvider.saveDir)
                         if (path == stripped) {
                             throw UnsupportedOperationException(
@@ -565,8 +541,8 @@ class TorrentMediaCacheEngine(
 
             return TorrentMediaCache(
                 origin = origin,
-                metadata = newMetadata,
-                fileHandle = getFileHandle(data, newMetadata, parentContext),
+                metadata = metadata,
+                fileHandle = getFileHandle(data, metadata, parentContext),
             )
         }
     }
@@ -577,21 +553,11 @@ class TorrentMediaCacheEngine(
         @OptIn(EnsureTorrentEngineIsAccessible::class)
         engineAccess.withServiceRequest("TorrentMediaCacheEngine#$this-deleteUnusedCaches") {
             val downloader = torrentEngine.getDownloader()
-            val allowedAbsolute = buildSet(capacity = all.size) {
-                for (mediaCache in all) {
-                    mediaCache.metadata.extra[EXTRA_TORRENT_CACHE_DIR] // 上次记录的位置
-                        ?.let {
-                            add(Path(baseSaveDirProvider.saveDir).resolve(it).inSystem.absolutePath)
-                        }
 
-                    mediaCache.metadata.extra[EXTRA_TORRENT_DATA]
-                        ?.runCatching { hexToByteArray() }
-                        ?.getOrNull()
-                        ?.let {
-                            // 如果新版本 ani 的缓存目录有变, 对于旧版本的 metadata, 存的缓存目录会是旧版本的, 
-                            // 就需要用 `getSaveDirForTorrent` 重新计算新目录
-                            add(downloader.getSaveDirForTorrent(EncodedTorrentInfo.createRaw(it)).absolutePath)
-                        }
+            val allowedAbsolute = buildSet {
+                dao.batchGet(all.map { it.origin.mediaId }).forEach {
+                    add(Path(baseSaveDirProvider.saveDir).resolve(it.relativeDir).inSystem.absolutePath)
+                    add(downloader.getSaveDirForTorrent(EncodedTorrentInfo.createRaw(it.torrentData)).absolutePath)
                 }
             }
 
@@ -611,12 +577,13 @@ class TorrentMediaCacheEngine(
         torrentEngine.close()
     }
 
-    private fun MediaCacheMetadata.resolveCompletedFromDataStore(): SystemPath? {
-        if (extra[EXTRA_TORRENT_COMPLETED] != "true") return null
-        val cacheDir = extra[EXTRA_TORRENT_CACHE_DIR] ?: return null
-        val cacheRelativeFilePath = extra[EXTRA_TORRENT_CACHE_FILE] ?: return null
+    private suspend fun Media.resolveCompletedFromDataStore(): SystemPath? {
+        val entity = dao.get(mediaId) ?: return null
 
-        val file = Path(baseSaveDirProvider.saveDir, cacheDir).resolve(cacheRelativeFilePath).inSystem
+        if (!entity.completed) return null
+        val pathInTorrent = entity.pathInTorrent.takeIf { it.isNotEmpty() } ?: return null
+
+        val file = Path(baseSaveDirProvider.saveDir, entity.relativeDir).resolve(pathInTorrent).inSystem
         if (!file.exists() || file.isDirectory()) {
             return null
         }
@@ -624,9 +591,3 @@ class TorrentMediaCacheEngine(
         return file
     }
 }
-
-private val MediaCacheMetadata.torrentDownloaded: FileSize
-    get() = extra[EXTRA_TORRENT_CACHE_FILE_SIZE]?.toLongOrNull()?.bytes ?: FileSize.Unspecified
-
-private val MediaCacheMetadata.torrentUploaded: FileSize
-    get() = extra[EXTRA_TORRENT_CACHE_UPLOADED_SIZE]?.toLongOrNull()?.bytes ?: FileSize.Unspecified

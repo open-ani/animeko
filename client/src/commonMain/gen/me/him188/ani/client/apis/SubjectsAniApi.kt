@@ -50,6 +50,7 @@ import me.him188.ani.client.models.AniRelatedPerson
 import me.him188.ani.client.models.AniRelatedSubject
 import me.him188.ani.client.models.AniSubjectCollection
 import me.him188.ani.client.models.AniSubjectCollectionCountStats
+import me.him188.ani.client.models.AniSubjectRecommendation
 import me.him188.ani.client.models.AniUpdateEpisodeCollectionRequest
 import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 
@@ -420,6 +421,50 @@ open class SubjectsAniApi : ApiClient {
         ).wrap()
     }
 
+
+    /**
+     * 获取番剧条目推荐列表
+     * 获取番剧条目推荐列表
+     * @param subjectId 
+     * @param limit  (optional)
+     * @return kotlin.collections.List<AniSubjectRecommendation>
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getSubjectRecommendations(subjectId: kotlin.Long, limit: kotlin.Int? = null): HttpResponse<kotlin.collections.List<AniSubjectRecommendation>> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/subjects/{subjectId}/recommendations".replace("{" + "subjectId" + "}", "$subjectId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap<GetSubjectRecommendationsResponse>().map { value }
+    }
+
+    @Serializable(GetSubjectRecommendationsResponse.Companion::class)
+    private class GetSubjectRecommendationsResponse(val value: List<AniSubjectRecommendation>) {
+        companion object : KSerializer<GetSubjectRecommendationsResponse> {
+            private val serializer: KSerializer<List<AniSubjectRecommendation>> = serializer<List<AniSubjectRecommendation>>()
+            override val descriptor = serializer.descriptor
+            override fun serialize(encoder: Encoder, value: GetSubjectRecommendationsResponse) = serializer.serialize(encoder, value.value)
+            override fun deserialize(decoder: Decoder) = GetSubjectRecommendationsResponse(serializer.deserialize(decoder))
+        }
+    }
 
     /**
      * 获取条目的制作人员 (staff)

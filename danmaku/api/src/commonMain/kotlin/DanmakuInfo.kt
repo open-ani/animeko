@@ -9,6 +9,7 @@
 
 package me.him188.ani.danmaku.api
 
+import kotlinx.serialization.Serializable
 import me.him188.ani.danmaku.api.DanmakuServiceId.Companion.Animeko
 import me.him188.ani.danmaku.api.DanmakuServiceId.Companion.Dandanplay
 import kotlin.jvm.JvmInline
@@ -25,6 +26,7 @@ data class DanmakuInfo(
     val location get() = content.location
 }
 
+@Serializable
 data class DanmakuContent(
     val playTimeMillis: Long, // in milliseconds
     val color: Int, // RGB

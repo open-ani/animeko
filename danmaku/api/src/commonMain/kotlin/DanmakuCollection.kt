@@ -14,10 +14,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.selects.select
+import me.him188.ani.utils.logging.debug
+import me.him188.ani.utils.logging.logger
 import kotlin.concurrent.Volatile
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
@@ -72,23 +77,21 @@ fun emptyDanmakuCollection(): DanmakuCollection {
 }
 
 class TimeBasedDanmakuSession private constructor(
-    /**
-     * 一个[DanmakuInfo] list. 必须根据 [DanmakuInfo.playTime] 排序且创建后不可更改，是一条动漫完整的弹幕列表.
-     */
-    private val list: List<DanmakuInfo>,
+    private val listFlow: Flow<List<DanmakuInfo>>,
     private val flowCoroutineContext: CoroutineContext = EmptyCoroutineContext,
 ) : DanmakuCollection {
-    override val totalCount: Flow<Int?> = flowOf(list.size)
+    override val totalCount: Flow<Int?> = listFlow.map { it.size }
 
     companion object {
+        private val logger = logger<TimeBasedDanmakuSession>()
+
         fun create(
-            sequence: Sequence<DanmakuInfo>,
+            listFlow: Flow<List<DanmakuInfo>>,
             coroutineContext: CoroutineContext = EmptyCoroutineContext,
         ): DanmakuCollection {
-            val list = sequence.mapTo(ArrayList()) {
-                DanmakuSanitizer.sanitize(it)
+            val list = listFlow.map { list ->
+                list.map { DanmakuSanitizer.sanitize(it) }.sortedBy { it.playTimeMillis }
             }
-            list.sortBy { it.playTimeMillis }
             return TimeBasedDanmakuSession(list, coroutineContext)
         }
 
@@ -126,12 +129,8 @@ class TimeBasedDanmakuSession private constructor(
         playbackSpeed: () -> Float,
         danmakuRegexFilterList: Flow<List<String>>,
     ): DanmakuSession {
-        if (list.isEmpty()) {
-            return emptyDanmakuSession() // fast path
-        }
-
         val state = DanmakuSessionFlowState(
-            list,
+            initialList = emptyList(),
             repopulateThreshold = { 3.seconds.times(playbackSpeed().toDouble()) },
             repopulateDistance = { 20.seconds },
             repopulateMaxCount = Int.MAX_VALUE,
@@ -139,11 +138,35 @@ class TimeBasedDanmakuSession private constructor(
         val algorithm = DanmakuSessionAlgorithm(state)
         return object : DanmakuSession {
             override val events: Flow<DanmakuEvent> = channelFlow {
-                launch {
-                    danmakuRegexFilterList.collect { filterList ->
-                        val filteredList = filterList(list, filterList)
-                        state.updateList(filteredList)
-                        state.requestRepopulate()
+
+                launch(start = CoroutineStart.UNDISPATCHED) {
+                    var currentList: List<DanmakuInfo> = emptyList()
+                    var currentFilterList: List<String> = emptyList()
+
+                    val filterChannel = danmakuRegexFilterList.produceIn(this)
+                    val danmakuChannel = listFlow.produceIn(this)
+
+                    while (true) {
+                        select {
+                            filterChannel.onReceive { filterList ->
+                                listFlow.firstOrNull()?.let { currentList = it }
+                                currentFilterList = filterList
+
+                                logger.debug("danmaku regex filter updated: danmaku size: ${currentList.size}")
+
+                                state.updateList(filterList(currentList, currentFilterList))
+                                state.requestRepopulate()
+                            }
+                            danmakuChannel.onReceive {
+                                currentList = it
+
+                                logger.debug("Danmaku list updated, size=${it.size}")
+
+                                state.updateList(filterList(currentList, currentFilterList))
+                                // reset indexing, 这里 reset 后下一次 tick 会从头索引一次.
+                                state.lastIndex = -1
+                            }
+                        }
                     }
                 }
 
@@ -213,8 +236,7 @@ class TimeBasedDanmakuSession private constructor(
 }
 
 internal class DanmakuSessionFlowState(
-    @Volatile
-    var list: List<DanmakuInfo>,
+    initialList: List<DanmakuInfo>,
     /**
      * 每当快进/快退超过这个阈值后, 重新装填整个屏幕弹幕
      */
@@ -229,6 +251,9 @@ internal class DanmakuSessionFlowState(
      */
     val repopulateMaxCount: Int = 40,
 ) {
+    @Volatile
+    var list: List<DanmakuInfo> = initialList
+
     var lastTime: Duration = Duration.INFINITE
 
     /**

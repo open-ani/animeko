@@ -32,6 +32,7 @@ fun PreviewDanmakuSourceCard() {
                 info = DanmakuMatchInfo.fuzzy(),
                 enabled = true,
                 showDetails = false,
+                shiftMillis = 0,
                 onClickSettings = {},
                 onClick = {},
             )
@@ -48,6 +49,7 @@ fun PreviewDanmakuSourceCardDetails() {
                 info = DanmakuMatchInfo.fuzzy(),
                 enabled = true,
                 showDetails = true,
+                shiftMillis = 1_500,
                 onClickSettings = {},
                 onClick = {},
             )
@@ -64,6 +66,7 @@ fun PreviewDanmakuSourceCardDisabled() {
                 info = DanmakuMatchInfo.fuzzy(),
                 enabled = false,
                 showDetails = false,
+                shiftMillis = -700,
                 onClickSettings = {},
                 onClick = {},
             )

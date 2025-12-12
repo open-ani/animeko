@@ -120,6 +120,15 @@ abstract class MediaCacheManager(
         return null
     }
 
+    suspend fun findAllCaches(filter: (MediaCache) -> Boolean): List<MediaCache> {
+        val result = mutableListOf<MediaCache>()
+        for (storage in enabledStorages.first()) {
+            val caches = storage.listFlow.first().filter(filter)
+            result.addAll(caches)
+        }
+        return result
+    }
+
     suspend fun closeAllCaches() = supervisorScope {
         for (storage in enabledStorages.first()) {
             for (mediaCache in storage.listFlow.first()) {

@@ -15,6 +15,8 @@ import io.ktor.client.statement.HttpStatement
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.readAvailable
+import kotlinx.collections.immutable.mutate
+import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -23,7 +25,6 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.BufferOverflow
@@ -45,6 +46,8 @@ import kotlinx.io.buffered
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import me.him188.ani.utils.coroutines.IO_
+import me.him188.ani.utils.coroutines.childScope
+import me.him188.ani.utils.coroutines.update
 import me.him188.ani.utils.httpdownloader.DownloadStatus.CANCELED
 import me.him188.ani.utils.httpdownloader.DownloadStatus.COMPLETED
 import me.him188.ani.utils.httpdownloader.DownloadStatus.DOWNLOADING
@@ -78,13 +81,13 @@ open class KtorHttpDownloader(
     protected val client: ScopedHttpClient,
     private val fileSystem: FileSystem,
     private val baseSaveDir: Path,
-    computeDispatcher: CoroutineContext = Dispatchers.Default,
-    private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
     val clock: Clock = Clock.System,
     private val m3u8Parser: M3u8Parser = DefaultM3u8Parser,
+    parentScope: CoroutineScope,
+    private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : HttpDownloader {
 
-    protected val scope = CoroutineScope(SupervisorJob() + computeDispatcher)
+    protected val scope = parentScope.childScope()
 
     private val _progressFlow = MutableSharedFlow<DownloadProgress>(
         replay = 1,
@@ -102,7 +105,7 @@ open class KtorHttpDownloader(
     /**
      * Our map of download states.
      */
-    protected val _downloadStatesFlow = MutableStateFlow(emptyMap<DownloadId, DownloadEntry>())
+    protected val _downloadStatesFlow = MutableStateFlow(persistentMapOf<DownloadId, DownloadEntry>())
 
     override val downloadStatesFlow: Flow<List<DownloadState>> =
         _downloadStatesFlow.map { it.values.map { entry -> entry.state } }
@@ -167,9 +170,12 @@ open class KtorHttpDownloader(
                 status = INITIALIZING,
                 relativeSegmentCacheDir = segmentCacheDir,
                 mediaType = mediaType,
+                requestHeaders = options.headers,
             )
-            currentMap[downloadId] = DownloadEntry(job = null, state = initialState)
-            _downloadStatesFlow.value = currentMap
+            _downloadStatesFlow.update {
+                put(downloadId, DownloadEntry(job = null, state = initialState))
+            }
+            onCreateDownloadState(initialState)
             logger.info { "Created initial state for $downloadId" }
         }
         emitProgress(downloadId)
@@ -226,11 +232,10 @@ open class KtorHttpDownloader(
 
         // 4) Store the job
         return stateMutex.withLock {
-            val currentMap = _downloadStatesFlow.value.toMutableMap()
-            val entry = currentMap[downloadId]
+            val entry = _downloadStatesFlow.value[downloadId]
                 ?: error("Job of new download request $downloadId is created, but the download state is not found.")
-            currentMap[downloadId] = entry.copy(job = job)
-            _downloadStatesFlow.value = currentMap
+
+            _downloadStatesFlow.update { put(downloadId, entry.copy(job = job)) }
 
             entry.state
         }
@@ -309,10 +314,8 @@ open class KtorHttpDownloader(
 
         // Store the new job
         stateMutex.withLock {
-            val currentMap = _downloadStatesFlow.value.toMutableMap()
-            val entry = currentMap[downloadId] ?: return@withLock
-            currentMap[downloadId] = entry.copy(job = job)
-            _downloadStatesFlow.value = currentMap
+            val entry = _downloadStatesFlow.value[downloadId] ?: return@withLock
+            _downloadStatesFlow.update { put(downloadId, entry.copy(job = job)) }
         }
         return true
     }
@@ -327,8 +330,7 @@ open class KtorHttpDownloader(
 
     override suspend fun pause(downloadId: DownloadId): Boolean {
         stateMutex.withLock {
-            val currentMap = _downloadStatesFlow.value.toMutableMap()
-            val entry = currentMap[downloadId] ?: return false
+            val entry = _downloadStatesFlow.value[downloadId] ?: return false
             val job = entry.job
             if (job != null) {
                 if (!job.isActive) {
@@ -340,11 +342,16 @@ open class KtorHttpDownloader(
             }
 
             val oldState = entry.state
-            currentMap[downloadId] = entry.copy(
-                job = null,
-                state = oldState.copy(status = PAUSED),
-            )
-            _downloadStatesFlow.value = currentMap
+            _downloadStatesFlow.update {
+                put(
+                    downloadId,
+                    entry.copy(
+                        job = null,
+                        state = oldState.copy(status = PAUSED),
+                    ),
+                )
+            }
+            onUpdateDownloadStatus(downloadId, PAUSED)
         }
         emitProgress(downloadId)
         return true
@@ -353,40 +360,50 @@ open class KtorHttpDownloader(
     override suspend fun pauseAll(): List<DownloadId> {
         val paused = mutableListOf<DownloadId>()
         stateMutex.withLock {
-            val currentMap = _downloadStatesFlow.value.toMutableMap()
-            currentMap.forEach { (id, entry) ->
-                val job = entry.job
-                if (job != null && job.isActive) {
-                    logger.info { "Pausing download $id" }
-                    job.cancel()
-                    currentMap[id] = entry.copy(
-                        job = null,
-                        state = entry.state.copy(status = PAUSED),
-                    )
-                    paused.add(id)
+            _downloadStatesFlow.update {
+                mutate { map ->
+                    val entriesToUpdate = map.entries.toList()
+                    entriesToUpdate.forEach { (id, entry) ->
+                        val job = entry.job
+                        if (job != null && job.isActive) {
+                            logger.info { "Pausing download $id" }
+                            job.cancel()
+                            map[id] = entry.copy(
+                                job = null,
+                                state = entry.state.copy(status = PAUSED),
+                            )
+                            paused.add(id)
+                        }
+                    }
                 }
             }
-            _downloadStatesFlow.value = currentMap
         }
-        paused.forEach { emitProgress(it) }
+        paused.forEach {
+            onUpdateDownloadStatus(it, PAUSED)
+            emitProgress(it)
+        }
         return paused
     }
 
     override suspend fun cancel(downloadId: DownloadId): Boolean {
         stateMutex.withLock {
-            val currentMap = _downloadStatesFlow.value.toMutableMap()
-            val entry = currentMap[downloadId] ?: return false
+            val entry = _downloadStatesFlow.value[downloadId] ?: return false
             val job = entry.job
             if (job != null && job.isActive) {
                 logger.info { "Cancelling download $downloadId" }
                 job.cancel()
             }
-            currentMap[downloadId] = entry.copy(
-                job = null,
-                state = entry.state.copy(status = CANCELED),
-            )
-            _downloadStatesFlow.value = currentMap
+            _downloadStatesFlow.update {
+                put(
+                    downloadId,
+                    entry.copy(
+                        job = null,
+                        state = entry.state.copy(status = CANCELED),
+                    ),
+                )
+            }
         }
+        onUpdateDownloadStatus(downloadId, CANCELED)
         emitProgress(downloadId)
         return true
     }
@@ -394,25 +411,34 @@ open class KtorHttpDownloader(
     override suspend fun cancelAll() {
         logger.info { "Cancelling all downloads." }
         stateMutex.withLock {
-            val currentMap = _downloadStatesFlow.value.toMutableMap()
-            currentMap.forEach { (id, entry) ->
-                if (entry.job?.isActive == true) {
-                    logger.info { "Cancelling download $id" }
-                    entry.job.cancel()
-                }
-                val st = entry.state
-                if (st.status in listOf(INITIALIZING, DOWNLOADING, PAUSED, MERGING)) {
-                    currentMap[id] = entry.copy(
-                        job = null,
-                        state = st.copy(status = CANCELED),
-                    )
+            _downloadStatesFlow.update {
+                mutate { map ->
+                    // 先收集所有需要处理的条目
+                    val entriesToUpdate = map.entries.toList()
+
+                    entriesToUpdate.forEach { (id, entry) ->
+                        if (entry.job?.isActive == true) {
+                            logger.info { "Cancelling download $id" }
+                            entry.job.cancel()
+                        }
+                        val st = entry.state
+                        if (st.status in listOf(INITIALIZING, DOWNLOADING, PAUSED, MERGING)) {
+                            map[id] = entry.copy(
+                                job = null,
+                                state = st.copy(status = CANCELED),
+                            )
+                        }
+                    }
                 }
             }
-            _downloadStatesFlow.value = currentMap
         }
         val allIds = stateMutex.withLock { _downloadStatesFlow.value.keys.toList() }
-        allIds.forEach { emitProgress(it) }
+        allIds.forEach {
+            onUpdateDownloadStatus(it, CANCELED)
+            emitProgress(it)
+        }
     }
+
 
     override suspend fun getState(downloadId: DownloadId): DownloadState? {
         return stateMutex.withLock {
@@ -442,7 +468,8 @@ open class KtorHttpDownloader(
                     entry.job.cancelAndJoin()
                 }
             }
-            _downloadStatesFlow.value = emptyMap()
+            _downloadStatesFlow.update { clear() }
+            onRemoveAllDownloads()
         }
         scope.cancel()
         logger.info { "KtorHttpDownloader closed." }
@@ -453,21 +480,6 @@ open class KtorHttpDownloader(
     // -------------------------------------------------------
 
     protected data class DownloadEntry(val job: Job?, val state: DownloadState)
-
-    /**
-     * Create and return the directory in which segment files will be stored.
-     */
-    protected suspend fun createSegmentCacheDir(
-        outputPath: Path,
-        downloadId: DownloadId,
-    ): Path = withContext(ioDispatcher) {
-        val cacheDirName = outputPath.name + "_segments_" + downloadId.value
-        val parentDir = outputPath.parent ?: Path(".")
-        val cacheDir = parentDir.resolve(cacheDirName)
-        fileSystem.createDirectories(cacheDir)
-        logger.info { "Created segment cache dir for $downloadId at $cacheDir" }
-        cacheDir
-    }
 
     /**
      * Helper that attempts to create segments for the given [downloadId] & [url].
@@ -557,14 +569,16 @@ open class KtorHttpDownloader(
     }
 
     protected suspend fun updateState(downloadId: DownloadId, transform: (DownloadState) -> DownloadState) {
+        var updatedState: DownloadState? = null
         stateMutex.withLock {
-            val currentMap = _downloadStatesFlow.value.toMutableMap()
-            val entry = currentMap[downloadId] ?: return
-            val oldState = entry.state
-            val newState = transform(oldState)
-            currentMap[downloadId] = entry.copy(state = newState)
-            _downloadStatesFlow.value = currentMap
+            val entry = _downloadStatesFlow.value[downloadId] ?: return
+            _downloadStatesFlow.update {
+                val newState = transform(entry.state)
+                updatedState = newState
+                put(downloadId, entry.copy(state = newState))
+            }
         }
+        updatedState?.let { onUpdateDownloadState(downloadId, it) }
     }
 
     @OptIn(ExperimentalAtomicApi::class)
@@ -888,6 +902,23 @@ open class KtorHttpDownloader(
             }
         }
     }
+
+    /**
+     * Called when the downloader requests creating a new download entry. 
+     */
+    open fun onCreateDownloadState(state: DownloadState) {}
+
+    /**
+     * Called when update download status.
+     */
+    open fun onUpdateDownloadStatus(downloadId: DownloadId, status: DownloadStatus) {}
+
+    /**
+     * Called when update the whole state
+     */
+    open fun onUpdateDownloadState(downloadId: DownloadId, state: DownloadState) {}
+
+    open fun onRemoveAllDownloads() {}
 
     private companion object {
         val logger = logger<KtorHttpDownloader>()

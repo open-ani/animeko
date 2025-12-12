@@ -73,6 +73,7 @@ val downloadSpec = tasks.register<Download>("downloadSpec") {
     dest(layout.buildDirectory.file("temp/downloadSpec/openapi.json").get())
     onlyIfModified(false)
     overwrite(true)
+    header("Authorization", "Bearer ${getPropertyOrNull("ani.api.token") ?: ""}")
 }
 
 // https://github.com/OpenAPITools/openapi-generator/blob/master/modules/openapi-generator-gradle-plugin/README.adoc
@@ -128,7 +129,7 @@ val fixGeneratedOpenApi = tasks.register("fixGeneratedOpenApi") {
                 """.trimIndent(),
                 """
                     open suspend fun uploadAvatar(body: io.ktor.http.content.OutgoingContent): HttpResponse<kotlin.Any> {
-                """.trimIndent()
+                """.trimIndent(),
             )
 
             val off = "off" // 防止 IDE 把我们这个代码识别成指令

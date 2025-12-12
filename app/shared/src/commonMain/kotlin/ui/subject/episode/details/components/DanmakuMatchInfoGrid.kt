@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.QuestionMark
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Subtitles
 import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material.icons.rounded.Close
@@ -53,6 +54,8 @@ import me.him188.ani.app.domain.episode.DanmakuFetchResultWithConfig
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuMatchInfo
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
+import me.him188.ani.utils.platform.format1f
+import kotlin.math.abs
 
 @Composable
 fun DanmakuMatchInfoGrid(
@@ -95,6 +98,7 @@ fun DanmakuSourceCard(
     info: DanmakuMatchInfo,
     enabled: Boolean,
     showDetails: Boolean,
+    shiftMillis: Long,
     onClickSettings: () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -183,7 +187,7 @@ fun DanmakuSourceCard(
     }
 }
 
-private fun renderDanmakuServiceId(serviceId: DanmakuServiceId): String = when (serviceId) {
+internal fun renderDanmakuServiceId(serviceId: DanmakuServiceId): String = when (serviceId) {
     DanmakuServiceId.Animeko -> "Animeko"
     DanmakuServiceId.AcFun -> "AcFun"
     DanmakuServiceId.Baha -> "Baha"
@@ -195,6 +199,18 @@ private fun renderDanmakuServiceId(serviceId: DanmakuServiceId): String = when (
     else -> serviceId.value
 }
 
+internal fun formatDanmakuShiftMillis(shiftMillis: Long): String {
+    if (shiftMillis == 0L) return "0 ms"
+    val sign = if (shiftMillis > 0) "+" else "-"
+    val absMillis = abs(shiftMillis)
+    return if (absMillis >= 1_000) {
+        val seconds = absMillis / 1_000.0
+        "$sign${String.format1f(seconds)} s"
+    } else {
+        "$sign$absMillis ms"
+    }
+}
+
 @Composable
 fun DanmakuSourceSettingsDropdown(
     expanded: Boolean,
@@ -202,6 +218,8 @@ fun DanmakuSourceSettingsDropdown(
     enabled: Boolean,
     onClickChange: () -> Unit,
     onSetEnabled: (enabled: Boolean) -> Unit,
+    currentShiftMillis: Long,
+    onClickAdjustShift: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     DropdownMenu(expanded, onDismissRequest, modifier) {
@@ -216,6 +234,14 @@ fun DanmakuSourceSettingsDropdown(
             text = { Text(if (enabled) "禁用" else "启用") },
             onClick = {
                 onSetEnabled(!enabled)
+                onDismissRequest()
+            },
+        )
+        DropdownMenuItem(
+            text = { Text("时间校准 (${formatDanmakuShiftMillis(currentShiftMillis)})") },
+            leadingIcon = { Icon(Icons.Outlined.Schedule, null) },
+            onClick = {
+                onClickAdjustShift()
                 onDismissRequest()
             },
         )

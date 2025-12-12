@@ -15,4 +15,5 @@ import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 @Composable
 actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
     // No storage settings on Android currently
+    DanmakuCacheSettings(state)
 }

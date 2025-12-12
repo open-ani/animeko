@@ -32,6 +32,7 @@ import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.episode.mediaFetchSessionFlow
 import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.media.TestMediaList
+import me.him188.ani.app.domain.media.cache.DeleteCacheUseCase
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.MediaCacheManagerImpl
@@ -161,6 +162,13 @@ class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
         }
         suite.registerComponent<MediaResolver> { TestUniversalMediaResolver }
         suite.registerComponent<MediaSelectorAutoSelectUseCaseImpl> { MediaSelectorAutoSelectUseCaseImpl(koin) }
+        suite.registerComponent<DeleteCacheUseCase> {
+            object : DeleteCacheUseCase {
+                override suspend fun invoke(cache: MediaCache) {
+                    manager.deleteCache(cache)
+                }
+            }
+        }
         config(storage, suite.mediaSelectorTestBuilder)
         val state = suite.createState(listOf(CacheOnBtPlayExtension))
         state.onUIReady()
@@ -196,7 +204,7 @@ class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
         state.mediaSelectorFlow.filterNotNull().first().select(media)
         advanceUntilIdle()
         assertEquals(1, storage.cacheCalls)
-        assertEquals("true", storage.lastMetadata.extra[CacheOnBtPlayExtension.EXTRA_AUTO_CACHE])
+        assertEquals(storage.lastMetadata.autoCached, true)
         scope.cancel()
     }
 

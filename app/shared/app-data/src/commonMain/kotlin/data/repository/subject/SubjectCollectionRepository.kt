@@ -33,10 +33,10 @@ import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -244,7 +244,12 @@ class SubjectCollectionRepositoryImpl(
     ): Flow<SubjectCollectionInfo> = getEpisodeTypeFiltersUseCase().flatMapLatest { epTypes ->
         subjectCollectionDao.findById(subjectId)
             .restartOnNewLogin(sessionManager)
-            .onEach { existing ->
+            .transform { existing ->
+                if (existing != null) {
+                    // 不管是不是过期都先 emit, 确保离线时能播放
+                    emit(existing)
+                }
+
                 // 如果没有缓存, 则 fetch 然后插入 subject 缓存
                 if (existing == null || existing.isExpired()) {
                     val subject = subjectService.getSubjectCollection(subjectId)

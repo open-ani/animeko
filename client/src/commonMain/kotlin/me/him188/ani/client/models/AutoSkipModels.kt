@@ -25,5 +25,6 @@ data class AutoSkipRules(
 data class AutoSkipReportRequest(
     val mediaSourceId: String,
     val time: Int,
+    val timeMillis: Long,
 )
 

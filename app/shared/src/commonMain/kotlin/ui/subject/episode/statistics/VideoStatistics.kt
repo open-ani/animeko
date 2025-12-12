@@ -19,10 +19,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material.icons.rounded.ArrowDropUp
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.ErrorOutline
-import androidx.compose.material.icons.rounded.UnfoldLess
-import androidx.compose.material.icons.rounded.UnfoldMore
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -185,9 +185,9 @@ fun DanmakuMatchInfoSummaryRow(
 
                 IconButton(toggleExpanded, Modifier.padding(start = 16.dp)) {
                     if (expanded) {
-                        Icon(Icons.Rounded.UnfoldLess, "展示更少")
+                        Icon(Icons.Rounded.ArrowDropUp, "展示更少")
                     } else {
-                        Icon(Icons.Rounded.UnfoldMore, "展示更多")
+                        Icon(Icons.Rounded.ArrowDropDown, "展示更多")
                     }
                 }
             }

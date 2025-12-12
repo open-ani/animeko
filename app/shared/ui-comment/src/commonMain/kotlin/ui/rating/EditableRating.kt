@@ -29,6 +29,10 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.TestSelfRatingInfo
 import me.him188.ani.app.data.models.subject.TestSubjectInfo
 import me.him188.ani.app.tools.MonoTasker
+import me.him188.ani.utils.analytics.Analytics
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.RatingEnter
+import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.RatingSubmit
+import me.him188.ani.utils.analytics.recordEvent
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 
@@ -43,6 +47,7 @@ class EditableRatingState(
     private val isCollected: () -> Boolean,
     private val onRate: suspend (RateRequest) -> Unit,
     backgroundScope: CoroutineScope,
+    private val subjectId: Int? = null,
 ) {
     val ratingInfo by ratingInfo
     val selfRatingInfo by selfRatingInfo
@@ -56,6 +61,11 @@ class EditableRatingState(
     fun requestEdit() {
         if (isCollected()) {
             showRatingDialog = true
+            val hasExistingScore = selfRatingInfo.score > 0
+            Analytics.recordEvent(RatingEnter) {
+                put("has_existing_score", hasExistingScore)
+                subjectId?.let { put("subject_id", it) }
+            }
         } else {
             showRatingRequiresCollectionDialog = true
         }
@@ -71,6 +81,13 @@ class EditableRatingState(
     fun updateRating(rateRequest: RateRequest) {
         tasker.launch {
             onRate(rateRequest)
+            Analytics.recordEvent(RatingSubmit) {
+                put("score", rateRequest.score)
+                put("has_comment", rateRequest.comment.isNotEmpty())
+                put("comment_length", rateRequest.comment.length)
+                put("is_private", rateRequest.isPrivate)
+                subjectId?.let { put("subject_id", it) }
+            }
             showRatingDialog = false
         }
     }
@@ -148,4 +165,5 @@ fun createTestEditableRatingState(
     isCollected = { true },
     onRate = { _ -> },
     backgroundScope,
+    subjectInfo.subjectId,
 )

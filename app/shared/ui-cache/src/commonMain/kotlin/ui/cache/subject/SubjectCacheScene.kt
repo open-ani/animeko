@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
@@ -48,7 +49,10 @@ import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
+import me.him188.ani.app.domain.media.cache.DeleteCacheByEpisodeIdUseCase
+import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.requester.CacheRequestStage
 import me.him188.ani.app.domain.media.cache.requester.EpisodeCacheRequest
@@ -69,6 +73,7 @@ import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.mediafetch.MediaSourceInfoProvider
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
+import me.him188.ani.danmaku.api.provider.DanmakuFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.CacheCreate
@@ -77,6 +82,7 @@ import me.him188.ani.utils.coroutines.flows.combine
 import me.him188.ani.utils.coroutines.retryWithBackoffDelay
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import kotlin.time.Duration
 
 @Stable
 interface SubjectCacheViewModel {
@@ -104,6 +110,8 @@ class SubjectCacheViewModelImpl(
     private val mediaSourceManager: MediaSourceManager by inject()
     private val episodePreferencesRepository: EpisodePreferencesRepository by inject()
     private val subjectRelationsRepository: SubjectRelationsRepository by inject()
+    private val danmakuRepository: DanmakuRepository by inject()
+    private val deleteCacheByEpisodeIdUseCase: DeleteCacheByEpisodeIdUseCase by inject()
 
     private val subjectInfoFlow = subjectCollectionRepository.subjectCollectionFlow(subjectId)
         .retryWithBackoffDelay()
@@ -192,10 +200,11 @@ class SubjectCacheViewModelImpl(
                     }",
                 )
 
-            target.storage.cache(
+            val cache = target.storage.cache(
                 target.media, target.metadata,
                 episodeInfo.episodeInfo.toEpisodeMetadata(),
             )
+            danmakuRepository.cacheDanmakuIfNeeded(target.toDanmakuFetchRequest(cache))
             Analytics.recordEvent(CacheCreate) {
                 val subjectInfo = subjectInfoFlow.first()
                 put("subject_id", subjectInfo.subjectId)
@@ -211,10 +220,7 @@ class SubjectCacheViewModelImpl(
             }
         },
         onDeleteCache = { episode ->
-            val episodeId = episode.episodeId.toString()
-            cacheManager.deleteFirstCache {
-                it.metadata.episodeId == episodeId
-            }
+            deleteCacheByEpisodeIdUseCase(subjectId, episode.episodeId)
         },
     )
     override val mediaSourceInfoProvider: MediaSourceInfoProvider = MediaSourceInfoProvider(
@@ -265,6 +271,23 @@ class SubjectCacheViewModelImpl(
                     }
                 }.collect()
         }
+    }
+
+    private suspend fun EpisodeCacheTargetInfo.toDanmakuFetchRequest(cache: MediaCache): DanmakuFetchRequest {
+        return DanmakuFetchRequest(
+            subjectId = request.subjectInfo.subjectId,
+            subjectPrimaryName = request.subjectInfo.displayName,
+            subjectNames = request.subjectInfo.allNames,
+            subjectPublishDate = request.subjectInfo.airDate,
+            episodeId = request.episodeInfo.episodeId,
+            episodeSort = request.episodeInfo.sort,
+            episodeEp = request.episodeInfo.ep,
+            episodeName = request.episodeInfo.displayName,
+            filename = media.originalTitle,
+            fileSize = cache.fileStats.first().totalSize.inBytes,
+            fileHash = null,
+            videoDuration = Duration.ZERO,
+        )
     }
 }
 
@@ -335,7 +358,7 @@ fun SubjectCachePageScaffold(
                 )
             }
         },
-        contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+        contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal),
     ) { paddingValues ->
         Column(Modifier.padding(paddingValues).verticalScroll(rememberScrollState())) {
 //            Surface(Modifier.fillMaxWidth(), color = appBarColors.containerColor) {
@@ -352,6 +375,8 @@ fun SubjectCachePageScaffold(
                 cacheListGroup()
                 Spacer(Modifier.fillMaxWidth()) // tab has spacedBy arrangement
             }
+
+            Spacer(Modifier.windowInsetsBottomHeight(windowInsets))
         }
     }
 }

@@ -21,6 +21,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Devices
+import androidx.compose.ui.tooling.preview.Devices.TABLET
 import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
@@ -28,7 +29,6 @@ import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.preview.PHONE_LANDSCAPE
 import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
 import me.him188.ani.app.ui.mediafetch.ViewKind
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
@@ -45,7 +45,9 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeS
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.NoOpPlaybackSpeedController
+import me.him188.ani.app.videoplayer.ui.NoOpVideoAspectRatio
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
+import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
@@ -54,8 +56,8 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 import org.openani.mediamp.DummyMediampPlayer
 
 
-@Preview("Landscape Fullscreen - Light", device = PHONE_LANDSCAPE, uiMode = UI_MODE_NIGHT_NO)
-@Preview("Landscape Fullscreen - Dark", device = PHONE_LANDSCAPE, uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL)
+@Preview("Landscape Fullscreen - Light", device = TABLET, uiMode = UI_MODE_NIGHT_NO)
+@Preview("Landscape Fullscreen - Dark", device = TABLET, uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL)
 @Composable
 private fun PreviewVideoScaffoldFullscreen() {
     PreviewVideoScaffoldImpl(expanded = true)
@@ -68,8 +70,8 @@ private fun PreviewVideoScaffold() {
     PreviewVideoScaffoldImpl(expanded = false)
 }
 
-@Preview("Landscape Fullscreen - Light", device = PHONE_LANDSCAPE, uiMode = UI_MODE_NIGHT_NO)
-@Preview("Landscape Fullscreen - Dark", device = PHONE_LANDSCAPE, uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL)
+@Preview("Landscape Fullscreen - Light", device = TABLET, uiMode = UI_MODE_NIGHT_NO)
+@Preview("Landscape Fullscreen - Dark", device = TABLET, uiMode = UI_MODE_NIGHT_YES or UI_MODE_TYPE_NORMAL)
 @Composable
 private fun PreviewDetachedSliderFullscreen() {
     PreviewVideoScaffoldImpl(expanded = true, controllerVisibility = ControllerVisibility.DetachedSliderOnly)
@@ -154,6 +156,9 @@ private fun PreviewVideoScaffoldImpl(
         brightnessController = NoOpLevelController,
         playbackSpeedControllerState = remember {
             PlaybackSpeedControllerState(NoOpPlaybackSpeedController, scope = scope)
+        },
+        videoAspectRatioControllerState = remember {
+            VideoAspectRatioControllerState(NoOpVideoAspectRatio, scope)
         },
         leftBottomTips = {
             PlayerControllerDefaults.LeftBottomTips(onClick = {})

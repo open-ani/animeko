@@ -52,7 +52,7 @@ internal class PlatformDataStoreManagerAndroid(
     private val Context.mediaCacheMetadataStoreImpl by lazy {
         MultiProcessDataStoreFactory.create(
             serializer = ListSerializer(MediaCacheSave.serializer()).asDataStoreSerializer({ emptyList() }),
-            produceFile = { resolveDataStoreFile("mediaCacheMetadata").toFile() },
+            produceFile = { resolveDataStoreFile("mediaCacheMetadataV2").toFile() },
             corruptionHandler = ReplaceFileCorruptionHandler { emptyList() },
         )
     }

@@ -10,7 +10,6 @@
 package me.him188.ani.app.platform
 
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -77,7 +76,7 @@ import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.TokenRepository
 import me.him188.ani.app.domain.comment.TurnstileState
-import me.him188.ani.app.domain.danmaku.DanmakuManager
+import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeature
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeatureHandler
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
@@ -99,13 +98,13 @@ import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.foundation.withValue
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.MediaCacheManagerImpl
-import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
+import me.him188.ani.app.domain.media.cache.engine.KtorPersistentHttpDownloader
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
-import me.him188.ani.app.domain.media.cache.storage.DataStoreMediaCacheStorage
-import me.him188.ani.app.domain.media.cache.storage.MediaCacheMigrator
+import me.him188.ani.app.domain.media.cache.storage.HttpMediaCacheStorage
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
+import me.him188.ani.app.domain.media.cache.storage.TorrentMediaCacheStorage
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManagerImpl
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
@@ -128,7 +127,6 @@ import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.childScopeContext
 import me.him188.ani.utils.httpdownloader.HttpDownloader
-import me.him188.ani.utils.httpdownloader.KtorPersistentHttpDownloader
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -159,6 +157,13 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<SessionStateProvider> {
         get<SessionManager>().stateProvider
     }
+    single<ServerSelector> {
+        ServerSelector(
+            settingsRepository.danmakuSettings.flow.map { it.useGlobal },
+            proxyProvider = get(),
+            coroutineScope,
+        )
+    }
     single<HttpClientProvider> {
         val sessionManager by inject<SessionManager>()
         DefaultHttpClientProvider(
@@ -172,26 +177,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                     onRefresh = { null },
                 ),
                 ServerListFeatureHandler(
-                    settingsRepository.danmakuSettings.flow.map { danmakuSettings ->
-                        when (danmakuSettings.useGlobal) {
-                            true -> {
-                                AniServers.optimizedForGlobal
-                            }
-
-                            false -> {
-                                AniServers.optimizedForCN
-                            }
-
-                            null -> {
-                                // 根据时区推断
-                                if (AniServers.shouldUseGlobalServer()) {
-                                    AniServers.optimizedForGlobal
-                                } else {
-                                    AniServers.optimizedForCN
-                                }
-                            }
-                        }
-                    },
+                    get<ServerSelector>().flow,
                 ),
                 ConvertSendCountExceedExceptionFeatureHandler,
                 VersionExpiryFeatureHandler, // handle 426 Upgrade Required -> show blocking dialog
@@ -343,12 +329,17 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<AnimeScheduleService> { AnimeScheduleService(get<AniApiProvider>().scheduleApi) }
     single<TrendsRepository> { TrendsRepository(get<AniApiProvider>().trendsApi, get<BangumiClient>().nextTrendingApi) }
     single<RecommendationRepository> { RecommendationRepository(get<TrendsRepository>()) }
-    single<AutoSkipRepository> { AutoSkipRepository(get<AniApiProvider>().autoSkipApi) }
+    single<AutoSkipRepository> { AutoSkipRepository(get<AniApiProvider>().episodesApi) }
 
-    single<DanmakuManager> {
-        DanmakuManager(
+    single<DanmakuRepository> {
+        DanmakuRepository(
             parentCoroutineContext = coroutineScope.coroutineContext,
             danmakuApi = aniApiProvider.danmakuApi,
+            danmakuDao = database.danmakuDao(),
+            httpClientProvider = get(),
+            getMediaCacheUseCase = get(),
+            getSubjectEpisodeInfoBundleFlowUseCase = get(),
+            settingsRepository = get(),
         )
     }
     single<UpdateManager> {
@@ -376,11 +367,12 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
 
     single<HttpDownloader> {
         KtorPersistentHttpDownloader(
-            dataStore = getContext().dataStores.m3u8DownloaderStore,
+            dao = database.httpCacheDownloadStateDao(),
             get<HttpClientProvider>().get(),
             fileSystem = SystemFileSystem,
             baseSaveDir = get<MediaSaveDirProvider>().saveDir
                 .let { Path(it).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR) },
+            scope = coroutineScope,
         )
     }
 
@@ -392,11 +384,11 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
 
         MediaCacheManagerImpl(
             storagesIncludingDisabled = buildList(capacity = engines.size) {
-                if (currentAniBuildConfig.isDebug) {
+                /*if (currentAniBuildConfig.isDebug) {
                     // 注意, 这个必须要在第一个, 见 [DefaultTorrentManager.engines] 注释
                     add(
                         @Suppress("DEPRECATION")
-                        DataStoreMediaCacheStorage(
+                        TorrentMediaCacheStorage(
                             mediaSourceId = "test-in-memory",
                             store = metadataStore,
                             engine = DummyMediaCacheEngine("test-in-memory"),
@@ -404,35 +396,36 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                             coroutineScope.childScopeContext(),
                         ),
                     )
-                }
+                }*/
                 for (engine in engines) {
                     add(
                         @Suppress("DEPRECATION")
-                        DataStoreMediaCacheStorage(
+                        TorrentMediaCacheStorage(
                             mediaSourceId = id,
                             store = metadataStore,
-                            engine = TorrentMediaCacheEngine(
+                            torrentEngine = TorrentMediaCacheEngine(
                                 mediaSourceId = id,
                                 engineKey = MediaCacheEngineKey(engine.type.id),
                                 torrentEngine = engine,
                                 engineAccess = get(),
-                                mediaCacheMetadataStore = metadataStore,
+                                dao = database.torrentCacheInfoDao(),
                                 baseSaveDirProvider = get(),
-                                shareRatioLimitFlow = settingsRepository.anitorrentConfig.flow
-                                    .map { it.shareRatioLimit },
                             ),
-                            displayName = "本地",
-                            coroutineScope.childScopeContext(),
+                            displayName = "LocalTorrent",
+                            parentCoroutineContext = coroutineScope.childScopeContext(),
+                            shareRatioLimitFlow = settingsRepository.anitorrentConfig.flow
+                                .map { it.shareRatioLimit },
                         ),
                     )
                 }
                 add(
                     @Suppress("DEPRECATION")
-                    DataStoreMediaCacheStorage(
+                    HttpMediaCacheStorage(
                         mediaSourceId = id,
                         store = metadataStore,
-                        engine = get<HttpMediaCacheEngine>(),
-                        displayName = "本地",
+                        dao = database.httpCacheDownloadStateDao(),
+                        httpEngine = get<HttpMediaCacheEngine>(),
+                        displayName = "LocalWebM3u",
                         coroutineScope.childScopeContext(),
                     ),
                 )
@@ -501,23 +494,11 @@ fun KoinApplication.startCommonKoinModule(
     }
     // Now, the proxy settings is ready. Other components can use http clients.
 
-    val migrationCacheCompleted = CompletableDeferred<Unit>()
-
     coroutineScope.launch {
-        val mediaCacheMigrator = koin.get<MediaCacheMigrator>()
-        val requiresMigration = mediaCacheMigrator.startupMigrationCheckAndGetIfRequiresMigration(coroutineScope)
-
-        // 只有不需要迁移的时候才能, 才初始化 http downloader 
-        if (!requiresMigration) {
-            koin.get<HttpDownloader>().init() // 这涉及读取 DownloadState, 需要在加载 storage metadata 前调用.
-        }
-
-        // 只有不需要迁移缓存时才能迁移旧 session token
-        migrationCacheCompleted.complete(Unit)
-
+        koin.get<HttpDownloader>().init() // restore http download states first
         val manager = koin.get<MediaCacheManager>()
         for (storage in manager.storagesIncludingDisabled) {
-            if (!requiresMigration) storage.restorePersistedCaches()
+            storage.restorePersistedCaches()
         }
     }
 

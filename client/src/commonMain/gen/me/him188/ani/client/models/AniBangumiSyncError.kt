@@ -35,6 +35,7 @@ import kotlinx.serialization.Serializable
  *
  * @param stageName 
  * @param extraInfo 
+ * @param exception 
  */
 @Serializable
 
@@ -42,7 +43,9 @@ data class AniBangumiSyncError (
 
     @SerialName(value = "stageName") @Required val stageName: kotlin.String,
 
-    @SerialName(value = "extraInfo") @Required val extraInfo: kotlin.String
+    @SerialName(value = "extraInfo") @Required val extraInfo: kotlin.String,
+
+    @SerialName(value = "exception") val exception: kotlin.String? = null
 
 ) {
 

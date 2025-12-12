@@ -24,9 +24,12 @@ import androidx.sqlite.execSQL
 import me.him188.ani.app.data.persistent.database.converters.DurationConverter
 import me.him188.ani.app.data.persistent.database.converters.InstantConverter
 import me.him188.ani.app.data.persistent.database.converters.PackedDateConverter
+import me.him188.ani.app.data.persistent.database.dao.DanmakuDao
+import me.him188.ani.app.data.persistent.database.dao.DanmakuEntity
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCommentDao
+import me.him188.ani.app.data.persistent.database.dao.HttpCacheDownloadStateDao
 import me.him188.ani.app.data.persistent.database.dao.SearchHistoryDao
 import me.him188.ani.app.data.persistent.database.dao.SearchHistoryEntity
 import me.him188.ani.app.data.persistent.database.dao.SearchTagDao
@@ -35,6 +38,8 @@ import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionEntity
 import me.him188.ani.app.data.persistent.database.dao.SubjectRelationsDao
 import me.him188.ani.app.data.persistent.database.dao.SubjectReviewDao
+import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoDao
+import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoEntity
 import me.him188.ani.app.data.persistent.database.dao.WebSearchEpisodeInfoDao
 import me.him188.ani.app.data.persistent.database.dao.WebSearchEpisodeInfoEntity
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSubjectInfoDao
@@ -46,6 +51,7 @@ import me.him188.ani.app.data.persistent.database.entity.PersonEntity
 import me.him188.ani.app.data.persistent.database.entity.SubjectCharacterRelationEntity
 import me.him188.ani.app.data.persistent.database.entity.SubjectPersonRelationEntity
 import me.him188.ani.app.data.persistent.database.entity.SubjectReviewEntity
+import me.him188.ani.utils.httpdownloader.DownloadState
 
 @Database(
     entities = [
@@ -66,8 +72,12 @@ import me.him188.ani.app.data.persistent.database.entity.SubjectReviewEntity
 
         WebSearchSubjectInfoEntity::class,
         WebSearchEpisodeInfoEntity::class,
+
+        TorrentCacheInfoEntity::class,
+        DownloadState::class,
+        DanmakuEntity::class,
     ],
-    version = 16,
+    version = 18,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.Migration_1_2::class),
         AutoMigration(from = 2, to = 3, spec = Migrations.Migration_2_3::class),
@@ -84,6 +94,8 @@ import me.him188.ani.app.data.persistent.database.entity.SubjectReviewEntity
         AutoMigration(from = 13, to = 14, spec = Migrations.Migration_13_14::class),
         AutoMigration(from = 14, to = 15, spec = Migrations.Migration_14_15::class),
         // 15 to 16 is destructive
+        AutoMigration(from = 16, to = 17, spec = Migrations.Migration_16_17::class),
+        AutoMigration(from = 17, to = 18, spec = Migrations.Migration_17_18::class),
     ],
     exportSchema = true,
 )
@@ -93,6 +105,7 @@ import me.him188.ani.app.data.persistent.database.entity.SubjectReviewEntity
     DurationConverter::class,
     InstantConverter::class,
     EpisodeSortConverter::class,
+    DanmakuServiceIdConverter::class,
 )
 abstract class AniDatabase : RoomDatabase() {
     abstract fun searchHistory(): SearchHistoryDao
@@ -120,6 +133,14 @@ abstract class AniDatabase : RoomDatabase() {
      */
     abstract fun webSearchSubjectInfoDao(): WebSearchSubjectInfoDao
     abstract fun webSearchEpisodeInfoDao(): WebSearchEpisodeInfoDao
+
+    /**
+     * @since 5.1.0
+     */
+    abstract fun torrentCacheInfoDao(): TorrentCacheInfoDao
+    abstract fun httpCacheDownloadStateDao(): HttpCacheDownloadStateDao
+
+    abstract fun danmakuDao(): DanmakuDao
 }
 
 expect object AniDatabaseConstructor : RoomDatabaseConstructor<AniDatabase> {
@@ -277,6 +298,26 @@ internal object Migrations {
      * @since 5.0.0
      */
     class Migration_14_15 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+        }
+    }
+
+    /**
+     * Added [TorrentCacheInfoEntity] and [DownloadState].
+     *
+     * @since 5.2.0
+     */
+    class Migration_16_17 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+        }
+    }
+
+    /**
+     * Added [DanmakuEntity].
+     *
+     * @since 5.2.0
+     */
+    class Migration_17_18 : AutoMigrationSpec {
         override fun onPostMigrate(connection: SQLiteConnection) {
         }
     }

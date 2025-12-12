@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -103,6 +105,7 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.only
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
+import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.foundation.layout.rememberConnectedScrollState
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
@@ -581,7 +584,7 @@ fun SubjectDetailsLayout(
         // 在背景之上显示的封面和标题等信息
         val headerContentPadding = scaffoldPadding.only(PaddingValuesSides.Horizontal + PaddingValuesSides.Top)
         // 从 tab row 开始的区域
-        val remainingContentPadding = scaffoldPadding.only(PaddingValuesSides.Horizontal + PaddingValuesSides.Bottom)
+        val remainingContentPadding = scaffoldPadding.only(PaddingValuesSides.Horizontal)
 
         Box(
             Modifier.fillMaxSize(),
@@ -734,7 +737,9 @@ private fun SubjectDetailsContentPager(
                 val type = SubjectDetailsTab.entries[index]
                 Column(Modifier.padding()) {
                     val panePaddingValues =
-                        PaddingValues(bottom = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding)
+                        PaddingValues(
+                            bottom = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding
+                        ).plus(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom).asPaddingValues())
                     when (type) {
                         SubjectDetailsTab.DETAILS -> detailsTab(panePaddingValues)
                         SubjectDetailsTab.COMMENTS -> commentsTab(panePaddingValues)

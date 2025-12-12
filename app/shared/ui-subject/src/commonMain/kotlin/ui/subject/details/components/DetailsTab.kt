@@ -19,9 +19,13 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -73,6 +77,7 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
+import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.renderSubjectSeason
@@ -365,9 +370,10 @@ private fun <T : Any> PersonCardList(
             ModalBottomSheet(
                 { showSheet = false },
                 modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
-                contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()) },
+                contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()).only(
+                    WindowInsetsSides.Horizontal + WindowInsetsSides.Top) },
             ) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     ProvideTextStyle(MaterialTheme.typography.titleLarge) {
                         Row { sheetTitle() }
                     }
@@ -376,6 +382,7 @@ private fun <T : Any> PersonCardList(
                         GridCells.Fixed(maxItemsInEachRow),
                         horizontalArrangement = Arrangement.spacedBy(itemSpacing),
                         verticalArrangement = Arrangement.spacedBy(itemSpacing),
+                        contentPadding = WindowInsets.navigationBars.asPaddingValues().plus(PaddingValues(bottom = 16.dp))
                     ) {
                         items(
                             allValues.itemCount,

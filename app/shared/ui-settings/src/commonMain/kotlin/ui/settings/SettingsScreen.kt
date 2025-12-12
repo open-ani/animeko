@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -57,6 +58,7 @@ import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -148,7 +150,6 @@ import me.him188.ani.app.ui.settings.tabs.network.ConfigureProxyGroup
 import me.him188.ani.app.ui.settings.tabs.network.ServerSelectionGroup
 import me.him188.ani.app.ui.settings.tabs.theme.ThemeGroup
 import me.him188.ani.utils.platform.hasScrollingBug
-import me.him188.ani.utils.platform.isDesktop
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
@@ -164,12 +165,9 @@ fun SettingsScreen(
     onNavigateToBangumiOAuth: () -> Unit,
     modifier: Modifier = Modifier,
     initialTab: SettingsTab? = null,
-    windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    windowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
     navigationIcon: @Composable () -> Unit = {},
 ) {
-    var lastSelectedTab by rememberSaveable {
-        mutableStateOf(initialTab)
-    }
     val navigator: ThreePaneScaffoldNavigator<Nothing?> = rememberListDetailPaneScaffoldNavigator(
         initialDestinationHistory = buildList {
             add(ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.List))
@@ -179,6 +177,15 @@ fun SettingsScreen(
         },
     )
     val layoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective)
+    var lastSelectedTab by rememberSaveable(initialTab) {
+        mutableStateOf(initialTab)
+    }
+
+    LaunchedEffect(Unit) {
+        if (lastSelectedTab == null && !layoutParameters.preferSinglePane) {
+            lastSelectedTab = SettingsTab.APPEARANCE
+        }
+    }
     val coroutineScope = rememberCoroutineScope()
     val browserNavigator = rememberAsyncBrowserNavigator()
     val context = LocalContext.current
@@ -192,7 +199,7 @@ fun SettingsScreen(
 
     SettingsPageLayout(
         navigator,
-        // TODO: 2025/2/14 We should have a SettingsNavController or so to control the tab state 
+        // TODO: 2025/2/14 We should have a SettingsNavController or so to control the tab state
         { lastSelectedTab },
         onSelectedTab = { tab ->
             navigateToTab(tab)
@@ -237,9 +244,7 @@ fun SettingsScreen(
             Item(SettingsTab.PROXY)
             Item(SettingsTab.BT)
 //            Item(SettingsTab.CACHE)
-            if (LocalPlatform.current.isDesktop()) {
-                Item(SettingsTab.STORAGE)
-            }
+            Item(SettingsTab.STORAGE)
 
             Title(stringResource(Lang.settings_category_others))
             Item(SettingsTab.UPDATE)
@@ -368,7 +373,7 @@ internal fun SettingsPageLayout(
     navItems: @Composable (SettingsDrawerScope.() -> Unit),
     tabContent: @Composable SettingsDetailPaneScope.(currentTab: SettingsTab?) -> Unit, // inside Column verticalScroll
     modifier: Modifier = Modifier,
-    contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    contentWindowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
     containerColor: Color = AniThemeDefaults.pageContentBackgroundColor,
     layoutParameters: ListDetailLayoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective),
     navigationIcon: @Composable () -> Unit = {},
@@ -519,6 +524,13 @@ internal fun SettingsPageLayout(
                             .widthIn(max = 1000.dp),
                     ) {
                         scope.content()
+
+                        // 滚动容器底部留出安全区域
+                        Spacer(
+                            Modifier.windowInsetsBottomHeight(
+                                AniWindowInsets.safeDrawing,
+                            ),
+                        )
                     }
                 }
 
