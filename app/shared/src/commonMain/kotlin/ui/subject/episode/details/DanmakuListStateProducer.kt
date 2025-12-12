@@ -66,18 +66,16 @@ data class DanmakuSourceItem(
 class DanmakuListStateProducer(
     danmakuFlow: Flow<List<DanmakuPresentation>>,
     fetchResultsFlow: Flow<List<DanmakuFetchResultWithConfig>>,
-    selectedSourcesFlow: Flow<Set<DanmakuServiceId>>,
 ) {
     val stateFlow: Flow<DanmakuListState> = combine(
         danmakuFlow,
         fetchResultsFlow,
-        selectedSourcesFlow,
-    ) { danmakuList, fetchResults, selectedSources ->
+    ) { danmakuList, fetchResults ->
         val sourceItems = fetchResults.map { result ->
             DanmakuSourceItem(
                 serviceId = result.serviceId,
                 displayName = result.matchInfo.serviceId.value,
-                enabled = result.serviceId in selectedSources,
+                enabled = result.config.enabled,
                 isFuzzyMatch = !result.matchInfo.method.isExactMatch(),
             )
         }

@@ -591,29 +591,9 @@ class EpisodeViewModel(
         replay = 1,
     )
 
-    private val selectedDanmakuSources = MutableStateFlow<Set<DanmakuServiceId>>(emptySet())
-
-    init {
-        launchInBackground {
-            // 只在源列表变化时初始化，而不是配置变化时 #2602
-            danmakuLoader.fetchResults
-                .map { results -> results.map { it.serviceId }.toSet() }
-                .distinctUntilChanged()
-                .collect { availableSources ->
-                    if (availableSources.isNotEmpty() && selectedDanmakuSources.value.isEmpty()) {
-                        selectedDanmakuSources.value = availableSources
-                        availableSources.forEach { serviceId ->
-                            setDanmakuSourceEnabled(serviceId, true)
-                        }
-                    }
-                }
-        }
-    }
-
     val danmakuListStateProducer = DanmakuListStateProducer(
         danmakuFlow = allDanmakuListFlow,
         fetchResultsFlow = danmakuLoader.fetchResults,
-        selectedSourcesFlow = selectedDanmakuSources,
     )
 
     val danmakuListState = danmakuListStateProducer.stateFlow
@@ -992,11 +972,6 @@ class EpisodeViewModel(
 
     fun setDanmakuSourceEnabled(serviceId: DanmakuServiceId, enabled: Boolean) {
         danmakuLoader.setEnabled(serviceId, enabled)
-        selectedDanmakuSources.value = if (enabled) {
-            selectedDanmakuSources.value + serviceId
-        } else {
-            selectedDanmakuSources.value - serviceId
-        }
     }
 
     fun startMatchingDanmaku(id: DanmakuProviderId) {
