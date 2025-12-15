@@ -282,25 +282,25 @@ sealed class Runner(
         labels = setOf("windows-2022"),
     )
 
-    object GithubMacOS13 : GithubHosted(
-        id = "github-macos-13",
-        displayName = "macOS 13 x86_64 (GitHub)",
-        os = OS.MACOS,
-        arch = Arch.X64,
-        labels = setOf("macos-13"),
-    )
-
     object GithubMacOS14 : GithubHosted(
         id = "github-macos-14",
-        displayName = "macOS 14 AArch64 (GitHub)",
+        displayName = "macOS 14 Apple Silicon (GitHub)",
         os = OS.MACOS,
         arch = Arch.AARCH64,
         labels = setOf("macos-14"),
     )
 
-    object GithubMacOS15 : GithubHosted(
-        id = "github-macos-15",
-        displayName = "macOS 15 AArch64 (GitHub)",
+    object GithubMacOS15Intel : GithubHosted(
+        id = "github-macos-15-intel",
+        displayName = "macOS 15 Intel (GitHub)",
+        os = OS.MACOS,
+        arch = Arch.X64,
+        labels = setOf("macos-15-intel"),
+    )
+
+    object GithubMacOS15AppleSilicon : GithubHosted(
+        id = "github-macos-15-apple",
+        displayName = "macOS 15 Apple Silicon (GitHub)",
         os = OS.MACOS,
         arch = Arch.AARCH64,
         labels = setOf("macos-15"),
@@ -325,7 +325,7 @@ sealed class Runner(
 
     object SelfHostedMacOS15 : SelfHosted(
         id = "self-hosted-macos-15",
-        displayName = "macOS 15 AArch64 (Self-Hosted)",
+        displayName = "macOS 15 Apple Silicon (Self-Hosted)",
         os = OS.MACOS,
         arch = Arch.AARCH64,
         labels = setOf("self-hosted", "macOS", "ARM64"),
@@ -392,8 +392,8 @@ run {
         gradleHeap = "8g",
         kotlinCompilerHeap = "6g",
     )
-    val ghMac13 = MatrixInstance(
-        runner = Runner.GithubMacOS13,
+    val ghMac15Intel = MatrixInstance(
+        runner = Runner.GithubMacOS15Intel,
         uploadApk = false, // all ABIs
         runAndroidInstrumentedTests = false,
         composeResourceTriple = "macos-x64",
@@ -407,9 +407,9 @@ run {
         gradleHeap = "6g",
         kotlinCompilerHeap = "6g",
     )
-    val ghMac15 = MatrixInstance(
+    val ghMac15AppleSilicon = MatrixInstance(
         // upload macos aarch64 dmg, see #1479
-        runner = Runner.GithubMacOS15,
+        runner = Runner.GithubMacOS15AppleSilicon,
         uploadApk = false,
         runTests = false,
         runAndroidInstrumentedTests = false,
@@ -444,7 +444,7 @@ run {
 //        selfWin10,
         ghWin,
         ghUbuntu2404,
-        ghMac13,
+        ghMac15Intel,
         selfMac15.copy(
             // 即使自己机器上传的 dmg 安装时会有问题 (#1479), 也在 build 时使用它, 避免使用太多 GitHub 机器占用并行.
             // 发版时还是使用 GitHub
@@ -460,8 +460,8 @@ run {
             uploadDesktopInstallers = false,
             extraGradleArgs = selfMac15.extraGradleArgs.filterNot { it.startsWith("-P$ANI_ANDROID_ABIS=") },
         ), // android apks
-        ghMac15, // macos AArch64 installer
-        ghMac13, // macos x64 portable
+        ghMac15AppleSilicon, // macos AArch64 installer
+        ghMac15Intel, // macos x64 portable
         ghUbuntu2404, // linux app image + Android APKs
     )
 }
@@ -794,7 +794,7 @@ workflow(
             listOf(
                 Runner.SelfHostedMacOS15,
                 Runner.GithubMacOS14,
-                Runner.GithubMacOS15,
+                Runner.GithubMacOS15AppleSilicon,
             ).forEach { runner ->
                 addVerifyJob(build, runner, build.result.eq(AbstractResult.Status.Success))
             }
