@@ -284,7 +284,7 @@ sealed class Runner(
 
     object GithubMacOS14 : GithubHosted(
         id = "github-macos-14",
-        displayName = "macOS 14 Apple Silicon (GitHub)",
+        displayName = "macOS 14 AArch64 (GitHub)",
         os = OS.MACOS,
         arch = Arch.AARCH64,
         labels = setOf("macos-14"),
@@ -292,7 +292,7 @@ sealed class Runner(
 
     object GithubMacOS15Intel : GithubHosted(
         id = "github-macos-15-intel",
-        displayName = "macOS 15 Intel (GitHub)",
+        displayName = "macOS 15 x86_64 (GitHub)",
         os = OS.MACOS,
         arch = Arch.X64,
         labels = setOf("macos-15-intel"),
@@ -300,7 +300,7 @@ sealed class Runner(
 
     object GithubMacOS15AppleSilicon : GithubHosted(
         id = "github-macos-15-apple",
-        displayName = "macOS 15 Apple Silicon (GitHub)",
+        displayName = "macOS 15 AArch64 (GitHub)",
         os = OS.MACOS,
         arch = Arch.AARCH64,
         labels = setOf("macos-15"),
@@ -325,7 +325,7 @@ sealed class Runner(
 
     object SelfHostedMacOS15 : SelfHosted(
         id = "self-hosted-macos-15",
-        displayName = "macOS 15 Apple Silicon (Self-Hosted)",
+        displayName = "macOS 15 AArch64 (Self-Hosted)",
         os = OS.MACOS,
         arch = Arch.AARCH64,
         labels = setOf("self-hosted", "macOS", "ARM64"),

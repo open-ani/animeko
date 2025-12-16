@@ -239,7 +239,7 @@ jobs:
           path: 'app/desktop/build/compose/logs'
         if: '${{ always() }}'
   release_self-hosted-macos-15:
-    name: 'macOS 15 Apple Silicon (Self-Hosted)'
+    name: 'macOS 15 AArch64 (Self-Hosted)'
     runs-on:
       - 'self-hosted'
       - 'macOS'
@@ -562,7 +562,7 @@ jobs:
         continue-on-error: true
         run: 'chmod +x ./ci-helper/cleanup-temp-files-macos.sh && ./ci-helper/cleanup-temp-files-macos.sh'
   release_github-macos-15-apple:
-    name: 'macOS 15 Apple Silicon (GitHub)'
+    name: 'macOS 15 AArch64 (GitHub)'
     runs-on:
       - 'macos-15'
     needs:
@@ -788,7 +788,7 @@ jobs:
           path: 'app/desktop/build/compose/logs'
         if: '${{ always() }}'
   release_github-macos-15-intel:
-    name: 'macOS 15 Intel (GitHub)'
+    name: 'macOS 15 x86_64 (GitHub)'
     runs-on:
       - 'macos-15-intel'
     needs:

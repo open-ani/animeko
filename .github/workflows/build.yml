@@ -651,7 +651,7 @@ jobs:
           overwrite: 'true'
         if: '${{ steps.step-54.outcome == ''failure'' }}'
   build_github-macos-15-intel:
-    name: 'Build (macOS 15 Intel (GitHub))'
+    name: 'Build (macOS 15 x86_64 (GitHub))'
     runs-on:
       - 'macos-15-intel'
     permissions:
@@ -865,7 +865,7 @@ jobs:
           overwrite: 'true'
         if: '${{ steps.step-23.outcome == ''failure'' }}'
   build_self-hosted-macos-15:
-    name: 'Build (macOS 15 Apple Silicon (Self-Hosted))'
+    name: 'Build (macOS 15 AArch64 (Self-Hosted))'
     runs-on:
       - 'self-hosted'
       - 'macOS'
@@ -1331,7 +1331,7 @@ jobs:
         run: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${{ github.workspace }}/ci-helper/verify/run-ani-test-windows-x64.ps1" "${{ github.workspace }}\ci-helper\verify" "sentry-dsn"'
         if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_self-hosted-macos-15:
-    name: 'Verify (macOS 15 Apple Silicon (Self-Hosted))'
+    name: 'Verify (macOS 15 AArch64 (Self-Hosted))'
     runs-on:
       - 'self-hosted'
       - 'macOS'
@@ -1379,7 +1379,7 @@ jobs:
         run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg sentry-dsn'
         if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_github-macos-14:
-    name: 'Verify (macOS 14 Apple Silicon (GitHub))'
+    name: 'Verify (macOS 14 AArch64 (GitHub))'
     runs-on:
       - 'macos-14'
     permissions:
@@ -1433,7 +1433,7 @@ jobs:
         run: '"$GITHUB_WORKSPACE/ci-helper/verify/run-ani-test-macos-aarch64.sh" "$GITHUB_WORKSPACE"/*.dmg sentry-dsn'
         if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
   verify_github-macos-15-apple:
-    name: 'Verify (macOS 15 Apple Silicon (GitHub))'
+    name: 'Verify (macOS 15 AArch64 (GitHub))'
     runs-on:
       - 'macos-15'
     permissions:
