@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -59,6 +61,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import me.him188.ani.app.ui.foundation.Res
 import me.him188.ani.app.ui.foundation.a
+import me.him188.ani.app.ui.foundation.lists.LazyListVerticalScrollbar
 import me.him188.ani.app.ui.subject.episode.details.components.renderDanmakuServiceId
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import org.jetbrains.compose.resources.painterResource
@@ -128,16 +132,32 @@ fun DanmakuListSection(
                                 }
                             }
                         } else {
-                            LazyColumn(
-                                state = rememberLazyListState(),
-                                modifier = Modifier.heightIn(max = 360.dp),
+                            val listState = rememberLazyListState()
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 360.dp),
                             ) {
-                                items(
-                                    items = state.danmakuItems,
-                                    key = { it.randomId.toString() },
-                                ) { danmaku ->
-                                    DanmakuListItemView(danmaku)
+                                LazyColumn(
+                                    state = listState,
+                                    modifier = Modifier
+                                        .fillMaxSize(),
+                                ) {
+                                    items(
+                                        items = state.danmakuItems,
+                                        key = { it.randomId.toString() },
+                                    ) { danmaku ->
+                                        DanmakuListItemView(danmaku)
+                                    }
                                 }
+                                LazyListVerticalScrollbar(
+                                    state = listState,
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .padding(end = 4.dp)
+                                        .placeScrollbarToAbsoluteRight(),
+                                )
                             }
                         }
                     }
@@ -399,3 +419,21 @@ private fun DanmakuListItemView(danmaku: DanmakuListItem) {
         }
     }
 }
+
+/**
+ * Places the scrollbar on the visual right edge regardless of layout direction.
+ * Because Modifier.align(Alignment.CenterEnd) will perform mirroring based on the layout direction,
+ * and we want the scroll bar to always be visually on the right side.
+ */
+private fun Modifier.placeScrollbarToAbsoluteRight(): Modifier = this.then(
+    Modifier.layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints)
+        val width = constraints.maxWidth
+        val height = constraints.maxHeight
+        val x = (width - placeable.width).coerceAtLeast(0)
+        layout(width, height) {
+            // use absolute positioning to ignore layout direction mirroring
+            placeable.place(x, 0)
+        }
+    },
+)
