@@ -225,7 +225,7 @@ class EpisodeCacheRequesterTest {
             .select(TestMediaCacheStorage())
         assertIs<CacheRequestStage.Done>(requester.stage.value)
 
-        assertEquals(
+        assertMetadataEqualsIgnoringCreationTime(
             // note: compare with the MediaCacheMetadata above
             // We expect all info updated
             MediaCacheMetadata(
@@ -458,7 +458,7 @@ class EpisodeCacheRequesterTest {
         assertNotNull(done)
 
         assertEquals(originalMedia, done.media)
-        assertEquals(
+        assertMetadataEqualsIgnoringCreationTime(
             // note: compare with the MediaCacheMetadata above
             // We expect all info updated
             MediaCacheMetadata(
@@ -495,7 +495,7 @@ class EpisodeCacheRequesterTest {
         assertIs<CacheRequestStage.Done>(done)
 
         assertEquals(originalMedia, done.media)
-        assertEquals(
+        assertMetadataEqualsIgnoringCreationTime(
             // note: compare with the MediaCacheMetadata above
             // We expect all info updated
             MediaCacheMetadata(
@@ -737,4 +737,14 @@ class EpisodeCacheRequesterTest {
     }
 
     // For `true` cases, see above
+}
+
+private fun assertMetadataEqualsIgnoringCreationTime(
+    expected: MediaCacheMetadata,
+    actual: MediaCacheMetadata,
+) {
+    assertEquals(
+        expected.copy(creationTime = 0L),
+        actual.copy(creationTime = 0L),
+    )
 }
