@@ -36,8 +36,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.FeaturedPlayList
 import androidx.compose.material.icons.outlined.ArrowDropDown
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -70,6 +74,7 @@ import androidx.compose.ui.unit.sp
 import me.him188.ani.app.ui.foundation.Res
 import me.him188.ani.app.ui.foundation.a
 import me.him188.ani.app.ui.foundation.lists.LazyListVerticalScrollbar
+import me.him188.ani.app.ui.subject.episode.details.components.formatDanmakuShiftMillis
 import me.him188.ani.app.ui.subject.episode.details.components.renderDanmakuServiceId
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import org.jetbrains.compose.resources.painterResource
@@ -85,6 +90,7 @@ fun DanmakuListSection(
     onToggleExpanded: () -> Unit,
     onSetEnabled: (DanmakuServiceId, Boolean) -> Unit,
     onManualMatch: (DanmakuServiceId) -> Unit,
+    onAdjustShift: (DanmakuServiceId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
 
@@ -109,6 +115,7 @@ fun DanmakuListSection(
                                 sourceItems = state.sourceItems,
                                 onToggleSource = onSetEnabled,
                                 onManualMatch = onManualMatch,
+                                onAdjustShift = onAdjustShift,
                                 modifier = Modifier.padding(horizontal = 8.dp),
                             )
                         }
@@ -202,6 +209,7 @@ private fun DanmakuSourceChips(
     sourceItems: List<DanmakuSourceItem>,
     onToggleSource: (DanmakuServiceId, Boolean) -> Unit,
     onManualMatch: (DanmakuServiceId) -> Unit,
+    onAdjustShift: (DanmakuServiceId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     FlowRow(
@@ -214,6 +222,7 @@ private fun DanmakuSourceChips(
                 sourceItem = sourceItem,
                 onToggle = { onToggleSource(sourceItem.serviceId, !sourceItem.enabled) },
                 onManualMatch = { onManualMatch(sourceItem.serviceId) },
+                onAdjustShift = { onAdjustShift(sourceItem.serviceId) },
             )
         }
     }
@@ -227,6 +236,7 @@ private fun DanmakuSourceChip(
     sourceItem: DanmakuSourceItem,
     onToggle: () -> Unit,
     onManualMatch: () -> Unit,
+    onAdjustShift: () -> Unit,
 ) {
     var showDropdown by rememberSaveable { mutableStateOf(false) }
     val isAnimeko = sourceItem.serviceId == DanmakuServiceId.Animeko
@@ -242,15 +252,13 @@ private fun DanmakuSourceChip(
                 ) {
                     Text(if (sourceItem.count == 0) renderDanmakuServiceId(sourceItem.serviceId) else "${sourceItem.count}")
 
-                    if (!isAnimeko) {
-                        Icon(
-                            Icons.Outlined.ArrowDropDown,
-                            contentDescription = "更多选项",
-                            modifier = Modifier
-                                .offset(x = 8.dp)
-                                .clickable { showDropdown = true },
-                        )
-                    }
+                    Icon(
+                        Icons.Outlined.ArrowDropDown,
+                        contentDescription = "更多选项",
+                        modifier = Modifier
+                            .offset(x = 8.dp)
+                            .clickable { showDropdown = true },
+                    )
                 }
             },
             leadingIcon = {
@@ -269,7 +277,7 @@ private fun DanmakuSourceChip(
             },
         )
 
-        if (showDropdown && !isAnimeko) {
+        if (showDropdown) {
             DropdownMenu(
                 expanded = showDropdown,
                 onDismissRequest = { showDropdown = false },
@@ -300,15 +308,32 @@ private fun DanmakuSourceChip(
                 // 操作菜单项
                 DropdownMenuItem(
                     text = { Text(if (sourceItem.enabled) "禁用" else "启用") },
+                    leadingIcon = {
+                        Icon(
+                            if (sourceItem.enabled) Icons.Outlined.Close else Icons.Outlined.CheckCircle,
+                            contentDescription = null,
+                        )
+                    },
                     onClick = {
                         onToggle()
                         showDropdown = false
                     },
                 )
+                if (!isAnimeko) {
+                    DropdownMenuItem(
+                        text = { Text("重新匹配") },
+                        leadingIcon = { Icon(Icons.Outlined.Refresh, null) },
+                        onClick = {
+                            onManualMatch()
+                            showDropdown = false
+                        },
+                    )
+                }
                 DropdownMenuItem(
-                    text = { Text("重新匹配") },
+                    text = { Text("时间校准 (${formatDanmakuShiftMillis(sourceItem.shiftMillis)})") },
+                    leadingIcon = { Icon(Icons.Outlined.Schedule, null) },
                     onClick = {
-                        onManualMatch()
+                        onAdjustShift()
                         showDropdown = false
                     },
                 )

@@ -472,20 +472,6 @@ fun EpisodeDetails(
                     }
                 }
             }
-            val editingShiftSource = editingShiftServiceId?.let { serviceId ->
-                danmakuStatistics.fetchResults.firstOrNull { it.serviceId == serviceId }
-            }
-            if (editingShiftSource != null) {
-                DanmakuTimeShiftDialog(
-                    serviceName = renderDanmakuServiceId(editingShiftSource.serviceId),
-                    currentShiftMillis = editingShiftSource.config.shiftMillis,
-                    onDismissRequest = { editingShiftServiceId = null },
-                    onConfirm = { newShift ->
-                        onAdjustDanmakuSourceShift(editingShiftSource.serviceId, newShift)
-                        editingShiftServiceId = null
-                    },
-                )
-            }
         },
         episodeListSection = {
             EpisodeListSection(
@@ -506,6 +492,9 @@ fun EpisodeDetails(
                         danmakuStatistics.fetchResults.find { it.serviceId == serviceId }?.let {
                             onManualMatchDanmaku(it.providerId)
                         }
+                    },
+                    onAdjustShift = { serviceId ->
+                        editingShiftServiceId = serviceId
                     },
                 )
             }
@@ -560,6 +549,21 @@ fun EpisodeDetails(
         modifier = modifier,
         contentPadding = contentPadding,
     )
+
+    val editingShiftSource = editingShiftServiceId?.let { serviceId ->
+        danmakuStatistics.fetchResults.firstOrNull { it.serviceId == serviceId }
+    }
+    if (editingShiftSource != null) {
+        DanmakuTimeShiftDialog(
+            serviceName = renderDanmakuServiceId(editingShiftSource.serviceId),
+            currentShiftMillis = editingShiftSource.config.shiftMillis,
+            onDismissRequest = { editingShiftServiceId = null },
+            onConfirm = { newShift ->
+                onAdjustDanmakuSourceShift(editingShiftSource.serviceId, newShift)
+                editingShiftServiceId = null
+            },
+        )
+    }
 }
 
 @Composable
