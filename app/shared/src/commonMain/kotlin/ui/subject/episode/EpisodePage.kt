@@ -416,7 +416,7 @@ private fun EpisodeScreenTabletVeryWide(
                 danmakuHostState,
                 danmakuEditorState,
                 vm.playerControllerState,
-                expanded = true,
+                expanded = vm.isFullscreen,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 maintainAspectRatio = false,
                 windowInsets = if (vm.isFullscreen) {
