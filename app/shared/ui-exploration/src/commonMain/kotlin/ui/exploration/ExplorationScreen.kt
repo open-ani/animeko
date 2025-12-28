@@ -49,6 +49,12 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.runtime.derivedStateOf
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
@@ -155,6 +161,13 @@ fun ExplorationScreen(
     actions: @Composable () -> Unit = {},
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
+    val showScrollToTop by remember {
+        derivedStateOf {
+            state.pageScrollState.firstVisibleItemIndex > 0
+        }
+    }
+
+    val scope = rememberCoroutineScope()
     val isHeightAtLeastMedium = currentWindowAdaptiveInfo1().windowSizeClass.isHeightAtLeastMedium
     val scrollBehavior = if (LocalPlatform.current.hasScrollingBug() || isHeightAtLeastMedium) {
         TopAppBarDefaults.pinnedScrollBehavior()
@@ -199,6 +212,28 @@ fun ExplorationScreen(
                 windowInsets = AniWindowInsets.forTopAppBarWithoutDesktopTitle(),
                 scrollBehavior = scrollBehavior,
             )
+        },
+        floatingActionButton = {
+            AnimatedVisibility(
+                visible = showScrollToTop,
+                enter = fadeIn(),
+                exit = fadeOut(),
+            ) {
+                FloatingActionButton(
+                    onClick = {
+                        scope.launch {
+                            // 平滑滚动到顶部
+                            state.pageScrollState.animateScrollToItem(0)
+                        }
+                    },
+                    modifier = Modifier.padding(bottom = 16.dp, end = 16.dp) // 调整一下边距
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.ArrowUpward,
+                        contentDescription = "Scroll to top"
+                    )
+                }
+            }
         },
         contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
     ) { topBarPadding ->
