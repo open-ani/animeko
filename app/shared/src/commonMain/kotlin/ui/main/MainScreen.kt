@@ -217,8 +217,9 @@ private fun MainScreenContent(
                                     MainScreenPage.Collection ->
                                         userCollectionsViewModel.state.scrollToTop()
 
-                                    MainScreenPage.CacheManagement ->
-                                        cacheManagementViewModel.lazyGridState.animateScrollToItem(0)
+                                    MainScreenPage.CacheManagement -> {
+                                        // cacheManagementViewModel.lazyGridState.animateScrollToItem(0)
+                                    }
                                 }
                             }
                         },
@@ -288,8 +289,10 @@ private fun MainScreenContent(
                     MainScreenPage.CacheManagement -> {
                         CacheManagementScreen(
                             cacheManagementViewModel,
+                            selfInfo = selfInfo,
                             onPlay = { navigator.navigateEpisodeDetails(it.subjectId, it.episodeId) },
-                            Modifier.fillMaxSize(),
+                            onClickLogin = { showAccountSettingsPopup = true },
+                            modifier = Modifier.fillMaxSize(),
                             navigationIcon = { },
                         )
                     }

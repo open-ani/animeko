@@ -20,6 +20,7 @@ import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.format1f
+import kotlin.random.Random
 
 @Immutable
 class CacheEpisodeState(
@@ -127,8 +128,8 @@ fun createTestMediaStats(): MediaStats = MediaStats.Unspecified
 val TestCacheEpisodes
     get() = listOf(
         createTestCacheEpisode(1, "翻转孤独", 1),
-        createTestCacheEpisode(2, "明天见", 1),
-        createTestCacheEpisode(3, "火速增员", 1),
+        createTestCacheEpisode(2, "明天见", 1, initialState = CacheEpisodePaused.PAUSED),
+        createTestCacheEpisode(3, "火速增员", 1, progress = 1f.toProgress()),
     )
 
 @OptIn(DelicateCoroutinesApi::class)
@@ -150,7 +151,7 @@ fun createTestCacheEpisode(
     return CacheEpisodeState(
         subjectId = subjectId,
         episodeId = episodeId,
-        cacheId = "1",
+        cacheId = Random.nextInt(10000, 99999).toString(),
         sort = EpisodeSort(sort),
         displayName = displayName,
         creationTime = 100,

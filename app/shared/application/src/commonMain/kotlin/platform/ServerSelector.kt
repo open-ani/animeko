@@ -22,6 +22,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.selects.select
@@ -48,25 +50,31 @@ class ServerSelector(
 ) {
     private val logger = logger<ServerSelector>()
 
-    val flow = preferGlobalServerFlow.distinctUntilChanged().map { preferGlobalServer ->
-        val globalServerList = AniServers.preferGlobal.map { it.url }
-        val directServerList = AniServers.preferDirect.map { it.url }
-        try {
-            when (preferGlobalServer) {
-                true -> globalServerList
-                false -> directServerList
+    val flow = flowOf(AniServers.overrideServer != null).flatMapLatest { override ->
+        if (override) {
+            flowOf(AniServers.allServers.map { it.url })
+        } else {
+            preferGlobalServerFlow.distinctUntilChanged().map { preferGlobalServer ->
+                val globalServerList = AniServers.preferGlobal.map { it.url }
+                val directServerList = AniServers.preferDirect.map { it.url }
+                try {
+                    when (preferGlobalServer) {
+                        true -> globalServerList
+                        false -> directServerList
 
-                null -> {
-                    getFastestServerUrls(globalServerList)
+                        null -> {
+                            getFastestServerUrls(globalServerList)
+                        }
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) { // should not happen
+                    logger.warn("Failed to select server, see cause", e)
+                    Analytics.recordEvent(AnalyticsEvent.AppServerSelectError)
+                    // 出错时返回默认列表
+                    globalServerList
                 }
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Throwable) { // should not happen
-            logger.warn("Failed to select server, see cause", e)
-            Analytics.recordEvent(AnalyticsEvent.AppServerSelectError)
-            // 出错时返回默认列表
-            globalServerList
         }
     }.shareIn(scope, started = SharingStarted.Lazily, replay = 1)
 

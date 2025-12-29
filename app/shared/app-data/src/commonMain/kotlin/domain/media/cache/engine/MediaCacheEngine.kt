@@ -106,5 +106,6 @@ interface MediaCacheEngine {
 value class MediaCacheEngineKey(val key: String) {
     companion object {
         val Anitorrent = MediaCacheEngineKey(TorrentEngineType.Anitorrent.id)
+        val WebM3u = MediaCacheEngineKey("web-m3u")
     }
 }

@@ -12,8 +12,10 @@ package me.him188.ani.app.ui.cache.components
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import me.him188.ani.app.domain.media.TestMediaList
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 /**
@@ -26,6 +28,8 @@ class CacheGroupState(
     val commonInfo: CacheGroupCommonInfo?, // null means loading
     episodes: List<CacheEpisodeState>,
     stats: Stats,
+    val engineKey: MediaCacheEngineKey? = null,
+    val collectionType: UnifiedCollectionType? = null,
 ) {
     @Immutable
     data class Stats(
@@ -94,5 +98,6 @@ internal val TestCacheGroupSates = listOf(
             downloadedSize = 233.megaBytes,
             uploadSpeed = 233.megaBytes,
         ),
+        engineKey = listOf(MediaCacheEngineKey.Anitorrent, MediaCacheEngineKey.WebM3u).random(),
     ),
 )

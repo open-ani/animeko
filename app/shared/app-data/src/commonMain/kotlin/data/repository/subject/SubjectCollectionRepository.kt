@@ -182,6 +182,11 @@ sealed class SubjectCollectionRepository(
         type: UnifiedCollectionType?,
     )
 
+    /**
+     * 只从本地数据库中获取收藏类型, 不进行网络请求.
+     */
+    abstract fun getSubjectCollectionTypeOffline(subjectId: Int): Flow<UnifiedCollectionType?>
+
     abstract suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>>
 
     abstract suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>>
@@ -549,6 +554,10 @@ class SubjectCollectionRepositoryImpl(
                 )
             }
         }
+    }
+
+    override fun getSubjectCollectionTypeOffline(subjectId: Int): Flow<UnifiedCollectionType?> {
+        return subjectCollectionDao.findById(subjectId).map { it?.collectionType }
     }
 
     override suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>> {

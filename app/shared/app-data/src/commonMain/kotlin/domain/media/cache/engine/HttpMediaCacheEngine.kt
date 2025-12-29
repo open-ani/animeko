@@ -62,7 +62,7 @@ class HttpMediaCacheEngine(
     private val mediaSourceId: String,
     private val dao: HttpCacheDownloadStateDao,
 ) : MediaCacheEngine {
-    override val engineKey: MediaCacheEngineKey = Companion.engineKey
+    override val engineKey: MediaCacheEngineKey = MediaCacheEngineKey.WebM3u
 
     override val stats: Flow<MediaStats> = run {
         val downloadSpeedFlow =
@@ -335,8 +335,6 @@ class HttpMediaCacheEngine(
     }
 
     companion object {
-        val engineKey = MediaCacheEngineKey("web-m3u")
-
         private val logger = logger<HttpMediaCacheEngine>()
 
         @Deprecated("Use HttpMediaCacheEngine.MEDIA_CACHE_DIR instead")

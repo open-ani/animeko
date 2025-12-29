@@ -33,6 +33,7 @@ import me.him188.ani.utils.coroutines.RestartableCoroutineScope
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
+import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -67,7 +68,10 @@ class TorrentMediaCacheStorage(
                 select<Unit> {
                     // 如果在 APP 启动时 serviceConnected 状态变了, 忽略处理
                     serviceConnected.onReceive {
-                        if (!startupRestored.isCompleted) return@onReceive
+                        if (!startupRestored.isCompleted) {
+                            logger.warn { "Startup torrent cache restoration is not completed, skip restore on service connected." }
+                            return@onReceive
+                        }
                         logger.debug { "Refreshing torrent caches on service connection changed, connected: $it." }
                         refreshCache()
                     }

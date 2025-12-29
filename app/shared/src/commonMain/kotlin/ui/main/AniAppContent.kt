@@ -102,6 +102,7 @@ import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
 import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
 import me.him188.ani.app.ui.subject.episode.EpisodeScreen
 import me.him188.ani.app.ui.subject.episode.EpisodeViewModel
+import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.datasources.api.source.FactoryId
 import kotlin.reflect.typeOf
 
@@ -472,12 +473,15 @@ private fun AniAppContentImpl(
                 popExitTransition = popExitTransition,
             ) { backStackEntry ->
                 val route = backStackEntry.toRoute<NavRoutes.Caches>()
+                val selfInfo by remember { SelfInfoStateProducer() }.flow.collectAsState(null)
                 CacheManagementScreen(
                     vm = viewModel { CacheManagementViewModel() },
+                    selfInfo = selfInfo,
                     onPlay = {
                         aniNavigator.navigateEpisodeDetails(it.subjectId, it.episodeId)
                     },
-                    Modifier.fillMaxSize(),
+                    onClickLogin = { },
+                    modifier = Modifier.fillMaxSize(),
                     navigationIcon = {
                         BackNavigationIconButton(
                             {
