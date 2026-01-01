@@ -72,7 +72,7 @@ fun CarouselAutoAdvanceEffect(
                                 easing = LinearEasing,
                             ),
                         )
-                        carouselState.scrollToItem(targetPage) // 确保位置精度
+                        carouselState.scrollToItem(targetPage) // 在动画滚动结束后再执行一次无动画跳转, 修正动画过程中可能出现的浮点舍入/中断导致的残余偏移, 确保最终精确停在 targetPage
                     }
                 }
             }
