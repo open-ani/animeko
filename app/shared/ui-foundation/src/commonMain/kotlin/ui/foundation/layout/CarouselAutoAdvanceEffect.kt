@@ -59,7 +59,7 @@ fun CarouselAutoAdvanceEffect(
                     @Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
                     launch(start = CoroutineStart.UNDISPATCHED) {
                         var targetPage =
-                            if (abs(carouselState.pagerState.currentPageOffsetFraction) > 0.1f) 0   //调整浮点精度
+                            if (abs(carouselState.pagerState.currentPageOffsetFraction) > 0.1f) 0   // 调整浮点精度
                             else (carouselState.pagerState.currentPage + 1) % (carouselState.pagerState.pageCount)
                         
                         if (targetPage < 0 || targetPage >= carouselState.pagerState.pageCount) {
