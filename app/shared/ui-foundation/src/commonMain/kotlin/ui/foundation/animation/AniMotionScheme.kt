@@ -21,6 +21,7 @@ import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -91,8 +92,8 @@ class AniMotionScheme(
     val animatedContent: AnimatedContentMotionScheme,
     val animatedVisibility: AnimatedVisibilityMotionScheme,
     val carouselAutoAdvanceSpec: FiniteAnimationSpec<Float> = tween(
-        durationMillis = 1000, // spec https://m3.material.io/styles/motion/easing-and-duration/tokens-specs#ee9dbe95-70fa-4804-8347-c4fd58c60fe2
-        easing = EmphasizedEasing,
+        durationMillis = 500, // spec https://m3.material.io/styles/motion/easing-and-duration/tokens-specs#ee9dbe95-70fa-4804-8347-c4fd58c60fe2
+        easing = LinearEasing,
     ),
 ) {
     companion object {
