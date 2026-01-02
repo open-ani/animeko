@@ -92,7 +92,7 @@ class AniMotionScheme(
     val animatedContent: AnimatedContentMotionScheme,
     val animatedVisibility: AnimatedVisibilityMotionScheme,
     val carouselAutoAdvanceSpec: FiniteAnimationSpec<Float> = tween(
-        durationMillis = 500, // spec https://m3.material.io/styles/motion/easing-and-duration/tokens-specs#ee9dbe95-70fa-4804-8347-c4fd58c60fe2
+        durationMillis = 500, // 修改动画效果和时长，避免卡顿效果
         easing = LinearEasing,
     ),
 ) {

@@ -66,9 +66,12 @@ fun CarouselAutoAdvanceEffect(
                         val visiblePagesInfo = layoutInfo.visiblePagesInfo
                         val lastItem = visiblePagesInfo.lastOrNull() ?: return@launch
                         val visiblePagesNum = visiblePagesInfo.size
+                        // 平均每个元素的偏移量，用于判断最后一个元素是否完全显示
                         val avgItemOffset = layoutInfo.viewportEndOffset / visiblePagesNum
+                        // 如果最后一个元素是最后一页，并且其偏移量小于等于 viewportEndOffset - avgItemOffset，说明最后一页已经完全显示
+                        //说明最后一个元素展开显示，前面的元素被压缩显示
                         if (lastItem.index == pager.pageCount - 1 && lastItem.offset <= layoutInfo.viewportEndOffset - avgItemOffset) {
-                            targetPage = 0
+                            targetPage = 0  //已经完全显示，回到第一页
                         }
                         
                         if (targetPage < 0 || targetPage >= carouselState.pagerState.pageCount) {
