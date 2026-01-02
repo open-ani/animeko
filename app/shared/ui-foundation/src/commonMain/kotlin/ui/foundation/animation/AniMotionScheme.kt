@@ -84,8 +84,7 @@ class AniMotionScheme(
 
     /**
      * [AnimatedContent] 默认动画:
-     * 1. fade out 旧内容, 同时 animate 到新内容的大小
-     * 2. fade in
+     * 1. LinearEasing 匀速移动动画
      *
      * @see AnimatedContent
      */
