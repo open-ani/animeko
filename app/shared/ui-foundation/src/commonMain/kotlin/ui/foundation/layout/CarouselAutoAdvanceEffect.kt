@@ -81,7 +81,6 @@ fun CarouselAutoAdvanceEffect(
                             targetPage,
                             animationSpec = animationSpec,
                         )
-                        println(animationSpec)
                     }
                 }
             }
