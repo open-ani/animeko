@@ -10,8 +10,7 @@
 package me.him188.ani.app.ui.foundation.layout
 
 import androidx.compose.animation.core.FiniteAnimationSpec
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.LinearEasing
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.material3.carousel.CarouselState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -28,7 +27,6 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
-import kotlin.math.abs
 
 
 /**
@@ -58,29 +56,32 @@ fun CarouselAutoAdvanceEffect(
                     delay(period)
                     @Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
                     launch(start = CoroutineStart.UNDISPATCHED) {
-                        var targetPage =
+                        val targetPage =
                             (carouselState.pagerState.currentPage + 1) % (carouselState.pagerState.pageCount)
-                        //判断最后一个元素是否完全显示
+
                         val pager = carouselState.pagerState
                         val layoutInfo = pager.layoutInfo
                         val visiblePagesInfo = layoutInfo.visiblePagesInfo
                         val lastItem = visiblePagesInfo.lastOrNull() ?: return@launch
-                        val visiblePagesNum = visiblePagesInfo.size
-                        // 平均每个元素的偏移量，用于判断最后一个元素是否完全显示
-                        val avgItemOffset = layoutInfo.viewportEndOffset / visiblePagesNum
-                        // 如果最后一个元素是最后一页，并且其偏移量小于等于 viewportEndOffset - avgItemOffset，说明最后一页已经完全显示
-                        //说明最后一个元素展开显示，前面的元素被压缩显示
-                        if (lastItem.index == pager.pageCount - 1 && lastItem.offset <= layoutInfo.viewportEndOffset - avgItemOffset) {
-                            targetPage = 0  //已经完全显示，回到第一页
+
+                        // 最后一个元素可见
+                        if (lastItem.index == pager.pageCount - 1) {
+                            // 如果最后一个 page 已经显示了 75% 以上, 说明最后一个元素顶到头了, 并且 pager size 也是填满屏幕的
+                            // 这种情况就不滚动了, 直接回到第一页
+                            if (layoutInfo.viewportEndOffset - lastItem.offset >= layoutInfo.pageSize * 0.75f) {
+                                carouselState.animateScrollToItem(0, animationSpec)
+                            } else {
+                                // 
+                                val scrollOffset =
+                                    layoutInfo.pageSize - (layoutInfo.viewportEndOffset - lastItem.offset)
+                                carouselState.animateScrollBy(scrollOffset.toFloat(), animationSpec)
+                            }
+                        } else {
+                            if (targetPage < 0 || targetPage >= carouselState.pagerState.pageCount) {
+                                return@launch // prevent crash
+                            }
+                            carouselState.animateScrollToItem(targetPage, animationSpec)
                         }
-                        
-                        if (targetPage < 0 || targetPage >= carouselState.pagerState.pageCount) {
-                            return@launch // prevent crash
-                        }
-                        carouselState.animateScrollToItem(
-                            targetPage,
-                            animationSpec = animationSpec,
-                        )
                     }
                 }
             }

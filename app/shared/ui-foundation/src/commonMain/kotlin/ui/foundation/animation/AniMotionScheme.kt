@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -21,7 +21,6 @@ import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -91,8 +90,8 @@ class AniMotionScheme(
     val animatedContent: AnimatedContentMotionScheme,
     val animatedVisibility: AnimatedVisibilityMotionScheme,
     val carouselAutoAdvanceSpec: FiniteAnimationSpec<Float> = tween(
-        durationMillis = 500, // 修改动画效果和时长，避免卡顿效果
-        easing = LinearEasing,
+        durationMillis = 1000, // spec https://m3.material.io/styles/motion/easing-and-duration/tokens-specs#ee9dbe95-70fa-4804-8347-c4fd58c60fe2
+        easing = EmphasizedEasing,
     ),
 ) {
     companion object {
