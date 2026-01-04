@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Downloading
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -249,6 +250,7 @@ fun CacheManagementScreen(
     selfInfo: SelfInfoUiState?,
     onPlay: (CacheEpisodeState) -> Unit,
     onClickLogin: () -> Unit,
+    onNavigateCacheDetail: (cacheId: String) -> Unit,
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
@@ -258,15 +260,10 @@ fun CacheManagementScreen(
         state,
         selfInfo,
         onPlay,
-        onResume = {
-            vm.resumeCache(it)
-        },
-        onPause = {
-            vm.pauseCache(it)
-        },
-        onDelete = {
-            vm.deleteCache(it)
-        },
+        onResume = { vm.resumeCache(it) },
+        onPause = { vm.pauseCache(it) },
+        onDelete = { vm.deleteCache(it) },
+        onViewDetail = { onNavigateCacheDetail(it.cacheId) },
         onClickLogin = onClickLogin,
         modifier = modifier,
         navigationIcon = navigationIcon,
@@ -282,6 +279,7 @@ fun CacheManagementScreen(
     onPlay: (CacheEpisodeState) -> Unit,
     onResume: (CacheEpisodeState) -> Unit,
     onPause: (CacheEpisodeState) -> Unit,
+    onViewDetail: (CacheEpisodeState) -> Unit,
     onDelete: (CacheEpisodeState) -> Unit,
     onClickLogin: () -> Unit,
     modifier: Modifier = Modifier,
@@ -396,6 +394,7 @@ fun CacheManagementScreen(
         onResume = onResume,
         onPause = onPause,
         onDelete = onDelete,
+        onViewDetail = onViewDetail,
         windowInsets = windowInsets,
         listDetailLayoutParameters = listDetailLayoutParameters,
         modifier = modifier,
@@ -422,6 +421,7 @@ private fun CacheManagementLayout(
     onResume: (CacheEpisodeState) -> Unit,
     onPause: (CacheEpisodeState) -> Unit,
     onDelete: (CacheEpisodeState) -> Unit,
+    onViewDetail: (CacheEpisodeState) -> Unit,
     appBarColors: TopAppBarColors,
     topBar: @Composable () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior,
@@ -491,6 +491,7 @@ private fun CacheManagementLayout(
                                 onPlay = { onPlay(entry.episode) },
                                 onResume = { onResume(entry.episode) },
                                 onPause = { onPause(entry.episode) },
+                                onViewDetail = { onViewDetail(entry.episode) },
                                 onDelete = { onDelete(entry.episode) },
                                 modifier = Modifier.paneContentPadding().padding(horizontal = listSpacedBy),
                             )
@@ -578,6 +579,7 @@ private fun CacheManagementLayout(
                                     onPlay = { onPlay(entry.episode) },
                                     onResume = { onResume(entry.episode) },
                                     onPause = { onPause(entry.episode) },
+                                    onViewDetail = { onViewDetail(entry.episode) },
                                     onDelete = { onDelete(entry.episode) },
                                     contentPadding = PaddingValues(itemContentPadding),
                                     transparentBackgroundIfUnselected = true,
@@ -764,6 +766,7 @@ private fun CacheListItem(
     onResume: () -> Unit,
     onPause: () -> Unit,
     onDelete: () -> Unit,
+    onViewDetail: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(16.dp),
     transparentBackgroundIfUnselected: Boolean = false,
@@ -864,6 +867,10 @@ private fun CacheListItem(
                             onPause()
                             showMenu = false
                         },
+                        onViewDetail = {
+                            onViewDetail()
+                            showMenu = false
+                        },
                         onDelete = {
                             showConfirm = true
                         },
@@ -913,6 +920,7 @@ private fun CacheActionDropdown(
     onResume: () -> Unit,
     onPause: () -> Unit,
     onDelete: () -> Unit,
+    onViewDetail: () -> Unit,
 ) {
     val toaster = LocalToaster.current
     DropdownMenu(
@@ -947,6 +955,12 @@ private fun CacheActionDropdown(
             },
         )
         DropdownMenuItem(
+            text = { Text("更多信息") },
+            leadingIcon = { Icon(Icons.Rounded.Info, null) },
+            onClick = onViewDetail,
+        )
+
+        DropdownMenuItem(
             text = { Text("删除", color = MaterialTheme.colorScheme.error) },
             leadingIcon = { Icon(Icons.Rounded.Delete, null, tint = MaterialTheme.colorScheme.error) },
             onClick = onDelete,
@@ -972,6 +986,7 @@ private fun PreviewCacheManagementScreen() {
             onPause = {},
             onDelete = {},
             onClickLogin = { },
+            onViewDetail = { },
             navigationIcon = { BackNavigationIconButton({ }) },
         )
     }
