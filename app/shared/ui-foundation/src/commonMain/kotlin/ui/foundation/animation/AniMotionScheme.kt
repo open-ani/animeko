@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2026 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -83,7 +83,8 @@ class AniMotionScheme(
 
     /**
      * [AnimatedContent] 默认动画:
-     * 1. LinearEasing 匀速移动动画
+     * 1. fade out 旧内容, 同时 animate 到新内容的大小
+     * 2. fade in
      *
      * @see AnimatedContent
      */
