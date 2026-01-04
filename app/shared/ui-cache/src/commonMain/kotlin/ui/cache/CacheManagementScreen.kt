@@ -314,11 +314,10 @@ fun CacheManagementScreen(
     }
 
     // 当 list detail pane 的类型改变并且在编辑模式时, 需要确保 selectedIds 只能是当前可见的 entries
-    LaunchedEffect(selectionEntries, selectionState.inSelection) {
+    LaunchedEffect(state.entries, selectionState.inSelection) {
         if (selectionState.inSelection) {
-            selectionState.selectedIds = selectionState.selectedIds.filter { id ->
-                selectionEntries.any { it.episode.cacheId == id }
-            }.toSet()
+            val validIds = state.entries.map { it.episode.cacheId }.toSet()
+            selectionState.overrideSelected(selectionState.selectedIds.filter { id -> id in validIds }.toSet())
         }
     }
 
