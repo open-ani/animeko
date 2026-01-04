@@ -45,6 +45,7 @@ import me.him188.ani.client.models.AniBatchUpdateEpisodeCollectionsRequest
 import me.him188.ani.client.models.AniCollectionType
 import me.him188.ani.client.models.AniEpisodeCollection
 import me.him188.ani.client.models.AniPaginatedResponse
+import me.him188.ani.client.models.AniPaginatedResponse2
 import me.him188.ani.client.models.AniRelatedCharacter
 import me.him188.ani.client.models.AniRelatedPerson
 import me.him188.ani.client.models.AniRelatedSubject
@@ -514,10 +515,10 @@ open class SubjectsAniApi : ApiClient {
      * @param q 
      * @param offset  (optional)
      * @param limit  (optional)
-     * @return AniPaginatedResponse
+     * @return AniPaginatedResponse2
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun searchSubjects(q: kotlin.String, offset: kotlin.Int? = null, limit: kotlin.Int? = null): HttpResponse<AniPaginatedResponse> {
+    open suspend fun searchSubjects(q: kotlin.String, offset: kotlin.Int? = null, limit: kotlin.Int? = null): HttpResponse<AniPaginatedResponse2> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
