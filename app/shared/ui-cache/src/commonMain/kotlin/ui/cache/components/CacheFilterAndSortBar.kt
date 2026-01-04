@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -31,6 +31,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,25 +55,28 @@ internal class CacheFilterAndSortState {
 
     @Composable
     fun applyFilterAndSort(list: List<CacheListEntry>): List<CacheListEntry> {
-        return remember(list, selectedCollectionType, selectedEngineKey, selectedStatus, sortOption) {
-            val filtered = list.filter { entry ->
-                (selectedCollectionType == null || (entry.collectionType
-                    ?: UnifiedCollectionType.NOT_COLLECTED) == selectedCollectionType) &&
-                        (selectedEngineKey == null || entry.engineKey == selectedEngineKey) &&
-                        (selectedStatus == null || entry.status == selectedStatus)
-            }
+        val result by remember(list) {
+            derivedStateOf {
+                val filtered = list.filter { entry ->
+                    (selectedCollectionType == null || (entry.collectionType
+                        ?: UnifiedCollectionType.NOT_COLLECTED) == selectedCollectionType) &&
+                            (selectedEngineKey == null || entry.engineKey == selectedEngineKey) &&
+                            (selectedStatus == null || entry.status == selectedStatus)
+                }
 
-            when (sortOption) {
-                CacheSortOption.Newest -> filtered.sortedByDescending { it.episode.creationTime ?: Long.MIN_VALUE }
-                CacheSortOption.Oldest -> filtered.sortedBy { it.episode.creationTime ?: Long.MAX_VALUE }
-                CacheSortOption.SubjectAsc -> filtered.sortedBy { it.subjectName }
-                CacheSortOption.SubjectDesc -> filtered.sortedByDescending { it.subjectName }
-                CacheSortOption.EpisodeAsc -> filtered.sortedWith(compareBy({ it.groupId }, { it.episode.sort }))
-                CacheSortOption.EpisodeDesc -> filtered.sortedWith(
-                    compareBy<CacheListEntry>({ it.groupId }, { it.episode.sort }).reversed(),
-                )
+                when (sortOption) {
+                    CacheSortOption.Newest -> filtered.sortedByDescending { it.episode.creationTime ?: Long.MIN_VALUE }
+                    CacheSortOption.Oldest -> filtered.sortedBy { it.episode.creationTime ?: Long.MIN_VALUE }
+                    CacheSortOption.SubjectAsc -> filtered.sortedBy { it.subjectName }
+                    CacheSortOption.SubjectDesc -> filtered.sortedByDescending { it.subjectName }
+                    CacheSortOption.EpisodeAsc -> filtered.sortedWith(compareBy({ it.groupId }, { it.episode.sort }))
+                    CacheSortOption.EpisodeDesc -> filtered.sortedWith(
+                        compareBy<CacheListEntry>({ it.groupId }, { it.episode.sort }).reversed(),
+                    )
+                }
             }
         }
+        return result
     }
 
     companion object {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -86,6 +86,7 @@ import me.him188.ani.app.tools.getOrZero
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
+import me.him188.ani.app.ui.adaptive.ListDetailLayoutParameters
 import me.him188.ani.app.ui.cache.components.CacheEpisodeState
 import me.him188.ani.app.ui.cache.components.CacheFilterAndSortBar
 import me.him188.ani.app.ui.cache.components.CacheFilterAndSortState
@@ -99,7 +100,6 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
-import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.rememberCurrentTopAppBarContainerColor
@@ -294,12 +294,13 @@ fun CacheManagementScreen(
     val listState = rememberLazyListState()
     val detailListState = rememberLazyListState()
     val cacheFilterState = rememberCacheFilterAndSortState()
-    val navigator = rememberListDetailPaneScaffoldNavigator<String>()
     val selectionState = rememberCacheSelectionState()
 
-    val isSinglePane = currentWindowAdaptiveInfo1().windowSizeClass.isWidthCompact
+    val navigator = rememberListDetailPaneScaffoldNavigator<String>()
+    val listDetailLayoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective)
+
     // 已过滤的 entries
-    val selectionEntries = if (isSinglePane)
+    val selectionEntries = if (listDetailLayoutParameters.preferSinglePane)
         cacheFilterState.applyFilterAndSort(state.entries) else state.entries
 
     // region selection
@@ -397,6 +398,7 @@ fun CacheManagementScreen(
         onPause = onPause,
         onDelete = onDelete,
         windowInsets = windowInsets,
+        listDetailLayoutParameters = listDetailLayoutParameters,
         modifier = modifier,
     )
 }
@@ -427,7 +429,8 @@ private fun CacheManagementLayout(
     listState: LazyListState,
     detailListState: LazyListState,
     windowInsets: WindowInsets,
-    modifier: Modifier = Modifier,
+    listDetailLayoutParameters: ListDetailLayoutParameters,
+    modifier: Modifier = Modifier
 ) {
     val tasker = rememberAsyncHandler()
 
@@ -544,12 +547,13 @@ private fun CacheManagementLayout(
                             .paneWindowInsetsPadding(),
                     )
                 } else {
+                    val itemContentPadding = 16.dp
                     LazyColumn(
                         modifier = Modifier
-                            .paneContentPadding()
+                            .paneContentPadding(extraStart = -itemContentPadding, extraEnd = -itemContentPadding)
                             .paneWindowInsetsPadding(),
                         state = detailListState,
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(vertical = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding),
                     ) {
                         val entries = selectedGroup?.entries.orEmpty()
@@ -576,6 +580,7 @@ private fun CacheManagementLayout(
                                     onResume = { onResume(entry.episode) },
                                     onPause = { onPause(entry.episode) },
                                     onDelete = { onDelete(entry.episode) },
+                                    contentPadding = PaddingValues(itemContentPadding),
                                     transparentBackgroundIfUnselected = true,
                                 )
                             }
@@ -664,7 +669,7 @@ private fun DeleteActionDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Rounded.Delete, null, tint = MaterialTheme.colorScheme.error) },
         title = { Text("删除缓存") },
-        text = { Text("删除后不可恢复，确认删除吗?") },
+        text = { Text("删除后不可恢复，确认删除吗？") },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
@@ -761,9 +766,10 @@ private fun CacheListItem(
     onPause: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(16.dp),
     transparentBackgroundIfUnselected: Boolean = false,
 ) {
-    var showMenu by remember { mutableStateOf(false) }
+    var showMenu by rememberSaveable { mutableStateOf(false) }
     var showConfirm by rememberSaveable { mutableStateOf(false) }
     val statusIcon =
         if (entry.status == CacheStatusFilter.Finished) Icons.Rounded.DownloadDone else Icons.Rounded.Downloading
@@ -799,7 +805,7 @@ private fun CacheListItem(
         color = if (selected) MaterialTheme.colorScheme.secondaryContainer else
             (if (transparentBackgroundIfUnselected) Color.Transparent else MaterialTheme.colorScheme.surface),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(contentPadding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
