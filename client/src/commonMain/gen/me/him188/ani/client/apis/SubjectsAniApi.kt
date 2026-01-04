@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -507,6 +507,44 @@ open class SubjectsAniApi : ApiClient {
             override fun deserialize(decoder: Decoder) = GetSubjectStaffResponse(serializer.deserialize(decoder))
         }
     }
+
+    /**
+     * 搜索条目
+     * 搜索条目
+     * @param q 
+     * @param offset  (optional)
+     * @param limit  (optional)
+     * @return AniPaginatedResponse
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun searchSubjects(q: kotlin.String, offset: kotlin.Int? = null, limit: kotlin.Int? = null): HttpResponse<AniPaginatedResponse> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        q?.apply { localVariableQuery["q"] = listOf("$q") }
+        offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
+        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/subjects/search",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
 
     /**
      * 编辑自己的条目收藏中的单个剧集进度
