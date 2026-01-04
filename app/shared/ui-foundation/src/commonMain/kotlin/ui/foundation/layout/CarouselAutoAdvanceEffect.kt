@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.foundation.layout
 
 import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.material3.carousel.CarouselState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,17 +56,32 @@ fun CarouselAutoAdvanceEffect(
                     delay(period)
                     @Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
                     launch(start = CoroutineStart.UNDISPATCHED) {
-                        // 实际测试, currentPage 只会到 pageCount - 2, 所以我们用  % (pageCount - 1)
-                        // TODO: 自 CMP 1.9, 在宽屏上需要用 -2, 但在手机窄屏上会导致跳过最后两个项目
                         val targetPage =
-                            (carouselState.pagerState.currentPage + 1) % (carouselState.pagerState.pageCount - 2)
-                        if (targetPage < 0 || targetPage >= carouselState.pagerState.pageCount) {
-                            return@launch // prevent crash
+                            (carouselState.pagerState.currentPage + 1) % (carouselState.pagerState.pageCount)
+
+                        val pager = carouselState.pagerState
+                        val layoutInfo = pager.layoutInfo
+                        val visiblePagesInfo = layoutInfo.visiblePagesInfo
+                        val lastItem = visiblePagesInfo.lastOrNull() ?: return@launch
+
+                        // 最后一个元素可见
+                        if (lastItem.index == pager.pageCount - 1) {
+                            // 如果最后一个 page 已经显示了 75% 以上, 说明最后一个元素顶到头了, 并且 pager size 也是填满屏幕的
+                            // 这种情况就不滚动了, 直接回到第一页
+                            if (layoutInfo.viewportEndOffset - lastItem.offset >= layoutInfo.pageSize * 0.75f) {
+                                carouselState.animateScrollToItem(0, animationSpec)
+                            } else {
+                                // 
+                                val scrollOffset =
+                                    layoutInfo.pageSize - (layoutInfo.viewportEndOffset - lastItem.offset)
+                                carouselState.animateScrollBy(scrollOffset.toFloat(), animationSpec)
+                            }
+                        } else {
+                            if (targetPage < 0 || targetPage >= carouselState.pagerState.pageCount) {
+                                return@launch // prevent crash
+                            }
+                            carouselState.animateScrollToItem(targetPage, animationSpec)
                         }
-                        carouselState.animateScrollToItem(
-                            targetPage,
-                            animationSpec = animationSpec,
-                        )
                     }
                 }
             }
