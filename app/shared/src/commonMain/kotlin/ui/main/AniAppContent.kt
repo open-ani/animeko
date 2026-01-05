@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -102,6 +102,7 @@ import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
 import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
 import me.him188.ani.app.ui.subject.episode.EpisodeScreen
 import me.him188.ani.app.ui.subject.episode.EpisodeViewModel
+import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.datasources.api.source.FactoryId
 import kotlin.reflect.typeOf
 
@@ -472,12 +473,16 @@ private fun AniAppContentImpl(
                 popExitTransition = popExitTransition,
             ) { backStackEntry ->
                 val route = backStackEntry.toRoute<NavRoutes.Caches>()
+                val selfInfo by remember { SelfInfoStateProducer() }.flow.collectAsState(null)
                 CacheManagementScreen(
                     vm = viewModel { CacheManagementViewModel() },
+                    selfInfo = selfInfo,
                     onPlay = {
                         aniNavigator.navigateEpisodeDetails(it.subjectId, it.episodeId)
                     },
-                    Modifier.fillMaxSize(),
+                    onClickLogin = { },
+                    onNavigateCacheDetail = { aniNavigator.navigateCacheDetails(it) },
+                    modifier = Modifier.fillMaxSize(),
                     navigationIcon = {
                         BackNavigationIconButton(
                             {

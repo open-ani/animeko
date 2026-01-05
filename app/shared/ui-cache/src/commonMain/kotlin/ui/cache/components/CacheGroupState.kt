@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -12,8 +12,10 @@ package me.him188.ani.app.ui.cache.components
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import me.him188.ani.app.domain.media.TestMediaList
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 /**
@@ -26,6 +28,8 @@ class CacheGroupState(
     val commonInfo: CacheGroupCommonInfo?, // null means loading
     episodes: List<CacheEpisodeState>,
     stats: Stats,
+    val engineKey: MediaCacheEngineKey? = null,
+    val collectionType: UnifiedCollectionType? = null,
 ) {
     @Immutable
     data class Stats(
@@ -94,5 +98,22 @@ internal val TestCacheGroupSates = listOf(
             downloadedSize = 233.megaBytes,
             uploadSpeed = 233.megaBytes,
         ),
+        engineKey = MediaCacheEngineKey.Anitorrent,
+    ),
+    CacheGroupState(
+        id = TestMediaList[0].mediaId,
+        commonInfo = CacheGroupCommonInfo(
+            subjectId = 1,
+            "孤独摇滚",
+            mediaSourceId = "mikan-mikanime-tv",
+            allianceName = "某某字幕组",
+        ),
+        episodes = TestCacheEpisodes,
+        stats = CacheGroupState.Stats(
+            downloadSpeed = 233.megaBytes,
+            downloadedSize = 233.megaBytes,
+            uploadSpeed = 233.megaBytes,
+        ),
+        engineKey = MediaCacheEngineKey.WebM3u,
     ),
 )
