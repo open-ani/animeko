@@ -96,6 +96,7 @@ abstract class BackgroundSearcher<TestData, TestResult>(
      */
     @UiThread
     fun restartSearch(testData: TestData) {
+        testDataFlow.value = testData
         _searchResultFlow.value = null // ui scope
         restartSearchScopeImpl.restartSearchImpl(testData)
     }
