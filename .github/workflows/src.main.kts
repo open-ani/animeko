@@ -12,7 +12,7 @@
 // 也可以在 IDE 里右键 Run
 
 @file:CompilerOptions("-Xmulti-dollar-interpolation", "-Xdont-warn-on-error-suppression")
-@file:Suppress("UNSUPPORTED_FEATURE", "UNSUPPORTED")
+@file:Suppress("UNSUPPORTED_FEATURE", "UNSUPPORTED", "UNSUPPORTED_ARRAY_LITERAL_OUTSIDE_OF_ANNOTATION")
 
 @file:Repository("https://repo.maven.apache.org/maven2/")
 @file:DependsOn("io.github.typesafegithub:github-workflows-kt:3.0.1")
