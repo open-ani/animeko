@@ -39,11 +39,13 @@ import me.him188.ani.client.infrastructure.HttpResponse
 import me.him188.ani.client.infrastructure.RequestConfig
 import me.him188.ani.client.infrastructure.RequestMethod
 import me.him188.ani.client.infrastructure.map
+import me.him188.ani.client.infrastructure.toMultiValue
 import me.him188.ani.client.infrastructure.wrap
 import me.him188.ani.client.models.AniBangumiSyncStateEntity
 import me.him188.ani.client.models.AniBatchUpdateEpisodeCollectionsRequest
 import me.him188.ani.client.models.AniCollectionType
 import me.him188.ani.client.models.AniEpisodeCollection
+import me.him188.ani.client.models.AniNsfwFilter
 import me.him188.ani.client.models.AniPaginatedResponse
 import me.him188.ani.client.models.AniPaginatedResponse2
 import me.him188.ani.client.models.AniRelatedCharacter
@@ -52,6 +54,7 @@ import me.him188.ani.client.models.AniRelatedSubject
 import me.him188.ani.client.models.AniSubjectCollection
 import me.him188.ani.client.models.AniSubjectCollectionCountStats
 import me.him188.ani.client.models.AniSubjectRecommendation
+import me.him188.ani.client.models.AniSubjectSearchSortBy
 import me.him188.ani.client.models.AniUpdateEpisodeCollectionRequest
 import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 
@@ -515,10 +518,13 @@ open class SubjectsAniApi : ApiClient {
      * @param q 
      * @param offset  (optional)
      * @param limit  (optional)
+     * @param tags  (optional)
+     * @param includeNsfw  (optional)
+     * @param sortBy  (optional)
      * @return AniPaginatedResponse2
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun searchSubjects(q: kotlin.String, offset: kotlin.Int? = null, limit: kotlin.Int? = null): HttpResponse<AniPaginatedResponse2> {
+    open suspend fun searchSubjects(q: kotlin.String, offset: kotlin.Int? = null, limit: kotlin.Int? = null, tags: kotlin.collections.List<kotlin.String>? = null, includeNsfw: AniNsfwFilter? = null, sortBy: AniSubjectSearchSortBy? = null): HttpResponse<AniPaginatedResponse2> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -529,6 +535,9 @@ open class SubjectsAniApi : ApiClient {
         q?.apply { localVariableQuery["q"] = listOf("$q") }
         offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
         limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
+        tags?.apply { localVariableQuery["tags"] = toMultiValue(this, "csv") }
+        includeNsfw?.apply { localVariableQuery["include_nsfw"] = listOf("${ includeNsfw.value }") }
+        sortBy?.apply { localVariableQuery["sortBy"] = listOf("${ sortBy.value }") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(

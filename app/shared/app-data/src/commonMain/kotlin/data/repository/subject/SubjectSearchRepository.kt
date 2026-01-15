@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.data.repository.subject
 
-import androidx.collection.MutableIntList
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
@@ -22,6 +21,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.schedule.AnimeSeasonId
 import me.him188.ani.app.data.models.schedule.yearMonths
+import me.him188.ani.app.data.network.AniSubjectSearchService
 import me.him188.ani.app.data.network.BangumiSearchFilters
 import me.him188.ani.app.data.network.BangumiSubjectSearchService
 import me.him188.ani.app.data.network.BatchSubjectDetails
@@ -41,6 +41,7 @@ import kotlin.coroutines.cancellation.CancellationException
 
 class SubjectSearchRepository(
     private val bangumiSubjectSearchService: BangumiSubjectSearchService,
+    private val aniSubjectSearchService: AniSubjectSearchService,
     private val subjectCollectionRepository: SubjectCollectionRepository,
     private val subjectService: SubjectService,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
@@ -78,7 +79,7 @@ class SubjectSearchRepository(
             val offset = params.key
                 ?: return@withContext LoadResult.Error(IllegalArgumentException("Key is null"))
             return@withContext try {
-                val res = bangumiSubjectSearchService.searchSubjectIds(
+                val res = /*bangumiSubjectSearchService.searchSubjectIds*/aniSubjectSearchService.searchSubjects(
                     searchQuery.keywords,
                     useNewApi = useNewApi(),
                     offset = offset,
@@ -87,23 +88,20 @@ class SubjectSearchRepository(
                     sort = searchQuery.sort.toBangumiSort(),
                 )
 
-                val filteredIds = if (ignoreDoneAndDropped()) {
+                val filtered = if (ignoreDoneAndDropped()) {
                     val excludedIds = subjectCollectionRepository.getSubjectIdsByCollectionType(
                         types = listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED),
                     ).first()
 
-                    MutableIntList().apply {
-                        res.forEach { if (it !in excludedIds) add(it) }
+                    buildList {
+                        res.forEach { if (it.subjectInfo.subjectId !in excludedIds) add(it) }
                     }
                 } else {
                     res
                 }
 
                 // 在分页源中直接过滤掉不符合条件的数据 #2380
-                val subjectInfos = filterSubjectsBySort(
-                    subjectService.batchGetSubjectDetails(filteredIds),
-                    searchQuery.sort,
-                )
+                val subjectInfos = filterSubjectsBySort(filtered, searchQuery.sort)
 
                 return@withContext LoadResult.Page(
                     subjectInfos,
