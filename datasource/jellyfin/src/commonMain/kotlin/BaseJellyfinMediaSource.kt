@@ -73,13 +73,14 @@ abstract class BaseJellyfinMediaSource(
                 }
                 .flatMapMerge {
                     when (it.Type) {
-                        "Season" -> doSearch(parentId = it.Id).Items.asFlow()
+                        // jellyfin 的 type 为 "Series" 在这里应当被处理，否则会 fallback 到 emptyFlow
+                        "Season", "Series" -> doSearch(parentId = it.Id).Items.asFlow()
                         "Episode" -> flowOf(it)
                         "Movie" -> flowOf(it)
                         else -> emptyFlow()
                     }
                 }
-                .filter { (it.Type == "Episode" || it.Type == "Movie") && it.CanDownload }
+                .filter { (it.Type == "Episode" || it.Type == "Movie") }
                 .toList()
                 .distinctBy { it.Id }
                 .mapNotNull { item ->
@@ -112,7 +113,8 @@ abstract class BaseJellyfinMediaSource(
                             publishedTime = 0,
                             properties = MediaProperties(
                                 // Note: 这里我们 fallback 使用请求的名称, 这样可以在缺少信息时绝对通过后续的过滤, 避免资源被排除. 但这可能会导致有不满足的资源被匹配. 如果未来有问题再考虑. See also #1806.
-                                subjectName = item.SeasonName?.takeIf { it.isNotBlank() } ?: query.subjectNameCN,
+                                // subjectName 中 item.SeasonName 在 jellyfin 配合 Bangumi 插件应当是 第 x 季的形式，不修改为 item.SeriesName 不匹配 query 会导致结果进入模糊匹配(这也是为什么修改jellyfin的"季"标题可以通过这个逻辑)
+                                subjectName = item.SeriesName?.takeIf { it.isNotBlank() } ?: item.SeasonName?.takeIf { it.isNotBlank() } ?: query.subjectNameCN,
                                 episodeName = item.Name,
                                 subtitleLanguageIds = listOf("CHS"),
                                 resolution = "1080P",
@@ -169,7 +171,6 @@ abstract class BaseJellyfinMediaSource(
             parameter("enableImages", false)
             parameter("recursive", recursive)
             parameter("searchTerm", subjectName)
-            parameter("fields", "CanDownload")
             parameter("fields", "MediaStreams")
             parameter("parentId", parentId)
         }.body<SearchResponse>()
@@ -205,11 +206,11 @@ private data class MediaStream(
 private data class Item(
     val Name: String,
     val SeasonName: String? = null,
+    val SeriesName: String? = null,
     val Id: String,
     val OriginalTitle: String? = null, // 日文
     val IndexNumber: Int? = null,
     val ParentIndexNumber: Int? = null,
     val Type: String, // "Episode", "Series", ...
-    val CanDownload: Boolean = false,
     val MediaStreams: List<MediaStream> = emptyList(),
 )
