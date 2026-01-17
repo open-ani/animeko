@@ -102,6 +102,7 @@ import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
+import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.rememberCurrentTopAppBarContainerColor
 import me.him188.ani.app.ui.foundation.session.SelfAvatar
@@ -318,6 +319,9 @@ fun CacheManagementScreen(
             selectionState.overrideSelected(selectionState.selectedIds.filter { id -> id in validIds }.toSet())
         }
     }
+
+    // 选择模式下导航返回应该退出选择模式
+    BackHandler(selectionState.inSelection) { selectionState.clear() }
 
     // 当前正在浏览的 cache group
     var currentViewingGroupKey by rememberSaveable { mutableStateOf<String?>(null) }
