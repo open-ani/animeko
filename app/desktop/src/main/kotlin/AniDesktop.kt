@@ -155,6 +155,11 @@ object AniDesktop {
 
     @JvmStatic
     fun main(args: Array<String>) {
+        // Fix screen flickering on Windows
+        if (System.getProperty("os.name").startsWith("windows", ignoreCase = true)) {
+            System.setProperty("skiko.renderApi", "OPENGL")
+        }
+        
         val startupTimeMonitor = StartupTimeMonitor()
 
         val originalExceptionHandler = Thread.currentThread().uncaughtExceptionHandler
