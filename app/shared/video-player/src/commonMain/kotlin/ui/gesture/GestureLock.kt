@@ -28,6 +28,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -65,7 +67,9 @@ fun GestureLock(
 //        }
 //    }
     Surface(
-        modifier.testTag(TAG_GESTURE_LOCK),
+        modifier
+            .testTag(TAG_GESTURE_LOCK)
+            .focusProperties { canFocus = false }, // Disable focus for GestureLock to prevent it from stealing focus
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.background.copy(0.05f),
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline.slightlyWeaken()),

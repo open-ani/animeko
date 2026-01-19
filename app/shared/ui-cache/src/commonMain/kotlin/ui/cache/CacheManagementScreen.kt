@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.cache
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.combinedClickable
+import me.him188.ani.app.ui.foundation.tvCombinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -701,7 +702,7 @@ private fun CacheSubjectListItem(
         modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.large)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            .tvCombinedClickable(onClick = onClick, onLongClick = onLongClick),
         shape = MaterialTheme.shapes.large,
         tonalElevation = if (selected) 6.dp else 1.dp,
         color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
@@ -794,7 +795,7 @@ private fun CacheListItem(
         modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.large)
-            .combinedClickable(
+            .tvCombinedClickable(
                 onClick = {
                     if (selectionMode) {
                         onToggleSelected()

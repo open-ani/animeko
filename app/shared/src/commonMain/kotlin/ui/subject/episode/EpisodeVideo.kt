@@ -13,6 +13,7 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
@@ -25,6 +26,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -91,6 +93,20 @@ import me.him188.ani.utils.platform.isMobile
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.audioTracks
 import org.openani.mediamp.features.subtitleTracks
+import org.openani.mediamp.features.PlaybackSpeed
+import me.him188.ani.app.ui.foundation.effects.ComposeKey
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import me.him188.ani.app.videoplayer.ui.gesture.rememberPlayerFastSkipState
+import me.him188.ani.app.videoplayer.ui.gesture.keyboardSeekAndFastForward
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
 import org.openani.mediamp.togglePause
 
 internal const val TAG_EPISODE_VIDEO_TOP_BAR = "EpisodeVideoTopBar"
@@ -141,11 +157,44 @@ internal fun EpisodeVideoImpl(
     gestureFamily: GestureFamily = LocalPlatform.current.mouseFamily,
     fastForwardSpeed: Float = 3f,
     contentWindowInsets: WindowInsets = WindowInsets(0.dp),
+    onRequestFocus: () -> Unit = {}, // Deprecated, handled internally now
+
 ) {
+    BoxWithConstraints(modifier) {
     // Don't rememberSavable. 刻意让每次切换都是隐藏的
     var isLocked by remember { mutableStateOf(false) }
     val sheetsController = rememberVideoSideSheetsController<EpisodeVideoSideSheetPage>()
     val anySideSheetVisible by sheetsController.hasPageAsState()
+
+    // Focus management for Key Events (Media Keys & D-pad Seeking)
+    val internalFocusRequester = remember { FocusRequester() }
+    val requestFocus = { internalFocusRequester.requestFocus() }
+
+    // Request focus ONLY ONCE when entering the composition (Fixes #FocusLoss on UI hide)
+    LaunchedEffect(Unit) {
+        requestFocus()
+    }
+
+    // Default Focus for Overlay
+    // User requested "Detail" button (Likely Sidebar on Desktop, or Settings on TV)
+    val settingsFocusRequester = remember { FocusRequester() }
+    val sidebarFocusRequester = remember { FocusRequester() }
+    
+    val isBottomBarVisible = playerControllerState.visibility.bottomBar
+    val isDesktop = LocalPlatform.current.isDesktop()
+    val focusManager = LocalFocusManager.current
+    
+    // Track if any button currently has focus
+    var anyButtonHasFocus by remember { mutableStateOf(false) }
+    
+    // Auto-focus settings button on Enter key press (only if no button has focus)
+    LaunchedEffect(isBottomBarVisible, isDesktop, expanded) {
+        if (isBottomBarVisible && isDesktop && expanded) {
+            // Small delay to avoid frequent calls during rapid visibility changes
+            kotlinx.coroutines.delay(100)
+            sidebarFocusRequester.requestFocus()
+        }
+    }
 
     // auto hide cursor
     val videoInteractionSource = remember { MutableInteractionSource() }
@@ -158,12 +207,98 @@ internal fun EpisodeVideoImpl(
         }
     }
 
+    // Hoisted state for finding seek/skip controller
+    val indicatorTasker = rememberUiMonoTasker()
+    val indicatorState = rememberGestureIndicatorState()
+    val fastSkipState = rememberPlayerFastSkipState(
+        playerState.features[PlaybackSpeed]!!, // Assuming feature exists
+        indicatorState,
+        fastForwardSpeed
+    )
+
+    // Swipe Seeker State (reused for keyboard seeking)
+    val swipeSeekerState = rememberSwipeSeekerState(constraints.maxWidth) {
+        playerState.skip(it * 1000L)
+    }
+
     AniTheme(darkModeOverride = DarkMode.DARK) {
         VideoScaffold(
             expanded = expanded,
-            modifier = modifier
+            modifier = Modifier
+                .matchParentSize()
                 .hoverable(videoInteractionSource)
-                .cursorVisibility(showCursor),
+                .cursorVisibility(showCursor)
+                // Apply Focus and Key Listeners here
+                .focusRequester(internalFocusRequester)
+                .focusable()
+                // Temporarily disabled D-pad seeking to allow horizontal navigation between buttons
+                // .keyboardSeekAndFastForward(
+                //     onSeekBackward = { swipeSeekerState.onSeek(-5) },
+                //     onSeekForward = { swipeSeekerState.onSeek(5) },
+                //     fastSkipState = fastSkipState,
+                // )
+                .onKeyEvent { keyEvent ->
+                    // Handle Android TV remote Media Keys (play/pause) and navigation
+                    if (keyEvent.type == KeyEventType.KeyDown) {
+                        when (keyEvent.key) {
+                            Key.Back -> {
+                                // Handle Back key to return focus to video player
+                                if (anyButtonHasFocus) {
+                                    focusManager.clearFocus()
+                                    requestFocus()
+                                    true
+                                } else {
+                                    false
+                                }
+                            }
+                            Key.DirectionLeft -> {
+                                // Seek backward when no button has focus
+                                if (!anyButtonHasFocus) {
+                                    swipeSeekerState.onSeek(-5)
+                                    true
+                                } else {
+                                    false
+                                }
+                            }
+                            Key.DirectionRight -> {
+                                // Seek forward when no button has focus
+                                if (!anyButtonHasFocus) {
+                                    swipeSeekerState.onSeek(5)
+                                    true
+                                } else {
+                                    false
+                                }
+                            }
+                            Key.Enter, Key.DirectionCenter -> {
+                                // Show controller and request focus to settings button if no button currently has focus
+                                if (!anyButtonHasFocus) {
+                                    // First show the controller
+                                    playerControllerState.toggleFullVisible(true)
+                                    // Then request focus to settings button after a short delay to allow UI to appear
+                                    settingsFocusRequester.requestFocus()
+                                    true
+                                } else {
+                                    false
+                                }
+                            }
+                            Key.MediaPlayPause -> {
+                                playerState.togglePause()
+                                true
+                            }
+                            Key.MediaPlay -> {
+                                playerState.togglePause()
+                                true
+                            }
+                            Key.MediaPause -> {
+                                playerState.togglePause()
+                                true
+                            }
+                            else -> false
+                        }
+                    } else {
+                        false
+                    }
+                },
             contentWindowInsets = contentWindowInsets,
             maintainAspectRatio = maintainAspectRatio,
             controllerState = playerControllerState,
@@ -191,14 +326,14 @@ internal fun EpisodeVideoImpl(
                             }
                             IconButton(
                                 { sheetsController.navigateTo(EpisodeVideoSideSheetPage.PLAYER_SETTINGS) },
-                                Modifier.testTag(TAG_SHOW_SETTINGS),
+                                Modifier.testTag(TAG_SHOW_SETTINGS).focusRequester(settingsFocusRequester),
                             ) {
                                 Icon(Icons.Rounded.Settings, contentDescription = "设置")
                             }
                             if (expanded && LocalPlatform.current.isDesktop()) {
                                 IconButton(
                                     { onToggleSidebar(!sidebarVisible) },
-                                    Modifier.testTag(TAG_COLLAPSE_SIDEBAR),
+                                    Modifier.testTag(TAG_COLLAPSE_SIDEBAR).focusRequester(sidebarFocusRequester),
                                 ) {
                                     if (sidebarVisible) {
                                         Icon(AniIcons.RightPanelClose, contentDescription = "折叠侧边栏")
@@ -244,18 +379,16 @@ internal fun EpisodeVideoImpl(
                 }
             },
             gestureHost = {
-                val swipeSeekerState = rememberSwipeSeekerState(constraints.maxWidth) {
-                    playerState.skip(it * 1000L)
-                }
+                // Moved swipeSeekerState up
                 val videoPropertiesState by playerState.mediaProperties.collectAsState(null)
+
                 val enableSwipeToSeek by remember {
                     derivedStateOf {
                         videoPropertiesState?.let { it.durationMillis != 0L } == true
                     }
                 }
 
-                val indicatorTasker = rememberUiMonoTasker()
-                val indicatorState = rememberGestureIndicatorState()
+                // Moved indicatorTasker, indicatorState up
                 LockableVideoGestureHost(
                     playerControllerState,
                     swipeSeekerState,
@@ -277,6 +410,8 @@ internal fun EpisodeVideoImpl(
                                 indicatorState.showResumedLong()
                             }
                         }
+
+                        requestFocus()
                         playerState.togglePause()
                     },
                     onToggleFullscreen = onClickFullScreen,
@@ -330,12 +465,21 @@ internal fun EpisodeVideoImpl(
             },
             bottomBar = {
                 PlayerControllerBar(
+                    controllerState = playerControllerState,
+                    onButtonFocusChanged = { hasFocus -> 
+                        if (anyButtonHasFocus != hasFocus) {
+                            anyButtonHasFocus = hasFocus
+                        }
+                    },
                     startActions = {
                         val isPlaying by remember(playerState) { playerState.playbackState.map { it.isPlaying } }
                             .collectAsStateWithLifecycle(false)
                         PlayerControllerDefaults.PlaybackIcon(
                             isPlaying = { isPlaying },
-                            onClick = { playerState.togglePause() },
+                            onClick = {
+                                requestFocus()
+                                playerState.togglePause()
+                            },
                         )
 
                         if (hasNextEpisode && expanded) {
@@ -431,6 +575,7 @@ internal fun EpisodeVideoImpl(
             rhsSheet = { sideSheets(sheetsController) },
             leftBottomTips = leftBottomTips,
         )
+    }
     }
 }
 
