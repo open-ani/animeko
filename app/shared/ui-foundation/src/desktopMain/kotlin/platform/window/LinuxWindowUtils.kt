@@ -22,13 +22,26 @@ import java.util.concurrent.TimeUnit
 class LinuxWindowUtils : AwtWindowUtils() {
     private val lock = ReentrantLock()
     
-    @Volatile private var dbusCookie: UInt? = null
     @Volatile private var systemdProcess: Process? = null
     @Volatile private var closed = false
 
     companion object {
         private val logger = logger<LinuxWindowUtils>()
         private val instances = mutableListOf<WeakReference<LinuxWindowUtils>>()
+        
+        private val hasSystemdInhibit by lazy { cmdExists("systemd-inhibit") }
+        private val hasSleep by lazy { cmdExists("sleep") }
+        
+        private fun cmdExists(cmd: String): Boolean = runCatching {
+            if (cmd.contains(File.separatorChar)) {
+                if (cmd.contains("..")) return false
+                val f = File(cmd)
+                f.isFile && f.canExecute()
+            } else {
+                System.getenv("PATH")?.split(File.pathSeparator)
+                    ?.any { dir -> File(dir, cmd).let { it.isFile && it.canExecute() } } ?: false
+            }
+        }.getOrDefault(false)
         
         init {
             Runtime.getRuntime().addShutdownHook(Thread {
@@ -55,7 +68,10 @@ class LinuxWindowUtils : AwtWindowUtils() {
     }
 
     init {
-        synchronized(instances) { instances.add(WeakReference(this)) }
+        synchronized(instances) {
+            instances.removeAll { it.get() == null }
+            instances.add(WeakReference(this))
+        }
     }
 
     override suspend fun setUndecoratedFullscreen(
@@ -70,13 +86,12 @@ class LinuxWindowUtils : AwtWindowUtils() {
         if (closed) return@withLock
         
         if (prevent) {
-            val systemdOk = systemdProcess?.isAlive ?: false || trySystemdInhibitLocked()
-            val dbusOk = dbusCookie != null || tryDbusInhibitLocked()
+            val systemdOk = systemdProcess?.isAlive == true || trySystemdInhibitLocked()
             
-            when {
-                systemdOk && dbusOk -> logger.info("[ScreenSaver] Inhibited (systemd + dbus)")
-                systemdOk || dbusOk -> logger.info("[ScreenSaver] Partial (systemd=$systemdOk, dbus=$dbusOk)")
-                else -> logger.warn("[ScreenSaver] All methods failed")
+            if (systemdOk) {
+                logger.info("[ScreenSaver] Inhibited via systemd-inhibit")
+            } else {
+                logger.warn("[ScreenSaver] systemd-inhibit failed")
             }
         } else {
             cleanupLocked()
@@ -84,15 +99,23 @@ class LinuxWindowUtils : AwtWindowUtils() {
     }
 
     private fun trySystemdInhibitLocked(): Boolean {
-        if (!cmdExists("systemd-inhibit") || !cmdExists("tail")) return false
+        if (!hasSystemdInhibit || !hasSleep) return false
         
-        systemdProcess?.destroy()
+        systemdProcess?.let { p ->
+            try { p.outputStream.close() } catch (_: Exception) {}
+            p.destroy()
+            try {
+                if (!p.waitFor(200, TimeUnit.MILLISECONDS)) {
+                    p.destroyForcibly()
+                }
+            } catch (_: Exception) {}
+        }
         systemdProcess = null
         
         return runCatching {
             val p = ProcessBuilder(
                 "systemd-inhibit", "--what=sleep:idle", "--who=AniVideoPlayer",
-                "--why=Playing video", "--mode=block", "tail", "-f", "/dev/null"
+                "--why=Playing video", "--mode=block", "sleep", "infinity"
             ).redirectErrorStream(true).start()
             
             // Drain output async
@@ -135,47 +158,11 @@ class LinuxWindowUtils : AwtWindowUtils() {
         }.onFailure { logger.debug("[ScreenSaver] systemd failed", it) }.getOrDefault(false)
     }
 
-    private fun tryDbusInhibitLocked(): Boolean {
-        if (!cmdExists("dbus-send")) return false
-        
-        return runCatching {
-            val p = ProcessBuilder(
-                "dbus-send", "--session", "--print-reply",
-                "--dest=org.freedesktop.ScreenSaver", "/org/freedesktop/ScreenSaver",
-                "org.freedesktop.ScreenSaver.Inhibit", "string:AniVideoPlayer", "string:Playing video"
-            ).redirectErrorStream(true).start()
-            
-            val finished = try {
-                p.waitFor(5, TimeUnit.SECONDS)
-            } catch (ie: InterruptedException) {
-                Thread.currentThread().interrupt()
-                logger.warn("[ScreenSaver] Interrupted while waiting for dbus-send", ie)
-                try { p.destroyForcibly(); p.waitFor(2, TimeUnit.SECONDS) } catch (_: Exception) {}
-                return false
-            }
-
-            if (!finished) {
-                try { p.destroyForcibly(); p.waitFor(2, TimeUnit.SECONDS) } catch (_: Exception) {}
-                logger.warn("[ScreenSaver] dbus-send timed out")
-                return false
-            }
-            
-            val out = try { p.inputStream.bufferedReader().use { it.readText() } } catch (_: Exception) { "" }
-            val cookie = Regex("""\buint32\s+(\d+)""").find(out)?.groups?.get(1)?.value?.toUIntOrNull()
-            
-            if (cookie != null) {
-                dbusCookie = cookie
-                true
-            } else {
-                logger.debug("[ScreenSaver] No cookie in: $out")
-                false
-            }
-        }.onFailure { logger.debug("[ScreenSaver] dbus failed", it) }.getOrDefault(false)
-    }
-
     private fun cleanupLocked() {
         systemdProcess?.let { p ->
             try {
+                try { p.outputStream.close() } catch (_: Exception) {}
+                
                 p.destroy()
                 val exited = try {
                     p.waitFor(300, TimeUnit.MILLISECONDS)
@@ -186,35 +173,19 @@ class LinuxWindowUtils : AwtWindowUtils() {
                 }
 
                 if (!exited) {
+                    p.destroyForcibly()
                     try {
-                        p.destroyForcibly()
-                        val forcibleExited = try {
-                            p.waitFor(3, TimeUnit.SECONDS)
-                        } catch (ie: InterruptedException) {
-                            Thread.currentThread().interrupt()
-                            logger.warn("[ScreenSaver] Interrupted while waiting for forcible stop", ie)
-                            false
-                        }
-                        if (!forcibleExited) {
+                        if (!p.waitFor(3, TimeUnit.SECONDS)) {
                             logger.warn("[ScreenSaver] systemd-inhibit won't die")
                         }
-                    } catch (e: Exception) {
-                        logger.warn("[ScreenSaver] Error forcing systemd-inhibit stop", e)
+                    } catch (ie: InterruptedException) {
+                        Thread.currentThread().interrupt()
+                        logger.warn("[ScreenSaver] Interrupted while waiting for forcible stop", ie)
                     }
                 }
             } finally {
                 systemdProcess = null
             }
-        }
-        
-        dbusCookie?.let { cookie ->
-            runCatching {
-                ProcessBuilder(
-                    "dbus-send", "--session", "--type=method_call", "--dest=org.freedesktop.ScreenSaver",
-                    "/org/freedesktop/ScreenSaver", "org.freedesktop.ScreenSaver.UnInhibit", "uint32:$cookie"
-                ).redirectErrorStream(true).start().waitFor(5, TimeUnit.SECONDS)
-            }.onFailure { logger.debug("[ScreenSaver] dbus uninhibit failed", it) }
-            dbusCookie = null
         }
     }
 
@@ -229,16 +200,4 @@ class LinuxWindowUtils : AwtWindowUtils() {
         }
         cleanupLocked()
     }
-
-    private fun cmdExists(cmd: String): Boolean = runCatching {
-        if (cmd.contains(File.separatorChar)) {
-            if (cmd.contains("..")) return false
-            val f = File(cmd)
-            // Simpler check: allow symlinks; just require file exists and is executable.
-            f.exists() && f.canExecute()
-        } else {
-            System.getenv("PATH")?.split(File.pathSeparator)
-                ?.any { File(it, cmd).canExecute() } ?: false
-        }
-    }.getOrDefault(false)
 }
