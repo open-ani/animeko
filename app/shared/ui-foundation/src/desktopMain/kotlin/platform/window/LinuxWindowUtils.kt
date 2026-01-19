@@ -210,7 +210,7 @@ class LinuxWindowUtils : AwtWindowUtils() {
         dbusCookie?.let { cookie ->
             runCatching {
                 ProcessBuilder(
-                    "dbus-send", "--session", "--dest=org.freedesktop.ScreenSaver",
+                    "dbus-send", "--session", "--type=method_call", "--dest=org.freedesktop.ScreenSaver",
                     "/org/freedesktop/ScreenSaver", "org.freedesktop.ScreenSaver.UnInhibit", "uint32:$cookie"
                 ).redirectErrorStream(true).start().waitFor(5, TimeUnit.SECONDS)
             }.onFailure { logger.debug("[ScreenSaver] dbus uninhibit failed", it) }
