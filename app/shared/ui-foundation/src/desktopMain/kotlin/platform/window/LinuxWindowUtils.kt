@@ -114,7 +114,7 @@ class LinuxWindowUtils : AwtWindowUtils() {
         
         return runCatching {
             val p = ProcessBuilder(
-                "systemd-inhibit", "--what=sleep:idle", "--who=AniVideoPlayer",
+                "systemd-inhibit", "--what=sleep:idle", "--who=Animeko",
                 "--why=Playing video", "--mode=block", "sleep", "infinity"
             ).redirectErrorStream(true).start()
             
