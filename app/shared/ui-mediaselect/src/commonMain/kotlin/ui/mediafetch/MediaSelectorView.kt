@@ -224,8 +224,7 @@ private fun ViewKindAndMoreRow(
     modifier: Modifier = Modifier,
 ) {
     val firstButtonFocusRequester = remember { FocusRequester() }
-    val secondButtonFocusRequester = remember { FocusRequester() }
-    val editButtonFocusRequester = remember { FocusRequester() }
+
     
     val isTv = LocalPlatform.current.isTv()
     
@@ -256,7 +255,7 @@ private fun ViewKindAndMoreRow(
                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                 onClick = { onViewKindChange(ViewKind.BT) },
                 selected = viewKind == ViewKind.BT,
-                modifier = Modifier.focusRequester(secondButtonFocusRequester),
+                modifier = Modifier,
             ) {
                 Text("详细模式", softWrap = false)
             }
@@ -264,7 +263,7 @@ private fun ViewKindAndMoreRow(
 
         IconButton(
             onRequestFetchRequestEdit,
-            modifier = Modifier.focusRequester(editButtonFocusRequester),
+            modifier = Modifier,
         ) {
             Icon(Icons.Rounded.EditSquare, contentDescription = stringResource(Lang.settings_media_source_more))
         }
