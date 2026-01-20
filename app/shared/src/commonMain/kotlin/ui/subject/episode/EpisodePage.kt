@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -65,6 +66,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -159,6 +165,7 @@ import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.Screenshots
 import org.openani.mediamp.features.VideoAspectRatio
 import org.openani.mediamp.features.toggleMute
+import org.openani.mediamp.togglePause
 
 
 /**
@@ -266,7 +273,10 @@ private fun EpisodeScreenContent(
         }
     }
 
-    BoxWithConstraints(modifier) {
+    BoxWithConstraints(
+        modifier
+
+    ) {
         val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
 
         val showExpandedUI = when {
@@ -347,6 +357,7 @@ private fun EpisodeScreenContent(
                                 windowInsets = windowInsets,
                             )
 
+
                         else -> EpisodeScreenContentPhone(
                             vm,
                             page,
@@ -356,9 +367,10 @@ private fun EpisodeScreenContent(
                             pauseOnPlaying = pauseOnPlaying,
                             tryUnpause = tryUnpause,
                             setShowEditCommentSheet = { showEditCommentSheet = it },
-                            windowInsets,
+                            windowInsets = windowInsets,
                         )
                     }
+
                 }
             }
         }
@@ -427,6 +439,7 @@ private fun EpisodeScreenTabletVeryWide(
                     windowInsets.only(WindowInsetsSides.Left + WindowInsetsSides.Vertical)
                 },
             )
+
 
             if (vm.isFullscreen || !vm.sidebarVisible) {
                 return@Row
@@ -617,6 +630,7 @@ private fun EpisodeScreenContentPhone(
     setShowEditCommentSheet: (Boolean) -> Unit,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
+
     var showDanmakuEditor by rememberSaveable { mutableStateOf(false) }
     val toaster = LocalToaster.current
     val videoWindowInsets = windowInsets
@@ -634,6 +648,7 @@ private fun EpisodeScreenContentPhone(
                 danmakuEditorState, vm.playerControllerState, vm.isFullscreen,
                 windowInsets = videoWindowInsets,
             )
+
         },
         episodeDetails = {
             val navigator = LocalNavigator.current
@@ -845,6 +860,7 @@ private fun EpisodeVideo(
     maintainAspectRatio: Boolean = !expanded,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
+
     val context by rememberUpdatedState(LocalContext.current)
 
     // Don't rememberSavable. 刻意让每次切换都是隐藏的
@@ -957,6 +973,7 @@ private fun EpisodeVideo(
         progressSliderState = progressSliderState,
         cacheProgressInfoFlow = vm.cacheProgressInfoFlow,
         audioController = remember {
+
             derivedStateOf {
                 platformComponents.audioManager?.asLevelController(StreamType.MUSIC)
                     ?: vm.player.features[AudioLevelController]

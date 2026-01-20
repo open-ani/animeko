@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2024-2026 OpenAni and contributors.
  *
@@ -10,6 +11,7 @@
 package me.him188.ani.app.ui.main
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -47,7 +49,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -73,6 +82,7 @@ import me.him188.ani.app.ui.exploration.ExplorationScreen
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.isTv
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopCaptionButton
@@ -161,6 +171,24 @@ private fun MainScreenContent(
     val navigatorState = rememberUpdatedState(LocalNavigator.current)
     val navigator by navigatorState
 
+    val focusRequester = remember { FocusRequester() }
+
+    val isTv = LocalPlatform.current.isTv()
+    
+    // Request focus on initial launch
+    if (isTv) {
+        LaunchedEffect(Unit) {
+            focusRequester.requestFocus()
+        }
+    }
+    
+    // Restore focus when page changes (fallback for when focus is lost)
+    if (isTv) {
+        LaunchedEffect(page) {
+            focusRequester.requestFocus()
+        }
+    }
+
     AniNavigationSuiteLayout(
         navigationSuite = {
             AniNavigationSuite(
@@ -202,7 +230,7 @@ private fun MainScreenContent(
                 },
                 navigationRailItemSpacing = 8.dp,
             ) {
-                for (entry in MainScreenPage.visibleEntries) {
+                for ((index, entry) in MainScreenPage.visibleEntries.withIndex()) {
                     item(
                         page == entry,
                         onClick = { onNavigateToPage(entry) },
@@ -225,11 +253,12 @@ private fun MainScreenContent(
                         },
                         icon = { Icon(entry.getIcon(), null) },
                         label = { Text(text = entry.getText()) },
+                        modifier = if (isTv && index == 0) Modifier.focusRequester(focusRequester) else Modifier,
                     )
                 }
             }
         },
-        modifier,
+        modifier = modifier,
         layoutType = navigationLayoutType,
     ) {
         val coroutineScope = rememberCoroutineScope()
