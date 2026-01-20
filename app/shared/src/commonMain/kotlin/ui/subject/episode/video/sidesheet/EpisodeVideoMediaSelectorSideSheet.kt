@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.subject.episode.video.sidesheet
 
+import me.him188.ani.app.ui.foundation.FOCUS_REQ_DELAY_MILLIS
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -63,7 +64,7 @@ fun EpisodeVideoSideSheets.MediaSelectorSheet(
     
     // Auto-request focus when the side sheet opens
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(300) // Wait for layout to complete
+        kotlinx.coroutines.delay(FOCUS_REQ_DELAY_MILLIS) // Wait for layout to complete
         focusRequester.requestFocus()
     }
     

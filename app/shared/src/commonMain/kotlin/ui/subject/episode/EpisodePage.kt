@@ -356,8 +356,6 @@ private fun EpisodeScreenContent(
                                 modifier = Modifier.fillMaxSize(),
                                 windowInsets = windowInsets,
                             )
-
-
                         else -> EpisodeScreenContentPhone(
                             vm,
                             page,

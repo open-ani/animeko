@@ -22,6 +22,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import me.him188.ani.app.ui.foundation.FOCUS_REQ_DELAY_MILLIS
+import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.isTv
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -49,7 +52,9 @@ import kotlinx.coroutines.flow.first
 import me.him188.ani.app.ui.cache.subject.contentColorForWatchStatus
 import me.him188.ani.app.ui.foundation.BackgroundScope
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
+import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.icons.PlayingIcon
+import me.him188.ani.app.ui.foundation.isTv
 import me.him188.ani.app.ui.subject.episode.EpisodePresentation
 import me.him188.ani.app.ui.subject.episode.TAG_EPISODE_SELECTOR_SHEET
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
@@ -142,23 +147,26 @@ fun EpisodeVideoSideSheets.EpisodeSelectorSheet(
     ) {
         val lazyListState = rememberLazyListState()
         val focusRequester = remember { FocusRequester() }
+        val isTv = LocalPlatform.current.isTv()
 
-        // 自动滚动到当前选中的剧集并请求焦点
-        LaunchedEffect(true) {
-            val currentIndex = snapshotFlow { state.currentIndex }
-                .filter { it != -1 }
-                .first()
+        // 自动滚动到当前选中的剧集并请求焦点 (TV only)
+        if (isTv) {
+            LaunchedEffect(true) {
+                val currentIndex = snapshotFlow { state.currentIndex }
+                    .filter { it != -1 }
+                    .first()
 
-            if (currentIndex != -1) {
-                lazyListState.scrollToItem(
-                    currentIndex,
-                    // 显示半个上个元素
-                    scrollOffset = -(lazyListState.layoutInfo.visibleItemsInfo.getOrNull(0)?.size?.div(2) ?: 0),
-                )
+                if (currentIndex != -1) {
+                    lazyListState.scrollToItem(
+                        currentIndex,
+                        // 显示半个上个元素
+                        scrollOffset = -(lazyListState.layoutInfo.visibleItemsInfo.getOrNull(0)?.size?.div(2) ?: 0),
+                    )
+                }
+                // 延迟以等待布局完成，然后请求焦点
+                kotlinx.coroutines.delay(FOCUS_REQ_DELAY_MILLIS)
+                focusRequester.requestFocus()
             }
-            // 延迟以等待布局完成，然后请求焦点
-            kotlinx.coroutines.delay(200)
-            focusRequester.requestFocus()
         }
 
         LazyColumn(state = lazyListState) {
@@ -166,10 +174,11 @@ fun EpisodeVideoSideSheets.EpisodeSelectorSheet(
                 val selected = index == state.currentIndex
                 val color = contentColorForWatchStatus(item.collectionType, item.isKnownBroadcast)
                 
-                // 确定此项是否应该作为初始焦点目标
-                // 如果有选中的剧集，则聚焦由于该项；否则聚焦第一项
-                val isInitialFocusTarget = (state.currentIndex != -1 && index == state.currentIndex) || 
-                                           (state.currentIndex == -1 && index == 0)
+                // 确定此项是否应该作为初始焦点目标 (TV only)
+                // 如果有选中的剧集，则聚焦于该项；否则聚焦第一项
+                val isInitialFocusTarget = isTv && (
+                    index == if (state.currentIndex != -1) state.currentIndex else 0
+                )
 
                 var isFocused by remember { mutableStateOf(false) }
 

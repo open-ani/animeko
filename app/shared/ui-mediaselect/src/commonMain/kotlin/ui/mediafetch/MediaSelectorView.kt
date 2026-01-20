@@ -84,6 +84,8 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.icons.EditSquare
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.isTv
+import me.him188.ani.app.ui.foundation.FOCUS_REQ_DELAY_MILLIS
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_media_source_more
 import me.him188.ani.app.ui.mediafetch.request.MediaFetchRequestEditorDialog
@@ -225,10 +227,14 @@ private fun ViewKindAndMoreRow(
     val secondButtonFocusRequester = remember { FocusRequester() }
     val editButtonFocusRequester = remember { FocusRequester() }
     
-    // Auto-request focus on the first button when the row appears
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(300) // Wait for layout to complete
-        firstButtonFocusRequester.requestFocus()
+    val isTv = LocalPlatform.current.isTv()
+    
+    // Auto-request focus on the first button when the row appears (TV only)
+    if (isTv) {
+        LaunchedEffect(Unit) {
+            kotlinx.coroutines.delay(FOCUS_REQ_DELAY_MILLIS) // Wait for layout to complete
+            firstButtonFocusRequester.requestFocus()
+        }
     }
     
     Row(

@@ -97,6 +97,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.input.pointer.pointerInput
+import me.him188.ani.app.ui.foundation.FOCUS_REQ_DELAY_MILLIS
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
@@ -512,7 +513,7 @@ object PlayerControllerDefaults {
             modifier,
             properties = PlatformPopupProperties(
                 clippingEnabled = false,
-                focusable = true, // Critical for Android TV focus
+                focusable = true, // Critical for TV focus (especially Android TV); applied on all platforms
             ),
             textButtonTestTag = TAG_SPEED_SWITCHER_TEXT_BUTTON,
             dropdownMenuTestTag = TAG_SPEED_SWITCHER_DROPDOWN_MENU,
@@ -539,7 +540,7 @@ object PlayerControllerDefaults {
             modifier,
             properties = PlatformPopupProperties(
                 clippingEnabled = false,
-                focusable = true, // Critical for Android TV focus
+                focusable = true, // Critical for TV focus (especially Android TV); applied on all platforms
             ),
             textButtonTestTag = TAG_VIDEO_ASPECT_RATIO_SELECTOR_TEXT_BUTTON,
             dropdownMenuTestTag = TAG_VIDEO_ASPECT_RATIO_SELECTOR_DROPDOWN_MENU,
@@ -585,8 +586,6 @@ object PlayerControllerDefaults {
             ) {
                 renderValueExposed(value)
             }
-
-            
             DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
@@ -612,7 +611,7 @@ object PlayerControllerDefaults {
                     // Auto-request focus for first item when dropdown opens
                     if (index == 0) {
                         LaunchedEffect(Unit) {
-                            kotlinx.coroutines.delay(300) // Increase delay to ensure popup is fully rendered and animated
+                            kotlinx.coroutines.delay(FOCUS_REQ_DELAY_MILLIS) // Increase delay to ensure popup is fully rendered and animated
                             itemFocusRequester?.requestFocus()
                         }
                     }

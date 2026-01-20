@@ -55,7 +55,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
+import me.him188.ani.app.ui.foundation.FOCUS_REQ_DELAY_MILLIS
+import me.him188.ani.app.ui.foundation.isTv
 import me.him188.ani.app.ui.media.renderSubtitleLanguage
 
 
@@ -158,6 +161,7 @@ private fun <T : Any> MediaSelectorFilterChip(
     
     // Create FocusRequester for the chip button
     val chipFocusRequester = remember { FocusRequester() }
+    val isTv = LocalPlatform.current.isTv()
 
     Box {
         val chipSelected = isSingleValue || selected != null
@@ -231,13 +235,13 @@ private fun <T : Any> MediaSelectorFilterChip(
             },
         ) {
             allValuesState.forEachIndexed { index, item ->
-                // Create FocusRequester for first item
-                val itemFocusRequester = if (index == 0) remember { FocusRequester() } else null
-                
-                // Auto-request focus for first item when dropdown opens
-                if (index == 0) {
+                // Create FocusRequester for first item (TV only)
+                val itemFocusRequester = if (isTv && index == 0) remember { FocusRequester() } else null
+
+                // Auto-request focus for first item when dropdown opens (TV only)
+                if (isTv && index == 0) {
                     LaunchedEffect(Unit) {
-                        kotlinx.coroutines.delay(300) // Wait for popup to render
+                        kotlinx.coroutines.delay(FOCUS_REQ_DELAY_MILLIS) // Wait for popup to render
                         itemFocusRequester?.requestFocus()
                     }
                 }

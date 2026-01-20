@@ -24,6 +24,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import kotlinx.coroutines.delay
+import me.him188.ani.utils.platform.currentTimeMillis
 
 /**
  * TV-safe clickable modifier that prevents long-press from triggering unwanted clicks.
@@ -60,7 +61,7 @@ fun Modifier.tvClickable(
                     keyEvent.key == Key.DirectionCenter && keyEvent.type == KeyEventType.KeyDown -> {
                         if (keyDownTime == 0L) {
                             // First key down
-                            keyDownTime = System.currentTimeMillis()
+                            keyDownTime = currentTimeMillis()
                             isLongPress = false
                         } else {
                             // Key repeat (long press)
@@ -69,11 +70,11 @@ fun Modifier.tvClickable(
                         true // Consume the event
                     }
                     keyEvent.key == Key.DirectionCenter && keyEvent.type == KeyEventType.KeyUp -> {
-                        val pressDuration = System.currentTimeMillis() - keyDownTime
+                        val pressDuration = currentTimeMillis() - keyDownTime
                         keyDownTime = 0L
                         
                         // Only trigger click for short press (< 500ms)
-                        if (!isLongPress && pressDuration < 500) {
+                        if (!isLongPress && pressDuration < TV_LONG_CLICK_DURATION_MILLIS) {
                             onClick()
                         }
                         isLongPress = false
@@ -134,8 +135,8 @@ fun Modifier.tvCombinedClickable(
         // Monitor for long press threshold
         LaunchedEffect(isKeyDown) {
             if (isKeyDown && keyDownTime > 0L) {
-                delay(500) // Long press threshold
-                if (isKeyDown && System.currentTimeMillis() - keyDownTime >= 500) {
+                delay(TV_LONG_CLICK_DURATION_MILLIS) // Long press threshold
+                if (isKeyDown && currentTimeMillis() - keyDownTime >= TV_LONG_CLICK_DURATION_MILLIS) {
                     longClickTriggered = true
                     onLongClick()
                 }
@@ -150,7 +151,7 @@ fun Modifier.tvCombinedClickable(
                     keyEvent.key == Key.DirectionCenter && keyEvent.type == KeyEventType.KeyDown -> {
                         if (keyDownTime == 0L) {
                             // First key down
-                            keyDownTime = System.currentTimeMillis()
+                            keyDownTime = currentTimeMillis()
                             longClickTriggered = false
                             isKeyDown = true
                         }
@@ -158,11 +159,11 @@ fun Modifier.tvCombinedClickable(
                     }
                     keyEvent.key == Key.DirectionCenter && keyEvent.type == KeyEventType.KeyUp -> {
                         isKeyDown = false
-                        val pressDuration = System.currentTimeMillis() - keyDownTime
+                        val pressDuration = currentTimeMillis() - keyDownTime
                         keyDownTime = 0L
                         
                         // Only trigger click if long click wasn't triggered and it was a short press
-                        if (!longClickTriggered && pressDuration < 500) {
+                        if (!longClickTriggered && pressDuration < TV_LONG_CLICK_DURATION_MILLIS) {
                             onClick()
                         }
                         longClickTriggered = false

@@ -55,6 +55,8 @@ import me.him188.ani.app.ui.foundation.icons.RightPanelClose
 import me.him188.ani.app.ui.foundation.icons.RightPanelOpen
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
+import me.him188.ani.app.ui.foundation.isTv
+import me.him188.ani.app.ui.foundation.FOCUS_REQ_DELAY_MILLIS
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
@@ -158,7 +160,7 @@ internal fun EpisodeVideoImpl(
     gestureFamily: GestureFamily = LocalPlatform.current.mouseFamily,
     fastForwardSpeed: Float = 3f,
     contentWindowInsets: WindowInsets = WindowInsets(0.dp),
-    onRequestFocus: () -> Unit = {}, // Deprecated, handled internally now
+
 
 ) {
     BoxWithConstraints(modifier) {
@@ -195,11 +197,12 @@ internal fun EpisodeVideoImpl(
     var bottomBarButtonHasFocus by remember { mutableStateOf(false) }
     val anyButtonHasFocus by remember { derivedStateOf { topBarButtonHasFocus || bottomBarButtonHasFocus } }
     
-    // Auto-focus settings button on Enter key press (only if no button has focus)
-    LaunchedEffect(isBottomBarVisible, isDesktop, expanded) {
-        if (isBottomBarVisible && isDesktop && expanded) {
+    // Auto-focus settings button on Enter key press (only if no button has focus) (TV only)
+    val isTv = LocalPlatform.current.isTv()
+    LaunchedEffect(isBottomBarVisible, isTv, expanded) {
+        if (isBottomBarVisible && isTv && expanded) {
             // Small delay to avoid frequent calls during rapid visibility changes
-            kotlinx.coroutines.delay(100)
+            kotlinx.coroutines.delay(FOCUS_REQ_DELAY_MILLIS)
             sidebarFocusRequester.requestFocus()
         }
     }
@@ -219,7 +222,9 @@ internal fun EpisodeVideoImpl(
     val indicatorTasker = rememberUiMonoTasker()
     val indicatorState = rememberGestureIndicatorState()
     val fastSkipState = rememberPlayerFastSkipState(
-        playerState.features[PlaybackSpeed]!!, // Assuming feature exists
+        requireNotNull(playerState.features[PlaybackSpeed]) {
+            "PlaybackSpeed feature is required to initialize fast skip state"
+        },
         indicatorState,
         fastForwardSpeed
     )
@@ -239,34 +244,34 @@ internal fun EpisodeVideoImpl(
                 // Apply Focus and Key Listeners here
                 .focusRequester(internalFocusRequester)
                 .focusable()
-                // Temporarily disabled D-pad seeking to allow horizontal navigation between buttons
-                // .keyboardSeekAndFastForward(
-                //     onSeekBackward = { swipeSeekerState.onSeek(-5) },
-                //     onSeekForward = { swipeSeekerState.onSeek(5) },
-                //     fastSkipState = fastSkipState,
-                // )
                 .onKeyEvent { keyEvent ->
                     // Handle Android TV remote Media Keys (play/pause) and navigation
-                    if (keyEvent.type == KeyEventType.KeyDown) {
-                        when (keyEvent.key) {
-                            Key.Back -> {
-                                // Priority 1: Close side sheet if open and return focus to the button that opened it
-                                if (anySideSheetVisible) {
-                                    sheetsController.close()
-                                    // Request focus back to the button that opened the side sheet
-                                    lastSideSheetFocusRequester?.requestFocus()
-                                    lastSideSheetFocusRequester = null
-                                    true
-                                }
-                                // Priority 2: Handle Back key to return focus to video player
-                                else if (anyButtonHasFocus) {
-                                    focusManager.clearFocus()
-                                    requestFocus()
-                                    true
-                                } else {
-                                    false
-                                }
+                    
+                    // Specific handling for Back key to support KeyUp (prevent repeat)
+                    if (keyEvent.key == Key.Back) {
+                        if (keyEvent.type == KeyEventType.KeyUp) {
+                            // Priority 1: Close side sheet if open and return focus to the button that opened it
+                            if (anySideSheetVisible) {
+                                sheetsController.close()
+                                // Request focus back to the button that opened the side sheet
+                                lastSideSheetFocusRequester?.requestFocus()
+                                lastSideSheetFocusRequester = null
+                                true
                             }
+                            // Priority 2: Handle Back key to return focus to video player
+                            else if (anyButtonHasFocus) {
+                                focusManager.clearFocus()
+                                requestFocus()
+                                true
+                            } else {
+                                false
+                            }
+                        } else {
+                            // Consume KeyDown to prevent system back action while holding
+                            true
+                        }
+                    } else if (keyEvent.type == KeyEventType.KeyDown) {
+                        when (keyEvent.key) {
                             Key.DirectionLeft -> {
                                 // Seek backward when no button has focus and no side sheet is open
                                 if (!anyButtonHasFocus && !anySideSheetVisible) {
