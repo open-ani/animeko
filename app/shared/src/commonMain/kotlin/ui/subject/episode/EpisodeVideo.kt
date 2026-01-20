@@ -46,6 +46,7 @@ import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.navigation.LocalBackDispatcher
 import me.him188.ani.app.ui.foundation.TextWithBorder
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.cursorVisibility
@@ -190,6 +191,7 @@ internal fun EpisodeVideoImpl(
     val isBottomBarVisible = playerControllerState.visibility.bottomBar
     val isDesktop = LocalPlatform.current.isDesktop()
     val focusManager = LocalFocusManager.current
+    val backDispatcher = LocalBackDispatcher.current
     
     // Track if any button currently has focus
     var topBarButtonHasFocus by remember { mutableStateOf(false) }
@@ -263,7 +265,8 @@ internal fun EpisodeVideoImpl(
                                 requestFocus()
                                 true
                             } else {
-                                false
+                                backDispatcher.onBackPressed()
+                                true
                             }
                         } else {
                             // Consume KeyDown to prevent system back action while holding
