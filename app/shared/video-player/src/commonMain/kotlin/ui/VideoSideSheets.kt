@@ -105,6 +105,13 @@ sealed class VideoSideSheetsController<P : PageTypeUpperBound<P>> {
     fun navigateTo(route: P) {
         navController.navigate(ROUTE_PAGE + "?${ROUTE_ARG_PAGE}=${route.name}")
     }
+
+    /**
+     * Closes the currently open side sheet.
+     */
+    fun close() {
+        navController.popBackStack()
+    }
 }
 
 /**

@@ -488,9 +488,13 @@ private fun EpisodeScreenTabletVeryWide(
                                 .only(WindowInsetsSides.Top),
                         ),
                 )
+                
+                val commentTabFocusRequester = remember { FocusRequester() }
+                
                 TabRow(
                     pagerState, scope, { vm.episodeCommentState.count }, Modifier.fillMaxWidth(),
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    commentTabFocusRequester = commentTabFocusRequester,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.weaken())
 
@@ -563,6 +567,7 @@ private fun EpisodeScreenTabletVeryWide(
                                 setShowEditCommentSheet = setShowEditCommentSheet,
                                 pauseOnPlaying = pauseOnPlaying,
                                 gridState = vm.commentLazyGirdState,
+                                commentTabFocusRequester = commentTabFocusRequester,
                             )
                         }
                     }
@@ -579,6 +584,7 @@ private fun TabRow(
     commentCount: () -> Int?,
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surface,
+    commentTabFocusRequester: FocusRequester? = null,
 ) {
     ScrollableTabRow(
         selectedTabIndex = pagerState.currentPage,
@@ -614,6 +620,9 @@ private fun TabRow(
             },
             selectedContentColor = MaterialTheme.colorScheme.primary,
             unselectedContentColor = MaterialTheme.colorScheme.onSurface,
+            modifier = if (commentTabFocusRequester != null) {
+                Modifier.focusRequester(commentTabFocusRequester)
+            } else Modifier,
         )
     }
 }
@@ -705,6 +714,8 @@ private fun EpisodeScreenContentPhone(
             }
         },
         commentColumn = {
+            val commentTabFocusRequester = remember { FocusRequester() }
+            
             EpisodeCommentColumn(
                 commentState = vm.episodeCommentState,
                 commentEditorState = vm.commentEditorState,
@@ -713,6 +724,7 @@ private fun EpisodeScreenContentPhone(
                 setShowEditCommentSheet = setShowEditCommentSheet,
                 pauseOnPlaying = pauseOnPlaying,
                 gridState = vm.commentLazyGirdState,
+                commentTabFocusRequester = commentTabFocusRequester,
             )
         },
         modifier.then(
@@ -797,7 +809,7 @@ fun EpisodeScreenContentPhoneScaffold(
     commentCount: () -> Int?,
     video: @Composable () -> Unit,
     episodeDetails: @Composable () -> Unit,
-    commentColumn: @Composable () -> Unit,
+    commentColumn: @Composable (FocusRequester) -> Unit,
     modifier: Modifier = Modifier,
     tabRowContent: @Composable () -> Unit = {},
 ) {
@@ -810,6 +822,7 @@ fun EpisodeScreenContentPhoneScaffold(
 
         val pagerState = rememberPagerState(initialPage = 0) { 2 }
         val scope = rememberCoroutineScope()
+        val commentTabFocusRequester = remember { FocusRequester() }
 
         Column(Modifier.fillMaxSize()) {
             Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
@@ -817,6 +830,7 @@ fun EpisodeScreenContentPhoneScaffold(
                     TabRow(
                         pagerState, scope, commentCount, Modifier.weight(1f),
                         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                        commentTabFocusRequester = commentTabFocusRequester,
                     )
                     Box(
                         modifier = Modifier.weight(0.618f) // width
@@ -839,7 +853,7 @@ fun EpisodeScreenContentPhoneScaffold(
                         }
 
                         1 -> {
-                            commentColumn()
+                            commentColumn(commentTabFocusRequester)
                         }
                     }
                 }
@@ -1075,6 +1089,7 @@ private fun EpisodeCommentColumn(
     pauseOnPlaying: () -> Unit,
     modifier: Modifier = Modifier,
     gridState: LazyGridState = rememberLazyGridState(),
+    commentTabFocusRequester: FocusRequester? = null,
 ) {
     val toaster = LocalToaster.current
     val browserNavigator = LocalUriHandler.current
@@ -1098,6 +1113,7 @@ private fun EpisodeCommentColumn(
         },
         modifier = modifier.fillMaxSize(),
         gridState = gridState,
+        commentTabFocusRequester = commentTabFocusRequester,
     )
 }
 

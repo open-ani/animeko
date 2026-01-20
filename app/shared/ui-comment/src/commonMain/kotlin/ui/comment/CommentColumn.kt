@@ -27,6 +27,12 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
@@ -53,12 +59,24 @@ fun CommentColumn(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     connectedScrollState: ConnectedScrollState? = null,
     state: LazyGridState = rememberLazyGridState(),
+    commentTabFocusRequester: FocusRequester? = null,
     commentItem: @Composable LazyGridItemScope.(index: Int, item: UIComment) -> Unit
 ) {
     PullToRefreshBox(
         isRefreshing = items.isLoadingFirstPageOrRefreshing,
         onRefresh = { items.refresh() },
-        modifier = modifier,
+        modifier = modifier
+            .onKeyEvent { keyEvent ->
+                // Handle back key to return focus to comment tab
+                if (keyEvent.type == KeyEventType.KeyDown && 
+                    keyEvent.key == Key.Back && 
+                    commentTabFocusRequester != null) {
+                    commentTabFocusRequester.requestFocus()
+                    true
+                } else {
+                    false
+                }
+            },
         enabled = LocalPlatform.current.isMobile(),
         contentAlignment = Alignment.TopCenter,
     ) {

@@ -106,6 +106,7 @@ import me.him188.ani.app.videoplayer.ui.gesture.keyboardSeekAndFastForward
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.foundation.focusable
 import org.openani.mediamp.togglePause
 
@@ -179,13 +180,20 @@ internal fun EpisodeVideoImpl(
     // User requested "Detail" button (Likely Sidebar on Desktop, or Settings on TV)
     val settingsFocusRequester = remember { FocusRequester() }
     val sidebarFocusRequester = remember { FocusRequester() }
+    val selectEpisodeFocusRequester = remember { FocusRequester() }
+    val mediaSelectorFocusRequester = remember { FocusRequester() }
+    
+    // Track which FocusRequester should receive focus when side sheet closes
+    var lastSideSheetFocusRequester by remember { mutableStateOf<FocusRequester?>(null) }
     
     val isBottomBarVisible = playerControllerState.visibility.bottomBar
     val isDesktop = LocalPlatform.current.isDesktop()
     val focusManager = LocalFocusManager.current
     
     // Track if any button currently has focus
-    var anyButtonHasFocus by remember { mutableStateOf(false) }
+    var topBarButtonHasFocus by remember { mutableStateOf(false) }
+    var bottomBarButtonHasFocus by remember { mutableStateOf(false) }
+    val anyButtonHasFocus by remember { derivedStateOf { topBarButtonHasFocus || bottomBarButtonHasFocus } }
     
     // Auto-focus settings button on Enter key press (only if no button has focus)
     LaunchedEffect(isBottomBarVisible, isDesktop, expanded) {
@@ -242,8 +250,16 @@ internal fun EpisodeVideoImpl(
                     if (keyEvent.type == KeyEventType.KeyDown) {
                         when (keyEvent.key) {
                             Key.Back -> {
-                                // Handle Back key to return focus to video player
-                                if (anyButtonHasFocus) {
+                                // Priority 1: Close side sheet if open and return focus to the button that opened it
+                                if (anySideSheetVisible) {
+                                    sheetsController.close()
+                                    // Request focus back to the button that opened the side sheet
+                                    lastSideSheetFocusRequester?.requestFocus()
+                                    lastSideSheetFocusRequester = null
+                                    true
+                                }
+                                // Priority 2: Handle Back key to return focus to video player
+                                else if (anyButtonHasFocus) {
                                     focusManager.clearFocus()
                                     requestFocus()
                                     true
@@ -252,8 +268,8 @@ internal fun EpisodeVideoImpl(
                                 }
                             }
                             Key.DirectionLeft -> {
-                                // Seek backward when no button has focus
-                                if (!anyButtonHasFocus) {
+                                // Seek backward when no button has focus and no side sheet is open
+                                if (!anyButtonHasFocus && !anySideSheetVisible) {
                                     swipeSeekerState.onSeek(-5)
                                     true
                                 } else {
@@ -261,8 +277,8 @@ internal fun EpisodeVideoImpl(
                                 }
                             }
                             Key.DirectionRight -> {
-                                // Seek forward when no button has focus
-                                if (!anyButtonHasFocus) {
+                                // Seek forward when no button has focus and no side sheet is open
+                                if (!anyButtonHasFocus && !anySideSheetVisible) {
                                     swipeSeekerState.onSeek(5)
                                     true
                                 } else {
@@ -306,7 +322,14 @@ internal fun EpisodeVideoImpl(
             topBar = {
                 WindowDragArea {
                     PlayerTopBar(
-                        Modifier.testTag(TAG_EPISODE_VIDEO_TOP_BAR),
+                        Modifier
+                            .testTag(TAG_EPISODE_VIDEO_TOP_BAR)
+                            .onFocusEvent { focusState ->
+                                if (topBarButtonHasFocus != focusState.hasFocus) {
+                                    topBarButtonHasFocus = focusState.hasFocus
+                                }
+                            },
+
                         title = if (expanded) {
                             { title() }
                         } else {
@@ -318,14 +341,22 @@ internal fun EpisodeVideoImpl(
                             }
                             if (expanded) {
                                 IconButton(
-                                    { sheetsController.navigateTo(EpisodeVideoSideSheetPage.MEDIA_SELECTOR) },
-                                    Modifier.testTag(TAG_SHOW_MEDIA_SELECTOR),
+                                    {
+                                        lastSideSheetFocusRequester = mediaSelectorFocusRequester
+                                        sheetsController.navigateTo(EpisodeVideoSideSheetPage.MEDIA_SELECTOR)
+                                    },
+                                    Modifier
+                                        .testTag(TAG_SHOW_MEDIA_SELECTOR)
+                                        .focusRequester(mediaSelectorFocusRequester),
                                 ) {
                                     Icon(Icons.Rounded.DisplaySettings, contentDescription = "数据源")
                                 }
                             }
                             IconButton(
-                                { sheetsController.navigateTo(EpisodeVideoSideSheetPage.PLAYER_SETTINGS) },
+                                {
+                                    lastSideSheetFocusRequester = settingsFocusRequester
+                                    sheetsController.navigateTo(EpisodeVideoSideSheetPage.PLAYER_SETTINGS)
+                                },
                                 Modifier.testTag(TAG_SHOW_SETTINGS).focusRequester(settingsFocusRequester),
                             ) {
                                 Icon(Icons.Rounded.Settings, contentDescription = "设置")
@@ -467,8 +498,8 @@ internal fun EpisodeVideoImpl(
                 PlayerControllerBar(
                     controllerState = playerControllerState,
                     onButtonFocusChanged = { hasFocus -> 
-                        if (anyButtonHasFocus != hasFocus) {
-                            anyButtonHasFocus = hasFocus
+                        if (bottomBarButtonHasFocus != hasFocus) {
+                            bottomBarButtonHasFocus = hasFocus
                         }
                     },
                     startActions = {
@@ -525,7 +556,11 @@ internal fun EpisodeVideoImpl(
                     endActions = {
                         if (expanded) {
                             PlayerControllerDefaults.SelectEpisodeIcon(
-                                onClick = { sheetsController.navigateTo(EpisodeVideoSideSheetPage.EPISODE_SELECTOR) },
+                                onClick = {
+                                    lastSideSheetFocusRequester = selectEpisodeFocusRequester
+                                    sheetsController.navigateTo(EpisodeVideoSideSheetPage.EPISODE_SELECTOR)
+                                },
+                                modifier = Modifier.focusRequester(selectEpisodeFocusRequester)
                             )
 
                             if (LocalPlatform.current.isDesktop()) {
