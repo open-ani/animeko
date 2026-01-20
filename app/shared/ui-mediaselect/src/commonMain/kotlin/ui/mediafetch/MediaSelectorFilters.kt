@@ -240,9 +240,11 @@ private fun <T : Any> MediaSelectorFilterChip(
 
                 // Auto-request focus for first item when dropdown opens (TV only)
                 if (isTv && index == 0) {
-                    LaunchedEffect(Unit) {
-                        kotlinx.coroutines.delay(FOCUS_REQ_DELAY_MILLIS) // Wait for popup to render
-                        itemFocusRequester?.requestFocus()
+                    LaunchedEffect(showDropdown) {
+                        if (showDropdown) {
+                            kotlinx.coroutines.delay(FOCUS_REQ_DELAY_MILLIS) // Wait for popup to render
+                            itemFocusRequester?.requestFocus()
+                        }
                     }
                 }
                 
