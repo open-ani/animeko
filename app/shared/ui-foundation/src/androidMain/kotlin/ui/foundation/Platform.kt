@@ -10,5 +10,5 @@ import me.him188.ani.utils.platform.Platform
 actual fun Platform.isTv(): Boolean {
     val context = LocalContext.current
     val uiModeManager = context.getSystemService(UiModeManager::class.java)
-    return uiModeManager.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
+    return (uiModeManager?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION) ?: false
 }
