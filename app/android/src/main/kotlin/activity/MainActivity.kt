@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,7 +9,9 @@
 
 package me.him188.ani.android.activity
 
+import android.app.UiModeManager
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.SystemBarStyle
@@ -26,6 +28,7 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.platform.rememberPlatformWindow
+import me.him188.ani.app.ui.foundation.LocalIsAndroidTV
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.theme.SystemBarColorEffect
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
@@ -101,6 +104,7 @@ class MainActivity : AniComponentActivity() {
                 CompositionLocalProvider(
                     LocalToaster provides toaster,
                     LocalPlatformWindow provides rememberPlatformWindow(this),
+                    LocalIsAndroidTV provides isUIModeTV(),
                 ) {
                     AniAppContent(aniNavigator)
                 }
@@ -122,5 +126,10 @@ class MainActivity : AniComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun isUIModeTV(): Boolean {
+        val uiModeManager = getSystemService(UiModeManager::class.java)
+        return uiModeManager?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
     }
 }
