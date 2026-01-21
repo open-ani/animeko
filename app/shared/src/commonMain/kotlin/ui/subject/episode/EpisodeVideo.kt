@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -138,6 +138,7 @@ internal fun EpisodeVideoImpl(
     sideSheets: @Composable (controller: VideoSideSheetsController<EpisodeVideoSideSheetPage>) -> Unit,
     modifier: Modifier = Modifier,
     maintainAspectRatio: Boolean = !expanded,
+    isFullscreen: Boolean = expanded,
     gestureFamily: GestureFamily = LocalPlatform.current.mouseFamily,
     fastForwardSpeed: Float = 3f,
     contentWindowInsets: WindowInsets = WindowInsets(0.dp),
@@ -419,7 +420,7 @@ internal fun EpisodeVideoImpl(
                             }
                         }
                         PlayerControllerDefaults.FullscreenIcon(
-                            expanded,
+                            isFullscreen,
                             onClickFullscreen = onClickFullScreen,
                         )
                     },
