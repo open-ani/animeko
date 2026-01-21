@@ -1,7 +1,7 @@
 #!/usr/bin/env kotlin
 
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -484,7 +484,7 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
 
         runGradle(
             name = "Update dev version name",
-            tasks = ["updateDevVersionNameFromGit", "\"--no-configuration-cache\""],
+            tasks = arrayOf("updateDevVersionNameFromGit", "\"--no-configuration-cache\""),
         )
 
         val prepareSigningKey = prepareSigningKey()
@@ -901,7 +901,7 @@ workflow(
 
             runGradle(
                 name = "Update Release Version Name",
-                tasks = ["updateReleaseVersionNameFromGit", "\"--no-configuration-cache\""],
+                tasks = arrayOf("updateReleaseVersionNameFromGit", "\"--no-configuration-cache\""),
                 env = mapOf(
                     "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
                     "GITHUB_REPOSITORY" to expr { secrets.GITHUB_REPOSITORY },
@@ -1757,7 +1757,7 @@ class WithMatrix(
             if (matrix.uploadApk) {
                 runGradle(
                     name = "Upload Android APK for Release",
-                    tasks = [":ci-helper:uploadAndroidApk", "\"--no-configuration-cache\""],
+                    tasks = arrayOf(":ci-helper:uploadAndroidApk", "\"--no-configuration-cache\""),
                     env = ciHelperSecrets,
                 )
             }
@@ -1784,7 +1784,7 @@ class WithMatrix(
                 runGradle(
                     name = "Upload QR code",
                     `if` = condition,
-                    tasks = [":ci-helper:uploadAndroidApkQR", "\"--no-configuration-cache\""],
+                    tasks = arrayOf(":ci-helper:uploadAndroidApkQR", "\"--no-configuration-cache\""),
                     env = ciHelperSecrets,
                 )
                 uses(
@@ -1806,7 +1806,7 @@ class WithMatrix(
                 runGradle(
                     name = "Upload QR code",
                     `if` = condition,
-                    tasks = [":ci-helper:uploadIosIpaQR", "\"--no-configuration-cache\""],
+                    tasks = arrayOf(":ci-helper:uploadIosIpaQR", "\"--no-configuration-cache\""),
                     env = ciHelperSecrets,
                 )
             }
@@ -1816,7 +1816,7 @@ class WithMatrix(
             if (matrix.uploadDesktopInstallers) {
                 runGradle(
                     name = "Upload Desktop Installers",
-                    tasks = [":ci-helper:uploadDesktopInstallers", "\"--no-configuration-cache\""],
+                    tasks = arrayOf(":ci-helper:uploadDesktopInstallers", "\"--no-configuration-cache\""),
                     env = ciHelperSecrets,
                 )
             }
@@ -1826,7 +1826,7 @@ class WithMatrix(
             if (matrix.uploadIpa) {
                 runGradle(
                     name = "Upload iOS IPA",
-                    tasks = [":ci-helper:uploadIosIpa", "\"--no-configuration-cache\""],
+                    tasks = arrayOf(":ci-helper:uploadIosIpa", "\"--no-configuration-cache\""),
                     env = ciHelperSecrets,
                 )
             }
