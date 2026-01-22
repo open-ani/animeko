@@ -56,8 +56,10 @@ fun CarouselAutoAdvanceEffect(
                     delay(period)
                     @Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
                     launch(start = CoroutineStart.UNDISPATCHED) {
-                        val targetPage =
-                            (carouselState.pagerState.currentPage + 1) % (carouselState.pagerState.pageCount)
+                        val pageCount = carouselState.pagerState.pageCount
+                        if (pageCount <= 1) return@launch
+
+                        val targetPage = (carouselState.pagerState.currentPage + 1) % pageCount
 
                         val pager = carouselState.pagerState
                         val layoutInfo = pager.layoutInfo
