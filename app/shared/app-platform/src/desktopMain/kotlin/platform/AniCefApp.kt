@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -142,7 +142,7 @@ object AniCefApp {
             "--autoplay-policy=no-user-gesture-required",
         )
 
-        CefLog.init(jcefConfig.cefSettings)
+        CefLog.init(jcefConfig.cefSettings.log_file, jcefConfig.cefSettings.log_severity)
         CefApp.startup(jcefConfig.appArgs)
         return CefApp.getInstance(jcefConfig.appArgs, jcefConfig.cefSettings)
     }
