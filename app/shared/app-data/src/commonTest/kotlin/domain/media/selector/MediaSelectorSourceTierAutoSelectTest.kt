@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
@@ -30,6 +31,7 @@ import me.him188.ani.datasources.api.source.MediaSourceKind.WEB
 import me.him188.ani.test.DisabledOnNative
 import kotlin.test.Test
 import kotlin.test.assertNotNull
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * @see DefaultMediaSelector.filteredCandidates
@@ -102,6 +104,29 @@ class MediaSelectorSourceTierAutoSelectTest {
     }
 
     @Test
+    fun `auto select t0 when t0 and t1 completed`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        val (handles, session, sources) = configureFetchSession {
+            object {
+                val bt1 by bt()
+
+                val web1 by web { tier = 0 }
+                val web2 by web { tier = 2 }
+            }
+        }
+        createFastSelectFlow(session).test {
+            expectNoEvents()
+            sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName))
+            sources.web2.complete(media(kind = WEB, subjectName = initApi.subjectName))
+            testScope().runCurrent()
+            listOf(assertNotNull(awaitItem())).assert {
+                single().assert(source = sources.web1)
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `dont auto select t1 when it completes`() = runFetchMediaSelectorTestSuite {
         initSubject()
         val (handles, session, sources) = configureFetchSession {
@@ -137,6 +162,33 @@ class MediaSelectorSourceTierAutoSelectTest {
             sources.web2.complete(media(kind = WEB, subjectName = initApi.subjectName))
             testScope().runCurrent()
             expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `auto select t2 after timeout`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        val (handles, session, sources) = configureFetchSession {
+            object {
+                val bt1 by bt()
+
+                val web1 by web { tier = 0 }
+                val web2 by web { tier = 2 }
+            }
+        }
+        createFastSelectFlow(session).test {
+            expectNoEvents()
+            sources.web2.complete(media(kind = WEB, subjectName = initApi.subjectName))
+            testScope().runCurrent() // Should not select yet
+            expectNoEvents()
+
+            testScope().advanceTimeBy(5.seconds) // Wait for timeout
+            testScope().runCurrent()
+
+            listOf(assertNotNull(awaitItem())).assert {
+                single().assert(source = sources.web2)
+            }
             cancelAndIgnoreRemainingEvents()
         }
     }
