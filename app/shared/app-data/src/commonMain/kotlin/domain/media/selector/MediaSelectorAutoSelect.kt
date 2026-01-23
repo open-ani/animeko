@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,36 +10,38 @@
 package me.him188.ani.app.domain.media.selector
 
 import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ClosedSendChannelException
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.onCompletion
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.produceIn
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.selects.onTimeout
+import kotlinx.coroutines.selects.select
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.fetch.awaitCompletion
+import me.him188.ani.app.domain.media.fetch.isFinal
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceTier
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.coroutines.cancellableCoroutineScope
-import me.him188.ani.utils.logging.SilentLogger
+import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.logging.debug
+import me.him188.ani.utils.logging.logger
 import kotlin.concurrent.Volatile
-import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * 访问 [MediaSelector] 的自动选择功能
@@ -49,7 +51,7 @@ inline val MediaSelector.autoSelect get() = MediaSelectorAutoSelect(this)
 /**
  * [MediaSelector] 自动选择功能.
  *
- * 有关数据源选择算法, 参阅 [MediaSelector], 尤其是 "快速选择的情况" 部分.
+ * 有关数据源选择算法, 参阅 [MediaSelector], 尤其是 "快速选择" 部分.
  */
 class MediaSelectorAutoSelect(
     private val mediaSelector: MediaSelector,
@@ -79,194 +81,94 @@ class MediaSelectorAutoSelect(
     }
 
     /**
-     * 按数据源排序, 当高优先级的数据源查询完成后立即自动选择它.
+     * 快速选择 Web 数据源的 [Media]. 逻辑详见 [MediaSelector] 中 "快速选择" 部分的说明.
      *
      * 返回成功选择的 [Media] 对象. 当用户已经手动选择过一个别的 [Media], 或者没有可选的 [Media] 时返回 `null`.
      *
-     * @param fastMediaSourceIdOrder 所有允许这样快速选择的数据源列表. index 越小, 优先级越高.
      * @param overrideUserSelection 是否覆盖用户选择.
      * 若为 `true`, 则会忽略用户目前的选择, 使用此函数的结果替换选择.
      * 若为 `false`, 如果用户已经选择了一个 media, 则此函数不会做任何事情.
      * @param blacklistMediaIds 黑名单, 这些 media 不会被选择. 如果遇到黑名单中的 media, 将会跳过.
-     * @param allowNonPreferredFlow 是否允许选择不满足用户偏好设置的项目. 如果为 `false`, 将只会从 [me.him188.ani.app.domain.media.selector.MediaSelector.preferredCandidatesMedia] 中选择.
-     * 如果为 `true`, 则放弃用户偏好, 只根据数据源顺序选择. 自动选择将会挂起直到此 flow emit 第一个值. 如果此 flow 为 empty, 将不会选择任何 media.
-     * 该 flow 每 emit 一个新的值, 都会导致重新选择. 例如可以 `flow { emit(false); delay(5.seconds); emit(true) }` 来做到 5 秒后允许选择非偏好数据源并立即选择一次.
-     * 当数据源查询完成后, 将停止监控此 flow 的新的值, 函数返回.
+     * @param lowTierToleranceDuration 详见 [MediaSelector] 中 "快速选择" 部分的说明.
+     * @param instantSelectTierThreshold Low Tier 与 High Tier 的分界线, 小于等于此 Tier 的数据源被视作 Low Tier.
      */ // #1323
-    suspend fun fastSelectSources(
+    suspend fun fastSelectWebSources(
         mediaFetchSession: MediaFetchSession,
-        fastMediaSourceIdOrder: List<String>,
-        preferKind: Flow<MediaSourceKind?>,
         sourceTiers: MediaSelectorSourceTiers,
         overrideUserSelection: Boolean = false,
         blacklistMediaIds: Set<String> = emptySet(),
-        allowNonPreferredFlow: Flow<Boolean> = flowOf(false),
+        lowTierToleranceDuration: Duration = 5.seconds,
         instantSelectTierThreshold: MediaSourceTier = InstantSelectTierThreshold,
     ): Media? {
-        if (preferKind.first() != MediaSourceKind.WEB) {
-            return null // 只处理 WEB 类型
-        }
-        if (fastMediaSourceIdOrder.isEmpty()) {
-            return null
-        }
 
-        fun MediaSourceFetchResult.getTier(): MediaSourceTier = sourceTiers.get(this.mediaSourceId)
+        fun MediaSourceFetchResult.getTier(): MediaSourceTier = sourceTiers[this.mediaSourceId]
 
         return cancellableCoroutineScope {
-            val backgroundTasks = Job()
+            val backgroundTasks = childScope()
 
             // 开一个协程开始查询, 因为查询是 lazy 的, 不查询下面的 state 就不会更新
-            launch(
-                backgroundTasks,
-                start = CoroutineStart.UNDISPATCHED,
-            ) {
+            backgroundTasks.launch(start = CoroutineStart.UNDISPATCHED) {
                 mediaFetchSession.cumulativeResults.collect()
             }
 
-            val fastSources = mediaFetchSession.mediaSourceResults
-                .filter { it.mediaSourceId in fastMediaSourceIdOrder }
-                .sortedBy { fastMediaSourceIdOrder.indexOf(it.mediaSourceId) }
+            val webSourceResults = combine(
+                mediaFetchSession.mediaSourceResults
+                    .filter { it.kind == MediaSourceKind.WEB }
+                    .map { result ->
+                        result.state.transformWhile { !it.also { emit(result) }.isFinal }
+                    },
+                Array<MediaSourceFetchResult>::toList,
+            ).shareIn(backgroundTasks, started = SharingStarted.Eagerly, replay = 1) // 至少 replay 一个可以让 select 里读到
 
-            var index = 0 // invariant: fastSources 里序号 index 之前的数据源都已经查询完成. index 是第一个未完成的数据源.
-
-            // 将 flow 转接为 Channel, 以便可以 cancel collect
-            val allowNonPreferredChannel = Channel<Boolean>().apply {
-                launch(backgroundTasks, start = CoroutineStart.UNDISPATCHED) {
-                    try {
-                        allowNonPreferredFlow.collect { send(it) }
-                    } catch (_: ClosedSendChannelException) {
-                        throw CancellationException()
+            // 选择合适的数据源
+            val selectedMedia = select {
+                webSourceResults.mapLatest { list ->
+                    // 所有满足 fast select 条件的源: low tier, succeeded, 有结果
+                    val candidateResults = buildList {
+                        list.forEach { result ->
+                            if (result.getTier() > instantSelectTierThreshold) return@forEach // high tier 不考虑
+                            if (result.state.value !is MediaSourceFetchState.Succeed) return@forEach // 没完事的不考虑
+                            if (result.results.first().count() <= 0) return@forEach // 没结果的不考虑
+                            add(result)
+                        }
                     }
+                    logger.debug { "fastSources: select instantly from ${candidateResults.size} candidate sources." }
+
+                    // 如果这些满足条件的源中没有选出任何一个 media, 这里会挂起.
+                    // 当下一个满足条件的源查询好后, mapLatest 会将这里的挂起取消, 重新执行.
+                    // 例如: 第一个源查询好了, 但是两条结果都被排除了, 这里就会挂起.
+                    // 第二个查询好了, 有满足条件的结果, 那第一次选择就被取消, 第二次就会成功.
+                    // 成功后结果给 select builder, select 就会返回, 这个就是最终结果.
+                    mediaSelector.selectFromMediaSources(
+                        candidateResults.map { it.mediaSourceId },
+                        overrideUserSelection = overrideUserSelection,
+                        blacklistMediaIds = blacklistMediaIds,
+                        allowNonPreferred = true, // 快速选择源是 web 源, 可以不考虑偏好. 
+                    )
+                }
+                    .filterNotNull()
+                    .produceIn(backgroundTasks)
+                    .onReceive { it }
+
+                // 等了 lowTierToleranceDuration 之后上面还没选出结果的话
+                // 就从所有已经成功查询的源选一个, 具体选择逻辑在 MediaSelector 中实现.
+                onTimeout(lowTierToleranceDuration) {
+                    val fallback = webSourceResults.first()
+                        .filter { it.state.value is MediaSourceFetchState.Succeed }
+                    logger.debug { "fastSources: low tier tolerance timeout, select from ${fallback.size} succeeded sources." }
+                    mediaSelector.trySelectFromMediaSources(
+                        fallback.map { it.mediaSourceId },
+                        overrideUserSelection = overrideUserSelection,
+                        blacklistMediaIds = blacklistMediaIds,
+                        allowNonPreferred = true, // 快速选择源是 web 源, 可以不考虑偏好. 
+                    )
                 }
             }
 
-            val allowNonPreferredChannelFlow = allowNonPreferredChannel.receiveAsFlow().let { channelFlow ->
+            logger.debug { "fastSources: selected media: $selectedMedia" }
+            backgroundTasks.cancel()
 
-                // 等待第一个 allowNonPreferredFlow 的值, 否则可能会有 race condition: allowNonPreferredFlow 发出值后, 但是 allowNonPreferredChannel 已经被 close 了,
-                // 进而会导致 allowNonPreferredFlow 明明有一个值, 但下面的 combine 无法收到.
-                // 这个行为有 test. 如果你需要修改, 注意保证 `MediaSelectorFastSelectSourcesTest.allowNonPreferredFlow wont cancel` 通过.
-                val first = channelFlow.first()
-                flow {
-                    emit(first)
-                    emitAll(channelFlow) // emit 第一个值然后再 emit 其他值. 这是可以的, 因为 receiveAsFlow 是一个 hot flow.
-                }
-            }
-
-            combine<MediaSourceFetchState, _>(
-                // 每个 source 的 state.
-                fastSources
-                    .map { source ->
-                        source.state
-                            .transformWhile {
-                                emit(it)
-                                // 完成后就不再 collect, 让这个 flow 能 complete
-                                it !is MediaSourceFetchState.Completed
-                                        && it !is MediaSourceFetchState.Disabled
-                            }
-                    }, // 这会 launch 很多协程来收集状态
-            ) { states ->
-                logger.debug {
-                    val msg = states.zip(fastSources) { state, source ->
-                        "${source.sourceInfo.displayName.take(2)}=$state"
-                    }.joinToString(", ")
-
-                    "fastSources state updated: $msg"
-                }
-
-                states.toList()
-            }.onCompletion {
-                // 源完结后, 停止接受新的 allowNonPreferredFlow, 否则函数要等待 allowNonPreferredFlow 完结才能结束.
-                logger.debug {
-                    "fastSources onCompletion"
-                }
-                allowNonPreferredChannel.close()
-            }.combine(
-                allowNonPreferredChannelFlow.onCompletion {
-                    logger.debug {
-                        "allowNonPreferredChannelFlow onCompletion"
-                    }
-                },
-            ) { states, allowNonPreferred ->
-                // 注意, 此时可能有多个 source 同时完成 (状态同时变成 Completed). 所以需要遍历检验所有在此刻完成的 sources.
-
-                // 我们只需要从 index 开始按顺序考虑所有已经完成了的 source, 遇到第一个未完成的就停止. 
-                // 对于那些位于这个未完成的 source 之后的 source, 即使它们完成了, 我们也不应该选择它们, 所以不用考虑.
-                while (index < states.size) {
-                    when (states[index]) {
-                        is MediaSourceFetchState.Completed,
-                        is MediaSourceFetchState.Disabled -> {
-                            logger.debug {
-                                "calling trySelectFromMediaSources"
-                            }
-                            val selected: Media? = mediaSelector.trySelectFromMediaSources(
-                                fastSources.subList(0, index + 1).map { it.mediaSourceId },
-                                overrideUserSelection = overrideUserSelection,
-                                blacklistMediaIds = blacklistMediaIds,
-                                allowNonPreferred = allowNonPreferred,
-                            )
-                            logger.debug { "done trySelectFromMediaSources 1" }
-
-                            if (selected != null) {
-                                // selected one
-                                return@combine selected // 'returns' to `firstOrNull`
-                            }
-                            index++
-                            continue // 继续判断下一个 source 是否完成了
-                        }
-
-                        else -> {
-                            break // 找到了一个未完成的 source, 不再继续判断
-                        }
-                    }
-                }
-
-                // 尝试立即选择 tier 低的数据源 (具体阈值取决于 fastSelectTierThreshold)
-                // See MediaSourceTier
-                states
-                    .mapIndexedNotNull { i, state ->
-                        if (state is MediaSourceFetchState.Succeed) {
-                            val source = fastSources[i]
-                            val tier = source.getTier()
-                            if (tier <= instantSelectTierThreshold) {
-                                source
-                            } else {
-                                null
-                            }
-                        } else {
-                            null
-                        }
-                    }
-                    .let { lowTierSources ->
-                        // 该数据源查询成功了, 立即选择它
-                        val selected: Media? = mediaSelector.trySelectFromMediaSources(
-                            lowTierSources.map { it.mediaSourceId },
-                            overrideUserSelection = overrideUserSelection,
-                            blacklistMediaIds = blacklistMediaIds,
-                            allowNonPreferred = allowNonPreferred,
-                        )
-                        logger.debug { "done trySelectFromMediaSources 2" }
-
-                        if (selected != null) {
-                            // selected one
-                            return@combine selected // 'returns' to `firstOrNull`
-                        }
-                    }
-
-                null
-            }.filterNotNull()
-                .run {
-                    try {
-                        firstOrNull().also {
-                            logger.debug { "fastSources selected: $it" }
-                        }
-                    } catch (e: CancellationException) {
-                        logger.debug { "fastSources cancelled" }
-                        throw e
-                    }
-                }
-                .also {
-                    backgroundTasks.cancel() // 不可以使用 cancelScope, 否则会取消整个函数, 导致总是 return null.
-                }
+            selectedMedia
         }
     }
 
@@ -335,4 +237,4 @@ class MediaSelectorAutoSelect(
 private const val STOP = true
 
 // 日常没啥用, 只有出 bug 了才会用到
-private val logger = SilentLogger//logger<MediaSelectorAutoSelect>()
+private val logger = /*SilentLogger*/logger<MediaSelectorAutoSelect>()

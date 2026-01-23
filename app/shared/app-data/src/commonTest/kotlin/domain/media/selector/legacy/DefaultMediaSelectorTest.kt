@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -890,7 +890,10 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
             media(sourceId = "5", episodeRange = EpisodeRange.Companion.single("4"), kind = MediaSourceKind.WEB),
         )
         assertEquals(5, selector.preferredCandidatesMedia.first().size)
-        assertEquals(null, selector.trySelectFromMediaSources(listOf("2"), blacklistMediaIds = setOf(target.mediaId)))
+        assertEquals(
+            null,
+            selector.trySelectFromMediaSources(listOf("2"), blacklistMediaIds = setOf(target.mediaId)),
+        )
     }
 
     @Test
@@ -1358,7 +1361,7 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
                     subtitleLanguageId = null,
                     previousMedia = null,
                 ),
-                onSelect.first()
+                onSelect.first(),
             )
             assertEquals(1, onChangePreference.size)
             assertEquals(
@@ -1389,7 +1392,7 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
                     subtitleLanguageId = null,
                     previousMedia = null,
                 ),
-                onSelect.first()
+                onSelect.first(),
             )
             assertEquals(1, onChangePreference.size)
             assertEquals(
@@ -1433,9 +1436,9 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
                     alliance = "B",
                     resolution = second.properties.resolution,
                     subtitleLanguageId = "CHT",
-                    mediaSourceId = "dmhy"
+                    mediaSourceId = "dmhy",
                 ),
-                onChangePreference.first()
+                onChangePreference.first(),
             )
         }
     }

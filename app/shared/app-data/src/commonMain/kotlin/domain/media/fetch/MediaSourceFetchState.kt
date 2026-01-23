@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -50,4 +50,5 @@ sealed class MediaSourceFetchState {
 
 val MediaSourceFetchState.isWorking get() = this is MediaSourceFetchState.Working
 val MediaSourceFetchState.isDisabled get() = this is MediaSourceFetchState.Disabled
+val MediaSourceFetchState.isFinal get() = this is MediaSourceFetchState.Completed || this is MediaSourceFetchState.Disabled
 val MediaSourceFetchState.isFailedOrAbandoned get() = this is MediaSourceFetchState.Failed || this is MediaSourceFetchState.Abandoned

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,7 +9,15 @@
 
 package me.him188.ani.app.ui.mediaselect.summary
 
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.transformLatest
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
@@ -37,9 +45,11 @@ class MediaSelectorSummaryStateProducer(
     private val sourceSummariesFlow = combine(mediaSourceResultsFlow, mediaSources) { results, sources ->
         tupleOf(results, sources)
     }.flatMapLatest { (results, sourcesSorted) ->
-        combine(results.map { result ->
-            result.state.map { it is MediaSourceFetchState.Completed }.distinctUntilChanged()
-        }) { states ->
+        combine(
+            results.map { result ->
+                result.state.map { it is MediaSourceFetchState.Completed }.distinctUntilChanged()
+            },
+        ) { states ->
             results
                 .asSequence()
                 .filter { !it.sourceInfo.isSpecial }
@@ -85,7 +95,7 @@ class MediaSelectorSummaryStateProducer(
                     mediaSelectorSettings.preferKind == MediaSourceKind.WEB -> {
                         MediaSelectorSummary.AutoSelecting(
                             sources = sourceSummaries,
-                            estimate = if (mediaSelectorSettings.fastSelectWebKind) mediaSelectorSettings.fastSelectWebKindAllowNonPreferredDelay
+                            estimate = if (mediaSelectorSettings.fastSelectWebKind) mediaSelectorSettings.fastSelectWebLowTierToleranceDuration
                             else 10.seconds,
                         )
                     }

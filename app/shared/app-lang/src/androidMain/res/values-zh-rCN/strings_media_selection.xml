@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-  ~ Copyright (C) 2024-2025 OpenAni and contributors.
+  ~ Copyright (C) 2024-2026 OpenAni and contributors.
   ~
   ~ 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
   ~ Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -37,7 +37,7 @@
     <string name="settings_media_wait_time_15s">15 秒后</string>
     <string name="settings_media_wait_time_infinite">无限</string>
     <string name="settings_media_max_wait_time">最长等待时间</string>
-    <string name="settings_media_max_wait_time_description">每次查询的最长等待时间。在此时间结束时，将会从已经查询到的数据源中根据你设置的偏好自动选择数据源。如果等待时间太短，可能会忽略你的偏好设置；如果时间更长，可以更好地满足你的偏好设置，但可能会导致每次开播很慢。建议设置 5–10 秒</string>
+    <string name="settings_media_max_wait_time_description">最大容忍高优先级数据源时间。在此时间结束前若有任意高优先级的数据源查询完成则立即选择此数据源，超时则从已查询的所有源中选择。建议设置 5–10 秒</string>
     <string name="settings_media_show_disabled">显示禁用的数据源</string>
     <string name="settings_media_show_disabled_description">播放时，以灰色显示在"数据源管理"设置中禁用的数据源，而不是隐藏。以便在偏好数据源中未找到资源时，可临时启用禁用的数据源</string>
     <string name="settings_media_hide_no_subtitle">隐藏无字幕资源</string>
