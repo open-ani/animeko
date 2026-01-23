@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -55,10 +55,12 @@ constructor(
      */
     val fastSelectWebKind: Boolean = true,
     /**
-     * 在快速选择在线数据源时, 多少毫秒后允许选择非偏好数据源
+     * 给 low tier 源加载的宽容时间, 在这个时间内只接受 low tier 加载完成, 
+     * 就算 high tier 比 low tier 率先加载完成也不选择.
+     * 超过这个时间就放开 tier 限制, 选择所有加载好的最低 tier 的源.
      * @since 4.1
      */
-    val fastSelectWebKindAllowNonPreferredDelay: Duration = 5.seconds, // 注意, 这是 'enum'. 查看 UI 代码以确定有哪些值可以选.
+    val fastSelectWebLowTierToleranceDuration: Duration = 5.seconds, // 注意, 这是 'enum'. 查看 UI 代码以确定有哪些值可以选.
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     companion object {

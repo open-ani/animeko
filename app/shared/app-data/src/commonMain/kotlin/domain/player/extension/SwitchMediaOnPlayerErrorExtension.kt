@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
@@ -30,17 +29,15 @@ import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
 import me.him188.ani.app.domain.media.selector.autoSelect
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
-import me.him188.ani.app.domain.mediasource.GetWebMediaSourceInstanceFlowUseCase
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
-import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.platform.collections.tupleOf
 import org.koin.core.Koin
 import org.openani.mediamp.PlaybackState
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -51,7 +48,6 @@ class SwitchMediaOnPlayerErrorExtension(
     koin: Koin
 ) : PlayerExtension("SwitchMediaOnPlayerErrorExtension") {
     private val getVideoScaffoldConfigUseCase: GetVideoScaffoldConfigUseCase by koin.inject()
-    private val getWebMediaSourceInstanceFlowUseCase: GetWebMediaSourceInstanceFlowUseCase by koin.inject()
     private val getMediaSelectorSettingsFlowUseCase: GetMediaSelectorSettingsFlowUseCase by koin.inject()
     private val getSourceTiersUseCase: GetMediaSelectorSourceTiersUseCase by koin.inject()
 
@@ -83,8 +79,8 @@ class SwitchMediaOnPlayerErrorExtension(
         playbackStateFlow: Flow<PlaybackState>
     ) {
         val handler = PlayerLoadErrorHandler(
-            getWebSources = { getWebMediaSourceInstanceFlowUseCase().first() },
             getPreferKind = { getMediaSelectorSettingsFlowUseCase().first().preferKind },
+            getWebToleranceDuration = { getMediaSelectorSettingsFlowUseCase().first().fastSelectWebLowTierToleranceDuration },
             getSourceTiers = { getSourceTiersUseCase().first() },
         )
 
@@ -100,7 +96,7 @@ class SwitchMediaOnPlayerErrorExtension(
                 coroutineScope {
                     launch {
                         handler.observeMediaSelectorBlacklist(
-                            mediaFetchSessionFlow.mapNotNull { it?.mediaSelector }
+                            mediaFetchSessionFlow.mapNotNull { it?.mediaSelector },
                         )
                     }
 
@@ -108,7 +104,7 @@ class SwitchMediaOnPlayerErrorExtension(
                         handler.observeLoadErrorAndHandle(
                             mediaFetchSessionFlow,
                             videoLoadingStateFlow,
-                            playbackStateFlow
+                            playbackStateFlow,
                         )
                     }
                 }
@@ -145,8 +141,8 @@ class SwitchMediaOnPlayerErrorExtension(
 }
 
 internal class PlayerLoadErrorHandler(
-    private val getWebSources: suspend () -> List<String>,
     private val getPreferKind: suspend () -> MediaSourceKind?,
+    private val getWebToleranceDuration: suspend () -> Duration,
     private val getSourceTiers: suspend () -> MediaSelectorSourceTiers,
 ) {
     private var blacklistedMediaIds = persistentHashSetOf<String>()
@@ -156,13 +152,13 @@ internal class PlayerLoadErrorHandler(
     ) {
         mediaSelectorFlow.collectLatest { selector ->
             selector.events.onSelect.collect { event ->
-                event.previousMedia?.let { 
-                    blacklistedMediaIds = blacklistedMediaIds.add(it.mediaId) 
+                event.previousMedia?.let {
+                    blacklistedMediaIds = blacklistedMediaIds.add(it.mediaId)
                 }
             }
         }
     }
-    
+
     suspend fun handleError(
         session: MediaFetchSession,
         mediaSelector: MediaSelector,
@@ -178,20 +174,22 @@ internal class PlayerLoadErrorHandler(
         delay(1.seconds) // 稍等让用户看到播放出错
 
         // Load data in parallel
-        val (fastMediaSourceIdOrder, preferKind, sourceTiers) = combine(
-            getWebSources.asFlow(),
+        val (preferKind, sourceTiers) = combine(
             getPreferKind.asFlow(),
             getSourceTiers.asFlow(),
-        ) { a, b, c -> tupleOf(a, b, c) }.first()
+        ) { kind, tiers -> kind to tiers }.first()
 
-        val result = mediaSelector.autoSelect.fastSelectSources(
+        if (preferKind != MediaSourceKind.WEB) {
+            logger.info { "Player errored, but preferKind is not WEB ($preferKind), skip automatic switch" }
+            return
+        }
+
+        val result = mediaSelector.autoSelect.fastSelectWebSources(
             session,
-            fastMediaSourceIdOrder,
-            preferKind = flowOf(preferKind),
             sourceTiers = sourceTiers,
             overrideUserSelection = true, // Note: 覆盖用户选择
             blacklistMediaIds = blacklistedMediaIds,
-            allowNonPreferredFlow = flowOf(true), // 偏好的如果全都播放错误了, 允许播放非偏好的
+            lowTierToleranceDuration = getWebToleranceDuration(),
         )
         logger.info { "Player errored, automatically switched to next media: $result" }
     }

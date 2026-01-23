@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -47,8 +47,6 @@ import me.him188.ani.app.domain.media.selector.MediaSelectorEventSavePreferenceU
 import me.him188.ani.app.domain.media.selector.MediaSelectorEventSavePreferenceUseCaseImpl
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCaseImpl
-import me.him188.ani.app.domain.mediasource.GetWebMediaSourceInstanceFlowUseCase
-import me.him188.ani.app.domain.mediasource.GetWebMediaSourceInstanceFlowUseCaseImpl
 import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseCase
 import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseCaseImpl
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
@@ -68,7 +66,6 @@ fun KoinApplication.useCaseModules() = module {
     single<GetDanmakuRegexFilterListFlowUseCase> { GetDanmakuRegexFilterListFlowUseCaseImpl() }
     single<MediaSelectorAutoSelectUseCase> { MediaSelectorAutoSelectUseCaseImpl() }
     single<MediaSelectorEventSavePreferenceUseCase> { MediaSelectorEventSavePreferenceUseCaseImpl }
-    single<GetWebMediaSourceInstanceFlowUseCase> { GetWebMediaSourceInstanceFlowUseCaseImpl() }
     single<GetSubjectEpisodeInfoBundleFlowUseCase> { GetSubjectEpisodeInfoBundleFlowUseCaseImpl() }
     single<CreateMediaFetchSelectBundleFlowUseCase> { CreateMediaFetchSelectBundleFlowUseCaseImpl() }
     single<GetMediaSelectorSettingsFlowUseCase> { GetMediaSelectorSettingsFlowUseCaseImpl }
