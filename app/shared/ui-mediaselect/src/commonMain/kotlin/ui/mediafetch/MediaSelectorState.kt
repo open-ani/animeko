@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -38,13 +38,11 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.fetch.isFailedOrAbandoned
 import me.him188.ani.app.domain.media.fetch.isWorking
 import me.him188.ani.app.domain.media.selector.DefaultMediaSelector
-import me.him188.ani.app.domain.media.selector.GetPreferredMediaSourceSortingUseCase
 import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
 import me.him188.ani.app.domain.media.selector.MediaPreferenceItem
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorContext
 import me.him188.ani.app.domain.media.selector.isPerfectMatch
-import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.foundation.rememberBackgroundScope
 import me.him188.ani.app.ui.mediaselect.selector.WebSource
 import me.him188.ani.app.ui.mediaselect.selector.WebSourceChannel
@@ -71,8 +69,6 @@ fun rememberMediaSelectorState(
             filteredResults,
             mediaSourceInfoProvider,
             scope.backgroundScope,
-            // todo: shit
-            GlobalKoin.get(),
         )
     }
 }
@@ -141,7 +137,6 @@ class MediaSelectorState(
     private val mediaSourceFetchResults: Flow<List<MediaSourceFetchResult>>,
     val mediaSourceInfoProvider: MediaSourceInfoProvider,
     private val backgroundScope: CoroutineScope,
-    getPreferredMediaSourceSortingUseCase: GetPreferredMediaSourceSortingUseCase,
 ) {
     @Immutable
     data class Presentation(
@@ -186,7 +181,7 @@ class MediaSelectorState(
         resolution.presentationFlow,
         subtitleLanguageId.presentationFlow,
         mediaSource.presentationFlow,
-        createWebSourcesFlow(getPreferredMediaSourceSortingUseCase),
+        createWebSourcesFlow(),
     ) { filteredCandidatesMedia, preferredCandidates, selected, alliance, resolution, subtitleLanguageId, mediaSource, webSources ->
         val (groupsExcluded, groupsIncluded) = MediaGrouper.buildGroups(preferredCandidates).partition { it.isExcluded }
         Presentation(
@@ -216,27 +211,16 @@ class MediaSelectorState(
         ),
     )
 
-    private fun createWebSourcesFlow(
-        getPreferredMediaSourceSortingUseCase: GetPreferredMediaSourceSortingUseCase,
-    ): Flow<List<WebSource>> {
+    private fun createWebSourcesFlow(): Flow<List<WebSource>> {
         // 第一次 collect 时不 delay, 尽快 emit, 否则 UI 会一直是 placeholder.
         // 见 createWebSourceFlow 里的注释.
         var isFirstCollect = true
 
-        val sortedResultsFlow = combine(
-            mediaSourceFetchResults,
-            getPreferredMediaSourceSortingUseCase(),
-        ) { results, desiredInstanceIdOrder ->
-            tupleOf(results, desiredInstanceIdOrder)
-        }.flatMapLatest { (results, desiredInstanceIdOrder) ->
+        val sortedResultsFlow = mediaSourceFetchResults.flatMapLatest { results ->
             if (results.isEmpty()) return@flatMapLatest flowOfEmptyList()
 
             // 按顺序排序
-            val sorted = results
-                .filter { it.kind == MediaSourceKind.WEB } // 只使用 WEB
-                .sortedBy {
-                    desiredInstanceIdOrder.indexOf(it.instanceId)
-                }
+            val sorted = results.filter { it.kind == MediaSourceKind.WEB } // 只使用 WEB
 
             // 监控状态, 把错误的放到最后
             combine(results.map { it.state }) { states ->
@@ -375,6 +359,5 @@ fun createTestMediaSelectorState(backgroundScope: CoroutineScope) =
         mediaSourceFetchResults = createTestMediaSourceResultsFilterer(backgroundScope).filteredSourceResults,
         createTestMediaSourceInfoProvider(),
         backgroundScope,
-        getPreferredMediaSourceSortingUseCase = { flowOf(listOf()) },
     )
 
