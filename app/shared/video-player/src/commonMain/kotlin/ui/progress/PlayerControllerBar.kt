@@ -14,12 +14,16 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -64,7 +68,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -76,12 +82,22 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.input.pointer.pointerInput
+import me.him188.ani.app.ui.foundation.FOCUS_REQ_DELAY_MILLIS
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
@@ -102,6 +118,7 @@ import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.renderAspectRatioMode
 import me.him188.ani.app.videoplayer.ui.top.needWorkaroundForFocusManager
@@ -127,7 +144,7 @@ object PlayerControllerDefaults {
     ) {
         IconButton(
             onClick = onClick,
-            modifier,
+            modifier = modifier.focusable(),
         ) {
             if (isPlaying()) {
                 Icon(Icons.Rounded.Pause, contentDescription = "Pause", Modifier.size(36.dp))
@@ -148,7 +165,9 @@ object PlayerControllerDefaults {
     ) {
         IconButton(
             onClick = onClick,
-            modifier.testTag(TAG_DANMAKU_ICON_BUTTON),
+            modifier
+                .testTag(TAG_DANMAKU_ICON_BUTTON)
+                .focusable(),
         ) {
             if (danmakuEnabled) {
                 Icon(Icons.Rounded.Subtitles, contentDescription = "禁用弹幕")
@@ -271,8 +290,8 @@ object PlayerControllerDefaults {
         modifier: Modifier = Modifier,
     ) {
         IconButton(
-            onClick,
-            modifier,
+            onClick = onClick,
+            modifier = modifier.focusable(),
         ) {
             Icon(Icons.Rounded.SkipNext, "下一集", Modifier.size(36.dp))
         }
@@ -285,7 +304,9 @@ object PlayerControllerDefaults {
     ) {
         TextButton(
             onClick,
-            modifier.testTag(TAG_SELECT_EPISODE_ICON_BUTTON),
+            modifier
+                .testTag(TAG_SELECT_EPISODE_ICON_BUTTON)
+                .focusable(),
             colors = ButtonDefaults.textButtonColors(
                 contentColor = LocalContentColor.current,
             ),
@@ -451,15 +472,16 @@ object PlayerControllerDefaults {
         modifier: Modifier = Modifier,
     ) {
         val focusManager by rememberUpdatedState(LocalFocusManager.current) // workaround for #288
+        val needWorkaround = needWorkaroundForFocusManager // Capture @Composable value
         IconButton(
             onClick = onClickFullscreen,
-            modifier.ifThen(needWorkaroundForFocusManager) {
-                onFocusEvent {
-                    if (it.hasFocus) {
+            modifier
+                .focusable()
+                .onFocusEvent { focusState ->
+                    if (needWorkaround && focusState.hasFocus) {
                         focusManager.clearFocus()
                     }
-                }
-            },
+                },
         ) {
             if (isFullscreen) {
                 Icon(Icons.Rounded.FullscreenExit, contentDescription = "Exit Fullscreen", Modifier.size(32.dp))
@@ -491,6 +513,7 @@ object PlayerControllerDefaults {
             modifier,
             properties = PlatformPopupProperties(
                 clippingEnabled = false,
+                focusable = true, // Critical for TV focus (especially Android TV); applied on all platforms
             ),
             textButtonTestTag = TAG_SPEED_SWITCHER_TEXT_BUTTON,
             dropdownMenuTestTag = TAG_SPEED_SWITCHER_DROPDOWN_MENU,
@@ -517,6 +540,7 @@ object PlayerControllerDefaults {
             modifier,
             properties = PlatformPopupProperties(
                 clippingEnabled = false,
+                focusable = true, // Critical for TV focus (especially Android TV); applied on all platforms
             ),
             textButtonTestTag = TAG_VIDEO_ASPECT_RATIO_SELECTOR_TEXT_BUTTON,
             dropdownMenuTestTag = TAG_VIDEO_ASPECT_RATIO_SELECTOR_DROPDOWN_MENU,
@@ -549,24 +573,50 @@ object PlayerControllerDefaults {
                 }
             }
             TextButton(
-                { expanded = true },
+                onClick = {
+                    expanded = true
+                },
                 colors = ButtonDefaults.textButtonColors(
                     contentColor = LocalContentColor.current,
                 ),
                 enabled = enabled,
-                modifier = Modifier.testTag(textButtonTestTag),
+                modifier = Modifier
+                    .testTag(textButtonTestTag)
+                    .focusable(),
             ) {
                 renderValueExposed(value)
             }
-
             DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
                 properties = properties,
-                modifier = Modifier.testTag(dropdownMenuTestTag),
+                modifier = Modifier
+                    .testTag(dropdownMenuTestTag)
+                    .onPreviewKeyEvent { keyEvent ->
+                        // Handle back key to close dropdown
+                        if (keyEvent.key == androidx.compose.ui.input.key.Key.Back && 
+                            keyEvent.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) {
+                            expanded = false
+                            true
+                        } else {
+                            false
+                        }
+                    },
             ) {
                 val options = remember(optionsProvider) { optionsProvider() }
-                for (option in options) {
+                options.forEachIndexed { index, option ->
+                    // Create FocusRequester for first item
+                    val itemFocusRequester = if (index == 0) remember { FocusRequester() } else null
+                    
+                    // Auto-request focus for first item when dropdown opens
+                    if (index == 0) {
+                        LaunchedEffect(Unit) {
+                            kotlinx.coroutines.delay(FOCUS_REQ_DELAY_MILLIS) // Increase delay to ensure popup is fully rendered and animated
+                            itemFocusRequester?.requestFocus()
+                        }
+                    }
+                    
+                    var isFocused by remember { mutableStateOf(false) }
                     DropdownMenuItem(
                         text = {
                             val color = if (value == option) {
@@ -582,6 +632,17 @@ object PlayerControllerDefaults {
                             expanded = false
                             onValueChange(option)
                         },
+                        modifier = Modifier
+                            .then(if (index == 0 && itemFocusRequester != null) 
+                                Modifier.focusRequester(itemFocusRequester) 
+                                else Modifier)
+                            .onFocusEvent { 
+                                isFocused = it.isFocused
+                            }
+                            .background(
+                                if (isFocused) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f) 
+                                else Color.Transparent
+                            ),
                     )
                 }
             }
@@ -649,6 +710,7 @@ object PlayerControllerDefaults {
  */
 @Composable
 fun PlayerControllerBar(
+    controllerState: PlayerControllerState,
     startActions: @Composable RowScope.() -> Unit,
     progressIndicator: @Composable RowScope.() -> Unit,
     progressSlider: @Composable RowScope.() -> Unit,
@@ -656,16 +718,40 @@ fun PlayerControllerBar(
     endActions: @Composable RowScope.() -> Unit,
     expanded: Boolean,
     modifier: Modifier = Modifier,
+    onButtonFocusChanged: (Boolean) -> Unit = {},
 ) {
+    // Keep controller visible when any button has focus (Android TV)
+    val focusAlwaysOnRequester = rememberAlwaysOnRequester(controllerState, "buttonFocus")
+    
     Column(
         modifier
-            .clickable(remember { MutableInteractionSource() }, null, onClick = {}) // Consume touch event
+            // Track focus on container
+            .onFocusEvent { focusState ->
+                // Notify parent about button focus state
+                onButtonFocusChanged(focusState.hasFocus)
+                // Request alwaysOn when any child button has focus
+                if (focusState.hasFocus) {
+                    focusAlwaysOnRequester.request()
+                } else {
+                    focusAlwaysOnRequester.cancelRequest()
+                }
+            }
+            // CRITICAL: Completely disable focus on container using focusProperties
+            .focusProperties {
+                canFocus = false
+            }
+            // Consume touch events
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                }
+            }
             .padding(
                 horizontal = if (expanded) 8.dp else 4.dp,
                 vertical = if (expanded) 4.dp else 2.dp,
             ),
     ) {
-        Column {
+        Column(Modifier.focusable(false)) {
             ProvideTextStyle(MaterialTheme.typography.labelMedium) {
                 Row(
                     Modifier
@@ -686,18 +772,20 @@ fun PlayerControllerBar(
         }
 
         Row(
+            Modifier.focusable(false),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(if (expanded) 8.dp else 4.dp),
         ) {
             // 播放 / 暂停按钮
             Row(
+                Modifier.focusable(false),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 startActions()
             }
 
             Row(
-                Modifier.weight(1f),
+                Modifier.weight(1f).focusable(false),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (expanded) {
@@ -710,6 +798,7 @@ fun PlayerControllerBar(
             }
 
             Row(
+                Modifier.focusable(false),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 endActions()

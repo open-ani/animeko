@@ -40,17 +40,20 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.gesture.PlayerGestureHost
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBar
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
+import me.him188.ani.utils.platform.isDesktop
 
 /**
  * 视频播放器框架, 可以自定义组合控制器等部分.
@@ -170,6 +173,14 @@ fun VideoScaffold(
                             Column(
                                 Modifier
                                     .hoverToRequestAlwaysOn(alwaysOnRequester)
+                                    .onFocusEvent { focusState ->
+                                        // Request alwaysOn when any topBar button has focus (Android TV)
+                                        if (focusState.hasFocus) {
+                                            alwaysOnRequester.request()
+                                        } else {
+                                            alwaysOnRequester.cancelRequest()
+                                        }
+                                    }
                                     .fillMaxWidth(),
                             ) {
                                 //force skip layout hit test for windows
@@ -213,21 +224,26 @@ fun VideoScaffold(
                             exit = exitTransition,
                         ) {
                             val alwaysOnRequester = rememberAlwaysOnRequester(controllerState, "bottomBar")
+                            val isDesktop = me.him188.ani.app.ui.foundation.LocalPlatform.current.isDesktop()
                             Column(
                                 Modifier
                                     .hoverToRequestAlwaysOn(alwaysOnRequester)
-                                    .pointerInput(Unit) {
-                                        awaitEachGesture {
-                                            val event = awaitPointerEvent()
-                                            if (event.changes.all { it.pressed }) {
-                                                //点击 bottom bar 里的按钮时 请求 always on
-                                                alwaysOnRequester.request()
+                                    .ifThen(isDesktop) {
+                                        // Only on Desktop: detect clicks to keep controller visible
+                                        // On Android TV, this pointerInput blocks D-pad focus navigation
+                                        pointerInput(Unit) {
+                                            awaitEachGesture {
+                                                val event = awaitPointerEvent()
+                                                if (event.changes.all { it.pressed }) {
+                                                    //点击 bottom bar 里的按钮时 请求 always on
+                                                    alwaysOnRequester.request()
+                                                }
+                                                var releaseEvent = awaitPointerEvent()
+                                                while (releaseEvent.changes.any { it.pressed }) {
+                                                    releaseEvent = awaitPointerEvent()
+                                                }
+                                                alwaysOnRequester.cancelRequest()
                                             }
-                                            var releaseEvent = awaitPointerEvent()
-                                            while (releaseEvent.changes.any { it.pressed }) {
-                                                releaseEvent = awaitPointerEvent()
-                                            }
-                                            alwaysOnRequester.cancelRequest()
                                         }
                                     }
                                     .fillMaxWidth()

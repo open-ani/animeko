@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.subject.episode.video.sidesheet
 
+import me.him188.ani.app.ui.foundation.FOCUS_REQ_DELAY_MILLIS
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -19,9 +20,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -54,6 +60,14 @@ fun EpisodeVideoSideSheets.MediaSelectorSheet(
     onRestartSource: (instanceId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val focusRequester = remember { FocusRequester() }
+    
+    // Auto-request focus when the side sheet opens
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(FOCUS_REQ_DELAY_MILLIS) // Wait for layout to complete
+        focusRequester.requestFocus()
+    }
+    
     SideSheetLayout(
         title = { Text(text = "选择数据源") },
         onDismissRequest = onDismissRequest,
@@ -75,7 +89,9 @@ fun EpisodeVideoSideSheets.MediaSelectorSheet(
             onRefresh,
             modifier.padding(horizontal = 16.dp)
                 .fillMaxWidth()
-                .navigationBarsPadding(),
+                .navigationBarsPadding()
+                .focusRequester(focusRequester)
+                .focusable(),
             stickyHeaderBackgroundColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             onClickItem = {
                 mediaSelectorState.select(it)

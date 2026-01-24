@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.subject.episode.details.components
 
 import androidx.compose.foundation.combinedClickable
+import me.him188.ani.app.ui.foundation.tvCombinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -147,7 +148,7 @@ private fun EpisodeGridItem(
         modifier = modifier
             .fillMaxWidth()
             .height(72.dp)
-            .combinedClickable(
+            .tvCombinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             )

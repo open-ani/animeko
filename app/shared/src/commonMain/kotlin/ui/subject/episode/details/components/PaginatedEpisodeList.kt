@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.subject.episode.details.components
 
 import androidx.compose.foundation.combinedClickable
+import me.him188.ani.app.ui.foundation.tvCombinedClickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
@@ -151,7 +152,7 @@ private fun EpisodeDetailsListItem(
         modifier = modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.small)
-            .combinedClickable(
+            .tvCombinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,
             ),

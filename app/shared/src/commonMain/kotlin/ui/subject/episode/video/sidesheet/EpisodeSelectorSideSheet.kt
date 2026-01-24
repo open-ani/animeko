@@ -10,11 +10,21 @@
 package me.him188.ani.app.ui.subject.episode.video.sidesheet
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import me.him188.ani.app.ui.foundation.FOCUS_REQ_DELAY_MILLIS
+import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.isTv
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -134,29 +144,55 @@ fun EpisodeVideoSideSheets.EpisodeSelectorSheet(
         },
     ) {
         val lazyListState = rememberLazyListState()
-        // 自动滚动到当前选中的剧集
-        LaunchedEffect(true) {
-            val currentIndex = snapshotFlow { state.currentIndex }
-                .filter { it != -1 }
-                .first()
-            if (currentIndex != -1) {
-                lazyListState.scrollToItem(
-                    currentIndex,
-                    // 显示半个上个元素
-                    scrollOffset = -(lazyListState.layoutInfo.visibleItemsInfo.getOrNull(0)?.size?.div(2) ?: 0),
-                )
+        val focusRequester = remember { FocusRequester() }
+        val isTv = LocalPlatform.current.isTv()
+
+        // 自动滚动到当前选中的剧集并请求焦点 (TV only)
+        if (isTv) {
+            LaunchedEffect(true) {
+                val currentIndex = snapshotFlow { state.currentIndex }
+                    .filter { it != -1 }
+                    .first()
+
+                if (currentIndex != -1) {
+                    lazyListState.scrollToItem(
+                        currentIndex,
+                        // 显示半个上个元素
+                        scrollOffset = -(lazyListState.layoutInfo.visibleItemsInfo.getOrNull(0)?.size?.div(2) ?: 0),
+                    )
+                }
+                // 延迟以等待布局完成，然后请求焦点
+                kotlinx.coroutines.delay(FOCUS_REQ_DELAY_MILLIS)
+                focusRequester.requestFocus()
             }
         }
+
         LazyColumn(state = lazyListState) {
             itemsIndexed(state.items, key = { _, item -> item.episodeId }) { index, item ->
                 val selected = index == state.currentIndex
                 val color = contentColorForWatchStatus(item.collectionType, item.isKnownBroadcast)
+                
+                // 确定此项是否应该作为初始焦点目标 (TV only)
+                // 如果有选中的剧集，则聚焦于该项；否则聚焦第一项
+                val isInitialFocusTarget = isTv && (
+                    index == if (state.currentIndex != -1) state.currentIndex else 0
+                )
+
+                var isFocused by remember { mutableStateOf(false) }
+
                 ListItem(
                     headlineContent = { Text(item.title, color = color) },
-                    Modifier.clickable {
-                        state.select(item)
-                        onDismissRequest()
-                    },
+                    modifier = Modifier
+                        .then(if (isInitialFocusTarget) Modifier.focusRequester(focusRequester) else Modifier)
+                        .onFocusChanged { isFocused = it.isFocused }
+                        .background(
+                            if (isFocused) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f) 
+                            else Color.Transparent
+                        )
+                        .clickable {
+                            state.select(item)
+                            onDismissRequest()
+                        },
                     leadingContent = {
                         ProvideTextStyle(MaterialTheme.typography.bodyLarge) {
                             Text(item.sort, fontFamily = FontFamily.Monospace, color = color)

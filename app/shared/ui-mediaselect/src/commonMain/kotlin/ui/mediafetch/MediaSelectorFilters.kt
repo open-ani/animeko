@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.mediafetch
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +31,7 @@ import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,11 +43,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusEvent
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
+import me.him188.ani.app.ui.foundation.FOCUS_REQ_DELAY_MILLIS
+import me.him188.ani.app.ui.foundation.isTv
 import me.him188.ani.app.ui.media.renderSubtitleLanguage
 
 
@@ -145,6 +158,10 @@ private fun <T : Any> MediaSelectorFilterChip(
     }
     val isSingleValue by remember { derivedStateOf { allValuesState.size == 1 } }
     val selectedState by rememberUpdatedState(selected)
+    
+    // Create FocusRequester for the chip button
+    val chipFocusRequester = remember { FocusRequester() }
+    val isTv = LocalPlatform.current.isTv()
 
     Box {
         val chipSelected = isSingleValue || selected != null
@@ -186,7 +203,10 @@ private fun <T : Any> MediaSelectorFilterChip(
                     }
                 }
             },
-            modifier = modifier.heightIn(min = 40.dp),
+            modifier = modifier
+                .heightIn(min = 40.dp)
+                .focusRequester(chipFocusRequester)
+                .focusable(),
             border = InputChipDefaults.inputChipBorder(
                 enabled = true, chipSelected,
                 // M3 spec is outlineVariant, but we use outline for prominent visual
@@ -196,10 +216,39 @@ private fun <T : Any> MediaSelectorFilterChip(
 
         DropdownMenu(
             showDropdown,
-            onDismissRequest = { showDropdown = false },
+            onDismissRequest = { 
+                showDropdown = false
+                // Request focus back to chip when menu closes
+                chipFocusRequester.requestFocus()
+            },
             properties = PlatformPopupProperties(clippingEnabled = false),
+            modifier = Modifier.onPreviewKeyEvent { keyEvent ->
+                // Handle back key to close dropdown
+                if (keyEvent.key == Key.Back && keyEvent.type == KeyEventType.KeyDown) {
+                    showDropdown = false
+                    // Request focus back to chip when back key is pressed
+                    chipFocusRequester.requestFocus()
+                    true
+                } else {
+                    false
+                }
+            },
         ) {
-            allValuesState.forEach { item ->
+            allValuesState.forEachIndexed { index, item ->
+                // Create FocusRequester for first item (TV only)
+                val itemFocusRequester = if (isTv && index == 0) remember { FocusRequester() } else null
+
+                // Auto-request focus for first item when dropdown opens (TV only)
+                if (isTv && index == 0) {
+                    LaunchedEffect(showDropdown) {
+                        if (showDropdown) {
+                            kotlinx.coroutines.delay(FOCUS_REQ_DELAY_MILLIS) // Wait for popup to render
+                            itemFocusRequester?.requestFocus()
+                        }
+                    }
+                }
+                
+                var isFocused by remember { mutableStateOf(false) }
                 DropdownMenuItem(
                     text = { label(item) },
                     trailingIcon = {
@@ -210,7 +259,17 @@ private fun <T : Any> MediaSelectorFilterChip(
                     onClick = {
                         onSelect(item)
                         showDropdown = false
+                        // Request focus back to chip when item is clicked
+                        chipFocusRequester.requestFocus()
                     },
+                    modifier = Modifier
+                        .then(if (index == 0 && itemFocusRequester != null) 
+                            Modifier.focusRequester(itemFocusRequester) 
+                            else Modifier)
+                        .onFocusEvent { 
+                            isFocused = it.hasFocus
+                        }
+                        .focusable(),
                 )
             }
         }

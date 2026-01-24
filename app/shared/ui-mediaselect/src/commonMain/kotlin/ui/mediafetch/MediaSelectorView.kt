@@ -56,6 +56,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -82,6 +84,8 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.icons.EditSquare
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.isTv
+import me.him188.ani.app.ui.foundation.FOCUS_REQ_DELAY_MILLIS
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_media_source_more
 import me.him188.ani.app.ui.mediafetch.request.MediaFetchRequestEditorDialog
@@ -219,6 +223,19 @@ private fun ViewKindAndMoreRow(
     onRequestFetchRequestEdit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val firstButtonFocusRequester = remember { FocusRequester() }
+
+    
+    val isTv = LocalPlatform.current.isTv()
+    
+    // Auto-request focus on the first button when the row appears (TV only)
+    if (isTv) {
+        LaunchedEffect(Unit) {
+            kotlinx.coroutines.delay(FOCUS_REQ_DELAY_MILLIS) // Wait for layout to complete
+            firstButtonFocusRequester.requestFocus()
+        }
+    }
+    
     Row(
         modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -230,6 +247,7 @@ private fun ViewKindAndMoreRow(
                 shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                 onClick = { onViewKindChange(ViewKind.WEB) },
                 selected = viewKind == ViewKind.WEB,
+                modifier = Modifier.focusRequester(firstButtonFocusRequester),
             ) {
                 Text("简单模式", softWrap = false)
             }
@@ -237,15 +255,18 @@ private fun ViewKindAndMoreRow(
                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                 onClick = { onViewKindChange(ViewKind.BT) },
                 selected = viewKind == ViewKind.BT,
+                modifier = Modifier,
             ) {
                 Text("详细模式", softWrap = false)
             }
         }
 
-        Box {
-            IconButton(onRequestFetchRequestEdit) {
-                Icon(Icons.Rounded.EditSquare, contentDescription = stringResource(Lang.settings_media_source_more))
-            }
+        IconButton(
+            onRequestFetchRequestEdit,
+            modifier = Modifier,
+        ) {
+            Icon(Icons.Rounded.EditSquare, contentDescription = stringResource(Lang.settings_media_source_more))
+        }
 //            DropdownMenu(showDropdown, { showDropdown = false }) {
 //                DropdownMenuItem(
 //                    text = { Text("编辑查询请求") },
@@ -257,7 +278,6 @@ private fun ViewKindAndMoreRow(
 //            }
 
             // 编辑请求
-        }
     }
 }
 
