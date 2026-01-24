@@ -68,6 +68,7 @@ fun rememberMediaSelectorState(
             selector,
             filteredResults,
             mediaSourceInfoProvider,
+            flowOf(null),
             scope.backgroundScope,
         )
     }
@@ -136,6 +137,7 @@ class MediaSelectorState(
     private val mediaSelector: MediaSelector,
     private val mediaSourceFetchResults: Flow<List<MediaSourceFetchResult>>,
     val mediaSourceInfoProvider: MediaSourceInfoProvider,
+    private val preferredWebMediaSource: Flow<String?>,
     private val backgroundScope: CoroutineScope,
 ) {
     @Immutable
@@ -277,7 +279,7 @@ class MediaSelectorState(
         source: MediaSourceFetchResult,
         myMediaList: Sequence<Media>,
         delayToOvercomeCacheIssue: Boolean,
-    ) = source.state.map { state ->
+    ) = source.state.combine(preferredWebMediaSource) { a, b -> a to b }.map { (state, preferred) ->
         val channels = myMediaList.map { media ->
             WebSourceChannel(media.properties.alliance, original = media)
         }.toList()
@@ -307,6 +309,7 @@ class MediaSelectorState(
                     channels = channels,
                     isLoading = state.isWorking,
                     isError = state.isFailedOrAbandoned,
+                    isPreferred = source.mediaSourceId == preferred,
                 )
             }
         }
@@ -358,6 +361,7 @@ fun createTestMediaSelectorState(backgroundScope: CoroutineScope) =
         ),
         mediaSourceFetchResults = createTestMediaSourceResultsFilterer(backgroundScope).filteredSourceResults,
         createTestMediaSourceInfoProvider(),
+        preferredWebMediaSource = flowOf(null),
         backgroundScope,
     )
 

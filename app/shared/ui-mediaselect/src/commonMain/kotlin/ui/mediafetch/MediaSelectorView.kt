@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -283,7 +283,7 @@ private fun LegacyBTSourceColumn(
         if (currentAniBuildConfig.isDebug) {
             item {
                 Surface {
-                    Row {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Debug tools: ")
                         FilledTonalButton(onClick = { MediaSelectorDebugTools.dumpSubjectNames(presentation.filteredCandidates) }) {
                             Text("Dump unique media lists")

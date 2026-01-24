@@ -197,7 +197,12 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
     single<AniApiProvider> { AniApiProvider(get<HttpClientProvider>().get(useAniToken = true)) }
     single<TokenRepository> { TokenRepository(getContext().dataStores.tokenStore) }
-    single<EpisodePreferencesRepository> { EpisodePreferencesRepositoryImpl(getContext().dataStores.preferredAllianceStore) }
+    single<EpisodePreferencesRepository> {
+        EpisodePreferencesRepositoryImpl(
+            getContext().dataStores.preferredAllianceStore,
+            database.preferredWebMediaSourceDao(),
+        )
+    }
     single<BangumiClient> {
         BangumiClientImpl(
             get<HttpClientProvider>().get(

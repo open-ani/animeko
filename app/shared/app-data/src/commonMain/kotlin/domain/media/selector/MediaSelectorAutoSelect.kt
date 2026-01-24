@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.domain.media.selector
 
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,7 +22,6 @@ import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.transformWhile
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.onTimeout
 import kotlinx.coroutines.selects.select
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
@@ -106,11 +104,6 @@ class MediaSelectorAutoSelect(
         return cancellableCoroutineScope {
             val backgroundTasks = childScope()
 
-            // 开一个协程开始查询, 因为查询是 lazy 的, 不查询下面的 state 就不会更新
-            backgroundTasks.launch(start = CoroutineStart.UNDISPATCHED) {
-                mediaFetchSession.cumulativeResults.collect()
-            }
-
             val webSourceResults = combine(
                 mediaFetchSession.mediaSourceResults
                     .filter { it.kind == MediaSourceKind.WEB }
@@ -170,6 +163,29 @@ class MediaSelectorAutoSelect(
 
             selectedMedia
         }
+    }
+
+    /**
+     * 快速选择之前用户手选的源, 没选到就一直挂起
+     */
+    suspend fun selectPreferredWebSource(
+        mediaFetchSession: MediaFetchSession,
+        preferredWebMediaSourceId: String?,
+    ): Media? {
+        if (preferredWebMediaSourceId == null) return null
+
+        // 等待这个源查询完成
+        mediaFetchSession.mediaSourceResults
+            .firstOrNull { it.mediaSourceId == preferredWebMediaSourceId && it.kind == MediaSourceKind.WEB }
+            ?.awaitCompletion()
+
+        // 尝试选择, 没有就一直挂起
+        return mediaSelector.selectFromMediaSources(
+            listOf(preferredWebMediaSourceId),
+            overrideUserSelection = false,
+            blacklistMediaIds = emptySet(),
+            allowNonPreferred = true,
+        )
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -30,6 +30,8 @@ import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCommentDao
 import me.him188.ani.app.data.persistent.database.dao.HttpCacheDownloadStateDao
+import me.him188.ani.app.data.persistent.database.dao.PreferredWebMediaSource
+import me.him188.ani.app.data.persistent.database.dao.PreferredWebMediaSourceDao
 import me.him188.ani.app.data.persistent.database.dao.SearchHistoryDao
 import me.him188.ani.app.data.persistent.database.dao.SearchHistoryEntity
 import me.him188.ani.app.data.persistent.database.dao.SearchTagDao
@@ -76,8 +78,10 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         TorrentCacheInfoEntity::class,
         DownloadState::class,
         DanmakuEntity::class,
+
+        PreferredWebMediaSource::class,
     ],
-    version = 18,
+    version = 19,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.Migration_1_2::class),
         AutoMigration(from = 2, to = 3, spec = Migrations.Migration_2_3::class),
@@ -96,6 +100,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         // 15 to 16 is destructive
         AutoMigration(from = 16, to = 17, spec = Migrations.Migration_16_17::class),
         AutoMigration(from = 17, to = 18, spec = Migrations.Migration_17_18::class),
+        AutoMigration(from = 18, to = 19, spec = Migrations.Migration_18_19::class),
     ],
     exportSchema = true,
 )
@@ -140,7 +145,11 @@ abstract class AniDatabase : RoomDatabase() {
     abstract fun torrentCacheInfoDao(): TorrentCacheInfoDao
     abstract fun httpCacheDownloadStateDao(): HttpCacheDownloadStateDao
 
+    /**
+     * @since 5.3.0
+     */
     abstract fun danmakuDao(): DanmakuDao
+    abstract fun preferredWebMediaSourceDao(): PreferredWebMediaSourceDao
 }
 
 expect object AniDatabaseConstructor : RoomDatabaseConstructor<AniDatabase> {
@@ -315,9 +324,19 @@ internal object Migrations {
     /**
      * Added [DanmakuEntity].
      *
-     * @since 5.2.0
+     * @since 5.3.0
      */
     class Migration_17_18 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+        }
+    }
+
+    /**
+     * Added [PreferredWebMediaSource].
+     *
+     * @since 5.3.0
+     */
+    class Migration_18_19 : AutoMigrationSpec {
         override fun onPostMigrate(connection: SQLiteConnection) {
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -35,7 +35,12 @@ interface MediaSelectorEvents {
      * flow 的值为新的用户设置
      */
     val onChangePreference: Flow<MediaPreference>
-    
+
+    /**
+     * 当用户手动选择偏好使用某个 Web 源的事件
+     */
+    val onPreferWebSource: Flow<PreferWebSourceEvent>
+
 }
 
 /**
@@ -53,6 +58,16 @@ data class SelectEvent(
     val previousMedia: Media?,
 )
 
+/**
+ * 用户选择了某个 Web 源, 表示用户希望以后都使用这个源来播放此条目.
+ * 
+ * @see MediaSelectorEvents
+ */
+data class PreferWebSourceEvent(
+    val subjectId: Int,
+    val mediaSourceId: String
+)
+
 class MutableMediaSelectorEvents(
     replay: Int = 0,
     extraBufferCapacity: Int = 1,
@@ -63,5 +78,7 @@ class MutableMediaSelectorEvents(
     override val onBeforeSelect: MutableSharedFlow<SelectEvent> =
         MutableSharedFlow(replay, extraBufferCapacity, onBufferOverflow)
     override val onChangePreference: MutableSharedFlow<MediaPreference> =
+        MutableSharedFlow(replay, extraBufferCapacity, onBufferOverflow)
+    override val onPreferWebSource: MutableSharedFlow<PreferWebSourceEvent> =
         MutableSharedFlow(replay, extraBufferCapacity, onBufferOverflow)
 }

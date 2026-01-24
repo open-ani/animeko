@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -54,6 +54,7 @@ data class MediaSourceResultPresentation(
     val info: MediaSourceInfo,
     val kind: MediaSourceKind,
     val totalCount: Int,
+    val isPreferred: Boolean,
 ) {
     val isWorking: Boolean get() = state.isWorking
     val isDisabled: Boolean get() = state.isDisabled
@@ -82,12 +83,20 @@ data class MediaSourceResultListPresentation(
 
 class MediaSourceResultListPresenter(
     resultListFlow: Flow<List<MediaSourceFetchResult>>,
+    preferredWebMediaSourceIdFlow: Flow<String?> = flowOf(null),
 ) {
     val presentationFlow: Flow<List<MediaSourceResultPresentation>> = resultListFlow
-        .flatMapLatest { list ->
+        .combine(preferredWebMediaSourceIdFlow) { list, preferredWebMediaSourceId ->
+            Pair(list, preferredWebMediaSourceId)
+        }
+        .flatMapLatest { (list, preferred) ->
             val flows = list.map { source ->
                 combine(source.state, source.results) { state, results ->
-                    source.toPresentation(state, results.size)
+                    source.toPresentation(
+                        state,
+                        results.size,
+                        source.mediaSourceId == preferred,
+                    )
                 }
             }
             if (flows.isEmpty()) {
@@ -103,7 +112,8 @@ class MediaSourceResultListPresenter(
 
     private fun MediaSourceFetchResult.toPresentation(
         state: MediaSourceFetchState,
-        totalCount: Int
+        totalCount: Int,
+        isPreferred: Boolean,
     ): MediaSourceResultPresentation =
         MediaSourceResultPresentation(
             instanceId = instanceId,
@@ -112,6 +122,7 @@ class MediaSourceResultListPresenter(
             info = sourceInfo,
             kind = kind,
             totalCount = totalCount,
+            isPreferred = isPreferred,
         )
 }
 
@@ -187,6 +198,7 @@ val TestMediaSourceResultListPresentation
                 info = MikanMediaSource.INFO,
                 kind = MediaSourceKind.BitTorrent,
                 totalCount = TestMediaList.size,
+                isPreferred = false,
             ),
             MediaSourceResultPresentation(
                 instanceId = "dmhy",
@@ -195,6 +207,7 @@ val TestMediaSourceResultListPresentation
                 info = MediaSourceInfo("dmhy"),
                 kind = MediaSourceKind.BitTorrent,
                 totalCount = TestMediaList.size,
+                isPreferred = false,
             ),
             MediaSourceResultPresentation(
                 instanceId = "acg.rip",
@@ -203,6 +216,7 @@ val TestMediaSourceResultListPresentation
                 info = MediaSourceInfo("acg.rip"),
                 kind = MediaSourceKind.BitTorrent,
                 totalCount = TestMediaList.size,
+                isPreferred = false,
             ),
             MediaSourceResultPresentation(
                 instanceId = "nyafun",
@@ -211,6 +225,16 @@ val TestMediaSourceResultListPresentation
                 info = MediaSourceInfo("nyafun"),
                 kind = MediaSourceKind.WEB,
                 totalCount = TestMediaList.size,
+                isPreferred = true,
+            ),
+            MediaSourceResultPresentation(
+                instanceId = "xfdm",
+                mediaSourceId = "xfdm",
+                state = MediaSourceFetchState.Succeed(2),
+                info = MediaSourceInfo("xfdm"),
+                kind = MediaSourceKind.WEB,
+                totalCount = TestMediaList.size,
+                isPreferred = false,
             ),
             MediaSourceResultPresentation(
                 instanceId = MikanCNMediaSource.ID,
@@ -219,6 +243,7 @@ val TestMediaSourceResultListPresentation
                 info = MikanCNMediaSource.INFO,
                 kind = MediaSourceKind.BitTorrent,
                 totalCount = 0,
+                isPreferred = false,
             ),
         ),
     )

@@ -47,6 +47,10 @@ import me.him188.ani.app.domain.media.selector.MediaSelectorEventSavePreferenceU
 import me.him188.ani.app.domain.media.selector.MediaSelectorEventSavePreferenceUseCaseImpl
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCaseImpl
+import me.him188.ani.app.domain.mediasource.GetPreferredWebMediaSourceUseCase
+import me.him188.ani.app.domain.mediasource.GetPreferredWebMediaSourceUseCaseImpl
+import me.him188.ani.app.domain.mediasource.SetPreferredWebMediaSourceUseCase
+import me.him188.ani.app.domain.mediasource.SetPreferredWebMediaSourceUseCaseImpl
 import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseCase
 import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseCaseImpl
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
@@ -86,6 +90,8 @@ fun KoinApplication.useCaseModules() = module {
     single<DeleteCacheUseCase> { DeleteCacheUseCaseImpl(get(), get()) }
     single<DeleteCacheByCacheIdUseCase> { DeleteCacheByCacheIdUseCaseImpl(get(), get()) }
     single<DeleteCacheByEpisodeIdUseCase> { DeleteCacheByEpisodeIdUseCaseImpl(get(), get()) }
+    single<GetPreferredWebMediaSourceUseCase> { GetPreferredWebMediaSourceUseCaseImpl(get()) }
+    single<SetPreferredWebMediaSourceUseCase> { SetPreferredWebMediaSourceUseCaseImpl(get()) }
 }
 
 val GlobalKoin get() = KoinPlatform.getKoin()

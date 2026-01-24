@@ -468,6 +468,9 @@ class DefaultMediaSelector(
             }
 
             broadcastChangePreference()
+            if (candidate.kind == MediaSourceKind.WEB) {
+                broadcastWebSourcePreference(candidate.mediaSourceId)
+            }
         }
 
         // 发出选择完成事件
@@ -502,6 +505,15 @@ class DefaultMediaSelector(
                 resolution = preference.resolution,
                 subtitleLanguageId = overrideLanguageId ?: preference.subtitleLanguageId,
                 mediaSourceId = preference.mediaSourceId,
+            ),
+        )
+    }
+
+    private suspend fun broadcastWebSourcePreference(mediaSourceId: String) {
+        events.onPreferWebSource.emit(
+            PreferWebSourceEvent(
+                mediaSelectorContext.first().subjectInfo?.subjectId ?: return,
+                mediaSourceId,
             ),
         )
     }

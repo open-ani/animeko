@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.persistent.DataStoreJson
+import me.him188.ani.app.data.persistent.database.dao.PreferredWebMediaSource
+import me.him188.ani.app.data.persistent.database.dao.PreferredWebMediaSourceDao
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -31,10 +33,17 @@ interface EpisodePreferencesRepository : KoinComponent {
      */
     fun mediaPreferenceFlow(subjectId: Int): Flow<MediaPreference>
     suspend fun setMediaPreference(subjectId: Int, mediaPreference: MediaPreference)
+
+    suspend fun setPreferredWebMediaSource(subjectId: Int, webSourceId: String)
+
+    fun getPreferredWebMediaSource(subjectId: Int): Flow<String?>
+
+    suspend fun removePreferredWebMediaSource(subjectId: Int)
 }
 
 class EpisodePreferencesRepositoryImpl(
     private val store: DataStore<Preferences>,
+    private val preferredWebMediaSourceDao: PreferredWebMediaSourceDao,
     private val defaultMediaPreference: Flow<MediaPreference> = KoinPlatform.getKoin()
         .get<SettingsRepository>().defaultMediaPreference.flow
 ) : EpisodePreferencesRepository, KoinComponent {
@@ -63,5 +72,18 @@ class EpisodePreferencesRepositoryImpl(
             it[stringPreferencesKey(subjectId.toString())] =
                 json.encodeToString(MediaPreference.serializer(), mediaPreference)
         }
+    }
+
+    override suspend fun setPreferredWebMediaSource(subjectId: Int, webSourceId: String) {
+        logger.info { "Saved user preferred web source for subject $subjectId to $webSourceId" }
+        preferredWebMediaSourceDao.setPreferredMediaSource(PreferredWebMediaSource(subjectId, webSourceId))
+    }
+
+    override fun getPreferredWebMediaSource(subjectId: Int): Flow<String?> {
+        return preferredWebMediaSourceDao.getPreferredMediaSourceId(subjectId)
+    }
+
+    override suspend fun removePreferredWebMediaSource(subjectId: Int) {
+        preferredWebMediaSourceDao.deletePreferredMediaSource(subjectId)
     }
 }

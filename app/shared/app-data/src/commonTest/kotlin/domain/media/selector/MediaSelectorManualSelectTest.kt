@@ -19,7 +19,6 @@ import me.him188.ani.app.domain.player.extension.PlayerLoadErrorHandler
 import me.him188.ani.test.TestContainer
 import kotlin.test.Test
 import kotlin.test.assertTrue
-import kotlin.time.Duration.Companion.seconds
 
 @TestContainer
 class MediaSelectorManualSelectTest {
@@ -46,7 +45,6 @@ class MediaSelectorManualSelectTest {
 
         val handler = PlayerLoadErrorHandler(
             getPreferKind = { null },
-            getWebToleranceDuration = { 5.seconds },
             getSourceTiers = { MediaSelectorSourceTiers(emptyMap()) },
         )
 
