@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -51,6 +51,7 @@ class IkarosClient(
     companion object {
         private val logger = logger<IkarosClient>()
         private val json = Json { ignoreUnknownKeys = true }
+        private const val API_VERSION = "v1alpha1"
     }
 
     suspend fun checkConnection(): HttpStatusCode {
@@ -74,7 +75,7 @@ class IkarosClient(
         if (bgmTvSubjectId.isBlank() || bgmTvSubjectId.toInt() <= 0) {
             return emptyList()
         }
-        val url = "$baseUrl/api/v1alpha1/subject/syncs/platform?platform=BGM_TV&platformId=$bgmTvSubjectId"
+        val url = "$baseUrl/api/$API_VERSION/subject/syncs/platform?platform=BGM_TV&platformId=$bgmTvSubjectId"
         val responseText = client.use {
             get(url) {
                 addAuthorizationHeaders()
@@ -117,7 +118,7 @@ class IkarosClient(
                         mediaSourceId = IkarosMediaSource.ID,
                         originalUrl = baseUrl.plus("/console/#/subjects/subject/details/").plus(subjectId),
                         download = ResourceLocation.HttpStreamingFile(
-                            uri = getResUrl(epRes.url),
+                            uri = getAttReadUrl(epRes.attachmentId),
                         ),
                         originalTitle = epRes.name,
                         publishedTime = kotlin.runCatching {
@@ -149,11 +150,21 @@ class IkarosClient(
         return sizedSource
     }
 
+    suspend fun getAttReadUrl(attachmentId: Long): String {
+        val url = "$baseUrl/api/$API_VERSION/attachment/url/read/id/$attachmentId"
+        val responseText = client.use {
+            get(url) {
+                addAuthorizationHeaders()
+            }.bodyAsText()
+        }
+        return getResUrl(responseText)
+    }
+
     suspend fun getEpisodeRecordsWithId(subjectId: String): List<IkarosEpisodeRecord> {
         if (subjectId.isBlank() || subjectId.toInt() <= 0) {
             return emptyList()
         }
-        val url = "$baseUrl/api/v1alpha1/episode/records/subjectId/$subjectId"
+        val url = "$baseUrl/api/$API_VERSION/episode/records/subjectId/$subjectId"
         val responseText = client.use {
             get(url) {
                 addAuthorizationHeaders()
@@ -164,7 +175,7 @@ class IkarosClient(
 
     private suspend fun getAttachmentById(attId: Long): IkarosAttachment? {
         if (attId <= 0) return null
-        val url = baseUrl.plus("/api/v1alpha1/attachment/").plus(attId)
+        val url = baseUrl.plus("/api/$API_VERSION/attachment/").plus(attId)
         return client.use {
             get(url) {
                 addAuthorizationHeaders()
@@ -174,7 +185,7 @@ class IkarosClient(
 
     private suspend fun getAttachmentVideoSubtitlesById(attId: Long): List<IkarosVideoSubtitle>? {
         if (attId <= 0) return null
-        val url = baseUrl.plus("/api/v1alpha1/attachment/relation/videoSubtitle/subtitles/").plus(attId)
+        val url = baseUrl.plus("/api/$API_VERSION/attachment/relation/videoSubtitle/subtitles/").plus(attId)
         val responseText = client.use {
             get(url) {
                 addAuthorizationHeaders()
@@ -203,7 +214,7 @@ class IkarosClient(
                 // convert ikarosVideoSubtitle to ani subtitle
                 subtitles.add(
                     Subtitle(
-                        uri = getResUrl(ikVideoSubtitle.url),
+                        uri = getAttReadUrl(ikVideoSubtitle.attachmentId),
                         language = AssNameParser.default.parseAssName2Language(ikVideoSubtitle.name),
                         mimeType = AssNameParser.httpMineType,
                     ),
