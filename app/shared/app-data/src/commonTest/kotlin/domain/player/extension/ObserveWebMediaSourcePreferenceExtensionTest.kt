@@ -185,7 +185,7 @@ class ObserveWebMediaSourcePreferenceExtensionTest : AbstractPlayerExtensionTest
     fun `selecting non-web media does not update preference`() = runTest {
         val bt1: CompletableDeferred<List<Media>>
         val (testScope, suite, state) = createCase { _, suite ->
-            bt1 = suite.mediaSelectorTestBuilder.delayedMediaSource("bt1", kind = MediaSourceKind.WEB)
+            bt1 = suite.mediaSelectorTestBuilder.delayedMediaSource("bt1", kind = MediaSourceKind.BitTorrent)
         }
 
         startMediaFetcher(state, testScope)

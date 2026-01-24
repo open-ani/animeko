@@ -25,6 +25,7 @@ import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.domain.usecase.UseCase
 import me.him188.ani.datasources.api.source.MediaSourceKind
+import me.him188.ani.utils.coroutines.cancellableCoroutineScope
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
@@ -58,10 +59,6 @@ class MediaSelectorAutoSelectUseCaseImpl(
                 }
             }
 
-            fun <T> SelectBuilder<T>.resulting(block: suspend CoroutineScope.() -> T) {
-                async { block() }.onAwait { it }
-            }
-
             /**
              * 为什么可以让 fast select 和 preferred select 一起跑?
              * 
@@ -73,52 +70,60 @@ class MediaSelectorAutoSelectUseCaseImpl(
              * 
              * 如果 preferred 刚好也是 fast select 的一个结果也无所谓, 哪个 clause 快跑那个, 结果都是一样的.
              */
-            select {
-                // 选择用户偏好的源
-                resulting {
-                    // subjectId 无效就等别的 clause.
-                    val subjectId = session.request.first().subjectId.toIntOrNull() ?: awaitCancellation()
-                    val result = autoSelector.selectPreferredWebSource(
-                        session, getPreferredWebMediaSource(subjectId).first(),
-                    )
-
-                    logger.info { "selectPreferredWebSource result: $result" }
-                    result ?: awaitCancellation()
+            cancellableCoroutineScope {
+                fun <T> SelectBuilder<T>.resulting(block: suspend CoroutineScope.() -> T) {
+                    this@cancellableCoroutineScope.async { block() }.onAwait { it }
                 }
 
-                // 快速自动选择数据源: 当按规则快速选择相应 Tier 的数据源. 仅在偏好 Web 时并且启用了快速选择时才执行.
-                resulting {
-                    val selectorSettings = mediaSelectorSettingsFlow.first()
-                    if (!selectorSettings.fastSelectWebKind || selectorSettings.preferKind != MediaSourceKind.WEB) {
-                        // 没开启 fast select 就等别的 clause.
-                        awaitCancellation()
+                select {
+                    // 选择用户偏好的源
+                    resulting {
+                        // subjectId 无效就等别的 clause.
+                        val subjectId = session.request.first().subjectId.toIntOrNull() ?: awaitCancellation()
+                        val result = autoSelector.selectPreferredWebSource(
+                            session, getPreferredWebMediaSource(subjectId).first(),
+                        )
+
+                        logger.info { "selectPreferredWebSource result: $result" }
+                        result ?: awaitCancellation()
                     }
 
-                    val result = autoSelector.fastSelectWebSources(
-                        session,
-                        getMediaSelectorSourceTiers().first(),
-                        overrideUserSelection = false,
-                        blacklistMediaIds = emptySet(),
-                        selectorSettings.fastSelectWebLowTierToleranceDuration,
-                    )
+                    // 快速自动选择数据源: 当按规则快速选择相应 Tier 的数据源. 仅在偏好 Web 时并且启用了快速选择时才执行.
+                    resulting {
+                        val selectorSettings = mediaSelectorSettingsFlow.first()
+                        if (!selectorSettings.fastSelectWebKind || selectorSettings.preferKind != MediaSourceKind.WEB) {
+                            // 没开启 fast select 就等别的 clause.
+                            awaitCancellation()
+                        }
 
-                    logger.info { "fastSelectWebSources result: $result" }
-                    result ?: awaitCancellation()
+                        val result = autoSelector.fastSelectWebSources(
+                            session,
+                            getMediaSelectorSourceTiers().first(),
+                            overrideUserSelection = false,
+                            blacklistMediaIds = emptySet(),
+                            selectorSettings.fastSelectWebLowTierToleranceDuration,
+                        )
+
+                        logger.info { "fastSelectWebSources result: $result" }
+                        result ?: awaitCancellation()
+                    }
+
+                    // 选缓存, 如果有缓存通常非常快
+                    resulting {
+                        val result = autoSelector.selectCached(session)
+                        logger.info { "selectCached result: $result" }
+                        result ?: awaitCancellation()
+                    }
+
+                    // 兜底策略: 等所有数据源都准备好后, 选择一个.
+                    resulting {
+                        val result = autoSelector.awaitCompletedAndSelectDefault(session, preferKindFlow)
+                        logger.info { "awaitCompletedAndSelectDefault result: $result" }
+                        result
+                    }
                 }
 
-                // 选缓存, 如果有缓存通常非常快
-                resulting {
-                    val result = autoSelector.selectCached(session)
-                    logger.info { "selectCached result: $result" }
-                    result ?: awaitCancellation()
-                }
-
-                // 兜底策略: 等所有数据源都准备好后, 选择一个.
-                resulting {
-                    val result = autoSelector.awaitCompletedAndSelectDefault(session, preferKindFlow)
-                    logger.info { "awaitCompletedAndSelectDefault result: $result" }
-                    result
-                }
+                cancelScope()
             }
         }
     }
