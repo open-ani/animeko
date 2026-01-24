@@ -37,7 +37,6 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.PlaybackState
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -80,7 +79,6 @@ class SwitchMediaOnPlayerErrorExtension(
     ) {
         val handler = PlayerLoadErrorHandler(
             getPreferKind = { getMediaSelectorSettingsFlowUseCase().first().preferKind },
-            getWebToleranceDuration = { getMediaSelectorSettingsFlowUseCase().first().fastSelectWebLowTierToleranceDuration },
             getSourceTiers = { getSourceTiersUseCase().first() },
         )
 
@@ -142,7 +140,6 @@ class SwitchMediaOnPlayerErrorExtension(
 
 internal class PlayerLoadErrorHandler(
     private val getPreferKind: suspend () -> MediaSourceKind?,
-    private val getWebToleranceDuration: suspend () -> Duration,
     private val getSourceTiers: suspend () -> MediaSelectorSourceTiers,
 ) {
     private var blacklistedMediaIds = persistentHashSetOf<String>()
@@ -189,7 +186,8 @@ internal class PlayerLoadErrorHandler(
             sourceTiers = sourceTiers,
             overrideUserSelection = true, // Note: 覆盖用户选择
             blacklistMediaIds = blacklistedMediaIds,
-            lowTierToleranceDuration = getWebToleranceDuration(),
+            // 错误切换不需要等太长时间.
+            lowTierToleranceDuration = 1.seconds,
         )
         logger.info { "Player errored, automatically switched to next media: $result" }
     }
