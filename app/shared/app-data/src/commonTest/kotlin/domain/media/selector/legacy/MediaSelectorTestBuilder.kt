@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -14,6 +14,7 @@ package me.him188.ani.app.domain.media.selector.legacy
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.TestScope
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.MediaPreference
@@ -61,17 +62,6 @@ class MediaSelectorTestBuilder(
     val savedUserPreference = MutableStateFlow(DEFAULT_PREFERENCE)
     val savedDefaultPreference = MutableStateFlow(DEFAULT_PREFERENCE)
     val mediaSelectorSettings = MutableStateFlow(MediaSelectorSettings.Companion.Default)
-    val mediaSelectorContext = MutableStateFlow(
-        MediaSelectorContext(
-            subjectFinished = false,
-            mediaSourcePrecedence = emptyList(),
-            subtitlePreferences = MediaSelectorSubtitlePreferences.Companion.AllNormal,
-            subjectSeriesInfo = SubjectSeriesInfo.Companion.Fallback,
-            subjectInfo = SubjectInfo.Companion.Empty,
-            episodeInfo = EpisodeInfo.Companion.Empty,
-            mediaSourceTiers = MediaSelectorSourceTiers.Companion.Empty,
-        ),
-    )
 
     val mediaSources = mutableListOf<MediaSourceInstance>()
 
@@ -148,7 +138,7 @@ class MediaSelectorTestBuilder(
     )
 
     fun createMediaSelector(fetchSession: MediaFetchSession) = DefaultMediaSelector(
-        mediaSelectorContextNotCached = mediaSelectorContext,
+        mediaSelectorContextNotCached = fetchSession.request.map { createMediaSelectorContext(it) },
         mediaListNotCached = fetchSession.cumulativeResults,
         savedUserPreference = savedUserPreference,
         savedDefaultPreference = savedDefaultPreference,
@@ -156,6 +146,28 @@ class MediaSelectorTestBuilder(
         mediaSelectorSettings = mediaSelectorSettings,
         flowCoroutineContext = testScope.coroutineContext[ContinuationInterceptor.Key]!!,
     )
+
+    private fun createMediaSelectorContext(fetchRequest: MediaFetchRequest): MediaSelectorContext {
+        return MediaSelectorContext(
+            subjectFinished = false,
+            mediaSourcePrecedence = emptyList(),
+            subtitlePreferences = MediaSelectorSubtitlePreferences.AllNormal,
+            subjectSeriesInfo = SubjectSeriesInfo.Fallback,
+            subjectInfo = SubjectInfo.Empty.copy(
+                subjectId = fetchRequest.subjectId.toInt(),
+                name = fetchRequest.subjectNames.firstOrNull() ?: "",
+                nameCn = fetchRequest.subjectNameCN ?: "",
+            ),
+            episodeInfo = EpisodeInfo.Empty.copy(
+                episodeId = fetchRequest.episodeId.toInt(),
+                name = fetchRequest.episodeName,
+                sort = fetchRequest.episodeSort,
+                ep = fetchRequest.episodeEp,
+
+                ),
+            mediaSourceTiers = MediaSelectorSourceTiers.Empty,
+        )
+    }
 
     fun create(): Triple<MediaSourceMediaFetcher, MediaFetchSession, DefaultMediaSelector> {
         val fetcher = createMediaFetcher()

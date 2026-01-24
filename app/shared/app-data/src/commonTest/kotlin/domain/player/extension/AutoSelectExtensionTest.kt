@@ -39,6 +39,7 @@ import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCaseImpl
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
+import me.him188.ani.app.domain.mediasource.GetPreferredWebMediaSourceUseCase
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.Media
@@ -63,6 +64,7 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
     private val mediaSelectorSettings = MutableStateFlow(
         defaultSettings,
     )
+    val preferredWebMediaSource = MutableStateFlow<String?>(null)
 
     data class Context(
         val scope: CoroutineScope,
@@ -94,7 +96,12 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
                 flowOf(MediaSelectorSourceTiers.Empty)
             }
         }
+        suite.registerComponent<GetPreferredWebMediaSourceUseCase> {
+            GetPreferredWebMediaSourceUseCase { preferredWebMediaSource }
+        }
 
+        // set null by default
+        preferredWebMediaSource.value = null
         config(testScope, suite)
 
 
@@ -240,6 +247,58 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
 
         // Check result.
         state.assertSelected(myMedia, suite)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `select preferred web source - control group`() = runTest {
+        val web1: CompletableDeferred<List<Media>>
+        val web2: CompletableDeferred<List<Media>>
+        val context = createCase { _, suite ->
+            web1 = suite.mediaSelectorTestBuilder.delayedMediaSource("web1", kind = MediaSourceKind.WEB)
+            web2 = suite.mediaSelectorTestBuilder.delayedMediaSource("web2", kind = MediaSourceKind.WEB)
+        }
+        val (testScope, suite, state) = context
+
+        // NOTE: No preferred source is set (GetPreferredWebMediaSourceUseCase returns null by default)
+        initializeTest(suite)
+        startMediaFetcher(state, testScope)
+
+        val media1 = suite.mediaSelectorTestBuilder.createMedia("web1", kind = MediaSourceKind.WEB)
+        val media2 = suite.mediaSelectorTestBuilder.createMedia("web2", kind = MediaSourceKind.WEB)
+        web1.complete(listOf(media1))
+        web2.complete(listOf(media2))
+        advanceUntilIdle() // Performs auto select
+
+        // Check result: should fall back to default selection (first available)
+        state.assertSelected(media1, suite)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `select preferred web source - test group`() = runTest {
+        val web1: CompletableDeferred<List<Media>>
+        val web2: CompletableDeferred<List<Media>>
+        val context = createCase { _, suite ->
+            web1 = suite.mediaSelectorTestBuilder.delayedMediaSource("web1", kind = MediaSourceKind.WEB)
+            web2 = suite.mediaSelectorTestBuilder.delayedMediaSource("web2", kind = MediaSourceKind.WEB)
+            preferredWebMediaSource.value = "web2" // Set preferred source
+        }
+        val (testScope, suite, state) = context
+
+        initializeTest(suite)
+        startMediaFetcher(state, testScope)
+
+        val media1 = suite.mediaSelectorTestBuilder.createMedia("web1", kind = MediaSourceKind.WEB)
+        val media2 = suite.mediaSelectorTestBuilder.createMedia("web2", kind = MediaSourceKind.WEB)
+        web1.complete(listOf(media1))
+        web2.complete(listOf(media2))
+        advanceUntilIdle() // Performs auto select
+
+        // Check result: should select from the preferred source "web2"
+        state.assertSelected(media2, suite)
 
         testScope.cancel()
     }

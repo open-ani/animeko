@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.mediaselect.selector
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
@@ -44,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.mediaselect.common.SourceIcon
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -67,6 +70,7 @@ data class WebSource(
     val channels: List<WebSourceChannel>,
     val isLoading: Boolean,
     val isError: Boolean,
+    val isPreferred: Boolean,
 )
 
 /**
@@ -81,6 +85,7 @@ fun MediaSelectorWebSourcesColumn(
     onRefresh: (WebSource) -> Unit,
     onRequestQueryEdit: () -> Unit,
     modifier: Modifier = Modifier,
+    preferredSourceContainerColor: Color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.33f)
 ) {
     val card = @Composable { source: WebSource ->
         WebSourceCard(
@@ -92,7 +97,11 @@ fun MediaSelectorWebSourcesColumn(
             onRefresh = {
                 onRefresh(source)
             },
-            Modifier.fillMaxWidth(),
+            Modifier
+                .fillMaxWidth()
+                .ifThen(source.isPreferred) {
+                    background(preferredSourceContainerColor)
+                },
         )
     }
 //    LazyColumn(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -135,7 +144,8 @@ private fun WebSourceCard(
     onSelect: (WebSourceChannel) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
-) {
+
+    ) {
     val minHeight = 48.dp
     Row(
         modifier,
@@ -280,6 +290,7 @@ internal val TestWebSources
             },
             isError = it % 4 == 0,
             isLoading = it % 4 == 3,
+            isPreferred = false,
         )
     }.apply {
         add(
@@ -292,6 +303,7 @@ internal val TestWebSources
                 channels = emptyList(),
                 isError = false,
                 isLoading = true,
+                isPreferred = true,
             ),
         )
         add(
@@ -304,6 +316,7 @@ internal val TestWebSources
                 channels = emptyList(),
                 isError = true,
                 isLoading = false,
+                isPreferred = false,
             ),
         )
     }

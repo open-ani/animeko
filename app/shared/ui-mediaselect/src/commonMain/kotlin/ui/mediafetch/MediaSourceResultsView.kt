@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -41,6 +41,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -53,15 +54,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.materialkolor.ktx.blend
 import kotlinx.coroutines.launch
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcons
 import me.him188.ani.app.ui.settings.rendering.SmallMediaSourceIcon
+import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.ui.tooling.preview.PreviewLightDark
 
 @Composable
 fun MediaSourceResultsView(
@@ -263,6 +269,7 @@ private fun MediaSourceResultCard(
     onClick: () -> Unit,
     source: MediaSourceResultPresentation,
     modifier: Modifier = Modifier,
+    preferredSourceContainerColor: Color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
 ) {
     if (expanded) {
         OutlinedCard(
@@ -270,8 +277,10 @@ private fun MediaSourceResultCard(
             modifier,
             shape = MaterialTheme.shapes.medium,
             colors = CardDefaults.elevatedCardColors(
-                containerColor = if (selected) MaterialTheme.colorScheme.secondaryContainer
-                else CardDefaults.elevatedCardColors().containerColor,
+                containerColor = (if (selected) MaterialTheme.colorScheme.secondaryContainer else
+                    CardDefaults.elevatedCardColors().containerColor).run {
+                    if (source.isPreferred) blend(preferredSourceContainerColor) else this
+                },
             ),
         ) {
             Column(
@@ -371,6 +380,28 @@ private fun MediaSourceResultCard(
                 selected = selected,
                 borderColor = MaterialTheme.colorScheme.outline,
             ),
+            colors = InputChipDefaults.inputChipColors(
+                containerColor = if (source.isPreferred) preferredSourceContainerColor else
+                    Color.Unspecified,
+                selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer.run {
+                    if (source.isPreferred) blend(preferredSourceContainerColor) else this
+                },
+            ),
+        )
+    }
+}
+
+@OptIn(TestOnly::class)
+@PreviewLightDark
+@Composable
+private fun PreviewMediaSourceResultsView(modifier: Modifier = Modifier) = ProvideCompositionLocalsForPreview {
+    Surface {
+        MediaSourceResultsView(
+            sourceResults = remember { TestMediaSourceResultListPresentation },
+            mediaSelector = rememberTestMediaSelectorState(),
+            onRefresh = { },
+            onRestartSource = { },
+            modifier = modifier,
         )
     }
 }
