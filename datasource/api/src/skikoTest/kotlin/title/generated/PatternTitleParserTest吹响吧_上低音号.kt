@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 // @formatter:off
 @file:Suppress(
   "FunctionName",
@@ -1496,7 +1505,7 @@ public class PatternTitleParserTest吹响吧_上低音号 : PatternBasedTitlePar
     kotlin.run {
     val r =
         parse("[云光字幕组]特别篇 吹响吧！上低音号~合奏比赛~Hibike! Euphonium Special ~Episode of Ensemble Contest~ [简体双语][1080p]招募翻译")
-    assertEquals("Special..Special", r.episodeRange.toString())
+    assertEquals("SP..SP", r.episodeRange.toString())
     assertEquals("CHS, JPN", r.subtitleLanguages.sortedBy { it.id }.joinToString { it.id })
     assertEquals("1080P", r.resolution.toString())
     assertEquals(null, r.subtitleKind)

@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.media.selector
 
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -124,7 +125,11 @@ class MediaSelectorAutoSelect(
                             if (result.results.first().count() <= 0) return@forEach // 没结果的不考虑
                             add(result)
                         }
+                    }.also {
+                        // 如果没有候选源就不往下走了
+                        if (it.isEmpty()) awaitCancellation()
                     }
+
                     logger.debug { "fastSources: select instantly from ${candidateResults.size} candidate sources." }
 
                     // 如果这些满足条件的源中没有选出任何一个 media, 这里会挂起.

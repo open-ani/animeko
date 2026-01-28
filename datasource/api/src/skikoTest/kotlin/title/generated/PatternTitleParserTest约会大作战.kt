@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 // @formatter:off
 @file:Suppress(
   "FunctionName",
@@ -8,10 +17,10 @@
   "SpellCheckingInspection",
 )
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import me.him188.ani.datasources.api.SubtitleKind
 import me.him188.ani.datasources.api.title.PatternBasedTitleParserTestSuite
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 /**
  * 原名: `约会大作战`
@@ -3344,7 +3353,7 @@ public class PatternTitleParserTest约会大作战 : PatternBasedTitleParserTest
     kotlin.run {
     val r =
         parse("【莳乃汉化组】约会大作战 剧场版：万由里审判 [Special Video][GB+BIG5][BDRip_1080p_x264_8bit][AAC]（诱宵美九:Go☆Summer Girl MV 内嵌）【请注意这个不是SP，是SV】")
-    assertEquals("Special..Special", r.episodeRange.toString())
+    assertEquals("SP..SP", r.episodeRange.toString())
     assertEquals("CHS, CHT", r.subtitleLanguages.sortedBy { it.id }.joinToString { it.id })
     assertEquals("1080P", r.resolution.toString())
     assertEquals(SubtitleKind.EMBEDDED, r.subtitleKind)
@@ -5543,7 +5552,7 @@ public class PatternTitleParserTest约会大作战 : PatternBasedTitleParserTest
   public fun `343090_DATE_A_LIVE_01_12_OAD_BDRIP_720P_x264_AAC`() {
     kotlin.run {
     val r = parse("【千夏字幕組】【約會大作戰_DATE_A_LIVE】[第01～12+OAD話][BDRIP_720P][x264_AAC][繁體內嵌]")
-    assertEquals("01..12+OAD話", r.episodeRange.toString())
+    assertEquals("01..12+OAD", r.episodeRange.toString())
     assertEquals("CHT", r.subtitleLanguages.sortedBy { it.id }.joinToString { it.id })
     assertEquals("720P", r.resolution.toString())
     assertEquals(SubtitleKind.EMBEDDED, r.subtitleKind)

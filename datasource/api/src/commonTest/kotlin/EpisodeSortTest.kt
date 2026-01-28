@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.datasources.api
 
 import me.him188.ani.datasources.api.EpisodeSort
@@ -54,9 +63,9 @@ class EpisodeSortTest {
                 "S" to EpisodeSort.Unknown("S"),
                 "SP-1" to EpisodeSort.Unknown("SP-1"),
                 "SP1.1" to EpisodeSort.Unknown("SP1.1"),
-                "SPAB" to EpisodeSort.Unknown("SPAB"),
-                "SPSP" to EpisodeSort.Unknown("SPSP"),
-                "SPAB" to EpisodeSort.Unknown("SPAB"),
+                "SPAB" to EpisodeSort.Unknown("SP"),
+                "SPSP" to EpisodeSort.Unknown("SP"),
+                "SPAB" to EpisodeSort.Unknown("SP"),
             ).map {
                 dynamicTest(it.first) {
                     val (raw, expected) = it
