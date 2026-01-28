@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -65,8 +65,10 @@ import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
+import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.collections.EnumMap
 import me.him188.ani.utils.platform.collections.ImmutableEnumMap
+import me.him188.ani.utils.platform.currentPlatform
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -129,9 +131,14 @@ fun MediaFetchRequest.Companion.create(
     )
 }
 
-class MediaFetcherConfig { // 战未来
+class MediaFetcherConfig(
+    val enableBTFetcher: Boolean
+) { // 战未来
     companion object {
-        val Default = MediaFetcherConfig()
+        val Default = MediaFetcherConfig(
+            // TODO: iOS 不支持 BT, 先过滤掉
+            enableBTFetcher = currentPlatform() != Platform.Ios,
+        )
     }
 }
 
@@ -348,21 +355,25 @@ class MediaSourceMediaFetcher(
                 override ?: initial
             }.take(1) // 否则会一直显示加载
 
-        override val mediaSourceResults: List<MediaSourceFetchResult> = mediaSources.map { instance ->
-            MediaSourceResultImpl(
-                instanceId = instance.instanceId,
-                mediaSourceId = instance.source.mediaSourceId,
-                sourceInfo = instance.source.info,
-                kind = instance.source.kind,
-                config = config,
-                disabled = !instance.isEnabled,
-                pagedSources = this.request
-                    .map {
-                        instance.source.fetch(it)
-                    },
-                flowContext = flowContext,
-            )
-        }
+        override val mediaSourceResults: List<MediaSourceFetchResult> = mediaSources
+            .filter {
+                if (config.enableBTFetcher) true else it.source.kind != MediaSourceKind.BitTorrent
+            }
+            .map { instance ->
+                MediaSourceResultImpl(
+                    instanceId = instance.instanceId,
+                    mediaSourceId = instance.source.mediaSourceId,
+                    sourceInfo = instance.source.info,
+                    kind = instance.source.kind,
+                    config = config,
+                    disabled = !instance.isEnabled,
+                    pagedSources = this.request
+                        .map {
+                            instance.source.fetch(it)
+                        },
+                    flowContext = flowContext,
+                )
+            }
 
         override val cumulativeResults: Flow<List<Media>> = kotlin.run {
             if (mediaSourceResults.isEmpty()) {

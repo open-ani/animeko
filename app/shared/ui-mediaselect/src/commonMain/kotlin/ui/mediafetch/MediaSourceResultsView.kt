@@ -165,41 +165,45 @@ fun MediaSourceResultsView(
                     }
                 }
             }
-            MediaSourceResultsRow(
-                isShowDetails,
-                sourceResults.btSources,
-                sourceSelected = sourceSelected,
-                onClick = onClick,
-                label = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(MediaSourceIcons.KindBT, null)
-                        ProvideTextStyle(MaterialTheme.typography.labelSmall) {
-                            Box(Modifier.padding(top = 2.dp), contentAlignment = Alignment.Center) {
-                                Text("在线", Modifier.alpha(0f)) // 相同宽度
-                                Text("BT")
+            if (sourceResults.btSources.isNotEmpty()) {
+                MediaSourceResultsRow(
+                    isShowDetails,
+                    sourceResults.btSources,
+                    sourceSelected = sourceSelected,
+                    onClick = onClick,
+                    label = {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(MediaSourceIcons.KindBT, null)
+                            ProvideTextStyle(MaterialTheme.typography.labelSmall) {
+                                Box(Modifier.padding(top = 2.dp), contentAlignment = Alignment.Center) {
+                                    Text("在线", Modifier.alpha(0f)) // 相同宽度
+                                    Text("BT")
+                                }
                             }
                         }
-                    }
-                },
-            )
-            MediaSourceResultsRow(
-                isShowDetails,
-                sourceResults.webSources,
-                sourceSelected = sourceSelected,
-                onClick = onClick,
-                label = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(MediaSourceIcons.KindWeb, null)
-                        ProvideTextStyle(MaterialTheme.typography.labelSmall) {
-                            Box(Modifier.padding(top = 2.dp), contentAlignment = Alignment.Center) {
-                                Text("在线")
+                    },
+                )
+            }
+            if (sourceResults.webSources.isNotEmpty()) {
+                MediaSourceResultsRow(
+                    isShowDetails,
+                    sourceResults.webSources,
+                    sourceSelected = sourceSelected,
+                    onClick = onClick,
+                    label = {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(MediaSourceIcons.KindWeb, null)
+                            ProvideTextStyle(MaterialTheme.typography.labelSmall) {
+                                Box(Modifier.padding(top = 2.dp), contentAlignment = Alignment.Center) {
+                                    Text("在线")
+                                }
                             }
                         }
-                    }
 //                            Icon(MediaSourceIcons.Web, null)
 //                            Text("在线", Modifier.padding(start = 4.dp))
-                },
-            )
+                    },
+                )
+            }
         }
     }
 }
