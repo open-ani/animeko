@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -24,6 +24,7 @@ import me.him188.ani.app.domain.mediasource.MediaListFilter
 import me.him188.ani.app.domain.mediasource.MediaListFilterContext
 import me.him188.ani.app.domain.mediasource.MediaListFilters
 import me.him188.ani.app.domain.mediasource.StringMatcher
+import me.him188.ani.app.domain.mediasource.asCandidate
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceTier
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.Media
@@ -175,16 +176,23 @@ class MediaSelectorFilterSortAlgorithm {
             val allow = when (media.kind) {
                 MediaSourceKind.WEB -> {
                     with(MediaListFilters.ContainsSubjectName) {
-                        mediaListFilterContext.applyOn(
-                            object : MediaListFilter.Candidate {
-                                override val originalTitle: String get() = media.originalTitle
+                        val baseContains = mediaListFilterContext.applyOn(
+                            object : MediaListFilter.Candidate by media.asCandidate() {
                                 override val subjectName: String get() = mediaSubjectNameOrOriginalTitle
-                                override val episodeRange: EpisodeRange? get() = media.episodeRange
-                                override fun toString(): String {
-                                    return "Candidate(media=$media)"
-                                }
                             },
                         )
+                        if (media.episodeRange?.contains(EpisodeSort("OVA")) == true) {
+                            // 如果数据源搜到了 OVA 剧集, 那就额外匹配一次 subject name 加上 "OVA" 的情况.
+                            val propName = media.properties.subjectName ?: return@with false
+                            val ovaContains = mediaListFilterContext.applyOn(
+                                object : MediaListFilter.Candidate by media.asCandidate() {
+                                    override val subjectName: String get() = "$propName OVA"
+                                },
+                            )
+                            baseContains || ovaContains
+                        } else {
+                            baseContains
+                        }
                     }
                 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -30,6 +30,7 @@ import me.him188.ani.app.domain.mediasource.codec.DontForgetToRegisterCodec
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceArguments
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceTier
 import me.him188.ani.datasources.api.DefaultMedia
+import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.matcher.WebVideoMatcher
 import me.him188.ani.datasources.api.matcher.WebVideoMatcherContext
 import me.him188.ani.datasources.api.matcher.WebVideoMatcherProvider
@@ -107,6 +108,8 @@ class SelectorMediaSource(
 ) : HttpMediaSource(), WebVideoMatcherProvider {
     companion object {
         val FactoryId = FactoryId("web-selector")
+
+        private val REGEX_OVA_TAILING = Regex(".+OVA\\s*\\d*$", RegexOption.IGNORE_CASE)
     }
 
     private val arguments =
@@ -267,7 +270,9 @@ class SelectorMediaSource(
                         searchConfig,
                         SelectorSearchQuery(
                             subjectName = name,
-                            episodeSort = query.episodeSort,
+                            // Web 源的 OVA 通常和正篇在一个页面, 修改请求 epSort 为 OVA 可以搜高 OVA 条目.
+                            episodeSort = if (name.matches(REGEX_OVA_TAILING)) EpisodeSort("OVA") else
+                                query.episodeSort,
                             allSubjectNames = allSubjectNames,
                             episodeEp = query.episodeEp,
                             episodeName = query.episodeName,

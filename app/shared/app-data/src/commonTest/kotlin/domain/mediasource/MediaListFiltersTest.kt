@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -40,11 +40,30 @@ class MediaListFiltersTest {
     @TestFactory
     fun `removeSpecials numbers`() = runDynamicTests {
         add("超元气三姐妹") {
-            assertEquals("超元气三姐妹", removeSpecials("超元气三姐妹"))
+            assertEquals("超元气三姐妹", removeSpecials("超元气三姐妹", replaceNumbers = true))
         }
         add("中二病也要谈恋爱") {
-            assertEquals("中二病也要谈恋爱", removeSpecials("中二病也要谈恋爱！"))
+            assertEquals("中二病也要谈恋爱", removeSpecials("中二病也要谈恋爱！", replaceNumbers = true))
         }
+        add("幸运星 OVA") {
+            assertEquals("幸运星 OVA", removeSpecials("幸运星 OVA", replaceNumbers = true))
+        }
+        add("幸运星 O V A") {
+            assertEquals("幸运星 O V A", removeSpecials("幸运星 O V A", replaceNumbers = true))
+        }
+        add("五等份的花嫁") {
+            assertEquals("五等份的花嫁", removeSpecials("五等份的花嫁", replaceNumbers = true))
+        }
+        add("凡人修仙传 第三季") {
+            assertEquals("凡人修仙传 第3季", removeSpecials("凡人修仙传 第三季", replaceNumbers = true))
+        }
+        add("ソードアート・オンラインII") {
+            assertEquals(
+                "ソードアート オンライン2",
+                removeSpecials("ソードアート・オンラインII", replaceNumbers = true),
+            )
+        }
+
     }
 
     @TestFactory

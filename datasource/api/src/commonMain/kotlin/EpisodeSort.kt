@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -162,9 +162,10 @@ sealed class EpisodeSort : Comparable<EpisodeSort> {
 private fun getSpecialByRaw(raw: String): EpisodeSort {
     val type = EpisodeType.entries.firstOrNull { entry -> raw.startsWith(entry.value, ignoreCase = true) }
     if (type == null) return EpisodeSort.Unknown(raw)
-    val numStr = raw.substringAfter(type.value)
-    val num = numStr.toFloatOrNull()
-    if (num == null || num < 0) return EpisodeSort.Unknown(raw)
+
+    val num = raw.substringAfter(type.value).toFloatOrNull() ?: return Special(type, null)
+    if (num < 0) return EpisodeSort.Unknown(raw)
+
     return if (num.toInt().toFloat() == num || num % 0.5f == 0f) {
         Special(type, num)
     } else {

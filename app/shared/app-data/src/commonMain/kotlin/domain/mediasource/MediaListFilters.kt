@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -179,7 +179,7 @@ object MediaListFilters {
         // 4. 如果需要，把中文数字(以及定义的罗马数字)替换成阿拉伯数字
         val afterNumberReplace = if (replaceNumbers) {
             StringBuilder(processed).replaceMatches(allNumbersRegex) { match ->
-                numberMappings[match.value] ?: match.value
+                replaceNumberConditional(processed, match)
             }.toString()
         } else {
             processed
@@ -268,6 +268,53 @@ object MediaListFilters {
         return sbResult.toString()
     }
 
+    private fun replaceNumberConditional(original: String, match: MatchResult): String {
+        // 前后有字符或数字
+        if (original.isLetterOrDigit(match.range.first - 1) ||
+            original.isLetterOrDigit(match.range.last + 1)
+        ) {
+            if (match.value.isChineseNumber()) {
+                // 如果是中文数字, 则需要考虑前后情况, 比如
+                // - "五等份的花嫁" 中的 "五" 就不应该被替换成 "5"
+                // - "中二病也要谈恋爱" 中的 "二" 就不应该被替换成 "2"
+                // - "第三季" 中的 "三" 应该被替换成 "3"
+
+                // 如果数字在开头并且后面是中文字符, 则不替换
+                if (match.range.first == 0 && original.isChineseCharacter(match.range.last + 1)) {
+                    return match.value
+                }
+                if (match.range.first > 0 && match.range.last < original.lastIndex) {
+                    if (original[match.range.first - 1] != '第') {
+                        return match.value
+                    }
+                }
+            } else if (original.isJapaneseCharacter(match.range.first - 1)) {
+                // 如果不是汉字, 那可能是日本字或者其他字
+                // 日本字的中如果用罗马数字表示系列数字, 那也可能会连在一起写
+                // 只考虑数字在最后的情况, 例如 ソードアート・オンラインII
+                // 这种情况也要替换
+            } else {
+                // 英文或者其他的作品名的系列数字一定有空格
+                return match.value
+            }
+
+        }
+
+        // 是否是 O V A 这种情况
+        // 这种情况中间的 V 也不应该替换成数字
+        if (match.value == "V") {
+            val prevLetter = original.reverseFirstLetterOrDigit(match.range.first - 1)
+            val nextLetter = original.traverseFirstLetterOrDigit(match.range.last + 1)
+            if ((prevLetter == 'O' || prevLetter == 'o') &&
+                (nextLetter == 'A' || nextLetter == 'a')
+            ) {
+                return match.value
+            }
+        }
+
+        return numberMappings[match.value] ?: match.value
+    }
+
     private fun Char.isSpecialChar(): Boolean {
         val code = code
         return charsToDelete.contains(code) || charsToReplaceWithWhitespace.contains(code)
@@ -279,4 +326,46 @@ private fun String.toCharCodeIntSet(): IntSet {
     return MutableIntSet(chars.size).apply {
         chars.forEach { add(it.code) }
     }
+}
+
+private fun String.isLetterOrDigit(index: Int): Boolean {
+    return getOrNull(index)?.isLetterOrDigit() == true
+}
+
+private fun String.isChineseCharacter(index: Int): Boolean {
+    return getOrNull(index)?.code in 0x4E00..0x9FFF
+}
+
+private fun String.isJapaneseCharacter(index: Int): Boolean {
+    val code = getOrNull(index)?.code ?: return false
+    return (code in 0x3040..0x309F) || // 平假名
+            (code in 0x30A0..0x30FF) || // 片假名
+            (code in 0x4E00..0x9FBF) // 汉字
+}
+
+private fun String.isChineseNumber(): Boolean {
+    if (length != 1) return false
+    return first() in '一'..'十'
+}
+
+private fun String.reverseFirstLetterOrDigit(index: Int): Char? {
+    if (index !in 0..<length) return null
+    for (i in index downTo 0) {
+        val c = get(i)
+        if (c.isLetterOrDigit()) {
+            return c
+        }
+    }
+    return null
+}
+
+private fun String.traverseFirstLetterOrDigit(index: Int): Char? {
+    if (index !in 0..<length) return null
+    for (i in index until length) {
+        val c = get(i)
+        if (c.isLetterOrDigit()) {
+            return c
+        }
+    }
+    return null
 }
