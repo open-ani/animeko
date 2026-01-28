@@ -72,6 +72,9 @@ class MediaSelectorFilterSortAlgorithm {
         }
     }
 
+    @Suppress("PrivatePropertyName")
+    private val SEASON_TAILING = Regex("""第\s*(?<season>.+)\s*[部季]""")
+
     /**
      * 过滤 media，决定是否包含此它。返回的 [MaybeExcludedMedia] 可以是包含，也可以是排除。排除时会携带原因
      */
@@ -140,8 +143,14 @@ class MediaSelectorFilterSortAlgorithm {
                 }) {
                 // contextSubjectNames 与条目名称相同, 肯定不能排除它
             } else {
+                // 简化数据源结果的季度名称，例如从 "Re：从零开始的休息时间 第2季" 变成 "Re：从零开始的休息时间 2"
+                // 条目名称可能是上述后者简化的形式, 但数据源的结果是前者完整版的形式
+                // 额外判断一次简化的名称可以正确地排除掉类似这种情况的其他季度的资源.
+                val mediaSubjectNameSeasonSimplified = mediaSubjectName.replace(SEASON_TAILING, $$"${season}")
                 context.subjectSeriesInfo?.seriesSubjectNamesWithoutSelf?.forEach { name ->
-                    if (MediaListFilters.specialEquals(mediaSubjectName, name)) {
+                    if (MediaListFilters.specialEquals(mediaSubjectName, name) ||
+                        MediaListFilters.specialEquals(mediaSubjectNameSeasonSimplified, name)
+                    ) {
                         // 排除特殊字符后精确匹配到了是其他季度的名称. 
                         // 
                         // 注意: 这里也不可以改成用 edit-distance 模糊匹配, 因为
