@@ -70,13 +70,13 @@ uploaded.
 
 [linux-issue]: https://github.com/open-ani/animeko/issues/944
 
-[iOS自签]: https://myani.org/wiki/iOS-%E8%87%AA%E7%AD%BE
+[iOS 自签]: https://myani.org/wiki/iOS-%E8%87%AA%E7%AD%BE
 
 |                  | 下载                                               | 常见问题                                        |
 |------------------|--------------------------------------------------|---------------------------------------------|
 | 安卓 手机/平板         | [主线][cf-android] / [备线][ghproxy-android]         |                                             |
 | 安卓 电视            | 仍在开发中                                            | 现在可以使用平板版接鼠标使用                              |
-| iOS              | [主线][cf-ios] / [备线][ghproxy-ios]                 | 需要[自签][自签]                                  |
+| iOS              | [主线][cf-ios] / [备线][ghproxy-ios]                 | 需要[自签][iOS 自签]                                  |
 | Windows          | [主线][cf-win-x64] / [备线][ghproxy-win-x64]         | 1. 目录不要有中文或者空格 <br/> 2. [显示异常][Windows下字体与背景颜色异常解决方案] |
 | macOS (M 系列芯片)   | [主线][cf-mac-aarch64] / [备线][ghproxy-mac-aarch64] | ⚠️ [安装后打不开][macOS 无法打开解决方案]                      |
 | macOS (Intel 芯片) | [主线][cf-mac-x64] / [备线][ghproxy-mac-x64]         | ⚠️ [安装教程][macOS Intel芯片版本安装教程]                    |
@@ -88,7 +88,7 @@ uploaded.
 
 [cf-ios-qr]: https://d.myani.org/$GIT_TAG/ani-$TAG_VERSION.ipa.cloudflare.qrcode.png
 
-| 安卓 手机/平板                     | iOS IPA (需要[自签][自签])     | 
+| 安卓 手机/平板                     | iOS IPA (需要[自签][iOS 自签])     | 
 |------------------------------|--------------------------|
 | ![Cloudflare][cf-android-qr] | ![Cloudflare][cf-ios-qr] |
 
