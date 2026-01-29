@@ -65,10 +65,8 @@ import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
-import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.collections.EnumMap
 import me.him188.ani.utils.platform.collections.ImmutableEnumMap
-import me.him188.ani.utils.platform.currentPlatform
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -135,10 +133,7 @@ class MediaFetcherConfig(
     val enableBTFetcher: Boolean
 ) { // 战未来
     companion object {
-        val Default = MediaFetcherConfig(
-            // TODO: iOS 不支持 BT, 先过滤掉
-            enableBTFetcher = currentPlatform() != Platform.Ios,
-        )
+        val Default = MediaFetcherConfig(true)
     }
 }
 

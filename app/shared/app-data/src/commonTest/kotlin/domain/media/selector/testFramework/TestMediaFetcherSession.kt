@@ -102,7 +102,7 @@ class TestMediaFetchSessionBuilder {
     ): TestMediaFetchSession<R> {
         return TestMediaFetchSession(
             MediaSourceMediaFetcher(
-                configProvider = { MediaFetcherConfig(true) },
+                configProvider = { MediaFetcherConfig.Default },
                 mediaSources = instances.map { it.instance },
                 flowContext = dispatcher,
             ).newSession(mediaFetchRequestBuilder.build()),
