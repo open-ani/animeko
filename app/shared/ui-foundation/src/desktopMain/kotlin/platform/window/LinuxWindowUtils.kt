@@ -50,15 +50,12 @@ class LinuxWindowUtils : AwtWindowUtils() {
                     instances.mapNotNull { it.get() }
                 }.forEach { inst ->
                     try {
-                        if (inst.lock.tryLock(2, TimeUnit.SECONDS)) {
+                        if (inst.lock.tryLock()) {
                             try { if (!inst.closed) inst.cleanupLocked() }
                             finally { inst.lock.unlock() }
                         } else {
-                            logger.warn("[ScreenSaver] Shutdown: lock timeout")
+                            logger.warn("[ScreenSaver] Shutdown: lock unavailable; skipping cleanup")
                         }
-                    } catch (e: InterruptedException) {
-                        Thread.currentThread().interrupt()
-                        logger.warn("[ScreenSaver] Shutdown interrupted", e)
                     } catch (e: Exception) {
                         logger.warn("[ScreenSaver] Shutdown error", e)
                     }
@@ -86,10 +83,15 @@ class LinuxWindowUtils : AwtWindowUtils() {
         if (closed) return@withLock
         
         if (prevent) {
-            val systemdOk = systemdProcess?.isAlive == true || trySystemdInhibitLocked()
+            val alreadyInhibited = systemdProcess?.isAlive == true
+            val systemdOk = alreadyInhibited || trySystemdInhibitLocked()
             
             if (systemdOk) {
-                logger.info("[ScreenSaver] Inhibited via systemd-inhibit")
+                if (alreadyInhibited) {
+                    logger.info("[ScreenSaver] Already inhibited via systemd-inhibit")
+                } else {
+                    logger.info("[ScreenSaver] Inhibited via systemd-inhibit")
+                }
             } else {
                 logger.warn("[ScreenSaver] systemd-inhibit failed")
             }
