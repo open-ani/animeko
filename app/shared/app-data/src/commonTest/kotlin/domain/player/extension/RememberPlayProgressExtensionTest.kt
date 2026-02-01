@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -26,6 +26,8 @@ import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
 import me.him188.ani.app.domain.episode.player
 import me.him188.ani.utils.coroutines.childScope
 import org.openani.mediamp.PlaybackState
+import org.openani.mediamp.metadata.MediaProperties
+import org.openani.mediamp.source.UriMediaData
 import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -68,6 +70,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 1000
         suite.player.playbackState.value = PlaybackState.PAUSED
         advanceUntilIdle()
@@ -83,7 +87,10 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 1000
+        suite.player.playbackState.value = PlaybackState.PLAYING
         state.onClose()
         advanceUntilIdle()
 
@@ -101,6 +108,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = -1
         advanceUntilIdle()
 
@@ -118,6 +127,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 0
         advanceUntilIdle()
 
@@ -136,6 +147,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         repository.saveOrUpdate(episodeId = initialEpisodeId, 1000)
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = -1
         advanceUntilIdle()
 
@@ -154,6 +167,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         repository.saveOrUpdate(episodeId = initialEpisodeId, 1000)
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 0
         advanceUntilIdle()
 
@@ -171,6 +186,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 1000
         advanceUntilIdle()
         suite.player.playbackState.value = PlaybackState.FINISHED
@@ -191,6 +208,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 100_000 - 1
         advanceUntilIdle()
         suite.player.playbackState.value = PlaybackState.FINISHED
@@ -211,6 +230,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 1000
         advanceUntilIdle()
         state.player.stopPlayback()
@@ -232,6 +253,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 100_000 - 1
         advanceUntilIdle()
         state.player.stopPlayback()
@@ -251,6 +274,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 1000
         suite.setMediaDuration(0)
         state.onClose()
@@ -267,6 +292,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 1000
         suite.player.playbackState.value = PlaybackState.PAUSED
         advanceUntilIdle()
@@ -287,6 +314,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 1000
         suite.player.playbackState.value = PlaybackState.PAUSED
         advanceUntilIdle()
@@ -310,6 +339,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 1000
         suite.player.playbackState.value = PlaybackState.PAUSED
         advanceUntilIdle()
@@ -334,6 +365,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 1000
         suite.player.playbackState.value = PlaybackState.PAUSED
         advanceUntilIdle()
@@ -362,6 +395,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 1000
         suite.player.playbackState.value = PlaybackState.PAUSED
         advanceUntilIdle()
@@ -393,6 +428,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 1000
         suite.player.playbackState.value = PlaybackState.PAUSED
         advanceUntilIdle()
@@ -418,6 +455,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 1000
         suite.player.playbackState.value = PlaybackState.PAUSED
         advanceUntilIdle()
@@ -440,6 +479,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 1000
         suite.player.playbackState.value = PlaybackState.PAUSED
         advanceUntilIdle()
@@ -469,10 +510,14 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
 
         val (testScope2, suite2, _) = createCase()
         advanceUntilIdle()
-        suite2.setMediaDuration(100_000)
-
-        assertNotEquals(500, suite2.player.currentPositionMillis.value) // Not yet loaded.
-        suite2.player.playbackState.value = PlaybackState.READY
+        suite2.apply {
+            player.mediaProperties.value = player.mediaProperties.value?.copy(durationMillis = 100_000L)
+                ?: MediaProperties.Empty.copy(durationMillis = 100_000L)
+        }
+        advanceUntilIdle()
+        assertNotEquals(500, suite2.player.currentPositionMillis.value) // Not yet loaded
+// .
+        suite2.player.setMediaData(UriMediaData("file://test"))
         advanceUntilIdle()
         assertEquals(500, suite2.player.currentPositionMillis.value) // Load when READY
 
@@ -485,6 +530,8 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
         repository.saveOrUpdate(episodeId = 1000, 500)
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 100000
 
         state.switchEpisode(1000)
@@ -508,7 +555,11 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
         repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 100000
+        suite.player.playbackState.value = PlaybackState.FINISHED
+        advanceUntilIdle()
 
         state.switchEpisode(1000)
         advanceUntilIdle()
@@ -524,7 +575,11 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
         repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 100001
+        suite.player.playbackState.value = PlaybackState.FINISHED
+        advanceUntilIdle()
 
         state.switchEpisode(1000)
         advanceUntilIdle()
@@ -545,7 +600,11 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
 
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 3000
+        suite.player.playbackState.value = PlaybackState.PLAYING
+        advanceUntilIdle()
 
         state.switchEpisode(1000)
         advanceUntilIdle()

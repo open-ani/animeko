@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -171,8 +171,10 @@ findLocalProperty("ani.build.mediamp.path")?.let { mediampPath ->
                 .using(project(":mediamp-exoplayer"))
             substitute(module("org.openani.mediamp:mediamp-vlc"))
                 .using(project(":mediamp-vlc"))
-            substitute(module("org.openani.mediamp:mediamp-mpv"))
-                .using(project(":mediamp-mpv"))
+            /*substitute(module("org.openani.mediamp:mediamp-mpv"))
+                .using(project(":mediamp-mpv"))*/
+            substitute(module("org.openani.mediamp:mediamp-test"))
+                .using(project(":mediamp-test"))
             substitute(module("org.openani.mediamp:mediamp-source-ktxio"))
                 .using(project(":mediamp-source-ktxio"))
             substitute(module("org.openani.mediamp:mediamp-avkit"))

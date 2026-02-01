@@ -159,6 +159,7 @@ import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.Screenshots
 import org.openani.mediamp.features.VideoAspectRatio
 import org.openani.mediamp.features.toggleMute
+import org.openani.mediamp.isPlaying
 
 
 /**

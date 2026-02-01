@@ -91,6 +91,7 @@ import me.him188.ani.utils.platform.isMobile
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.audioTracks
 import org.openani.mediamp.features.subtitleTracks
+import org.openani.mediamp.isPlaying
 import org.openani.mediamp.togglePause
 
 internal const val TAG_EPISODE_VIDEO_TOP_BAR = "EpisodeVideoTopBar"
