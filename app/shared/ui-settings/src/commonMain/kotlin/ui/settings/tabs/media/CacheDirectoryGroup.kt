@@ -148,9 +148,9 @@ fun SettingsScope.DanmakuCacheSettings(state: CacheDirectoryGroupState) {
                 },
             )
         },
-        itemText = {
+        itemText = { strategy ->
             Text(
-                when (mediaCacheSettings.danmakuCacheStrategy) {
+                when (strategy) {
                     DanmakuCacheStrategy.DON_NOT_CACHE -> "NONE"
                     DanmakuCacheStrategy.CACHE_ON_MEDIA_CACHE -> "MEDIA"
                     DanmakuCacheStrategy.CACHE_ON_COLLECTION_DOING_MEDIA_PLAY -> "COLLECT"
