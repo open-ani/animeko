@@ -171,8 +171,8 @@ findLocalProperty("ani.build.mediamp.path")?.let { mediampPath ->
                 .using(project(":mediamp-exoplayer"))
             substitute(module("org.openani.mediamp:mediamp-vlc"))
                 .using(project(":mediamp-vlc"))
-            /*substitute(module("org.openani.mediamp:mediamp-mpv"))
-                .using(project(":mediamp-mpv"))*/
+            substitute(module("org.openani.mediamp:mediamp-mpv"))
+                .using(project(":mediamp-mpv"))
             substitute(module("org.openani.mediamp:mediamp-test"))
                 .using(project(":mediamp-test"))
             substitute(module("org.openani.mediamp:mediamp-source-ktxio"))

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -132,6 +132,11 @@ object AniDesktop {
 
     init {
         System.setProperty("native.encoding", "UTF-8")
+        System.setProperty("skiko.renderApi", "OPENGL")
+        /*System.setProperty(
+            "skiko.library.path",
+            "C:\\Users\\StageGuard\\Desktop\\Projects\\skiko\\skiko\\build\\out\\link\\Release-windows-jvm-x64",
+        )*/
     }
 
     private fun calculateWindowSize(

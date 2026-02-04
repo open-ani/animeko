@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -51,10 +51,7 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.dsl.module
 import org.openani.mediamp.MediampPlayerFactory
-import org.openani.mediamp.MediampPlayerFactoryLoader
-import org.openani.mediamp.compose.MediampPlayerSurfaceProviderLoader
-import org.openani.mediamp.vlc.VlcMediampPlayerFactory
-import org.openani.mediamp.vlc.compose.VlcMediampPlayerSurfaceProvider
+import org.openani.mediamp.mpv.MpvMediampPlayerFactory
 import java.io.File
 import kotlin.io.path.Path
 
@@ -116,9 +113,9 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
     }
 
     single<MediampPlayerFactory<*>> {
-        MediampPlayerFactoryLoader.register(VlcMediampPlayerFactory())
-        MediampPlayerSurfaceProviderLoader.register(VlcMediampPlayerSurfaceProvider())
-        MediampPlayerFactoryLoader.first()
+        // MediampPlayerFactoryLoader.register(MpvMediampPlayerFactory())
+        // MediampPlayerSurfaceProviderLoader.register(MpvMediampPlayerSurfaceProvider())
+        MpvMediampPlayerFactory()
     }
     single<BrowserNavigator> { DesktopBrowserNavigator() }
     factory<MediaResolver> {

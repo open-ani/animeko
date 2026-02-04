@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -235,9 +235,10 @@ afterEvaluate {
                     val source = File(javaHome.get()).resolve(sourcePath).normalize()
                     inputs.dir(source)
                     doLast("copy $sourcePath") {
-                        val appBundle = destinationDir.get().asFile.walk().find { it.name.endsWith(".app") && it.isDirectory }
+                        val appBundle =
+                            destinationDir.get().asFile.walk().find { it.name.endsWith(".app") && it.isDirectory }
                         var dest = appBundle?.resolve(destPath)?.normalize()
-                        ?: throw GradleException("Cannot find .app bundle in $appBundle")
+                            ?: throw GradleException("Cannot find .app bundle in $appBundle")
                         ProcessBuilder().run {
                             command("cp", "-r", source.absolutePath, dest.absolutePath)
                             inheritIO()
@@ -334,6 +335,7 @@ tasks.withType<ComposeHotRun> {
 afterEvaluate {
     tasks.named("run", JavaExec::class) {
         configureDevProperties()
+        environment("SKIKO_RENDER_API", "OPENGL")
     }
 }
 
