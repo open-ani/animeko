@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.data.repository.subject
 
+import androidx.collection.MutableIntList
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
@@ -36,6 +37,7 @@ import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectType
 import me.him188.ani.datasources.bangumi.models.search.BangumiSort
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -111,7 +113,45 @@ class SubjectSearchRepository(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                LoadResult.Error(RepositoryException.wrapOrThrowCancellation(e))
+                try {
+                    Companion.logger.warn(e) { "Failed to search by ANI api, trying fallback Bangumi api." }
+
+                    val res = bangumiSubjectSearchService.searchSubjectIds(
+                        searchQuery.keywords,
+                        useNewApi = useNewApi(),
+                        offset = offset,
+                        limit = params.loadSize,
+                        filters = filters,
+                        sort = searchQuery.sort.toBangumiSort(),
+                    )
+
+                    val filtered = if (ignoreDoneAndDropped()) {
+                        val excludedIds = subjectCollectionRepository.getSubjectIdsByCollectionType(
+                            types = listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED),
+                        ).first()
+
+                        MutableIntList().apply {
+                            res.forEach { if (it !in excludedIds) add(it) }
+                        }
+                    } else {
+                        res
+                    }
+
+                    val subjectInfos = filterSubjectsBySort(
+                        subjectService.batchGetSubjectDetails(filtered),
+                        searchQuery.sort,
+                    )
+
+                    return@withContext LoadResult.Page(
+                        subjectInfos,
+                        prevKey = if (offset == 0) null else offset,
+                        nextKey = if (subjectInfos.isEmpty()) null else offset + params.loadSize,
+                    )
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    LoadResult.Error(RepositoryException.wrapOrThrowCancellation(e))
+                }
             }
         }
 
