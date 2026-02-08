@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,13 +9,24 @@
 
 package me.him188.ani.app.domain.foundation
 
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.plugins.*
-import io.ktor.client.plugins.auth.*
-import io.ktor.client.plugins.auth.providers.*
-import io.ktor.client.request.*
-import io.ktor.http.*
+import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.call.HttpClientCall
+import io.ktor.client.plugins.BrowserUserAgent
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.HttpSend
+import io.ktor.client.plugins.ResponseException
+import io.ktor.client.plugins.SendCountExceedException
+import io.ktor.client.plugins.Sender
+import io.ktor.client.plugins.auth.Auth
+import io.ktor.client.plugins.auth.providers.BearerTokens
+import io.ktor.client.plugins.auth.providers.bearer
+import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.plugins.plugin
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.http.URLBuilder
+import io.ktor.http.Url
+import io.ktor.util.appendIfNameAbsent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.io.IOException
@@ -163,6 +174,31 @@ class UseAniTokenFeatureHandler(
 
 // endregion
 
+
+typealias DistributionChannelProvider = () -> String?
+
+abstract class AbstractDistributionChannelHandler(
+    key: ScopedHttpClientFeatureKey<DistributionChannelProvider>,
+    private val defaultProvider: () -> String,
+) : ScopedHttpClientFeatureHandler<DistributionChannelProvider>(key) {
+    override fun applyToConfig(config: HttpClientConfig<*>, value: DistributionChannelProvider) {
+        config.defaultRequest {
+            headers.appendIfNameAbsent(HEADER_DISTRO_CHANNEL, value.invoke() ?: defaultProvider())
+        }
+    }
+
+    companion object {
+        const val HEADER_DISTRO_CHANNEL = "X-Ani-Distro-Channel"
+    }
+}
+
+// region DistributionChannelFeature
+val DistributionChannelFeature = ScopedHttpClientFeatureKey<DistributionChannelProvider>("DistributionChannel")
+
+class DistributionChannelFeatureHandler(defaultProvider: () -> String) :
+    AbstractDistributionChannelHandler(DistributionChannelFeature, defaultProvider)
+
+// endregion
 
 // region ServerListFeature
 /**

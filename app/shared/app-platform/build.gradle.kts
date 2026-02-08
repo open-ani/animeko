@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -75,6 +75,8 @@ val sentryDsn = getPropertyOrNull("ani.sentry.dsn") ?: ""
 val analyticsKey = getPropertyOrNull("ani.analytics.key") ?: ""
 val overrideAniApiServer = getPropertyOrNull("ani.api.server")?.takeIf { it.isNotBlank() }
 
+val distroChannel = getPropertyOrNull("ani.distro.channel") ?: "default"
+
 //if (bangumiClientDesktopAppId == null || bangumiClientDesktopSecret == null) {
 //    logger.warn("bangumi.oauth.client.desktop.appId or bangumi.oauth.client.desktop.secret is not set. Bangumi authorization will not work. Get a token from https://bgm.tv/dev/app and set them in local.properties.")
 //}
@@ -137,6 +139,7 @@ buildConfig {
         stringField("dandanplayAppSecret", dandanplayAppSecret)
         stringField("sentryDsn", sentryDsn)
         stringField("overrideAniApiServer", overrideAniApiServer ?: "")
+        stringField("distroChannel", distroChannel)
 
         firebaseFields()
     }
@@ -149,6 +152,7 @@ buildConfig {
         stringField("dandanplayAppSecret", dandanplayAppSecret)
         stringField("sentryDsn", sentryDsn)
         stringField("overrideAniApiServer", overrideAniApiServer ?: "")
+        stringField("distroChannel", distroChannel)
 
         booleanField("analyticsEnabled", enableFirebase)
     }
@@ -165,6 +169,7 @@ buildConfig {
             val sentryEnabled = (getPropertyOrNull("ani.sentry.ios") ?: "true").toBooleanStrict()
             booleanField("sentryEnabled", sentryEnabled)
             stringField("overrideAniApiServer", overrideAniApiServer ?: "")
+            stringField("distroChannel", distroChannel)
 
             firebaseFields()
         }

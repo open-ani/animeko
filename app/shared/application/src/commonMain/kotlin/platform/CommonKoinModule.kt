@@ -83,6 +83,7 @@ import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeatur
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider.HoldingInstanceMatrix
 import me.him188.ani.app.domain.foundation.DefaultVersionExpiryService
+import me.him188.ani.app.domain.foundation.DistributionChannelFeatureHandler
 import me.him188.ani.app.domain.foundation.GlobalHttpEventBus
 import me.him188.ani.app.domain.foundation.GlobalHttpEvents
 import me.him188.ani.app.domain.foundation.HttpClientProvider
@@ -180,6 +181,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                 ServerListFeatureHandler(
                     get<ServerSelector>().flow,
                 ),
+                DistributionChannelFeatureHandler { currentAniBuildConfig.distroChannel },
                 ConvertSendCountExceedExceptionFeatureHandler,
                 VersionExpiryFeatureHandler, // handle 426 Upgrade Required -> show blocking dialog
             ),
