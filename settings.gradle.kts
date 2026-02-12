@@ -143,7 +143,7 @@ includeProject(
 ) // tools for generating dataset for ML title parsing
 
 // ci
-includeProject(":ci-helper", "ci-helper") // 
+// includeProject(":ci-helper", "ci-helper") // 
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 

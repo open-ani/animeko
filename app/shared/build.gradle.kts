@@ -11,17 +11,17 @@
 
 
 plugins {
-    kotlin("multiplatform")
-    id("com.android.library")
-    kotlin("plugin.compose")
-    id("org.jetbrains.compose")
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.android.kotlin.multiplatform.library)
+    alias(libs.plugins.kotlin.plugin.compose)
+    alias(libs.plugins.jetbrains.compose)
     // 注意! 前几个插件顺序非常重要, 调整后可能导致 compose multiplatform resources 生成错误
 
     `ani-mpp-lib-targets`
 
-    kotlin("plugin.serialization")
-    id("org.jetbrains.kotlinx.atomicfu")
-    id("io.sentry.kotlin.multiplatform.gradle")
+    alias(libs.plugins.kotlin.plugin.serialization)
+    alias(libs.plugins.kotlinx.atomicfu)
+    alias(libs.plugins.sentry.kotlin.multiplatform)
     idea
 }
 
@@ -37,6 +37,31 @@ atomicfu {
 val enableIosFramework = enableIos && getPropertyOrNull("ani.build.framework") != "false"
 
 kotlin {
+    androidLibrary {
+        namespace = "me.him188.ani"
+        compileSdk = getIntProperty("android.compile.sdk")
+        defaultConfig {
+            minSdk = getIntProperty("android.min.sdk")
+        }
+        buildTypes.getByName("release") {
+            isMinifyEnabled = false
+            isShrinkResources = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                *sharedAndroidProguardRules(),
+            )
+            buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani\"")
+        }
+        buildTypes.getByName("debug") {
+            buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani.debug2\"")
+        }
+        buildFeatures {
+            compose = true
+            buildConfig = true
+            aidl = true
+        }
+    }
+
     sourceSets.commonMain.dependencies {
         api(projects.utils.platform)
         api(projects.utils.intellijAnnotations)
@@ -129,7 +154,7 @@ kotlin {
     }
 
     // androidUnitTest is apart from the commonTest tree so we have to do it again
-    sourceSets.androidUnitTest.dependencies {
+    sourceSets.androidHostTest.dependencies {
         implementation(libs.kotlinx.coroutines.test)
         implementation(projects.utils.testing)
         implementation(projects.utils.uiTesting)
@@ -156,7 +181,7 @@ kotlin {
         api(libs.logback.android)
     }
 
-    sourceSets.androidUnitTest.dependencies {
+    sourceSets.androidHostTest.dependencies {
         implementation(libs.mockito)
         implementation(libs.mockito.kotlin)
         implementation(libs.koin.test)
@@ -214,31 +239,6 @@ afterEvaluate {
 //if (bangumiClientDesktopAppId == null || bangumiClientDesktopSecret == null) {
 //    logger.warn("bangumi.oauth.client.desktop.appId or bangumi.oauth.client.desktop.secret is not set. Bangumi authorization will not work. Get a token from https://bgm.tv/dev/app and set them in local.properties.")
 //}
-
-android {
-    namespace = "me.him188.ani"
-    compileSdk = getIntProperty("android.compile.sdk")
-    defaultConfig {
-        minSdk = getIntProperty("android.min.sdk")
-    }
-    buildTypes.getByName("release") {
-        isMinifyEnabled = false
-        isShrinkResources = false
-        proguardFiles(
-            getDefaultProguardFile("proguard-android-optimize.txt"),
-            *sharedAndroidProguardRules(),
-        )
-        buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani\"")
-    }
-    buildTypes.getByName("debug") {
-        buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani.debug2\"")
-    }
-    buildFeatures {
-        compose = true
-        buildConfig = true
-        aidl = true
-    }
-}
 
 dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)

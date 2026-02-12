@@ -31,8 +31,8 @@ import org.gradle.internal.impldep.com.amazonaws.services.s3.model.PutObjectRequ
 import java.security.MessageDigest
 
 plugins {
-    kotlin("jvm")
-    id("org.jetbrains.kotlinx.atomicfu")
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlinx.atomicfu)
 }
 
 val hostOS: OS by lazy {

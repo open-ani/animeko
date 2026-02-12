@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -17,16 +17,12 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 
 plugins {
-    kotlin("jvm")
-    kotlin("plugin.compose")
-    id("org.jetbrains.compose")
-    kotlin("plugin.serialization")
-    id("org.jetbrains.kotlinx.atomicfu")
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.plugin.compose)
+    alias(libs.plugins.jetbrains.compose)
+    alias(libs.plugins.kotlin.plugin.serialization)
+    alias(libs.plugins.kotlinx.atomicfu)
     idea
-}
-
-if (getLocalProperty("ani.compose.hot.reload")?.toBooleanStrict() != false) {
-    apply(plugin = libs.plugins.compose.hot.reload.get().pluginId)
 }
 
 dependencies {
@@ -235,9 +231,10 @@ afterEvaluate {
                     val source = File(javaHome.get()).resolve(sourcePath).normalize()
                     inputs.dir(source)
                     doLast("copy $sourcePath") {
-                        val appBundle = destinationDir.get().asFile.walk().find { it.name.endsWith(".app") && it.isDirectory }
+                        val appBundle =
+                            destinationDir.get().asFile.walk().find { it.name.endsWith(".app") && it.isDirectory }
                         var dest = appBundle?.resolve(destPath)?.normalize()
-                        ?: throw GradleException("Cannot find .app bundle in $appBundle")
+                            ?: throw GradleException("Cannot find .app bundle in $appBundle")
                         ProcessBuilder().run {
                             command("cp", "-r", source.absolutePath, dest.absolutePath)
                             inheritIO()

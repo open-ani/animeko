@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -8,6 +8,7 @@
  */
 
 import com.android.build.api.dsl.CommonExtension
+import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryExtension
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalog
@@ -219,12 +220,9 @@ fun Project.configureJvmTarget() {
         targetCompatibility = ver
     }
 
-    extensions.findByType(CommonExtension::class)?.apply {
-        compileOptions {
-            sourceCompatibility = ver
-            targetCompatibility = ver
-        }
-    }
+    /*extensions.findByType(KotlinMultiplatformAndroidLibraryExtension::class)?.apply {
+        
+    }*/
 }
 
 fun Project.configureEncoding() {
@@ -290,8 +288,8 @@ fun Project.configureKotlinTestSettings() {
                         }
 
                         target?.platformType == KotlinPlatformType.androidJvm
-                                || sourceSet.name == "androidInstrumentedTest"
-                                || sourceSet.name == "androidUnitTest" -> {
+                                || sourceSet.name == "androidDeviceTest"
+                                || sourceSet.name == "androidHostTest" -> {
                             sourceSet.configureJvmTest(b)
                         }
                     }

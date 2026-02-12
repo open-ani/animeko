@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,18 +10,17 @@
 @file:Suppress("UnstableApiUsage")
 
 plugins {
-    kotlin("multiplatform")
-    `android-library`
-    kotlin("plugin.serialization")
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.android.kotlin.multiplatform.library)
+    alias(libs.plugins.kotlin.plugin.serialization)
     `ani-mpp-lib-targets`
     idea
 }
 
-android {
-    namespace = "me.him188.ani.app.datasource.api"
-}
-
 kotlin {
+    androidLibrary {
+        namespace = "me.him188.ani.app.datasource.api"
+    }
     sourceSets.commonMain {
         dependencies {
             implementation(libs.kotlinx.serialization.core)

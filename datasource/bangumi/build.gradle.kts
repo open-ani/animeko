@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -28,21 +28,20 @@ import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
  */
 
 plugins {
-    kotlin("multiplatform")
-    id("com.android.library")
-    kotlin("plugin.serialization")
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.android.kotlin.multiplatform.library)
+    alias(libs.plugins.kotlin.plugin.serialization)
     idea
     `ani-mpp-lib-targets`
     alias(libs.plugins.openapi.generator)
 }
 
-android {
-    namespace = "me.him188.ani.datasources.bangumi"
-}
-
 val generatedRoot = "generated/openapi"
 
 kotlin {
+    androidLibrary {
+        namespace = "me.him188.ani.datasources.bangumi"
+    }
     sourceSets.commonMain.dependencies {
         api(projects.datasource.datasourceApi)
         api(libs.kotlinx.datetime)

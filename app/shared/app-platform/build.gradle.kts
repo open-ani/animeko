@@ -8,19 +8,49 @@
  */
 
 plugins {
-    kotlin("multiplatform")
-    id("com.android.library")
-    kotlin("plugin.compose")
-    id("org.jetbrains.compose")
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.android.kotlin.multiplatform.library)
+    alias(libs.plugins.kotlin.plugin.compose)
+    alias(libs.plugins.jetbrains.compose)
 
     `ani-mpp-lib-targets`
-    kotlin("plugin.serialization")
-    id("org.jetbrains.kotlinx.atomicfu")
+    alias(libs.plugins.kotlin.plugin.serialization)
+    alias(libs.plugins.kotlinx.atomicfu)
     idea
     `build-config`
 }
 
+val aniAuthServerUrlDebug =
+    getPropertyOrNull("ani.auth.server.url.debug") ?: "https://auth.myani.org"
+val aniAuthServerUrlRelease = getPropertyOrNull("ani.auth.server.url.release") ?: "https://auth.myani.org"
+val dandanplayAppId = getPropertyOrNull("ani.dandanplay.app.id") ?: ""
+val dandanplayAppSecret = getPropertyOrNull("ani.dandanplay.app.secret") ?: ""
+val sentryDsn = getPropertyOrNull("ani.sentry.dsn") ?: ""
+val analyticsKey = getPropertyOrNull("ani.analytics.key") ?: ""
+val overrideAniApiServer = getPropertyOrNull("ani.api.server")?.takeIf { it.isNotBlank() }
+
+val distroChannel = getPropertyOrNull("ani.distro.channel") ?: "default"
+
 kotlin {
+    androidLibrary {
+        namespace = "me.him188.ani.app.platform"
+        buildTypes.getByName("release") {
+            isMinifyEnabled = false
+            isShrinkResources = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                *sharedAndroidProguardRules(),
+            )
+            buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani\"")
+        }
+        buildTypes.getByName("debug") {
+            buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani.debug2\"")
+        }
+        buildFeatures {
+            buildConfig = true
+        }
+    }
+
     sourceSets.commonMain.dependencies {
         api(projects.utils.platform)
         api(projects.app.shared.appLang)
@@ -61,43 +91,9 @@ kotlin {
     }
 }
 
-android {
-    namespace = "me.him188.ani.app.platform"
-}
-
-
-val aniAuthServerUrlDebug =
-    getPropertyOrNull("ani.auth.server.url.debug") ?: "https://auth.myani.org"
-val aniAuthServerUrlRelease = getPropertyOrNull("ani.auth.server.url.release") ?: "https://auth.myani.org"
-val dandanplayAppId = getPropertyOrNull("ani.dandanplay.app.id") ?: ""
-val dandanplayAppSecret = getPropertyOrNull("ani.dandanplay.app.secret") ?: ""
-val sentryDsn = getPropertyOrNull("ani.sentry.dsn") ?: ""
-val analyticsKey = getPropertyOrNull("ani.analytics.key") ?: ""
-val overrideAniApiServer = getPropertyOrNull("ani.api.server")?.takeIf { it.isNotBlank() }
-
-val distroChannel = getPropertyOrNull("ani.distro.channel") ?: "default"
-
 //if (bangumiClientDesktopAppId == null || bangumiClientDesktopSecret == null) {
 //    logger.warn("bangumi.oauth.client.desktop.appId or bangumi.oauth.client.desktop.secret is not set. Bangumi authorization will not work. Get a token from https://bgm.tv/dev/app and set them in local.properties.")
 //}
-
-android {
-    buildTypes.getByName("release") {
-        isMinifyEnabled = false
-        isShrinkResources = false
-        proguardFiles(
-            getDefaultProguardFile("proguard-android-optimize.txt"),
-            *sharedAndroidProguardRules(),
-        )
-        buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani\"")
-    }
-    buildTypes.getByName("debug") {
-        buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani.debug2\"")
-    }
-    buildFeatures {
-        buildConfig = true
-    }
-}
 
 /// BUILD CONFIG
 
