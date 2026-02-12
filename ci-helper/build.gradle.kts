@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -113,13 +113,13 @@ tasks.register("uploadAndroidApk") {
     val buildDirectory = project(":app:android").layout.buildDirectory
     doLast {
         ReleaseEnvironment().run {
-            val files = buildDirectory.file("outputs/apk/release")
+            val files = buildDirectory.file("outputs/apk/default/release")
                 .get().asFile.walk()
                 .filter { it.extension == "apk" && it.name.contains("release") }
 
             for (file in files) {
-                // android-arm64-v8a-release.apk
-                val arch = file.name.substringAfter("android-")
+                // android-default-arm64-v8a-release.apk
+                val arch = file.name.substringAfter("android-default-")
                     .substringBefore("-release.apk")
                 uploadReleaseAsset(
                     name = namer.androidApp(fullVersion, arch),

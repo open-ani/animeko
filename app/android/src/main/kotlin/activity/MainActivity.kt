@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -17,6 +17,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.core.os.LocaleListCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
@@ -26,6 +28,8 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.platform.rememberPlatformWindow
+import me.him188.ani.app.ui.exprovider.ExternalContentProviderFactory
+import me.him188.ani.app.ui.exprovider.LocalExternalContentProvider
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.theme.SystemBarColorEffect
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
@@ -41,6 +45,8 @@ class MainActivity : AniComponentActivity() {
     private val aniNavigator = AniNavigator()
 
     private val settingsRepository: SettingsRepository by inject()
+
+    private val externalContentProviderFactory: ExternalContentProviderFactory by inject()
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -94,13 +100,18 @@ class MainActivity : AniComponentActivity() {
             }
         }
 
+        val externalContentProvider = externalContentProviderFactory.create(this, lifecycleScope)
+
         setContent {
             AniApp {
+                val externalComponentProviderUpdated by rememberUpdatedState(externalContentProvider)
+
                 SystemBarColorEffect()
 
                 CompositionLocalProvider(
                     LocalToaster provides toaster,
                     LocalPlatformWindow provides rememberPlatformWindow(this),
+                    LocalExternalContentProvider provides externalComponentProviderUpdated,
                 ) {
                     AniAppContent(aniNavigator)
                 }

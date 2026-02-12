@@ -344,12 +344,12 @@ jobs:
         name: 'Build Android Debug APKs (Attempt #1)'
         continue-on-error: true
         timeout-minutes: 180
-        run: './gradlew assembleDebug "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+        run: './gradlew assembleDefaultDebug "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
       - id: 'step-22'
         name: 'Build Android Debug APKs (Attempt #2)'
         continue-on-error: false
         timeout-minutes: 180
-        run: './gradlew assembleDebug "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+        run: './gradlew assembleDefaultDebug "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
         if: '${{ steps.step-21.outcome == ''failure'' }}'
       - id: 'step-23'
         name: 'Upload Android Debug APK arm64-v8a (Attempt #1)'
@@ -357,7 +357,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-arm64-v8a-debug'
-          path: 'app/android/build/outputs/apk/debug/android-arm64-v8a-debug.apk'
+          path: 'app/android/build/outputs/apk/default/debug/android-default-arm64-v8a-debug.apk'
           overwrite: 'true'
       - id: 'step-24'
         name: 'Upload Android Debug APK arm64-v8a (Attempt #2)'
@@ -365,7 +365,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-arm64-v8a-debug'
-          path: 'app/android/build/outputs/apk/debug/android-arm64-v8a-debug.apk'
+          path: 'app/android/build/outputs/apk/default/debug/android-default-arm64-v8a-debug.apk'
           overwrite: 'true'
         if: '${{ steps.step-23.outcome == ''failure'' }}'
       - id: 'step-25'
@@ -374,7 +374,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-arm64-v8a-debug'
-          path: 'app/android/build/outputs/apk/debug/android-arm64-v8a-debug.apk'
+          path: 'app/android/build/outputs/apk/default/debug/android-default-arm64-v8a-debug.apk'
           overwrite: 'true'
         if: '${{ steps.step-24.outcome == ''failure'' }}'
       - id: 'step-26'
@@ -383,7 +383,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-x86_64-debug'
-          path: 'app/android/build/outputs/apk/debug/android-x86_64-debug.apk'
+          path: 'app/android/build/outputs/apk/default/debug/android-default-x86_64-debug.apk'
           overwrite: 'true'
       - id: 'step-27'
         name: 'Upload Android Debug APK x86_64 (Attempt #2)'
@@ -391,7 +391,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-x86_64-debug'
-          path: 'app/android/build/outputs/apk/debug/android-x86_64-debug.apk'
+          path: 'app/android/build/outputs/apk/default/debug/android-default-x86_64-debug.apk'
           overwrite: 'true'
         if: '${{ steps.step-26.outcome == ''failure'' }}'
       - id: 'step-28'
@@ -400,7 +400,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-x86_64-debug'
-          path: 'app/android/build/outputs/apk/debug/android-x86_64-debug.apk'
+          path: 'app/android/build/outputs/apk/default/debug/android-default-x86_64-debug.apk'
           overwrite: 'true'
         if: '${{ steps.step-27.outcome == ''failure'' }}'
       - id: 'step-29'
@@ -409,7 +409,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-armeabi-v7a-debug'
-          path: 'app/android/build/outputs/apk/debug/android-armeabi-v7a-debug.apk'
+          path: 'app/android/build/outputs/apk/default/debug/android-default-armeabi-v7a-debug.apk'
           overwrite: 'true'
       - id: 'step-30'
         name: 'Upload Android Debug APK armeabi-v7a (Attempt #2)'
@@ -417,7 +417,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-armeabi-v7a-debug'
-          path: 'app/android/build/outputs/apk/debug/android-armeabi-v7a-debug.apk'
+          path: 'app/android/build/outputs/apk/default/debug/android-default-armeabi-v7a-debug.apk'
           overwrite: 'true'
         if: '${{ steps.step-29.outcome == ''failure'' }}'
       - id: 'step-31'
@@ -426,7 +426,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-armeabi-v7a-debug'
-          path: 'app/android/build/outputs/apk/debug/android-armeabi-v7a-debug.apk'
+          path: 'app/android/build/outputs/apk/default/debug/android-default-armeabi-v7a-debug.apk'
           overwrite: 'true'
         if: '${{ steps.step-30.outcome == ''failure'' }}'
       - id: 'step-32'
@@ -435,7 +435,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-universal-debug'
-          path: 'app/android/build/outputs/apk/debug/android-universal-debug.apk'
+          path: 'app/android/build/outputs/apk/default/debug/android-default-universal-debug.apk'
           overwrite: 'true'
       - id: 'step-33'
         name: 'Upload Android Debug APK universal (Attempt #2)'
@@ -443,7 +443,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-universal-debug'
-          path: 'app/android/build/outputs/apk/debug/android-universal-debug.apk'
+          path: 'app/android/build/outputs/apk/default/debug/android-default-universal-debug.apk'
           overwrite: 'true'
         if: '${{ steps.step-32.outcome == ''failure'' }}'
       - id: 'step-34'
@@ -452,7 +452,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-universal-debug'
-          path: 'app/android/build/outputs/apk/debug/android-universal-debug.apk'
+          path: 'app/android/build/outputs/apk/default/debug/android-default-universal-debug.apk'
           overwrite: 'true'
         if: '${{ steps.step-33.outcome == ''failure'' }}'
       - id: 'step-35'
@@ -464,7 +464,7 @@ jobs:
           signing_release_keyPassword: '${{ secrets.SIGNING_RELEASE_KEYPASSWORD }}'
         continue-on-error: true
         timeout-minutes: 180
-        run: './gradlew assembleRelease "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+        run: './gradlew assembleDefaultRelease "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
         if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
       - id: 'step-36'
         name: 'Build Android Release APKs (Attempt #2)'
@@ -475,7 +475,7 @@ jobs:
           signing_release_keyPassword: '${{ secrets.SIGNING_RELEASE_KEYPASSWORD }}'
         continue-on-error: false
         timeout-minutes: 180
-        run: './gradlew assembleRelease "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+        run: './gradlew assembleDefaultRelease "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
         if: '${{ steps.step-35.outcome == ''failure'' }}'
       - id: 'step-37'
         name: 'Upload Android Release APK arm64-v8a (Attempt #1)'
@@ -483,7 +483,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-arm64-v8a-release'
-          path: 'app/android/build/outputs/apk/release/android-arm64-v8a-release.apk'
+          path: 'app/android/build/outputs/apk/default/release/android-default-arm64-v8a-release.apk'
           overwrite: 'true'
       - id: 'step-38'
         name: 'Upload Android Release APK arm64-v8a (Attempt #2)'
@@ -491,7 +491,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-arm64-v8a-release'
-          path: 'app/android/build/outputs/apk/release/android-arm64-v8a-release.apk'
+          path: 'app/android/build/outputs/apk/default/release/android-default-arm64-v8a-release.apk'
           overwrite: 'true'
         if: '${{ steps.step-37.outcome == ''failure'' }}'
       - id: 'step-39'
@@ -500,7 +500,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-arm64-v8a-release'
-          path: 'app/android/build/outputs/apk/release/android-arm64-v8a-release.apk'
+          path: 'app/android/build/outputs/apk/default/release/android-default-arm64-v8a-release.apk'
           overwrite: 'true'
         if: '${{ steps.step-38.outcome == ''failure'' }}'
       - id: 'step-40'
@@ -509,7 +509,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-x86_64-release'
-          path: 'app/android/build/outputs/apk/release/android-x86_64-release.apk'
+          path: 'app/android/build/outputs/apk/default/release/android-default-x86_64-release.apk'
           overwrite: 'true'
       - id: 'step-41'
         name: 'Upload Android Release APK x86_64 (Attempt #2)'
@@ -517,7 +517,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-x86_64-release'
-          path: 'app/android/build/outputs/apk/release/android-x86_64-release.apk'
+          path: 'app/android/build/outputs/apk/default/release/android-default-x86_64-release.apk'
           overwrite: 'true'
         if: '${{ steps.step-40.outcome == ''failure'' }}'
       - id: 'step-42'
@@ -526,7 +526,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-x86_64-release'
-          path: 'app/android/build/outputs/apk/release/android-x86_64-release.apk'
+          path: 'app/android/build/outputs/apk/default/release/android-default-x86_64-release.apk'
           overwrite: 'true'
         if: '${{ steps.step-41.outcome == ''failure'' }}'
       - id: 'step-43'
@@ -535,7 +535,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-armeabi-v7a-release'
-          path: 'app/android/build/outputs/apk/release/android-armeabi-v7a-release.apk'
+          path: 'app/android/build/outputs/apk/default/release/android-default-armeabi-v7a-release.apk'
           overwrite: 'true'
       - id: 'step-44'
         name: 'Upload Android Release APK armeabi-v7a (Attempt #2)'
@@ -543,7 +543,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-armeabi-v7a-release'
-          path: 'app/android/build/outputs/apk/release/android-armeabi-v7a-release.apk'
+          path: 'app/android/build/outputs/apk/default/release/android-default-armeabi-v7a-release.apk'
           overwrite: 'true'
         if: '${{ steps.step-43.outcome == ''failure'' }}'
       - id: 'step-45'
@@ -552,7 +552,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-armeabi-v7a-release'
-          path: 'app/android/build/outputs/apk/release/android-armeabi-v7a-release.apk'
+          path: 'app/android/build/outputs/apk/default/release/android-default-armeabi-v7a-release.apk'
           overwrite: 'true'
         if: '${{ steps.step-44.outcome == ''failure'' }}'
       - id: 'step-46'
@@ -561,7 +561,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-universal-release'
-          path: 'app/android/build/outputs/apk/release/android-universal-release.apk'
+          path: 'app/android/build/outputs/apk/default/release/android-default-universal-release.apk'
           overwrite: 'true'
       - id: 'step-47'
         name: 'Upload Android Release APK universal (Attempt #2)'
@@ -569,7 +569,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-universal-release'
-          path: 'app/android/build/outputs/apk/release/android-universal-release.apk'
+          path: 'app/android/build/outputs/apk/default/release/android-default-universal-release.apk'
           overwrite: 'true'
         if: '${{ steps.step-46.outcome == ''failure'' }}'
       - id: 'step-48'
@@ -578,7 +578,7 @@ jobs:
         uses: 'actions/upload-artifact@v4'
         with:
           name: 'ani-android-universal-release'
-          path: 'app/android/build/outputs/apk/release/android-universal-release.apk'
+          path: 'app/android/build/outputs/apk/default/release/android-default-universal-release.apk'
           overwrite: 'true'
         if: '${{ steps.step-47.outcome == ''failure'' }}'
       - id: 'step-49'
@@ -1199,7 +1199,7 @@ jobs:
           api-level: '30'
           arch: 'arm64-v8a'
           emulator-boot-timeout: '1800'
-          script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+          script: './gradlew connectedDefaultDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel" "-Pani.android.abis=arm64-v8a"'
       - id: 'step-44'
         name: 'Android Instrumented Test (api=35, arch=arm64-v8a)'
         uses: 'reactivecircus/android-emulator-runner@v2.33.0'
@@ -1207,7 +1207,7 @@ jobs:
           api-level: '35'
           arch: 'arm64-v8a'
           emulator-boot-timeout: '1800'
-          script: './gradlew connectedDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+          script: './gradlew connectedDefaultDebugAndroidTest "-Pandroid.min.sdk=30" "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel" "-Pani.android.abis=arm64-v8a"'
       - id: 'step-45'
         name: 'Cleanup temp files'
         continue-on-error: true

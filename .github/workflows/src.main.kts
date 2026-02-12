@@ -1383,7 +1383,7 @@ class WithMatrix(
         if (matrix.uploadApk) {
             runGradle(
                 name = "Build Android Debug APKs",
-                tasks = arrayOf("assembleDebug"),
+                tasks = arrayOf("assembleDefaultDebug"),
             )
         }
 
@@ -1398,7 +1398,7 @@ class WithMatrix(
                     name = "Upload Android Debug APK $arch",
                     action = UploadArtifact(
                         name = "ani-android-${arch}-debug",
-                        path_Untyped = "app/android/build/outputs/apk/debug/android-${arch}-debug.apk",
+                        path_Untyped = "app/android/build/outputs/apk/default/debug/android-default-${arch}-debug.apk",
                         overwrite = true,
                     ),
                 )
@@ -1409,7 +1409,7 @@ class WithMatrix(
             runGradle(
                 name = "Build Android Release APKs",
                 `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
-                tasks = arrayOf("assembleRelease"),
+                tasks = arrayOf("assembleDefaultRelease"),
                 env = mapOf(
                     "signing_release_storeFileFromRoot" to expr { prepareSigningKey.outputs.filePath },
                     "signing_release_storePassword" to expr { secrets.SIGNING_RELEASE_STOREPASSWORD },
@@ -1430,7 +1430,7 @@ class WithMatrix(
                     name = "Upload Android Release APK $arch",
                     action = UploadArtifact(
                         name = "ani-android-${arch}-release",
-                        path_Untyped = "app/android/build/outputs/apk/release/android-${arch}-release.apk",
+                        path_Untyped = "app/android/build/outputs/apk/default/release/android-default-${arch}-release.apk",
                         overwrite = true,
                     ),
                 )
@@ -1549,7 +1549,7 @@ class WithMatrix(
                         action = AndroidEmulatorRunner(
                             apiLevel = apiLevel,
                             arch = arch,
-                            script = "./gradlew connectedDebugAndroidTest \"-Pandroid.min.sdk=30\" " + matrix.gradleArgs,
+                            script = "./gradlew connectedDefaultDebugAndroidTest \"-Pandroid.min.sdk=30\" " + matrix.gradleArgs,
                             emulatorBootTimeout = 1800,
                         ),
                     )

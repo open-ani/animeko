@@ -475,6 +475,9 @@ private fun EpisodeScreenTabletVeryWide(
                                 .only(WindowInsetsSides.Top),
                         ),
                 )
+
+                // ExternalContent("", Modifier.fillMaxWidth().height(128.dp))
+
                 TabRow(
                     pagerState, scope, { vm.episodeCommentState.count }, Modifier.fillMaxWidth(),
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -635,6 +638,17 @@ private fun EpisodeScreenContentPhone(
                 windowInsets = videoWindowInsets,
             )
         },
+        headlineContent = {
+            // ExternalContent("", Modifier.fillMaxWidth().height(64.dp))
+        },
+        tabRowContent = {
+            DummyDanmakuEditor(
+                onClick = {
+                    showDanmakuEditor = true
+                    pauseOnPlaying()
+                },
+            )
+        },
         episodeDetails = {
             val navigator = LocalNavigator.current
             val pageState by vm.pageState.collectAsStateWithLifecycle()
@@ -700,21 +714,13 @@ private fun EpisodeScreenContentPhone(
                 gridState = vm.commentLazyGirdState,
             )
         },
-        modifier.then(
+        modifier = modifier.then(
             if (vm.isFullscreen) {
                 Modifier.fillMaxSize()
             } else {
                 Modifier.windowInsetsPadding(columnInsets)
             },
         ),
-        tabRowContent = {
-            DummyDanmakuEditor(
-                onClick = {
-                    showDanmakuEditor = true
-                    pauseOnPlaying()
-                },
-            )
-        },
     )
 
     if (showDanmakuEditor) {
@@ -784,6 +790,7 @@ fun EpisodeScreenContentPhoneScaffold(
     episodeDetails: @Composable () -> Unit,
     commentColumn: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    headlineContent: @Composable () -> Unit = {},
     tabRowContent: @Composable () -> Unit = {},
 ) {
     Column(modifier) {
@@ -797,6 +804,7 @@ fun EpisodeScreenContentPhoneScaffold(
         val scope = rememberCoroutineScope()
 
         Column(Modifier.fillMaxSize()) {
+            headlineContent()
             Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
                 Row {
                     TabRow(

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -27,24 +27,6 @@ plugins {
     id("kotlin-parcelize")
     id("com.google.gms.google-services")
     idea
-}
-
-dependencies {
-    implementation(projects.app.shared)
-    implementation(projects.app.shared.application)
-
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.androidx.material)
-    implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.browser)
-
-    debugImplementation(libs.androidx.compose.ui.tooling)
-
-//    implementation(libs.log4j.core)
-//    implementation(libs.log4j.slf4j.impl)
-
-    implementation(libs.ktor.client.core)
 }
 
 val archs = buildList {
@@ -122,10 +104,34 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("default") {
+            dimension = "distribution"
+        }
+    }
     buildFeatures {
         compose = true
         buildConfig = true
     }
+}
+
+dependencies {
+    implementation(projects.app.shared)
+    implementation(projects.app.shared.application)
+
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.material)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.browser)
+
+    debugImplementation(libs.androidx.compose.ui.tooling)
+
+//    implementation(libs.log4j.core)
+//    implementation(libs.log4j.slf4j.impl)
+
+    implementation(libs.ktor.client.core)
 }
 
 idea {
