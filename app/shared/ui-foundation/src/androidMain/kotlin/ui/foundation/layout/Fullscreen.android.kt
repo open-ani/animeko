@@ -52,7 +52,7 @@ actual fun Context.setSystemBarVisible(window: PlatformWindowMP, visible: Boolea
 
     if (visible) {
         insetsController.show(bitmask)
-        insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+        insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_TOUCH
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
             @Suppress("DEPRECATION")
             this.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN)
