@@ -9,6 +9,8 @@
 
 @file:Suppress("UnstableApiUsage")
 
+import com.android.build.gradle.ProguardFiles.getDefaultProguardFile
+
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -40,26 +42,33 @@ kotlin {
     androidLibrary {
         namespace = "me.him188.ani"
         compileSdk = getIntProperty("android.compile.sdk")
-        defaultConfig {
-            minSdk = getIntProperty("android.min.sdk")
+        minSdk = getIntProperty("android.min.sdk")
+        // TODO AGP Migration: AIDL Move to single android library module
+        // TODO AGP Migration: Remove BuildConfig from KMP android side
+        // TODO AGP Migration: Test package optimization
+
+        optimization {
+            minify = false
+            keepRules.apply {
+                files(
+                    getDefaultProguardFile("proguard-android-optimize.txt", layout.buildDirectory),
+                    *sharedAndroidProguardRules(),
+                )
+            }
         }
-        buildTypes.getByName("release") {
-            isMinifyEnabled = false
-            isShrinkResources = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                *sharedAndroidProguardRules(),
-            )
-            buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani\"")
-        }
-        buildTypes.getByName("debug") {
-            buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani.debug2\"")
-        }
-        buildFeatures {
-            compose = true
-            buildConfig = true
-            aidl = true
-        }
+
+        // TODO AGP Migration: Remove build config comments
+//        buildTypes.getByName("release") {
+//            buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani\"")
+//        }
+//        buildTypes.getByName("debug") {
+//            buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani.debug2\"")
+//        }
+//        buildFeatures {
+//            compose = true
+//            buildConfig = true
+//            aidl = true
+//        }
     }
 
     sourceSets.commonMain.dependencies {
@@ -241,7 +250,7 @@ afterEvaluate {
 //}
 
 dependencies {
-    debugImplementation(libs.androidx.compose.ui.tooling)
+    androidRuntimeClasspath(libs.androidx.compose.ui.tooling)
 }
 
 

@@ -11,7 +11,7 @@
 
 import com.android.build.api.dsl.CommonExtension
 import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryExtension
-import com.android.build.api.dsl.androidLibrary
+import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
 import org.jetbrains.compose.ComposeExtension
 import org.jetbrains.compose.ComposePlugin
 import org.jetbrains.compose.ExperimentalComposeLibrary
@@ -32,7 +32,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
  * 如果开了 android, 就会配置 desktop + android, 否则只配置 jvm.
  */
 
-val androidLibraryExtension = extensions.findByType(KotlinMultiplatformAndroidLibraryExtension::class)
+val androidLibraryExtension = extensions.findByType(KotlinMultiplatformExtension::class)
+        ?.extensions?.findByType(KotlinMultiplatformAndroidLibraryExtension::class) 
 val composeExtension = extensions.findByType(ComposeExtension::class)
 val composeCompilerExtension =
     extensions.findByType(org.jetbrains.kotlin.compose.compiler.gradle.ComposeCompilerGradlePluginExtension::class)
@@ -70,6 +71,7 @@ configure<KotlinMultiplatformExtension> {
         androidLibrary {
             compileSdk = getIntProperty("android.compile.sdk")
             minSdk = getIntProperty("android.min.sdk")
+            androidResources.enable = true
 
             withHostTestBuilder {
                 sourceSetTreeName = KotlinSourceSetTree.unitTest.name
@@ -77,8 +79,7 @@ configure<KotlinMultiplatformExtension> {
 
             withDeviceTestBuilder {
                 sourceSetTreeName = KotlinSourceSetTree.test.name
-            }
-            withDeviceTest {
+            }.configure {
                 instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
                 instrumentationRunnerArguments["runnerBuilder"] = "de.mannodermaus.junit5.AndroidJUnit5Builder"
                 instrumentationRunnerArguments["package"] = "me.him188"
@@ -213,7 +214,7 @@ configure<KotlinMultiplatformExtension> {
             }
 
             project.dependencies {
-                "debugImplementation"("androidx.compose.ui:ui-test-manifest:${composeVersion}")
+                "androidRuntimeClasspath"("androidx.compose.ui:ui-test-manifest:${composeVersion}")
             }
         }
     }

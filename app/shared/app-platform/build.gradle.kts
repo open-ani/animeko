@@ -1,3 +1,5 @@
+import com.android.build.gradle.ProguardFiles.getDefaultProguardFile
+
 /*
  * Copyright (C) 2024-2026 OpenAni and contributors.
  *
@@ -34,21 +36,28 @@ val distroChannel = getPropertyOrNull("ani.distro.channel") ?: "default"
 kotlin {
     androidLibrary {
         namespace = "me.him188.ani.app.platform"
-        buildTypes.getByName("release") {
-            isMinifyEnabled = false
-            isShrinkResources = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                *sharedAndroidProguardRules(),
-            )
-            buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani\"")
+        // TODO AGP Migration: AIDL Move to single android library module
+        // TODO AGP Migration: Remove BuildConfig from KMP android side
+        // TODO AGP Migration: Test package optimization
+        optimization {
+            minify = false
+            keepRules.apply {
+                files(
+                    getDefaultProguardFile("proguard-android-optimize.txt", layout.buildDirectory),
+                    *sharedAndroidProguardRules(),
+                )
+            }
         }
-        buildTypes.getByName("debug") {
-            buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani.debug2\"")
-        }
-        buildFeatures {
-            buildConfig = true
-        }
+        // TODO AGP Migration: Remove build config comments
+//        buildTypes.getByName("release") {
+//            buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani\"")
+//        }
+//        buildTypes.getByName("debug") {
+//            buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani.debug2\"")
+//        }
+//        buildFeatures {
+//            buildConfig = true
+//        }
     }
 
     sourceSets.commonMain.dependencies {

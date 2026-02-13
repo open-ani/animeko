@@ -26,9 +26,7 @@ plugins {
 kotlin {
     androidLibrary {
         namespace = "me.him188.ani.app.data"
-        buildFeatures {
-            aidl = true
-        }
+        // TODO AGP Migration: AIDL Move to single android library module
     }
     sourceSets.commonMain.dependencies {
         implementation(projects.app.shared.appPlatform)
@@ -111,5 +109,5 @@ dependencies {
         add("kspIosArm64", libs.androidx.room.compiler)
         add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     }
-    debugImplementation(libs.androidx.compose.ui.tooling)
+    androidRuntimeClasspath(libs.androidx.compose.ui.tooling)
 }
