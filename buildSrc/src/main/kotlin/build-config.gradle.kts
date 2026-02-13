@@ -230,7 +230,8 @@ class AniBuildConfigPlugin : Plugin<Project> {
                 // Android compilation tasks
                 platformName.lowercase() == "android" && (
                         name.contains("compileKotlinAndroid") ||
-                                name.contains("KotlinAndroid")
+                                name.contains("KotlinAndroid") ||
+                                name == "compileAndroidMain"
                         ) -> {
                     dependsOn(generateTaskName)
                 }

@@ -37,7 +37,6 @@ kotlin {
     androidLibrary {
         namespace = "me.him188.ani.app.platform"
         // TODO AGP Migration: AIDL Move to single android library module
-        // TODO AGP Migration: Remove BuildConfig from KMP android side
         // TODO AGP Migration: Test package optimization
         optimization {
             minify = false
@@ -48,16 +47,6 @@ kotlin {
                 )
             }
         }
-        // TODO AGP Migration: Remove build config comments
-//        buildTypes.getByName("release") {
-//            buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani\"")
-//        }
-//        buildTypes.getByName("debug") {
-//            buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani.debug2\"")
-//        }
-//        buildFeatures {
-//            buildConfig = true
-//        }
     }
 
     sourceSets.commonMain.dependencies {
@@ -89,6 +78,7 @@ kotlin {
     sourceSets.androidMain.dependencies {
         api(libs.androidx.compose.ui.tooling.preview)
         api(libs.androidx.compose.ui.tooling)
+        api(projects.utils.buildConfig)
     }
     sourceSets.desktopMain.dependencies {
         api(libs.jna)
@@ -152,7 +142,7 @@ buildConfig {
     // Android platform configuration
     platform("android") {
         stringField("versionName", project.version.toString())
-        expressionField("isDebug", "BuildConfig.DEBUG")
+        expressionField("isDebug", "me.him188.ani.buildconfig.AndroidBuildConfig.DEBUG")
         stringField("dandanplayAppId", dandanplayAppId)
         stringField("dandanplayAppSecret", dandanplayAppSecret)
         stringField("sentryDsn", sentryDsn)

@@ -73,6 +73,7 @@ includeProject(":utils:androidx-lifecycle-runtime-testing")
 includeProject(":utils:ui-preview")
 includeProject(":utils:analytics")
 includeProject(":utils:http-downloader")
+includeProject(":utils:build-config")
 
 
 includeProject(":torrent:torrent-api", "torrent/api") // Torrent 系统 API

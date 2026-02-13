@@ -92,6 +92,7 @@ kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm" }
 android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library" }
 android-application = { id = "com.android.application" }
+android-library = { id = "com.android.library" }
 kotlinx-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu" }
 jetbrains-compose = { id = "org.jetbrains.compose" }
 kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose" }

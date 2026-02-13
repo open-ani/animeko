@@ -44,7 +44,6 @@ kotlin {
         compileSdk = getIntProperty("android.compile.sdk")
         minSdk = getIntProperty("android.min.sdk")
         // TODO AGP Migration: AIDL Move to single android library module
-        // TODO AGP Migration: Remove BuildConfig from KMP android side
         // TODO AGP Migration: Test package optimization
 
         optimization {
@@ -57,16 +56,7 @@ kotlin {
             }
         }
 
-        // TODO AGP Migration: Remove build config comments
-//        buildTypes.getByName("release") {
-//            buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani\"")
-//        }
-//        buildTypes.getByName("debug") {
-//            buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani.debug2\"")
-//        }
 //        buildFeatures {
-//            compose = true
-//            buildConfig = true
 //            aidl = true
 //        }
     }
@@ -188,6 +178,7 @@ kotlin {
         api(libs.coil)
 
         api(libs.logback.android)
+        api(projects.utils.buildConfig)
     }
 
     sourceSets.androidHostTest.dependencies {
