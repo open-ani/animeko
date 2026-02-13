@@ -43,7 +43,6 @@ kotlin {
         namespace = "me.him188.ani"
         compileSdk = getIntProperty("android.compile.sdk")
         minSdk = getIntProperty("android.min.sdk")
-        // TODO AGP Migration: AIDL Move to single android library module
         // TODO AGP Migration: Test package optimization
 
         optimization {
@@ -56,9 +55,6 @@ kotlin {
             }
         }
 
-//        buildFeatures {
-//            aidl = true
-//        }
     }
 
     sourceSets.commonMain.dependencies {

@@ -15,7 +15,8 @@ plugins {
 
     `ani-mpp-lib-targets`
     alias(libs.plugins.kotlin.plugin.serialization)
-    alias(libs.plugins.kotlinx.atomicfu)
+    // TODO AGP Migration: atomicfu plugin broken see: https://github.com/Kotlin/kotlinx-atomicfu/issues/511
+    // alias(libs.plugins.kotlinx.atomicfu)
     id("kotlin-parcelize")
 
     alias(libs.plugins.google.devtools.ksp)
@@ -73,6 +74,7 @@ kotlin {
         api(libs.paging.common)
 
         implementation(libs.koin.core)
+        implementation(libs.atomicfu)
     }
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)
@@ -91,6 +93,7 @@ kotlin {
         api(libs.androidx.lifecycle.runtime.ktx)
         api(libs.androidx.lifecycle.service)
         api(libs.androidx.lifecycle.process)
+        api(projects.app.shared.appDataAidl)
     }
     sourceSets.nativeMain.dependencies {
         implementation(libs.stately.common) // fixes koin bug
@@ -100,6 +103,10 @@ kotlin {
 
 room {
     schemaDirectory("$projectDir/schemas")
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {

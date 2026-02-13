@@ -83,6 +83,7 @@ includeProject(":torrent:anitorrent")
 includeProject(":app:shared")
 includeProject(":app:shared:app-platform")
 includeProject(":app:shared:app-data")
+includeProject(":app:shared:app-data-aidl")
 includeProject(":app:shared:app-lang") // We have a separate module so that the project compiles faster
 includeProject(":app:shared:ui-foundation")
 includeProject(":app:shared:ui-settings")
