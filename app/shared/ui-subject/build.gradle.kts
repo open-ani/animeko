@@ -15,7 +15,8 @@ plugins {
 
     `ani-mpp-lib-targets`
     alias(libs.plugins.kotlin.plugin.serialization)
-    alias(libs.plugins.kotlinx.atomicfu)
+    // TODO AGP Migration: atomicfu plugin broken see: https://github.com/Kotlin/kotlinx-atomicfu/issues/511
+    // alias(libs.plugins.kotlinx.atomicfu)
 }
 
 kotlin {

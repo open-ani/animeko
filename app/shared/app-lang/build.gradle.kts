@@ -15,7 +15,8 @@ plugins {
 
     `ani-mpp-lib-targets`
     alias(libs.plugins.kotlin.plugin.serialization)
-    org.jetbrains.kotlinx.atomicfu
+    // TODO AGP Migration: atomicfu plugin broken see: https://github.com/Kotlin/kotlinx-atomicfu/issues/511
+    // org.jetbrains.kotlinx.atomicfu
     idea
 }
 
@@ -24,6 +25,7 @@ kotlin {
         namespace = "me.him188.ani.app.ui.lang"
     }
     sourceSets.commonMain.dependencies {
+        implementation(libs.atomicfu)
         api(compose.components.resources)
     }
     sourceSets.commonTest.dependencies {

@@ -12,7 +12,9 @@ plugins {
     // no android because commonTest needs resources that are not supported by android
     `ani-mpp-lib-targets`
     alias(libs.plugins.kotlin.plugin.serialization)
-    alias(libs.plugins.kotlinx.atomicfu)
+    // TODO AGP Migration: atomicfu plugin broken transform
+
+    // alias(libs.plugins.kotlinx.atomicfu)
     `flatten-source-sets`
 }
 
@@ -26,6 +28,7 @@ kotlin {
 
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
+            implementation(libs.atomicfu)
         }
     }
 }

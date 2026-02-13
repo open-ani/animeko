@@ -15,7 +15,8 @@ plugins {
 
     `ani-mpp-lib-targets`
     alias(libs.plugins.kotlin.plugin.serialization)
-    org.jetbrains.kotlinx.atomicfu
+    // TODO AGP Migration: atomicfu plugin broken see: https://github.com/Kotlin/kotlinx-atomicfu/issues/511
+    // org.jetbrains.kotlinx.atomicfu
 }
 
 kotlin {
@@ -27,6 +28,7 @@ kotlin {
         api(projects.app.shared.uiFoundation)
         api(projects.app.shared.uiAdaptive)
         api(projects.app.shared.uiSettings)
+        implementation(libs.atomicfu)
         implementation(projects.utils.ktorClient)
         implementation(compose.components.resources)
         implementation(projects.utils.logging)

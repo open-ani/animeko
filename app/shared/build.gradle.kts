@@ -22,7 +22,8 @@ plugins {
     `ani-mpp-lib-targets`
 
     alias(libs.plugins.kotlin.plugin.serialization)
-    alias(libs.plugins.kotlinx.atomicfu)
+    // TODO AGP Migration: atomicfu plugin broken see: https://github.com/Kotlin/kotlinx-atomicfu/issues/511
+    // alias(libs.plugins.kotlinx.atomicfu)
     alias(libs.plugins.sentry.kotlin.multiplatform)
     idea
 }
@@ -32,9 +33,10 @@ compose.resources {
     generateResClass = always
 }
 
-atomicfu {
-    transformJvm = false // 这东西很不靠谱, 等 atomicfu 正式版了可能可以考虑下
-}
+// TODO AGP Migration: atomicfu plugin broken see: https://github.com/Kotlin/kotlinx-atomicfu/issues/511
+//atomicfu {
+//    transformJvm = false // 这东西很不靠谱, 等 atomicfu 正式版了可能可以考虑下
+//}
 
 val enableIosFramework = enableIos && getPropertyOrNull("ani.build.framework") != "false"
 
