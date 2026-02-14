@@ -94,7 +94,7 @@ kotlin {
         api(libs.compose.navigation.compose)
         api(libs.compose.navigation.runtime)
         api(libs.compose.material3.adaptive.navigation.suite)
-        implementation(compose.components.resources)
+        implementation(libs.compose.components.resources)
         implementation(projects.app.shared.reorderable)
 
         // Data sources
@@ -191,7 +191,7 @@ kotlin {
 
     sourceSets.named("desktopMain").dependencies {
         api(compose.desktop.currentOs) {
-            exclude(compose.material) // We use material3
+            exclude("org.jetbrains.compose.material:material") // We use material3
             exclude("org.jetbrains.compose.ui:ui-tooling-preview")
         }
         api("org.jetbrains.compose.ui:ui-graphics-desktop:${libs.versions.compose.multiplatform.get()}")

@@ -47,7 +47,7 @@ kotlin {
     }
     sourceSets.desktopMain.dependencies {
         api(compose.desktop.currentOs) {
-            exclude(compose.material) // We use material3
+            exclude("org.jetbrains.compose.material:material") // We use material3
         }
 
         api(libs.kotlinx.coroutines.swing)

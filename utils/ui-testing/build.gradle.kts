@@ -7,7 +7,6 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-import org.jetbrains.compose.ExperimentalComposeLibrary
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -32,11 +31,10 @@ kotlin {
         api(libs.kotlinx.io.core)
         api(libs.kotlinx.coroutines.core)
         api(libs.kotlinx.coroutines.test)
-        @OptIn(ExperimentalComposeLibrary::class)
-        api(compose.uiTest)
+        api(libs.compose.ui.test)
         api(kotlin("test"))
 
-        api(compose.runtime)
+        api(libs.compose.runtime)
         implementation(libs.compose.lifecycle.runtime.compose)
         implementation(libs.compose.lifecycle.runtime)
     }

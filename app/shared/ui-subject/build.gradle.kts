@@ -27,7 +27,7 @@ kotlin {
         api(projects.app.shared.uiFoundation)
         api(projects.app.shared.uiAdaptive)
         api(projects.app.shared.uiComment)
-        implementation(compose.components.resources)
+        implementation(libs.compose.components.resources)
         implementation(projects.app.shared.placeholder)
     }
     sourceSets.commonTest.dependencies {

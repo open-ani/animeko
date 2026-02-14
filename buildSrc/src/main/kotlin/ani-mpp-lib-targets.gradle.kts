@@ -14,7 +14,6 @@ import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryExtension
 import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
 import org.jetbrains.compose.ComposeExtension
 import org.jetbrains.compose.ComposePlugin
-import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.kotlin.compose.compiler.gradle.ComposeFeatureFlag
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
@@ -132,22 +131,21 @@ configure<KotlinMultiplatformExtension> {
     compilerOptions {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
-
+    val libs = versionCatalogs.named("libs")
+    val composeMultiplatformVersion = libs.findVersion("compose-multiplatform").get()
     sourceSets.commonMain.dependencies {
         // 添加常用依赖
         if (composeExtension != null) {
-            val compose = ComposePlugin.Dependencies(project)
             // Compose
-            api(compose.foundation)
-            api(compose.animation)
-            api(compose.ui)
-
-            val libs = versionCatalogs.named("libs")
+            api("org.jetbrains.compose.foundation:foundation:${composeMultiplatformVersion}")
+            api("org.jetbrains.compose.animation:animation:${composeMultiplatformVersion}")
+            api("org.jetbrains.compose.ui:ui:${composeMultiplatformVersion}")
+            
             api("org.jetbrains.compose.material3:material3:${libs.findVersion("compose-material3").get()}")
             api("org.jetbrains.androidx.window:window-core:${libs.findVersion("compose-window-core").get()}")
 
-            api(compose.materialIconsExtended)
-            api(compose.runtime)
+            api("org.jetbrains.compose.material:material-icons-extended:1.7.3")
+            api("org.jetbrains.compose.runtime:runtime:${composeMultiplatformVersion}")
         }
 
         if (project.path != ":utils:platform") {
@@ -157,9 +155,7 @@ configure<KotlinMultiplatformExtension> {
     sourceSets.commonTest.dependencies {
         // https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-test.html#writing-and-running-tests-with-compose-multiplatform
         if (composeExtension != null) {
-            val compose = ComposePlugin.Dependencies(project)
-            @OptIn(ExperimentalComposeLibrary::class)
-            implementation(compose.uiTest)
+            implementation("org.jetbrains.compose.ui:ui-test:${composeMultiplatformVersion}")
         }
         implementation(project(":utils:testing"))
     }
@@ -167,7 +163,7 @@ configure<KotlinMultiplatformExtension> {
     if (composeExtension != null) {
         sourceSets.getByName("desktopMain").dependencies {
             val compose = ComposePlugin.Dependencies(project)
-            implementation(compose.desktop.uiTestJUnit4)
+            implementation("org.jetbrains.compose.ui:ui-test-junit4:${composeMultiplatformVersion}")
         }
     }
 

@@ -39,7 +39,7 @@ kotlin {
         api(libs.coil.svg)
         api(libs.coil.network.ktor3)
 
-        implementation(compose.components.resources)
+        implementation(libs.compose.components.resources)
         api(libs.compose.lifecycle.viewmodel.compose)
         api(libs.compose.lifecycle.runtime.compose)
         api(libs.compose.navigation.compose)

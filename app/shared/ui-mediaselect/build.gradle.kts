@@ -30,7 +30,7 @@ kotlin {
         api(projects.app.shared.uiSettings)
         implementation(libs.atomicfu)
         implementation(projects.utils.ktorClient)
-        implementation(compose.components.resources)
+        implementation(libs.compose.components.resources)
         implementation(projects.utils.logging)
     }
     sourceSets.commonTest.dependencies {

@@ -26,7 +26,7 @@ kotlin {
     sourceSets.commonMain.dependencies {
         api(projects.app.shared.uiFoundation)
         api(projects.app.shared.uiAdaptive)
-        implementation(compose.components.resources)
+        implementation(libs.compose.components.resources)
         implementation(projects.app.shared.placeholder)
     }
     sourceSets.commonTest.dependencies {

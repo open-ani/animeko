@@ -26,7 +26,7 @@ kotlin {
     }
     sourceSets.commonMain.dependencies {
         implementation(libs.atomicfu)
-        api(compose.components.resources)
+        api(libs.compose.components.resources)
     }
     sourceSets.commonTest.dependencies {
     }

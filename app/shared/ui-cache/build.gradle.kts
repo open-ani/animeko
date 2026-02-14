@@ -28,7 +28,7 @@ kotlin {
         api(projects.app.shared.uiAdaptive)
         api(projects.app.shared.uiSettings)
         api(projects.app.shared.uiMediaselect)
-        implementation(compose.components.resources)
+        implementation(libs.compose.components.resources)
         implementation(projects.app.shared.placeholder)
     }
     sourceSets.commonTest.dependencies {

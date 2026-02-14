@@ -24,7 +24,7 @@ kotlin {
         api(libs.androidx.annotation)
     }
     sourceSets.skikoMain.dependencies {
-        implementation(compose.components.uiToolingPreview)
+        implementation(libs.compose.ui.tooling.preview)
     }
     sourceSets.androidMain.dependencies {
         api(libs.androidx.compose.ui.tooling.preview)
