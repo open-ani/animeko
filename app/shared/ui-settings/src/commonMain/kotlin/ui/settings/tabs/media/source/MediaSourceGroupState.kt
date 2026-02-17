@@ -16,6 +16,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -147,6 +148,11 @@ class EditMediaSourceState(
     private val onSetEnabled: suspend (instanceId: String, enabled: Boolean) -> Unit,
     private val backgroundScope: CoroutineScope,
 ) {
+    data class DeleteMediaSourcesResult(
+        val deleted: Int,
+        val failed: Int,
+    )
+
     var editMediaSourceState by mutableStateOf<EditingMediaSource?>(null)
         private set
 
@@ -185,6 +191,7 @@ class EditMediaSourceState(
     }
 
     private val editTasker = MonoTasker(backgroundScope)
+    val isEditTaskRunning get() = editTasker.isRunning
 
     fun confirmEdit(state: EditingMediaSource): Job {
         return editTasker.launch {
@@ -221,6 +228,35 @@ class EditMediaSourceState(
     fun deleteMediaSource(item: MediaSourcePresentation) {
         editTasker.launch {
             onDelete(item.instanceId)
+        }
+    }
+
+    fun deleteMediaSources(
+        items: List<MediaSourcePresentation>,
+        onComplete: suspend (DeleteMediaSourcesResult) -> Unit = {},
+    ) {
+        editTasker.launch {
+            val targets = items.distinctBy { it.instanceId }
+            var deleted = 0
+            var failed = 0
+            targets.forEach { item ->
+                runCatching {
+                    onDelete(item.instanceId)
+                }.onSuccess {
+                    deleted++
+                }.onFailure { throwable ->
+                    if (throwable is CancellationException) throw throwable
+                    failed++
+                }
+            }
+            withContext(Dispatchers.Main) {
+                onComplete(
+                    DeleteMediaSourcesResult(
+                        deleted = deleted,
+                        failed = failed,
+                    ),
+                )
+            }
         }
     }
 
