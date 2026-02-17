@@ -10,6 +10,7 @@
 import com.android.build.api.dsl.CommonExtension
 import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryExtension
 import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
+import com.android.build.gradle.api.KotlinMultiplatformAndroidPlugin
 import org.gradle.api.Action
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
@@ -262,13 +263,19 @@ fun Project.configureKotlinTestSettings() {
                 // this must be added to `androidTest`, instead of just `androidInstrumentedTest`
 
                 // TODO AGP Migration: Check the android test
-                kotlinSourceSets?.getByName("androidDeviceTest")?.dependencies {
-                    implementation(libs.getLibrary("androidx-test-runner"))
-                    implementation(libs.getLibrary("junit5-android-test-core"))
-                    runtimeOnly(libs.getLibrary("junit5-android-test-runner"))
+                val androidTestSourceSets = listOf(
+                    kotlinSourceSets?.getByName("androidHostTest"),
+                    kotlinSourceSets?.getByName("androidDeviceTest"),
+                )
+                androidTestSourceSets.forEach {
+                    it?.dependencies {
+                        implementation(libs.getLibrary("androidx-test-runner"))
+                        implementation(libs.getLibrary("junit5-android-test-core"))
+                        runtimeOnly(libs.getLibrary("junit5-android-test-runner"))
 
-                    implementation(libs.getLibrary("junit5-jupiter-api"))
-                    runtimeOnly(libs.getLibrary("junit5-jupiter-engine"))
+                        implementation(libs.getLibrary("junit5-jupiter-api"))
+                        runtimeOnly(libs.getLibrary("junit5-jupiter-engine"))
+                    }
                 }
             }
 
@@ -332,9 +339,8 @@ fun Project.withKotlinTargets(fn: (KotlinTarget) -> Unit) {
 internal fun KotlinMultiplatformExtension.androidLibrary(
     action: Action<KotlinMultiplatformAndroidLibraryTarget>
 ) {
-    val androidPlugin = "com.android.kotlin.multiplatform.library"
-    if (!project.plugins.hasPlugin(androidPlugin)) {
-        throw IllegalStateException("plugin $androidPlugin is not applied")
+    if (!project.plugins.hasPlugin(KotlinMultiplatformAndroidPlugin::class.java)) {
+        throw IllegalStateException("KMP Android plugin is not applied")
     }
     extensions.configure("android", action)
 }

@@ -15,7 +15,7 @@ plugins {
 
     `ani-mpp-lib-targets`
     alias(libs.plugins.kotlin.plugin.serialization)
-    // TODO AGP Migration: atomicfu plugin broken see: https://github.com/Kotlin/kotlinx-atomicfu/issues/511
+
     // alias(libs.plugins.kotlinx.atomicfu)
 }
 
@@ -38,7 +38,7 @@ kotlin {
         api(libs.koin.core)
     }
     sourceSets.commonTest.dependencies {
-        api(projects.utils.uiTesting)
+        implementation(projects.utils.uiTesting)
     }
     sourceSets.androidMain.dependencies {
         api(libs.androidx.compose.ui.tooling.preview)

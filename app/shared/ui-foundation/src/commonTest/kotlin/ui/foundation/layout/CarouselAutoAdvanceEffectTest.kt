@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -32,6 +32,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.testing.TestLifecycleOwner
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForTest
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
+import me.him188.ani.test.DisabledOnAndroid
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.milliseconds
@@ -45,6 +46,15 @@ class CarouselAutoAdvanceEffectTest {
     }
 
     @Test
+    @DisabledOnAndroid
+    // Cannot invoke "String.toLowerCase(java.util.Locale)" because "android.os.Build.FINGERPRINT" is null
+    //java.lang.NullPointerException: Cannot invoke "String.toLowerCase(java.util.Locale)" because "android.os.Build.FINGERPRINT" is null
+    //	at androidx.compose.ui.test.RobolectricIdlingStrategy_androidKt.getHasRobolectricFingerprint(RobolectricIdlingStrategy.android.kt:32)
+    //	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$runTest$1$1.invokeSuspend(ComposeUiTest.android.kt:589)
+    //	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$runTest$1$1.invoke(ComposeUiTest.android.kt)
+    //	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$runTest$1$1.invoke(ComposeUiTest.android.kt)
+    //	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$1.invokeSuspend(TestBuilders.kt:317)
+    //	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
     fun `auto-advance - whenEnabledAndLifecycleResumed - advancesPageAfterPeriod`() = runAniComposeUiTest {
         mainClock.autoAdvance = false
         val testLifecycleOwner = createTestLifecycleOwner(Lifecycle.State.RESUMED)
@@ -84,6 +94,7 @@ class CarouselAutoAdvanceEffectTest {
     }
 
     @Test
+    @DisabledOnAndroid
     fun `auto-advance - whenDisabled - doesNotAdvancePage`() = runAniComposeUiTest {
         mainClock.autoAdvance = false
         val testLifecycleOwner = createTestLifecycleOwner(Lifecycle.State.RESUMED)
@@ -116,6 +127,7 @@ class CarouselAutoAdvanceEffectTest {
     }
 
     @Test
+    @DisabledOnAndroid
     fun `auto-advance - userScrollInProgress - skipAutoAdvance`() = runAniComposeUiTest {
         mainClock.autoAdvance = false
         val testLifecycleOwner = createTestLifecycleOwner(Lifecycle.State.RESUMED)
@@ -197,6 +209,7 @@ class CarouselAutoAdvanceEffectTest {
     }
 
     @Test
+    @DisabledOnAndroid
     fun `auto-advance - lifecyclePausedThenResumed - resumesAutoAdvance`() = runAniComposeUiTest {
         mainClock.autoAdvance = false
         val testLifecycleOwner = createTestLifecycleOwner(Lifecycle.State.RESUMED)
@@ -249,6 +262,7 @@ class CarouselAutoAdvanceEffectTest {
     }
 
     @Test
+    @DisabledOnAndroid
     fun `auto-advance - wrapAround - goesBackToFirstPage`() = runAniComposeUiTest {
         mainClock.autoAdvance = false
         val testLifecycleOwner = createTestLifecycleOwner(Lifecycle.State.RESUMED)

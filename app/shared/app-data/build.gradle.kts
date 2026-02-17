@@ -15,7 +15,7 @@ plugins {
 
     `ani-mpp-lib-targets`
     alias(libs.plugins.kotlin.plugin.serialization)
-    // TODO AGP Migration: atomicfu plugin broken see: https://github.com/Kotlin/kotlinx-atomicfu/issues/511
+
     // alias(libs.plugins.kotlinx.atomicfu)
     id("kotlin-parcelize")
 
@@ -27,7 +27,6 @@ plugins {
 kotlin {
     androidLibrary {
         namespace = "me.him188.ani.app.data"
-        // TODO AGP Migration: AIDL Move to single android library module
     }
     sourceSets.commonMain.dependencies {
         implementation(projects.app.shared.appPlatform)
@@ -110,11 +109,11 @@ ksp {
 }
 
 dependencies {
-    add("kspDesktop", libs.androidx.room.compiler)
-    add("kspAndroid", libs.androidx.room.compiler)
+    kspDesktop(libs.androidx.room.compiler)
+    kspAndroid(libs.androidx.room.compiler)
     if (enableIos) {
-        add("kspIosArm64", libs.androidx.room.compiler)
-        add("kspIosSimulatorArm64", libs.androidx.room.compiler)
+        kspIosArm64(libs.androidx.room.compiler)
+        kspIosSimulatorArm64(libs.androidx.room.compiler)
     }
     androidRuntimeClasspath(libs.androidx.compose.ui.tooling)
 }

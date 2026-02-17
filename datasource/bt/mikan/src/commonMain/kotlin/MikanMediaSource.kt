@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -326,13 +326,12 @@ abstract class AbstractMikanMediaSource(
 
         fun parseMikanSubjectIdsFromSearch(document: Document): List<String> {
             return document.getElementsByClass("an-info").mapNotNull { anInfo ->
-                anInfo.parent()?.let { a ->
-                    val attr = a.attr("href")
-                    if (attr.isEmpty()) return@let null
+                val anode = anInfo.parent() ?: return@mapNotNull null
+                val attr = anode.attr("href")
+                if (attr.isEmpty()) return@mapNotNull null
 
-                    attr.substringAfter("/Home/Bangumi/", "")
-                        .takeIf { it.isNotBlank() }
-                }
+                attr.substringAfter("/Home/Bangumi/", "")
+                    .takeIf { it.isNotBlank() }
             }
         }
 

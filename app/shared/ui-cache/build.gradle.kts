@@ -15,7 +15,7 @@ plugins {
 
     `ani-mpp-lib-targets`
     alias(libs.plugins.kotlin.plugin.serialization)
-    // TODO AGP Migration: atomicfu plugin broken see: https://github.com/Kotlin/kotlinx-atomicfu/issues/511
+
     // alias(libs.plugins.kotlinx.atomicfu)
 }
 
@@ -30,11 +30,6 @@ kotlin {
         api(projects.app.shared.uiMediaselect)
         implementation(libs.compose.components.resources)
         implementation(projects.app.shared.placeholder)
-    }
-    sourceSets.commonTest.dependencies {
-    }
-    sourceSets.named("jvmTest").dependencies {
-        implementation(kotlin("reflect"))
     }
     sourceSets.androidMain.dependencies {
     }

@@ -32,7 +32,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
  */
 
 val androidLibraryExtension = extensions.findByType(KotlinMultiplatformExtension::class)
-        ?.extensions?.findByType(KotlinMultiplatformAndroidLibraryExtension::class) 
+    ?.extensions?.findByType(KotlinMultiplatformAndroidLibraryExtension::class)
 val composeExtension = extensions.findByType(ComposeExtension::class)
 val composeCompilerExtension =
     extensions.findByType(org.jetbrains.kotlin.compose.compiler.gradle.ComposeCompilerGradlePluginExtension::class)
@@ -73,7 +73,7 @@ configure<KotlinMultiplatformExtension> {
             androidResources.enable = true
 
             withHostTestBuilder {
-                sourceSetTreeName = KotlinSourceSetTree.unitTest.name
+                sourceSetTreeName = KotlinSourceSetTree.test.name
             }
 
             withDeviceTestBuilder {
@@ -140,7 +140,7 @@ configure<KotlinMultiplatformExtension> {
             api("org.jetbrains.compose.foundation:foundation:${composeMultiplatformVersion}")
             api("org.jetbrains.compose.animation:animation:${composeMultiplatformVersion}")
             api("org.jetbrains.compose.ui:ui:${composeMultiplatformVersion}")
-            
+
             api("org.jetbrains.compose.material3:material3:${libs.findVersion("compose-material3").get()}")
             api("org.jetbrains.androidx.window:window-core:${libs.findVersion("compose-window-core").get()}")
 

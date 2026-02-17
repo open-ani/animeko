@@ -29,8 +29,6 @@ kotlin {
         implementation(libs.compose.components.resources)
         implementation(projects.utils.logging)
     }
-    sourceSets.commonTest.dependencies {
-    }
     sourceSets.androidMain.dependencies {
     }
     sourceSets.desktopMain.dependencies {

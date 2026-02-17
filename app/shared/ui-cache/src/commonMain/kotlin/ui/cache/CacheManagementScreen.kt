@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -555,7 +556,8 @@ private fun CacheManagementLayout(
                     LazyColumn(
                         modifier = Modifier
                             .paneContentPadding(extraStart = -itemContentPadding, extraEnd = -itemContentPadding)
-                            .paneWindowInsetsPadding(),
+                            .paneWindowInsetsPadding()
+                            .fillMaxHeight(),
                         state = detailListState,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(vertical = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding),

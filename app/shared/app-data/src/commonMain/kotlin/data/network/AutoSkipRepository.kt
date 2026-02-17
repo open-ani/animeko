@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -41,8 +41,8 @@ class AutoSkipRepository(
     suspend fun reportSkip(episodeId: Int, mediaSourceId: String, timeSeconds: Int, timeMillis: Long) = lock.withLock {
         val now = Clock.System.now().toEpochMilliseconds()
         val state = reportStates.getOrPut(episodeId) { EpisodeReportState(0, 0L) }
-        if (state.count >= 2) return
-        if (now - state.lastReportAt < TEN_MINUTES_MS) return
+        if (state.count >= 2) return@withLock
+        if (now - state.lastReportAt < TEN_MINUTES_MS) return@withLock
 
         withContext(ioDispatcher) {
             api {

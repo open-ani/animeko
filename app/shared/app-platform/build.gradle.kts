@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2024-2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 import com.android.build.gradle.ProguardFiles.getDefaultProguardFile
 
 /*
@@ -17,7 +26,7 @@ plugins {
 
     `ani-mpp-lib-targets`
     alias(libs.plugins.kotlin.plugin.serialization)
-    // TODO AGP Migration: atomicfu plugin broken see: https://github.com/Kotlin/kotlinx-atomicfu/issues/511
+
     // alias(libs.plugins.kotlinx.atomicfu)
     idea
     `build-config`
@@ -37,7 +46,6 @@ val distroChannel = getPropertyOrNull("ani.distro.channel") ?: "default"
 kotlin {
     androidLibrary {
         namespace = "me.him188.ani.app.platform"
-        // TODO AGP Migration: AIDL Move to single android library module
         // TODO AGP Migration: Test package optimization
         optimization {
             minify = false
@@ -74,7 +82,7 @@ kotlin {
         api(projects.utils.analytics)
     }
     sourceSets.commonTest.dependencies {
-        api(projects.utils.uiTesting)
+        implementation(projects.utils.uiTesting)
     }
     sourceSets.androidMain.dependencies {
         api(libs.androidx.compose.ui.tooling.preview)
