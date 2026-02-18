@@ -191,7 +191,7 @@ class EditMediaSourceState(
     }
 
     private val editTasker = MonoTasker(backgroundScope)
-    val isEditTaskRunning get() = editTasker.isRunning
+    val editTaskRunningFlow get() = editTasker.isRunning
 
     fun confirmEdit(state: EditingMediaSource): Job {
         return editTasker.launch {

@@ -56,6 +56,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -179,15 +180,30 @@ internal fun SettingsScope.MediaSourceGroup(
     val sorter = rememberSorterState<MediaSourcePresentation>(
         onComplete = { list -> state.reorderMediaSources(newOrder = list.map { it.instanceId }) },
     )
-    val isEditTaskRunning by edit.isEditTaskRunning.collectAsState()
+    val isEditTaskRunning by edit.editTaskRunningFlow.collectAsState()
     val canMutateMediaSources = !isEditTaskRunning
-    val invalidSources = state.mediaSources.filter {
-        it.connectionTester.result == ConnectionTestResult.FAILED
+    val invalidSources by remember {
+        derivedStateOf {
+            // 不能用 remember(state.mediaSources) 缓存：tester.result 是原地变化，不会改变列表 identity。
+            state.mediaSources.filter {
+                it.connectionTester.result == ConnectionTestResult.FAILED
+            }
+        }
     }
-    val showClearButton = invalidSources.isNotEmpty() &&
-            !state.mediaSourceTesters.anyTesting &&
-            canMutateMediaSources &&
-            !sorter.isSorting
+    val isEditingUiActive = edit.editMediaSourceState != null || showSelectTemplate
+    val showClearButton = remember(
+        invalidSources,
+        state.mediaSourceTesters.anyTesting,
+        isEditTaskRunning,
+        sorter.isSorting,
+        isEditingUiActive,
+    ) {
+        invalidSources.isNotEmpty() &&
+                !state.mediaSourceTesters.anyTesting &&
+                !isEditTaskRunning &&
+                !sorter.isSorting &&
+                !isEditingUiActive
+    }
     val platform = LocalPlatform.current
 
     Group(
