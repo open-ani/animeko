@@ -1371,8 +1371,8 @@ class WithMatrix(
             runGradle(
                 name = "Compile Kotlin Android",
                 tasks = arrayOf(
-                    "compileDebugKotlinAndroid",
-                    "compileReleaseKotlinAndroid",
+                    "compileDefaultDebugKotlin",
+                    "compileDefaultReleaseKotlin",
                 ),
                 maxAttempts = 2,
             )
@@ -1508,8 +1508,14 @@ class WithMatrix(
     fun JobBuilder<*>.gradleCheck() {
         if (matrix.runTests) {
             runGradle(
-                name = "Check",
-                tasks = arrayOf("check"),
+                name = "Check (Desktop)",
+                tasks = arrayOf("desktopTest", "--rerun-tasks"),
+                maxAttempts = 3,
+                timeoutMinutes = 180,
+            )
+            runGradle(
+                name = "Check (Android Host)",
+                tasks = arrayOf("testAndroidHostTest", "--rerun-tasks"),
                 maxAttempts = 3,
                 timeoutMinutes = 180,
             )
@@ -1531,7 +1537,7 @@ class WithMatrix(
             runGradle(
                 name = "Build Android Instrumented Tests",
                 tasks = arrayOf(
-                    "assembleDebugAndroidTest",
+                    "compileAndroidDeviceTest",
                     "\"-Pandroid.min.sdk=30\"",
                 ),
                 maxAttempts = 3,
@@ -1549,7 +1555,7 @@ class WithMatrix(
                         action = AndroidEmulatorRunner(
                             apiLevel = apiLevel,
                             arch = arch,
-                            script = "./gradlew connectedDefaultDebugAndroidTest \"-Pandroid.min.sdk=30\" " + matrix.gradleArgs,
+                            script = "./gradlew connectedDeviceTest \"-Pandroid.min.sdk=30\" " + matrix.gradleArgs,
                             emulatorBootTimeout = 1800,
                         ),
                     )

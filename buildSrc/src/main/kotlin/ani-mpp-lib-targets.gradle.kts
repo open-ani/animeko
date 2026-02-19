@@ -79,6 +79,9 @@ configure<KotlinMultiplatformExtension> {
             withDeviceTestBuilder {
                 sourceSetTreeName = KotlinSourceSetTree.test.name
             }.configure {
+                targetSdk {
+                    release(getIntProperty("android.min.sdk"))
+                }
                 instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
                 instrumentationRunnerArguments["runnerBuilder"] = "de.mannodermaus.junit5.AndroidJUnit5Builder"
                 instrumentationRunnerArguments["package"] = "me.him188"
@@ -87,8 +90,8 @@ configure<KotlinMultiplatformExtension> {
 
             packaging {
                 resources {
-                    /*pickFirsts.add("META-INF/LICENSE.md")
-                    pickFirsts.add("META-INF/LICENSE-notice.md")*/
+                    pickFirsts.add("META-INF/LICENSE.md")
+                    pickFirsts.add("META-INF/LICENSE-notice.md")
                 }
             }
         }
