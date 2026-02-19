@@ -27,7 +27,7 @@
 @file:DependsOn("timheuer:base64-to-file:v1.1")
 @file:DependsOn("actions:upload-artifact:v4")
 @file:DependsOn("actions:download-artifact:v4")
-@file:DependsOn("reactivecircus:android-emulator-runner:v2.33.0")
+@file:DependsOn("reactivecircus:android-emulator-runner:v2.35.0")
 @file:DependsOn("jlumbroso:free-disk-space:v1.3.1")
 
 // Release
@@ -1549,13 +1549,18 @@ class WithMatrix(
             )) {
                 // 30 is min for instrumented test (because we have spaces in func names), 
                 // 35 is our targetSdk
-                for (apiLevel in listOf(30, 35)) {
+                for (apiLevel in listOf(30, 36)) {
                     uses(
                         name = "Android Instrumented Test (api=$apiLevel, arch=${arch.stringValue})",
                         action = AndroidEmulatorRunner(
-                            apiLevel = apiLevel,
+                            apiLevel = apiLevel.toString(),
                             arch = arch,
-                            script = "./gradlew connectedDeviceTest \"-Pandroid.min.sdk=30\" " + matrix.gradleArgs,
+                            script = buildString {
+                                append("./gradlew connectedDeviceTest \"-Pandroid.min.sdk=30\" ")
+                                append(matrix.gradleArgs)
+                                // https://github.com/ReactiveCircus/android-emulator-runner/issues/385#issuecomment-2492035091
+                                append(" && killall -INT crashpad_handler || true")
+                            },
                             emulatorBootTimeout = 1800,
                         ),
                     )
