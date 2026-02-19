@@ -185,7 +185,7 @@ compose.desktop {
         if (getLocalProperty("ani.desktop.proguard")?.toBooleanStrict() != false) {
             buildTypes.release.proguard {
                 isEnabled.set(true)
-                version = "7.7.0"
+                version = "7.8.0"
                 optimize.set(true)
                 obfuscate.set(false)
                 this.configurationFiles.from(project(":app:shared").sharedAndroidProguardRules())
