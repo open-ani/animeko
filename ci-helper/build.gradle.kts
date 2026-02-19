@@ -109,148 +109,7 @@ class ArtifactNamer {
     }
 }
 
-tasks.register("uploadAndroidApk") {
-    val buildDirectory = project(":app:android").layout.buildDirectory
-    doLast {
-        ReleaseEnvironment().run {
-            val files = buildDirectory.file("outputs/apk/default/release")
-                .get().asFile.walk()
-                .filter { it.extension == "apk" && it.name.contains("release") }
-
-            for (file in files) {
-                // android-default-arm64-v8a-release.apk
-                val arch = file.name.substringAfter("android-default-")
-                    .substringBefore("-release.apk")
-                uploadReleaseAsset(
-                    name = namer.androidApp(fullVersion, arch),
-                    contentType = "application/vnd.android.package-archive",
-                    file = file,
-                )
-            }
-        }
-    }
-}
-
-tasks.register("uploadAndroidApkQR") {
-    doLast {
-        ReleaseEnvironment().run {
-            uploadReleaseAsset(
-                name = namer.androidAppQR(fullVersion, "universal", "github"),
-                contentType = "image/png",
-                file = rootProject.file("apk-qrcode-github.png"),
-            )
-            uploadReleaseAsset(
-                name = namer.androidAppQR(fullVersion, "universal", "cloudflare"),
-                contentType = "image/png",
-                file = rootProject.file("apk-qrcode-cloudflare.png"),
-            )
-        }
-    }
-}
-
-tasks.register("uploadIosIpaQR") {
-    doLast {
-        ReleaseEnvironment().run {
-            uploadReleaseAsset(
-                name = namer.iosIpaQR(fullVersion, "github"),
-                contentType = "image/png",
-                file = rootProject.file("ipa-qrcode-github.png"),
-            )
-            uploadReleaseAsset(
-                name = namer.iosIpaQR(fullVersion, "cloudflare"),
-                contentType = "image/png",
-                file = rootProject.file("ipa-qrcode-cloudflare.png"),
-            )
-        }
-    }
-}
-
-val zipDesktopDistribution = tasks.register("zipDesktopDistribution", Zip::class) {
-    dependsOn(
-        ":app:desktop:createReleaseDistributable",
-    )
-    from(project(":app:desktop").layout.buildDirectory.dir("compose/binaries/main-release/app"))
-    // ani-3.0.0-beta22-dev7.zip
-    archiveBaseName.set("ani")
-    archiveVersion.set(ReleaseEnvironment().fullVersion)
-    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
-    archiveExtension.set("zip")
-}
-
-tasks.register("uploadDesktopInstallers") {
-    dependsOn(zipDesktopDistribution)
-
-    if (hostOS == OS.MACOS && hostArch == "aarch64") {
-        dependsOn(
-            ":app:desktop:packageReleaseDistributionForCurrentOS",
-        )
-    }
-
-    doLast {
-        ReleaseEnvironment().uploadDesktopDistributions()
-    }
-}
-
-tasks.register("uploadIosIpa") {
-    dependsOn(":app:ios:buildReleaseIpa")
-    val file = project(":app:ios").tasks.getByPath("buildReleaseIpa").outputs.files.singleFile
-    doLast {
-        ReleaseEnvironment().uploadIpa(file)
-    }
-}
-
-//tasks.register("uploadServerDistribution") {
-//    dependsOn(
-//        ":server:distZip",
-//        ":server:distTar",
-//    )
-//
-//    doLast {
-//        val distZip = project(":server").tasks.getByName("distZip", Zip::class).archiveFile.get().asFile
-//        val distTar = project(":server").tasks.getByName("distTar", Tar::class).archiveFile.get().asFile
-//
-//        ReleaseEnvironment().run {
-//            uploadReleaseAsset(namer.server(fullVersion, "tar"), "application/x-tar", distTar)
-//            uploadReleaseAsset(namer.server(fullVersion, "zip"), "application/zip", distZip)
-//        }
-//    }
-//}
-
-tasks.register("prepareArtifactsForManualUpload") {
-    dependsOn(
-        ":app:desktop:createReleaseDistributable",
-        ":app:desktop:packageReleaseDistributionForCurrentOS",
-    )
-    dependsOn(zipDesktopDistribution)
-
-    doLast {
-        val distributionDir = project.layout.buildDirectory.dir("distribution").get().asFile.apply { mkdirs() }
-
-        object : ReleaseEnvironment() {
-            override val fullVersion: String = project.version.toString()
-            override fun uploadReleaseAsset(name: String, contentType: String, file: File) {
-                val target = distributionDir.resolve(name)
-                target.delete()
-                file.copyTo(target)
-                println("File written: ${target.absoluteFile}")
-            }
-        }.run {
-            uploadDesktopDistributions()
-            uploadReleaseAsset(
-                name = namer.desktopDistributionFile(
-                    fullVersion,
-                    osName = hostOS.name.lowercase(),
-                    extension = "zip",
-                ),
-                contentType = "application/octet-stream",
-                file = zipDesktopDistribution.get().archiveFile.get().asFile,
-            )
-        }
-    }
-}
-
-// do not use `object`, compiler bug
-open class ReleaseEnvironment {
+class ReleaseEnvironment {
     private fun getProperty(name: String) =
         System.getProperty(name)
             ?: System.getenv(name)
@@ -275,7 +134,7 @@ open class ReleaseEnvironment {
     private val shaShort by lazy {
         getProperty("GITHUB_SHA").take(8).also { println("shaShort = $it") }
     }
-    open val fullVersion by lazy {
+    val fullVersion by lazy {
         namer.getFullVersionFromTag(tag).also { println("fullVersion = $it") }
     }
     val releaseId by lazy {
@@ -288,7 +147,7 @@ open class ReleaseEnvironment {
         getProperty("GITHUB_TOKEN").also { println("token = ${it.isNotEmpty()}") }
     }
 
-    open fun uploadReleaseAsset(
+    fun uploadReleaseAsset(
         name: String,
         contentType: String,
         file: File,
@@ -465,44 +324,30 @@ open class ReleaseEnvironment {
     }
 
     fun generateReleaseVersionName(): String = tag.removePrefix("v")
-}
 
-fun ReleaseEnvironment.uploadDesktopDistributions() {
-    fun uploadBinary(
-        kind: String,
-
-        osName: String,
-        archName: String = hostArch,
-    ) {
-        uploadReleaseAsset(
-            name = namer.desktopDistributionFile(
-                fullVersion,
-                osName,
-                archName,
-                extension = kind,
-            ),
-            contentType = "application/octet-stream",
-            file = project(":app:desktop").layout.buildDirectory.dir("compose/binaries/main-release/$kind").get().asFile
-                .walk()
-                .single { it.extension == kind },
-        )
-    }
-    // installers
-    when (hostOS) {
-        OS.WINDOWS -> {
+    fun uploadDesktopDistributions() {
+        fun uploadBinary(
+            kind: String,
+            osName: String,
+            archName: String = hostArch,
+        ) {
             uploadReleaseAsset(
                 name = namer.desktopDistributionFile(
                     fullVersion,
-                    osName = hostOS.name.lowercase(),
-                    extension = "zip",
+                    osName,
+                    archName,
+                    extension = kind,
                 ),
-                contentType = "application/x-zip",
-                file = layout.buildDirectory.dir("distributions").get().asFile.walk().single { it.extension == "zip" },
+                contentType = "application/octet-stream",
+                file = project(":app:desktop").layout.buildDirectory.dir("compose/binaries/main-release/$kind")
+                    .get().asFile
+                    .walk()
+                    .single { it.extension == kind },
             )
         }
-
-        OS.MACOS -> {
-            if (hostArch == "x86_64") {
+        // installers
+        when (hostOS) {
+            OS.WINDOWS -> {
                 uploadReleaseAsset(
                     name = namer.desktopDistributionFile(
                         fullVersion,
@@ -513,34 +358,231 @@ fun ReleaseEnvironment.uploadDesktopDistributions() {
                     file = layout.buildDirectory.dir("distributions").get().asFile.walk()
                         .single { it.extension == "zip" },
                 )
-            } else {
-                uploadBinary("dmg", osName = "macos")
+            }
+
+            OS.MACOS -> {
+                if (hostArch == "x86_64") {
+                    uploadReleaseAsset(
+                        name = namer.desktopDistributionFile(
+                            fullVersion,
+                            osName = hostOS.name.lowercase(),
+                            extension = "zip",
+                        ),
+                        contentType = "application/x-zip",
+                        file = layout.buildDirectory.dir("distributions").get().asFile.walk()
+                            .single { it.extension == "zip" },
+                    )
+                } else {
+                    uploadBinary("dmg", osName = "macos")
+                }
+            }
+
+            OS.LINUX -> {
+                uploadReleaseAsset(
+                    name = namer.desktopDistributionFile(
+                        fullVersion,
+                        "linux",
+                        "x86_64",
+                        extension = "appimage",
+                    ),
+                    contentType = "application/x-appimage",
+                    file = rootProject.file("Animeko-x86_64.AppImage"),
+                )
             }
         }
+    }
 
-        OS.LINUX -> {
-            uploadReleaseAsset(
-                name = namer.desktopDistributionFile(
-                    fullVersion,
-                    "linux",
-                    "x86_64",
-                    extension = "appimage",
-                ),
-                contentType = "application/x-appimage",
-                file = rootProject.file("Animeko-x86_64.AppImage"),
+    fun uploadIpa(file: File) {
+        uploadReleaseAsset(
+            name = namer.iosIpa(fullVersion),
+            contentType = "application/x-iphone",
+            file = file,
+        )
+    }
+}
+
+val releaseEnvironment = ReleaseEnvironment()
+
+tasks.register("uploadAndroidApk") {
+    val buildDirectory = project(":app:android").layout.buildDirectory
+    doLast {
+        val files = buildDirectory.file("outputs/apk/default/release")
+            .get().asFile.walk()
+            .filter { it.extension == "apk" && it.name.contains("release") }
+
+        for (file in files) {
+            // android-default-arm64-v8a-release.apk
+            val arch = file.name.substringAfter("android-default-")
+                .substringBefore("-release.apk")
+            releaseEnvironment.uploadReleaseAsset(
+                name = namer.androidApp(releaseEnvironment.fullVersion, arch),
+                contentType = "application/vnd.android.package-archive",
+                file = file,
             )
         }
     }
 }
 
-fun ReleaseEnvironment.uploadIpa(
-    file: File,
-) {
-    uploadReleaseAsset(
-        name = namer.iosIpa(fullVersion),
-        contentType = "application/x-iphone",
-        file = file,
+tasks.register("uploadAndroidApkQR") {
+    doLast {
+        releaseEnvironment.uploadReleaseAsset(
+            name = namer.androidAppQR(releaseEnvironment.fullVersion, "universal", "github"),
+            contentType = "image/png",
+            file = rootProject.file("apk-qrcode-github.png"),
+        )
+        releaseEnvironment.uploadReleaseAsset(
+            name = namer.androidAppQR(releaseEnvironment.fullVersion, "universal", "cloudflare"),
+            contentType = "image/png",
+            file = rootProject.file("apk-qrcode-cloudflare.png"),
+        )
+    }
+}
+
+tasks.register("uploadIosIpaQR") {
+    doLast {
+        releaseEnvironment.uploadReleaseAsset(
+            name = namer.iosIpaQR(releaseEnvironment.fullVersion, "github"),
+            contentType = "image/png",
+            file = rootProject.file("ipa-qrcode-github.png"),
+        )
+        releaseEnvironment.uploadReleaseAsset(
+            name = namer.iosIpaQR(releaseEnvironment.fullVersion, "cloudflare"),
+            contentType = "image/png",
+            file = rootProject.file("ipa-qrcode-cloudflare.png"),
+        )
+    }
+}
+
+val zipDesktopDistribution = tasks.register("zipDesktopDistribution", Zip::class) {
+    dependsOn(
+        ":app:desktop:createReleaseDistributable",
     )
+    from(project(":app:desktop").layout.buildDirectory.dir("compose/binaries/main-release/app"))
+    // ani-3.0.0-beta22-dev7.zip
+    archiveBaseName.set("ani")
+    archiveVersion.set(releaseEnvironment.fullVersion)
+    destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+    archiveExtension.set("zip")
+}
+
+tasks.register("uploadDesktopInstallers") {
+    dependsOn(zipDesktopDistribution)
+
+    if (hostOS == OS.MACOS && hostArch == "aarch64") {
+        dependsOn(
+            ":app:desktop:packageReleaseDistributionForCurrentOS",
+        )
+    }
+
+    doLast {
+        releaseEnvironment.uploadDesktopDistributions()
+    }
+}
+
+tasks.register("uploadIosIpa") {
+    dependsOn(":app:ios:buildReleaseIpa")
+    val file = project(":app:ios").tasks.getByPath("buildReleaseIpa").outputs.files.singleFile
+    doLast {
+        releaseEnvironment.uploadIpa(file)
+    }
+}
+
+//tasks.register("uploadServerDistribution") {
+//    dependsOn(
+//        ":server:distZip",
+//        ":server:distTar",
+//    )
+//
+//    doLast {
+//        val distZip = project(":server").tasks.getByName("distZip", Zip::class).archiveFile.get().asFile
+//        val distTar = project(":server").tasks.getByName("distTar", Tar::class).archiveFile.get().asFile
+//
+//        ReleaseEnvironment().run {
+//            uploadReleaseAsset(namer.server(fullVersion, "tar"), "application/x-tar", distTar)
+//            uploadReleaseAsset(namer.server(fullVersion, "zip"), "application/zip", distZip)
+//        }
+//    }
+//}
+
+tasks.register("prepareArtifactsForManualUpload") {
+    dependsOn(
+        ":app:desktop:createReleaseDistributable",
+        ":app:desktop:packageReleaseDistributionForCurrentOS",
+    )
+    dependsOn(zipDesktopDistribution)
+
+    doLast {
+        val distributionDir = project.layout.buildDirectory.dir("distribution").get().asFile.apply { mkdirs() }
+        val fullVersion = project.version.toString()
+
+        fun copyToDistribution(name: String, contentType: String, file: File) {
+            val target = distributionDir.resolve(name)
+            target.delete()
+            file.copyTo(target)
+            println("File written: ${target.absoluteFile}")
+        }
+
+        fun copyBinary(
+            kind: String,
+            osName: String,
+            archName: String = hostArch,
+        ) {
+            copyToDistribution(
+                name = namer.desktopDistributionFile(fullVersion, osName, archName, extension = kind),
+                contentType = "application/octet-stream",
+                file = project(":app:desktop").layout.buildDirectory.dir("compose/binaries/main-release/$kind")
+                    .get().asFile
+                    .walk()
+                    .single { it.extension == kind },
+            )
+        }
+
+        when (hostOS) {
+            OS.WINDOWS -> {
+                copyToDistribution(
+                    name = namer.desktopDistributionFile(
+                        fullVersion,
+                        osName = hostOS.name.lowercase(),
+                        extension = "zip",
+                    ),
+                    contentType = "application/x-zip",
+                    file = layout.buildDirectory.dir("distributions").get().asFile.walk()
+                        .single { it.extension == "zip" },
+                )
+            }
+
+            OS.MACOS -> {
+                if (hostArch == "x86_64") {
+                    copyToDistribution(
+                        name = namer.desktopDistributionFile(
+                            fullVersion,
+                            osName = hostOS.name.lowercase(),
+                            extension = "zip",
+                        ),
+                        contentType = "application/x-zip",
+                        file = layout.buildDirectory.dir("distributions").get().asFile.walk()
+                            .single { it.extension == "zip" },
+                    )
+                } else {
+                    copyBinary("dmg", osName = "macos")
+                }
+            }
+
+            OS.LINUX -> {
+                copyToDistribution(
+                    name = namer.desktopDistributionFile(fullVersion, "linux", "x86_64", extension = "appimage"),
+                    contentType = "application/x-appimage",
+                    file = rootProject.file("Animeko-x86_64.AppImage"),
+                )
+            }
+        }
+
+        copyToDistribution(
+            name = namer.desktopDistributionFile(fullVersion, osName = hostOS.name.lowercase(), extension = "zip"),
+            contentType = "application/octet-stream",
+            file = zipDesktopDistribution.get().archiveFile.get().asFile,
+        )
+    }
 }
 
 // ./gradlew updateDevVersionNameFromGit -DGITHUB_REF=refs/heads/master -DGITHUB_SHA=123456789 --no-configuration-cache
@@ -553,7 +595,7 @@ tasks.register("updateDevVersionNameFromGit") {
                 ?: error("Failed to find base version. Check version.name in gradle.properties"))
                 .groupValues[1]
                 .substringBefore("-")
-        val new = ReleaseEnvironment().generateDevVersionName(base = baseVersion)
+        val new = releaseEnvironment.generateDevVersionName(base = baseVersion)
         println("New version name: $new")
         file(gradleProperties).writeText(
             properties.replaceFirst(Regex("version.name=(.+)"), "version.name=$new"),
@@ -565,7 +607,7 @@ tasks.register("updateDevVersionNameFromGit") {
 tasks.register("updateReleaseVersionNameFromGit") {
     doLast {
         val properties = file(gradleProperties).readText()
-        val new = ReleaseEnvironment().generateReleaseVersionName()
+        val new = releaseEnvironment.generateReleaseVersionName()
         println("New version name: $new")
         file(gradleProperties).writeText(
             properties.replaceFirst(Regex("version.name=(.+)"), "version.name=$new"),
