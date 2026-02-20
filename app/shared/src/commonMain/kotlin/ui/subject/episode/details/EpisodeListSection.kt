@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -47,6 +47,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -64,19 +65,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.displayName
+import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
+import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
+import me.him188.ani.app.ui.subject.createTestAiringLabelState
 import me.him188.ani.app.ui.subject.episode.details.components.EpisodeGrid
 import me.him188.ani.app.ui.subject.episode.details.components.PaginatedEpisodeList
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
+import me.him188.ani.utils.platform.annotations.TestOnly
 
 /**
  * 剧集列表区域组件，根据屏幕尺寸自适应显示不同的UI布局。
@@ -499,4 +506,34 @@ private fun EpisodeListSectionItem(
                 onLongClick = onLongClick,
             ),
     )
+}
+
+/**
+ * Preview - 窄屏剧集列表
+ */
+@OptIn(TestOnly::class)
+@PreviewLightDark
+@Composable
+internal fun PreviewEpisodeListSectionNarrow() = ProvideCompositionLocalsForPreview {
+    val scope = rememberCoroutineScope()
+    AniTheme {
+        Surface {
+            EpisodeListSection(
+                episodeCarouselState = remember {
+                    EpisodeCarouselState(
+                        episodes = mutableStateOf(PreviewEpisodeCollections),
+                        playingEpisode = mutableStateOf(PreviewEpisodeCollections.getOrNull(2)),
+                        cacheStatus = { EpisodeCacheStatus.NotCached },
+                        onSelect = {},
+                        onChangeCollectionType = { _, _ -> },
+                        backgroundScope = scope,
+                    )
+                },
+                expanded = false,
+                airingLabelState = createTestAiringLabelState(),
+                onToggleExpanded = {},
+                modifier = Modifier.padding(16.dp),
+            )
+        }
+    }
 }

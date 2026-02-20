@@ -1,11 +1,13 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
  *
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
+
+@file:OptIn(TestOnly::class)
 
 package me.him188.ani.app.ui.settings.mediasource.selector.episode
 
@@ -38,12 +40,15 @@ import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
 import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -53,6 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -62,16 +68,30 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import me.him188.ani.app.domain.media.resolver.TestWebViewVideoExtractor
+import me.him188.ani.app.domain.mediasource.codec.createTestMediaSourceCodecManager
+import me.him188.ani.app.domain.mediasource.test.buildMatchTags
+import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
+import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
+import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
+import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.setClipEntryText
+import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.FastLinearProgressIndicator
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.settings.mediasource.rss.createTestSaveableStorage
 import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourcePageState
 import me.him188.ani.app.ui.settings.mediasource.selector.edit.SelectorConfigurationDefaults
 import me.him188.ani.app.ui.settings.mediasource.selector.test.SelectorTestPane
+import me.him188.ani.app.ui.settings.mediasource.selector.test.TestSelectorMediaSourceEngine
+import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.utils.platform.annotations.TestOnly
+import kotlin.coroutines.EmptyCoroutineContext
 
 @Composable
 fun SelectorTestAndEpisodePane(
@@ -367,5 +387,117 @@ data class SelectorEpisodePaneLayout(
                 else -> Compact
             }
         }
+    }
+}
+
+@Composable
+@Preview
+fun PreviewSelectorEpisodePaneCompact() = ProvideCompositionLocalsForPreview {
+    Surface {
+        val state = rememberTestEditSelectorMediaSourceState(
+            SelectorSearchConfig.MatchVideoConfig(),
+        )
+        SelectorTestAndEpisodePane(
+            state = state,
+            layout = SelectorEpisodePaneLayout.Compact,
+        )
+        SideEffect {
+            state.viewEpisode(TestSelectorTestEpisodePresentations[0])
+        }
+    }
+}
+
+@Composable
+@Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
+fun PreviewSelectorEpisodePaneExpanded() {
+    ProvideCompositionLocalsForPreview {
+        Surface {
+            SelectorTestAndEpisodePane(
+                state = rememberTestEditSelectorMediaSourceState(),
+                layout = SelectorEpisodePaneLayout.Expanded,
+                initialRoute = SelectorEpisodePaneRoutes.EPISODE,
+            )
+        }
+    }
+}
+
+@TestOnly
+@Stable
+internal val TestSelectorTestEpisodePresentations
+    get() = listOf(
+        SelectorTestEpisodePresentation(
+            channel = null,
+            name = "Test Episode 2",
+            episodeSort = EpisodeSort(2),
+            playUrl = "https://example.com",
+            tags = buildMatchTags {
+                emit("EP: 02", isMatch = true)
+                emit("https://example.com", isMatch = true)
+            },
+            origin = null,
+        ),
+        SelectorTestEpisodePresentation(
+            channel = null,
+            name = "Test Episode Unknown",
+            episodeSort = null,
+            playUrl = "https://example.com",
+            tags = buildMatchTags {
+                emit("缺失 EP", isMissing = true)
+            },
+            origin = null,
+        ),
+    )
+
+@TestOnly
+@Composable
+internal fun rememberTestSelectorEpisodeState(
+    item: SelectorTestEpisodePresentation? = TestSelectorTestEpisodePresentations[0],
+    config: SelectorSearchConfig.MatchVideoConfig = SelectorSearchConfig.MatchVideoConfig(),
+    urls: (pageUrl: String) -> List<String> = {
+        listOf("https://example.com/a.mkv")
+    },
+): SelectorEpisodeState {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    return remember {
+        SelectorEpisodeState(
+            itemState = stateOf(item),
+            matchVideoConfigState = stateOf(config),
+            webViewVideoExtractor = stateOf(TestWebViewVideoExtractor(urls)),
+            engine = TestSelectorMediaSourceEngine(),
+            backgroundScope = scope,
+            flowDispatcher = EmptyCoroutineContext,
+            context = context,
+        )
+    }
+}
+
+@TestOnly
+@Composable
+internal fun rememberTestEditSelectorMediaSourceState(
+    matchVideoConfig: SelectorSearchConfig.MatchVideoConfig = SelectorSearchConfig.MatchVideoConfig(),
+    urls: (pageUrl: String) -> List<String> = {
+        listOf("https://example.com/a.mkv")
+    },
+): EditSelectorMediaSourcePageState {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    return remember {
+        EditSelectorMediaSourcePageState(
+            createTestSaveableStorage(
+                SelectorMediaSourceArguments.Default.run {
+                    copy(
+                        searchConfig = searchConfig.copy(matchVideo = matchVideoConfig),
+                    )
+                },
+            ),
+            allowEditState = stateOf(true),
+            engine = TestSelectorMediaSourceEngine(),
+            webViewVideoExtractor = stateOf(TestWebViewVideoExtractor(urls)),
+            codecManager = createTestMediaSourceCodecManager(),
+            backgroundScope = scope,
+            context,
+            flowDispatcher = EmptyCoroutineContext,
+        )
     }
 }

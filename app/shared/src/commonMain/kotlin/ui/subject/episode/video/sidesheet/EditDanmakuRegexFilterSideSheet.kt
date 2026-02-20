@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -47,12 +47,16 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
+import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.settings.danmaku.isValidRegex
 import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
 import me.him188.ani.utils.platform.Uuid
+import me.him188.ani.utils.platform.annotations.TestOnly
 
 
 @Suppress("UnusedReceiverParameter")
@@ -167,7 +171,7 @@ fun DanmakuRegexFilterSettings(
     val isPortrait = !expanded
     val backgroundColor = if (isPortrait) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerHigh
     val layoutModifier = if (isPortrait) modifier.fillMaxWidth() else modifier
-    
+
     SideSheetLayout(
         title = { Text("正则弹幕过滤管理") },
         onDismissRequest = onDismissRequest,
@@ -187,6 +191,19 @@ fun DanmakuRegexFilterSettings(
             onAdd = { regex -> state.add(DanmakuRegexFilter(Uuid.randomString(), "", regex, true)) },
             onDelete = { state.remove(it) },
             onToggle = { state.switch(it) },
+        )
+    }
+}
+
+@OptIn(TestOnly::class)
+@Composable
+@Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
+fun PreviewEditDanmakuRegexFilterSideSheet() {
+    ProvideCompositionLocalsForPreview {
+        DanmakuRegexFilterSettings(
+            state = createTestDanmakuRegexFilterState(),
+            onDismissRequest = { },
+            expanded = true,
         )
     }
 }

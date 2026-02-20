@@ -32,10 +32,6 @@ kotlin {
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)
     }
-    sourceSets.androidMain.dependencies {
-        implementation(libs.androidx.compose.ui.tooling.preview)
-        implementation(libs.androidx.compose.ui.tooling)
-    }
     sourceSets.desktopMain.dependencies {
     }
     sourceSets.appleMain.dependencies {

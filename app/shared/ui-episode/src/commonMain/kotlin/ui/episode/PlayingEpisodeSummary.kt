@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,11 +9,26 @@
 
 package me.him188.ani.app.ui.episode
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material3.*
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
@@ -25,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.data.models.subject.RatingInfo
@@ -37,7 +53,6 @@ import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollect
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
-import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @Immutable
 data class PlayingEpisodeSummary(
@@ -123,7 +138,7 @@ fun PlayingEpisodeSummaryRow(
                         // actions
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(16.dp, alignment = Alignment.End),
-                            verticalArrangement = Arrangement.spacedBy(16.dp, alignment = Alignment.CenterVertically)
+                            verticalArrangement = Arrangement.spacedBy(16.dp, alignment = Alignment.CenterVertically),
                         ) {
                             TonalButtonWithIcon("分享", Icons.Rounded.Share, onClickShare)
                             TonalButtonWithIcon("下载", Icons.Rounded.Download, onClickDownload)
@@ -145,7 +160,7 @@ fun PlayingEpisodeSummaryRow(
                         FlowRow(
                             Modifier.weight(1f),
                             horizontalArrangement = Arrangement.spacedBy(0.dp, alignment = Alignment.Start),
-                            verticalArrangement = Arrangement.spacedBy(0.dp, alignment = Alignment.CenterVertically)
+                            verticalArrangement = Arrangement.spacedBy(0.dp, alignment = Alignment.CenterVertically),
                         ) {
                             TonalButtonWithIcon("分享", Icons.Rounded.Share, onClickShare)
                             TonalButtonWithIcon("下载", Icons.Rounded.Download, onClickDownload)
@@ -208,9 +223,9 @@ private fun PreviewPlayingEpisodeSummaryRow() {
                         { false },
                         {},
                         {},
-                        scope
+                        scope,
                     )
-                }
+                },
             )
         },
     )

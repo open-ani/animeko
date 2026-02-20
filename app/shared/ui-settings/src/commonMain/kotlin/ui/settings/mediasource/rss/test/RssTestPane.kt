@@ -1,11 +1,13 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
  *
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
+
+@file:OptIn(TestOnly::class)
 
 package me.him188.ani.app.ui.settings.mediasource.rss.test
 
@@ -34,9 +36,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.serialization.Serializable
+import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.interaction.nestedScrollWorkaround
@@ -46,6 +50,7 @@ import me.him188.ani.app.ui.foundation.widgets.FastLinearProgressIndicator
 import me.him188.ani.app.ui.settings.mediasource.EditMediaSourceTestDataCardDefaults
 import me.him188.ani.app.ui.settings.mediasource.RefreshIndicatedHeadlineRow
 import me.him188.ani.app.ui.settings.mediasource.rss.detail.RssViewingItem
+import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isMobile
 
 @Composable
@@ -218,3 +223,13 @@ enum class RssTestPaneTab {
 
 @Stable
 object RssTestPaneDefaults
+
+@Composable
+@PreviewLightDark
+fun PreviewRssTestResultItem() {
+    RssTestResultMediaItem(
+        TestMediaList[0],
+        false,
+        {},
+    )
+}

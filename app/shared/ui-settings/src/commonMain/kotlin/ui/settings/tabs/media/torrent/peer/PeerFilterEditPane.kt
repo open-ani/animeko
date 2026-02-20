@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -30,22 +30,29 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.MutableStateFlow
+import me.him188.ani.app.data.models.preference.TorrentPeerConfig
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSubscription
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
+import me.him188.ani.app.ui.foundation.rememberBackgroundScope
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.richtext.rememberBBCodeRichTextState
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
+import me.him188.ani.app.ui.settings.mediasource.rss.SaveableStorage
 
 @Composable
 private fun BBCodeSupportingText(text: String, modifier: Modifier = Modifier) {
@@ -77,7 +84,7 @@ private fun RuleEditItem(
         colors = listItemColors,
         supportingContent = {
             BBCodeSupportingText(supportingTextBBCode, Modifier.padding(8.dp))
-        }
+        },
     )
 }
 
@@ -114,7 +121,7 @@ fun PeerFilterEditPane(
     modifier: Modifier = Modifier,
 ) {
     val list by state.subscriptions.collectAsStateWithLifecycle()
-    
+
     SettingsTab(modifier.verticalScroll(rememberScrollState())) {
         Group(
             title = { Text("过滤规则订阅") },
@@ -260,4 +267,25 @@ fun PeerFilterEditPane(
             }
         }
     }
+}
+
+@Preview
+@Composable
+fun PreviewPeerFilterEditPane() {
+    val config = remember { mutableStateOf(TorrentPeerConfig.Default) }
+    val scope = rememberBackgroundScope()
+    val state = remember {
+        PeerFilterSettingsState(
+            MutableStateFlow(emptyList()),
+            SaveableStorage(config, { config.value = it }, MutableStateFlow(false)),
+            scope.backgroundScope,
+            { },
+            { _, _ -> },
+        )
+    }
+    PeerFilterEditPane(
+        state = state,
+        showIpBlockingItem = true,
+        onClickIpBlockSettings = { },
+    )
 }

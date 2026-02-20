@@ -22,12 +22,10 @@ kotlin {
     }
     sourceSets.commonMain.dependencies {
         api(libs.androidx.annotation)
+        api(libs.compose.ui.tooling.preview)
     }
-    sourceSets.skikoMain.dependencies {
-        implementation(libs.compose.ui.tooling.preview)
-    }
-    sourceSets.androidMain.dependencies {
-        api(libs.androidx.compose.ui.tooling.preview)
-        api(libs.androidx.compose.ui.tooling)
-    }
+}
+
+dependencies {
+    androidRuntimeClasspath(libs.compose.ui.tooling)
 }

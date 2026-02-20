@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -37,7 +37,9 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
 import me.him188.ani.app.ui.onboarding.WizardLayoutParams
@@ -53,7 +55,7 @@ internal fun BitTorrentFeatureStep(
         Box(Modifier.padding(horizontal = lp.horizontalPadding)) {
             BitTorrentFeatureSwitchItem(
                 checked = bitTorrentEnabled,
-                onCheckedChange = onBitTorrentEnableChanged
+                onCheckedChange = onBitTorrentEnableChanged,
             )
         }
     },
@@ -80,7 +82,7 @@ internal fun BitTorrentFeatureStep(
         }
         Column(
             modifier = Modifier.padding(vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             bitTorrentCheckFeatureItem.invoke(layoutParams)
             requestNotificationPermission?.invoke(layoutParams)
@@ -99,36 +101,36 @@ internal fun BitTorrentFeatureSwitchItem(
         modifier = modifier,
         shape = MaterialTheme.shapes.large,
         elevation = CardDefaults.cardElevation(0.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Box(
             Modifier.clickable(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,
-                onClick = { onCheckedChange(!checked) }
-            )
+                onClick = { onCheckedChange(!checked) },
+            ),
         ) {
             Column(
                 Modifier
                     .padding(horizontal = 24.dp, vertical = 16.dp)
                     .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = "启用 BitTorrent 功能",
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 1,
-                        modifier = Modifier.basicMarquee()
+                        modifier = Modifier.basicMarquee(),
                     )
                     Switch(
                         checked = checked,
                         onCheckedChange = onCheckedChange,
-                        interactionSource = interactionSource
+                        interactionSource = interactionSource,
                     )
                 }
             }
@@ -146,36 +148,36 @@ internal fun RequestNotificationPermission(
         modifier = modifier,
         shape = MaterialTheme.shapes.large,
         elevation = CardDefaults.cardElevation(0.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-    ) { 
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+    ) {
         Column(
             Modifier
                 .padding(all = 24.dp)
                 .fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) { 
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
             Column {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.Top
+                    verticalAlignment = Alignment.Top,
                 ) {
                     Icon(
                         if (granted) Icons.Outlined.NotificationsActive else Icons.Outlined.Notifications,
                         contentDescription = "Notification icon",
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(32.dp),
                     )
                     Text(
                         text = "允许通知",
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 1,
-                        modifier = Modifier.basicMarquee()
+                        modifier = Modifier.basicMarquee(),
                     )
                 }
                 Box(modifier = Modifier.padding(start = 48.dp)) {
                     Text(
                         text = "显示 BT 下载进度和速度等信息",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -184,13 +186,13 @@ internal fun RequestNotificationPermission(
                     onClick = { },
                     enabled = false,
                     modifier = Modifier.fillMaxWidth(),
-                    content = { Text("已授权") }
+                    content = { Text("已授权") },
                 )
             } else {
                 Button(
                     onClick = onRequestNotificationPermission,
                     modifier = Modifier.fillMaxWidth(),
-                    content = { Text("授予权限") }
+                    content = { Text("授予权限") },
                 )
             }
         }
@@ -215,6 +217,25 @@ class GrantNotificationPermissionState(
             granted = false,
             lastRequestResult = null,
             isPlaceholder = true,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewBitTorrentFeatureStep() {
+    ProvideCompositionLocalsForPreview {
+        BitTorrentFeatureStep(
+            bitTorrentEnabled = true,
+            onBitTorrentEnableChanged = { },
+            requestNotificationPermission = {
+                Column(Modifier.padding(horizontal = 16.dp)) {
+                    RequestNotificationPermission(
+                        granted = false,
+                        onRequestNotificationPermission = { },
+                    )
+                }
+            },
         )
     }
 }

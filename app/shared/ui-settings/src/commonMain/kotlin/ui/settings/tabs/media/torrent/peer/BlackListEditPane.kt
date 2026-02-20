@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -28,16 +28,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
+import kotlin.random.Random
+import kotlin.random.nextInt
 
 
 @Composable
@@ -109,4 +113,26 @@ fun BlackListEditPane(
             onDismiss = { showAddBlackIpDialog = false },
         )
     }
+}
+
+private fun generateRandomIp(): String {
+    return sequence<Int> { Random.nextInt(0..255) }
+        .take(4)
+        .joinToString(".")
+}
+
+@Preview
+@Composable
+fun PreviewBlackListEditPane() {
+    val list = remember {
+        sequence<String> { generateRandomIp() }
+            .take(Random.nextInt(3..30))
+            .toMutableList()
+    }
+    BlackListEditPane(
+        ipBlackList = list,
+        showTitle = true,
+        onAdd = { list.addAll(it) },
+        onRemove = { newIp -> list.removeAll { it == newIp } },
+    )
 }

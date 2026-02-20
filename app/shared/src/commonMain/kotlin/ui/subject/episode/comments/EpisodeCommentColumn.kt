@@ -1,11 +1,13 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
  *
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
+
+@file:OptIn(TestOnly::class)
 
 package me.him188.ani.app.ui.subject.episode.comments
 
@@ -23,9 +25,11 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import me.him188.ani.app.tools.formatDateTime
@@ -34,9 +38,15 @@ import me.him188.ani.app.ui.comment.CommentColumn
 import me.him188.ani.app.ui.comment.CommentDefaults
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.UIComment
+import me.him188.ani.app.ui.comment.UIRichText
+import me.him188.ani.app.ui.comment.generateUiComment
+import me.him188.ani.app.ui.comment.rememberTestCommentState
 import me.him188.ani.app.ui.foundation.LocalImageViewerHandler
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.richtext.RichText
+import me.him188.ani.app.ui.richtext.UIRichElement
+import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Composable
 fun EpisodeCommentColumn(
@@ -146,4 +156,45 @@ fun EpisodeComment(
             }
         } else null,
     )
+}
+
+@Preview
+@Composable
+private fun PreviewEpisodeComment() {
+    ProvideCompositionLocalsForPreview {
+        EpisodeComment(
+            comment = remember {
+                generateUiComment(
+                    size = 1,
+                    content = UIRichText(
+                        listOf(
+                            UIRichElement.AnnotatedText(
+                                listOf(
+                                    UIRichElement.Annotated.Text(LOREM_IPSUM),
+                                    UIRichElement.Annotated.Text("masked text", mask = true),
+                                ),
+                            ),
+                        ),
+                    ),
+                ).single()
+            },
+            modifier = Modifier.fillMaxWidth(),
+            onActionReply = { },
+            onClickImage = { },
+            onClickUrl = { },
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun PreviewEpisodeCommentColumn() {
+    ProvideCompositionLocalsForPreview {
+        EpisodeCommentColumn(
+            state = rememberTestCommentState(commentList = generateUiComment(4)),
+            onClickReply = { },
+            onNewCommentClick = { },
+            onClickUrl = { },
+        )
+    }
 }

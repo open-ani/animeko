@@ -1,11 +1,13 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
  *
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
+
+@file:OptIn(TestOnly::class)
 
 package me.him188.ani.app.ui.exploration.followed
 
@@ -18,15 +20,27 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material3.*
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
@@ -34,15 +48,30 @@ import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
+import me.him188.ani.app.data.models.subject.TestFollowedSubjectInfos
 import me.him188.ani.app.data.models.subject.hasNewEpisodeToPlay
 import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
-import me.him188.ani.app.ui.foundation.layout.*
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.layout.BasicCarouselItem
+import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastExpanded
+import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
+import me.him188.ani.app.ui.foundation.layout.minimumHairlineSize
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.widgets.NsfwMask
-import me.him188.ani.app.ui.search.*
+import me.him188.ani.app.ui.search.LoadErrorCard
+import me.him188.ani.app.ui.search.LoadErrorCardLayout
+import me.him188.ani.app.ui.search.LoadErrorCardRole
+import me.him188.ani.app.ui.search.isFinishedAndEmpty
+import me.him188.ani.app.ui.search.isLoadingFirstPage
+import me.him188.ani.app.ui.search.rememberLoadErrorState
+import me.him188.ani.app.ui.search.rememberTestLazyPagingItems
 import me.him188.ani.app.ui.subject.SubjectProgressState
+import me.him188.ani.utils.platform.annotations.TestOnly
 
 // https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Animeko?node-id=62-4581&node-type=frame&t=Evw0PwXZHXQNgEm3-0
 @Composable
@@ -218,5 +247,17 @@ object FollowedSubjectsDefaults {
             else -> 120.dp
         }
         return DpSize(baseSize, (baseSize) / 9 * 16)
+    }
+}
+
+@Composable
+@PreviewLightDark
+fun PreviewFollowedSubjectsLazyRow() = ProvideCompositionLocalsForPreview {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+        FollowedSubjectsLazyRow(
+            items = rememberTestLazyPagingItems(TestFollowedSubjectInfos),
+            onClick = {},
+            onPlay = {},
+        )
     }
 }

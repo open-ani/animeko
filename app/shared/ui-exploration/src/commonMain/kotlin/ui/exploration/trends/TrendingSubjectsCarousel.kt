@@ -1,11 +1,13 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
  *
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
+
+@file:OptIn(TestOnly::class)
 
 package me.him188.ani.app.ui.exploration.trends
 
@@ -31,19 +33,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.CarouselAutoAdvanceEffect
 import me.him188.ani.app.ui.foundation.layout.CarouselItem
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
 import me.him188.ani.app.ui.foundation.layout.minimumHairlineSize
+import me.him188.ani.app.ui.foundation.preview.PreviewSizeClasses
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
 import me.him188.ani.app.ui.search.rememberLoadErrorState
+import me.him188.ani.app.ui.search.rememberTestLazyPagingItems
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Composable
@@ -164,3 +170,18 @@ val TestTrendingSubjectInfos
             imageLarge = "https://lain.bgm.tv/pic/cover/l/e4/dc/464376_NsZRw.jpg",
         ),
     )
+
+@Composable
+@PreviewSizeClasses
+@PreviewLightDark
+private fun PreviewTrendingSubjectsCarousel() = ProvideCompositionLocalsForPreview {
+    PreviewTrendingSubjectsCarouselImpl()
+}
+
+@Composable
+private fun PreviewTrendingSubjectsCarouselImpl() {
+    TrendingSubjectsCarousel(
+        items = rememberTestLazyPagingItems(TestTrendingSubjectInfos),
+        {},
+    )
+}

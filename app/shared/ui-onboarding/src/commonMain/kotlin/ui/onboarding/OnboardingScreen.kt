@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -23,18 +23,21 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.onboarding.navigation.WizardController
 import me.him188.ani.app.ui.onboarding.navigation.WizardDefaults
 import me.him188.ani.app.ui.onboarding.navigation.WizardNavHost
+import me.him188.ani.app.ui.onboarding.navigation.rememberWizardController
 import me.him188.ani.app.ui.onboarding.step.ConfigureProxyStep
 import me.him188.ani.app.ui.onboarding.step.GrantNotificationPermissionState
 import me.him188.ani.app.ui.onboarding.step.ThemeSelectStep
@@ -283,4 +286,21 @@ internal fun createTestOnboardingPresentationState(scope: CoroutineScope): Onboa
             onOpenSystemNotificationSettings = { },
         ),
     )
+}
+
+@OptIn(TestOnly::class)
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp", showSystemUi = false)
+@Preview(showBackground = true, device = "spec:width=1920px,height=1080px,dpi=240", showSystemUi = false)
+@Composable
+fun PreviewOnboardingScene() {
+    ProvideCompositionLocalsForPreview {
+        val scope = rememberCoroutineScope()
+        OnboardingScreen(
+            rememberWizardController(),
+            remember { createTestOnboardingPresentationState(scope) },
+            contactActions = { },
+            navigationIcon = { },
+            onFinishOnboarding = { },
+        )
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -43,6 +43,7 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -57,6 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
@@ -68,20 +70,27 @@ import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
+import me.him188.ani.app.data.models.subject.TestSubjectInfo
 import me.him188.ani.app.data.models.subject.nameCn
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.ui.foundation.OutlinedTag
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.plus
+import me.him188.ani.app.ui.search.rememberTestLazyPagingItems
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
+import me.him188.ani.app.ui.subject.details.TestRelatedSubjects
+import me.him188.ani.app.ui.subject.details.TestSubjectCharacterList
+import me.him188.ani.app.ui.subject.details.TestSubjectStaffInfo
 import me.him188.ani.app.ui.subject.renderSubjectSeason
 import me.him188.ani.datasources.api.PackedDate
+import me.him188.ani.utils.platform.annotations.TestOnly
 
 
 object SubjectDetailsDefaults {
@@ -370,8 +379,11 @@ private fun <T : Any> PersonCardList(
             ModalBottomSheet(
                 { showSheet = false },
                 modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
-                contentWindowInsets = { BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()).only(
-                    WindowInsetsSides.Horizontal + WindowInsetsSides.Top) },
+                contentWindowInsets = {
+                    BottomSheetDefaults.windowInsets.add(WindowInsets.desktopTitleBar()).only(
+                        WindowInsetsSides.Horizontal + WindowInsetsSides.Top,
+                    )
+                },
             ) {
                 Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     ProvideTextStyle(MaterialTheme.typography.titleLarge) {
@@ -382,7 +394,8 @@ private fun <T : Any> PersonCardList(
                         GridCells.Fixed(maxItemsInEachRow),
                         horizontalArrangement = Arrangement.spacedBy(itemSpacing),
                         verticalArrangement = Arrangement.spacedBy(itemSpacing),
-                        contentPadding = WindowInsets.navigationBars.asPaddingValues().plus(PaddingValues(bottom = 16.dp))
+                        contentPadding = WindowInsets.navigationBars.asPaddingValues()
+                            .plus(PaddingValues(bottom = 16.dp)),
                     ) {
                         items(
                             allValues.itemCount,
@@ -463,6 +476,28 @@ fun PersonCard(
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(TestOnly::class)
+@Composable
+@PreviewLightDark
+private fun PreviewDetailsTab() {
+    ProvideCompositionLocalsForPreview {
+        Scaffold {
+            SubjectDetailsDefaults.DetailsTab(
+                TestSubjectInfo,
+                {},
+                rememberTestLazyPagingItems(TestSubjectStaffInfo),
+                exposedStaff = rememberTestLazyPagingItems(TestSubjectStaffInfo.take(6)),
+                totalStaffCount = TestSubjectStaffInfo.size,
+                rememberTestLazyPagingItems(TestSubjectCharacterList),
+                exposedCharacters = rememberTestLazyPagingItems(TestSubjectCharacterList.take(6)),
+                totalCharactersCount = TestSubjectCharacterList.size,
+                rememberTestLazyPagingItems(TestRelatedSubjects),
+                Modifier.padding(it),
+            )
         }
     }
 }

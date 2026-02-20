@@ -62,8 +62,6 @@ kotlin {
         implementation(projects.utils.androidxLifecycleRuntimeTesting)
     }
     sourceSets.androidMain.dependencies {
-        api(libs.androidx.compose.ui.tooling.preview)
-        api(libs.androidx.compose.ui.tooling)
         api(libs.compose.material3.adaptive.core)
         // Preview only
     }

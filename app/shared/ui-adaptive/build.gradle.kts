@@ -41,8 +41,6 @@ kotlin {
         implementation(projects.utils.uiTesting)
     }
     sourceSets.androidMain.dependencies {
-        api(libs.androidx.compose.ui.tooling.preview)
-        api(libs.androidx.compose.ui.tooling)
         api(libs.compose.material3.adaptive.core)
         api(libs.androidx.compose.material3.adaptive)
         api(libs.androidx.compose.material3.adaptive.layout)

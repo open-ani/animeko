@@ -29,13 +29,9 @@ kotlin {
         api(projects.danmaku.danmakuApi)
         api(projects.danmaku.danmakuUiConfig)
         implementation(libs.kotlinx.collections.immutable)
-    }
-    sourceSets.commonTest.dependencies {
-        implementation(projects.utils.uiTesting)
+        implementation(projects.utils.uiPreview)
     }
     sourceSets.androidMain.dependencies {
-        implementation(libs.androidx.compose.ui.tooling.preview)
-        implementation(libs.androidx.compose.ui.tooling)
         implementation(libs.compose.material3.adaptive.core)
         // Preview only
     }

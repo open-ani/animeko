@@ -169,12 +169,7 @@ kotlin {
         api(libs.androidx.activity.ktx)
         api(libs.koin.android)
         implementation(libs.androidx.browser)
-
-        // Compose
-        api(libs.androidx.compose.ui.tooling.preview)
-
         api(libs.coil)
-
         api(libs.logback.android)
         api(projects.utils.buildConfig)
     }
@@ -239,7 +234,6 @@ afterEvaluate {
 //}
 
 dependencies {
-    androidRuntimeClasspath(libs.androidx.compose.ui.tooling)
 }
 
 

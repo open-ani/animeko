@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import me.him188.ani.app.tools.formatDateTime
@@ -37,9 +38,14 @@ import me.him188.ani.app.ui.comment.CommentColumn
 import me.him188.ani.app.ui.comment.CommentDefaults
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.UIComment
+import me.him188.ani.app.ui.comment.generateUiComment
+import me.him188.ani.app.ui.comment.rememberTestCommentState
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.ConnectedScrollState
+import me.him188.ani.app.ui.foundation.layout.rememberConnectedScrollState
 import me.him188.ani.app.ui.rating.FiveRatingStars
 import me.him188.ani.app.ui.richtext.RichText
+import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Composable
 fun SubjectDetailsDefaults.SubjectCommentColumn(
@@ -97,7 +103,7 @@ fun SubjectComment(
             }
         },
     )
-    
+
     Comment(
         avatar = { CommentDefaults.Avatar(comment.author?.avatarUrl, authorModifier) },
         primaryTitle = {
@@ -136,4 +142,34 @@ fun SubjectComment(
             )
         },
     )
+}
+
+@OptIn(TestOnly::class)
+@Preview
+@Composable
+private fun PreviewSubjectComment() {
+    ProvideCompositionLocalsForPreview {
+        SubjectComment(
+            comment = remember { generateUiComment(1).single() },
+            modifier = Modifier.fillMaxWidth(),
+            onClickImage = { },
+            onClickUrl = { },
+            onClickReaction = { _, _ -> },
+        )
+
+    }
+}
+
+@OptIn(TestOnly::class)
+@Preview
+@Composable
+private fun PreviewSubjectCommentColumn() {
+    ProvideCompositionLocalsForPreview {
+        SubjectDetailsDefaults.SubjectCommentColumn(
+            state = rememberTestCommentState(generateUiComment(4)),
+            onClickUrl = { },
+            onClickImage = {},
+            connectedScrollState = rememberConnectedScrollState(),
+        )
+    }
 }

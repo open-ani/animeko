@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -39,11 +39,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import io.ktor.utils.io.core.Closeable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.BackgroundScope
@@ -62,8 +64,11 @@ import me.him188.ani.datasources.api.source.parameter.MediaSourceParameter
 import me.him188.ani.datasources.api.source.parameter.MediaSourceParameters
 import me.him188.ani.datasources.api.source.parameter.SimpleEnumParameter
 import me.him188.ani.datasources.api.source.parameter.StringParameter
+import me.him188.ani.datasources.api.source.parameter.buildMediaSourceParameters
+import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.stringResource
 import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 
 
 sealed class EditMediaSourceMode {
@@ -359,4 +364,59 @@ private fun BooleanArgument(argument: BooleanArgumentState, modifier: Modifier =
             },
         )
     }
+}
+
+@TestOnly
+internal val TestEditMediaSourceModeAdd get() = EditMediaSourceMode.Add(FactoryId("RSS"))
+
+@OptIn(TestOnly::class)
+@PreviewLightDark
+@Composable
+private fun PreviewEditMediaSourceDialogNoConfig() {
+    EditMediaSourceDialog(
+        state = EditingMediaSource(
+            editingMediaSourceId = "test",
+            factoryId = FactoryId("test"),
+            info = MediaSourceInfo(
+                displayName = "Test",
+                description = "Test description",
+            ),
+            parameters = MediaSourceParameters.Empty,
+            persistedArguments = flowOf(MediaSourceConfig.Default),
+            editMediaSourceMode = TestEditMediaSourceModeAdd,
+            onSave = {},
+            parentCoroutineContext = EmptyCoroutineContext,
+        ),
+        {},
+    )
+}
+
+@OptIn(TestOnly::class)
+@PreviewLightDark
+@Composable
+private fun PreviewEditMediaSourceDialog() {
+    EditMediaSourceDialog(
+        state = EditingMediaSource(
+            editingMediaSourceId = "test",
+            factoryId = FactoryId("test"),
+            info = MediaSourceInfo(
+                displayName = "Test",
+                description = "Test description",
+            ),
+            parameters = buildMediaSourceParameters {
+                string("username", description = "用户名")
+                string("password", description = "密码")
+                boolean("Switch", true, description = "这是一个开关")
+                boolean("开关", false, description = "This is a switch")
+                boolean("开关", false, description = "This is a switch.".repeat(10))
+                boolean("Switch2", false)
+                simpleEnum("dropdown", "a", "b", "c", default = "b", description = "这是一个下拉菜单")
+            },
+            persistedArguments = flowOf(MediaSourceConfig.Default),
+            editMediaSourceMode = TestEditMediaSourceModeAdd,
+            onSave = {},
+            parentCoroutineContext = EmptyCoroutineContext,
+        ),
+        {},
+    )
 }

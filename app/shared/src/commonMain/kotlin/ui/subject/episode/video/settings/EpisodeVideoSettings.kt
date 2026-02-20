@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -28,16 +28,19 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.AbstractSettingsViewModel
@@ -349,6 +352,47 @@ fun EpisodeVideoSettings(
                     title = { Text("showControllerAlwaysOnRequesters") },
                 )
             }
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun PreviewEpisodeVideoSettings() {
+    ProvideCompositionLocalsForPreview {
+        EpisodeVideoSettings(
+            remember { EpisodeVideoSettingsViewModel() },
+            { },
+        )
+    }
+}
+
+@Preview(heightDp = 200)
+@Composable
+private fun PreviewEpisodeVideoSettingsSmall() {
+    ProvideCompositionLocalsForPreview {
+        EpisodeVideoSettings(
+            remember { EpisodeVideoSettingsViewModel() },
+            { },
+        )
+    }
+}
+
+@Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
+@Preview
+@Composable
+private fun PreviewEpisodeVideoSettingsSideSheet() = ProvideCompositionLocalsForPreview {
+    var showSettings by remember { mutableStateOf(true) }
+    if (showSettings) {
+        SideSheetLayout(
+            title = {},
+            onDismissRequest = { showSettings = false },
+        ) {
+            EpisodeVideoSettings(
+                remember { EpisodeVideoSettingsViewModel() },
+                { },
+                Modifier.padding(8.dp),
+            )
         }
     }
 }

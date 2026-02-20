@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -38,14 +38,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectRelation
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.search.createTestPager
+import me.him188.ani.app.ui.subject.details.TestRelatedSubjects
+import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.math.ceil
 
 @Composable
@@ -166,3 +172,14 @@ private fun RelatedSubjectItem(
     }
 }
 
+@OptIn(TestOnly::class)
+@PreviewLightDark
+@Composable
+fun PreviewRelatedSubjectsRow() = ProvideCompositionLocalsForPreview {
+    Surface {
+        RelatedSubjectsRow(
+            createTestPager(TestRelatedSubjects).collectAsLazyPagingItemsWithLifecycle(),
+            onClick = {},
+        )
+    }
+}

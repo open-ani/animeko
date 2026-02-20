@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,9 +33,11 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
@@ -44,12 +47,15 @@ import me.him188.ani.app.domain.media.cache.isCachedOrCaching
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.tools.toPercentageOrZero
 import me.him188.ani.app.tools.toProgress
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.app.ui.foundation.lists.PaginatedGroup
 import me.him188.ani.app.ui.subject.episode.details.components.EpisodeWatchStatusButton
 import me.him188.ani.app.ui.subject.episode.details.components.PlayingEpisodeItem
+import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
+import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.format1f
 
 
@@ -263,5 +269,32 @@ private fun EpisodeCacheStatusLabel(
                 EpisodeCacheStatus.NotCached -> {}
             }
         }
+    }
+}
+
+@OptIn(TestOnly::class)
+@Composable
+@PreviewLightDark
+fun PreviewEpisodeCarouselOnSurface() = ProvideCompositionLocalsForPreview {
+    val scope = rememberCoroutineScope()
+    Surface {
+        EpisodeCarousel(
+            state = remember {
+                EpisodeCarouselState(
+                    episodes = mutableStateOf(PreviewEpisodeCollections),
+                    playingEpisode = mutableStateOf(PreviewEpisodeCollections[2]),
+                    cacheStatus = {
+                        when ((it.episodeInfo.sort.number ?: 0).toInt().rem(3)) {
+                            0 -> EpisodeCacheStatus.Cached(123.megaBytes)
+                            1 -> EpisodeCacheStatus.Caching(0.3f.toProgress(), 123.megaBytes)
+                            else -> EpisodeCacheStatus.NotCached
+                        }
+                    },
+                    onSelect = {},
+                    onChangeCollectionType = { _, _ -> },
+                    backgroundScope = scope,
+                )
+            },
+        )
     }
 }

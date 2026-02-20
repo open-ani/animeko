@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -69,6 +69,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
@@ -106,6 +107,9 @@ import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.settings.framework.rememberSorterState
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcon
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcons
+import me.him188.ani.datasources.api.source.FactoryId
+import me.him188.ani.datasources.api.source.MediaSourceInfo
+import me.him188.ani.datasources.api.source.parameter.MediaSourceParameters
 import me.him188.ani.datasources.api.source.parameter.isEmpty
 import me.him188.ani.utils.platform.isMobile
 import org.burnoutcrew.reorderable.ReorderableItem
@@ -604,5 +608,26 @@ private fun MediaSourceCard(
         },
         supportingContent = content,
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+    )
+}
+
+@Preview
+@Composable
+private fun PreviewSelectMediaSourceTemplateDialog() {
+    SelectMediaSourceTemplateDialog(
+        templates = listOf(
+            MediaSourceTemplate(
+                factoryId = FactoryId("1"),
+                info = MediaSourceInfo("Test"),
+                parameters = MediaSourceParameters.Empty,
+            ),
+            MediaSourceTemplate(
+                factoryId = FactoryId("123"),
+                info = MediaSourceInfo("Test2"),
+                parameters = MediaSourceParameters.Empty,
+            ),
+        ),
+        onClick = {},
+        onDismissRequest = {},
     )
 }

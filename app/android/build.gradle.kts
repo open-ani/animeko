@@ -125,8 +125,6 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.browser)
 
-    debugImplementation(libs.androidx.compose.ui.tooling)
-
 //    implementation(libs.log4j.core)
 //    implementation(libs.log4j.slf4j.impl)
 

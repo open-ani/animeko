@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,9 +9,6 @@
 
 package me.him188.ani.app.ui.settings.tabs.network
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.tooling.preview.Preview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
@@ -20,16 +17,12 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
-import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceTemplate
-import me.him188.ani.app.ui.settings.tabs.media.source.SelectMediaSourceTemplateDialog
 import me.him188.ani.datasources.api.matcher.MediaSourceWebVideoMatcherLoader
 import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.datasources.api.source.MediaSource
 import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.datasources.api.source.MediaSourceFactory
-import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.TestHttpMediaSource
-import me.him188.ani.datasources.api.source.parameter.MediaSourceParameters
 import me.him188.ani.datasources.mikan.MikanMediaSource
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -151,29 +144,3 @@ fun createTestMediaSourceManager() = object : MediaSourceManager {
     }
 }
 
-@Preview
-@Composable
-private fun PreviewSelectMediaSourceTemplateLayout() {
-    SelectMediaSourceTemplateDialog(
-        remember {
-            listOf(
-                MediaSourceTemplate(
-                    factoryId = FactoryId("1"),
-                    MediaSourceInfo(
-                        "Test",
-                    ),
-                    parameters = MediaSourceParameters.Empty,
-                ),
-                MediaSourceTemplate(
-                    factoryId = FactoryId("123"),
-                    MediaSourceInfo(
-                        "Test2",
-                    ),
-                    parameters = MediaSourceParameters.Empty,
-                ),
-            )
-        },
-        onClick = {},
-        onDismissRequest = {},
-    )
-}

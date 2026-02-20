@@ -1,11 +1,13 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
  *
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
+
+@file:OptIn(TestOnly::class)
 
 package me.him188.ani.app.ui.settings.mediasource.selector.edit
 
@@ -22,19 +24,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.web.format.SelectorChannelFormat
 import me.him188.ani.app.domain.mediasource.web.format.SelectorChannelFormatIndexGrouped
 import me.him188.ani.app.domain.mediasource.web.format.SelectorChannelFormatNoChannel
 import me.him188.ani.app.domain.mediasource.web.format.SelectorFormatId
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.effects.moveFocusOnEnter
 import me.him188.ani.app.ui.foundation.layout.cardVerticalPadding
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_channel_format_index_grouped_description
@@ -56,6 +63,8 @@ import me.him188.ani.app.ui.lang.settings_mediasource_selector_match_episode_sor
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_match_episode_sort_from_name_supporting
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_unsupported_format
 import me.him188.ani.app.ui.settings.mediasource.MediaSourceConfigurationDefaults
+import me.him188.ani.app.ui.settings.mediasource.rss.createTestSaveableStorage
+import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -179,6 +188,53 @@ internal fun SelectorChannelFormatColumn(
                 UnsupportedFormatIdHint(formatId, Modifier.align(Alignment.CenterHorizontally))
             }
         }
+    }
+}
+
+@Composable
+internal fun rememberTestSelectorConfigurationState(
+    arguments: SelectorMediaSourceArguments = SelectorMediaSourceArguments.Default
+): SelectorConfigState {
+    return remember {
+        SelectorConfigState(
+            createTestSaveableStorage(
+                arguments,
+            ),
+            allowEditState = stateOf(true),
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun PreviewSelectorChannelFormatColumnNoChannel() {
+    ProvideCompositionLocalsForPreview {
+        SelectorChannelFormatColumn(
+            SelectorChannelFormatNoChannel.id,
+            rememberTestSelectorConfigurationState(),
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun PreviewSelectorChannelFormatColumnIndexGrouped() {
+    ProvideCompositionLocalsForPreview {
+        SelectorChannelFormatColumn(
+            SelectorChannelFormatIndexGrouped.id,
+            rememberTestSelectorConfigurationState(),
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun PreviewSelectorChannelFormatColumnUnsupported() {
+    ProvideCompositionLocalsForPreview {
+        SelectorChannelFormatColumn(
+            SelectorFormatId("test"),
+            rememberTestSelectorConfigurationState(),
+        )
     }
 }
 

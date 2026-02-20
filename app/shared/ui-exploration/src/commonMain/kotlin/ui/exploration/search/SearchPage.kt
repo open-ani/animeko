@@ -1,11 +1,13 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
  *
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
+
+@file:OptIn(TestOnly::class)
 
 package me.him188.ani.app.ui.exploration.search
 
@@ -28,7 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
-import androidx.compose.material3.Text
+import androidx.compose.material3.Surface
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo
@@ -38,6 +40,7 @@ import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldValue
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -45,23 +48,37 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.LoadState
+import androidx.paging.LoadStates
+import androidx.paging.PagingData
 import androidx.window.core.layout.WindowSizeClass
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.repository.RepositoryNetworkException
+import me.him188.ani.app.domain.search.SearchSort
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.PaneScope
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
+import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults.Text
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
+import me.him188.ani.app.ui.foundation.preview.PreviewSizeClasses
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
+import me.him188.ani.app.ui.search.TestSearchState
 import me.him188.ani.app.ui.search.collectHasQueryAsState
+import me.him188.ani.app.ui.search.collectItemsWithLifecycle
+import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isDesktop
 
 @Composable
@@ -269,7 +286,7 @@ internal fun SearchPageListDetailScaffold(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
                     scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                )
+                ),
             )
         },
         listPaneContent = {
@@ -308,4 +325,101 @@ internal fun SearchPageListDetailScaffold(
         },
         contentWindowInsets = contentWindowInsets,
     )
+}
+
+@Composable
+@PreviewSizeClasses
+@Preview
+fun PreviewSearchPage() = ProvideCompositionLocalsForPreview {
+    PreviewSearchPageImpl()
+}
+
+@OptIn(TestOnly::class)
+@Composable
+@PreviewSizeClasses
+@PreviewLightDark
+fun PreviewSearchPageEmptyResult() = ProvideCompositionLocalsForPreview {
+    PreviewSearchPageImpl(
+        createTestSearchPageState(
+            rememberCoroutineScope(),
+            TestSearchState(
+                MutableStateFlow(MutableStateFlow(PagingData.from(emptyList()))),
+            ),
+        ),
+    )
+}
+
+/**
+ * @sample me.him188.ani.app.ui.search.PreviewLoadErrorCard
+ */
+@OptIn(TestOnly::class)
+@Composable
+@PreviewSizeClasses
+@PreviewLightDark
+fun PreviewSearchPageError() = ProvideCompositionLocalsForPreview {
+    PreviewSearchPageImpl(
+        createTestSearchPageState(
+            rememberCoroutineScope(),
+            remember {
+                TestSearchState(
+                    MutableStateFlow(
+                        MutableStateFlow(
+                            PagingData.from(
+                                emptyList(),
+                                sourceLoadStates = LoadStates(
+                                    LoadState.NotLoading(true),
+                                    LoadState.NotLoading(true),
+                                    LoadState.Error(RepositoryNetworkException()),
+                                ),
+                                mediatorLoadStates = LoadStates(
+                                    LoadState.NotLoading(true),
+                                    LoadState.NotLoading(true),
+                                    LoadState.Error(RepositoryNetworkException()),
+                                ),
+                            ),
+                        ),
+                    ),
+                )
+            },
+        ),
+    )
+}
+
+@Composable
+@PreviewLightDark
+fun PreviewSearchPageResultColumn() = ProvideCompositionLocalsForPreview {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+        val state = createTestFinishedSubjectSearchState()
+        SearchResultColumn(
+            items = state.collectItemsWithLifecycle(),
+            layoutKind = SearchResultLayoutKind.PREVIEW,
+            summary = {
+                SearchSummary(
+                    layoutKind = SearchResultLayoutKind.PREVIEW,
+                    currentSort = SearchSort.MATCH,
+                    onLayoutKindChange = {},
+                    onSortChange = {},
+                )
+            },
+            selectedItemIndex = { 1 },
+            onSelect = {},
+            onPlay = {},
+            headers = {},
+        )
+    }
+}
+
+
+@Composable
+@OptIn(TestOnly::class)
+private fun PreviewSearchPageImpl(state: SearchPageState = createTestSearchPageState(rememberCoroutineScope())) {
+    SideEffect {
+        state.searchState.startSearch()
+    }
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+        SearchPage(
+            state,
+            detailContent = { Text("Hello, World!") },
+        )
+    }
 }

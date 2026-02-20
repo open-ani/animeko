@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -50,6 +50,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -67,28 +68,35 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeRequest
 import me.him188.ani.app.domain.episode.SubjectRecommendation
+import me.him188.ani.app.domain.media.TestMediaList
+import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
+import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
 import me.him188.ani.app.ui.episode.share.MediaShareData
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
@@ -102,18 +110,25 @@ import me.him188.ani.app.ui.foundation.widgets.rememberModalSideSheetState
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState
 import me.him188.ani.app.ui.mediafetch.MediaSelectorView
 import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresentation
+import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
 import me.him188.ani.app.ui.mediafetch.ViewKind
+import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
+import me.him188.ani.app.ui.mediafetch.request.TestMediaFetchRequest
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummary
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryCard
+import me.him188.ani.app.ui.mediaselect.summary.createTestMediaSelectorSummaryAutoSelecting
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.collection.SubjectCollectionTypeSuggestions
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeDialogsHost
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
+import me.him188.ani.app.ui.subject.collection.components.rememberTestEditableSubjectCollectionTypeState
+import me.him188.ani.app.ui.subject.createTestAiringLabelState
 import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
 import me.him188.ani.app.ui.subject.details.SubjectDetailsUIState
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateLoader
+import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsLoader
 import me.him188.ani.app.ui.subject.episode.EpisodePageLoadError
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuMatchInfoGrid
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceCard
@@ -126,15 +141,19 @@ import me.him188.ani.app.ui.subject.episode.details.components.renderDanmakuServ
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuMatchInfoSummaryRow
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
+import me.him188.ani.app.ui.subject.episode.statistics.createTestDanmakuStatistics
 import me.him188.ani.app.ui.user.SelfInfoUiState
+import me.him188.ani.app.ui.user.TestSelfInfoUiState
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
+import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectRecommendationClick
 import me.him188.ani.utils.analytics.recordEvent
+import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.math.roundToLong
 
 @Stable
@@ -816,3 +835,203 @@ fun EpisodeDetailsScaffold(
         }
     }
 }
+
+
+@Composable
+@PreviewLightDark
+fun PreviewEpisodeDetailsLongTitle() = ProvideCompositionLocalsForPreview {
+    val state = rememberTestEpisodeDetailsState(
+        remember {
+            SubjectInfo.Empty.copy(
+                nameCn = "中文条目名称啊中文条目名称中文条啊目名称中文条目名称中文条目名称中文",
+            )
+        },
+    )
+    PreviewEpisodeDetailsImpl(state)
+}
+
+@Composable
+@PreviewLightDark
+fun PreviewEpisodeDetailsShortTitle() = ProvideCompositionLocalsForPreview {
+    val state = rememberTestEpisodeDetailsState(
+        remember {
+            SubjectInfo.Empty.copy(
+                nameCn = "小市民系列",
+            )
+        },
+    )
+    PreviewEpisodeDetailsImpl(state)
+}
+
+@Composable
+@PreviewLightDark
+fun PreviewEpisodeDetailsScroll() = ProvideCompositionLocalsForPreview {
+    val state = rememberTestEpisodeDetailsState(
+        remember {
+            SubjectInfo.Empty.copy(
+                nameCn = "小市民系列",
+            )
+        },
+    )
+    Column(Modifier.height(300.dp)) {
+        PreviewEpisodeDetailsImpl(state)
+    }
+}
+
+@OptIn(TestOnly::class)
+@Composable
+@PreviewLightDark
+fun PreviewEpisodeDetailsDoing() = ProvideCompositionLocalsForPreview {
+    val state = rememberTestEpisodeDetailsState(
+        remember {
+            SubjectInfo.Empty.copy(
+                nameCn = "小市民系列",
+            )
+        },
+    )
+    PreviewEpisodeDetailsImpl(
+        state,
+        editableSubjectCollectionTypeState = rememberTestEditableSubjectCollectionTypeState(UnifiedCollectionType.DOING),
+    )
+}
+
+@OptIn(TestOnly::class)
+@Composable
+@PreviewLightDark
+fun PreviewEpisodeDetailsDanmakuFailed() = ProvideCompositionLocalsForPreview {
+    val state = rememberTestEpisodeDetailsState()
+    PreviewEpisodeDetailsImpl(
+        state,
+        remember {
+            createTestDanmakuStatistics(DanmakuLoadingState.Failed(IllegalStateException()), danmakuEnabled = true)
+        },
+    )
+}
+
+@OptIn(TestOnly::class)
+@Composable
+@PreviewLightDark
+fun PreviewEpisodeDetailsNotAuthorized() = ProvideCompositionLocalsForPreview {
+    val state = rememberTestEpisodeDetailsState()
+    PreviewEpisodeDetailsImpl(
+        state,
+        selfInfo = TestSelfInfoUiState,
+    )
+}
+
+@OptIn(TestOnly::class)
+@Composable
+@PreviewLightDark
+fun PreviewEpisodeDetailsDanmakuLoading() = ProvideCompositionLocalsForPreview {
+    val state = rememberTestEpisodeDetailsState()
+    PreviewEpisodeDetailsImpl(
+        state,
+        remember {
+            createTestDanmakuStatistics(DanmakuLoadingState.Loading)
+        },
+    )
+}
+
+@Composable
+@PreviewLightDark
+fun PreviewEpisodeDetailsNotSelected() = ProvideCompositionLocalsForPreview {
+    val state = rememberTestEpisodeDetailsState()
+    PreviewEpisodeDetailsImpl(
+        state,
+        playingMedia = null,
+    )
+}
+
+@OptIn(TestOnly::class)
+@Composable
+private fun rememberTestEpisodeDetailsState(
+    subjectInfo: SubjectInfo = SubjectInfo.Empty.copy(
+        nameCn = "中文条目名称啊中文条目名称中文条啊目名称中文条目名称中文条目名称中文",
+    ),
+): EpisodeDetailsState {
+    val scope = rememberCoroutineScope()
+    return remember {
+        EpisodeDetailsState(
+            subjectInfo = mutableStateOf(subjectInfo),
+            airingLabelState = createTestAiringLabelState(),
+            recommendations = mutableStateOf(PreviewSubjectRecommendations),
+            subjectDetailsStateLoader = createTestSubjectDetailsLoader(scope),
+        )
+    }
+}
+
+@OptIn(TestOnly::class)
+@Composable
+private fun PreviewEpisodeDetailsImpl(
+    state: EpisodeDetailsState,
+    danmakuStatistics: DanmakuStatistics = remember {
+        createTestDanmakuStatistics(
+            DanmakuLoadingState.Success,
+        )
+    },
+    editableSubjectCollectionTypeState: EditableSubjectCollectionTypeState = rememberTestEditableSubjectCollectionTypeState(),
+    mediaSelectorState: MediaSelectorState = rememberTestMediaSelectorState(),
+    playingMedia: Media? = TestMediaList.first(),
+    selfInfo: SelfInfoUiState = TestSelfInfoUiState,
+) {
+    Scaffold {
+        EpisodeDetails(
+            mediaSelectorSummary = createTestMediaSelectorSummaryAutoSelecting(),
+            state,
+            initialMediaSelectorViewKind = ViewKind.WEB,
+            TestMediaFetchRequest,
+            { },
+            episodeCarouselState = remember {
+                EpisodeCarouselState(
+                    mutableStateOf(PreviewEpisodeCollections),
+                    mutableStateOf(PreviewEpisodeCollections[1]),
+                    cacheStatus = { EpisodeCacheStatus.NotCached },
+                    onSelect = {},
+                    onChangeCollectionType = { _, _ -> },
+                    backgroundScope = PreviewScope,
+                )
+            },
+            editableSubjectCollectionTypeState = editableSubjectCollectionTypeState,
+            danmakuStatistics = danmakuStatistics,
+            videoStatisticsFlow = remember {
+                MutableStateFlow(
+                    previewPlayerStatisticsState(
+                        playingMedia = playingMedia,
+                        playingFilename = "filename-filename-filename-filename-filename-filename-filename.mkv",
+                        videoLoadingState = VideoLoadingState.Succeed(isBt = true),
+                    ),
+                )
+            },
+            mediaSelectorState = mediaSelectorState,
+            mediaSourceResultListPresentation = { TestMediaSourceResultListPresentation },
+            selfInfo = selfInfo,
+            onSwitchEpisode = {},
+            onRefreshMediaSources = {},
+            onRestartSource = {},
+            onSetDanmakuSourceEnabled = { _, _ -> },
+            onAdjustDanmakuSourceShift = { _, _ -> },
+            onClickLogin = { },
+            onClickTag = {},
+            onManualMatchDanmaku = {
+            },
+            onEpisodeCollectionUpdate = {},
+            shareData = MediaShareData.from(null, null),
+            null, {},
+            Modifier
+                .padding(bottom = 16.dp, top = 8.dp)
+                .padding(it),
+        )
+    }
+}
+
+private fun previewPlayerStatisticsState(
+    playingMedia: Media? = null,
+    playingFilename: String = "filename-filename-filename-filename-filename-filename-filename.mkv",
+    videoLoadingState: VideoLoadingState = VideoLoadingState.Initial,
+): VideoStatistics = VideoStatistics(
+    playingMedia = playingMedia,
+    playingMediaSourceInfo = null,
+    playingFilename = playingFilename,
+    mediaSourceLoading = true,
+    videoLoadingState = videoLoadingState,
+)

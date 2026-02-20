@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -12,23 +12,32 @@ package me.him188.ani.app.ui.onboarding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.WithContentEnterAnimation
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -66,8 +75,8 @@ internal fun WelcomeScene(
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
     Box(
-        modifier = modifier, 
-        contentAlignment = Alignment.Center
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
     ) {
         WithContentEnterAnimation(Modifier.wrapContentSize()) {
             Column(
@@ -122,6 +131,43 @@ internal fun WelcomeScene(
                     }
                 }
             }
+        }
+    }
+}
+
+@Preview(showBackground = true, device = "spec:width=411dp,height=891dp", showSystemUi = false)
+@Preview(
+    showBackground = true,
+    device = "spec:width=1920px,height=1080px,dpi=240",
+    showSystemUi = false,
+)
+@Composable
+fun PreviewWelcomeScene() {
+    ProvideCompositionLocalsForPreview {
+        WelcomeScene(
+            { },
+            contactActions = { TestContactActions() },
+            wizardLayoutParams = WizardLayoutParams.calculate(currentWindowAdaptiveInfo1().windowSizeClass),
+        )
+    }
+}
+
+@Composable
+private fun TestContactActions(
+    modifier: Modifier = Modifier
+) {
+    FlowRow(
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp, alignment = Alignment.Start),
+    ) {
+        repeat(4) { i ->
+            SuggestionChip(
+                { },
+                icon = {
+                    Icon(Icons.Default.Link, null, Modifier.size(24.dp))
+                },
+                label = { Text("Action$i") },
+            )
         }
     }
 }

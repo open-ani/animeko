@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -53,11 +53,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalNavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
@@ -142,11 +144,11 @@ fun WizardNavHost(
                 }
 
                 Scaffold(
-                    topBar = { 
+                    topBar = {
                         step.indicatorBar(
                             indicatorState,
-                            windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
-                        ) 
+                            windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+                        )
                     },
                     bottomBar = {
                         Column {
@@ -154,7 +156,7 @@ fun WizardNavHost(
                                 HorizontalDivider(Modifier.fillMaxWidth())
                             }
                             step.controlBar(
-                                windowInsets.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
+                                windowInsets.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
                             )
                         }
                     },
@@ -226,7 +228,7 @@ object WizardDefaults {
                     if (showStepText) {
                         ProvideTextStyleContentColor(
                             MaterialTheme.typography.titleMedium,
-                            MaterialTheme.colorScheme.primary
+                            MaterialTheme.colorScheme.primary,
                         ) {
                             Text(
                                 text = remember(currentStep, totalStep) {
@@ -259,7 +261,7 @@ object WizardDefaults {
         NavigationBar(
             modifier,
             containerColor = Color.Transparent,
-            windowInsets = windowInsets
+            windowInsets = windowInsets,
         ) {
             Row(
                 modifier = Modifier
@@ -285,7 +287,7 @@ object WizardDefaults {
             onClick = onClick,
             enabled = enabled,
             modifier = modifier,
-            colors = colors
+            colors = colors,
         ) {
             Text(text)
         }
@@ -318,4 +320,75 @@ object WizardDefaults {
             Text(text)
         }
     }
+}
+
+@Preview
+@Composable
+fun PreviewWizardNavHost() {
+    ProvideCompositionLocalsForPreview {
+        WizardNavHost(
+            rememberWizardController(),
+            { },
+        ) {
+            step(
+                key = "theme",
+                title = { Text("选择主题") },
+            ) {
+                val data = remember {
+                    TestWizardData.MyTheme("theme default", 0)
+                }
+                Text("my theme: ${data.theme} ${data.counter}")
+                Button(
+                    {
+
+                    },
+                ) { Text("Update theme") }
+            }
+
+            step(
+                key = "proxy",
+                title = { Text("设置代理") },
+            ) {
+                val data = remember {
+                    TestWizardData.MyProxy("proxy default", 0)
+                }
+                Text("my theme: ${data.proxy} ${data.counter}")
+                Text("continue unless counter >= 8")
+                Button(
+                    {
+
+                    },
+                ) { Text("Update proxy") }
+            }
+
+            step(
+                key = "bit_torrent",
+                title = { Text("BitTorrent 功能") },
+            ) {
+                val data = remember {
+                    TestWizardData.MyBitTorrent("bittorrent default", 0)
+                }
+                Text("my bit torrent: ${data.bittorrent} ${data.counter}")
+                Button(
+                    {
+                        //update { copy(counter = counter + 1) }
+                    },
+                ) { Text("Update bittorrent") }
+            }
+
+            step(
+                key = "finish",
+                title = { Text("完成") },
+            ) {
+                Text("Finish")
+            }
+        }
+    }
+}
+
+private sealed class TestWizardData {
+    data class MyTheme(val theme: String, val counter: Int) : TestWizardData()
+    data class MyProxy(val proxy: String, val counter: Int) : TestWizardData()
+    data class MyBitTorrent(val bittorrent: String, val counter: Int) : TestWizardData()
+    data object MyFinish : TestWizardData()
 }

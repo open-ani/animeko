@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -24,53 +24,15 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
-import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
-import me.him188.ani.app.data.models.preference.ThemeSettings
-import me.him188.ani.app.data.models.preference.UISettings
-import me.him188.ani.app.data.models.preference.UpdateSettings
-import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
-import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.settings.framework.components.RowButtonItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
-import me.him188.ani.app.ui.settings.framework.createTestSettingsState
-import me.him188.ani.app.ui.settings.framework.rememberTestSettingsState
-import me.him188.ani.utils.platform.annotations.TestOnly
-
-
-@OptIn(TestOnly::class)
-@Preview
-@Composable
-private fun PreviewAppSettingsTab() {
-    AppSettingsTab(
-        softwareUpdateGroupState = rememberTestSoftwareUpdateGroupState(),
-        uiSettings = rememberTestSettingsState(UISettings.Default),
-        themeSettings = rememberTestSettingsState(ThemeSettings.Default),
-        videoScaffoldConfig = rememberTestSettingsState(VideoScaffoldConfig.Default),
-        danmakuFilterConfig = rememberTestSettingsState(DanmakuFilterConfig.Default),
-        danmakuRegexFilterState = createTestDanmakuRegexFilterState(),
-        showDebug = true,
-    )
-}
-
-@TestOnly
-@Composable
-internal fun rememberTestSoftwareUpdateGroupState(): SoftwareUpdateGroupState {
-    val scope = rememberCoroutineScope()
-    return remember {
-        SoftwareUpdateGroupState(
-            updateSettings = createTestSettingsState(UpdateSettings(autoCheckUpdate = true), scope),
-        )
-    }
-}
 
 
 @SuppressLint("BatteryLife")

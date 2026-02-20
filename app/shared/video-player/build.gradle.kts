@@ -36,8 +36,6 @@ kotlin {
         implementation(projects.utils.uiTesting)
     }
     sourceSets.androidMain.dependencies {
-        implementation(libs.androidx.compose.ui.tooling.preview)
-        implementation(libs.androidx.compose.ui.tooling)
         implementation(libs.compose.material3.adaptive.core)
         implementation(libs.androidx.media3.ui)
         implementation(libs.androidx.media3.exoplayer)

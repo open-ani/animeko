@@ -85,8 +85,6 @@ kotlin {
         implementation(projects.utils.uiTesting)
     }
     sourceSets.androidMain.dependencies {
-        api(libs.androidx.compose.ui.tooling.preview)
-        api(libs.androidx.compose.ui.tooling)
         api(projects.utils.buildConfig)
     }
     sourceSets.desktopMain.dependencies {

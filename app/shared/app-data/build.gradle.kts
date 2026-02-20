@@ -86,8 +86,6 @@ kotlin {
         implementation(libs.slf4j.simple)
     }
     sourceSets.androidMain.dependencies {
-        implementation(libs.androidx.compose.ui.tooling.preview)
-        implementation(libs.androidx.compose.ui.tooling)
         implementation(libs.androidx.browser)
         api(libs.androidx.lifecycle.runtime.ktx)
         api(libs.androidx.lifecycle.service)
@@ -115,5 +113,4 @@ dependencies {
         kspIosArm64(libs.androidx.room.compiler)
         kspIosSimulatorArm64(libs.androidx.room.compiler)
     }
-    androidRuntimeClasspath(libs.androidx.compose.ui.tooling)
 }

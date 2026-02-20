@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -7,36 +7,53 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+@file:OptIn(TestOnly::class)
+
 package me.him188.ani.app.ui.settings.mediasource.selector.test
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.domain.mediasource.test.MatchTag
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestSubjectPresentation
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.Tag
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_test_dummy_line
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_test_dummy_tag
 import me.him188.ani.app.ui.lang.settings_mediasource_selector_test_dummy_url
 import me.him188.ani.app.ui.settings.mediasource.rss.test.OutlinedMatchTag
+import me.him188.ani.utils.platform.annotations.TestOnly
+import me.him188.ani.utils.xml.Element
 import org.jetbrains.compose.resources.stringResource
+import kotlin.random.Random
+import kotlin.random.nextInt
 
 /**
  * @see selectedItemIndex `-1` for no selection
@@ -140,5 +157,76 @@ internal fun SelectorTestResultCard(
             },
             colors = ListItemDefaults.colors(containerColor = color.containerColor),
         )
+    }
+}
+
+@TestOnly
+fun createTestSelectorTestSubjectPresentation(
+    name: String,
+    subjectDetailsPageUrl: String = "",
+    origin: Element? = null,
+    tags: List<MatchTag> = emptyList(),
+): SelectorTestSubjectPresentation {
+    return SelectorTestSubjectPresentation(
+        name, subjectDetailsPageUrl, origin, tags,
+    )
+}
+
+@TestOnly
+val TestSelectorTestSubjectPresentations
+    get() = listOf(
+        createTestSelectorTestSubjectPresentation(
+            "孤独摇滚",
+        ),
+        createTestSelectorTestSubjectPresentation(
+            "孤独摇滚",
+        ),
+        createTestSelectorTestSubjectPresentation(
+            "孤独摇滚",
+        ),
+        createTestSelectorTestSubjectPresentation(
+            "孤独摇滚",
+        ),
+        createTestSelectorTestSubjectPresentation(
+            "孤独摇滚",
+            tags = listOf(MatchTag("标题", isMatch = false), MatchTag("字幕", isMatch = true)),
+        ),
+        createTestSelectorTestSubjectPresentation(
+            "孤独摇滚".repeat(10),
+            tags = listOf(MatchTag("标题", isMatch = false)),
+        ),
+        createTestSelectorTestSubjectPresentation(
+            "孤独摇滚".repeat(10),
+            tags = listOf(MatchTag("标题", isMatch = false)),
+        ),
+        createTestSelectorTestSubjectPresentation(
+            "孤独摇滚".repeat(10),
+            tags = listOf(MatchTag("标题", isMatch = false)),
+        ),
+        createTestSelectorTestSubjectPresentation(
+            "孤独摇滚".repeat(10),
+            tags = listOf(MatchTag("标题", isMatch = false)),
+        ),
+    )
+
+@Composable
+@Preview
+private fun PreviewSubjectResultLazyRow() = ProvideCompositionLocalsForPreview {
+    Surface {
+        Column {
+            var selectedIndex by remember { mutableIntStateOf(1) }
+            SelectorTestSubjectResultLazyRow(
+                TestSelectorTestSubjectPresentations,
+                selectedItemIndex = selectedIndex,
+                { _, _ -> },
+            )
+
+            Row {
+                Text("Selected index: $selectedIndex")
+                Button({ selectedIndex = Random.nextInt(TestSelectorTestSubjectPresentations.indices) }) {
+                    Text("Select random")
+                }
+            }
+        }
     }
 }

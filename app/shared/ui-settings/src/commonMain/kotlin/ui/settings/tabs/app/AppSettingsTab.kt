@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -21,9 +21,11 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.intl.Locale
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
@@ -103,6 +105,7 @@ import me.him188.ani.app.ui.lang.settings_update_view_changelog
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterGroup
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
+import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.DropdownItem
 import me.him188.ani.app.ui.settings.framework.components.RowButtonItem
@@ -110,6 +113,8 @@ import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.settings.framework.components.TextButtonItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
+import me.him188.ani.app.ui.settings.framework.createTestSettingsState
+import me.him188.ani.app.ui.settings.framework.rememberTestSettingsState
 import me.him188.ani.app.ui.settings.rendering.ReleaseClassIcon
 import me.him188.ani.app.ui.settings.rendering.guessReleaseClass
 import me.him188.ani.app.ui.settings.tabs.theme.ThemeGroup
@@ -117,6 +122,7 @@ import me.him188.ani.app.ui.update.AppUpdateState
 import me.him188.ani.app.ui.update.AppUpdateViewModel
 import me.him188.ani.app.ui.update.NewVersion
 import me.him188.ani.app.ui.update.UpdateNotifier
+import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isIos
@@ -559,5 +565,31 @@ private fun renderLocale(it: Locale?): String {
         }
 
         else -> """${it.language}-${it.region}"""
+    }
+}
+
+@OptIn(TestOnly::class)
+@Preview
+@Composable
+private fun PreviewAppSettingsTab() {
+    AppSettingsTab(
+        softwareUpdateGroupState = rememberTestSoftwareUpdateGroupState(),
+        uiSettings = rememberTestSettingsState(UISettings.Default),
+        themeSettings = rememberTestSettingsState(ThemeSettings.Default),
+        videoScaffoldConfig = rememberTestSettingsState(VideoScaffoldConfig.Default),
+        danmakuFilterConfig = rememberTestSettingsState(DanmakuFilterConfig.Default),
+        danmakuRegexFilterState = createTestDanmakuRegexFilterState(),
+        showDebug = true,
+    )
+}
+
+@TestOnly
+@Composable
+internal fun rememberTestSoftwareUpdateGroupState(): SoftwareUpdateGroupState {
+    val scope = rememberCoroutineScope()
+    return remember {
+        SoftwareUpdateGroupState(
+            updateSettings = createTestSettingsState(UpdateSettings(autoCheckUpdate = true), scope),
+        )
     }
 }

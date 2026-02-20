@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -32,9 +32,12 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.theme.appColorScheme
 
 @Composable
 fun DiagonalMixedThemePreviewPanel(
@@ -212,5 +215,27 @@ private object BottomRightDiagonalShape : Shape {
                 close()
             },
         )
+    }
+}
+
+@Preview
+@Composable
+fun PreviewThemePreviewPanel() {
+    ProvideCompositionLocalsForPreview {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ThemePreviewPanel(
+                colorScheme = appColorScheme(isDark = false),
+                modifier = Modifier.size(96.dp, 146.dp),
+            )
+            ThemePreviewPanel(
+                colorScheme = appColorScheme(isDark = true),
+                modifier = Modifier.size(96.dp, 146.dp),
+            )
+            DiagonalMixedThemePreviewPanel(
+                leftTopColorScheme = appColorScheme(isDark = false),
+                rightBottomColorScheme = appColorScheme(isDark = true),
+                modifier = Modifier.size(96.dp, 146.dp),
+            )
+        }
     }
 }

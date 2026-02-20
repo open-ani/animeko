@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
@@ -48,12 +49,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.episode.DanmakuFetchResultWithConfig
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuMatchInfo
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
+import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.format1f
 import kotlin.math.abs
 
@@ -365,3 +369,64 @@ private fun Failed(
         }
     }
 }
+
+@OptIn(TestOnly::class)
+@Composable
+@Preview
+fun PreviewDanmakuSourceCard() {
+    ProvideCompositionLocalsForPreview {
+        Box(Modifier.width(240.dp)) {
+            DanmakuSourceCard(
+                info = previewDanmakuMatchInfo(),
+                enabled = true,
+                showDetails = false,
+                shiftMillis = 0,
+                onClickSettings = {},
+                onClick = {},
+            )
+        }
+    }
+}
+
+@OptIn(TestOnly::class)
+@Composable
+@Preview
+fun PreviewDanmakuSourceCardDetails() {
+    ProvideCompositionLocalsForPreview {
+        Box(Modifier.width(240.dp)) {
+            DanmakuSourceCard(
+                info = previewDanmakuMatchInfo(),
+                enabled = true,
+                showDetails = true,
+                shiftMillis = 1_500,
+                onClickSettings = {},
+                onClick = {},
+            )
+        }
+    }
+}
+
+@OptIn(TestOnly::class)
+@Composable
+@Preview
+fun PreviewDanmakuSourceCardDisabled() {
+    ProvideCompositionLocalsForPreview {
+        Box(Modifier.width(240.dp)) {
+            DanmakuSourceCard(
+                info = previewDanmakuMatchInfo(),
+                enabled = false,
+                showDetails = false,
+                shiftMillis = -700,
+                onClickSettings = {},
+                onClick = {},
+            )
+        }
+    }
+}
+
+@TestOnly
+private fun previewDanmakuMatchInfo() = DanmakuMatchInfo(
+    serviceId = DanmakuServiceId.Animeko,
+    count = 100,
+    method = DanmakuMatchMethod.Fuzzy("Subject Title", "Episode Title"),
+)

@@ -69,6 +69,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -98,6 +100,7 @@ import me.him188.ani.app.ui.foundation.ImageViewer
 import me.him188.ani.app.ui.foundation.LocalImageViewerHandler
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.DarkStatusBarAppearance
 import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
@@ -1152,5 +1155,46 @@ class MediampAudioLevelController(
         val targetIsMute = !muteFlow.value
         controller.toggleMute()
         onVolumeStateChanged(level, targetIsMute)
+    }
+}
+
+@Composable
+@Preview(widthDp = 1080 / 3, heightDp = 2400 / 3, showBackground = true)
+@Preview(device = "spec:width=1280dp,height=800dp,dpi=240", showBackground = true)
+internal fun PreviewEpisodePage() {
+    ProvideCompositionLocalsForPreview {
+        val context = LocalContext.current
+        EpisodeScreen(
+            remember {
+                EpisodeViewModel(
+                    424663,
+                    1277147,
+                    context = context,
+                )
+            },
+        )
+    }
+}
+
+@Composable
+@PreviewLightDark
+fun PreviewEpisodeSceneContentPhoneScaffoldTabs() {
+    ProvideCompositionLocalsForPreview {
+        EpisodeScreenContentPhoneScaffold(
+            videoOnly = false,
+            commentCount = { 100 },
+            video = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                )
+            },
+            episodeDetails = { },
+            commentColumn = { },
+            tabRowContent = {
+                DummyDanmakuEditor({ })
+            },
+        )
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -32,11 +32,13 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.mediasource.test.rss.RssItemInfo
 import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.foundation.OutlinedTag
 import me.him188.ani.app.ui.media.MediaDetailsRenderer
+import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Stable
 val RssItemInfo.subtitleLanguageRendered: String
@@ -112,4 +114,15 @@ fun RssTestResultRssItem(
             colors = ListItemDefaults.colors(containerColor = color.containerColor),
         )
     }
+}
+
+@OptIn(TestOnly::class)
+@Composable
+@PreviewLightDark
+fun PreviewRssInfoTab() {
+    RssTestPaneDefaults.RssInfoTab(
+        items = TestRssItemInfos,
+        onViewDetails = { },
+        selectedItemProvider = { TestRssItemInfos[1] },
+    )
 }
