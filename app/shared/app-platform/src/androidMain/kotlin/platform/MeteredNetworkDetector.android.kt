@@ -85,7 +85,7 @@ private class AndroidMeteredNetworkDetector(
     }
 
     private inline fun log(message: () -> String) {
-        if (BuildConfig.DEBUG) {
+        if (currentAniBuildConfig.isDebug) {
             logger.debug(message())
         }
     }

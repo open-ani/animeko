@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -17,24 +17,24 @@ buildscript {
 }
 
 plugins {
-    kotlin("multiplatform") apply false
-    kotlin("android") apply false
-    kotlin("jvm") apply false
-    kotlin("plugin.serialization") version libs.versions.kotlin apply false
-    kotlin("plugin.compose") apply false
-    id("org.jetbrains.kotlinx.atomicfu") apply false
-    id("org.jetbrains.compose") apply false
-    id("com.android.library") apply false
-    id("com.android.application") apply false
-    id("com.google.gms.google-services") version "4.4.2" apply false
-    id("com.google.devtools.ksp") version libs.versions.ksp apply false
-    id("androidx.room") version libs.versions.room apply false
-    id("com.strumenta.antlr-kotlin") version libs.versions.antlr.kotlin apply false
-    id("de.mannodermaus.android-junit5") version "1.11.2.0" apply false
-    id("io.sentry.kotlin.multiplatform.gradle") version libs.versions.sentry.kmp apply false
-    alias(libs.plugins.compose.hot.reload) apply false
-    id("de.undercouch.download") version "5.6.0" apply false // HTTP download task
-    kotlin("native.cocoapods") apply false
+    alias(libs.plugins.kotlin.multiplatform) apply false
+    alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.android.kotlin.multiplatform.library) apply false
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.android.library) apply false
+    alias(libs.plugins.kotlinx.atomicfu) apply false
+    alias(libs.plugins.jetbrains.compose) apply false
+    alias(libs.plugins.kotlin.native.cocoapods) apply false
+    alias(libs.plugins.kotlin.plugin.compose) apply false
+
+    alias(libs.plugins.kotlin.plugin.serialization) apply false
+    alias(libs.plugins.google.gms.google.services) apply false
+    alias(libs.plugins.androidx.room) apply false
+    alias(libs.plugins.antlr.kotlin) apply false
+    alias(libs.plugins.mannodermaus.android.junit5) apply false
+    alias(libs.plugins.sentry.kotlin.multiplatform) apply false
+    alias(libs.plugins.undercouch.download) apply false
+    // alias(libs.plugins.stability.analyzer) apply false
     idea
 }
 
@@ -58,6 +58,7 @@ extensions.findByName("buildScan")?.withGroovyBuilder {
 }
 
 subprojects {
+    // configureComposeStabilityAnalyzer()
     afterEvaluate {
         configureKotlinOptIns()
         configureKotlinTestSettings()

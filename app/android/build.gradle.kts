@@ -19,13 +19,12 @@ import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesS
  */
 
 plugins {
-    id("org.jetbrains.compose")
-    id("com.android.application")
-    kotlin("android")
-    kotlin("plugin.compose")
-    id("org.jetbrains.kotlinx.atomicfu")
+    alias(libs.plugins.jetbrains.compose)
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.plugin.compose)
+    alias(libs.plugins.kotlinx.atomicfu)
     id("kotlin-parcelize")
-    id("com.google.gms.google-services")
+    alias(libs.plugins.google.gms.google.services)
     idea
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,13 +10,14 @@
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
 import com.android.build.api.dsl.CommonExtension
-import com.android.build.api.dsl.LibraryExtension
+import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryExtension
+import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
 import org.jetbrains.compose.ComposeExtension
 import org.jetbrains.compose.ComposePlugin
-import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.kotlin.compose.compiler.gradle.ComposeFeatureFlag
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
 import org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
@@ -30,7 +31,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
  * 如果开了 android, 就会配置 desktop + android, 否则只配置 jvm.
  */
 
-val android = extensions.findByType(LibraryExtension::class)
+val androidLibraryExtension = extensions.findByType(KotlinMultiplatformExtension::class)
+    ?.extensions?.findByType(KotlinMultiplatformAndroidLibraryExtension::class)
 val composeExtension = extensions.findByType(ComposeExtension::class)
 val composeCompilerExtension =
     extensions.findByType(org.jetbrains.kotlin.compose.compiler.gradle.ComposeCompilerGradlePluginExtension::class)
@@ -58,27 +60,59 @@ configure<KotlinMultiplatformExtension> {
         iosSimulatorArm64() // to run tests
         // no x86
     }
-    if (android != null) {
+    if (androidLibraryExtension != null) {
         jvm("desktop")
-        androidTarget {
+        /*androidTarget {
             @OptIn(ExperimentalKotlinGradlePluginApi::class)
             instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
             unitTestVariant.sourceSetTree.set(KotlinSourceSetTree.unitTest)
+        }*/
+        androidLibrary {
+            compileSdk = getIntProperty("android.compile.sdk")
+            minSdk = getIntProperty("android.min.sdk")
+            androidResources.enable = true
+
+            withHostTestBuilder {
+                sourceSetTreeName = KotlinSourceSetTree.test.name
+            }
+
+            withDeviceTestBuilder {
+                sourceSetTreeName = KotlinSourceSetTree.test.name
+            }.configure {
+                targetSdk {
+                    release(getIntProperty("android.min.sdk"))
+                }
+                instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+                instrumentationRunnerArguments["runnerBuilder"] = "de.mannodermaus.junit5.AndroidJUnit5Builder"
+                instrumentationRunnerArguments["package"] = "me.him188"
+                execution = "HOST"
+            }
+
+            packaging {
+                resources {
+                    pickFirsts.add("META-INF/LICENSE.md")
+                    pickFirsts.add("META-INF/LICENSE-notice.md")
+                }
+            }
         }
 
         applyDefaultHierarchyTemplate {
             common {
                 group("jvm") {
                     withJvm()
-                    withAndroidTarget()
+                    group("android")
                 }
                 group("skiko") {
                     withJvm()
                     withNative()
                 }
                 group("mobile") {
-                    withAndroidTarget()
+                    group("android")
                     withIos()
+                }
+
+                group("android") {
+                    withCompilations { it.platformType == KotlinPlatformType.androidJvm }
                 }
             }
         }
@@ -100,22 +134,21 @@ configure<KotlinMultiplatformExtension> {
     compilerOptions {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
-
+    val libs = versionCatalogs.named("libs")
+    val composeMultiplatformVersion = libs.findVersion("compose-multiplatform").get()
     sourceSets.commonMain.dependencies {
         // 添加常用依赖
         if (composeExtension != null) {
-            val compose = ComposePlugin.Dependencies(project)
             // Compose
-            api(compose.foundation)
-            api(compose.animation)
-            api(compose.ui)
+            api("org.jetbrains.compose.foundation:foundation:${composeMultiplatformVersion}")
+            api("org.jetbrains.compose.animation:animation:${composeMultiplatformVersion}")
+            api("org.jetbrains.compose.ui:ui:${composeMultiplatformVersion}")
 
-            val libs = versionCatalogs.named("libs")
             api("org.jetbrains.compose.material3:material3:${libs.findVersion("compose-material3").get()}")
             api("org.jetbrains.androidx.window:window-core:${libs.findVersion("compose-window-core").get()}")
 
-            api(compose.materialIconsExtended)
-            api(compose.runtime)
+            api("org.jetbrains.compose.material:material-icons-extended:1.7.3")
+            api("org.jetbrains.compose.runtime:runtime:${composeMultiplatformVersion}")
         }
 
         if (project.path != ":utils:platform") {
@@ -125,9 +158,7 @@ configure<KotlinMultiplatformExtension> {
     sourceSets.commonTest.dependencies {
         // https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-test.html#writing-and-running-tests-with-compose-multiplatform
         if (composeExtension != null) {
-            val compose = ComposePlugin.Dependencies(project)
-            @OptIn(ExperimentalComposeLibrary::class)
-            implementation(compose.uiTest)
+            implementation("org.jetbrains.compose.ui:ui-test:${composeMultiplatformVersion}")
         }
         implementation(project(":utils:testing"))
     }
@@ -135,36 +166,55 @@ configure<KotlinMultiplatformExtension> {
     if (composeExtension != null) {
         sourceSets.getByName("desktopMain").dependencies {
             val compose = ComposePlugin.Dependencies(project)
-            implementation(compose.desktop.uiTestJUnit4)
+            implementation("org.jetbrains.compose.ui:ui-test-junit4:${composeMultiplatformVersion}")
         }
     }
 
-    if (android != null && composeExtension != null) {
-        val composeVersion = versionCatalogs.named("libs").findVersion("jetpack-compose").get()
-        listOf(
-            sourceSets.getByName("androidInstrumentedTest"),
-            sourceSets.getByName("androidUnitTest"),
-        ).forEach { sourceSet ->
-            sourceSet.dependencies {
-                // https://developer.android.com/develop/ui/compose/testing#setup
-//                implementation("androidx.compose.ui:ui-test-junit4-android:${composeVersion}")
-//                implementation("androidx.compose.ui:ui-test-manifest:${composeVersion}")
-                // TODO: this may cause dependency rejection when importing the project in IntelliJ.
-            }
-        }
-
-        project.dependencies {
-            "debugImplementation"("androidx.compose.ui:ui-test-manifest:${composeVersion}")
-        }
-    }
-
-
-    if (android != null) {
+    if (androidLibraryExtension != null) {
         val androidMainSourceSetDir = projectDir.resolve("androidMain")
-        val androidExtension = extensions.findByType(CommonExtension::class)
+        /*val androidExtension = extensions.findByType(CommonExtension::class)
         if (androidExtension != null) {
             androidExtension.sourceSets["main"].aidl.srcDirs(androidMainSourceSetDir.resolve("aidl"))
             // add more sourceSet dirs if necessary.
+        }*/
+
+        sourceSets {
+            // Workaround for MPP compose bug, don't change
+            removeIf { it.name == "androidAndroidTestRelease" }
+            removeIf { it.name == "androidTestFixtures" }
+            removeIf { it.name == "androidTestFixturesDebug" }
+            removeIf { it.name == "androidTestFixturesRelease" }
+        }
+
+        if (composeExtension != null) {
+            tasks.named("generateComposeResClass") {
+                mustRunAfter("generateResourceAccessorsForAndroidHostTest")
+            }
+            tasks.withType(KotlinCompilationTask::class) {
+                mustRunAfter(tasks.matching { it.name == "generateComposeResClass" })
+                mustRunAfter(tasks.matching { it.name == "generateResourceAccessorsForAndroidRelease" })
+                mustRunAfter(tasks.matching { it.name == "generateResourceAccessorsForAndroidHostTest" })
+                mustRunAfter(tasks.matching { it.name == "generateResourceAccessorsForAndroidHostTestRelease" })
+                mustRunAfter(tasks.matching { it.name == "generateResourceAccessorsForAndroidHostTestDebug" })
+                mustRunAfter(tasks.matching { it.name == "generateResourceAccessorsForAndroidDebug" })
+            }
+
+            val composeVersion = versionCatalogs.named("libs").findVersion("jetpack-compose").get()
+            listOf(
+                sourceSets.getByName("androidDeviceTest"),
+                sourceSets.getByName("androidHostTest"),
+            ).forEach { sourceSet ->
+                sourceSet.dependencies {
+                    // https://developer.android.com/develop/ui/compose/testing#setup
+//                implementation("androidx.compose.ui:ui-test-junit4-android:${composeVersion}")
+//                implementation("androidx.compose.ui:ui-test-manifest:${composeVersion}")
+                    // TODO: this may cause dependency rejection when importing the project in IntelliJ.
+                }
+            }
+
+            project.dependencies {
+                "androidRuntimeClasspath"("androidx.compose.ui:ui-test-manifest:${composeVersion}")
+            }
         }
     }
 }
@@ -181,73 +231,7 @@ if (enableIos) {
     }
 }
 
-if (android != null) {
-    configure<KotlinMultiplatformExtension> {
-        sourceSets {
-            // Workaround for MPP compose bug, don't change
-            removeIf { it.name == "androidAndroidTestRelease" }
-            removeIf { it.name == "androidTestFixtures" }
-            removeIf { it.name == "androidTestFixturesDebug" }
-            removeIf { it.name == "androidTestFixturesRelease" }
-        }
-    }
-    if (composeExtension != null) {
-        tasks.named("generateComposeResClass") {
-            mustRunAfter("generateResourceAccessorsForAndroidUnitTest")
-        }
-        tasks.withType(KotlinCompilationTask::class) {
-            mustRunAfter(tasks.matching { it.name == "generateComposeResClass" })
-            mustRunAfter(tasks.matching { it.name == "generateResourceAccessorsForAndroidRelease" })
-            mustRunAfter(tasks.matching { it.name == "generateResourceAccessorsForAndroidUnitTest" })
-            mustRunAfter(tasks.matching { it.name == "generateResourceAccessorsForAndroidUnitTestRelease" })
-            mustRunAfter(tasks.matching { it.name == "generateResourceAccessorsForAndroidUnitTestDebug" })
-            mustRunAfter(tasks.matching { it.name == "generateResourceAccessorsForAndroidDebug" })
-        }
-    }
-
-    android.apply {
-        compileSdk = getIntProperty("android.compile.sdk")
-        defaultConfig {
-            minSdk = getIntProperty("android.min.sdk")
-            testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-            testInstrumentationRunnerArguments.set("runnerBuilder", "de.mannodermaus.junit5.AndroidJUnit5Builder")
-            testInstrumentationRunnerArguments["package"] = "me.him188"
-        }
-        packaging {
-            resources {
-                pickFirsts.add("META-INF/LICENSE.md")
-                pickFirsts.add("META-INF/LICENSE-notice.md")
-            }
-        }
-//        flavorDimensions.add("api")
-//        productFlavors {
-//            create("minApi30") {
-//                dimension = "api"
-//                minSdk = 30
-//                isDefault = false
-//            }
-//            create("default") {
-//                dimension = "api"
-//                isDefault = true
-//            }
-//        }
-        buildTypes.getByName("release") {
-            isMinifyEnabled = false // shared 不能 minify, 否则构建 app 会失败
-            isShrinkResources = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                *sharedAndroidProguardRules(),
-            )
-        }
-        buildFeatures {
-            if (composeExtension != null) {
-                compose = true
-            }
-        }
-    }
-}
-
-if (android != null) {
+if (androidLibraryExtension != null) {
     apply(plugin = "de.mannodermaus.android-junit5")
 }
 
@@ -266,7 +250,7 @@ if (enableIos) {
 
                 // Maps custom Xcode configuration to NativeBuildType
                 xcodeConfigurationToNativeBuildType["CUSTOM_DEBUG"] = NativeBuildType.DEBUG
-                xcodeConfigurationToNativeBuildType["CUSTOM_RELEASE"] = NativeBuildType.RELEASE 
+                xcodeConfigurationToNativeBuildType["CUSTOM_RELEASE"] = NativeBuildType.RELEASE
             }
         }
     }

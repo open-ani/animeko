@@ -59,6 +59,7 @@ import java.io.File
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.nio.file.Paths
+import kotlin.uuid.ExperimentalUuidApi
 
 
 class AniApplication : Application() {
@@ -86,6 +87,7 @@ class AniApplication : Application() {
 
     inner class Instance()
 
+    @OptIn(ExperimentalUuidApi::class)
     override fun onCreate() {
         super.onCreate()
         val startupTimeMonitor = StartupTimeMonitor()

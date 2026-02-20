@@ -72,13 +72,13 @@ Animeko 拥有多平台测试。现在，在 macOS 上会运行 11,000+ 测试�
 - `commonTest`
     - `jvmTest`
         - `desktopTest`
-        - `androidInstrumentedTest`
+        - `androidDeviceTest`
     - `nativeTest`
         - `appleTest`
             - `iosTest`
                 - `iosSimulatorArm64Test`
     - `skikoTest` (由 `desktopTest` 和 `iosTest` 共享)
-- `androidUnitTest` (独立于其他所有测试)
+- `androidHostTest` (独立于其他所有测试)
 
 提示：
 
@@ -96,8 +96,8 @@ Animeko 拥有多平台测试。现在，在 macOS 上会运行 11,000+ 测试�
 
 项目拥有 [Android Instrumented Test]。安卓平台测试有以下两种：
 
-- `androidUnitTest`：使用本地 JDK 运行的单元测试，无法调用 Android SDK API
-- `androidInstrumentedTest`：连接到安卓模拟器或真机运行
+- `androidHostTest`：使用本地 JDK 运行的单元测试，无法调用 Android SDK API
+- `androidDeviceTest`：连接到安卓模拟器或真机运行
 
 > [!TIP]
 > **为什么要有两种测试?**
@@ -119,7 +119,7 @@ Animeko 拥有多平台测试。现在，在 macOS 上会运行 11,000+ 测试�
 
 说明：
 
-- `./gradlew check` 不会执行 `androidInstrumentedTest` (但会执行 `androidUnitTest` 和其他)。需要使用
+- `./gradlew check` 不会执行 `androidDeviceTest` (但会执行 `androidHostTest` 和其他)。需要使用
   `./gradlew connectedCheck` 才能执行 instrumented test。默认会连接到 ADB 连接的一个设备，
   也就是需要提前插上手机或启动模拟器；
 - IDE 内不支持从一个函数运行，只能用 `./gradlew connectedCheck` 运行全部；

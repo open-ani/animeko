@@ -36,6 +36,7 @@ import me.him188.ani.app.domain.torrent.engines.AnitorrentEngine
 import me.him188.ani.app.domain.torrent.parcel.PAnitorrentConfig
 import me.him188.ani.app.domain.torrent.parcel.PProxyConfig
 import me.him188.ani.app.domain.torrent.parcel.PTorrentPeerFilterSettings
+import me.him188.ani.app.domain.torrent.parcel.toPeerFilterSettings
 import me.him188.ani.app.domain.torrent.peer.PeerFilterSettings
 import me.him188.ani.app.torrent.api.TorrentDownloader
 import me.him188.ani.utils.coroutines.childScope

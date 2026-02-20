@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -8,6 +8,10 @@
  */
 
 import com.android.build.api.dsl.CommonExtension
+import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryExtension
+import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
+import com.android.build.gradle.api.KotlinMultiplatformAndroidPlugin
+import org.gradle.api.Action
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalog
@@ -219,12 +223,9 @@ fun Project.configureJvmTarget() {
         targetCompatibility = ver
     }
 
-    extensions.findByType(CommonExtension::class)?.apply {
-        compileOptions {
-            sourceCompatibility = ver
-            targetCompatibility = ver
-        }
-    }
+    /*extensions.findByType(KotlinMultiplatformAndroidLibraryExtension::class)?.apply {
+        
+    }*/
 }
 
 fun Project.configureEncoding() {
@@ -260,13 +261,21 @@ fun Project.configureKotlinTestSettings() {
             if (allKotlinTargets().any { it.platformType == KotlinPlatformType.androidJvm }) {
                 // has android target, configure instrumented test
                 // this must be added to `androidTest`, instead of just `androidInstrumentedTest`
-                project.dependencies {
-                    "androidTestImplementation"(libs.getLibrary("androidx-test-runner"))
-                    "androidTestImplementation"(libs.getLibrary("junit5-android-test-core"))
-                    "androidTestRuntimeOnly"(libs.getLibrary("junit5-android-test-runner"))
 
-                    "androidTestImplementation"(libs.getLibrary("junit5-jupiter-api"))
-                    "androidTestRuntimeOnly"(libs.getLibrary("junit5-jupiter-engine"))
+                // TODO AGP Migration: Check the android test
+                val androidTestSourceSets = listOf(
+                    kotlinSourceSets?.getByName("androidHostTest"),
+                    kotlinSourceSets?.getByName("androidDeviceTest"),
+                )
+                androidTestSourceSets.forEach {
+                    it?.dependencies {
+                        implementation(libs.getLibrary("androidx-test-runner"))
+                        implementation(libs.getLibrary("junit5-android-test-core"))
+                        runtimeOnly(libs.getLibrary("junit5-android-test-runner"))
+
+                        implementation(libs.getLibrary("junit5-jupiter-api"))
+                        runtimeOnly(libs.getLibrary("junit5-jupiter-engine"))
+                    }
                 }
             }
 
@@ -290,8 +299,8 @@ fun Project.configureKotlinTestSettings() {
                         }
 
                         target?.platformType == KotlinPlatformType.androidJvm
-                                || sourceSet.name == "androidInstrumentedTest"
-                                || sourceSet.name == "androidUnitTest" -> {
+                                || sourceSet.name == "androidDeviceTest"
+                                || sourceSet.name == "androidHostTest" -> {
                             sourceSet.configureJvmTest(b)
                         }
                     }
@@ -325,4 +334,13 @@ fun Project.withKotlinTargets(fn: (KotlinTarget) -> Unit) {
                 fn(this)
             }
     }
+}
+
+internal fun KotlinMultiplatformExtension.androidLibrary(
+    action: Action<KotlinMultiplatformAndroidLibraryTarget>
+) {
+    if (!project.plugins.hasPlugin(KotlinMultiplatformAndroidPlugin::class.java)) {
+        throw IllegalStateException("KMP Android plugin is not applied")
+    }
+    extensions.configure("android", action)
 }

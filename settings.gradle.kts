@@ -73,6 +73,7 @@ includeProject(":utils:androidx-lifecycle-runtime-testing")
 includeProject(":utils:ui-preview")
 includeProject(":utils:analytics")
 includeProject(":utils:http-downloader")
+includeProject(":utils:build-config")
 
 
 includeProject(":torrent:torrent-api", "torrent/api") // Torrent 系统 API
@@ -82,6 +83,7 @@ includeProject(":torrent:anitorrent")
 includeProject(":app:shared")
 includeProject(":app:shared:app-platform")
 includeProject(":app:shared:app-data")
+includeProject(":app:shared:app-data-aidl")
 includeProject(":app:shared:app-lang") // We have a separate module so that the project compiles faster
 includeProject(":app:shared:ui-foundation")
 includeProject(":app:shared:ui-settings")

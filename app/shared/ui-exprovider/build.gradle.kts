@@ -8,17 +8,21 @@
  */
 
 plugins {
-    kotlin("multiplatform")
-    id("com.android.library")
-    kotlin("plugin.compose")
-    id("org.jetbrains.compose")
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.android.kotlin.multiplatform.library)
+    alias(libs.plugins.kotlin.plugin.compose)
+    alias(libs.plugins.jetbrains.compose)
 
     `ani-mpp-lib-targets`
-    kotlin("plugin.serialization")
-    id("org.jetbrains.kotlinx.atomicfu")
+    alias(libs.plugins.kotlin.plugin.serialization)
+
+    // alias(libs.plugins.kotlinx.atomicfu)
 }
 
 kotlin {
+    androidLibrary {
+        namespace = "me.him188.ani.app.ui.exprovider"
+    }
     sourceSets.commonMain.dependencies {
         api(projects.app.shared.uiFoundation)
     }
@@ -28,8 +32,4 @@ kotlin {
     }
     sourceSets.desktopMain.dependencies {
     }
-}
-
-android {
-    namespace = "me.him188.ani.app.ui.exprovider"
 }

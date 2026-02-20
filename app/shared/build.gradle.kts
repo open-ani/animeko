@@ -9,19 +9,22 @@
 
 @file:Suppress("UnstableApiUsage")
 
+import com.android.build.gradle.ProguardFiles.getDefaultProguardFile
+
 
 plugins {
-    kotlin("multiplatform")
-    id("com.android.library")
-    kotlin("plugin.compose")
-    id("org.jetbrains.compose")
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.android.kotlin.multiplatform.library)
+    alias(libs.plugins.kotlin.plugin.compose)
+    alias(libs.plugins.jetbrains.compose)
     // 注意! 前几个插件顺序非常重要, 调整后可能导致 compose multiplatform resources 生成错误
 
     `ani-mpp-lib-targets`
 
-    kotlin("plugin.serialization")
-    id("org.jetbrains.kotlinx.atomicfu")
-    id("io.sentry.kotlin.multiplatform.gradle")
+    alias(libs.plugins.kotlin.plugin.serialization)
+
+    // alias(libs.plugins.kotlinx.atomicfu)
+    alias(libs.plugins.sentry.kotlin.multiplatform)
     idea
 }
 
@@ -30,13 +33,32 @@ compose.resources {
     generateResClass = always
 }
 
-atomicfu {
-    transformJvm = false // 这东西很不靠谱, 等 atomicfu 正式版了可能可以考虑下
-}
+
+//atomicfu {
+//    transformJvm = false // 这东西很不靠谱, 等 atomicfu 正式版了可能可以考虑下
+//}
 
 val enableIosFramework = enableIos && getPropertyOrNull("ani.build.framework") != "false"
 
 kotlin {
+    androidLibrary {
+        namespace = "me.him188.ani"
+        compileSdk = getIntProperty("android.compile.sdk")
+        minSdk = getIntProperty("android.min.sdk")
+        // TODO AGP Migration: Test package optimization
+
+        optimization {
+            minify = false
+            keepRules.apply {
+                files(
+                    getDefaultProguardFile("proguard-android-optimize.txt", layout.buildDirectory),
+                    *sharedAndroidProguardRules(),
+                )
+            }
+        }
+
+    }
+
     sourceSets.commonMain.dependencies {
         api(projects.utils.platform)
         api(projects.utils.intellijAnnotations)
@@ -72,7 +94,7 @@ kotlin {
         api(libs.compose.navigation.compose)
         api(libs.compose.navigation.runtime)
         api(libs.compose.material3.adaptive.navigation.suite)
-        implementation(compose.components.resources)
+        implementation(libs.compose.components.resources)
         implementation(projects.app.shared.reorderable)
 
         // Data sources
@@ -129,7 +151,7 @@ kotlin {
     }
 
     // androidUnitTest is apart from the commonTest tree so we have to do it again
-    sourceSets.androidUnitTest.dependencies {
+    sourceSets.androidHostTest.dependencies {
         implementation(libs.kotlinx.coroutines.test)
         implementation(projects.utils.testing)
         implementation(projects.utils.uiTesting)
@@ -154,9 +176,10 @@ kotlin {
         api(libs.coil)
 
         api(libs.logback.android)
+        api(projects.utils.buildConfig)
     }
 
-    sourceSets.androidUnitTest.dependencies {
+    sourceSets.androidHostTest.dependencies {
         implementation(libs.mockito)
         implementation(libs.mockito.kotlin)
         implementation(libs.koin.test)
@@ -168,7 +191,7 @@ kotlin {
 
     sourceSets.named("desktopMain").dependencies {
         api(compose.desktop.currentOs) {
-            exclude(compose.material) // We use material3
+            exclude("org.jetbrains.compose.material:material") // We use material3
             exclude("org.jetbrains.compose.ui:ui-tooling-preview")
         }
         api("org.jetbrains.compose.ui:ui-graphics-desktop:${libs.versions.compose.multiplatform.get()}")
@@ -215,33 +238,8 @@ afterEvaluate {
 //    logger.warn("bangumi.oauth.client.desktop.appId or bangumi.oauth.client.desktop.secret is not set. Bangumi authorization will not work. Get a token from https://bgm.tv/dev/app and set them in local.properties.")
 //}
 
-android {
-    namespace = "me.him188.ani"
-    compileSdk = getIntProperty("android.compile.sdk")
-    defaultConfig {
-        minSdk = getIntProperty("android.min.sdk")
-    }
-    buildTypes.getByName("release") {
-        isMinifyEnabled = false
-        isShrinkResources = false
-        proguardFiles(
-            getDefaultProguardFile("proguard-android-optimize.txt"),
-            *sharedAndroidProguardRules(),
-        )
-        buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani\"")
-    }
-    buildTypes.getByName("debug") {
-        buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani.debug2\"")
-    }
-    buildFeatures {
-        compose = true
-        buildConfig = true
-        aidl = true
-    }
-}
-
 dependencies {
-    debugImplementation(libs.androidx.compose.ui.tooling)
+    androidRuntimeClasspath(libs.androidx.compose.ui.tooling)
 }
 
 

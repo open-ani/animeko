@@ -7,20 +7,57 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+import com.android.build.gradle.ProguardFiles.getDefaultProguardFile
+
+/*
+ * Copyright (C) 2024-2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 plugins {
-    kotlin("multiplatform")
-    id("com.android.library")
-    kotlin("plugin.compose")
-    id("org.jetbrains.compose")
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.android.kotlin.multiplatform.library)
+    alias(libs.plugins.kotlin.plugin.compose)
+    alias(libs.plugins.jetbrains.compose)
 
     `ani-mpp-lib-targets`
-    kotlin("plugin.serialization")
-    id("org.jetbrains.kotlinx.atomicfu")
+    alias(libs.plugins.kotlin.plugin.serialization)
+
+    // alias(libs.plugins.kotlinx.atomicfu)
     idea
     `build-config`
 }
 
+val aniAuthServerUrlDebug =
+    getPropertyOrNull("ani.auth.server.url.debug") ?: "https://auth.myani.org"
+val aniAuthServerUrlRelease = getPropertyOrNull("ani.auth.server.url.release") ?: "https://auth.myani.org"
+val dandanplayAppId = getPropertyOrNull("ani.dandanplay.app.id") ?: ""
+val dandanplayAppSecret = getPropertyOrNull("ani.dandanplay.app.secret") ?: ""
+val sentryDsn = getPropertyOrNull("ani.sentry.dsn") ?: ""
+val analyticsKey = getPropertyOrNull("ani.analytics.key") ?: ""
+val overrideAniApiServer = getPropertyOrNull("ani.api.server")?.takeIf { it.isNotBlank() }
+
+val distroChannel = getPropertyOrNull("ani.distro.channel") ?: "default"
+
 kotlin {
+    androidLibrary {
+        namespace = "me.him188.ani.app.platform"
+        // TODO AGP Migration: Test package optimization
+        optimization {
+            minify = false
+            keepRules.apply {
+                files(
+                    getDefaultProguardFile("proguard-android-optimize.txt", layout.buildDirectory),
+                    *sharedAndroidProguardRules(),
+                )
+            }
+        }
+    }
+
     sourceSets.commonMain.dependencies {
         api(projects.utils.platform)
         api(projects.app.shared.appLang)
@@ -45,11 +82,12 @@ kotlin {
         api(projects.utils.analytics)
     }
     sourceSets.commonTest.dependencies {
-        api(projects.utils.uiTesting)
+        implementation(projects.utils.uiTesting)
     }
     sourceSets.androidMain.dependencies {
         api(libs.androidx.compose.ui.tooling.preview)
         api(libs.androidx.compose.ui.tooling)
+        api(projects.utils.buildConfig)
     }
     sourceSets.desktopMain.dependencies {
         api(libs.jna)
@@ -61,43 +99,9 @@ kotlin {
     }
 }
 
-android {
-    namespace = "me.him188.ani.app.platform"
-}
-
-
-val aniAuthServerUrlDebug =
-    getPropertyOrNull("ani.auth.server.url.debug") ?: "https://auth.myani.org"
-val aniAuthServerUrlRelease = getPropertyOrNull("ani.auth.server.url.release") ?: "https://auth.myani.org"
-val dandanplayAppId = getPropertyOrNull("ani.dandanplay.app.id") ?: ""
-val dandanplayAppSecret = getPropertyOrNull("ani.dandanplay.app.secret") ?: ""
-val sentryDsn = getPropertyOrNull("ani.sentry.dsn") ?: ""
-val analyticsKey = getPropertyOrNull("ani.analytics.key") ?: ""
-val overrideAniApiServer = getPropertyOrNull("ani.api.server")?.takeIf { it.isNotBlank() }
-
-val distroChannel = getPropertyOrNull("ani.distro.channel") ?: "default"
-
 //if (bangumiClientDesktopAppId == null || bangumiClientDesktopSecret == null) {
 //    logger.warn("bangumi.oauth.client.desktop.appId or bangumi.oauth.client.desktop.secret is not set. Bangumi authorization will not work. Get a token from https://bgm.tv/dev/app and set them in local.properties.")
 //}
-
-android {
-    buildTypes.getByName("release") {
-        isMinifyEnabled = false
-        isShrinkResources = false
-        proguardFiles(
-            getDefaultProguardFile("proguard-android-optimize.txt"),
-            *sharedAndroidProguardRules(),
-        )
-        buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani\"")
-    }
-    buildTypes.getByName("debug") {
-        buildConfigField("String", "APP_APPLICATION_ID", "\"me.him188.ani.debug2\"")
-    }
-    buildFeatures {
-        buildConfig = true
-    }
-}
 
 /// BUILD CONFIG
 
@@ -147,7 +151,7 @@ buildConfig {
     // Android platform configuration
     platform("android") {
         stringField("versionName", project.version.toString())
-        expressionField("isDebug", "BuildConfig.DEBUG")
+        expressionField("isDebug", "me.him188.ani.buildconfig.AndroidBuildConfig.DEBUG")
         stringField("dandanplayAppId", dandanplayAppId)
         stringField("dandanplayAppSecret", dandanplayAppSecret)
         stringField("sentryDsn", sentryDsn)

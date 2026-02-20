@@ -11,13 +11,11 @@ package me.him188.ani.app.tools.update
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.provider.Settings
 import androidx.core.content.FileProvider
-import me.him188.ani.BuildConfig
 import me.him188.ani.app.platform.ContextMP
+import me.him188.ani.buildconfig.AndroidBuildConfig
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.toFile
 import me.him188.ani.utils.logging.info
@@ -70,7 +68,7 @@ class AndroidUpdateInstaller : UpdateInstaller {
 //        }
 //        file.copyTo(externalFile)
         //intent.setDataAndType(Uri.fromFile(file), "application/vnd.android.package-archive")
-        val apkUri = FileProvider.getUriForFile(context, "${BuildConfig.APP_APPLICATION_ID}.fileprovider", file)
+        val apkUri = FileProvider.getUriForFile(context, "${AndroidBuildConfig.APP_APPLICATION_ID}.fileprovider", file)
         intent.setDataAndType(apkUri, "application/vnd.android.package-archive")
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

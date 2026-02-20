@@ -22,9 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.launch
-import me.him188.ani.app.platform.BuildConfig
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.setClipEntryText
+import me.him188.ani.buildconfig.AndroidBuildConfig
 import java.io.File
 
 
@@ -43,7 +43,7 @@ internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemCol
                 Intent.EXTRA_STREAM,
                 FileProvider.getUriForFile(
                     context,
-                    BuildConfig.APP_APPLICATION_ID + ".fileprovider",
+                    AndroidBuildConfig.APP_APPLICATION_ID + ".fileprovider",
                     context.getCurrentLogFile(),
                 ),
             )

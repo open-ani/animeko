@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -23,7 +23,7 @@ import java.io.File
 fun main(args: Array<String>) { // 直接 run 就行
     val inputDir = File(args.getOrNull(0) ?: "testData")
     val outputDirSkiko = File(args.getOrNull(1) ?: "../src/skikoTest/kotlin/title/generated")
-    val outputDirAndroid = File(args.getOrNull(1) ?: "../src/androidInstrumentedTest/kotlin/title/generated")
+    val outputDirAndroid = File(args.getOrNull(1) ?: "../src/androidDeviceTest/kotlin/title/generated")
 
     val suites = inputDir.walk().filter { it.extension == "json" }
         .map {
