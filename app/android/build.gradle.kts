@@ -86,6 +86,9 @@ android {
     packaging {
         resources {
             merges.add("META-INF/DEPENDENCIES") // log4j
+            pickFirsts.add("META-INF/LICENSE.md")
+            pickFirsts.add("META-INF/LICENSE-notice.md")
+
         }
     }
     buildTypes {

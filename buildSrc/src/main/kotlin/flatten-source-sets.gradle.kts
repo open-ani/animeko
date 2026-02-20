@@ -1,4 +1,11 @@
-import com.android.build.api.dsl.CommonExtension
+/*
+ * Copyright (C) 2024-2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
 
 /**
  * 扁平化源集目录结构, 减少文件树层级 by 2
@@ -65,12 +72,6 @@ fun Project.configureFlattenMppSourceSets() {
             val targetName = name
             setForTarget(targetName)
         }
-    }
-
-    extensions.findByType(CommonExtension::class)?.run {
-        this.sourceSets["main"].res.srcDirs(projectDir.resolve("androidRes"))
-        this.sourceSets["main"].assets.srcDirs(projectDir.resolve("androidAssets"))
-        this.sourceSets["main"].aidl.srcDirs(projectDir.resolve("androidAidl"))
     }
 }
 

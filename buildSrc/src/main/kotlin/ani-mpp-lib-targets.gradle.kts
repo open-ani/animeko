@@ -9,12 +9,9 @@
 
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
-import com.android.build.api.dsl.CommonExtension
 import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryExtension
-import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
 import org.jetbrains.compose.ComposeExtension
 import org.jetbrains.compose.ComposePlugin
-import org.jetbrains.kotlin.compose.compiler.gradle.ComposeFeatureFlag
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
@@ -171,13 +168,6 @@ configure<KotlinMultiplatformExtension> {
     }
 
     if (androidLibraryExtension != null) {
-        val androidMainSourceSetDir = projectDir.resolve("androidMain")
-        /*val androidExtension = extensions.findByType(CommonExtension::class)
-        if (androidExtension != null) {
-            androidExtension.sourceSets["main"].aidl.srcDirs(androidMainSourceSetDir.resolve("aidl"))
-            // add more sourceSet dirs if necessary.
-        }*/
-
         sourceSets {
             // Workaround for MPP compose bug, don't change
             removeIf { it.name == "androidAndroidTestRelease" }
@@ -233,6 +223,10 @@ if (enableIos) {
 
 if (androidLibraryExtension != null) {
     apply(plugin = "de.mannodermaus.android-junit5")
+}
+
+if (composeExtension != null && androidLibraryExtension != null) {
+    apply(plugin = "com.github.skydoves.compose.stability.analyzer")
 }
 
 if (enableIos) {

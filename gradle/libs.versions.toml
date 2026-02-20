@@ -23,7 +23,7 @@ sentry-kotlin-multiplatform = "0.11.0"
 sqlite = "2.6.1"
 androidx-activity = "1.12.4"
 androidx-core = "1.17.0"
-stability-analyzer = "0.6.7"
+stability-analyzer = "0.7.0"
 google-gms-google-services = "4.4.2"
 mannodermaus-android-junit5 = "1.11.2.0"
 undercouch-download = "5.6.0"
@@ -107,7 +107,7 @@ mannodermaus-android-junit5 = { id = "de.mannodermaus.android-junit5", version.r
 sentry-kotlin-multiplatform = { id = "io.sentry.kotlin.multiplatform.gradle", version.ref = "sentry-kmp" }
 undercouch-download = { id = "de.undercouch.download", version.ref = "undercouch-download" }
 openapi-generator = { id = "org.openapi.generator", version.ref = "openapi-generator" }
-# stability-analyzer = { id = "com.github.skydoves.compose.stability.analyzer", version.ref = "stability-analyzer" }
+compose-stability-analyzer = { id = "com.github.skydoves.compose.stability.analyzer", version.ref = "stability-analyzer" }
 
 [libraries]
 # Plugin libraries for build logic (buildSrc).

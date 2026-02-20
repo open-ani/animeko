@@ -30,6 +30,7 @@ kotlin {
         api(projects.danmaku.danmakuUiConfig)
         implementation(libs.kotlinx.collections.immutable)
         implementation(projects.utils.uiPreview)
+        implementation(projects.utils.uiTesting)
     }
     sourceSets.androidMain.dependencies {
         implementation(libs.compose.material3.adaptive.core)
