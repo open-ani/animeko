@@ -34,7 +34,7 @@ plugins {
     alias(libs.plugins.mannodermaus.android.junit5) apply false
     alias(libs.plugins.sentry.kotlin.multiplatform) apply false
     alias(libs.plugins.undercouch.download) apply false
-    // alias(libs.plugins.stability.analyzer) apply false
+    alias(libs.plugins.compose.stability.analyzer) apply false
     idea
 }
 
@@ -58,12 +58,12 @@ extensions.findByName("buildScan")?.withGroovyBuilder {
 }
 
 subprojects {
-    // configureComposeStabilityAnalyzer()
     afterEvaluate {
         configureKotlinOptIns()
         configureKotlinTestSettings()
         configureEncoding()
         configureJvmTarget()
+        configureComposePreviewToolingDependency()
 //        kotlin.runCatching {
 //            extensions.findByType(ComposeExtension::class)?.apply {
 //                this.kotlinCompilerPlugin.set(libs.versions.compose.multiplatform.compiler.get())

@@ -7,8 +7,6 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-import com.android.build.api.dsl.CommonExtension
-import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryExtension
 import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
 import com.android.build.gradle.api.KotlinMultiplatformAndroidPlugin
 import org.gradle.api.Action
@@ -28,6 +26,7 @@ import org.gradle.kotlin.dsl.get
 import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.kotlin
 import org.gradle.kotlin.dsl.withType
+import org.jetbrains.compose.ComposePlugin
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinCommonCompilerOptions
@@ -307,6 +306,16 @@ fun Project.configureKotlinTestSettings() {
                 }
             }
         }
+    }
+}
+
+fun Project.configureComposePreviewToolingDependency() {
+    val libs = versionCatalogLibs()
+    if (plugins.hasPlugin(ComposePlugin::class.java) &&
+        plugins.hasPlugin(KotlinMultiplatformAndroidPlugin::class.java)
+    ) {
+        dependencies.add("androidRuntimeClasspath", libs.getLibrary("compose-ui-tooling"))
+            ?.because("Automatically add org.jetbrains.compose.ui:ui-tooling dependency to Compose & Android KMP Library.")
     }
 }
 
