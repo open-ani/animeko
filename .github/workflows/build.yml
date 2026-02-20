@@ -196,35 +196,35 @@ jobs:
         name: 'Check (Desktop) (Attempt #1)'
         continue-on-error: true
         timeout-minutes: 180
-        run: './gradlew desktopTest --rerun-tasks "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+        run: './gradlew desktopTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
       - id: 'step-24'
         name: 'Check (Desktop) (Attempt #2)'
         continue-on-error: true
         timeout-minutes: 180
-        run: './gradlew desktopTest --rerun-tasks "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+        run: './gradlew desktopTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
         if: '${{ steps.step-23.outcome == ''failure'' }}'
       - id: 'step-25'
         name: 'Check (Desktop) (Attempt #3)'
         continue-on-error: false
         timeout-minutes: 180
-        run: './gradlew desktopTest --rerun-tasks "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+        run: './gradlew desktopTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
         if: '${{ steps.step-24.outcome == ''failure'' }}'
       - id: 'step-26'
         name: 'Check (Android Host) (Attempt #1)'
         continue-on-error: true
         timeout-minutes: 180
-        run: './gradlew testAndroidHostTest --rerun-tasks "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+        run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
       - id: 'step-27'
         name: 'Check (Android Host) (Attempt #2)'
         continue-on-error: true
         timeout-minutes: 180
-        run: './gradlew testAndroidHostTest --rerun-tasks "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+        run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
         if: '${{ steps.step-26.outcome == ''failure'' }}'
       - id: 'step-28'
         name: 'Check (Android Host) (Attempt #3)'
         continue-on-error: false
         timeout-minutes: 180
-        run: './gradlew testAndroidHostTest --rerun-tasks "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
+        run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" "-DBoost_INCLUDE_DIR=C:/vcpkg/installed/x64-windows/include" "-Dorg.gradle.jvmargs=-Xmx4g -Dkotlin.daemon.jvm.options=-Xmx4g" "-Dkotlin.daemon.jvm.options=-Xmx4g" "--parallel" "-Pani.android.abis=x86_64"'
         if: '${{ steps.step-27.outcome == ''failure'' }}'
   build_github-ubuntu-2404:
     name: 'Build (Ubuntu 24.04 x86_64 (GitHub))'
@@ -1179,35 +1179,35 @@ jobs:
         name: 'Check (Desktop) (Attempt #1)'
         continue-on-error: true
         timeout-minutes: 180
-        run: './gradlew desktopTest --rerun-tasks "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+        run: './gradlew desktopTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel" "-Pani.android.abis=arm64-v8a"'
       - id: 'step-38'
         name: 'Check (Desktop) (Attempt #2)'
         continue-on-error: true
         timeout-minutes: 180
-        run: './gradlew desktopTest --rerun-tasks "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+        run: './gradlew desktopTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel" "-Pani.android.abis=arm64-v8a"'
         if: '${{ steps.step-37.outcome == ''failure'' }}'
       - id: 'step-39'
         name: 'Check (Desktop) (Attempt #3)'
         continue-on-error: false
         timeout-minutes: 180
-        run: './gradlew desktopTest --rerun-tasks "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+        run: './gradlew desktopTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel" "-Pani.android.abis=arm64-v8a"'
         if: '${{ steps.step-38.outcome == ''failure'' }}'
       - id: 'step-40'
         name: 'Check (Android Host) (Attempt #1)'
         continue-on-error: true
         timeout-minutes: 180
-        run: './gradlew testAndroidHostTest --rerun-tasks "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+        run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel" "-Pani.android.abis=arm64-v8a"'
       - id: 'step-41'
         name: 'Check (Android Host) (Attempt #2)'
         continue-on-error: true
         timeout-minutes: 180
-        run: './gradlew testAndroidHostTest --rerun-tasks "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+        run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel" "-Pani.android.abis=arm64-v8a"'
         if: '${{ steps.step-40.outcome == ''failure'' }}'
       - id: 'step-42'
         name: 'Check (Android Host) (Attempt #3)'
         continue-on-error: false
         timeout-minutes: 180
-        run: './gradlew testAndroidHostTest --rerun-tasks "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel" "-Pani.android.abis=arm64-v8a"'
+        run: './gradlew testAndroidHostTest "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx12g -Dkotlin.daemon.jvm.options=-Xmx20g" "-Dkotlin.daemon.jvm.options=-Xmx20g" "--parallel" "-Pani.android.abis=arm64-v8a"'
         if: '${{ steps.step-41.outcome == ''failure'' }}'
       - id: 'step-43'
         name: 'Build Android Instrumented Tests (Attempt #1)'

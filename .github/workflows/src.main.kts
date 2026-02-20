@@ -1509,13 +1509,13 @@ class WithMatrix(
         if (matrix.runTests) {
             runGradle(
                 name = "Check (Desktop)",
-                tasks = arrayOf("desktopTest", "--rerun-tasks"),
+                tasks = arrayOf("desktopTest"),
                 maxAttempts = 3,
                 timeoutMinutes = 180,
             )
             runGradle(
                 name = "Check (Android Host)",
-                tasks = arrayOf("testAndroidHostTest", "--rerun-tasks"),
+                tasks = arrayOf("testAndroidHostTest"),
                 maxAttempts = 3,
                 timeoutMinutes = 180,
             )
