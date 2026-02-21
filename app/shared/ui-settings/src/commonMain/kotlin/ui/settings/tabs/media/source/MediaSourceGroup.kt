@@ -55,6 +55,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -79,10 +81,14 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.onRightClickIfSupported
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_media_source_add
 import me.him188.ani.app.ui.lang.settings_media_source_cancel
 import me.him188.ani.app.ui.lang.settings_media_source_cancel_sort
+import me.him188.ani.app.ui.lang.settings_media_source_clear_invalid
+import me.him188.ani.app.ui.lang.settings_media_source_clear_invalid_confirmation
+import me.him188.ani.app.ui.lang.settings_media_source_clear_invalid_result
 import me.him188.ani.app.ui.lang.settings_media_source_delete
 import me.him188.ani.app.ui.lang.settings_media_source_delete_can_readd
 import me.him188.ani.app.ui.lang.settings_media_source_delete_confirm
@@ -100,6 +106,7 @@ import me.him188.ani.app.ui.lang.settings_media_source_select_template
 import me.him188.ani.app.ui.lang.settings_media_source_sort
 import me.him188.ani.app.ui.lang.settings_media_source_start_test
 import me.him188.ani.app.ui.lang.settings_media_source_stop_test
+import me.him188.ani.app.ui.settings.framework.ConnectionTestResult
 import me.him188.ani.app.ui.settings.framework.ConnectionTesterResultIndicator
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextButtonItem
@@ -116,6 +123,7 @@ import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorder
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.reorderable
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
 @Stable
@@ -131,7 +139,9 @@ internal fun SettingsScope.MediaSourceGroup(
 ) {
     val navigator = LocalNavigator.current
     val uiScope = rememberCoroutineScope()
+    val toaster = LocalToaster.current
     var showSelectTemplate by remember { mutableStateOf(false) }
+    var showConfirmClearDialog by rememberSaveable { mutableStateOf(false) }
     if (showSelectTemplate) {
         // 选一个数据源来添加
         SelectMediaSourceTemplateDialog(
@@ -174,6 +184,31 @@ internal fun SettingsScope.MediaSourceGroup(
     val sorter = rememberSorterState<MediaSourcePresentation>(
         onComplete = { list -> state.reorderMediaSources(newOrder = list.map { it.instanceId }) },
     )
+    val isEditTaskRunning by edit.editTaskRunningFlow.collectAsState()
+    val canMutateMediaSources = !isEditTaskRunning
+    val invalidSources by remember {
+        derivedStateOf {
+            // 不能用 remember(state.mediaSources) 缓存：tester.result 是原地变化，不会改变列表 identity。
+            state.mediaSources.filter {
+                it.connectionTester.result == ConnectionTestResult.FAILED
+            }
+        }
+    }
+    val isEditingUiActive = edit.editMediaSourceState != null || showSelectTemplate
+    val showClearButton = remember(
+        invalidSources,
+        state.mediaSourceTesters.anyTesting,
+        isEditTaskRunning,
+        sorter.isSorting,
+        isEditingUiActive,
+    ) {
+        invalidSources.isNotEmpty() &&
+                !state.mediaSourceTesters.anyTesting &&
+                !isEditTaskRunning &&
+                !sorter.isSorting &&
+                !isEditingUiActive
+    }
+    val platform = LocalPlatform.current
 
     Group(
         title = { Text(stringResource(Lang.settings_media_source_list, state.mediaSources.size)) },
@@ -200,6 +235,7 @@ internal fun SettingsScope.MediaSourceGroup(
                             edit.cancelEdit()
                             showSelectTemplate = true
                         },
+                        enabled = canMutateMediaSources,
                     ) {
                         Icon(Icons.Rounded.Add, contentDescription = stringResource(Lang.settings_media_source_add))
                     }
@@ -233,6 +269,58 @@ internal fun SettingsScope.MediaSourceGroup(
             }
         },
     ) {
+        if (showConfirmClearDialog) {
+            AlertDialog(
+                onDismissRequest = { showConfirmClearDialog = false },
+                icon = { Icon(Icons.Rounded.Delete, null, tint = MaterialTheme.colorScheme.error) },
+                title = {
+                    Text(
+                        stringResource(
+                            Lang.settings_media_source_clear_invalid,
+                            invalidSources.size,
+                        ),
+                    )
+                },
+                text = {
+                    Text(
+                        stringResource(
+                            Lang.settings_media_source_clear_invalid_confirmation,
+                            invalidSources.size,
+                        ),
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        {
+                            val targets = invalidSources.toList()
+                            edit.deleteMediaSources(targets) { result ->
+                                toaster.toast(
+                                    getString(
+                                        Lang.settings_media_source_clear_invalid_result,
+                                        result.deleted,
+                                        result.failed,
+                                    ),
+                                )
+                            }
+                            showConfirmClearDialog = false
+                        },
+                    ) {
+                        Text(
+                            stringResource(Lang.settings_media_source_delete_confirm),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        {
+                            showConfirmClearDialog = false
+                        },
+                    ) { Text(stringResource(Lang.settings_media_source_cancel)) }
+                },
+            )
+        }
+
         Box {
             Column(
                 Modifier
@@ -250,7 +338,6 @@ internal fun SettingsScope.MediaSourceGroup(
                             edit.startEditing(item)
                         }
                     }
-                    val platform = LocalPlatform.current
 
                     var showMoreDropdown by remember { mutableStateOf(false) }
                     var showConfirmDeletionDialog by rememberSaveable { mutableStateOf(false) }
@@ -272,6 +359,7 @@ internal fun SettingsScope.MediaSourceGroup(
                                         edit.deleteMediaSource(item);
                                         showConfirmDeletionDialog = false
                                     },
+                                    enabled = canMutateMediaSources,
                                 ) {
                                     Text(
                                         stringResource(Lang.settings_media_source_delete_confirm),
@@ -292,6 +380,7 @@ internal fun SettingsScope.MediaSourceGroup(
                     MediaSourceItem(
                         item,
                         Modifier.combinedClickable(
+                            enabled = canMutateMediaSources,
                             onClickLabel = "编辑",
                             onLongClick = {
                                 if (platform.isMobile()) {
@@ -301,7 +390,9 @@ internal fun SettingsScope.MediaSourceGroup(
                             onLongClickLabel = "开始排序",
                             onClick = startEditing,
                         ).onRightClickIfSupported {
-                            showMoreDropdown = true
+                            if (canMutateMediaSources) {
+                                showMoreDropdown = true
+                            }
                         },
                     ) {
                         IconButton({}, enabled = false) { // 放在 button 里保持 padding 一致
@@ -312,7 +403,10 @@ internal fun SettingsScope.MediaSourceGroup(
                         }
 
                         Box {
-                            IconButton(onClick = { showMoreDropdown = true }) {
+                            IconButton(
+                                onClick = { showMoreDropdown = true },
+                                enabled = canMutateMediaSources,
+                            ) {
                                 Icon(
                                     Icons.Rounded.MoreVert,
                                     contentDescription = "更多",
@@ -321,6 +415,7 @@ internal fun SettingsScope.MediaSourceGroup(
 
                             MoreOptionsDropdown(
                                 showMoreDropdown,
+                                enabled = canMutateMediaSources,
                                 onDismissRequest = { showMoreDropdown = false },
                                 onDeleteRequest = { showConfirmDeletionDialog = true },
                                 item,
@@ -372,6 +467,18 @@ internal fun SettingsScope.MediaSourceGroup(
 
         HorizontalDividerItem()
 
+        if (showClearButton) {
+            TextButtonItem(
+                onClick = { showConfirmClearDialog = true },
+                title = {
+                    Text(
+                        stringResource(Lang.settings_media_source_clear_invalid, invalidSources.size),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                },
+            )
+            HorizontalDividerItem()
+        }
 
         TextButtonItem(
             onClick = {
@@ -475,6 +582,7 @@ internal fun SettingsScope.MediaSourceItem(
 @Composable
 private fun MoreOptionsDropdown(
     showMore: Boolean,
+    enabled: Boolean,
     onDismissRequest: () -> Unit,
     onDeleteRequest: () -> Unit,
     item: MediaSourcePresentation,
@@ -486,6 +594,7 @@ private fun MoreOptionsDropdown(
         onDismissRequest = onDismissRequest,
     ) {
         DropdownMenuItem(
+            enabled = enabled,
             leadingIcon = {
                 if (item.isEnabled) {
                     Icon(Icons.Rounded.VisibilityOff, null)
@@ -506,6 +615,7 @@ private fun MoreOptionsDropdown(
             },
         )
         DropdownMenuItem(
+            enabled = enabled,
             leadingIcon = { Icon(Icons.Rounded.Edit, null) },
             text = { Text(stringResource(Lang.settings_media_source_edit)) }, // 直接点击数据源一行也可以编辑, 但还是在这里放一个按钮以免有人不知道
             onClick = {
@@ -514,6 +624,7 @@ private fun MoreOptionsDropdown(
             },
         )
         DropdownMenuItem(
+            enabled = enabled,
             leadingIcon = { Icon(Icons.Rounded.Delete, null, tint = MaterialTheme.colorScheme.error) },
             text = {
                 Text(
