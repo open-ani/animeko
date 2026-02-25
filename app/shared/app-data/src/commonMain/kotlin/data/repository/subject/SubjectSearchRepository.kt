@@ -37,7 +37,6 @@ import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectType
 import me.him188.ani.datasources.bangumi.models.search.BangumiSort
 import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.logging.warn
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -81,7 +80,7 @@ class SubjectSearchRepository(
             val offset = params.key
                 ?: return@withContext LoadResult.Error(IllegalArgumentException("Key is null"))
             return@withContext try {
-                val res = /*bangumiSubjectSearchService.searchSubjectIds*/aniSubjectSearchService.searchSubjects(
+                val res = bangumiSubjectSearchService.searchSubjectIds(
                     searchQuery.keywords,
                     useNewApi = useNewApi(),
                     offset = offset,
@@ -90,20 +89,23 @@ class SubjectSearchRepository(
                     sort = searchQuery.sort.toBangumiSort(),
                 )
 
-                val filtered = if (ignoreDoneAndDropped()) {
+                val filteredIds = if (ignoreDoneAndDropped()) {
                     val excludedIds = subjectCollectionRepository.getSubjectIdsByCollectionType(
                         types = listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED),
                     ).first()
 
-                    buildList {
-                        res.forEach { if (it.subjectInfo.subjectId !in excludedIds) add(it) }
+                    MutableIntList().apply {
+                        res.forEach { if (it !in excludedIds) add(it) }
                     }
                 } else {
                     res
                 }
 
                 // 在分页源中直接过滤掉不符合条件的数据 #2380
-                val subjectInfos = filterSubjectsBySort(filtered, searchQuery.sort)
+                val subjectInfos = filterSubjectsBySort(
+                    subjectService.batchGetSubjectDetails(filteredIds),
+                    searchQuery.sort,
+                )
 
                 return@withContext LoadResult.Page(
                     subjectInfos,
@@ -113,45 +115,7 @@ class SubjectSearchRepository(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                try {
-                    Companion.logger.warn(e) { "Failed to search by ANI api, trying fallback Bangumi api." }
-
-                    val res = bangumiSubjectSearchService.searchSubjectIds(
-                        searchQuery.keywords,
-                        useNewApi = useNewApi(),
-                        offset = offset,
-                        limit = params.loadSize,
-                        filters = filters,
-                        sort = searchQuery.sort.toBangumiSort(),
-                    )
-
-                    val filtered = if (ignoreDoneAndDropped()) {
-                        val excludedIds = subjectCollectionRepository.getSubjectIdsByCollectionType(
-                            types = listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED),
-                        ).first()
-
-                        MutableIntList().apply {
-                            res.forEach { if (it !in excludedIds) add(it) }
-                        }
-                    } else {
-                        res
-                    }
-
-                    val subjectInfos = filterSubjectsBySort(
-                        subjectService.batchGetSubjectDetails(filtered),
-                        searchQuery.sort,
-                    )
-
-                    return@withContext LoadResult.Page(
-                        subjectInfos,
-                        prevKey = if (offset == 0) null else offset,
-                        nextKey = if (subjectInfos.isEmpty()) null else offset + params.loadSize,
-                    )
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    LoadResult.Error(RepositoryException.wrapOrThrowCancellation(e))
-                }
+                LoadResult.Error(RepositoryException.wrapOrThrowCancellation(e))
             }
         }
 
@@ -273,4 +237,3 @@ class SubjectSearchRepository(
 private fun SubjectType.toBangumiSubjectType(): BangumiSubjectType = when (this) {
     SubjectType.ANIME -> BangumiSubjectType.Anime
 }
-
