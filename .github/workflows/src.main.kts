@@ -36,9 +36,13 @@
 @file:DependsOn("softprops:action-gh-release:v1")
 @file:DependsOn("snow-actions:qrcode:v1.0.0")
 
+import Secrets.APPLE_DEVELOPER_TEAM_ID
+import Secrets.APPLE_DISTRIBUTION_PRIVATE_KEY_PFX
+import Secrets.APPLE_DISTRIBUTION_PRIVATE_KEY_PFX_IMPORT_PWD
 import Secrets.APPSTORE_API_KEY_ID
 import Secrets.APPSTORE_API_PRIVATE_KEY
 import Secrets.APPSTORE_ISSUER_ID
+import Secrets.APPSTORE_PROVISIONING_PROFILE
 import Secrets.AWS_ACCESS_KEY_ID
 import Secrets.AWS_BASEURL
 import Secrets.AWS_BUCKET
@@ -939,6 +943,7 @@ workflow(
                     prepareIosBuild()
                     // Don't build debug
                     buildIosIpaRelease()
+                    buildIosSignedIpaRelease()
                 }
                 uploadIosIpa()
                 uploadAppStoreConnectTestflight()
@@ -1514,14 +1519,6 @@ class WithMatrix(
                 tasks = arrayOf(":app:ios:buildReleaseIpa"),
                 maxAttempts = 3,
             )
-            usesWithAttempts(
-                name = "Upload iOS Release IPA",
-                action = UploadArtifact(
-                    name = "ani-ios-release",
-                    path_Untyped = "app/ios/build/archives/release/Animeko.ipa",
-                    overwrite = true,
-                ),
-            )
         }
     }
 
@@ -1761,6 +1758,10 @@ class WithMatrix(
             "APPSTORE_API_KEY_ID" to expr { secrets.APPSTORE_API_KEY_ID },
             "APPSTORE_API_PRIVATE_KEY" to expr { secrets.APPSTORE_API_PRIVATE_KEY },
             "APPSTORE_ISSUER_ID" to expr { secrets.APPSTORE_ISSUER_ID },
+            "APPLE_DEVELOPER_TEAM_ID" to expr { secrets.APPLE_DEVELOPER_TEAM_ID },
+            "APPSTORE_PROVISIONING_PROFILE" to expr { secrets.APPSTORE_PROVISIONING_PROFILE },
+            "APPLE_DISTRIBUTION_PRIVATE_KEY_PFX" to expr { secrets.APPLE_DISTRIBUTION_PRIVATE_KEY_PFX },
+            "APPLE_DISTRIBUTION_PRIVATE_KEY_PFX_IMPORT_PWD" to expr { secrets.APPLE_DISTRIBUTION_PRIVATE_KEY_PFX_IMPORT_PWD },
         )
 
         fun JobBuilder<*>.uploadAndroidApkToCloud() {
@@ -1834,9 +1835,28 @@ class WithMatrix(
 
         fun JobBuilder<*>.uploadIosIpa() {
             if (matrix.uploadIpa) {
+                usesWithAttempts(
+                    name = "Upload iOS Release IPA to GitHub Assets",
+                    action = UploadArtifact(
+                        name = "ani-ios-release",
+                        path_Untyped = "app/ios/build/archives/release/Animeko.ipa",
+                        overwrite = true,
+                    ),
+                )
                 runGradle(
-                    name = "Upload iOS IPA",
-                    tasks = arrayOf(":ci-helper:uploadIosIpa", "\"--no-configuration-cache\""),
+                    name = "Upload iOS Release IPA to Bucket",
+                    tasks = arrayOf(":ci-helper:uploadIosIpa"),
+                    env = ciHelperSecrets,
+                )
+            }
+        }
+
+        fun JobBuilder<*>.buildIosSignedIpaRelease() {
+            if (matrix.uploadIpa) {
+                runGradle(
+                    name = "Build iOS Signed Release IPA",
+                    tasks = arrayOf(":app:ios:buildSignedReleaseIpa"),
+                    maxAttempts = 3,
                     env = ciHelperSecrets,
                 )
             }
@@ -1846,7 +1866,7 @@ class WithMatrix(
             if (matrix.uploadIpa) {
                 runGradle(
                     name = "Upload AppStore Testflight",
-                    tasks = arrayOf(":ci-helper:uploadAppStoreConnectTestflight", "\"--no-configuration-cache\""),
+                    tasks = arrayOf(":ci-helper:uploadAppStoreConnectTestflight"),
                     env = ciHelperSecrets,
                     maxAttempts = 1,
                 )
@@ -1881,6 +1901,10 @@ object Secrets {
     val SecretsContext.APPSTORE_API_KEY_ID by SecretsContext.propertyToExprPath
     val SecretsContext.APPSTORE_API_PRIVATE_KEY by SecretsContext.propertyToExprPath
     val SecretsContext.APPSTORE_ISSUER_ID by SecretsContext.propertyToExprPath
+    val SecretsContext.APPLE_DEVELOPER_TEAM_ID by SecretsContext.propertyToExprPath
+    val SecretsContext.APPSTORE_PROVISIONING_PROFILE by SecretsContext.propertyToExprPath
+    val SecretsContext.APPLE_DISTRIBUTION_PRIVATE_KEY_PFX by SecretsContext.propertyToExprPath
+    val SecretsContext.APPLE_DISTRIBUTION_PRIVATE_KEY_PFX_IMPORT_PWD by SecretsContext.propertyToExprPath
 }
 
 /// EXTENSIONS
