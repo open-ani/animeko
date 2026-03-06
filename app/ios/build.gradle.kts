@@ -7,29 +7,64 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.provider.Property
-import org.gradle.api.provider.Provider
-import org.gradle.api.tasks.CacheableTask
-import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.InputDirectory
-import org.gradle.api.tasks.Internal
-import org.gradle.api.tasks.InputFile
-import org.gradle.api.tasks.Optional
-import org.gradle.api.tasks.OutputDirectory
-import org.gradle.api.tasks.OutputFile
-import org.gradle.api.tasks.PathSensitive
-import org.gradle.api.tasks.PathSensitivity
-import org.gradle.api.tasks.TaskAction
-import org.gradle.process.ExecOperations
-import org.gradle.work.DisableCachingByDefault
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.util.Base64
-import java.util.UUID
-import javax.inject.Inject
 
+// ╔══════════════════════════════════════════════════════════════════════════════╗
+// ║  Animeko iOS 构建脚本                                                       ║
+// ║                                                                            ║
+// ║  本文件定义了 iOS 应用的完整构建流水线, 包括:                                    ║
+// ║    - CocoaPods 依赖安装                                                     ║
+// ║    - Kotlin/Native iOS framework 编译                                       ║
+// ║    - Xcode archive 构建 (Debug / Release / 签名 Release)                    ║
+// ║    - IPA 打包 (未签名 ad-hoc / 已签名 App Store)                              ║
+// ║    - iOS 模拟器构建、安装和启动                                                ║
+// ║    - Info.plist 版本号注入                                                   ║
+// ║    - 代码签名相关的 Keychain 和 Provisioning Profile 管理                      ║
+// ║                                                                            ║
+// ║  构建流水线依赖关系 (签名发布):                                                 ║
+// ║    linkPodReleaseFrameworkIosArm64                                          ║
+// ║      └─► buildSignedReleaseArchive                                         ║
+// ║            ├─► prepareBuildKeychain (创建临时 Keychain)                       ║
+// ║            └─► buildSignedReleaseIpa                                        ║
+// ║                  ├─► patchExportOptionsPlist                                ║
+// ║                  │     └─► installProvisioningProfile                       ║
+// ║                  └─► 输出: build/archives/release-signed/export/Animeko.ipa ║
+// ╚══════════════════════════════════════════════════════════════════════════════╝
+
+// ── 签名相关的 Gradle 属性 (通常通过 CI 环境变量或 local.properties 提供) ──
+
+/** Apple Developer Team ID (10 位字母数字), 用于 CODE_SIGN_STYLE 和 exportOptions.plist */
+val appleDeveloperTeamId = providers.provider {
+    project.getPropertyOrNull("APPLE_DEVELOPER_TEAM_ID").orEmpty()
+}
+
+/** Base64 编码的 App Store Provisioning Profile (.mobileprovision), 用于签名构建 */
+val appStoreProvisioningProfile = providers.provider {
+    project.getPropertyOrNull("APPSTORE_PROVISIONING_PROFILE").orEmpty()
+}
+
+/** Base64 编码的 Apple Distribution 证书 (.p12/PFX), 包含私钥, 用于创建签名 Keychain */
+val appleDistributionPrivateKeyPfx = providers.provider {
+    project.getPropertyOrNull("APPLE_DISTRIBUTION_PRIVATE_KEY_PFX").orEmpty()
+}
+
+/** .p12 文件的导入密码, 用于解密 PFX 中的私钥 */
+val appleDistributionPrivateKeyPfxPassword = providers.provider {
+    project.getPropertyOrNull("APPLE_DISTRIBUTION_PRIVATE_KEY_PFX_IMPORT_PWD").orEmpty()
+}
+
+/** 从 Provisioning Profile 中提取的显示名称, 用于 PROVISIONING_PROFILE_SPECIFIER */
+val appStoreProvisioningProfileName = appStoreProvisioningProfile.map {
+    ProvisioningProfileUtils.decode(it).name
+}
+
+/** Provisioning Profile 的系统安装目录: ~/Library/MobileDevice/Provisioning Profiles/ */
+val provisioningProfilesDirProvider = providers.systemProperty("user.home")
+    .map { File(it, "Library/MobileDevice/Provisioning Profiles") }
+
+// ── CocoaPods 依赖安装 ──
+// 运行 `pod install` 安装 Podfile 中声明的依赖 (如 Kotlin/Native framework)。
+// 依赖于 :app:shared:application:podspec 生成 .podspec 文件,
+// 以及 patchInfoPlist 确保 Info.plist 中的版本号已更新。
 tasks.register("podInstall", Exec::class) {
     group = "build"
     description = "Builds the iOS framework"
@@ -42,6 +77,9 @@ tasks.register("podInstall", Exec::class) {
     commandLine("pod", "install")
 }
 
+// ── Kotlin/Native iOS Framework 编译 ──
+// 触发 Kotlin Multiplatform 的 iOS framework 编译和嵌入流程。
+// 这是 Xcode 构建的前置步骤, 确保 Kotlin 代码已编译为 iOS 可用的 .framework。
 tasks.register("iosFramework") {
     group = "build"
     description = "Builds the iOS framework"
@@ -50,350 +88,47 @@ tasks.register("iosFramework") {
     )
 }
 
-object IpaArguments {
-    fun create(
-        workspace: String = "Animeko.xcworkspace",
-        scheme: String = "Animeko",
-        destination: String = "generic/platform=iOS",
-        sdk: String = "iphoneos",
-        codeSigningAllowed: Boolean? = null,
-        codeSigningRequired: Boolean? = null,
-        additionalBuildSettings: Map<String, String> = emptyMap(),
-    ): List<String> {
-        return buildList {
-            addAll(
-                listOf(
-                    "xcodebuild",
-                    "-workspace", workspace,
-                    "-scheme", scheme,
-                    "-destination", destination,
-                    "-sdk", sdk,
-                ),
-            )
-            codeSigningAllowed?.let {
-                val codeSignAllowedValue = if (it) "YES" else "NO"
-                add("CODE_SIGNING_ALLOWED=$codeSignAllowedValue")
-            }
-            codeSigningRequired?.let {
-                val codeSignRequiredValue = if (it) "YES" else "NO"
-                add("CODE_SIGNING_REQUIRED=$codeSignRequiredValue")
-            }
-            additionalBuildSettings.forEach { (key, value) ->
-                add("$key=$value")
-            }
-        }
-    }
+// ── 安装 Provisioning Profile ──
+// 将 Base64 编码的 .mobileprovision 解码后安装到系统标准目录,
+// 使 xcodebuild 在签名构建时能够自动找到对应的 Profile。
+// 输入来自 Gradle 属性 APPSTORE_PROVISIONING_PROFILE。
+val installProvisioningProfile = tasks.register("installProvisioningProfile", InstallProvisioningProfileTask::class) {
+    group = "build"
+    description = "Decodes and installs the provisioning profile for App Store distribution"
+    provisioningProfileBase64.convention(appStoreProvisioningProfile)
+    provisioningProfilesDir = layout.dir(provisioningProfilesDirProvider)
 }
 
-fun ipaArguments(
-    workspace: String = "Animeko.xcworkspace",
-    scheme: String = "Animeko",
-    destination: String = "generic/platform=iOS",
-    sdk: String = "iphoneos",
-    codeSigningAllowed: Boolean? = null,
-    codeSigningRequired: Boolean? = null,
-    additionalBuildSettings: Map<String, String> = emptyMap(),
-): List<String> {
-    return IpaArguments.create(
-        workspace = workspace,
-        scheme = scheme,
-        destination = destination,
-        sdk = sdk,
-        codeSigningAllowed = codeSigningAllowed,
-        codeSigningRequired = codeSigningRequired,
-        additionalBuildSettings = additionalBuildSettings,
-    )
+// ── 准备签名 Keychain ──
+// 创建临时 macOS Keychain 并导入 Apple Distribution 签名证书 (.p12)。
+// 这是 CI 环境中进行代码签名的前置步骤, 本地开发通常不需要 (使用系统 Keychain)。
+// 输入来自 Gradle 属性 APPLE_DISTRIBUTION_PRIVATE_KEY_PFX 和对应的密码。
+val prepareBuildKeychain = tasks.register("prepareBuildKeychain", PrepareBuildKeychainTask::class) {
+    group = "build"
+    description = "Creates an ephemeral build keychain and imports Apple Distribution signing key material"
+    privateKeyPfxBase64.convention(appleDistributionPrivateKeyPfx)
+    privateKeyPfxPassword.convention(appleDistributionPrivateKeyPfxPassword)
+    outKeychain = layout.buildDirectory.file("release-animeko.keychain")
 }
 
-object ProvisioningProfileUtils {
-    data class Parsed(
-        val decoded: ByteArray,
-        val uuid: String,
-        val name: String,
-    )
+// ── 生成 exportOptions.plist ──
+// 从模板文件生成 xcodebuild -exportArchive 所需的 exportOptions.plist。
+// 将模板中的占位符替换为实际的 Team ID 和 Provisioning Profile Name。
+// 依赖 installProvisioningProfile 确保 Profile 已安装且 Name 可用。
+val patchExportOptionsPlist = tasks.register("patchExportOptionsPlist", PatchExportOptionsPlistTask::class) {
+    group = "build"
+    dependsOn(installProvisioningProfile)
 
-    fun decode(profileBase64Raw: String): Parsed {
-        val profileBase64 = profileBase64Raw.trim().removeSurrounding("\"")
-        if (profileBase64.isBlank()) {
-            throw GradleException("APPSTORE_PROVISIONING_PROFILE is not set.")
-        }
-
-        val sanitizedBase64 = profileBase64.replace(Regex("\\s+"), "")
-        val decoded = try {
-            Base64.getMimeDecoder().decode(sanitizedBase64)
-        } catch (e: IllegalArgumentException) {
-            throw GradleException(
-                "APPSTORE_PROVISIONING_PROFILE is not valid base64. Remove wrapping quotes and preserve raw base64 content.",
-                e,
-            )
-        }
-        val content = String(decoded, Charsets.ISO_8859_1)
-        val uuidRegex = Regex("""<key>UUID</key>\s*<string>([^<]+)</string>""")
-        val uuid = uuidRegex.find(content)?.groupValues?.get(1)
-            ?: throw GradleException("Could not extract UUID from provisioning profile")
-        val nameRegex = Regex("""<key>Name</key>\s*<string>([^<]+)</string>""")
-        val profileName = nameRegex.find(content)?.groupValues?.get(1)
-            ?: throw GradleException("Could not extract Name from provisioning profile")
-
-        return Parsed(
-            decoded = decoded,
-            uuid = uuid,
-            name = profileName,
-        )
-    }
+    templateFile = layout.projectDirectory.file("Animeko/exportOptions.plist.template.txt")
+    profileName.convention(appStoreProvisioningProfileName)
+    outputFile = layout.buildDirectory.file("export/exportOptions.plist")
+    teamId.convention(appleDeveloperTeamId)
 }
 
-@DisableCachingByDefault(because = "Runs xcodebuild, which depends on local Xcode and signing state")
-abstract class XcodeArchiveTask : DefaultTask() {
-    @get:Internal
-    abstract val workingDirectory: DirectoryProperty
-
-    @get:InputDirectory
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val workspaceDirectory: DirectoryProperty
-
-    @get:Input
-    abstract val scheme: Property<String>
-
-    @get:Input
-    abstract val destination: Property<String>
-
-    @get:Input
-    abstract val sdk: Property<String>
-
-    @get:Input
-    abstract val archiveConfiguration: Property<String>
-
-    @get:Input
-    abstract val codeSigningAllowed: Property<Boolean>
-
-    @get:Input
-    abstract val codeSigningRequired: Property<Boolean>
-
-    @get:Input
-    @get:Optional
-    abstract val codeSignStyle: Property<String>
-
-    @get:Input
-    @get:Optional
-    abstract val developmentTeamId: Property<String>
-
-    @get:Input
-    @get:Optional
-    abstract val profileName: Property<String>
-
-    @get:Input
-    @get:Optional
-    abstract val signingKeychain: Property<String>
-
-    @get:OutputDirectory
-    abstract val archivePath: DirectoryProperty
-
-    @get:Inject
-    abstract val execOperations: ExecOperations
-
-    @TaskAction
-    fun buildArchive() {
-        val additionalBuildSettings = mutableMapOf<String, String>()
-        codeSignStyle.orNull?.takeIf { it.isNotBlank() }?.let {
-            additionalBuildSettings["CODE_SIGN_STYLE"] = it
-        }
-        developmentTeamId.orNull?.takeIf { it.isNotBlank() }?.let {
-            additionalBuildSettings["DEVELOPMENT_TEAM"] = it
-        }
-        if (codeSigningAllowed.get()
-            && (codeSignStyle.orNull == "Automatic" || codeSignStyle.orNull == "Manual")
-            && developmentTeamId.orNull.isNullOrBlank()
-        ) {
-            throw GradleException("APPLE_DEVELOPER_TEAM_ID is required for signed archive builds.")
-        }
-        if (codeSigningAllowed.get() && codeSignStyle.orNull == "Manual") {
-            val resolvedProfileName = profileName.orNull?.takeIf { it.isNotBlank() }
-                ?: throw GradleException("Provisioning profile Name is required for Manual signed archive builds.")
-            additionalBuildSettings["PROVISIONING_PROFILE_SPECIFIER"] = resolvedProfileName
-            additionalBuildSettings["CODE_SIGN_IDENTITY"] = "Apple Distribution"
-            signingKeychain.orNull?.let { keychain ->
-                additionalBuildSettings["OTHER_CODE_SIGN_FLAGS"] = "--keychain $keychain"
-            }
-        }
-
-        val args = buildList {
-            val forceGlobalCodeSigningFlags = !(codeSigningAllowed.get() && codeSigningRequired.get())
-            addAll(
-                IpaArguments.create(
-                    workspace = workspaceDirectory.get().asFile.absolutePath,
-                    scheme = scheme.get(),
-                    destination = destination.get(),
-                    sdk = sdk.get(),
-                    codeSigningAllowed = if (forceGlobalCodeSigningFlags) codeSigningAllowed.get() else null,
-                    codeSigningRequired = if (forceGlobalCodeSigningFlags) codeSigningRequired.get() else null,
-                    additionalBuildSettings = additionalBuildSettings,
-                ),
-            )
-            add("archive")
-            add("-configuration")
-            add(archiveConfiguration.get())
-            add("-archivePath")
-            add(archivePath.get().asFile.absolutePath)
-        }
-
-        execOperations.exec {
-            workingDir(workingDirectory.get().asFile)
-            commandLine(args)
-        }
-
-        signingKeychain.orNull?.let { keychain ->
-            // 尝试删除已有的 keychains, 在 CI 上肯定没有, 本地测试的时候可能会有
-            execOperations.exec {
-                commandLine("sh", "-c", "security delete-keychain \"$keychain\" 2>/dev/null || true")
-            }
-        }
-    }
-}
-
-@DisableCachingByDefault(because = "Creates and unlocks an ephemeral macOS keychain for codesigning")
-abstract class PrepareBuildKeychainTask : DefaultTask() {
-    @get:Input
-    @get:Optional
-    abstract val privateKeyPfxBase64: Property<String>
-
-    @get:Input
-    @get:Optional
-    abstract val privateKeyPfxPassword: Property<String>
-
-    @get:OutputFile
-    abstract val outKeychain: RegularFileProperty
-
-    @get:Inject
-    abstract val execOperations: ExecOperations
-
-    @TaskAction
-    fun prepare() {
-        val encodedPfx = privateKeyPfxBase64.orNull?.trim()?.removeSurrounding("\"")?.takeIf { it.isNotBlank() }
-            ?: throw GradleException("APPLE_DISTRIBUTION_PRIVATE_KEY_PFX is not set.")
-        val importPassword = privateKeyPfxPassword.orNull?.trim()?.removeSurrounding("\"")?.takeIf { it.isNotBlank() }
-            ?: throw GradleException("APPLE_DISTRIBUTION_PRIVATE_KEY_PFX_IMPORT_PWD is not set.")
-        val keychainPassword = UUID.randomUUID().toString()
-
-        val outKeychainFilePath = outKeychain.asFile.get().absolutePath
-        val tempPfxKeyFile = temporaryDir.resolve("apple_distribution_key.p12").apply {
-            val decoded = try {
-                Base64.getMimeDecoder().decode(encodedPfx.replace(Regex("\\s+"), ""))
-            } catch (e: IllegalArgumentException) {
-                throw GradleException("APPLE_DISTRIBUTION_PRIVATE_KEY is not valid base64 content.", e)
-            }
-            writeBytes(decoded)
-        }
-
-        // 尝试删除已有的 keychains, 在 CI 上肯定没有, 本地测试的时候可能会有
-        execOperations.exec {
-            commandLine("sh", "-c", "security delete-keychain \"$outKeychainFilePath\" 2>/dev/null || true")
-        }
-        // 用随机密码创建 keychain
-        execOperations.exec { commandLine("security", "create-keychain", "-p", keychainPassword, outKeychainFilePath) }
-        // 设置解锁后重新上锁的时间
-        execOperations.exec {
-            commandLine("security", "set-keychain-settings", "-lut", "21600", "-u", outKeychainFilePath)
-        }
-        // 导入 apple distribution certificates
-        execOperations.exec {
-            commandLine(
-                "security", "import", tempPfxKeyFile.absolutePath,
-                "-k", outKeychainFilePath,
-                "-P", importPassword,
-                "-T", "/usr/bin/codesign",
-                "-T", "/usr/bin/security",
-                "-T", "/usr/bin/xcodebuild",
-                "-T", "/usr/bin/productbuild",
-            )
-        }
-        // 
-        val partitionOutput = ByteArrayOutputStream()
-        execOperations.exec {
-
-            commandLine(
-                "security", "set-key-partition-list",
-                "-S", "apple-tool:,apple:,codesign:",
-                "-s",
-                "-k", keychainPassword,
-                outKeychainFilePath,
-            )
-            standardOutput = partitionOutput
-        }
-        partitionOutput.close()
-
-        // 导入 Intermediate Certificates
-        val curlOutput = ByteArrayOutputStream()
-        kotlin.run {
-
-            val g3 = temporaryDir.resolve("AppleWWDRCAG3.cer").absolutePath
-            val g4 = temporaryDir.resolve("AppleWWDRCAG4.cer").absolutePath
-            val g2 = temporaryDir.resolve("DeveloperIDG2CA.cer").absolutePath
-
-            execOperations.exec {
-                commandLine("curl", "-o", g3, "https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer")
-                standardOutput = curlOutput
-            }
-            execOperations.exec { commandLine("security", "import", g3, "-k", outKeychainFilePath) }
-            execOperations.exec {
-                commandLine("curl", "-o", g4, "https://www.apple.com/certificateauthority/AppleWWDRCAG4.cer")
-                standardOutput = curlOutput
-            }
-            execOperations.exec { commandLine("security", "import", g4, "-k", outKeychainFilePath) }
-            execOperations.exec {
-                commandLine("curl", "-o", g2, "https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer")
-                standardOutput = curlOutput
-            }
-            execOperations.exec { commandLine("security", "import", g2, "-k", outKeychainFilePath) }
-        }
-        curlOutput.close()
-
-
-        // 把我们的新 keychain 加到系统搜索路径中
-        kotlin.run {
-            val keychainsOutput = ByteArrayOutputStream()
-            execOperations.exec {
-                commandLine("security", "list-keychains", "-d", "user")
-                standardOutput = keychainsOutput
-            }
-            val existingUserKeys = keychainsOutput.toString().split('\n').map { it.trim('"', ' ') } // "
-                // 如果我们已经有了, 需要过滤掉
-                .filter { it != outKeychainFilePath && it.isNotEmpty() && it.isNotBlank() }
-
-            val combinedKeys = buildList {
-                addAll(existingUserKeys)
-                add(outKeychainFilePath)
-            }.toTypedArray()
-
-            execOperations.exec {
-                commandLine("security", "list-keychains", "-d", "user", "-s", *combinedKeys)
-            }
-            keychainsOutput.close()
-        }
-
-        // 立刻解锁 keychain
-        execOperations.exec { commandLine("security", "unlock-keychain", "-p", keychainPassword, outKeychainFilePath) }
-
-        kotlin.run {
-            val identityOutput = ByteArrayOutputStream()
-            execOperations.exec {
-                commandLine("security", "find-identity", "-v", "-p", "codesigning", outKeychainFilePath)
-                standardOutput = identityOutput
-            }
-            val identities = identityOutput.toString()
-            if (!identities.contains("Apple Distribution") && !identities.contains("iOS Distribution")) {
-                throw GradleException(
-                    "No distribution signing identity found in build keychain. " +
-                            "APPLE_DISTRIBUTION_PRIVATE_KEY_PFX must include a certificate+private-key bundle (typically .p12), not CSR/private key only.",
-                )
-            }
-            identityOutput.close()
-        }
-
-        logger.lifecycle("Prepared ephemeral signing keychain at $outKeychainFilePath")
-    }
-}
-
+// ── Debug 未签名 Archive ──
+// 使用 xcodebuild archive 构建 Debug 配置的 .xcarchive。
+// 禁用代码签名 (codeSigningAllowed=false), 用于本地调试和侧载 IPA 打包。
+// 依赖 Kotlin/Native 的 Debug framework 编译。
 val buildDebugArchive = tasks.register("buildDebugArchive", XcodeArchiveTask::class) {
     group = "build"
     description = "Builds the iOS framework for Debug"
@@ -410,6 +145,10 @@ val buildDebugArchive = tasks.register("buildDebugArchive", XcodeArchiveTask::cl
     archivePath = layout.buildDirectory.dir("archives/debug/Animeko.xcarchive")
 }
 
+// ── Release 未签名 Archive ──
+// 使用 xcodebuild archive 构建 Release 配置的 .xcarchive。
+// 禁用代码签名, 用于生成可供 AltStore/SideStore 侧载的未签名 IPA。
+// 依赖 Kotlin/Native 的 Release framework 编译。
 val buildReleaseArchive = tasks.register("buildReleaseArchive", XcodeArchiveTask::class) {
     group = "build"
     description = "Builds the iOS framework for Release"
@@ -426,244 +165,11 @@ val buildReleaseArchive = tasks.register("buildReleaseArchive", XcodeArchiveTask
     archivePath = layout.buildDirectory.dir("archives/release/Animeko.xcarchive")
 }
 
-
-/**
- * Packages an unsigned IPA **and** injects an ad‑hoc signature so sideloaders can re‑sign it.
- *
- * This task is **configuration‑cache safe** – it does *not* capture the `Project` instance.
- */
-@CacheableTask
-abstract class BuildUnsignedIpaTask : DefaultTask() {
-
-    /* -------------------------------------------------------------
-     * Inputs / outputs
-     * ----------------------------------------------------------- */
-
-    @get:InputDirectory
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val archiveDir: DirectoryProperty
-
-    @get:OutputFile
-    abstract val outputIpa: RegularFileProperty
-
-    /* -------------------------------------------------------------
-     * Services (injected)
-     * ----------------------------------------------------------- */
-
-    @get:Inject
-    abstract val execOperations: ExecOperations
-
-    /* -------------------------------------------------------------
-     * Action
-     * ----------------------------------------------------------- */
-
-    @TaskAction
-    fun buildIpa() {
-        // 1. Locate the .app inside the .xcarchive
-        val appDir = archiveDir.get().asFile.resolve("Products/Applications/Animeko.app")
-        if (!appDir.exists())
-            throw GradleException("Could not find Animeko.app in archive at: ${appDir.absolutePath}")
-
-        // 2. Create temporary Payload directory and copy .app into it
-        val payloadDir = File(temporaryDir, "Payload").apply { mkdirs() }
-        val destApp = File(payloadDir, appDir.name)
-        appDir.copyRecursively(destApp, overwrite = true)
-
-        // 3. Inject placeholder (ad‑hoc) code signature so AltStore / SideStore accept it
-        logger.lifecycle("[IPA] Ad‑hoc signing ${destApp.name} …")
-        execOperations.exec {
-            commandLine(
-                "codesign", "--force", "--deep", "--sign", "-", "--timestamp=none",
-                destApp.absolutePath,
-            )
-        }
-
-        // 4. Zip Payload ⇒ .ipa using the system `zip` command
-        //
-        //    -r : recurse into directories
-        //    -y : store symbolic links as the link instead of the referenced file
-        //
-        // The working directory is the temporary folder so the archive
-        // has a top‑level "Payload/" directory (required for .ipa files).
-        val zipFile = File(temporaryDir, "Animeko.zip")
-        execOperations.exec {
-            workingDir(temporaryDir)
-            commandLine("zip", "-r", "-y", zipFile.absolutePath, "Payload")
-        }
-
-        // 5. Move to final location (with .ipa extension)
-        outputIpa.get().asFile.apply {
-            parentFile.mkdirs()
-            delete()
-            zipFile.renameTo(this)
-        }
-
-        logger.lifecycle("[IPA] Created ad‑hoc‑signed IPA at: ${outputIpa.get().asFile.absolutePath}")
-    }
-}
-
-
-tasks.register("buildDebugIpa", BuildUnsignedIpaTask::class) {
-    description = "Manually packages the .app from the .xcarchive into an unsigned .ipa"
-    group = "build"
-
-    // Adjust these paths as needed
-    archiveDir = layout.buildDirectory.dir("archives/debug/Animeko.xcarchive")
-    outputIpa = layout.buildDirectory.file("archives/debug/Animeko.ipa")
-    dependsOn(buildDebugArchive)
-}
-
-tasks.register("buildReleaseIpa", BuildUnsignedIpaTask::class) {
-    description = "Manually packages the .app from the .xcarchive into an unsigned .ipa"
-    group = "build"
-
-    // Adjust these paths as needed
-    archiveDir = layout.buildDirectory.dir("archives/release/Animeko.xcarchive")
-    outputIpa = layout.buildDirectory.file("archives/release/Animeko.ipa")
-    dependsOn(buildReleaseArchive)
-}
-
-// --- App Store signed build for TestFlight ---
-
-@DisableCachingByDefault(because = "Consumes signing secrets and writes provisioning profiles to the user home directory")
-abstract class InstallProvisioningProfileTask : DefaultTask() {
-    @get:Input
-    @get:Optional
-    abstract val provisioningProfileBase64: Property<String>
-
-    @get:OutputDirectory
-    abstract val provisioningProfilesDir: DirectoryProperty
-
-    @TaskAction
-    fun install() {
-        val profileBase64 = provisioningProfileBase64.orNull?.takeIf { it.isNotBlank() }
-            ?: throw GradleException("APPSTORE_PROVISIONING_PROFILE is not set.")
-        val profilesDir = provisioningProfilesDir.get().asFile.apply { mkdirs() }
-
-        val profile = ProvisioningProfileUtils.decode(profileBase64)
-        val profileFile = profilesDir.resolve("${profile.uuid}.mobileprovision")
-        profileFile.writeBytes(profile.decoded)
-        logger.lifecycle("Installed provisioning profile: ${profileFile.absolutePath} (UUID=${profile.uuid}, Name=${profile.name})")
-    }
-}
-
-@DisableCachingByDefault(because = "Generates exportOptions.plist from template and signing secrets")
-abstract class PatchExportOptionsPlistTask : DefaultTask() {
-    @get:InputFile
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val templateFile: RegularFileProperty
-
-    @get:Input
-    @get:Optional
-    abstract val profileName: Property<String>
-
-    @get:Input
-    @get:Optional
-    abstract val teamId: Property<String>
-
-    @get:OutputFile
-    abstract val outputFile: RegularFileProperty
-
-    @TaskAction
-    fun patch() {
-        val resolvedTeamId = teamId.orNull?.takeIf { it.isNotBlank() }
-            ?: throw GradleException("APPLE_DEVELOPER_TEAM_ID is not set")
-        val resolvedProfileName = profileName.orNull?.takeIf { it.isNotBlank() }
-            ?: throw GradleException("Could not resolve provisioning profile Name from APPSTORE_PROVISIONING_PROFILE")
-        val text = templateFile.get().asFile.readText()
-        val updated = text
-            .replace(
-                Regex("""(<key>teamID</key>\s*<string>)([^<]+)(</string>)"""),
-                "$1$resolvedTeamId$3",
-            )
-            .replace(
-                Regex("""(<key>org\.animeko\.animeko</key>\s*<string>)([^<]+)(</string>)"""),
-                "$1$resolvedProfileName$3",
-            )
-
-        outputFile.get().asFile.apply {
-            parentFile.mkdirs()
-            writeText(updated)
-        }
-        logger.lifecycle("Generated exportOptions.plist with teamId=$resolvedTeamId, profileName=$resolvedProfileName")
-    }
-}
-
-@DisableCachingByDefault(because = "Runs xcodebuild exportArchive against local Apple toolchain")
-abstract class XcodeExportArchiveTask : DefaultTask() {
-    @get:InputDirectory
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val workingDirectory: DirectoryProperty
-
-    @get:InputDirectory
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val archivePath: DirectoryProperty
-
-    @get:InputFile
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val exportOptionsPlist: RegularFileProperty
-
-    @get:OutputDirectory
-    abstract val exportPath: DirectoryProperty
-
-    @get:OutputFile
-    abstract val outputIpa: RegularFileProperty
-
-    @get:Inject
-    abstract val execOperations: ExecOperations
-
-    @TaskAction
-    fun exportIpa() {
-        execOperations.exec {
-            workingDir(workingDirectory.get().asFile)
-            commandLine(
-                "xcodebuild",
-                "-exportArchive",
-                "-archivePath", archivePath.get().asFile.absolutePath,
-                "-exportPath", exportPath.get().asFile.absolutePath,
-                "-exportOptionsPlist", exportOptionsPlist.get().asFile.absolutePath,
-            )
-        }
-        val ipaFile = outputIpa.get().asFile
-        if (!ipaFile.exists()) {
-            throw GradleException("Signed IPA was not produced at expected path: ${ipaFile.absolutePath}")
-        }
-    }
-}
-
-val appleDeveloperTeamId = providers.provider {
-    project.getPropertyOrNull("APPLE_DEVELOPER_TEAM_ID").orEmpty()
-}
-val appStoreProvisioningProfile = providers.provider {
-    project.getPropertyOrNull("APPSTORE_PROVISIONING_PROFILE").orEmpty()
-}
-val appleDistributionPrivateKeyPfx = providers.provider {
-    project.getPropertyOrNull("APPLE_DISTRIBUTION_PRIVATE_KEY_PFX").orEmpty()
-}
-val appleDistributionPrivateKeyPfxPassword = providers.provider {
-    project.getPropertyOrNull("APPLE_DISTRIBUTION_PRIVATE_KEY_PFX_IMPORT_PWD").orEmpty()
-}
-val appStoreProvisioningProfileName = appStoreProvisioningProfile.map {
-    ProvisioningProfileUtils.decode(it).name
-}
-val provisioningProfilesDirProvider = providers.systemProperty("user.home")
-    .map { File(it, "Library/MobileDevice/Provisioning Profiles") }
-
-val installProvisioningProfile = tasks.register("installProvisioningProfile", InstallProvisioningProfileTask::class) {
-    group = "build"
-    description = "Decodes and installs the provisioning profile for App Store distribution"
-    provisioningProfileBase64.convention(appStoreProvisioningProfile)
-    provisioningProfilesDir = layout.dir(provisioningProfilesDirProvider)
-}
-
-val prepareBuildKeychain = tasks.register("prepareBuildKeychain", PrepareBuildKeychainTask::class) {
-    group = "build"
-    description = "Creates an ephemeral build keychain and imports Apple Distribution signing key material"
-    privateKeyPfxBase64.convention(appleDistributionPrivateKeyPfx)
-    privateKeyPfxPassword.convention(appleDistributionPrivateKeyPfxPassword)
-    outKeychain = layout.buildDirectory.file("release-animeko.keychain")
-}
-
+// ── 签名 Release Archive (App Store 分发) ──
+// 使用 xcodebuild archive 构建 Release 配置的已签名 .xcarchive。
+// 启用 Manual 代码签名, 使用 prepareBuildKeychain 创建的临时 Keychain 中的证书。
+// 这是 App Store / TestFlight 分发流水线的核心步骤。
+// 依赖: Kotlin/Native Release framework + 临时签名 Keychain。
 val buildSignedReleaseArchive = tasks.register("buildSignedReleaseArchive", XcodeArchiveTask::class) {
     group = "build"
     description = "Builds a signed iOS archive for App Store distribution"
@@ -680,20 +186,40 @@ val buildSignedReleaseArchive = tasks.register("buildSignedReleaseArchive", Xcod
     codeSignStyle = "Manual"
     profileName.convention(appStoreProvisioningProfileName)
     developmentTeamId.convention(appleDeveloperTeamId)
-    signingKeychain = layout.buildDirectory.file("release-animeko.keychain").get().asFile.absolutePath
+    signingKeychain = layout.buildDirectory.file("release-animeko.keychain")
     archivePath = layout.buildDirectory.dir("archives/release-signed/Animeko.xcarchive")
 }
 
-val patchExportOptionsPlist = tasks.register("patchExportOptionsPlist", PatchExportOptionsPlistTask::class) {
+// ── Debug 未签名 IPA ──
+// 将 Debug .xcarchive 中的 .app 打包为 ad-hoc 签名的 .ipa。
+// 适用于 AltStore / SideStore 等侧载工具, 它们会在安装时重新签名。
+tasks.register("buildDebugIpa", BuildUnsignedIpaTask::class) {
+    description = "Manually packages the .app from the .xcarchive into an unsigned .ipa"
     group = "build"
-    dependsOn(installProvisioningProfile)
 
-    templateFile = layout.projectDirectory.file("Animeko/exportOptions.plist.template.txt")
-    profileName.convention(appStoreProvisioningProfileName)
-    outputFile = layout.buildDirectory.file("export/exportOptions.plist")
-    teamId.convention(appleDeveloperTeamId)
+    // Adjust these paths as needed
+    archiveDir = layout.buildDirectory.dir("archives/debug/Animeko.xcarchive")
+    outputIpa = layout.buildDirectory.file("archives/debug/Animeko.ipa")
+    dependsOn(buildDebugArchive)
 }
 
+// ── Release 未签名 IPA ──
+// 将 Release .xcarchive 中的 .app 打包为 ad-hoc 签名的 .ipa。
+// 与 Debug 版本类似, 但使用 Release 优化编译, 适用于侧载分发。
+tasks.register("buildReleaseIpa", BuildUnsignedIpaTask::class) {
+    description = "Manually packages the .app from the .xcarchive into an unsigned .ipa"
+    group = "build"
+
+    // Adjust these paths as needed
+    archiveDir = layout.buildDirectory.dir("archives/release/Animeko.xcarchive")
+    outputIpa = layout.buildDirectory.file("archives/release/Animeko.ipa")
+    dependsOn(buildReleaseArchive)
+}
+
+// ── 签名 Release IPA (App Store / TestFlight) ──
+// 使用 xcodebuild -exportArchive 将已签名的 .xcarchive 导出为正式的 .ipa。
+// 这是整个签名发布流水线的最终产物, 可直接上传到 App Store Connect / TestFlight。
+// 依赖: 已签名的 .xcarchive + 生成的 exportOptions.plist。
 tasks.register("buildSignedReleaseIpa", XcodeExportArchiveTask::class) {
     group = "build"
     description = "Exports a signed IPA for App Store / TestFlight distribution"
@@ -707,12 +233,21 @@ tasks.register("buildSignedReleaseIpa", XcodeExportArchiveTask::class) {
 }
 
 
-/// FOR DEBUG
+/// ── 以下为本地调试用 Task ──
 
+/**
+ * 获取模拟器构建产物 (.app) 的路径。
+ * Xcode 默认将模拟器构建输出到 DerivedData, 但此处使用自定义的 build 目录。
+ */
 fun simulatorAppPath(): Provider<RegularFile> =
     // Adjust this path if your build output is located differently.
     layout.buildDirectory.file("Debug-iphonesimulator/Animeko.app")
 
+// ── 模拟器 Debug 构建 ──
+// 使用 xcodebuild build (非 archive) 为 iOS 模拟器编译 Debug 版本。
+// 目标平台通过 local.properties 中的 ani.ios.simulator.destination 配置,
+// 默认为 generic/platform=iOS Simulator (通用模拟器)。
+// 注意: 模拟器使用 iphonesimulator SDK, 与真机的 iphoneos SDK 不同。
 tasks.register("buildDebugForSimulator", Exec::class) {
     group = "build"
     description = "Builds a debug version of Animeko for iOS Simulator"
@@ -733,6 +268,9 @@ tasks.register("buildDebugForSimulator", Exec::class) {
     commandLine(command)
 }
 
+// ── 启动 iOS 模拟器 ──
+// 通过 macOS 的 open 命令启动 Simulator.app。
+// 如需指定特定设备, 可改用 `xcrun simctl boot "iPhone 15"` 等命令。
 tasks.register("launchSimulator", Exec::class) {
     group = "run"
     description = "Launches the iOS simulator"
@@ -743,6 +281,9 @@ tasks.register("launchSimulator", Exec::class) {
     commandLine("open", "-a", "Simulator")
 }
 
+// ── 安装 Debug 构建到模拟器 ──
+// 先构建 Debug 版本并启动模拟器, 然后使用 xcrun simctl install 将 .app 安装到已启动的模拟器。
+// "booted" 参数表示安装到当前已启动的模拟器设备。
 tasks.register("installDebugOnSimulator", Exec::class) {
     group = "run"
     description = "Installs the debug build on the Simulator"
@@ -753,6 +294,9 @@ tasks.register("installDebugOnSimulator", Exec::class) {
     commandLine("xcrun", "simctl", "install", "booted", appPath.get().asFile.absolutePath)
 }
 
+// ── 在模拟器上启动应用 ──
+// 使用 xcrun simctl launch 通过 Bundle ID 启动已安装的应用。
+// 依赖 installDebugOnSimulator 确保应用已安装。
 tasks.register("launchAppOnSimulator", Exec::class) {
     group = "run"
     description = "Launches the Animeko app on the simulator"
@@ -761,6 +305,10 @@ tasks.register("launchAppOnSimulator", Exec::class) {
     commandLine("xcrun", "simctl", "launch", "booted", "org.animeko.animeko")
 }
 
+// ── 注入版本号到 Info.plist ──
+// 从 Gradle 属性 version.name 和 android.version.code 读取版本信息,
+// 使用正则替换模板文件中的 CFBundleShortVersionString 和 CFBundleVersion,
+// 确保 iOS 应用的版本号与 Android 端保持一致。
 val patchInfoPlist = tasks.register("patchInfoPlist", Task::class) {
     group = "run"
     description = "Patches Info.plist"
@@ -799,6 +347,9 @@ val patchInfoPlist = tasks.register("patchInfoPlist", Task::class) {
     }
 }
 
+// ── 确保 Xcode 构建前 Info.plist 已更新 ──
+// 拦截 Kotlin/Native 的 embedAndSignPodAppleFrameworkForXcode task,
+// 添加对 patchInfoPlist 的依赖, 确保版本号在 framework 嵌入前已注入。
 tasks.matching { it.path == ":app:shared:application:embedAndSignPodAppleFrameworkForXcode" }.configureEach {
     dependsOn(patchInfoPlist)
     inputs.file(file("Animeko/Info.plist"))
