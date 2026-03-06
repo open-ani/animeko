@@ -13,11 +13,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Text
@@ -60,14 +58,11 @@ fun SubjectDetailsDefaults.SubjectCommentColumn(
     Box(modifier, contentAlignment = Alignment.TopCenter) {
         CommentColumn(
             state.list.collectAsLazyPagingItemsWithLifecycle(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentWidth(align = Alignment.CenterHorizontally)
-                .widthIn(max = SubjectDetailsDefaults.MaximumContentWidth)
-                .fillMaxHeight(),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = contentPadding,
             state = gridState,
             connectedScrollState = connectedScrollState,
+            maxColumnWidth = MaximumContentWidth,
         ) { _, comment ->
             SubjectComment(
                 comment = comment,
