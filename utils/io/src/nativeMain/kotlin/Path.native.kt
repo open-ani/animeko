@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -15,7 +15,11 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemTemporaryDirectory
 import me.him188.ani.utils.platform.Uuid
-import platform.Foundation.*
+import platform.Foundation.NSApplicationSupportDirectory
+import platform.Foundation.NSCachesDirectory
+import platform.Foundation.NSDocumentDirectory
+import platform.Foundation.NSSearchPathForDirectoriesInDomains
+import platform.Foundation.NSUserDomainMask
 
 actual fun SystemPath.length(): Long = SystemFileSystem.metadataOrNull(path)?.size ?: 0
 
@@ -41,7 +45,7 @@ private fun resolveImpl(parent: String, child: String): String {
     return "$parent/$child"
 }
 
-private const val appName = "org.openani.Animeko"
+private const val appName = "org.animeko.animeko"
 
 @OptIn(ExperimentalForeignApi::class)
 val SystemDocumentDir by lazy {

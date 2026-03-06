@@ -28,7 +28,6 @@ import org.gradle.internal.impldep.com.amazonaws.client.builder.AwsClientBuilder
 import org.gradle.internal.impldep.com.amazonaws.services.s3.AmazonS3ClientBuilder
 import org.gradle.internal.impldep.com.amazonaws.services.s3.model.ObjectMetadata
 import org.gradle.internal.impldep.com.amazonaws.services.s3.model.PutObjectRequest
-import org.jetbrains.kotlin.gradle.plugin.extraProperties
 import java.security.MessageDigest
 
 plugins {
@@ -317,13 +316,17 @@ class ReleaseEnvironment {
         }
     }*/
 
-    fun prepareAppStoreConnectKey(apiKeyId: String, apiPrivateKey: String): File {
+    fun resolveAppStoreConnectPrivateKey(apiKeyId: String): File {
         val secKeyDir = getProperty("HOME")
             .ifEmpty { throw IllegalStateException("Environment property HOME is empty.") }
             .let { File(it).resolve("private_keys") }
             .apply { mkdirs() }
 
-        return secKeyDir.resolve("AuthKey_${apiKeyId}.p8").apply {
+        return secKeyDir.resolve("AuthKey_${apiKeyId}.p8")
+    }
+
+    fun prepareAppStoreConnectKey(apiKeyId: String, apiPrivateKey: String): File {
+        return resolveAppStoreConnectPrivateKey(apiKeyId).apply {
             createNewFile()
             writeText(apiPrivateKey)
         }
@@ -528,8 +531,8 @@ tasks.register("uploadDesktopInstallers") {
     }
 }
 
+// Execute :app:ios:buildReleaseIpa before executing this.
 tasks.register("uploadIosIpa") {
-    dependsOn(":app:ios:buildReleaseIpa")
     val file = project(":app:ios").tasks.getByPath("buildReleaseIpa").outputs.files.singleFile
     doLast {
         releaseEnvironment.uploadIpa(file)
@@ -537,35 +540,59 @@ tasks.register("uploadIosIpa") {
 }
 
 val prepareAppStoreConnectKey: TaskProvider<Task> = tasks.register("prepareAppStoreConnectKey") {
+    val apiKeyId = releaseEnvironment.run { getPropertyOrNull("APPSTORE_API_KEY_ID") }
+    val apiPrivateKey = releaseEnvironment.run { getPropertyOrNull("APPSTORE_API_PRIVATE_KEY") }
+    val home = System.getenv("HOME") ?: System.getProperty("user.home")
     doLast {
-        val apiKeyId = releaseEnvironment.run { getProperty("APPSTORE_API_KEY_ID") }
-        val apiPrivateKey = releaseEnvironment.run { getProperty("APPSTORE_API_PRIVATE_KEY") }
-        val keyFile = releaseEnvironment.prepareAppStoreConnectKey(apiKeyId, apiPrivateKey)
-        ext.set("secKeyFile", keyFile)
+        if (apiKeyId == null) {
+            throw GradleException("Environment variable APPSTORE_API_KEY_ID is not provided, cannot prepare the key.")
+        }
+        if (apiPrivateKey == null) {
+            throw GradleException("Environment variable APPSTORE_API_PRIVATE_KEY is not provided, cannot prepare the key.")
+        }
+        val secKeyDir = File(home).resolve("private_keys").apply { mkdirs() }
+        secKeyDir.resolve("AuthKey_${apiKeyId}.p8").apply {
+            createNewFile()
+            writeText(apiPrivateKey)
+        }
     }
 }
 
+// Execute :app:ios:buildSignedReleaseIpa before executing this.
 tasks.register("uploadAppStoreConnectTestflight", Exec::class) {
-    dependsOn(":app:ios:buildReleaseIpa", prepareAppStoreConnectKey)
-    val ipaFile = project(":app:ios").tasks.getByPath("buildReleaseIpa").outputs.files.singleFile
+    dependsOn(prepareAppStoreConnectKey)
+    val ipaFile = project(":app:ios").layout.buildDirectory.file("archives/release-signed/export/Animeko.ipa").get().asFile
+    val iosWorkingDir = project(":app:ios").layout.projectDirectory.asFile
 
-    val apiKeyId = providers.provider { releaseEnvironment.run { getProperty("APPSTORE_API_KEY_ID") } }.get()
-    val apiIssuerId = providers.provider { releaseEnvironment.run { getProperty("APPSTORE_ISSUER_ID") } }.get()
+    val apiKeyId = releaseEnvironment.run { getPropertyOrNull("APPSTORE_API_KEY_ID") }
+    val apiIssuerId = releaseEnvironment.run { getPropertyOrNull("APPSTORE_ISSUER_ID") }
+    val home = System.getenv("HOME") ?: System.getProperty("user.home")
 
-    workingDir = layout.buildDirectory.get().asFile
+    workingDir = iosWorkingDir
+
     commandLine(
         "xcrun", "iTMSTransporter",
         "-m", "upload",
         "-assetFile", ipaFile.absolutePath,
-        "-apiKey", apiKeyId,
-        "-apiIssuer", apiIssuerId,
-        "-appPlatform", "ios",
+        "-apiKey", apiKeyId ?: "",
+        "-apiIssuer", apiIssuerId ?: "",
+        "-app_platform", "ios",
         "-v", "eXtreme",
     )
 
+    doFirst {
+        if (apiKeyId == null) {
+            throw GradleException("APPSTORE_API_KEY_ID is not provided.")
+        }
+        if (apiIssuerId == null) {
+            throw GradleException("APPSTORE_ISSUER_ID is not provided.")
+        }
+    }
+
     doLast {
-        val keyFile = prepareAppStoreConnectKey.get().extraProperties.get("secKeyFile") as? File
-        keyFile?.delete()
+        if (apiKeyId != null) {
+            File(home).resolve("private_keys/AuthKey_${apiKeyId}.p8").delete()
+        }
     }
 }
 
