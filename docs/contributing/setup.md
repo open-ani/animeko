@@ -25,7 +25,29 @@
 由于 PC 端使用 [JCEF](https://github.com/jetbrains/jcef) (内置浏览器)，JDK 必须使用 JetBrains
 Runtime (JCEF)，版本必须为 21，下文简称 JBR。
 
-需要自行安装 JBR (必须是带有 JCEF 的版本, 见图)。在 Android Studio 或 IntelliJ IDEA 中，如下图所示，
+> [!TIP]
+> **推荐使用自动配置**
+>
+> 本仓库已配置 [gradle-daemon-jvm.properties](../../gradle/gradle-daemon-jvm.properties)。在执行
+`./gradlew` 命令时，Gradle 会自动下载并使用正确的 JBR 21。
+>
+> **下载位置**：默认存于 `$GRADLE_USER_HOME/jdks/`。
+>
+> **配置生成**：`./gradlew updateDaemonJvm --jvm-version=21 --jvm-vendor=jbr`。
+>
+> **优势**：自动下载的版本（来自 api.foojay.io）已确认包含 JCEF，可避免手动配置错误。
+
+```
+# 确认下载的 JDK 版本包含 JCEF。
+find ~/.gradle/jdks/jetbrains_s_r_o_-21-amd64-linux.2/ -name jcef.jmod
+# Output: ~/.gradle/jdks/jetbrains_s_r_o_-21-amd64-linux.2/jmods/jcef.jmod
+
+# 也可用 SDKMAN!。
+find ~/.sdkman/candidates/java/21.0.10-jbr/ -name jcef.jmod
+# Output: ~/.sdkman/candidates/java/21.0.10-jbr/jmods/jcef.jmod
+```
+
+也可自行安装 JBR (必须是带有 JCEF 的版本, 见图)。在 Android Studio 或 IntelliJ IDEA 中，如下图所示，
 可打开设置
 `Build, Execution, Deployment -> Build Tools -> Gradle`，修改 Gradle JDK 配置为 JBR (JCEF) 21。
 
