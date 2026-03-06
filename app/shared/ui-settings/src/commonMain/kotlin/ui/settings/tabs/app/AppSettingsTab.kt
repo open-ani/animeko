@@ -503,17 +503,15 @@ fun SettingsScope.PlayerGroup(
             },
             title = { Text(stringResource(Lang.settings_player_auto_play_next)) },
         )
-        if (LocalPlatform.current.isDesktop()) {
-            HorizontalDividerItem()
-            SwitchItem(
-                checked = config.autoSkipOpEd,
-                onCheckedChange = {
-                    videoScaffoldConfig.update(config.copy(autoSkipOpEd = it))
-                },
-                title = { Text(stringResource(Lang.settings_player_auto_skip_op_ed)) },
-                description = { Text(stringResource(Lang.settings_player_auto_skip_op_ed_description)) },
-            )
-        }
+        HorizontalDividerItem()
+        SwitchItem(
+            checked = config.autoSkipOpEd,
+            onCheckedChange = {
+                videoScaffoldConfig.update(config.copy(autoSkipOpEd = it))
+            },
+            title = { Text(stringResource(Lang.settings_player_auto_skip_op_ed)) },
+            description = { Text(stringResource(Lang.settings_player_auto_skip_op_ed_description)) },
+        )
         HorizontalDividerItem()
         SwitchItem(
             checked = config.autoSwitchMediaOnPlayerError,
