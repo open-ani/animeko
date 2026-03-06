@@ -1,5 +1,5 @@
 <!--
-  ~ Copyright (C) 2024-2025 OpenAni and contributors.
+  ~ Copyright (C) 2024-2026 OpenAni and contributors.
   ~
   ~ 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
   ~ Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -205,7 +205,7 @@
     <!-- Storage Settings -->
     <string name="settings_storage_title">存储设置</string>
     <string name="settings_storage_bt_cache_location">BT 视频缓存位置</string>
-    <string name="settings_storage_bt_cache_location_description">修改后不会自动迁移数据，也不会自动删除旧数据。\n如需删除旧数据，请在修改之前点击 \"打开 BT 缓存目录\" 并删除该目录下的所有文件。\n\n重启生效</string>
+    <string name="settings_storage_bt_cache_location_description">修改后不会自动迁移数据，也不会自动删除旧数据。\n如需删除旧数据，请在修改之前点击 "打开 BT 缓存目录" 并删除该目录下的所有文件。\n\n重启生效</string>
     <string name="settings_storage_choose_directory">选择视频保存目录</string>
     <string name="settings_storage_open_directory_chooser">打开目录选择</string>
     <string name="settings_storage_open_bt_cache_directory">打开 BT 缓存目录</string>

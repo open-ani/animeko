@@ -65,11 +65,9 @@ import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -95,10 +93,12 @@ import me.him188.ani.app.ui.cache.components.CacheFilterAndSortBar
 import me.him188.ani.app.ui.cache.components.CacheFilterAndSortState
 import me.him188.ani.app.ui.cache.components.CacheGroupState
 import me.him188.ani.app.ui.cache.components.CacheManagementOverallStats
+import me.him188.ani.app.ui.cache.components.CacheSelectionState
 import me.him188.ani.app.ui.cache.components.CacheStatusFilter
 import me.him188.ani.app.ui.cache.components.TestCacheGroupSates
 import me.him188.ani.app.ui.cache.components.createTestMediaStats
 import me.him188.ani.app.ui.cache.components.rememberCacheFilterAndSortState
+import me.him188.ani.app.ui.cache.components.rememberCacheSelectionState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
@@ -113,7 +113,6 @@ import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.settings.rendering.P2p
 import me.him188.ani.app.ui.user.SelfInfoUiState
-import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 /**
@@ -124,33 +123,7 @@ data class CacheManagementState(
     val overallStats: MediaStats,
     val groups: List<CacheGroupState>,
 ) {
-    internal val entries = groups.flatMap { group ->
-        val subjectName = group.commonInfo?.subjectDisplayName ?: "未知条目"
-        group.episodes.map { episode ->
-            CacheListEntry(
-                subjectName = subjectName,
-                groupId = group.id,
-                engineKey = group.engineKey,
-                collectionType = group.collectionType,
-                episode = episode,
-            )
-        }
-    }
-
-    internal val entriesGroupedBySubject = entries
-        .groupBy { it.episode.subjectId }
-        .map { (subjectId, entries) ->
-            CacheSubjectGroup(
-                key = "subject_$subjectId",
-                subjectId = subjectId,
-                subjectName = entries.first().subjectName,
-                entries = entries.sortedBy { it.episode.sort },
-            )
-        }
-        .sortedWith(
-            compareByDescending<CacheSubjectGroup> { it.entries.any { entry -> !entry.episode.isFinished } }
-                .thenByDescending { it.entries.maxOfOrNull { entry -> entry.episode.creationTime ?: 0 } },
-        )
+    internal val entries = groups.flatMap { it.entries }
 
     companion object {
         val Placeholder = CacheManagementState(
@@ -160,88 +133,6 @@ data class CacheManagementState(
     }
 }
 
-@Immutable
-internal data class CacheSubjectGroup(
-    val key: String,
-    val subjectId: Int?,
-    val subjectName: String,
-    val entries: List<CacheListEntry>,
-) {
-    val finishedCount: Int = entries.count { it.status == CacheStatusFilter.Finished }
-    val downloadingCount: Int = entries.size - finishedCount
-    val averageProgress: Float =
-        entries.map { it.episode.progress.getOrZero() }.ifEmpty { listOf(0f) }.average().toFloat()
-}
-
-
-@Immutable
-internal data class CacheListEntry(
-    val subjectName: String,
-    val groupId: String,
-    val engineKey: MediaCacheEngineKey?,
-    val collectionType: UnifiedCollectionType?,
-    val episode: CacheEpisodeState,
-) {
-    val status: CacheStatusFilter
-        get() = if (episode.isFinished) CacheStatusFilter.Finished else CacheStatusFilter.Downloading
-}
-
-@Stable
-private class CacheSelectionState(
-    initialInSelection: Boolean,
-    initialSelectedIds: Set<String>,
-) {
-    var inSelection by mutableStateOf(initialInSelection)
-    var selectedIds by mutableStateOf(initialSelectedIds)
-
-    fun overrideSelected(list: Set<String>) {
-        selectedIds = list
-    }
-
-    fun toggleSelection(vararg ids: String) {
-        val allSelected = ids.all { it in selectedIds }
-        val nextIds = selectedIds.toMutableSet().apply {
-            if (allSelected) removeAll(ids) else addAll(ids)
-        }
-        selectedIds = nextIds.toSet()
-    }
-
-    fun enterSelectionWith(list: Set<String>) {
-        inSelection = true
-        selectedIds = list
-    }
-
-    fun clear() {
-        inSelection = false
-        selectedIds = emptySet()
-    }
-
-    companion object {
-        val Saver: Saver<CacheSelectionState, List<String>> = Saver(
-            save = {
-                buildList {
-                    add(it.inSelection.toString())
-                    addAll(it.selectedIds)
-                }
-            },
-            restore = {
-                val inSelection = it.getOrNull(0)?.toBoolean() ?: false
-                val selectedIds = it.drop(1).toSet()
-                CacheSelectionState(inSelection, selectedIds)
-            },
-        )
-    }
-}
-
-@Composable
-private fun rememberCacheSelectionState(
-    initialInSelection: Boolean = false,
-    initialSelectedIds: Set<String> = emptySet(),
-): CacheSelectionState {
-    return rememberSaveable(saver = CacheSelectionState.Saver) {
-        CacheSelectionState(initialInSelection, initialSelectedIds)
-    }
-}
 
 /**
  * 全局缓存管理页面
@@ -316,7 +207,7 @@ fun CacheManagementScreen(
     // 当 list detail pane 的类型改变并且在编辑模式时, 需要确保 selectedIds 只能是当前可见的 entries
     LaunchedEffect(state.entries, selectionState.inSelection) {
         if (selectionState.inSelection) {
-            val validIds = state.entries.map { it.episode.cacheId }.toSet()
+            val validIds = state.entries.map { it.cacheId }.toSet()
             selectionState.overrideSelected(selectionState.selectedIds.filter { id -> id in validIds }.toSet())
         }
     }
@@ -326,15 +217,15 @@ fun CacheManagementScreen(
 
     // 当前正在浏览的 cache group
     var currentViewingGroupKey by rememberSaveable { mutableStateOf<String?>(null) }
-    LaunchedEffect(state.entriesGroupedBySubject) {
-        if (state.entriesGroupedBySubject.isEmpty()) {
+    LaunchedEffect(state.groups) {
+        if (state.groups.isEmpty()) {
             currentViewingGroupKey = null
-        } else if (state.entriesGroupedBySubject.none { it.key == currentViewingGroupKey }) {
-            currentViewingGroupKey = state.entriesGroupedBySubject.first().key
+        } else if (state.groups.none { it.key == currentViewingGroupKey }) {
+            currentViewingGroupKey = state.groups.first().key
         }
     }
-    val currentViewingGroup = remember(state.entriesGroupedBySubject, currentViewingGroupKey) {
-        state.entriesGroupedBySubject.firstOrNull { it.key == currentViewingGroupKey }
+    val currentViewingGroup = remember(state.groups, currentViewingGroupKey) {
+        state.groups.firstOrNull { it.key == currentViewingGroupKey }
     }
 
     // 确认删除的对话框
@@ -342,8 +233,8 @@ fun CacheManagementScreen(
         DeleteActionDialog(
             onDismiss = { deleteSelectedCacheDialog = false },
             onConfirm = {
-                selectionEntries.filter { it.episode.cacheId in selectionState.selectedIds }
-                    .forEach { onDelete(it.episode) }
+                selectionEntries.filter { it.cacheId in selectionState.selectedIds }
+                    .forEach { onDelete(it) }
                 selectionState.clear()
                 deleteSelectedCacheDialog = false
             },
@@ -357,7 +248,7 @@ fun CacheManagementScreen(
         navigator = navigator,
         cacheEntries = state.entries,
         filteredEntries = selectionEntries,
-        groupedEntries = state.entriesGroupedBySubject,
+        groupedEntries = state.groups,
         topBar = {
             CacheManagementTopBar(
                 selectionMode = selectionState.inSelection,
@@ -367,7 +258,7 @@ fun CacheManagementScreen(
                 onExitSelection = { selectionState.clear() },
                 onToggleSelectAll = {
                     selectionState.enterSelectionWith(
-                        if (allSelected) emptySet() else selectionEntries.map { it.episode.cacheId }.toSet(),
+                        if (allSelected) emptySet() else selectionEntries.map { it.cacheId }.toSet(),
                     )
                 },
                 onDeleteSelected = { deleteSelectedCacheDialog = true },
@@ -385,15 +276,15 @@ fun CacheManagementScreen(
         listState = listState,
         detailListState = detailListState,
         onSelectGroup = { currentViewingGroupKey = it?.key },
-        onToggleSelected = { entry -> selectionState.toggleSelection(entry.episode.cacheId) },
+        onToggleSelected = { entry -> selectionState.toggleSelection(entry.cacheId) },
         onEnterSelection = { entry ->
-            selectionState.enterSelectionWith(selectionState.selectedIds + entry.episode.cacheId)
+            selectionState.enterSelectionWith(selectionState.selectedIds + entry.cacheId)
         },
         onToggleGroupSelection = { group ->
-            selectionState.toggleSelection(*group.entries.map { it.episode.cacheId }.toTypedArray())
+            selectionState.toggleSelection(*group.entries.map { it.cacheId }.toTypedArray())
         },
         onEnterGroupSelection = { group ->
-            selectionState.enterSelectionWith(selectionState.selectedIds + group.entries.map { it.episode.cacheId })
+            selectionState.enterSelectionWith(selectionState.selectedIds + group.entries.map { it.cacheId })
         },
         onPlay = onPlay,
         onResume = onResume,
@@ -413,15 +304,15 @@ private fun CacheManagementLayout(
     cacheFilterState: CacheFilterAndSortState,
     selectionState: CacheSelectionState,
     navigator: ThreePaneScaffoldNavigator<String>,
-    cacheEntries: List<CacheListEntry>,
-    filteredEntries: List<CacheListEntry>,
-    groupedEntries: List<CacheSubjectGroup>,
-    selectedGroup: CacheSubjectGroup?,
-    onSelectGroup: (CacheSubjectGroup?) -> Unit,
-    onToggleSelected: (CacheListEntry) -> Unit,
-    onEnterSelection: (CacheListEntry) -> Unit,
-    onToggleGroupSelection: (CacheSubjectGroup) -> Unit,
-    onEnterGroupSelection: (CacheSubjectGroup) -> Unit,
+    cacheEntries: List<CacheEpisodeState>,
+    filteredEntries: List<CacheEpisodeState>,
+    groupedEntries: List<CacheGroupState>,
+    selectedGroup: CacheGroupState?,
+    onSelectGroup: (CacheGroupState?) -> Unit,
+    onToggleSelected: (CacheEpisodeState) -> Unit,
+    onEnterSelection: (CacheEpisodeState) -> Unit,
+    onToggleGroupSelection: (CacheGroupState) -> Unit,
+    onEnterGroupSelection: (CacheGroupState) -> Unit,
     onPlay: (CacheEpisodeState) -> Unit,
     onResume: (CacheEpisodeState) -> Unit,
     onPause: (CacheEpisodeState) -> Unit,
@@ -486,18 +377,18 @@ private fun CacheManagementLayout(
                                 },
                             )
                         }
-                        items(filteredEntries, key = { it.episode.cacheId }) { entry ->
+                        items(filteredEntries, key = { it.listItemKey }) { entry ->
                             CacheListItem(
                                 entry = entry,
                                 selectionMode = selectionState.inSelection,
-                                selected = entry.episode.cacheId in selectionState.selectedIds,
+                                selected = entry.cacheId in selectionState.selectedIds,
                                 onToggleSelected = { onToggleSelected(entry) },
                                 onEnterSelection = { onEnterSelection(entry) },
-                                onPlay = { onPlay(entry.episode) },
-                                onResume = { onResume(entry.episode) },
-                                onPause = { onPause(entry.episode) },
-                                onViewDetail = { onViewDetail(entry.episode) },
-                                onDelete = { onDelete(entry.episode) },
+                                onPlay = { onPlay(entry) },
+                                onResume = { onResume(entry) },
+                                onPause = { onPause(entry) },
+                                onViewDetail = { onViewDetail(entry) },
+                                onDelete = { onDelete(entry) },
                                 modifier = Modifier.paneContentPadding().padding(horizontal = listSpacedBy),
                             )
                         }
@@ -575,18 +466,18 @@ private fun CacheManagementLayout(
                                 }
                             }
                         } else {
-                            items(entries, key = { it.episode.cacheId }) { entry ->
+                            items(entries, key = { it.listItemKey }) { entry ->
                                 CacheListItem(
                                     entry = entry,
                                     selectionMode = selectionState.inSelection,
-                                    selected = entry.episode.cacheId in selectionState.selectedIds,
+                                    selected = entry.cacheId in selectionState.selectedIds,
                                     onToggleSelected = { onToggleSelected(entry) },
                                     onEnterSelection = { onEnterSelection(entry) },
-                                    onPlay = { onPlay(entry.episode) },
-                                    onResume = { onResume(entry.episode) },
-                                    onPause = { onPause(entry.episode) },
-                                    onViewDetail = { onViewDetail(entry.episode) },
-                                    onDelete = { onDelete(entry.episode) },
+                                    onPlay = { onPlay(entry) },
+                                    onResume = { onResume(entry) },
+                                    onPause = { onPause(entry) },
+                                    onViewDetail = { onViewDetail(entry) },
+                                    onDelete = { onDelete(entry) },
                                     contentPadding = PaddingValues(itemContentPadding),
                                     transparentBackgroundIfUnselected = true,
                                 )
@@ -690,11 +581,11 @@ private fun DeleteActionDialog(
 
 @Composable
 private fun CacheSubjectListItem(
-    group: CacheSubjectGroup,
+    group: CacheGroupState,
     selected: Boolean,
     selectionMode: Boolean,
     selectedCacheIds: Set<String>,
-    onToggleGroupSelection: (CacheSubjectGroup) -> Unit,
+    onToggleGroupSelection: (CacheGroupState) -> Unit,
     onLongClick: () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -750,7 +641,7 @@ private fun CacheSubjectListItem(
             }
 
             if (selectionMode) {
-                val allGroupSelected = group.entries.all { it.episode.cacheId in selectedCacheIds }
+                val allGroupSelected = group.entries.all { it.cacheId in selectedCacheIds }
                 Checkbox(
                     checked = allGroupSelected,
                     onCheckedChange = { onToggleGroupSelection(group) },
@@ -763,7 +654,7 @@ private fun CacheSubjectListItem(
 
 @Composable
 private fun CacheListItem(
-    entry: CacheListEntry,
+    entry: CacheEpisodeState,
     selectionMode: Boolean,
     selected: Boolean,
     onToggleSelected: () -> Unit,
@@ -834,7 +725,7 @@ private fun CacheListItem(
                         )
                     }
                     Text(
-                        "第${entry.episode.sort}话 · ${entry.episode.displayName}",
+                        "第${entry.sort}话 · ${entry.displayName}",
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -860,7 +751,7 @@ private fun CacheListItem(
                     CacheActionDropdown(
                         show = showMenu,
                         onDismiss = { showMenu = false },
-                        episode = entry.episode,
+                        episode = entry,
                         onPlay = {
                             onPlay()
                             showMenu = false
@@ -885,14 +776,14 @@ private fun CacheListItem(
             }
 
             AniAnimatedVisibility(
-                !entry.episode.isFinished,
+                !entry.isFinished,
             ) {
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    val progress by animateFloatAsState(entry.episode.progress.getOrZero())
+                    val progress by animateFloatAsState(entry.progress.getOrZero())
                     LinearProgressIndicator(
                         progress = { progress },
                         modifier = Modifier.weight(1f),
@@ -902,8 +793,8 @@ private fun CacheListItem(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        entry.episode.speedText?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
-                        entry.episode.progressText?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
+                        entry.speedText?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
+                        entry.progressText?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
                     }
                 }
             }

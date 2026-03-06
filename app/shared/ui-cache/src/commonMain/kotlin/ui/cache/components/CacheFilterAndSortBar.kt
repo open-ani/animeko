@@ -43,7 +43,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
-import me.him188.ani.app.ui.cache.CacheListEntry
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 
 @Stable
@@ -54,24 +53,24 @@ internal class CacheFilterAndSortState {
     var sortOption by mutableStateOf(CacheSortOption.Newest)
 
     @Composable
-    fun applyFilterAndSort(list: List<CacheListEntry>): List<CacheListEntry> {
+    fun applyFilterAndSort(list: List<CacheEpisodeState>): List<CacheEpisodeState> {
         val result by remember(list) {
             derivedStateOf {
                 val filtered = list.filter { entry ->
-                    (selectedCollectionType == null || (entry.collectionType
+                    (selectedCollectionType == null || (entry.subjectCollectionType
                         ?: UnifiedCollectionType.NOT_COLLECTED) == selectedCollectionType) &&
                             (selectedEngineKey == null || entry.engineKey == selectedEngineKey) &&
                             (selectedStatus == null || entry.status == selectedStatus)
                 }
 
                 when (sortOption) {
-                    CacheSortOption.Newest -> filtered.sortedByDescending { it.episode.creationTime ?: Long.MIN_VALUE }
-                    CacheSortOption.Oldest -> filtered.sortedBy { it.episode.creationTime ?: Long.MIN_VALUE }
-                    CacheSortOption.SubjectAsc -> filtered.sortedBy { it.subjectName }
-                    CacheSortOption.SubjectDesc -> filtered.sortedByDescending { it.subjectName }
-                    CacheSortOption.EpisodeAsc -> filtered.sortedWith(compareBy({ it.groupId }, { it.episode.sort }))
+                    CacheSortOption.Newest -> filtered.sortedByDescending { it.creationTime ?: Long.MIN_VALUE }
+                    CacheSortOption.Oldest -> filtered.sortedBy { it.creationTime ?: Long.MIN_VALUE }
+                    CacheSortOption.SubjectAsc -> filtered.sortedBy { it.displayName }
+                    CacheSortOption.SubjectDesc -> filtered.sortedByDescending { it.displayName }
+                    CacheSortOption.EpisodeAsc -> filtered.sortedWith(compareBy({ it.groupId }, { it.sort }))
                     CacheSortOption.EpisodeDesc -> filtered.sortedWith(
-                        compareBy<CacheListEntry>({ it.groupId }, { it.episode.sort }).reversed(),
+                        compareBy<CacheEpisodeState>({ it.groupId }, { it.sort }).reversed(),
                     )
                 }
             }
@@ -341,7 +340,7 @@ private fun SortMenuButton(
     }
 }
 
-internal enum class CacheStatusFilter {
+enum class CacheStatusFilter {
     Downloading,
     Finished,
 }

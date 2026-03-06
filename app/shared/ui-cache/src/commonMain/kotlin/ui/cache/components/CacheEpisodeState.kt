@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.cache.components
 
 import androidx.compose.runtime.Immutable
 import kotlinx.coroutines.DelicateCoroutinesApi
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.tools.Progress
 import me.him188.ani.app.tools.toPercentageOrZero
@@ -18,21 +19,26 @@ import me.him188.ani.app.tools.toProgress
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
+import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.format1f
 import kotlin.random.Random
 
 @Immutable
 class CacheEpisodeState(
+    val groupId: String,
     val subjectId: Int,
     val episodeId: Int,
     val cacheId: String,
     val sort: EpisodeSort,
+    val subjectName: String,
     val displayName: String,
     val creationTime: Long?,
     val screenShots: List<String>, // url
     val stats: Stats,
     val state: CacheEpisodePaused,
+    val engineKey: MediaCacheEngineKey?,
+    val subjectCollectionType: UnifiedCollectionType?,
     val playability: Playability = Playability.PLAYABLE,
 ) {
     enum class Playability {
@@ -52,6 +58,8 @@ class CacheEpisodeState(
                 Stats(FileSize.Companion.Unspecified, Progress.Companion.Unspecified, FileSize.Companion.Unspecified)
         }
     }
+
+    val listItemKey = "$subjectId-$groupId-$episodeId-$cacheId"
 
     val progress get() = stats.progress
 
@@ -96,6 +104,9 @@ class CacheEpisodeState(
 
     val isProgressUnspecified get() = stats.progress.isUnspecified
 
+    val status: CacheStatusFilter
+        get() = if (isFinished) CacheStatusFilter.Finished else CacheStatusFilter.Downloading
+
     companion object {
         fun calculateSizeText(
             totalSize: FileSize,
@@ -127,9 +138,9 @@ fun createTestMediaStats(): MediaStats = MediaStats.Unspecified
 @TestOnly
 val TestCacheEpisodes
     get() = listOf(
-        createTestCacheEpisode(1, "翻转孤独", 1),
-        createTestCacheEpisode(2, "明天见", 1, initialState = CacheEpisodePaused.PAUSED),
-        createTestCacheEpisode(3, "火速增员", 1, progress = 1f.toProgress()),
+        createTestCacheEpisode(1, "孤独摇滚", "翻转孤独", 1),
+        createTestCacheEpisode(2, "孤独摇滚", "明天见", 1, initialState = CacheEpisodePaused.PAUSED),
+        createTestCacheEpisode(3, "孤独摇滚", "火速增员", 1, progress = 1f.toProgress()),
     )
 
 @OptIn(DelicateCoroutinesApi::class)
@@ -137,6 +148,7 @@ val TestCacheEpisodes
 @TestOnly
 fun createTestCacheEpisode(
     sort: Int,
+    subjectName: String = "孤独摇滚",
     displayName: String = "第 $sort 话",
     subjectId: Int = 1,
     episodeId: Int = sort,
@@ -148,11 +160,14 @@ fun createTestCacheEpisode(
     progress: Progress = 0.3f.toProgress(),
     totalSize: FileSize = 888.megaBytes,
 ): CacheEpisodeState {
+    val cacheId = Random.nextInt(10000, 99999).toString()
     return CacheEpisodeState(
+        groupId = subjectId.toString(),
         subjectId = subjectId,
         episodeId = episodeId,
-        cacheId = Random.nextInt(10000, 99999).toString(),
+        cacheId = cacheId,
         sort = EpisodeSort(sort),
+        subjectName = subjectName,
         displayName = displayName,
         creationTime = 100,
         screenShots = emptyList(),
@@ -162,5 +177,7 @@ fun createTestCacheEpisode(
             totalSize = totalSize,
         ),
         state = initialState,
+        engineKey = MediaCacheEngineKey.Anitorrent,
+        subjectCollectionType = UnifiedCollectionType.DOING,
     )
 }

@@ -30,13 +30,10 @@ import me.him188.ani.app.domain.media.cache.engine.sum
 import me.him188.ani.app.torrent.api.files.averageRate
 import me.him188.ani.app.ui.cache.components.CacheEpisodePaused
 import me.him188.ani.app.ui.cache.components.CacheEpisodeState
-import me.him188.ani.app.ui.cache.components.CacheGroupCommonInfo
 import me.him188.ani.app.ui.cache.components.CacheGroupState
 import me.him188.ani.app.ui.foundation.AbstractViewModel
-import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.datasources.api.unwrapCached
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.coroutines.sampleWithInitial
 import org.koin.core.component.KoinComponent
@@ -64,26 +61,14 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
 
         val groupsFlow = cacheManager.enabledStorages
             .flatMapLatest { storages ->
-                if (storages.isEmpty()) {
-                    flowOfEmptyList()
-                } else {
-                    val listFlow = storages.map { storage ->
-                        storage.listFlow.map { caches ->
-                            caches.map { cache ->
-                                CacheWithEngine(cache, storage.engine.engineKey)
-                            }
-                        }
+                if (storages.isEmpty()) return@flatMapLatest flowOfEmptyList()
+                val listFlow = storages.map { storage ->
+                    storage.listFlow.map { caches ->
+                        caches.map { CacheWithEngine(it, storage.engine.engineKey) }
                     }
-                    if (listFlow.isEmpty()) {
-                        flowOfEmptyList()
-                    } else {
-                        combine(listFlow) { it.asSequence().flatten().toList() }
-                            .transformLatest { allCaches ->
-                                supervisorScope {
-                                    emitAll(createCacheGroupStates(allCaches))
-                                } // supervisorScope won't finish itself
-                            }
-                    }
+                }
+                combine(listFlow) { it.asSequence().flatten().toList() }.transformLatest {
+                    supervisorScope { emitAll(createCacheGroupStates(it)) } // supervisorScope won't finish itself
                 }
             }
             .shareInBackground()
@@ -94,64 +79,20 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
 
     private fun createCacheGroupStates(allCaches: List<CacheWithEngine>): Flow<List<CacheGroupState>> {
         val groupStateFlows = allCaches
-            .groupBy { it.cache.origin.unwrapCached().mediaId }
-            .map { (_, mediaCaches) ->
-                val firstCache = mediaCaches.first()
+            .groupBy { it.cache.metadata.subjectId }
+            .map { (subjectId, caches) ->
+                val groupId = subjectId
+                val collectionType = subjectRepository.getSubjectCollectionTypeOffline(subjectId.toInt())
+                    .onStart { emit(UnifiedCollectionType.NOT_COLLECTED) }
 
-                val groupId = firstCache.cache.origin.unwrapCached().mediaId
-                val statsFlow = firstCache.cache.sessionStats
-                    .combine(
-                        firstCache.cache.sessionStats.map { it.downloadedBytes.inBytes }.averageRate(),
-                    ) { stats, downloadSpeed ->
-                        CacheGroupState.Stats(
-                            downloadSpeed = downloadSpeed.bytes,
-                            downloadedSize = stats.downloadedBytes,
-                            uploadSpeed = stats.uploadSpeed,
-                        )
-                    }
-                    .sampleWithInitial(1.seconds)
-                    .onStart {
-                        emit(
-                            CacheGroupState.Stats(
-                                FileSize.Unspecified,
-                                FileSize.Unspecified,
-                                FileSize.Unspecified,
-                            ),
-                        )
-                    }
-
-                val episodeFlows = mediaCaches.map { mediaCache ->
-                    createCacheEpisodeFlow(mediaCache)
-                }.let { episodeFlows ->
-                    if (episodeFlows.isEmpty()) {
-                        flowOfEmptyList()
-                    } else {
-                        combine(episodeFlows) { it.toList() }
-                    }
-                }.shareInBackground()
-
-                val commonInfo = createGroupCommonInfo(
-                    subjectId = firstCache.cache.metadata.subjectId.toInt(),
-                    firstCache = firstCache.cache,
-                    subjectDisplayName = firstCache.cache.metadata.subjectNameCN
-                        ?: firstCache.cache.metadata.subjectNames.firstOrNull()
-                        ?: firstCache.cache.origin.originalTitle,
-                    imageUrl = null,
-                )
-
-                combine(
-                    statsFlow,
-                    episodeFlows,
-                    subjectRepository.getSubjectCollectionTypeOffline(commonInfo.subjectId)
-                        .onStart { emit(UnifiedCollectionType.NOT_COLLECTED) },
-                ) { stats, episodes, collectionType ->
+                combine(caches.map { createCacheEpisodeFlow(groupId, it, collectionType) }) { states ->
+                    states.toList()
+                }.combine(collectionType) { entries, type ->
                     CacheGroupState(
-                        id = groupId,
-                        commonInfo = commonInfo,
-                        episodes = episodes,
-                        stats = stats,
-                        engineKey = firstCache.engineKey,
-                        collectionType = collectionType,
+                        subjectId.toInt(),
+                        caches.first().cache.metadata.run { subjectNameCN ?: subjectNames.firstOrNull() ?: "" },
+                        entries = entries,
+                        collectionType = type,
                     )
                 }
             }
@@ -159,28 +100,20 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
         if (groupStateFlows.isEmpty()) {
             return flowOfEmptyList()
         }
+
         return combine(groupStateFlows) { array ->
             array.sortedWith(
-                compareByDescending<CacheGroupState> { it.latestCreationTime }
-                    .thenByDescending { it.cacheId }, // 只有旧的缓存会没有时间, 才会走这个
+                compareByDescending<CacheGroupState> { it.entries.any { entry -> !entry.isFinished } }
+                    .thenByDescending { it.entries.maxOfOrNull { entry -> entry.creationTime ?: 0 } },
             )
         }
     }
 
-    private fun createGroupCommonInfo(
-        subjectId: Int,
-        firstCache: MediaCache,
-        subjectDisplayName: String,
-        imageUrl: String?,
-    ) = CacheGroupCommonInfo(
-        subjectId = subjectId,
-        subjectDisplayName,
-        mediaSourceId = firstCache.origin.unwrapCached().mediaSourceId,
-        allianceName = firstCache.origin.unwrapCached().properties.alliance,
-        imageUrl = imageUrl,
-    )
-
-    private fun createCacheEpisodeFlow(mediaCache: CacheWithEngine): Flow<CacheEpisodeState> {
+    private fun createCacheEpisodeFlow(
+        groupId: String,
+        mediaCache: CacheWithEngine,
+        subjectCollectionType: Flow<UnifiedCollectionType?>,
+    ): Flow<CacheEpisodeState> {
         val statsFlow = mediaCache.cache.fileStats
             .combine(
                 mediaCache.cache.fileStats
@@ -206,19 +139,28 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
             .stateInBackground(CacheEpisodePaused.IN_PROGRESS)
 
         val metadata = mediaCache.cache.metadata
-        return combine(statsFlow, stateFlow, mediaCache.cache.canPlay) { stats, state, canPlay ->
+        return combine(
+            statsFlow,
+            stateFlow,
+            subjectCollectionType,
+            mediaCache.cache.canPlay,
+        ) { stats, state, type, canPlay ->
             val subjectId = metadata.subjectId.toInt()
             val episodeId = metadata.episodeId.toInt()
             CacheEpisodeState(
+                groupId = groupId,
                 subjectId = subjectId,
                 episodeId = episodeId,
                 cacheId = mediaCache.cache.cacheId,
                 sort = metadata.episodeSort,
+                subjectName = metadata.subjectNameCN ?: metadata.subjectNames.firstOrNull() ?: "",
                 displayName = metadata.episodeName,
                 creationTime = metadata.creationTime,
                 screenShots = emptyList(),
                 stats = stats,
                 state = state,
+                engineKey = mediaCache.engineKey,
+                subjectCollectionType = type,
                 playability = when {
                     subjectId == 0 || episodeId == 0 -> CacheEpisodeState.Playability.INVALID_SUBJECT_EPISODE_ID
                     !canPlay -> CacheEpisodeState.Playability.STREAMING_NOT_SUPPORTED

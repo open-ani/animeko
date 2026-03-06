@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -54,6 +54,7 @@ class CacheEpisodeStateTest {
     @Suppress("SameParameterValue")
     private fun cacheEpisode(
         sort: Int = 1,
+        subjectName: String = "翻转孤独",
         displayName: String = "翻转孤独",
         subjectId: Int = 1,
         episodeId: Int = 1,
@@ -70,6 +71,7 @@ class CacheEpisodeStateTest {
             episodeId = episodeId,
             cacheId = "1",
             sort = EpisodeSort(sort),
+            subjectName = subjectName,
             displayName = displayName,
             creationTime = 100,
             screenShots = emptyList(),
@@ -79,6 +81,9 @@ class CacheEpisodeStateTest {
                 totalSize = totalSize,
             ),
             state = initialPaused,
+            groupId = subjectId.toString(),
+            engineKey = null,
+            subjectCollectionType = null,
         )
     }
 
