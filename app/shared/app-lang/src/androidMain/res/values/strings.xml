@@ -211,6 +211,9 @@
     <string name="settings_media_source_sort">Sort</string>
     <string name="settings_media_source_stop_test">Stop test</string>
     <string name="settings_media_source_start_test">Start test</string>
+    <string name="settings_media_source_clear_invalid">Clear invalid sources (%1$d)</string>
+    <string name="settings_media_source_clear_invalid_confirmation">Delete %1$d invalid data sources?</string>
+    <string name="settings_media_source_clear_invalid_result">Removed %1$d invalid sources, %2$d failed.</string>
     <string name="settings_media_source_delete">Delete data source</string>
     <string name="settings_media_source_delete_no_config">This data source has no special configuration. It can be re-added from a template after deletion. Confirm deletion?</string>
     <string name="settings_media_source_delete_with_config">This data source has configurations. Deleting it will lose those configurations. They must be reconfigured when re-added from a template. Confirm deletion?</string>
