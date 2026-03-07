@@ -19,11 +19,25 @@ import me.him188.ani.app.data.models.preference.WebViewDriver.entries
 data class VideoResolverSettings(
     val driver: WebViewDriver = WebViewDriver.AUTO,
     val headless: Boolean = true,
+    val resourceExtractionTimeoutSeconds: Int = DEFAULT_RESOURCE_EXTRACTION_TIMEOUT_SECONDS,
 
     @Suppress("PropertyName")
     @Transient val _placeholder: Int = 0,
 ) {
+    val effectiveResourceExtractionTimeoutSeconds: Int
+        get() = if (resourceExtractionTimeoutSeconds in ResourceExtractionTimeoutSecondsOptions) {
+            resourceExtractionTimeoutSeconds
+        } else {
+            DEFAULT_RESOURCE_EXTRACTION_TIMEOUT_SECONDS
+        }
+
+    val effectiveResourceExtractionTimeoutMillis: Long
+        get() = effectiveResourceExtractionTimeoutSeconds * 1_000L
+
     companion object {
+        const val DEFAULT_RESOURCE_EXTRACTION_TIMEOUT_SECONDS = 8
+        val ResourceExtractionTimeoutSecondsOptions = listOf(3, 5, 8, 10, 15, 20, 30)
+
         val Default = VideoResolverSettings()
     }
 }

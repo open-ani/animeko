@@ -35,7 +35,11 @@
     <string name="settings_media_wait_time_8s">After 8 seconds</string>
     <string name="settings_media_wait_time_10s">After 10 seconds</string>
     <string name="settings_media_wait_time_15s">After 15 seconds</string>
+    <string name="settings_media_wait_time_20s">After 20 seconds</string>
+    <string name="settings_media_wait_time_30s">After 30 seconds</string>
     <string name="settings_media_wait_time_infinite">Unlimited</string>
+    <string name="settings_media_video_link_resolve_timeout">Video Link Resolve Timeout</string>
+    <string name="settings_media_video_link_resolve_timeout_description">Maximum time allowed to resolve the final playable URL for online video sources. If resolution takes too long, playback will fail faster and switch or retry sooner. 8-15 seconds is recommended</string>
     <string name="settings_media_max_wait_time">Maximum Wait Time</string>
     <string name="settings_media_max_wait_time_description">Maximum wait time for each query. At the end of this time, a data source will be automatically selected from those already queried based on your preferences. If the wait time is too short, your preference settings may be ignored; if longer, it can better meet your preferences but may cause slow playback starts. 5–10 seconds is recommended</string>
     <string name="settings_media_show_disabled">Show Disabled Data Sources</string>

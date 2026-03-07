@@ -23,11 +23,12 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
-import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor.Companion.DEFAULT_TIMEOUT
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor.Instruction
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.datasources.api.Media
@@ -48,6 +49,7 @@ import java.util.concurrent.ConcurrentSkipListSet
  */
 class AndroidWebMediaResolver(
     private val matcherLoader: MediaSourceWebVideoMatcherLoader,
+    private val settingsRepository: SettingsRepository,
 ) : MediaResolver {
     private companion object {
         private val logger = logger<AndroidWebMediaResolver>()
@@ -95,8 +97,9 @@ class AndroidWebMediaResolver(
             matcher.patchConfig(acc)
         }
         logger.info { "Final config: $config" }
+        val timeoutMillis = settingsRepository.videoResolverSettings.flow.first().effectiveResourceExtractionTimeoutMillis
 
-        val webVideo = AndroidWebViewVideoExtractor().getVideoResourceUrl(
+        val webVideo = AndroidWebViewVideoExtractor(timeoutMillis).getVideoResourceUrl(
             attached ?: throw IllegalStateException("WebVideoSourceResolver not attached"),
             media.download.uri,
             config,
@@ -121,7 +124,9 @@ class AndroidWebMediaResolver(
     }
 }
 
-class AndroidWebViewVideoExtractor : WebViewVideoExtractor {
+class AndroidWebViewVideoExtractor(
+    private val timeoutMillis: Long = WebViewVideoExtractor.DEFAULT_TIMEOUT,
+) : WebViewVideoExtractor {
     private companion object {
         private val logger = logger<AndroidWebViewVideoExtractor>()
     }
@@ -191,7 +196,7 @@ class AndroidWebViewVideoExtractor : WebViewVideoExtractor {
             //            }
 
             try {
-                withTimeoutOrNull(DEFAULT_TIMEOUT) {
+                withTimeoutOrNull(timeoutMillis) {
                     deferred.await()
                 }
             } catch (e: Throwable) {

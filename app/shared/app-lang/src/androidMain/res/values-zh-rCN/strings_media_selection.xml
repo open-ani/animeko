@@ -35,7 +35,11 @@
     <string name="settings_media_wait_time_8s">8 秒后</string>
     <string name="settings_media_wait_time_10s">10 秒后</string>
     <string name="settings_media_wait_time_15s">15 秒后</string>
+    <string name="settings_media_wait_time_20s">20 秒后</string>
+    <string name="settings_media_wait_time_30s">30 秒后</string>
     <string name="settings_media_wait_time_infinite">无限</string>
+    <string name="settings_media_video_link_resolve_timeout">视频链接解析超时</string>
+    <string name="settings_media_video_link_resolve_timeout_description">播放在线视频源时，解析最终可播放链接的最长等待时间。超时后会更快判定失败并切换或重试。建议设置 8-15 秒</string>
     <string name="settings_media_max_wait_time">最长等待时间</string>
     <string name="settings_media_max_wait_time_description">最大容忍高优先级数据源时间。在此时间结束前若有任意高优先级的数据源查询完成则立即选择此数据源，超时则从已查询的所有源中选择。建议设置 5–10 秒</string>
     <string name="settings_media_show_disabled">显示禁用的数据源</string>

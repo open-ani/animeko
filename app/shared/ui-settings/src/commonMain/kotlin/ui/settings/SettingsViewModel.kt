@@ -156,6 +156,7 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
     val mediaSelectionGroupState = MediaSelectionGroupState(
         defaultMediaPreferenceState = defaultMediaPreferenceState,
         mediaSelectorSettingsState = mediaSelectorSettingsState,
+        videoResolverSettingsState = videoResolverSettingsState,
     )
 
     val debugSettingsState = settingsRepository.debugSettings.stateInBackground(DebugSettings(_placeHolder = -1))

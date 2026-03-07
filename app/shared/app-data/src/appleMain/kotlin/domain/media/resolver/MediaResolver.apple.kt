@@ -14,10 +14,11 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
-import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor.Companion.DEFAULT_TIMEOUT
 import me.him188.ani.app.platform.Context
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.matcher.MediaSourceWebVideoMatcherLoader
@@ -53,6 +54,7 @@ import platform.darwin.NSObject
 class IosWebMediaResolver(
     private val matcherLoader: MediaSourceWebVideoMatcherLoader,
     private val iosContext: Context,
+    private val settingsRepository: SettingsRepository,
 ) : MediaResolver {
     private companion object {
         private val logger = logger<IosWebMediaResolver>()
@@ -69,7 +71,8 @@ class IosWebMediaResolver(
     override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<MediaData> {
         if (!supports(media)) throw UnsupportedMediaException(media)
 
-        val extractor = IosWebViewVideoExtractor()
+        val resolverSettings = settingsRepository.videoResolverSettings.flow.first()
+        val extractor = IosWebViewVideoExtractor(resolverSettings.effectiveResourceExtractionTimeoutMillis)
         // Gather all matchers: from the media source + from the classpath
         val matchersFromMediaSource = matcherLoader.loadMatchers(media.mediaSourceId)
 
@@ -93,7 +96,7 @@ class IosWebMediaResolver(
 
         var video: WebVideo? = null
         withContext(Dispatchers.Default) {
-            withContext(Dispatchers.Main) { extractor!! }.getVideoResourceUrl(
+            withContext(Dispatchers.Main) { extractor }.getVideoResourceUrl(
                 context = this@IosWebMediaResolver.iosContext,
                 pageUrl = media.download.uri,
                 config = config,
@@ -125,7 +128,9 @@ class IosWebMediaResolver(
 /**
  * Using WKWebView + JavaScript injection to intercept requests for video resources.
  */
-class IosWebViewVideoExtractor : WebViewVideoExtractor {
+class IosWebViewVideoExtractor(
+    private val timeoutMillis: Long = WebViewVideoExtractor.DEFAULT_TIMEOUT,
+) : WebViewVideoExtractor {
     private companion object {
         private val logger = logger<IosWebViewVideoExtractor>()
     }
@@ -256,7 +261,7 @@ class IosWebViewVideoExtractor : WebViewVideoExtractor {
                 logger.info { "Loading page: $pageUrl" }
                 webView.loadRequest(NSURLRequest.requestWithURL(NSURL(string = pageUrl)))
 
-                val result = withTimeoutOrNull(DEFAULT_TIMEOUT) {
+                val result = withTimeoutOrNull(timeoutMillis) {
                     deferred.await()
                 }
                 return result

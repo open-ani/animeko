@@ -16,5 +16,7 @@ actual fun WebViewVideoExtractor(
     proxyConfig: ProxyConfig?,
     videoResolverSettings: VideoResolverSettings,
 ): WebViewVideoExtractor {
-    return IosWebViewVideoExtractor()
+    return IosWebViewVideoExtractor(
+        videoResolverSettings.effectiveResourceExtractionTimeoutMillis,
+    )
 }

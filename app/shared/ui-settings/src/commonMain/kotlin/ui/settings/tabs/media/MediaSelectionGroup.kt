@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.util.fastAll
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.models.preference.VideoResolverSettings
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_media_advanced_settings
@@ -65,11 +66,15 @@ import me.him188.ani.app.ui.lang.settings_media_source_web
 import me.him188.ani.app.ui.lang.settings_media_subtitle_language
 import me.him188.ani.app.ui.lang.settings_media_wait_time_10s
 import me.him188.ani.app.ui.lang.settings_media_wait_time_15s
+import me.him188.ani.app.ui.lang.settings_media_wait_time_20s
 import me.him188.ani.app.ui.lang.settings_media_wait_time_3s
+import me.him188.ani.app.ui.lang.settings_media_wait_time_30s
 import me.him188.ani.app.ui.lang.settings_media_wait_time_5s
 import me.him188.ani.app.ui.lang.settings_media_wait_time_8s
 import me.him188.ani.app.ui.lang.settings_media_wait_time_infinite
 import me.him188.ani.app.ui.lang.settings_media_wait_time_none
+import me.him188.ani.app.ui.lang.settings_media_video_link_resolve_timeout
+import me.him188.ani.app.ui.lang.settings_media_video_link_resolve_timeout_description
 import me.him188.ani.app.ui.media.renderResolution
 import me.him188.ani.app.ui.media.renderSubtitleLanguage
 import me.him188.ani.app.ui.settings.framework.SettingsState
@@ -92,6 +97,7 @@ import kotlin.time.Duration.Companion.seconds
 class MediaSelectionGroupState(
     val defaultMediaPreferenceState: SettingsState<MediaPreference>,
     val mediaSelectorSettingsState: SettingsState<MediaSelectorSettings>,
+    val videoResolverSettingsState: SettingsState<VideoResolverSettings>,
 ) {
     val defaultMediaPreference by defaultMediaPreferenceState
 
@@ -239,6 +245,37 @@ internal fun SettingsScope.MediaSelectionGroup(
             useThinHeader = true,
         ) {
             val mediaSelectorSettings by state.mediaSelectorSettingsState
+            val videoResolverSettings by state.videoResolverSettingsState
+
+            DropdownItem(
+                selected = { videoResolverSettings.effectiveResourceExtractionTimeoutSeconds },
+                values = { VideoResolverSettings.ResourceExtractionTimeoutSecondsOptions },
+                itemText = { timeoutSeconds ->
+                    Text(
+                        when (timeoutSeconds) {
+                            3 -> stringResource(Lang.settings_media_wait_time_3s)
+                            5 -> stringResource(Lang.settings_media_wait_time_5s)
+                            8 -> stringResource(Lang.settings_media_wait_time_8s)
+                            10 -> stringResource(Lang.settings_media_wait_time_10s)
+                            15 -> stringResource(Lang.settings_media_wait_time_15s)
+                            20 -> stringResource(Lang.settings_media_wait_time_20s)
+                            30 -> stringResource(Lang.settings_media_wait_time_30s)
+                            else -> "${timeoutSeconds}s"
+                        },
+                    )
+                },
+                onSelect = {
+                    state.videoResolverSettingsState.update(
+                        videoResolverSettings.copy(
+                            resourceExtractionTimeoutSeconds = it,
+                        ),
+                    )
+                },
+                title = { Text(stringResource(Lang.settings_media_video_link_resolve_timeout)) },
+                description = { Text(stringResource(Lang.settings_media_video_link_resolve_timeout_description)) },
+            )
+
+            HorizontalDividerItem()
 
             kotlin.run {
                 val values = remember {
@@ -403,4 +440,3 @@ fun autoCacheDescription(sliderValue: Float) = when (sliderValue) {
     else -> stringResource(Lang.settings_media_auto_cache_partial, sliderValue.toInt()) +
             stringResource(Lang.settings_media_auto_cache_space, 600.megaBytes * sliderValue)
 }
-

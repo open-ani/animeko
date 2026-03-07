@@ -39,7 +39,7 @@ interface WebViewVideoExtractor {
     ): WebResource?
 
     companion object {
-        const val DEFAULT_TIMEOUT = 10_000L
+        const val DEFAULT_TIMEOUT = 8_000L
     }
 }
 

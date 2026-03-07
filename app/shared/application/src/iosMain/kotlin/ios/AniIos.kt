@@ -289,7 +289,13 @@ fun getIosModules(
                 .map { TorrentMediaResolver(it, get()) }
                 .plus(LocalFileMediaResolver())
                 .plus(HttpStreamingMediaResolver())
-                .plus(IosWebMediaResolver(get<MediaSourceManager>().webVideoMatcherLoader, context)),
+                .plus(
+                    IosWebMediaResolver(
+                        get<MediaSourceManager>().webVideoMatcherLoader,
+                        context,
+                        get<SettingsRepository>(),
+                    ),
+                ),
         )
     }
     single<UpdateInstaller> { IosUpdateInstaller }

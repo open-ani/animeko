@@ -35,7 +35,11 @@
     <string name="settings_media_wait_time_8s">8 秒後</string>
     <string name="settings_media_wait_time_10s">10 秒後</string>
     <string name="settings_media_wait_time_15s">15 秒後</string>
+    <string name="settings_media_wait_time_20s">20 秒後</string>
+    <string name="settings_media_wait_time_30s">30 秒後</string>
     <string name="settings_media_wait_time_infinite">無限</string>
+    <string name="settings_media_video_link_resolve_timeout">影片連結解析逾時</string>
+    <string name="settings_media_video_link_resolve_timeout_description">播放線上影片來源時，解析最終可播放連結的最長等待時間。逾時後會更快判定失敗並切換或重試。建議設置 8-15 秒</string>
     <string name="settings_media_max_wait_time">最長等待時間</string>
     <string name="settings_media_max_wait_time_description">每次查詢的最長等待時間。在此時間結束時，將會從已經查詢到的數據源中根據你設置的偏好自動選擇數據源。如果等待時間太短，可能會忽略你的偏好設置；如果時間更長，可以更好地滿足你的偏好設置，但可能會導致每次開播很慢。建議設置 5–10 秒</string>
     <string name="settings_media_show_disabled">顯示禁用的數據源</string>

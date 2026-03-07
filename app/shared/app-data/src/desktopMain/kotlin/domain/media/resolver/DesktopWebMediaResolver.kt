@@ -24,7 +24,6 @@ import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
-import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor.Companion.DEFAULT_TIMEOUT
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor.Instruction
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.platform.AniCefApp
@@ -235,7 +234,7 @@ class CefVideoExtractor(
                 browser.createImmediately()
             }
 
-            withTimeoutOrNull(DEFAULT_TIMEOUT) {
+            withTimeoutOrNull(videoResolverSettings.effectiveResourceExtractionTimeoutMillis) {
                 deferred.await()
             }
         } catch (e: CancellationException) {

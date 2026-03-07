@@ -17,5 +17,7 @@ actual fun WebViewVideoExtractor(
     proxyConfig: ProxyConfig?,
     videoResolverSettings: VideoResolverSettings,
 ): WebViewVideoExtractor {
-    return AndroidWebViewVideoExtractor() // does not support proxy
+    return AndroidWebViewVideoExtractor(
+        videoResolverSettings.effectiveResourceExtractionTimeoutMillis,
+    ) // does not support proxy
 }

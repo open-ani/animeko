@@ -19,6 +19,7 @@ import kotlinx.io.files.Path
 import me.him188.ani.android.navigation.AndroidBrowserNavigator
 import me.him188.ani.android.provider.ExternalContentProviderFactoryImpl
 import me.him188.ani.app.data.persistent.database.AniDatabase
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
@@ -168,7 +169,12 @@ fun getAndroidModules(
                 .map { TorrentMediaResolver(it, get()) }
                 .plus(LocalFileMediaResolver())
                 .plus(HttpStreamingMediaResolver())
-                .plus(AndroidWebMediaResolver(get<MediaSourceManager>().webVideoMatcherLoader)),
+                .plus(
+                    AndroidWebMediaResolver(
+                        get<MediaSourceManager>().webVideoMatcherLoader,
+                        get<SettingsRepository>(),
+                    ),
+                ),
         )
     }
     single<UpdateInstaller> { AndroidUpdateInstaller() }
