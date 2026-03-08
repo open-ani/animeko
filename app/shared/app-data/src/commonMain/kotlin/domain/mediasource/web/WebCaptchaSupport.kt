@@ -251,6 +251,12 @@ internal fun WebCaptchaLoadedPage.detectMeaningfulCaptcha(
     return WebCaptchaDetector.detect(finalUrl, html)
 }
 
+internal fun WebCaptchaLoadedPage.isUsableSolvedPage(
+    request: WebCaptchaRequest,
+): Boolean {
+    return detectMeaningfulCaptcha(request) == null
+}
+
 internal fun WebCaptchaLoadedPage.isFallbackHomePageFor(request: WebCaptchaRequest): Boolean {
     val requestUrl = runCatching { Url(request.pageUrl) }.getOrNull() ?: return false
     val pageUrl = runCatching { Url(finalUrl) }.getOrNull() ?: return false

@@ -105,5 +105,30 @@ class WebCaptchaSupportTest {
 
         assertTrue(page.isFallbackHomePageFor(request))
         assertEquals(WebCaptchaKind.Cloudflare, page.detectMeaningfulCaptcha(request))
+        assertEquals(false, page.isUsableSolvedPage(request))
+    }
+
+    @Test
+    fun `same host search result is treated as usable solved page`() {
+        val request = WebCaptchaRequest(
+            mediaSourceId = "source-a",
+            pageUrl = "https://example.com/search/-------------/?wd=frieren",
+            kind = WebCaptchaKind.Cloudflare,
+        )
+        val page = WebCaptchaLoadedPage(
+            finalUrl = "https://example.com/search/-------------/?wd=frieren",
+            html = """
+                <html>
+                  <body>
+                    <div class="video-info-header">
+                      <a href="/subject/1">Frieren</a>
+                    </div>
+                  </body>
+                </html>
+            """.trimIndent(),
+        )
+
+        assertEquals(null, page.detectMeaningfulCaptcha(request))
+        assertTrue(page.isUsableSolvedPage(request))
     }
 }

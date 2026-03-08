@@ -583,6 +583,8 @@ class AndroidWebCaptchaCoordinator(
             )
             val deadlineMillis = System.currentTimeMillis() + timeoutMillis
             var lastPage = initialPage
+            var retryCount = 0
+            var nextRetryAtMillis = System.currentTimeMillis()
 
             while (System.currentTimeMillis() <= deadlineMillis) {
                 val currentPage = snapshotCurrentPage() ?: lastPage
@@ -590,18 +592,23 @@ class AndroidWebCaptchaCoordinator(
                     lastPage = currentPage
                 }
                 val candidate = lastPage
+                if (candidate != null && candidate.isUsableSolvedPage(request)) {
+                    return candidate
+                }
                 if (
                     candidate != null &&
-                    candidate.isRelevantFor(request) &&
-                    candidate.hasMeaningfulHtml() &&
-                    WebCaptchaDetector.detect(candidate.finalUrl, candidate.html) == null
+                    candidate.isFallbackHomePageFor(request) &&
+                    retryCount < 2 &&
+                    System.currentTimeMillis() >= nextRetryAtMillis
                 ) {
-                    return candidate
+                    retryCount++
+                    nextRetryAtMillis = System.currentTimeMillis() + 750
+                    loadUrl(pageUrl)
                 }
                 delay(250)
             }
 
-            return lastPage
+            return lastPage?.takeIf { it.isUsableSolvedPage(request) }
         }
     }
 }
