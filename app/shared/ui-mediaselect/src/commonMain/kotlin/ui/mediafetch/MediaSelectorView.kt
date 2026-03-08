@@ -121,6 +121,7 @@ fun MediaSelectorView(
 ) {
     val bringIntoViewRequesters = remember { mutableStateMapOf<Media, BringIntoViewRequester>() }
     val presentation by state.presentationFlow.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     Column(modifier) {
         val lazyListState = rememberLazyListState()
@@ -163,6 +164,13 @@ fun MediaSelectorView(
                             channel.original?.let { onClickItem(it) }
                         },
                         onRefresh = { onRestartSource(it.instanceId) },
+                        onResolveCaptcha = { source ->
+                            scope.launch {
+                                if (state.resolveCaptcha(source)) {
+                                    onRestartSource(source.instanceId)
+                                }
+                            }
+                        },
                         onRequestQueryEdit = { showEditRequest = true },
                         Modifier.padding(bottom = bottomPadding)
                             .weight(1f, fill = false)

@@ -9,7 +9,9 @@
 
 package me.him188.ani.app.domain.mediasource.web
 
+import io.ktor.client.call.body
 import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.statement.bodyAsText
 import io.ktor.client.request.accept
 import io.ktor.client.request.prepareGet
 import io.ktor.http.ContentType
@@ -51,7 +53,6 @@ import me.him188.ani.datasources.api.topic.SubtitleLanguage
 import me.him188.ani.datasources.api.topic.titles.LabelFirstRawTitleParser
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.ktor.ScopedHttpClient
-import me.him188.ani.utils.ktor.toSource
 import me.him188.ani.utils.xml.Document
 import me.him188.ani.utils.xml.Element
 import me.him188.ani.utils.xml.Html
@@ -101,8 +102,9 @@ abstract class SelectorMediaSourceEngine {
          * `null` means 404
          */
         val document: Document?,
+        val captchaKind: WebCaptchaKind? = null,
     ) {
-        override fun toString(): String = "SearchSubjectResult(url=$url, document=${document.toString().length}...)"
+        override fun toString(): String = "SearchSubjectResult(url=$url, document=${document?.toString()?.length ?: 0}...)"
     }
 
     /**
@@ -124,6 +126,28 @@ abstract class SelectorMediaSourceEngine {
         )
 
         return searchImpl(finalUrl)
+    }
+
+    fun parseSearchResult(
+        finalUrl: Url,
+        html: String,
+    ): SearchSubjectResult {
+        val captchaKind = WebCaptchaDetector.detect(finalUrl.toString(), html)
+        if (captchaKind != null) {
+            return SearchSubjectResult(finalUrl, document = null, captchaKind = captchaKind)
+        }
+        return SearchSubjectResult(finalUrl, document = Html.parse(html))
+    }
+
+    fun parseDocument(
+        pageUrl: String,
+        html: String,
+    ): Document {
+        val captchaKind = WebCaptchaDetector.detect(pageUrl, html)
+        if (captchaKind != null) {
+            throw WebPageCaptchaException(pageUrl, captchaKind)
+        }
+        return Html.parse(html)
     }
 
     @Throws(RepositoryException::class, CancellationException::class)
@@ -365,29 +389,52 @@ class DefaultSelectorMediaSourceEngine(
         finalUrl: Url,
     ): SearchSubjectResult = withContext(ioDispatcher) {
         try {
-            val document = try {
-                client.use {
-                    prepareGet(finalUrl) {
-                        accept(ContentType.Text.Html)
-                    }.body<ByteReadChannel, _> { channel ->
-                        parseResp(channel)
+            client.use {
+                prepareGet(finalUrl) {
+                    accept(ContentType.Text.Html)
+                }.execute { response ->
+                    when (response.status) {
+                        HttpStatusCode.NotFound -> SearchSubjectResult(
+                            finalUrl,
+                            document = null,
+                        )
+
+                        in blockedSearchStatuses -> SearchSubjectResult(
+                            finalUrl,
+                            document = null,
+                            captchaKind = detectCaptchaKindFromBlockedResponse(
+                                response.status,
+                                finalUrl.toString(),
+                                response.bodyAsText(),
+                            ),
+                        )
+
+                        else -> {
+                            val channel = response.body<ByteReadChannel>()
+                            parseSearchResult(finalUrl, channel)
+                        }
                     }
                 }
-            } catch (e: ClientRequestException) {
-                if (e.response.status == HttpStatusCode.NotFound) {
-                    // 404 Not Found
-                    return@withContext SearchSubjectResult(
-                        finalUrl,
-                        document = null,
-                    )
-                }
-                throw e
             }
+        } catch (e: ClientRequestException) {
+            return@withContext when (e.response.status) {
+                HttpStatusCode.NotFound -> SearchSubjectResult(
+                    finalUrl,
+                    document = null,
+                )
 
-            SearchSubjectResult(
-                finalUrl,
-                document,
-            )
+                in blockedSearchStatuses -> SearchSubjectResult(
+                    finalUrl,
+                    document = null,
+                    captchaKind = detectCaptchaKindFromBlockedResponse(
+                        e.response.status,
+                        finalUrl.toString(),
+                        runCatching { e.response.bodyAsText() }.getOrDefault(""),
+                    ),
+                )
+
+                else -> throw RepositoryException.wrapOrThrowCancellation(e)
+            }
         } catch (e: Exception) {
             throw RepositoryException.wrapOrThrowCancellation(e)
         }
@@ -400,16 +447,74 @@ class DefaultSelectorMediaSourceEngine(
             client.use {
                 prepareGet(uri) {
                     accept(ContentType.Text.Html)
-                }.body<ByteReadChannel, _> { channel ->
-                    parseResp(channel)
+                }.execute { response ->
+                    if (response.status in blockedSearchStatuses) {
+                        throw WebPageCaptchaException(
+                            uri,
+                            detectCaptchaKindFromBlockedResponse(
+                                response.status,
+                                uri,
+                                response.bodyAsText(),
+                            ),
+                        )
+                    }
+                    parseDocument(
+                        uri,
+                        response.body<ByteReadChannel>(),
+                    )
                 }
             }
+        } catch (e: ClientRequestException) {
+            if (e.response.status in blockedSearchStatuses) {
+                throw WebPageCaptchaException(
+                    uri,
+                    detectCaptchaKindFromBlockedResponse(
+                        e.response.status,
+                        uri,
+                        runCatching { e.response.bodyAsText() }.getOrDefault(""),
+                    ),
+                )
+            }
+            throw e
         } catch (e: Exception) {
             throw RepositoryException.wrapOrThrowCancellation(e)
         }
     }
 
-    private suspend fun parseResp(channel: ByteReadChannel): Document {
+    private fun detectCaptchaKindFromBlockedResponse(
+        status: HttpStatusCode,
+        pageUrl: String,
+        html: String,
+    ): WebCaptchaKind {
+        return WebCaptchaDetector.detect(pageUrl, html)
+            ?: if (status in blockedSearchStatuses) WebCaptchaKind.Unknown else WebCaptchaKind.Unknown
+    }
+
+    private companion object {
+        val blockedSearchStatuses = setOf(
+            HttpStatusCode.Forbidden,
+            HttpStatusCode.TooManyRequests,
+            HttpStatusCode(468, "Captcha Required"),
+        )
+    }
+
+    private suspend fun parseSearchResult(
+        finalUrl: Url,
+        channel: ByteReadChannel,
+    ): SearchSubjectResult {
+        val html = readHtml(channel)
+        return parseSearchResult(finalUrl, html)
+    }
+
+    private suspend fun parseDocument(
+        uri: String,
+        channel: ByteReadChannel,
+    ): Document {
+        val html = readHtml(channel)
+        return parseDocument(uri, html)
+    }
+
+    private suspend fun readHtml(channel: ByteReadChannel): String {
         if (channel.peek(1)?.decodeToString() == "\"") {
             // 非常奇怪, 有时候会是一个字符串
             // slow path
@@ -421,12 +526,9 @@ class DefaultSelectorMediaSourceEngine(
                     Json.parseToJsonElement(body).jsonPrimitive.content
                 }.getOrNull() ?: body
             }
-            return Html.parse(body)
+            return body
         } else {
-            // fast path, no copy, streaming
-            return channel.toSource().use {
-                Html.parse(it)
-            }
+            return channel.readRemaining().readString()
         }
     }
 }

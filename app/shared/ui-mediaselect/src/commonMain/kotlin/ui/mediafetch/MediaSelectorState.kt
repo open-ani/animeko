@@ -43,6 +43,11 @@ import me.him188.ani.app.domain.media.selector.MediaPreferenceItem
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorContext
 import me.him188.ani.app.domain.media.selector.isPerfectMatch
+import me.him188.ani.app.domain.mediasource.web.NoopWebCaptchaCoordinator
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaSolveResult
+import me.him188.ani.app.domain.mediasource.web.displayName
+import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.foundation.rememberBackgroundScope
 import me.him188.ani.app.ui.mediaselect.selector.WebSource
 import me.him188.ani.app.ui.mediaselect.selector.WebSourceChannel
@@ -50,7 +55,6 @@ import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.platform.annotations.TestOnly
-import me.him188.ani.utils.platform.collections.tupleOf
 
 // todo: shit
 @Composable
@@ -60,6 +64,7 @@ fun rememberMediaSelectorState(
     mediaSelector: () -> MediaSelector,// lambda remembered
 ): MediaSelectorState {
     val scope = rememberBackgroundScope()
+    val webCaptchaCoordinator = remember { GlobalKoin.get<WebCaptchaCoordinator>() }
     val selector by remember {
         derivedStateOf(mediaSelector)
     }
@@ -70,6 +75,7 @@ fun rememberMediaSelectorState(
             mediaSourceInfoProvider,
             flowOf(null),
             scope.backgroundScope,
+            webCaptchaCoordinator,
         )
     }
 }
@@ -139,6 +145,7 @@ class MediaSelectorState(
     val mediaSourceInfoProvider: MediaSourceInfoProvider,
     private val preferredWebMediaSource: Flow<String?>,
     private val backgroundScope: CoroutineScope,
+    private val webCaptchaCoordinator: WebCaptchaCoordinator,
 ) {
     @Immutable
     data class Presentation(
@@ -159,6 +166,7 @@ class MediaSelectorState(
     )
 
     private val groupStates: SnapshotStateMap<MediaGroupId, MediaGroupState> = SnapshotStateMap()
+    private val resolvingCaptchaInstanceIds = MutableStateFlow<Set<String>>(emptySet())
 
     fun getGroupState(groupId: MediaGroupId): MediaGroupState {
         return groupStates.getOrPut(groupId) {
@@ -241,9 +249,10 @@ class MediaSelectorState(
         return combine(
             sortedResultsFlow.distinctUntilChanged(),
             mediaSelector.filteredCandidates,
-        ) { sources, mediaList ->
-            tupleOf(sources, mediaList)
-        }.flatMapLatest { (sources, allMediaList) ->
+            resolvingCaptchaInstanceIds,
+        ) { sources, mediaList, resolvingCaptchaInstanceIds ->
+            Triple(sources, mediaList, resolvingCaptchaInstanceIds)
+        }.flatMapLatest { (sources, allMediaList, resolvingCaptchaInstanceIds) ->
             val showWebSources = sources.map { source ->
 
                 // 属于这个数据源的 medias
@@ -259,7 +268,12 @@ class MediaSelectorState(
                     }
                     .mapNotNull { it.result }
 
-                createWebSourceFlow(source, myMediaList, delayToOvercomeCacheIssue = isFirstCollect).also {
+                createWebSourceFlow(
+                    source,
+                    myMediaList,
+                    delayToOvercomeCacheIssue = isFirstCollect,
+                    resolvingCaptchaInstanceIds = resolvingCaptchaInstanceIds,
+                ).also {
                     isFirstCollect = false
                 }
             }
@@ -279,10 +293,12 @@ class MediaSelectorState(
         source: MediaSourceFetchResult,
         myMediaList: Sequence<Media>,
         delayToOvercomeCacheIssue: Boolean,
+        resolvingCaptchaInstanceIds: Set<String>,
     ) = source.state.combine(preferredWebMediaSource) { a, b -> a to b }.map { (state, preferred) ->
         val channels = myMediaList.map { media ->
             WebSourceChannel(media.properties.alliance, original = media)
         }.toList()
+        val captchaRequest = (state as? MediaSourceFetchState.CaptchaRequired)?.request
 
         when {
             state is MediaSourceFetchState.Disabled -> {
@@ -310,6 +326,9 @@ class MediaSelectorState(
                     isLoading = state.isWorking,
                     isError = state.isFailedOrAbandoned,
                     isPreferred = source.mediaSourceId == preferred,
+                    captchaRequest = captchaRequest,
+                    captchaMessage = captchaRequest?.kind?.let { "需要处理${it.displayName()}" },
+                    isResolvingCaptcha = source.instanceId in resolvingCaptchaInstanceIds,
                 )
             }
         }
@@ -327,6 +346,21 @@ class MediaSelectorState(
     fun removePreferencesUntilFirstCandidate() {
         backgroundScope.launch {
             mediaSelector.removePreferencesUntilFirstCandidate()
+        }
+    }
+
+    suspend fun resolveCaptcha(instanceId: String): Boolean {
+        val source = presentationFlow.value.webSources.find { it.instanceId == instanceId } ?: return false
+        return resolveCaptcha(source)
+    }
+
+    suspend fun resolveCaptcha(source: WebSource): Boolean {
+        val request = source.captchaRequest ?: return false
+        resolvingCaptchaInstanceIds.value = resolvingCaptchaInstanceIds.value + source.instanceId
+        return try {
+            webCaptchaCoordinator.solveInteractively(request) is WebCaptchaSolveResult.Solved
+        } finally {
+            resolvingCaptchaInstanceIds.value = resolvingCaptchaInstanceIds.value - source.instanceId
         }
     }
 }
@@ -363,5 +397,5 @@ fun createTestMediaSelectorState(backgroundScope: CoroutineScope) =
         createTestMediaSourceInfoProvider(),
         preferredWebMediaSource = flowOf(null),
         backgroundScope,
+        NoopWebCaptchaCoordinator,
     )
-

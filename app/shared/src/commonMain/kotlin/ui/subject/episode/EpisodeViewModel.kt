@@ -86,6 +86,7 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceResultsFilterer
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.mediasource.GetPreferredWebMediaSourceUseCase
 import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseCase
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
 import me.him188.ani.app.domain.player.CacheProgressProvider
 import me.him188.ani.app.domain.player.extension.AnalyticsExtension
 import me.him188.ani.app.domain.player.extension.AutoSelectExtension
@@ -262,6 +263,7 @@ class EpisodeViewModel(
     private val getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase by inject()
     private val setSubjectCollectionTypeOrDeleteUseCase: SetSubjectCollectionTypeOrDeleteUseCase by inject()
     private val getPreferredWebMediaSource: GetPreferredWebMediaSourceUseCase by inject()
+    private val webCaptchaCoordinator: WebCaptchaCoordinator by inject()
     // endregion
 
     private val tasker = SingleTaskExecutor(backgroundScope.coroutineContext)
@@ -790,6 +792,7 @@ class EpisodeViewModel(
                         mediaSourceInfoProvider,
                         getPreferredWebMediaSource(subjectId),
                         backgroundScope,
+                        webCaptchaCoordinator,
                     )
                 } else {
                     // TODO: 2025/1/22 We should not use createTestMediaSelectorState

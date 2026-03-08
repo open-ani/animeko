@@ -39,6 +39,7 @@ import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
@@ -67,7 +68,7 @@ class AniAppState(
     val mainSceneInitialPage: MainScreenPage,
     val themeSettings: ThemeSettings,
     val imageLoaderClient: ScopedHttpClient,
-    val mediaCacheComposables: List<@Composable () -> Unit>,
+    val overlayComposables: List<@Composable () -> Unit>,
     val platformFont: String?
 )
 
@@ -76,6 +77,7 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val settings: SettingsRepository by inject()
     private val httpClientProvider: HttpClientProvider by inject()
     private val mediaCacheManager: MediaCacheManager by inject()
+    private val webCaptchaCoordinator: WebCaptchaCoordinator by inject()
 
     private val imageLoaderClient = httpClientProvider.get(ScopedHttpClientUserAgent.ANI)
 
@@ -90,9 +92,8 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
         settings.themeSettings.flow,
         settings.uiSettings.flow.take(1).map { it.mainSceneInitialPage }, // 只需要读取一次
         settings.uiSettings.flow,
-        httpClientProvider.configurationFlow,
         mediaCacheComposablesFlow,
-    ) { themeSettings, mainSceneInitialPage, uiSettings, _, mediaCacheComposables ->
+    ) { themeSettings, mainSceneInitialPage, uiSettings, mediaCacheComposables ->
         AniAppState(
             if (!uiSettings.onboardingCompleted) {
                 NavRoutes.Welcome
@@ -102,7 +103,7 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
             uiSettings.mainSceneInitialPage,
             themeSettings,
             imageLoaderClient,
-            mediaCacheComposables,
+            mediaCacheComposables + listOf(@Composable { webCaptchaCoordinator.ComposeContent() }),
             // Windows 并且 ani 语言为中文的话, 显式使用 Microsoft YaHei UI.
             // 如果 Windows 语言不是中文, 那系统会使用 Microsoft JhengHei UI 作为中文字体, 这个字体对简体中文的支持不好.
             if (currentPlatform() is Platform.Windows && uiSettings.appLanguage == LocaleZhCN) {
@@ -197,7 +198,7 @@ fun AniApp(
                 },
             ) {
                 Box {
-                    for (composable in appState.mediaCacheComposables) {
+                    for (composable in appState.overlayComposables) {
                         composable()
                     }
                 }

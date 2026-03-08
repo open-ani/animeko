@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.mediaselect.selector
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
 import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ifThen
@@ -71,7 +73,12 @@ data class WebSource(
     val isLoading: Boolean,
     val isError: Boolean,
     val isPreferred: Boolean,
-)
+    val captchaRequest: WebCaptchaRequest? = null,
+    val captchaMessage: String? = null,
+    val isResolvingCaptcha: Boolean = false,
+) {
+    val isCaptchaRequired: Boolean get() = captchaRequest != null
+}
 
 /**
  * https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Animeko?node-id=1054-13751&t=OSgRmNiOHpUGBYYu-0
@@ -83,6 +90,7 @@ fun MediaSelectorWebSourcesColumn(
     selectedChannel: () -> WebSourceChannel?,
     onSelect: (WebSource, WebSourceChannel) -> Unit,
     onRefresh: (WebSource) -> Unit,
+    onResolveCaptcha: (WebSource) -> Unit,
     onRequestQueryEdit: () -> Unit,
     modifier: Modifier = Modifier,
     preferredSourceContainerColor: Color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.33f)
@@ -96,6 +104,9 @@ fun MediaSelectorWebSourcesColumn(
             },
             onRefresh = {
                 onRefresh(source)
+            },
+            onResolveCaptcha = {
+                onResolveCaptcha(source)
             },
             Modifier
                 .fillMaxWidth()
@@ -143,6 +154,7 @@ private fun WebSourceCard(
     selectedChannel: () -> WebSourceChannel?,
     onSelect: (WebSourceChannel) -> Unit,
     onRefresh: () -> Unit,
+    onResolveCaptcha: () -> Unit,
     modifier: Modifier = Modifier,
 
     ) {
@@ -181,6 +193,20 @@ private fun WebSourceCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy((-8).dp),
         ) {
+            if (source.isCaptchaRequired) {
+                Text(
+                    text = if (source.isResolvingCaptcha) "正在等待验证码处理" else source.captchaMessage.orEmpty(),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .clickable(enabled = !source.isResolvingCaptcha) {
+                            onResolveCaptcha()
+                        }
+                        .padding(vertical = 8.dp),
+                )
+            }
+
             for (channel in source.channels) {
                 InputChip(
                     selected = channel == selectedChannel(),
@@ -234,6 +260,7 @@ private fun PreviewMediaSelectorWebColumn() {
                 selectedChannel = { TestWebSources[0].channels[1] },
                 onSelect = { _, _ -> },
                 onRefresh = {},
+                onResolveCaptcha = {},
                 onRequestQueryEdit = {},
             )
         }
@@ -252,6 +279,7 @@ private fun PreviewMediaSelectorWebColumn3() {
                 selectedChannel = { TestWebSources[0].channels[1] },
                 onSelect = { _, _ -> },
                 onRefresh = {},
+                onResolveCaptcha = {},
                 onRequestQueryEdit = {},
             )
         }
@@ -269,6 +297,7 @@ private fun PreviewWebSourceCard() {
                 selectedChannel = { TestWebSourceChannels2[0] },
                 onSelect = {},
                 onRefresh = {},
+                onResolveCaptcha = {},
             )
         }
     }

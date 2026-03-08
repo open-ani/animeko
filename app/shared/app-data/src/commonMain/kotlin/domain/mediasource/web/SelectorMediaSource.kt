@@ -11,6 +11,7 @@
 package me.him188.ani.app.domain.mediasource.web
 
 import io.ktor.client.request.get
+import io.ktor.http.Url
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -25,6 +26,7 @@ import me.him188.ani.app.data.models.ApiFailure
 import me.him188.ani.app.data.models.fold
 import me.him188.ani.app.data.models.runApiRequest
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
+import me.him188.ani.app.domain.mediasource.MediaSourceEngineHelpers
 import me.him188.ani.app.domain.mediasource.codec.DefaultMediaSourceCodec
 import me.him188.ani.app.domain.mediasource.codec.DontForgetToRegisterCodec
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceArguments
@@ -56,6 +58,7 @@ import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.currentTimeMillis
+import me.him188.ani.utils.xml.Document
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.time.Duration
@@ -105,6 +108,7 @@ class SelectorMediaSource(
     val repository: SelectorMediaSourceEpisodeCacheRepository,
     override val kind: MediaSourceKind = MediaSourceKind.WEB,
     private val client: ScopedHttpClient,
+    private val webCaptchaCoordinator: WebCaptchaCoordinator,
 ) : HttpMediaSource(), WebVideoMatcherProvider {
     companion object {
         val FactoryId = FactoryId("web-selector")
@@ -122,7 +126,8 @@ class SelectorMediaSource(
     override val location: MediaSourceLocation get() = MediaSourceLocation.Online
 
     class Factory(
-        val repository: SelectorMediaSourceEpisodeCacheRepository
+        val repository: SelectorMediaSourceEpisodeCacheRepository,
+        val webCaptchaCoordinator: WebCaptchaCoordinator,
     ) : MediaSourceFactory {
         override val factoryId: FactoryId get() = FactoryId
 
@@ -138,7 +143,7 @@ class SelectorMediaSource(
             config: MediaSourceConfig,
             client: ScopedHttpClient
         ): MediaSource =
-            SelectorMediaSource(mediaSourceId, config, repository, client = client)
+            SelectorMediaSource(mediaSourceId, config, repository, client = client, webCaptchaCoordinator = webCaptchaCoordinator)
     }
 
     override suspend fun checkConnection(): ConnectionStatus {
@@ -220,17 +225,93 @@ class SelectorMediaSource(
             return@withContext emptyList()
         }
 
-        searchSubjects(
-            searchConfig.searchUrl,
-            subjectName = query.subjectName,
-            useOnlyFirstWord = searchConfig.searchUseOnlyFirstWord,
-            removeSpecial = searchConfig.searchRemoveSpecial,
-        ).let { (_, document) ->
+        fun buildSearchUrl(): String {
+            val encodedUrl = MediaSourceEngineHelpers.encodeUrlSegment(
+                MediaSourceEngineHelpers.getSearchKeyword(
+                    query.subjectName,
+                    searchConfig.searchRemoveSpecial,
+                    searchConfig.searchUseOnlyFirstWord,
+                ),
+            )
+            return searchConfig.searchUrl.replace("{keyword}", encodedUrl)
+        }
+
+        suspend fun searchSubjectsOnce() = webCaptchaCoordinator
+            .loadPageInSolvedSession(mediaSourceId, buildSearchUrl())
+            ?.let { parseSearchResult(Url(it.finalUrl), it.html) }
+            ?: searchSubjects(
+                searchConfig.searchUrl,
+                subjectName = query.subjectName,
+                useOnlyFirstWord = searchConfig.searchUseOnlyFirstWord,
+                removeSpecial = searchConfig.searchRemoveSpecial,
+            )
+
+        suspend fun loadSubjectDocument(pageUrl: String): Document? {
+            return webCaptchaCoordinator
+                .loadPageInSolvedSession(mediaSourceId, pageUrl)
+                ?.let { parseDocument(it.finalUrl, it.html) }
+                ?: searchEpisodes(pageUrl)
+        }
+
+        suspend fun solveCaptchaOrThrow(
+            pageUrl: String,
+            kind: WebCaptchaKind,
+            interactive: Boolean,
+        ) {
+            val request = WebCaptchaRequest(
+                mediaSourceId = mediaSourceId,
+                pageUrl = pageUrl,
+                kind = kind,
+            )
+            val result = if (interactive) {
+                webCaptchaCoordinator.solveInteractively(request)
+            } else {
+                webCaptchaCoordinator.tryAutoSolve(request)
+            }
+            when (result) {
+                is WebCaptchaSolveResult.Solved -> storeCaptchaCookies(client, result.finalUrl, result.cookies)
+                is WebCaptchaSolveResult.StillBlocked,
+                WebCaptchaSolveResult.Cancelled,
+                WebCaptchaSolveResult.Unsupported,
+                -> throw CaptchaRequiredException(request)
+            }
+        }
+
+        var blockedSubjectSearchRequest: WebCaptchaRequest? = null
+        var subjectResult = searchSubjectsOnce()
+        val subjectCaptchaKind = subjectResult.captchaKind
+        if (subjectCaptchaKind != null) {
+            blockedSubjectSearchRequest = WebCaptchaRequest(
+                mediaSourceId = mediaSourceId,
+                pageUrl = subjectResult.url.toString(),
+                kind = subjectCaptchaKind,
+            )
+            solveCaptchaOrThrow(subjectResult.url.toString(), subjectCaptchaKind, interactive = false)
+            subjectResult = searchSubjectsOnce()
+            subjectResult.captchaKind?.let {
+                throw CaptchaRequiredException(
+                    WebCaptchaRequest(
+                        mediaSourceId = mediaSourceId,
+                        pageUrl = subjectResult.url.toString(),
+                        kind = it,
+                    ),
+                )
+            }
+        }
+
+        subjectResult.let { (_, document) ->
             document ?: return@let emptyList()
 
             buildList {
-                val subjects = selectSubjects(document, searchConfig)
-                    .orEmpty()
+                val originalSubjects = selectSubjects(document, searchConfig).orEmpty()
+                if (originalSubjects.isEmpty() && blockedSubjectSearchRequest != null) {
+                    throw CaptchaRequiredException(
+                        blockedSubjectSearchRequest.copy(
+                            pageUrl = subjectResult.url.toString(),
+                        ),
+                    )
+                }
+                val subjects = originalSubjects
                     .let { originalList ->
                         val filters = searchConfig.createFiltersForSubject()
                         with(query.toFilterContext()) {
@@ -241,7 +322,15 @@ class SelectorMediaSource(
                     }
 
                 for (subjectInfo in subjects) {
-                    val episodeDocument = kotlin.runCatching { doHttpGet(subjectInfo.fullUrl) }.getOrNull() ?: continue
+                    val episodeDocument = kotlin.runCatching { loadSubjectDocument(subjectInfo.fullUrl) }
+                        .recoverCatching { throwable ->
+                            if (throwable is WebPageCaptchaException) {
+                                solveCaptchaOrThrow(throwable.url, throwable.kind, interactive = false)
+                                loadSubjectDocument(subjectInfo.fullUrl)
+                            } else {
+                                throw throwable
+                            }
+                        }.getOrNull() ?: continue
                     val episodes =
                         selectEpisodes(episodeDocument, subjectInfo.fullUrl, searchConfig)?.episodes ?: continue
                     repository.addCache(mediaSourceId, query.subjectName, subjectInfo, episodes)
@@ -293,12 +382,34 @@ class SelectorMediaSource(
             ): WebVideoMatcher.MatchResult = engine.matchWebVideo(url, arguments.searchConfig.matchVideo)
 
             override fun patchConfig(config: WebViewConfig): WebViewConfig {
-                val myCookies = arguments.searchConfig.matchVideo.cookies
+                val configuredCookies = arguments.searchConfig.matchVideo.cookies
+                    .lines()
+                    .filter { it.isNotBlank() }
+                val captchaCookies = webCaptchaCoordinator.getSolvedCookies(
+                    mediaSourceId = mediaSourceId,
+                    pageUrl = searchConfig.searchUrl,
+                )
                 return config.copy(
-                    cookies = myCookies.lines().filter { it.isNotBlank() },
+                    cookies = mergeCookies(
+                        config.cookies,
+                        configuredCookies,
+                        captchaCookies,
+                    ),
                 )
             }
         }
+    }
+
+    private fun mergeCookies(vararg cookieLists: List<String>): List<String> {
+        val merged = linkedMapOf<String, String>()
+        for (cookie in cookieLists.asSequence().flatten()) {
+            val trimmed = cookie.trim()
+            if (trimmed.isBlank()) continue
+            val name = trimmed.substringBefore("=").trim()
+            if (name.isBlank()) continue
+            merged[name] = trimmed
+        }
+        return merged.values.toList()
     }
 }
 

@@ -16,6 +16,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.domain.media.TestMediaList
+import me.him188.ani.app.domain.mediasource.web.CaptchaRequiredException
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstance
 import me.him188.ani.datasources.api.EpisodeSort
@@ -30,6 +33,7 @@ import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 import kotlin.test.fail
 
 /**
@@ -171,6 +175,66 @@ class MediaFetcherTest {
         assertIs<MediaSourceFetchState.Idle>(res.state.value)
         assertEquals(5, session.awaitCompletedResults().size)
         assertIs<MediaSourceFetchState.Succeed>(res.state.value)
+    }
+
+    @Test
+    fun `captcha required becomes completed captcha state`() = runTest {
+        val request = WebCaptchaRequest(
+            mediaSourceId = "test-source",
+            pageUrl = "https://example.com/search",
+            kind = WebCaptchaKind.Cloudflare,
+        )
+        val session = createFetcher(
+            createTestMediaSourceInstance(
+                TestHttpMediaSource(
+                    fetch = {
+                        throw CaptchaRequiredException(request)
+                    },
+                ),
+            ),
+        ).newSession(request1)
+
+        assertEquals(emptyList(), session.awaitCompletedResults())
+
+        val state = session.mediaSourceResults.first().state.value
+        assertIs<MediaSourceFetchState.CaptchaRequired>(state)
+        assertEquals(request, state.request)
+        assertTrue(session.hasCompleted.first().allCompleted())
+    }
+
+    @Test
+    fun `captcha required source can restart and succeed later`() = runTest {
+        val fetchCalled = AtomicInteger(0)
+        val captchaRequest = WebCaptchaRequest(
+            mediaSourceId = "test-source",
+            pageUrl = "https://example.com/search",
+            kind = WebCaptchaKind.Cloudflare,
+        )
+        val session = createFetcher(
+            createTestMediaSourceInstance(
+                TestHttpMediaSource(
+                    fetch = {
+                        if (fetchCalled.incrementAndGet() == 1) {
+                            throw CaptchaRequiredException(captchaRequest)
+                        }
+                        SinglePagePagedSource {
+                            TestMediaList.map { MediaMatch(it, MatchKind.EXACT) }.asFlow()
+                        }
+                    },
+                ),
+            ),
+        ).newSession(request1)
+        val result = session.mediaSourceResults.first()
+
+        assertEquals(emptyList(), session.awaitCompletedResults())
+        assertIs<MediaSourceFetchState.CaptchaRequired>(result.state.value)
+
+        result.restart()
+        assertIs<MediaSourceFetchState.Idle>(result.state.value)
+
+        assertEquals(5, session.awaitCompletedResults().size)
+        assertIs<MediaSourceFetchState.Succeed>(result.state.value)
+        assertEquals(2, fetchCalled.get())
     }
 
     // 从两个不同的源获取数据, 但是数据是相同的, 需要去重

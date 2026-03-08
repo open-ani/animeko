@@ -34,6 +34,8 @@ import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
+import me.him188.ani.app.domain.mediasource.web.AndroidWebCaptchaCoordinator
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.torrent.DefaultTorrentManager
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
@@ -84,6 +86,7 @@ fun getAndroidModules(
         AndroidPermissionManager()
     }
     single<BrowserNavigator> { AndroidBrowserNavigator() }
+    single<WebCaptchaCoordinator> { AndroidWebCaptchaCoordinator(androidContext()) }
 
     single<TorrentEngineAccess> { serviceConnectionManager }
     single<TorrentServiceConnection<IRemoteAniTorrentEngine>> { serviceConnectionManager.connection }
@@ -173,6 +176,7 @@ fun getAndroidModules(
                     AndroidWebMediaResolver(
                         get<MediaSourceManager>().webVideoMatcherLoader,
                         get<SettingsRepository>(),
+                        get<WebCaptchaCoordinator>(),
                     ),
                 ),
         )
