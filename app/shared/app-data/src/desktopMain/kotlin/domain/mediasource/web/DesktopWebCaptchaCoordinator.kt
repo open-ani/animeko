@@ -9,18 +9,30 @@
 
 package me.him188.ani.app.domain.mediasource.web
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.atomicfu.atomic
@@ -153,21 +165,38 @@ class DesktopWebCaptchaCoordinator : WebCaptchaCoordinator {
     @Composable
     override fun ComposeContent() {
         val state = interactiveSolveState ?: return
+        val coroutineScope = rememberCoroutineScope()
+        val dismiss: () -> Unit = {
+            if (state.deferred.isActive) {
+                state.deferred.complete(WebCaptchaSolveResult.Cancelled)
+            }
+            interactiveSolveState = null
+        }
         Dialog(
-            onDismissRequest = {
-                if (state.deferred.isActive) {
-                    state.deferred.complete(WebCaptchaSolveResult.Cancelled)
-                }
-                interactiveSolveState = null
-            },
+            onDismissRequest = dismiss,
             properties = DialogProperties(
                 dismissOnClickOutside = false,
                 usePlatformDefaultWidth = false,
             ),
         ) {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = Color.Black,
+            DesktopCaptchaDialogContent(
+                pageUrl = state.request.pageUrl,
+                onDismiss = dismiss,
+                onConfirm = {
+                    coroutineScope.launch {
+                        val page = state.session.snapshotCurrentPage()
+                        val finalUrl = page?.finalUrl ?: state.request.pageUrl
+                        if (state.deferred.isActive) {
+                            state.deferred.complete(
+                                WebCaptchaSolveResult.Solved(
+                                    finalUrl,
+                                    state.session.collectCookies(finalUrl),
+                                ),
+                            )
+                        }
+                        interactiveSolveState = null
+                    }
+                },
             ) {
                 SwingPanel(
                     background = Color.Transparent,
@@ -548,4 +577,54 @@ class DesktopWebCaptchaCoordinator : WebCaptchaCoordinator {
     private companion object {
         val EmptyComponent = JPanel()
     }
+}
+
+@Composable
+internal fun DesktopCaptchaDialogContent(
+    pageUrl: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = Color.Black,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+            ) {
+                TextButton(onClick = onDismiss) {
+                    Text("返回", color = Color.White)
+                }
+                Text(
+                    text = requestTitleForDesktopCaptcha(pageUrl),
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.align(Alignment.Center),
+                )
+                TextButton(
+                    onClick = onConfirm,
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                ) {
+                    Text("✓", color = Color.White)
+                }
+            }
+            content()
+        }
+    }
+}
+
+internal fun requestTitleForDesktopCaptcha(pageUrl: String): String {
+    return runCatching { java.net.URI(pageUrl).host }
+        .getOrNull()
+        .orEmpty()
+        .ifBlank { "验证码验证" }
 }
