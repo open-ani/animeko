@@ -165,6 +165,18 @@ class AndroidWebCaptchaCoordinator(
         }
     }
 
+    override fun resetSolvedSession(mediaSourceId: String) {
+        interactiveSolveState = interactiveSolveState?.takeUnless { it.request.mediaSourceId == mediaSourceId }
+        solvedByMediaSource.remove(mediaSourceId)
+        solvedResults.keys
+            .filter { it.startsWith("$mediaSourceId@") }
+            .toList()
+            .forEach { key ->
+                solvedResults.remove(key)
+                sessions.remove(key)
+            }
+    }
+
     @Composable
     override fun ComposeContent() {
         val composeContext = LocalContext.current

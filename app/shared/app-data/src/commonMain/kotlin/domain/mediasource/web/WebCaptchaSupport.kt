@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import io.ktor.http.Url
 import me.him188.ani.app.domain.media.resolver.WebResource
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
+import me.him188.ani.utils.xml.Document
 
 enum class WebCaptchaKind {
     Image,
@@ -78,6 +79,9 @@ interface WebCaptchaCoordinator {
     suspend fun tryAutoSolve(request: WebCaptchaRequest): WebCaptchaSolveResult
 
     suspend fun solveInteractively(request: WebCaptchaRequest): WebCaptchaSolveResult
+
+    fun resetSolvedSession(mediaSourceId: String) {
+    }
 }
 
 object NoopWebCaptchaCoordinator : WebCaptchaCoordinator {
@@ -268,4 +272,19 @@ internal fun WebCaptchaLoadedPage.isFallbackHomePageFor(request: WebCaptchaReque
     val requestPath = requestUrl.encodedPath.trimEnd('/').ifBlank { "/" }
     val pagePath = pageUrl.encodedPath.trimEnd('/').ifBlank { "/" }
     return requestPath != "/" && pagePath == "/"
+}
+
+internal fun Document.isSearchCooldownPage(): Boolean {
+    val normalizedText = text()
+        .replace(Regex("\\s+"), " ")
+        .trim()
+    val hasCooldownMessage = normalizedText.contains("请不要频繁操作") ||
+        normalizedText.contains("請不要頻繁操作")
+    val hasSearchIntervalMessage = normalizedText.contains("搜索时间间隔") ||
+        normalizedText.contains("搜索時間間隔")
+    val hasCooldownContainer = select(".msg-jump").isNotEmpty()
+    val hasHistoryBackRedirect = select("a[href^=\"javascript:history.back\"]").isNotEmpty()
+    return hasCooldownMessage &&
+        hasSearchIntervalMessage &&
+        (hasCooldownContainer || hasHistoryBackRedirect)
 }

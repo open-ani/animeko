@@ -10,17 +10,36 @@
 package me.him188.ani.app.domain.mediasource.test.web
 
 import androidx.compose.ui.util.fastDistinctBy
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.Url
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.shareIn
+import me.him188.ani.app.data.repository.RepositoryAuthorizationException
 import me.him188.ani.app.data.repository.RepositoryException
+import me.him188.ani.app.data.repository.RepositoryRateLimitedException
+import me.him188.ani.app.domain.mediasource.MediaSourceEngineHelpers
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchQuery
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaSolveResult
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
+import me.him188.ani.app.domain.mediasource.web.WebPageCaptchaException
+import me.him188.ani.app.domain.mediasource.web.isSearchCooldownPage
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.FlowRunning
 import me.him188.ani.utils.coroutines.flows.restartable
+import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.xml.Document
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
@@ -30,6 +49,8 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 class SelectorMediaSourceTester(
     private val engine: SelectorMediaSourceEngine,
+    private val webCaptchaCoordinator: WebCaptchaCoordinator = WebCaptchaCoordinatorHolder.noop,
+    val mediaSourceId: String = "selector-test",
     flowContext: CoroutineContext = Dispatchers.Default,
     sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(),
 ) {
@@ -51,6 +72,7 @@ class SelectorMediaSourceTester(
     val subjectSearchRunning = FlowRunning()
     val episodeSearchLifecycle = FlowRestarter()
     val episodeSearchRunning = FlowRunning()
+    private val hasCaptchaSessionFlow = MutableStateFlow(false)
 
     /**
      * 将会影响两个筛选. 不会直接触发搜索. 如果变更导致 subject 的搜索结果变化, 可能会触发 episode list 搜索.
@@ -190,6 +212,25 @@ class SelectorMediaSourceTester(
         selectedSubjectIndexFlow.value = index
     }
 
+    suspend fun solveCaptchaInteractively(request: WebCaptchaRequest): WebCaptchaSolveResult {
+        val result = webCaptchaCoordinator.solveInteractively(request)
+        logger.info(
+            "SelectorMediaSourceTester[$mediaSourceId] solveCaptchaInteractively ${request.pageUrl} -> ${result::class.simpleName}"
+        )
+        if (result is WebCaptchaSolveResult.Solved) {
+            hasCaptchaSessionFlow.value = true
+        }
+        return result
+    }
+
+    fun resetCaptchaSession() {
+        webCaptchaCoordinator.resetSolvedSession(mediaSourceId)
+        hasCaptchaSessionFlow.value = false
+    }
+
+    val hasCaptchaSession = hasCaptchaSessionFlow
+        .shareIn(scope, sharingStarted, replay = 1)
+
     // endregion
 
     private fun createSelectorSearchQuery(
@@ -205,7 +246,29 @@ class SelectorMediaSourceTester(
 
     private suspend fun searchEpisodes(subjectDetailsPageUrl: String): Result<Document?> {
         return try {
-            Result.success(engine.searchEpisodes(subjectDetailsPageUrl))
+            val resolved = webCaptchaCoordinator
+                .loadPageInSolvedSession(mediaSourceId, subjectDetailsPageUrl)
+                ?.let { engine.parseDocument(it.finalUrl, it.html) }
+                ?: try {
+                    engine.searchEpisodes(subjectDetailsPageUrl)
+                } catch (e: Throwable) {
+                    val captchaRequest = findCaptchaRequest(e, subjectDetailsPageUrl)
+                    if (captchaRequest != null) {
+                        when (webCaptchaCoordinator.tryAutoSolve(captchaRequest)) {
+                            is WebCaptchaSolveResult.Solved -> {
+                                hasCaptchaSessionFlow.value = true
+                                webCaptchaCoordinator
+                                    .loadPageInSolvedSession(mediaSourceId, subjectDetailsPageUrl)
+                                    ?.let { engine.parseDocument(it.finalUrl, it.html) }
+                                    ?: throw e
+                            }
+
+                            else -> throw e
+                        }
+                    }
+                    throw e
+                }
+            Result.success(resolved)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
@@ -218,24 +281,127 @@ class SelectorMediaSourceTester(
         searchKeyword: String,
         useOnlyFirstWord: Boolean?,
         removeSpecial: Boolean?,
-    ) =
+    ): Result<SelectorMediaSourceEngine.SearchSubjectResult>? {
         if (url.isNullOrBlank() || searchKeyword.isBlank() || useOnlyFirstWord == null || removeSpecial == null) {
-            null
-        } else {
-            try {
-                val res = engine.searchSubjects(
-                    searchUrl = url,
-                    searchKeyword,
-                    useOnlyFirstWord = useOnlyFirstWord,
-                    removeSpecial = removeSpecial,
-                )
-                Result.success(res)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Throwable) {
-                Result.failure(e)
-            }
+            return null
         }
+
+        val searchUrl = createSearchUrl(url, searchKeyword, useOnlyFirstWord, removeSpecial)
+        return try {
+            var blockedRequest: WebCaptchaRequest? = null
+            val searchConfig = selectorSearchConfigFlow.value
+            suspend fun loadSearchResult(): SelectorMediaSourceEngine.SearchSubjectResult {
+                return webCaptchaCoordinator
+                    .loadPageInSolvedSession(mediaSourceId, searchUrl)
+                    ?.let { page -> engine.parseSearchResult(Url(page.finalUrl), page.html) }
+                    ?: engine.searchSubjects(
+                        searchUrl = url,
+                        searchKeyword,
+                        useOnlyFirstWord = useOnlyFirstWord,
+                        removeSpecial = removeSpecial,
+                    )
+            }
+
+            suspend fun loadSearchResultWithCooldownRetry(): SelectorMediaSourceEngine.SearchSubjectResult {
+                var result = loadSearchResult()
+                if (result.document?.isSearchCooldownPage() == true) {
+                    delay((searchConfig ?: SelectorSearchConfig.Empty).requestInterval)
+                    result = loadSearchResult()
+                }
+                return result
+            }
+
+            val initial = loadSearchResultWithCooldownRetry()
+            val res = if (initial.captchaKind != null) {
+                val request = WebCaptchaRequest(
+                    mediaSourceId = mediaSourceId,
+                    pageUrl = initial.url.toString(),
+                    kind = initial.captchaKind,
+                )
+                blockedRequest = request
+                when (
+                    val autoSolveResult = webCaptchaCoordinator.tryAutoSolve(request)
+                ) {
+                    is WebCaptchaSolveResult.Solved -> {
+                        hasCaptchaSessionFlow.value = true
+                        delay((searchConfig ?: SelectorSearchConfig.Empty).requestInterval)
+                        val solvedResult = loadSearchResultWithCooldownRetry()
+                        if (solvedResult.captchaKind != null) initial else solvedResult
+                    }
+
+                    else -> initial
+                }
+            } else {
+                initial
+            }
+            val normalized = markBlockedEmptySearchResultAsCaptcha(res, blockedRequest)
+            val selectedCount = normalized.document?.let { document ->
+                searchConfig?.let { engine.selectSubjects(document, it) }?.size
+            }
+            logger.info(
+                "SelectorMediaSourceTester[$mediaSourceId] searchSubject " +
+                    "url=${normalized.url} captcha=${normalized.captchaKind} " +
+                    "document=${normalized.document != null} subjects=$selectedCount"
+            )
+            if (normalized.document != null && selectedCount == 0) {
+                val strictNames = normalized.document.select("body > .box-width .search-box .thumb-content > .thumb-txt")
+                val strictLinks = normalized.document.select("body > .box-width .search-box .thumb-menu > a")
+                val looseNames = normalized.document.select(".search-box .thumb-content .thumb-txt")
+                val looseLinks = normalized.document.select(".search-box .thumb-menu a")
+                val title = normalized.document.select("title").firstOrNull()?.text()
+                logger.info(
+                    "SelectorMediaSourceTester[$mediaSourceId] searchSubject selectorDebug " +
+                        "title=$title captcha=${normalized.captchaKind} " +
+                        "strictNames=${strictNames.size} strictLinks=${strictLinks.size} " +
+                        "looseNames=${looseNames.size} looseLinks=${looseLinks.size} " +
+                        "firstLooseName=${looseNames.firstOrNull()?.text()} " +
+                        "firstLooseLink=${looseLinks.firstOrNull()?.attr("href")}"
+                )
+                val html = buildString {
+                    normalized.document.html(this)
+                }.replace('\n', ' ')
+                val htmlChunks = html.chunked(4000).take(3)
+                htmlChunks.forEachIndexed { index, chunk ->
+                    logger.info(
+                        "SelectorMediaSourceTester[$mediaSourceId] searchSubject htmlSnippet[$index]=$chunk"
+                    )
+                }
+            }
+            Result.success(normalized)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            findSubjectCaptchaResult(e, searchUrl)?.let {
+                logger.info(
+                    "SelectorMediaSourceTester[$mediaSourceId] searchSubject captcha exception " +
+                        "url=${it.url} kind=${it.captchaKind}"
+                )
+                return Result.success(it)
+            }
+            logger.info(
+                "SelectorMediaSourceTester[$mediaSourceId] searchSubject failure " +
+                    "type=${e::class.qualifiedName} message=${e.message} cause=${e.cause?.let { it::class.qualifiedName }}"
+            )
+            Result.failure(e)
+        }
+    }
+
+    private fun markBlockedEmptySearchResultAsCaptcha(
+        result: SelectorMediaSourceEngine.SearchSubjectResult,
+        blockedRequest: WebCaptchaRequest?,
+    ): SelectorMediaSourceEngine.SearchSubjectResult {
+        val request = blockedRequest ?: return result
+        if (result.captchaKind != null) {
+            return result
+        }
+        val document = result.document ?: return result.copy(captchaKind = request.kind)
+        val searchConfig = selectorSearchConfigFlow.value ?: return result
+        val subjects = engine.selectSubjects(document, searchConfig) ?: return result
+        if (subjects.isNotEmpty()) {
+            return result
+        }
+        return result.copy(captchaKind = request.kind)
+    }
 
 
     private fun convertEpisodeResult(
@@ -259,10 +425,16 @@ class SelectorMediaSourceTester(
                             },
                     )
                 } catch (e: Throwable) {
+                    findCaptchaRequest(e, subjectUrl)?.let {
+                        return SelectorTestEpisodeListResult.CaptchaRequired(it)
+                    }
                     SelectorTestEpisodeListResult.UnknownError(e)
                 }
             },
             onFailure = { reason ->
+                findCaptchaRequest(reason, subjectUrl)?.let {
+                    return@fold SelectorTestEpisodeListResult.CaptchaRequired(it)
+                }
                 if (reason is RepositoryException) {
                     SelectorTestEpisodeListResult.ApiError(reason)
                 } else {
@@ -279,6 +451,15 @@ class SelectorMediaSourceTester(
     ): SelectorTestSearchSubjectResult {
         return res.fold(
             onSuccess = { data ->
+                data.captchaKind?.let {
+                    return SelectorTestSearchSubjectResult.CaptchaRequired(
+                        WebCaptchaRequest(
+                            mediaSourceId = mediaSourceId,
+                            pageUrl = data.url.toString(),
+                            kind = it,
+                        ),
+                    )
+                }
                 val document = data.document
 
                 val originalList = if (document == null) {
@@ -305,6 +486,46 @@ class SelectorMediaSourceTester(
                 )
             },
             onFailure = { reason ->
+                val captchaRequest = findSearchCaptchaRequest(reason, searchConfig, query)
+                    ?: when (reason) {
+                        is RepositoryAuthorizationException -> WebCaptchaRequest(
+                            mediaSourceId = mediaSourceId,
+                            pageUrl = createSearchUrl(
+                                searchConfig.searchUrl,
+                                query.subjectName,
+                                searchConfig.searchUseOnlyFirstWord,
+                                searchConfig.searchRemoveSpecial,
+                            ),
+                            kind = WebCaptchaKind.Unknown,
+                        )
+
+                        is RepositoryRateLimitedException -> WebCaptchaRequest(
+                            mediaSourceId = mediaSourceId,
+                            pageUrl = createSearchUrl(
+                                searchConfig.searchUrl,
+                                query.subjectName,
+                                searchConfig.searchUseOnlyFirstWord,
+                                searchConfig.searchRemoveSpecial,
+                            ),
+                            kind = WebCaptchaKind.Unknown,
+                        )
+
+                        else -> null
+                    }
+                if (captchaRequest != null) {
+                    logger.info(
+                        "SelectorMediaSourceTester[$mediaSourceId] selectSubjectResult captcha " +
+                            "type=${reason::class.qualifiedName} request=${captchaRequest.pageUrl} kind=${captchaRequest.kind}"
+                    )
+                } else {
+                    logger.info(
+                        "SelectorMediaSourceTester[$mediaSourceId] selectSubjectResult apiError " +
+                            "type=${reason::class.qualifiedName} message=${reason.message} cause=${reason.cause?.let { it::class.qualifiedName }}"
+                    )
+                }
+                captchaRequest?.let {
+                    return@fold SelectorTestSearchSubjectResult.CaptchaRequired(it)
+                }
                 if (reason is RepositoryException) {
                     SelectorTestSearchSubjectResult.ApiError(reason)
                 } else {
@@ -312,5 +533,122 @@ class SelectorMediaSourceTester(
                 }
             },
         )
+    }
+
+    private fun createSearchUrl(
+        searchUrl: String,
+        subjectName: String,
+        useOnlyFirstWord: Boolean,
+        removeSpecial: Boolean,
+    ): String {
+        val encodedUrl = MediaSourceEngineHelpers.encodeUrlSegment(
+            MediaSourceEngineHelpers.getSearchKeyword(
+                subjectName,
+                removeSpecial,
+                useOnlyFirstWord,
+            ),
+        )
+        return searchUrl.replace("{keyword}", encodedUrl)
+    }
+
+    private fun findCaptchaRequest(
+        throwable: Throwable,
+        pageUrl: String,
+    ): WebCaptchaRequest? {
+        val captcha = findCaptchaThrowable(throwable)
+            ?: return null
+        return WebCaptchaRequest(
+            mediaSourceId = mediaSourceId,
+            pageUrl = captcha.url.ifBlank { pageUrl },
+            kind = captcha.kind,
+        )
+    }
+
+    private fun findSubjectCaptchaResult(
+        throwable: Throwable,
+        pageUrl: String,
+    ): SelectorMediaSourceEngine.SearchSubjectResult? {
+        val captcha = findCaptchaThrowable(throwable) ?: return null
+        return SelectorMediaSourceEngine.SearchSubjectResult(
+            url = Url(captcha.url.ifBlank { pageUrl }),
+            document = null,
+            captchaKind = captcha.kind,
+        )
+    }
+
+    private fun findSearchCaptchaRequest(
+        throwable: Throwable,
+        searchConfig: SelectorSearchConfig,
+        query: SelectorSearchQuery,
+    ): WebCaptchaRequest? {
+        val pageUrl = runCatching {
+            createSearchUrl(
+                searchConfig.searchUrl,
+                query.subjectName,
+                searchConfig.searchUseOnlyFirstWord,
+                searchConfig.searchRemoveSpecial,
+            )
+        }.getOrDefault(searchConfig.searchUrl)
+        return findCaptchaRequest(throwable, pageUrl)
+    }
+
+    private fun findCaptchaThrowable(
+        throwable: Throwable,
+    ): CaptchaThrowable? {
+        return generateSequence(throwable) { it.cause }
+            .mapNotNull { cause ->
+                when (cause) {
+                    is WebPageCaptchaException -> CaptchaThrowable(
+                        url = cause.url,
+                        kind = cause.kind,
+                    )
+
+                    is RepositoryAuthorizationException -> CaptchaThrowable(
+                        url = "",
+                        kind = WebCaptchaKind.Unknown,
+                    )
+
+                    is RepositoryRateLimitedException -> CaptchaThrowable(
+                        url = "",
+                        kind = WebCaptchaKind.Unknown,
+                    )
+
+                    is ClientRequestException -> when (cause.response.status) {
+                        HttpStatusCode.Forbidden,
+                        HttpStatusCode.TooManyRequests,
+                        HttpStatusCode(468, "Captcha Required"),
+                        -> CaptchaThrowable(
+                            url = "",
+                            kind = WebCaptchaKind.Unknown,
+                        )
+
+                        else -> null
+                    }
+
+                    else -> null
+                }
+            }
+            .firstOrNull()
+    }
+
+    private data class CaptchaThrowable(
+        val url: String,
+        val kind: WebCaptchaKind,
+    )
+
+    private object WebCaptchaCoordinatorHolder {
+        val noop = object : WebCaptchaCoordinator {
+            override suspend fun tryAutoSolve(request: WebCaptchaRequest): WebCaptchaSolveResult {
+                return WebCaptchaSolveResult.Unsupported
+            }
+
+            override suspend fun solveInteractively(request: WebCaptchaRequest): WebCaptchaSolveResult {
+                return WebCaptchaSolveResult.Unsupported
+            }
+        }
+    }
+
+    private companion object {
+        private val logger = logger<SelectorMediaSourceTester>()
     }
 }

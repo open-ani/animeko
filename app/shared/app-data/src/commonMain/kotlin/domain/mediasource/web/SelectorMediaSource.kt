@@ -246,6 +246,15 @@ class SelectorMediaSource(
                 removeSpecial = searchConfig.searchRemoveSpecial,
             )
 
+        suspend fun searchSubjectsWithCooldownRetry(): SelectorMediaSourceEngine.SearchSubjectResult {
+            var result = searchSubjectsOnce()
+            if (result.document?.isSearchCooldownPage() == true) {
+                delay(searchConfig.requestInterval)
+                result = searchSubjectsOnce()
+            }
+            return result
+        }
+
         suspend fun loadSubjectDocument(pageUrl: String): Document? {
             return webCaptchaCoordinator
                 .loadPageInSolvedSession(mediaSourceId, pageUrl)
@@ -278,7 +287,7 @@ class SelectorMediaSource(
         }
 
         var blockedSubjectSearchRequest: WebCaptchaRequest? = null
-        var subjectResult = searchSubjectsOnce()
+        var subjectResult = searchSubjectsWithCooldownRetry()
         val subjectCaptchaKind = subjectResult.captchaKind
         if (subjectCaptchaKind != null) {
             blockedSubjectSearchRequest = WebCaptchaRequest(
@@ -287,7 +296,8 @@ class SelectorMediaSource(
                 kind = subjectCaptchaKind,
             )
             solveCaptchaOrThrow(subjectResult.url.toString(), subjectCaptchaKind, interactive = false)
-            subjectResult = searchSubjectsOnce()
+            delayUntilNextAllowedSearch()
+            subjectResult = searchSubjectsWithCooldownRetry()
             subjectResult.captchaKind?.let {
                 throw CaptchaRequiredException(
                     WebCaptchaRequest(

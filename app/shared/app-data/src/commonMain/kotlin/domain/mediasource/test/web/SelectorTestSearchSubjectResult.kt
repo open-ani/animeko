@@ -16,6 +16,7 @@ import me.him188.ani.app.domain.mediasource.test.MatchTag
 import me.him188.ani.app.domain.mediasource.test.RefreshResult
 import me.him188.ani.app.domain.mediasource.test.buildMatchTags
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchQuery
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
 import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
 import me.him188.ani.app.domain.mediasource.web.asCandidate
 import me.him188.ani.app.domain.mediasource.web.toFilterContext
@@ -34,6 +35,11 @@ sealed class SelectorTestSearchSubjectResult : RefreshResult {
     data class ApiError(
         override val exception: RepositoryException,
     ) : SelectorTestSearchSubjectResult(), RefreshResult.ApiError
+
+    @Immutable
+    data class CaptchaRequired(
+        val request: WebCaptchaRequest,
+    ) : SelectorTestSearchSubjectResult()
 
     @Immutable
     data object InvalidConfig : SelectorTestSearchSubjectResult(), RefreshResult.InvalidConfig
