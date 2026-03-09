@@ -25,7 +25,7 @@ class DesktopWebCaptchaCoordinatorUiTest {
     fun `dialog content shows top bar with host and actions`() = runAniComposeUiTest {
         setContent {
             DesktopCaptchaDialogContent(
-                pageUrl = "https://anime.girigirilove.icu/search/-------------/?wd=frieren",
+                pageUrl = "https://captcha.example.com/search/-------------/?wd=frieren",
                 onDismiss = {},
                 onConfirm = {},
             ) {
@@ -35,7 +35,7 @@ class DesktopWebCaptchaCoordinatorUiTest {
 
         runOnIdle {
             assertTrue(onNodeWithText("返回").exists())
-            assertTrue(onNodeWithText("anime.girigirilove.icu").exists())
+            assertTrue(onNodeWithText("captcha.example.com").exists())
             assertTrue(onNodeWithText("✓").exists())
         }
     }

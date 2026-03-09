@@ -438,6 +438,16 @@ class AndroidWebCaptchaCoordinator(
             pageUrl: String,
             timeoutMillis: Long = 15_000,
         ): WebCaptchaLoadedPage? {
+            val request = WebCaptchaRequest(
+                mediaSourceId = "",
+                pageUrl = pageUrl,
+                kind = WebCaptchaKind.Unknown,
+            )
+            snapshotCurrentPage()?.takeIf {
+                it.matchesRequestedUrl(pageUrl) && it.isUsableSolvedPage(request)
+            }?.let {
+                return it
+            }
             val initialPage = withContext(Dispatchers.Main) {
                 val deferred = CompletableDeferred<WebCaptchaLoadedPage>()
                 pendingLoad = deferred

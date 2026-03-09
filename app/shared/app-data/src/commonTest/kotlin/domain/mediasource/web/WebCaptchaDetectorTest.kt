@@ -32,7 +32,7 @@ class WebCaptchaDetectorTest {
         assertEquals(
             WebCaptchaKind.Cloudflare,
             WebCaptchaDetector.detect(
-                "https://anime.girigirilove.icu/",
+                "https://captcha.example.com/",
                 """
                 <!DOCTYPE html>
                 <html lang="en-US">
@@ -94,6 +94,41 @@ class WebCaptchaDetectorTest {
             WebCaptchaDetector.detect(
                 "https://example.com/search",
                 "<html><img src='/captcha.png' alt='captcha'><label>verification code</label></html>",
+            ),
+        )
+    }
+
+    @Test
+    fun `detects inline search page image captcha`() {
+        assertEquals(
+            WebCaptchaKind.Image,
+            WebCaptchaDetector.detect(
+                "https://captcha.example.com/search/-------------/?wd=test",
+                """
+                <div class="msg-jump cor4 pop-box" style="z-index:0">
+                  <div class="window-title rel">
+                    <h2 class="ft6">系統提示</h2>
+                  </div>
+                  <div class="msg-content top40">
+                    <div class="login-user">
+                      <div class="flex">
+                        <input
+                          placeholder="请输入验证码"
+                          type="text"
+                          class="input box br cor5 ds-verify r6"
+                          name="verify"
+                          value=""
+                          size="20"
+                        >
+                        <img class="ds-verify-img" src="/verify/index.html" onclick="this.src = this.src+'?'">
+                      </div>
+                    </div>
+                    <button class="button verify-submit top20" data-type="search" style="width:100%">
+                      提交驗證
+                    </button>
+                  </div>
+                </div>
+                """.trimIndent(),
             ),
         )
     }

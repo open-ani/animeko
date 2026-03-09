@@ -132,6 +132,54 @@ class WebCaptchaSupportTest {
 
         assertEquals(null, page.detectMeaningfulCaptcha(request))
         assertTrue(page.isUsableSolvedPage(request))
+        assertTrue(page.matchesRequestedUrl(request.pageUrl))
+    }
+
+    @Test
+    fun `requested search page can be reused directly after captcha`() {
+        val request = WebCaptchaRequest(
+            mediaSourceId = "source-a",
+            pageUrl = "https://example.com/search/-------------/?wd=frieren",
+            kind = WebCaptchaKind.Cloudflare,
+        )
+        val page = WebCaptchaLoadedPage(
+            finalUrl = "https://www.example.com/search/-------------/?wd=frieren",
+            html = """
+                <html>
+                  <body>
+                    <div class="video-info-header">
+                      <a href="/subject/1">Frieren</a>
+                    </div>
+                  </body>
+                </html>
+            """.trimIndent(),
+        )
+
+        assertTrue(page.matchesRequestedUrl(request.pageUrl))
+        assertTrue(page.isUsableSolvedPage(request))
+    }
+
+    @Test
+    fun `search page with inline captcha cannot be reused directly`() {
+        val request = WebCaptchaRequest(
+            mediaSourceId = "source-a",
+            pageUrl = "https://example.com/search/-------------/?wd=frieren",
+            kind = WebCaptchaKind.Cloudflare,
+        )
+        val page = WebCaptchaLoadedPage(
+            finalUrl = "https://example.com/search/-------------/?wd=frieren",
+            html = """
+                <div class="msg-jump cor4 pop-box">
+                  <input placeholder="请输入验证码" name="verify" />
+                  <img class="ds-verify-img" src="/verify/index.html">
+                  <button class="verify-submit" data-type="search">提交驗證</button>
+                </div>
+            """.trimIndent(),
+        )
+
+        assertTrue(page.matchesRequestedUrl(request.pageUrl))
+        assertEquals(WebCaptchaKind.Image, page.detectMeaningfulCaptcha(request))
+        assertFalse(page.isUsableSolvedPage(request))
     }
 
     @Test

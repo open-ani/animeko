@@ -157,6 +157,32 @@ object WebCaptchaDetector {
             return WebCaptchaKind.Unknown
         }
 
+        val hasInlineVerifyInput =
+            "name=\"verify\"" in lowerHtml ||
+                "name='verify'" in lowerHtml ||
+                "placeholder=\"请输入验证码\"" in html ||
+                "placeholder='请输入验证码'" in html ||
+                "placeholder=\"請輸入驗證碼\"" in html ||
+                "placeholder='請輸入驗證碼'" in html
+        val hasInlineVerifyImage =
+            "class=\"ds-verify-img\"" in lowerHtml ||
+                "class='ds-verify-img'" in lowerHtml ||
+                "/verify/index.html" in lowerHtml
+        val hasInlineVerifySubmit =
+            "class=\"verify-submit\"" in lowerHtml ||
+                "class='verify-submit'" in lowerHtml ||
+                "data-type=\"search\"" in lowerHtml ||
+                "data-type='search'" in lowerHtml ||
+                "提交驗證" in html ||
+                "提交验证" in html
+        if (
+            hasInlineVerifyImage &&
+            hasInlineVerifyInput &&
+            hasInlineVerifySubmit
+        ) {
+            return WebCaptchaKind.Image
+        }
+
         if (
             "captcha" in lowerHtml && (
                 "<img" in lowerHtml ||
@@ -220,6 +246,21 @@ internal fun normalizedStorageOrigin(pageUrl: String): String? {
     return "${url.protocol.name}://$host$port"
 }
 
+internal fun normalizedComparableUrl(pageUrl: String): String? {
+    val url = runCatching { Url(pageUrl) }.getOrNull() ?: return null
+    val origin = normalizedStorageOrigin(pageUrl) ?: return null
+    val path = url.encodedPath.trimEnd('/').ifBlank { "/" }
+    val query = url.encodedQuery.takeIf { it.isNotBlank() } ?: ""
+    return buildString {
+        append(origin)
+        append(path)
+        if (query.isNotBlank()) {
+            append('?')
+            append(query)
+        }
+    }
+}
+
 internal fun WebCaptchaLoadedPage.isRelevantFor(request: WebCaptchaRequest): Boolean {
     if (
         finalUrl.isBlank() ||
@@ -231,6 +272,10 @@ internal fun WebCaptchaLoadedPage.isRelevantFor(request: WebCaptchaRequest): Boo
     val requestHost = normalizedSessionHost(request.pageUrl) ?: return true
     val pageHost = normalizedSessionHost(finalUrl) ?: return false
     return pageHost == requestHost
+}
+
+internal fun WebCaptchaLoadedPage.matchesRequestedUrl(pageUrl: String): Boolean {
+    return normalizedComparableUrl(finalUrl) == normalizedComparableUrl(pageUrl)
 }
 
 internal fun WebCaptchaLoadedPage.hasMeaningfulHtml(): Boolean {
