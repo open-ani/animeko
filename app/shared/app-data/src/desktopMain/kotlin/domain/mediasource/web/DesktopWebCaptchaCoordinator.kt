@@ -14,9 +14,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Surface
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -29,10 +32,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.rounded.Check
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -40,7 +42,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.atomicfu.atomic
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.domain.media.resolver.WebResource
@@ -62,8 +63,7 @@ import org.cef.network.CefCookieManager
 import org.cef.network.CefRequest
 import java.awt.Component
 import javax.swing.JPanel
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import kotlin.time.Duration.Companion.milliseconds
 
 class DesktopWebCaptchaCoordinator(
     private val topBar: DesktopCaptchaTopBar = DefaultDesktopCaptchaTopBar,
@@ -137,7 +137,7 @@ class DesktopWebCaptchaCoordinator(
                 deferred.complete(
                     WebCaptchaSolveResult.Solved(
                         page.finalUrl,
-                        session.collectCookies(page.finalUrl),
+                        runBlocking { session.collectCookies(page.finalUrl) },
                     ),
                 )
             }
@@ -158,7 +158,7 @@ class DesktopWebCaptchaCoordinator(
                         break
                     }
                 }
-                delay(1000)
+                delay(1000.milliseconds)
             }
             deferred.await().also { rememberSolved(request, session, it) }
         } finally {
@@ -243,7 +243,7 @@ class DesktopWebCaptchaCoordinator(
         }
 
         repeat(6) {
-            delay(1000)
+            delay(1000.milliseconds)
             val currentPage = session.snapshotCurrentPage() ?: return@repeat
             val currentKind = currentPage.detectMeaningfulCaptcha(request)
             if (currentPage.shouldMarkAutoSolveAsSolved(request)) {
@@ -336,7 +336,11 @@ class DesktopWebCaptchaCoordinator(
                                     frame: CefFrame?,
                                     request: CefRequest?,
                                 ): Boolean {
-                                    if (browser != null && request != null && session.handleVideoRequest(browser, request)) {
+                                    if (browser != null && request != null && session.handleVideoRequest(
+                                            browser,
+                                            request,
+                                        )
+                                    ) {
                                         return true
                                     }
                                     return super.onBeforeResourceLoad(browser, frame, request)
@@ -400,7 +404,7 @@ class DesktopWebCaptchaCoordinator(
             pendingLoad = deferred
             loadUrl(pageUrl)
             val initialPage = try {
-                withTimeoutOrNull(timeoutMillis.coerceAtMost(5_000)) {
+                withTimeoutOrNull(timeoutMillis.coerceAtMost(5_000).milliseconds) {
                     deferred.await()
                 }
             } finally {
@@ -417,48 +421,44 @@ class DesktopWebCaptchaCoordinator(
             }
         }
 
-        fun currentUrl(): String? {
-            return runBlocking {
-                withTimeoutOrNull(1_000) {
-                    val deferred = CompletableDeferred<String?>()
-                    AniCefApp.runOnCefContext {
-                        deferred.complete(browser?.url)
-                    }
-                    deferred.await()
+        suspend fun currentUrl(): String? {
+            return withTimeoutOrNull(1_000.milliseconds) {
+                val deferred = CompletableDeferred<String?>()
+                AniCefApp.runOnCefContext {
+                    deferred.complete(browser?.url)
                 }
+                deferred.await()
             }
         }
 
-        fun snapshotCurrentPage(): WebCaptchaLoadedPage? {
-            return runBlocking {
-                withTimeoutOrNull(1_000) {
-                    val deferred = CompletableDeferred<WebCaptchaLoadedPage?>()
-                    AniCefApp.runOnCefContext {
-                        val currentBrowser = browser
-                        val currentUrl = currentBrowser?.url
-                        if (currentBrowser == null || currentUrl.isNullOrBlank()) {
-                            deferred.complete(null)
-                            return@runOnCefContext
-                        }
-                        currentBrowser.getSource(
-                            object : CefStringVisitor {
-                                override fun visit(source: String?) {
-                                    deferred.complete(
-                                        WebCaptchaLoadedPage(
-                                            finalUrl = currentUrl,
-                                            html = source.orEmpty(),
-                                        ),
-                                    )
-                                }
-                            },
-                        )
+        suspend fun snapshotCurrentPage(): WebCaptchaLoadedPage? {
+            return withTimeoutOrNull(1_000.milliseconds) {
+                val deferred = CompletableDeferred<WebCaptchaLoadedPage?>()
+                AniCefApp.runOnCefContext {
+                    val currentBrowser = browser
+                    val currentUrl = currentBrowser?.url
+                    if (currentBrowser == null || currentUrl.isNullOrBlank()) {
+                        deferred.complete(null)
+                        return@runOnCefContext
                     }
-                    deferred.await()
+                    currentBrowser.getSource(
+                        object : CefStringVisitor {
+                            override fun visit(source: String?) {
+                                deferred.complete(
+                                    WebCaptchaLoadedPage(
+                                        finalUrl = currentUrl,
+                                        html = source.orEmpty(),
+                                    ),
+                                )
+                            }
+                        },
+                    )
                 }
+                deferred.await()
             }
         }
 
-        fun extractVideoResource(
+        suspend fun extractVideoResource(
             pageUrl: String,
             timeoutMillis: Long,
             resourceMatcher: (String) -> WebViewVideoExtractor.Instruction,
@@ -473,10 +473,8 @@ class DesktopWebCaptchaCoordinator(
             videoExtractionState = state
             loadUrl(pageUrl)
             return try {
-                runBlocking {
-                    withTimeoutOrNull(timeoutMillis) {
-                        deferred.await()
-                    }
+                withTimeoutOrNull(timeoutMillis.milliseconds) {
+                    deferred.await()
                 }
             } finally {
                 if (videoExtractionState == state) {
@@ -544,36 +542,34 @@ class DesktopWebCaptchaCoordinator(
             }
         }
 
-        fun collectCookies(url: String): List<String> {
-            return runBlocking {
-                withTimeoutOrNull(1_000) {
-                    val deferred = CompletableDeferred<List<String>>()
-                    AniCefApp.runOnCefContext {
-                        val cookies = mutableListOf<String>()
-                        val visitor = object : CefCookieVisitor {
-                            override fun visit(
-                                cookie: CefCookie?,
-                                count: Int,
-                                total: Int,
-                                deleteCookie: BoolRef?,
-                            ): Boolean {
-                                cookie ?: return count + 1 < total
-                                cookies += "${cookie.name}=${cookie.value}"
-                                if (count + 1 >= total && deferred.isActive) {
-                                    deferred.complete(cookies)
-                                }
-                                return count + 1 < total
+        suspend fun collectCookies(url: String): List<String> {
+            return withTimeoutOrNull(1_000.milliseconds) {
+                val deferred = CompletableDeferred<List<String>>()
+                AniCefApp.runOnCefContext {
+                    val cookies = mutableListOf<String>()
+                    val visitor = object : CefCookieVisitor {
+                        override fun visit(
+                            cookie: CefCookie?,
+                            count: Int,
+                            total: Int,
+                            deleteCookie: BoolRef?,
+                        ): Boolean {
+                            cookie ?: return count + 1 < total
+                            cookies += "${cookie.name}=${cookie.value}"
+                            if (count + 1 >= total && deferred.isActive) {
+                                deferred.complete(cookies)
                             }
-                        }
-                        val scheduled = CefCookieManager.getGlobalManager()
-                            .visitUrlCookies(url, true, visitor)
-                        if (!scheduled && deferred.isActive) {
-                            deferred.complete(emptyList())
+                            return count + 1 < total
                         }
                     }
-                    deferred.await()
-                } ?: emptyList()
-            }
+                    val scheduled = CefCookieManager.getGlobalManager()
+                        .visitUrlCookies(url, true, visitor)
+                    if (!scheduled && deferred.isActive) {
+                        deferred.complete(emptyList())
+                    }
+                }
+                deferred.await()
+            } ?: emptyList()
         }
 
         fun dispose() {
@@ -583,7 +579,7 @@ class DesktopWebCaptchaCoordinator(
             }
         }
 
-        private fun settleLoadedPage(
+        private suspend fun settleLoadedPage(
             pageUrl: String,
             initialPage: WebCaptchaLoadedPage?,
             timeoutMillis: Long,
@@ -617,7 +613,7 @@ class DesktopWebCaptchaCoordinator(
                     nextRetryAtMillis = System.currentTimeMillis() + 750
                     loadUrl(pageUrl)
                 }
-                Thread.sleep(250)
+                delay(250.milliseconds)
             }
 
             return lastPage?.takeIf { it.isUsableSolvedPage(request) }
