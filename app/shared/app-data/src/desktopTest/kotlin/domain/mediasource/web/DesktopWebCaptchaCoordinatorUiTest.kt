@@ -12,6 +12,7 @@ package me.him188.ani.app.domain.mediasource.web
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import me.him188.ani.app.ui.framework.exists
@@ -34,9 +35,9 @@ class DesktopWebCaptchaCoordinatorUiTest {
         }
 
         runOnIdle {
-            assertTrue(onNodeWithText("返回").exists())
+            assertTrue(onNodeWithContentDescription("返回").exists())
             assertTrue(onNodeWithText("captcha.example.com").exists())
-            assertTrue(onNodeWithText("✓").exists())
+            assertTrue(onNodeWithContentDescription("完成").exists())
         }
     }
 
@@ -55,8 +56,8 @@ class DesktopWebCaptchaCoordinatorUiTest {
             }
         }
 
-        onNodeWithText("返回").performClick()
-        onNodeWithText("✓").performClick()
+        onNodeWithContentDescription("返回").performClick()
+        onNodeWithContentDescription("完成").performClick()
 
         runOnIdle {
             assertEquals(1, dismissCount)

@@ -123,7 +123,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
         MediampPlayerFactoryLoader.first()
     }
     single<BrowserNavigator> { DesktopBrowserNavigator() }
-    single<WebCaptchaCoordinator> { DesktopWebCaptchaCoordinator() }
+    single<WebCaptchaCoordinator> { DesktopWebCaptchaCoordinator(AniDesktopCaptchaTopBar) }
     factory<MediaResolver> {
         MediaResolver.from(
             get<TorrentManager>().engines

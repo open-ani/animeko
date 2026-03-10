@@ -14,10 +14,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -30,10 +30,15 @@ import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.rounded.Check
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.atomicfu.atomic
 import kotlinx.serialization.builtins.serializer
@@ -60,7 +65,9 @@ import javax.swing.JPanel
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
-class DesktopWebCaptchaCoordinator : WebCaptchaCoordinator {
+class DesktopWebCaptchaCoordinator(
+    private val topBar: DesktopCaptchaTopBar = DefaultDesktopCaptchaTopBar,
+) : WebCaptchaCoordinator {
     private data class SolvedSessionEntry(
         val key: String,
     )
@@ -196,8 +203,9 @@ class DesktopWebCaptchaCoordinator : WebCaptchaCoordinator {
                 onDismiss = dismiss,
                 onConfirm = {
                     coroutineScope.launch {
-                        val page = state.session.snapshotCurrentPage()
-                        val finalUrl = page?.finalUrl ?: state.request.pageUrl
+                        val finalUrl = withContext(Dispatchers.IO) {
+                            state.session.currentUrl() ?: state.request.pageUrl
+                        }
                         if (state.deferred.isActive) {
                             state.deferred.complete(
                                 WebCaptchaSolveResult.Solved(
@@ -209,6 +217,7 @@ class DesktopWebCaptchaCoordinator : WebCaptchaCoordinator {
                         interactiveSolveState = null
                     }
                 },
+                topBar = topBar,
             ) {
                 SwingPanel(
                     background = Color.Transparent,
@@ -405,6 +414,18 @@ class DesktopWebCaptchaCoordinator : WebCaptchaCoordinator {
         fun loadUrl(pageUrl: String) {
             AniCefApp.runOnCefContext {
                 browser?.loadURL(pageUrl)
+            }
+        }
+
+        fun currentUrl(): String? {
+            return runBlocking {
+                withTimeoutOrNull(1_000) {
+                    val deferred = CompletableDeferred<String?>()
+                    AniCefApp.runOnCefContext {
+                        deferred.complete(browser?.url)
+                    }
+                    deferred.await()
+                }
             }
         }
 
@@ -608,11 +629,50 @@ class DesktopWebCaptchaCoordinator : WebCaptchaCoordinator {
     }
 }
 
+fun interface DesktopCaptchaTopBar {
+    @Composable
+    fun Content(
+        pageUrl: String,
+        onDismiss: () -> Unit,
+        onConfirm: () -> Unit,
+    )
+}
+
+val DefaultDesktopCaptchaTopBar = DesktopCaptchaTopBar { pageUrl, onDismiss, onConfirm ->
+    Box(modifier = Modifier.fillMaxWidth()) {
+        IconButton(onClick = onDismiss) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "返回",
+                tint = Color.White,
+            )
+        }
+        Text(
+            text = requestTitleForDesktopCaptcha(pageUrl),
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.align(Alignment.Center),
+        )
+        IconButton(
+            onClick = onConfirm,
+            modifier = Modifier.align(Alignment.CenterEnd),
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Check,
+                contentDescription = "完成",
+                tint = Color.White,
+            )
+        }
+    }
+}
+
 @Composable
 internal fun DesktopCaptchaDialogContent(
     pageUrl: String,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
+    topBar: DesktopCaptchaTopBar = DefaultDesktopCaptchaTopBar,
     content: @Composable () -> Unit,
 ) {
     Surface(
@@ -624,29 +684,14 @@ internal fun DesktopCaptchaDialogContent(
                 .fillMaxSize()
                 .background(Color.Black),
         ) {
+            topBar.Content(pageUrl, onDismiss, onConfirm)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
+                    .weight(1f),
             ) {
-                TextButton(onClick = onDismiss) {
-                    Text("返回", color = Color.White)
-                }
-                Text(
-                    text = requestTitleForDesktopCaptcha(pageUrl),
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.align(Alignment.Center),
-                )
-                TextButton(
-                    onClick = onConfirm,
-                    modifier = Modifier.align(Alignment.CenterEnd),
-                ) {
-                    Text("✓", color = Color.White)
-                }
+                content()
             }
-            content()
         }
     }
 }
