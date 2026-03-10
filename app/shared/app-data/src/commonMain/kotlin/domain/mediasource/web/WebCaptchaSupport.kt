@@ -14,6 +14,7 @@ import io.ktor.http.Url
 import me.him188.ani.app.domain.media.resolver.WebResource
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
 import me.him188.ani.utils.xml.Document
+import me.him188.ani.utils.xml.Html
 
 enum class WebCaptchaKind {
     Image,
@@ -26,6 +27,16 @@ data class WebCaptchaRequest(
     val mediaSourceId: String,
     val pageUrl: String,
     val kind: WebCaptchaKind,
+    val searchProbe: WebCaptchaSearchProbe? = null,
+)
+
+/**
+ * 只在“搜索页验证码”场景下使用。
+ * 当浏览器页 URL 变化或刷新时，我们会尝试按当前 source 的 selector 解析页面；
+ * 只有真的能解析出条目，才认为这次验证码处理已经完成。
+ */
+data class WebCaptchaSearchProbe(
+    val searchConfig: SelectorSearchConfig,
 )
 
 data class WebCaptchaLoadedPage(
@@ -303,6 +314,48 @@ internal fun WebCaptchaLoadedPage.detectMeaningfulCaptcha(
 internal fun WebCaptchaLoadedPage.isUsableSolvedPage(
     request: WebCaptchaRequest,
 ): Boolean {
+    return detectMeaningfulCaptcha(request) == null
+}
+
+internal fun WebCaptchaLoadedPage.hasSearchResults(
+    searchProbe: WebCaptchaSearchProbe,
+): Boolean {
+    // We intentionally probe the live page with the source's real selector instead of
+    // relying on captcha heuristics. Unknown WAF pages may look "captcha-free" but still
+    // not be the actual search result page we need.
+    val document = runCatching { Html.parse(html) }.getOrNull() ?: return false
+    if (document.isSearchCooldownPage()) {
+        return false
+    }
+    val subjects = selectSubjectsForCaptchaProbe(document, searchProbe.searchConfig) ?: return false
+    return subjects.isNotEmpty()
+}
+
+internal fun WebCaptchaLoadedPage.shouldAutoCompleteInteractiveSolve(
+    request: WebCaptchaRequest,
+): Boolean {
+    val searchProbe = request.searchProbe
+    if (searchProbe != null) {
+        // For search pages, only close the browser after the current page can be parsed
+        // into real search results. This avoids closing on unknown captcha/waf pages.
+        if (!matchesRequestedUrl(request.pageUrl)) {
+            return false
+        }
+        return hasSearchResults(searchProbe)
+    }
+    return detectMeaningfulCaptcha(request) == null
+}
+
+internal fun WebCaptchaLoadedPage.shouldMarkAutoSolveAsSolved(
+    request: WebCaptchaRequest,
+): Boolean {
+    val searchProbe = request.searchProbe
+    if (searchProbe != null) {
+        if (!matchesRequestedUrl(request.pageUrl)) {
+            return false
+        }
+        return hasSearchResults(searchProbe)
+    }
     return detectMeaningfulCaptcha(request) == null
 }
 

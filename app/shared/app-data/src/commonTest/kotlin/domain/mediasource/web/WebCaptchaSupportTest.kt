@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.mediasource.web
 
+import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatIndexed
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -180,6 +181,69 @@ class WebCaptchaSupportTest {
         assertTrue(page.matchesRequestedUrl(request.pageUrl))
         assertEquals(WebCaptchaKind.Image, page.detectMeaningfulCaptcha(request))
         assertFalse(page.isUsableSolvedPage(request))
+    }
+
+    @Test
+    fun `interactive solve only auto completes when search page has parsed subjects`() {
+        val searchConfig = SelectorSearchConfig(
+            searchUrl = "https://example.com/search/-------------/?wd={keyword}",
+            subjectFormatId = SelectorSubjectFormatIndexed.id,
+        )
+        val request = WebCaptchaRequest(
+            mediaSourceId = "source-a",
+            pageUrl = "https://example.com/search/-------------/?wd=frieren",
+            kind = WebCaptchaKind.Cloudflare,
+            searchProbe = WebCaptchaSearchProbe(searchConfig),
+        )
+        val page = WebCaptchaLoadedPage(
+            finalUrl = "https://example.com/search/-------------/?wd=frieren",
+            html = """
+                <html>
+                  <body>
+                    <div class="search-box">
+                      <div class="thumb-content">
+                        <span class="thumb-txt">Frieren</span>
+                      </div>
+                      <div class="thumb-menu">
+                        <a href="/detail/1.html">查看详情</a>
+                      </div>
+                    </div>
+                  </body>
+                </html>
+            """.trimIndent(),
+        )
+
+        assertTrue(page.shouldAutoCompleteInteractiveSolve(request))
+        assertTrue(page.shouldMarkAutoSolveAsSolved(request))
+    }
+
+    @Test
+    fun `interactive solve does not auto complete on captcha free page without parsed subjects`() {
+        val searchConfig = SelectorSearchConfig(
+            searchUrl = "https://example.com/search/-------------/?wd={keyword}",
+            subjectFormatId = SelectorSubjectFormatIndexed.id,
+        )
+        val request = WebCaptchaRequest(
+            mediaSourceId = "source-a",
+            pageUrl = "https://example.com/search/-------------/?wd=frieren",
+            kind = WebCaptchaKind.Cloudflare,
+            searchProbe = WebCaptchaSearchProbe(searchConfig),
+        )
+        val page = WebCaptchaLoadedPage(
+            finalUrl = "https://example.com/search/-------------/?wd=frieren",
+            html = """
+                <html>
+                  <body>
+                    <div class="search-box empty-state">
+                      <p>No matches yet</p>
+                    </div>
+                  </body>
+                </html>
+            """.trimIndent(),
+        )
+
+        assertFalse(page.shouldAutoCompleteInteractiveSolve(request))
+        assertFalse(page.shouldMarkAutoSolveAsSolved(request))
     }
 
     @Test

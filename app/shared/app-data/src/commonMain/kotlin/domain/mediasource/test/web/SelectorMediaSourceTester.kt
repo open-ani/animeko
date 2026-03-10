@@ -33,6 +33,7 @@ import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
 import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
 import me.him188.ani.app.domain.mediasource.web.WebCaptchaSolveResult
 import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaSearchProbe
 import me.him188.ani.app.domain.mediasource.web.WebPageCaptchaException
 import me.him188.ani.app.domain.mediasource.web.isSearchCooldownPage
 import me.him188.ani.datasources.api.EpisodeSort
@@ -244,6 +245,19 @@ class SelectorMediaSourceTester(
         episodeEp = null,
     )
 
+    private fun createSearchCaptchaRequest(
+        pageUrl: String,
+        kind: WebCaptchaKind,
+        searchConfig: SelectorSearchConfig,
+    ): WebCaptchaRequest {
+        return WebCaptchaRequest(
+            mediaSourceId = mediaSourceId,
+            pageUrl = pageUrl,
+            kind = kind,
+            searchProbe = WebCaptchaSearchProbe(searchConfig),
+        )
+    }
+
     private suspend fun searchEpisodes(subjectDetailsPageUrl: String): Result<Document?> {
         return try {
             val resolved = webCaptchaCoordinator
@@ -313,10 +327,10 @@ class SelectorMediaSourceTester(
 
             val initial = loadSearchResultWithCooldownRetry()
             val res = if (initial.captchaKind != null) {
-                val request = WebCaptchaRequest(
-                    mediaSourceId = mediaSourceId,
-                    pageUrl = initial.url.toString(),
-                    kind = initial.captchaKind,
+                val request = createSearchCaptchaRequest(
+                    initial.url.toString(),
+                    initial.captchaKind,
+                    searchConfig ?: SelectorSearchConfig.Empty,
                 )
                 blockedRequest = request
                 when (
@@ -453,11 +467,7 @@ class SelectorMediaSourceTester(
             onSuccess = { data ->
                 data.captchaKind?.let {
                     return SelectorTestSearchSubjectResult.CaptchaRequired(
-                        WebCaptchaRequest(
-                            mediaSourceId = mediaSourceId,
-                            pageUrl = data.url.toString(),
-                            kind = it,
-                        ),
+                        createSearchCaptchaRequest(data.url.toString(), it, searchConfig),
                     )
                 }
                 val document = data.document
@@ -488,26 +498,26 @@ class SelectorMediaSourceTester(
             onFailure = { reason ->
                 val captchaRequest = findSearchCaptchaRequest(reason, searchConfig, query)
                     ?: when (reason) {
-                        is RepositoryAuthorizationException -> WebCaptchaRequest(
-                            mediaSourceId = mediaSourceId,
-                            pageUrl = createSearchUrl(
+                        is RepositoryAuthorizationException -> createSearchCaptchaRequest(
+                            createSearchUrl(
                                 searchConfig.searchUrl,
                                 query.subjectName,
                                 searchConfig.searchUseOnlyFirstWord,
                                 searchConfig.searchRemoveSpecial,
                             ),
-                            kind = WebCaptchaKind.Unknown,
+                            WebCaptchaKind.Unknown,
+                            searchConfig,
                         )
 
-                        is RepositoryRateLimitedException -> WebCaptchaRequest(
-                            mediaSourceId = mediaSourceId,
-                            pageUrl = createSearchUrl(
+                        is RepositoryRateLimitedException -> createSearchCaptchaRequest(
+                            createSearchUrl(
                                 searchConfig.searchUrl,
                                 query.subjectName,
                                 searchConfig.searchUseOnlyFirstWord,
                                 searchConfig.searchRemoveSpecial,
                             ),
-                            kind = WebCaptchaKind.Unknown,
+                            WebCaptchaKind.Unknown,
+                            searchConfig,
                         )
 
                         else -> null
@@ -590,6 +600,7 @@ class SelectorMediaSourceTester(
             )
         }.getOrDefault(searchConfig.searchUrl)
         return findCaptchaRequest(throwable, pageUrl)
+            ?.copy(searchProbe = WebCaptchaSearchProbe(searchConfig))
     }
 
     private fun findCaptchaThrowable(

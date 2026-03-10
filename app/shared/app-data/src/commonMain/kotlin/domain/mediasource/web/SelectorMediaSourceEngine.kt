@@ -164,19 +164,7 @@ abstract class SelectorMediaSourceEngine {
         document: Element,
         config: SelectorSearchConfig,
     ): List<WebSearchSubjectInfo>? {
-        val subjectFormat = SelectorSubjectFormat.findById(config.subjectFormatId)
-            ?: throw UnsupportedOperationException("Unsupported subject format: ${config.subjectFormatId}")
-
-        @Suppress("UNCHECKED_CAST")
-        subjectFormat as SelectorSubjectFormat<SelectorFormatConfig>
-
-        val formatConfig = config.getFormatConfig(subjectFormat)
-        if (!formatConfig.isValid()) {
-            return null
-        }
-        val originalList = subjectFormat.select(document, config.finalBaseUrl, formatConfig)
-
-        return originalList
+        return selectSubjectsForCaptchaProbe(document, config)
     }
 
     suspend fun searchEpisodes(
@@ -355,6 +343,23 @@ abstract class SelectorMediaSourceEngine {
 
     @Throws(RepositoryException::class, CancellationException::class)
     protected abstract suspend fun doHttpGet(uri: String): Document
+}
+
+internal fun selectSubjectsForCaptchaProbe(
+    document: Element,
+    config: SelectorSearchConfig,
+): List<WebSearchSubjectInfo>? {
+    val subjectFormat = SelectorSubjectFormat.findById(config.subjectFormatId)
+        ?: throw UnsupportedOperationException("Unsupported subject format: ${config.subjectFormatId}")
+
+    @Suppress("UNCHECKED_CAST")
+    subjectFormat as SelectorSubjectFormat<SelectorFormatConfig>
+
+    val formatConfig = config.getFormatConfig(subjectFormat)
+    if (!formatConfig.isValid()) {
+        return null
+    }
+    return subjectFormat.select(document, config.finalBaseUrl, formatConfig)
 }
 
 // TODO: require MediaListFilterContext when context parameters

@@ -236,6 +236,20 @@ class SelectorMediaSource(
             return searchConfig.searchUrl.replace("{keyword}", encodedUrl)
         }
 
+        fun buildSearchCaptchaRequest(
+            pageUrl: String,
+            kind: WebCaptchaKind,
+        ): WebCaptchaRequest {
+            // Search-page captcha flows should only auto-close after the browser
+            // has really landed on a parseable search result page.
+            return WebCaptchaRequest(
+                mediaSourceId = mediaSourceId,
+                pageUrl = pageUrl,
+                kind = kind,
+                searchProbe = WebCaptchaSearchProbe(searchConfig),
+            )
+        }
+
         suspend fun searchSubjectsOnce() = webCaptchaCoordinator
             .loadPageInSolvedSession(mediaSourceId, buildSearchUrl())
             ?.let { parseSearchResult(Url(it.finalUrl), it.html) }
@@ -266,11 +280,13 @@ class SelectorMediaSource(
             pageUrl: String,
             kind: WebCaptchaKind,
             interactive: Boolean,
+            searchProbe: WebCaptchaSearchProbe? = null,
         ) {
             val request = WebCaptchaRequest(
                 mediaSourceId = mediaSourceId,
                 pageUrl = pageUrl,
                 kind = kind,
+                searchProbe = searchProbe,
             )
             val result = if (interactive) {
                 webCaptchaCoordinator.solveInteractively(request)
@@ -290,21 +306,18 @@ class SelectorMediaSource(
         var subjectResult = searchSubjectsWithCooldownRetry()
         val subjectCaptchaKind = subjectResult.captchaKind
         if (subjectCaptchaKind != null) {
-            blockedSubjectSearchRequest = WebCaptchaRequest(
-                mediaSourceId = mediaSourceId,
-                pageUrl = subjectResult.url.toString(),
-                kind = subjectCaptchaKind,
+            blockedSubjectSearchRequest = buildSearchCaptchaRequest(subjectResult.url.toString(), subjectCaptchaKind)
+            solveCaptchaOrThrow(
+                subjectResult.url.toString(),
+                subjectCaptchaKind,
+                interactive = false,
+                searchProbe = WebCaptchaSearchProbe(searchConfig),
             )
-            solveCaptchaOrThrow(subjectResult.url.toString(), subjectCaptchaKind, interactive = false)
             delayUntilNextAllowedSearch()
             subjectResult = searchSubjectsWithCooldownRetry()
             subjectResult.captchaKind?.let {
                 throw CaptchaRequiredException(
-                    WebCaptchaRequest(
-                        mediaSourceId = mediaSourceId,
-                        pageUrl = subjectResult.url.toString(),
-                        kind = it,
-                    ),
+                    buildSearchCaptchaRequest(subjectResult.url.toString(), it),
                 )
             }
         }

@@ -125,8 +125,9 @@ class AndroidWebCaptchaCoordinator(
         val deferred = CompletableDeferred<WebCaptchaSolveResult>()
         val token = nextToken++
         session.addPageObserver(token) { page ->
-            val kind = page.detectMeaningfulCaptcha(request)
-            if (kind == null && deferred.isActive) {
+            // Search pages may bounce through challenge, notice, or redirect pages.
+            // We only auto-close when the current page can be parsed into search results.
+            if (page.shouldAutoCompleteInteractiveSolve(request) && deferred.isActive) {
                 deferred.complete(
                     WebCaptchaSolveResult.Solved(
                         page.finalUrl,
@@ -143,8 +144,7 @@ class AndroidWebCaptchaCoordinator(
         return try {
             while (deferred.isActive) {
                 session.snapshotCurrentPage()?.let { page ->
-                    val kind = page.detectMeaningfulCaptcha(request)
-                    if (kind == null) {
+                    if (page.shouldAutoCompleteInteractiveSolve(request)) {
                         deferred.complete(
                             WebCaptchaSolveResult.Solved(
                                 page.finalUrl,
@@ -273,7 +273,7 @@ class AndroidWebCaptchaCoordinator(
         val initialPage = session.loadPage(request.pageUrl, timeoutMillis = 8_000)
             ?: return WebCaptchaSolveResult.StillBlocked(request.kind)
         var lastKind = initialPage.detectMeaningfulCaptcha(request)
-        if (lastKind == null) {
+        if (initialPage.shouldMarkAutoSolveAsSolved(request)) {
             return WebCaptchaSolveResult.Solved(
                 initialPage.finalUrl,
                 session.getCookies(initialPage.finalUrl),
@@ -284,7 +284,7 @@ class AndroidWebCaptchaCoordinator(
             delay(1000)
             val currentPage = session.snapshotCurrentPage() ?: return@repeat
             val currentKind = currentPage.detectMeaningfulCaptcha(request)
-            if (currentKind == null) {
+            if (currentPage.shouldMarkAutoSolveAsSolved(request)) {
                 return WebCaptchaSolveResult.Solved(
                     currentPage.finalUrl,
                     session.getCookies(currentPage.finalUrl),
