@@ -218,6 +218,41 @@ class WebCaptchaSupportTest {
     }
 
     @Test
+    fun `interactive solve auto completes when canonicalized search page has parsed subjects`() {
+        val searchConfig = SelectorSearchConfig(
+            searchUrl = "https://example.com/search/-------------/?wd={keyword}",
+            subjectFormatId = SelectorSubjectFormatIndexed.id,
+        )
+        val request = WebCaptchaRequest(
+            mediaSourceId = "source-a",
+            pageUrl = "https://example.com/search/-------------/?wd=frieren",
+            kind = WebCaptchaKind.Cloudflare,
+            searchProbe = WebCaptchaSearchProbe(searchConfig),
+        )
+        val page = WebCaptchaLoadedPage(
+            finalUrl = "https://example.com/search/index.html?wd=frieren&from=cf",
+            html = """
+                <html>
+                  <body>
+                    <div class="search-box">
+                      <div class="thumb-content">
+                        <span class="thumb-txt">Frieren</span>
+                      </div>
+                      <div class="thumb-menu">
+                        <a href="/detail/1.html">查看详情</a>
+                      </div>
+                    </div>
+                  </body>
+                </html>
+            """.trimIndent(),
+        )
+
+        assertFalse(page.matchesRequestedUrl(request.pageUrl))
+        assertTrue(page.shouldAutoCompleteInteractiveSolve(request))
+        assertTrue(page.shouldMarkAutoSolveAsSolved(request))
+    }
+
+    @Test
     fun `interactive solve does not auto complete on captcha free page without parsed subjects`() {
         val searchConfig = SelectorSearchConfig(
             searchUrl = "https://example.com/search/-------------/?wd={keyword}",

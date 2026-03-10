@@ -336,11 +336,11 @@ internal fun WebCaptchaLoadedPage.shouldAutoCompleteInteractiveSolve(
 ): Boolean {
     val searchProbe = request.searchProbe
     if (searchProbe != null) {
-        // For search pages, only close the browser after the current page can be parsed
-        // into real search results. This avoids closing on unknown captcha/waf pages.
-        if (!matchesRequestedUrl(request.pageUrl)) {
-            return false
-        }
+        // For search-page captcha flows, selector success is the source of truth.
+        // Some sites redirect to a canonical search URL or add transient query params
+        // after solving the captcha. As long as the live page can already be parsed
+        // into real search results, we should close immediately instead of waiting for
+        // an exact URL match that may never happen.
         return hasSearchResults(searchProbe)
     }
     return detectMeaningfulCaptcha(request) == null
@@ -351,9 +351,9 @@ internal fun WebCaptchaLoadedPage.shouldMarkAutoSolveAsSolved(
 ): Boolean {
     val searchProbe = request.searchProbe
     if (searchProbe != null) {
-        if (!matchesRequestedUrl(request.pageUrl)) {
-            return false
-        }
+        // Keep the auto-solve success rule aligned with interactive auto-close:
+        // once the source selector can parse results from the current page, the
+        // captcha session is good enough to continue the search flow.
         return hasSearchResults(searchProbe)
     }
     return detectMeaningfulCaptcha(request) == null
