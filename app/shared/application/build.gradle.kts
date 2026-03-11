@@ -8,6 +8,7 @@
  */
 
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import io.sentry.kotlin.multiplatform.gradle.SentryExtension
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -20,6 +21,10 @@ plugins {
 
     // alias(libs.plugins.kotlinx.atomicfu)
     alias(libs.plugins.sentry.kotlin.multiplatform)
+}
+
+extensions.configure<SentryExtension> {
+    autoInstall.cocoapods.enabled.set(false)
 }
 
 kotlin {
