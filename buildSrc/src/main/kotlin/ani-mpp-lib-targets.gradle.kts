@@ -222,6 +222,21 @@ if (androidLibraryExtension != null) {
 
 if (composeExtension != null && androidLibraryExtension != null) {
     apply(plugin = "com.github.skydoves.compose.stability.analyzer")
+
+    val stabilityInputTaskNames = listOf(
+        "compileAndroidMain",
+        "compileAndroidHostTest",
+        "compileAndroidDeviceTest",
+        "compileKotlinDesktop",
+        "compileTestKotlinDesktop",
+    )
+    tasks.matching {
+        it.name.endsWith("StabilityCheck") || it.name.endsWith("StabilityDump")
+    }.configureEach {
+        stabilityInputTaskNames.forEach { taskName ->
+            dependsOn(tasks.matching { task -> task.name == taskName })
+        }
+    }
 }
 
 if (enableIos) {
