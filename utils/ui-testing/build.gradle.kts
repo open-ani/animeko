@@ -7,6 +7,8 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+import org.gradle.api.tasks.testing.AbstractTestTask
+
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -45,4 +47,8 @@ kotlin {
     sourceSets.androidMain.dependencies {
         runtimeOnly(libs.kotlinx.coroutines.android)
     }
+}
+
+tasks.named<AbstractTestTask>("iosSimulatorArm64Test") {
+    failOnNoDiscoveredTests = false
 }
