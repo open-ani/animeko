@@ -230,6 +230,18 @@ data class MatrixInstance(
             add(quote("--parallel"))
         }
 
+        if (buildAllAndroidAbis) {
+            add(quote("-P$ANI_ANDROID_ABIS=all"))
+        }
+
+        if (os == OS.MACOS) {
+            add(quote("-P$ANI_ENABLE_IOS=true"))
+        }
+
+        if (buildIosFramework) {
+            add(quote("-P$ANI_BUILD_FRAMEWORK=true"))
+        }
+
         extraGradleArgs.forEach {
             add(quote(it))
         }
@@ -237,15 +249,25 @@ data class MatrixInstance(
 
     init {
         if (buildAllAndroidAbis) {
-            require(!gradleArgs.contains(ANI_ANDROID_ABIS)) { "You must not set `-P${ANI_ANDROID_ABIS}` when you want to build all Android ABIs" }
+            require(extraGradleArgs.none { it.startsWith("-P$ANI_ANDROID_ABIS=") }) {
+                "You must not set `-P${ANI_ANDROID_ABIS}` manually when you want to build all Android ABIs"
+            }
         } else {
-            require(gradleArgs.contains(ANI_ANDROID_ABIS)) { "You must set `-P${ANI_ANDROID_ABIS}` when you don't want to build all Android ABIs" }
+            require(extraGradleArgs.any { it.startsWith("-P$ANI_ANDROID_ABIS=") }) {
+                "You must set `-P${ANI_ANDROID_ABIS}` when you don't want to build all Android ABIs"
+            }
         }
     }
 }
 
 @Suppress("PropertyName")
 val ANI_ANDROID_ABIS = "ani.android.abis"
+
+@Suppress("PropertyName")
+val ANI_ENABLE_IOS = "ani.enable.ios"
+
+@Suppress("PropertyName")
+val ANI_BUILD_FRAMEWORK = "ani.build.framework"
 
 sealed class Runner(
     val id: String,
@@ -441,6 +463,7 @@ run {
         ),
         buildAllAndroidAbis = false,
         uploadIpa = true,
+        buildIosFramework = true,
         // Kotlin ios linking needs A LOT OF memory. 12GB + 16GB is proven to work fine. 8GB + 16GB does not work.
         gradleHeap = "12g",
         kotlinCompilerHeap = "20g",

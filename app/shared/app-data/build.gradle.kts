@@ -110,7 +110,7 @@ dependencies {
     kspDesktop(libs.androidx.room.compiler)
     kspAndroid(libs.androidx.room.compiler)
     if (enableIos) {
-        kspIosArm64(libs.androidx.room.compiler)
-        kspIosSimulatorArm64(libs.androidx.room.compiler)
+        add("kspIosArm64", libs.androidx.room.compiler)
+        add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     }
 }

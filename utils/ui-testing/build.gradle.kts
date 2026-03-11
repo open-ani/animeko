@@ -49,6 +49,8 @@ kotlin {
     }
 }
 
-tasks.named<AbstractTestTask>("iosSimulatorArm64Test") {
-    failOnNoDiscoveredTests = false
+if (enableIos) {
+    tasks.named<AbstractTestTask>("iosSimulatorArm64Test") {
+        failOnNoDiscoveredTests = false
+    }
 }

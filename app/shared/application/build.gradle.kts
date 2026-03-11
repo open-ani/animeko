@@ -7,8 +7,9 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import io.sentry.kotlin.multiplatform.gradle.SentryExtension
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -44,10 +45,10 @@ kotlin {
 }
 
 kotlin {
-    if (enableIos) {
+    if (enableIos && buildIosFramework) {
         // Sentry requires cocoapods for its dependencies
         if (getOs() == Os.MacOS) {
-            extensions.configure<org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension> {
+            extensions.configure<CocoapodsExtension> {
                 // https://kotlinlang.org/docs/native-cocoapods.html#configure-existing-project
                 framework {
                     baseName = "application"

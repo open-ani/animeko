@@ -15,6 +15,9 @@ ani.dandanplay.app.secret=aaaaaaaaaaaaaaa
 
 ## 打包 Android APP
 
+默认只构建 `arm64-v8a`。如果你需要完整 APK 集合，可在 `local.properties` 中加入
+`ani.android.abis=all`。
+
 在 IDE 中双击 Ctrl，可用的命令：
 
 - `./gradlew assembleRelease` - 编译发布版
@@ -26,7 +29,14 @@ ani.dandanplay.app.secret=aaaaaaaaaaaaaaa
 
 ## 打包 iOS APP
 
-打包之前，需要运行以下命令初始化项目：
+默认不启用 iOS 构建。打包之前，请先在 `local.properties` 中加入：
+
+```properties
+ani.enable.ios=true
+ani.build.framework=true
+```
+
+然后运行以下命令初始化项目：
 
 1. `./gradlew podInstall`。如果找不到 pod，可以自行 `cd app/ios && pod install`。
 2. `./gradlew patchInfoPlist`
@@ -52,9 +62,8 @@ ani.dandanplay.app.secret=aaaaaaaaaaaaaaa
 
 在 IDE 中双击 Ctrl，执行 `./gradlew check` 可以运行所有测试，包括单元测试和 UI 测试。
 
-在 macOS 上，这将会运行全部测试，总共约 11,000 个 (如果未启用 iOS 目标，会少一些)。在 Windows 上只能运行安卓和
-JVM 平台测试，无法运行
-iOS 测试。
+默认配置下，macOS 上不会包含 iOS 测试；如果启用了 iOS 目标，测试总数会到 11,000+。Windows 上只能运行安卓和
+JVM 平台测试，无法运行 iOS 测试。
 
 > [!TIP]
 > **重复运行测试**

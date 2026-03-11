@@ -28,16 +28,19 @@ plugins {
     idea
 }
 
-val archs = buildList {
-    val abis = getPropertyOrNull("ani.android.abis")?.trim()
-    if (!abis.isNullOrEmpty()) {
-        addAll(abis.split(",").map { it.trim() })
-    } else {
-        add("arm64-v8a")
-        add("armeabi-v7a")
-        add("x86_64")
+val archs = getPropertyOrNull("ani.android.abis")
+    ?.split(',')
+    ?.map { it.trim() }
+    ?.filter { it.isNotEmpty() }
+    ?.takeIf { it.isNotEmpty() }
+    ?.let { abis ->
+        if (abis.size == 1 && abis.first() == "all") {
+            listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        } else {
+            abis
+        }
     }
-}
+    ?: listOf("arm64-v8a")
 
 android {
     namespace = "me.him188.ani.android"

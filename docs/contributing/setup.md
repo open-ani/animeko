@@ -3,6 +3,24 @@
 > [!IMPORTANT]
 > 这些步骤只需要几分钟即可完成，请不要跳过。跳过可能会导致花费更多时间解决问题。
 
+## 主流程
+
+第一次参与开发时，只需要完成下面几步：
+
+1. [准备 IDE](#准备-ide)
+2. [配置 Android SDK](#配置-android-sdk)
+3. [Clone 仓库](#clone-仓库)
+4. 导入项目并等待第一次同步完成
+
+> [!TIP]
+> **默认会使用以下配置**
+>
+> - JDK 会由 Gradle 自动下载并使用正确的 JBR 21
+> - Android 默认只构建 `arm64-v8a`
+> - iOS 默认关闭
+>
+> 只有在你确实遇到问题，或者要开发 iOS / 改 ABI 时，再看文档后半部分的 [按需配置](#按需配置默认不用先读)
+
 ## 准备 IDE
 
 强烈建议使用最新的正式版 Android Studio (AS) 或者 IntelliJ IDEA。
@@ -20,63 +38,12 @@
 - JSONPath (用于高亮 JSONPath 语法)
 - ANTLR v4 (如果你要修改 BBCode 解析模块)
 
-## 准备 JDK (JetBrains Runtime with JCEF)
-
-由于 PC 端使用 [JCEF](https://github.com/jetbrains/jcef) (内置浏览器)，JDK 必须使用 JetBrains
-Runtime (JCEF)，版本必须为 21，下文简称 JBR。
-
-> [!TIP]
-> **推荐使用自动配置**
->
-> 本仓库已配置 [gradle-daemon-jvm.properties](../../gradle/gradle-daemon-jvm.properties)。在执行
-`./gradlew` 命令时，Gradle 会自动下载并使用正确的 JBR 21。
->
-> **下载位置**：默认存于 `$GRADLE_USER_HOME/jdks/`。
->
-> **配置生成**：`./gradlew updateDaemonJvm --jvm-version=21 --jvm-vendor=jbr`。
->
-> **优势**：自动下载的版本（来自 api.foojay.io）已确认包含 JCEF，可避免手动配置错误。
-
-```
-# 确认下载的 JDK 版本包含 JCEF。
-find ~/.gradle/jdks/jetbrains_s_r_o_-21-amd64-linux.2/ -name jcef.jmod
-# Output: ~/.gradle/jdks/jetbrains_s_r_o_-21-amd64-linux.2/jmods/jcef.jmod
-
-# 也可用 SDKMAN!。
-find ~/.sdkman/candidates/java/21.0.10-jbr/ -name jcef.jmod
-# Output: ~/.sdkman/candidates/java/21.0.10-jbr/jmods/jcef.jmod
-```
-
-也可自行安装 JBR (必须是带有 JCEF 的版本, 见图)。在 Android Studio 或 IntelliJ IDEA 中，如下图所示，
-可打开设置
-`Build, Execution, Deployment -> Build Tools -> Gradle`，修改 Gradle JDK 配置为 JBR (JCEF) 21。
-
-<img src="images/idea-settings-download-jdk.png" alt="download jbr" width="400"/>
-<img src="images/idea-settings-download-jdk-version.png" alt="choose version" width="200"/>
-
 ## 配置 Android SDK
 
 1. 打开 SDK Manager
     - Android Studio 中为 Tools -> SDK Manager
     - IntelliJ 中 Tools -> Android -> SDK Manager
 2. 安装 SDK 版本 35
-
-## 准备 iOS 构建 (对于 macOS 用户)
-
-如果你是 macOS 用户，在安装 Xcode 和 CocoaPods 后可构建 iOS APP。
-
-1. 在 App Store 中安装 Xcode 并打开，安装默认勾选的必要的组件。
-2. 安装 Cocoapods。有多种安装方式，参考 Kotlin
-   官方文档 [CocoaPods](https://kotlinlang.org/docs/native-cocoapods.html#set-up-an-environment-to-work-with-cocoapods)。
-
-> [!TIP]
-> **如果你不希望安装这些依赖，可以禁用 iOS 构建**
->
-> 在项目根目录的 `local.properties`（如果没有就创建一个）中增加以下内容:
->
-> ```properties
-> ani.enable.ios=false
-> ```
 
 ## Clone 仓库
 
@@ -101,37 +68,86 @@ git clone --recursive https://github.com/open-ani/animeko.git
 
 Clone 后第一次导入项目可能需要 1 小时。导入项目后别着急编译，先阅读 [优化编译速度](#优化编译速度)。
 
-## 优化编译速度
+## 按需配置
+
+下面这些内容只在你有特定需求时才需要。
+
+### JDK 自动配置与手动配置
+
+由于 PC 端使用 [JCEF](https://github.com/jetbrains/jcef) (内置浏览器)，JDK 必须使用 JetBrains
+Runtime (JCEF)，版本必须为 21，下文简称 JBR。
+
+> [!TIP]
+> 本仓库已配置 [gradle-daemon-jvm.properties](../../gradle/gradle-daemon-jvm.properties)。在执行
+> `./gradlew` 命令时，Gradle 会自动下载并使用正确的 JBR 21。
+
+> - 下载位置：默认存于 `$GRADLE_USER_HOME/jdks/`
+> - 配置生成：`./gradlew updateDaemonJvm --jvm-version=21 --jvm-vendor=jbr`
+> - 优势：自动下载的版本（来自 api.foojay.io）已确认包含 JCEF，可避免手动配置错误
+>
+> 如果你只是正常导入和构建项目，到这里为止通常不需要再做任何事。
+
+如果你怀疑 JDK 不对，可以这样检查：
+
+```shell
+# 确认下载的 JDK 版本包含 JCEF。
+find ~/.gradle/jdks/jetbrains_s_r_o_-21-amd64-linux.2/ -name jcef.jmod
+# Output: ~/.gradle/jdks/jetbrains_s_r_o_-21-amd64-linux.2/jmods/jcef.jmod
+
+# 也可用 SDKMAN!。
+find ~/.sdkman/candidates/java/21.0.10-jbr/ -name jcef.jmod
+# Output: ~/.sdkman/candidates/java/21.0.10-jbr/jmods/jcef.jmod
+```
+
+如果自动下载在你的环境里不可用，也可以自行安装 JBR。在 Android Studio 或 IntelliJ IDEA 中，可打开设置
+`Build, Execution, Deployment -> Build Tools -> Gradle`，将 Gradle JDK 改为 JBR (JCEF) 21。
+
+<img src="images/idea-settings-download-jdk.png" alt="download jbr" width="400"/>
+<img src="images/idea-settings-download-jdk-version.png" alt="choose version" width="200"/>
+
+### 准备 iOS 构建（仅 macOS）
+
+默认情况下，仓库不会启用 iOS 编译目标，也不会构建 framework。只有在你确实要运行或打包 iOS APP 时，才需要做这一节。
+
+先在项目根目录的 `local.properties`（如果没有就创建一个）中加入：
+
+```properties
+ani.enable.ios=true
+ani.build.framework=true
+```
+
+然后再安装 iOS 依赖：
+
+1. 在 App Store 中安装 Xcode 并打开，安装默认勾选的必要的组件。
+2. 安装 Cocoapods。有多种安装方式，参考 Kotlin
+   官方文档 [CocoaPods](https://kotlinlang.org/docs/native-cocoapods.html#set-up-an-environment-to-work-with-cocoapods)。
+
+### 优化编译速度
 
 *编译整个项目是对你的电脑的一个考验 :P*
 
 在高性能个人机器上 (Apple M2 Max / AMD Ryzen 7 5800X / Intel i9-12900H + 64 GB 内存) 编译和测试整个项目仍然可能需要
 10 分钟以上。
 
-### 通用优化
+#### 切换安卓 ABI
 
-**对于所有操作系统**，都建议禁用你不需要的 Android 架构。
-例如你的手机大概率是 arm64-v8a，那么可以设置只构建这个架构，将大幅提升编译速度。
+默认已经只构建 `arm64-v8a`，这是大多数真机开发最省时的配置。
 
 > [!TIP]
-> **只启用 Android arm64-v8a 架构**
->
-> 在项目根目录的 `local.properties`（如果没有就创建一个）中增加以下内容:
+> **切换 Android ABI**
 >
 > ```properties
+> # 默认值，不写也一样
 > ani.android.abis=arm64-v8a
+>
+> # 如果你要给 x86_64 模拟器跑
+> ani.android.abis=x86_64
+>
+> # 如果你需要完整产物
+> ani.android.abis=all
 > ```
 
-### macOS 优化
+#### macOS 优化
 
-由于 macOS 上支持构建 iOS (也默认开启)，对内存的需求会大幅上升。如果你无需运行 iOS APP，可以禁用
-Framework 构建。这可以帮你节约 20 分钟以上的编译时间。
-
-> [!TIP]
-> **禁用 iOS Framework**
->
-> 在项目根目录的 `local.properties`（如果没有就创建一个）中增加以下内容:
->
-> ```properties
-> ani.build.framework=false
-> ```
+默认已经关闭 iOS 目标和 framework 构建，所以大多数 macOS 用户不需要额外优化。
+只有在你要开发 iOS 时，再按上面的步骤显式开启即可。
