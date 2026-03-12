@@ -190,6 +190,7 @@ data class MatrixInstance(
      * Self hosted 机器已经配好了环境, 无需安装
      */
     val installNativeDeps: Boolean = !selfHosted,
+    val enableIos: Boolean = false,
     val buildIosFramework: Boolean = false,
     val buildAllAndroidAbis: Boolean = true,
 
@@ -201,6 +202,19 @@ data class MatrixInstance(
      */
     private val gradleParallel: Boolean = selfHosted,
 ) {
+    val androidAbis: String =
+        if (buildAllAndroidAbis) {
+            "all"
+        } else {
+            extraGradleArgs.first { it.startsWith("-P$ANI_ANDROID_ABIS=") }.substringAfter("=")
+        }
+
+    private val commandLineExtraGradleArgs = extraGradleArgs.filterNot {
+        it.startsWith("-P$ANI_ANDROID_ABIS=") ||
+                it.startsWith("-P$ANI_ENABLE_IOS=") ||
+                it.startsWith("-P$ANI_BUILD_FRAMEWORK=")
+    }
+
     @Suppress("unused")
     val gradleArgs = buildList {
 
@@ -230,19 +244,7 @@ data class MatrixInstance(
             add(quote("--parallel"))
         }
 
-        if (buildAllAndroidAbis) {
-            add(quote("-P$ANI_ANDROID_ABIS=all"))
-        }
-
-        if (os == OS.MACOS) {
-            add(quote("-P$ANI_ENABLE_IOS=true"))
-        }
-
-        if (buildIosFramework) {
-            add(quote("-P$ANI_BUILD_FRAMEWORK=true"))
-        }
-
-        extraGradleArgs.forEach {
+        commandLineExtraGradleArgs.forEach {
             add(quote(it))
         }
     }.joinToString(" ")
@@ -256,6 +258,15 @@ data class MatrixInstance(
             require(extraGradleArgs.any { it.startsWith("-P$ANI_ANDROID_ABIS=") }) {
                 "You must set `-P${ANI_ANDROID_ABIS}` when you don't want to build all Android ABIs"
             }
+        }
+        require(extraGradleArgs.none { it.startsWith("-P$ANI_ENABLE_IOS=") }) {
+            "Use `enableIos` instead of setting `-P${ANI_ENABLE_IOS}` manually"
+        }
+        require(extraGradleArgs.none { it.startsWith("-P$ANI_BUILD_FRAMEWORK=") }) {
+            "Use `buildIosFramework` instead of setting `-P${ANI_BUILD_FRAMEWORK}` manually"
+        }
+        require(!buildIosFramework || enableIos) {
+            "`buildIosFramework` requires `enableIos = true`"
         }
     }
 }
@@ -427,6 +438,7 @@ run {
         runAndroidInstrumentedTests = false,
         composeResourceTriple = "macos-x64",
         uploadDesktopInstallers = true,
+        enableIos = true,
         extraGradleArgs = listOf(
             "-P$ANI_ANDROID_ABIS=arm64-v8a",
         ),
@@ -444,6 +456,7 @@ run {
         runAndroidInstrumentedTests = false,
         composeResourceTriple = "macos-aarch64",
         uploadDesktopInstallers = true,
+        enableIos = true,
         extraGradleArgs = listOf(
             "-P$ANI_ANDROID_ABIS=arm64-v8a",
         ),
@@ -458,6 +471,7 @@ run {
         runAndroidInstrumentedTests = true,
         composeResourceTriple = "macos-arm64",
         uploadDesktopInstallers = false,
+        enableIos = true,
         extraGradleArgs = listOf(
             "-P$ANI_ANDROID_ABIS=arm64-v8a",
         ),
@@ -1103,22 +1117,37 @@ class WithMatrix(
     fun JobBuilder<*>.writeLocalProperties() {
         run(
             command = shell(
-                $$"""
-                echo "ani.dandanplay.app.id=$${expr { secrets.DANDANPLAY_APP_ID }}" >> local.properties
-                echo "ani.dandanplay.app.secret=$${expr { secrets.DANDANPLAY_APP_SECRET }}" >> local.properties
-                echo "ani.sentry.dsn=$${expr { secrets.SENTRY_DSN }}" >> local.properties
-                echo "kotlin.native.ignoreDisabledTargets=true" >> local.properties
-            """.trimIndent(),
+                buildString {
+                    fun property(key: String, value: String) {
+                        appendLine("""echo "${"$key=$value"}" >> local.properties""")
+                    }
+
+                    property(ANI_ANDROID_ABIS, matrix.androidAbis)
+                    if (matrix.enableIos) {
+                        property(ANI_ENABLE_IOS, "true")
+                    }
+                    if (matrix.buildIosFramework) {
+                        property(ANI_BUILD_FRAMEWORK, "true")
+                    }
+                    property("ani.dandanplay.app.id", expr { secrets.DANDANPLAY_APP_ID })
+                    property("ani.dandanplay.app.secret", expr { secrets.DANDANPLAY_APP_SECRET })
+                    property("ani.sentry.dsn", expr { secrets.SENTRY_DSN })
+                    property("kotlin.native.ignoreDisabledTargets", "true")
+                },
             ),
             continueOnError = true,
         )
         run(
             command = shell(
-                $$"""
-                echo "ani.enable.firebase=true" >> local.properties
-                echo "firebase.ga.app.id=$${expr { secrets.FIREBASE_GA_APP_ID }}" >> local.properties
-                echo "firebase.ga.api.secret=$${expr { secrets.FIREBASE_GA_API_SECRET }}" >> local.properties
-            """.trimIndent(),
+                buildString {
+                    fun property(key: String, value: String) {
+                        appendLine("""echo "${"$key=$value"}" >> local.properties""")
+                    }
+
+                    property("ani.enable.firebase", "true")
+                    property("firebase.ga.app.id", expr { secrets.FIREBASE_GA_APP_ID })
+                    property("firebase.ga.api.secret", expr { secrets.FIREBASE_GA_API_SECRET })
+                },
             ),
             continueOnError = true,
             `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
