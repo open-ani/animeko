@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -30,16 +30,17 @@ import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchQuery
 import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaSolveResult
 import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
 import me.him188.ani.app.domain.mediasource.web.WebCaptchaSearchProbe
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaSolveResult
 import me.him188.ani.app.domain.mediasource.web.WebPageCaptchaException
 import me.him188.ani.app.domain.mediasource.web.isSearchCooldownPage
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.FlowRunning
 import me.him188.ani.utils.coroutines.flows.restartable
+import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.xml.Document
 import kotlin.coroutines.CoroutineContext
