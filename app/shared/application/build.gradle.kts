@@ -7,7 +7,6 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-import io.sentry.kotlin.multiplatform.gradle.SentryExtension
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension
 
@@ -22,10 +21,6 @@ plugins {
 
     // alias(libs.plugins.kotlinx.atomicfu)
     alias(libs.plugins.sentry.kotlin.multiplatform)
-}
-
-extensions.configure<SentryExtension> {
-    autoInstall.cocoapods.enabled.set(false)
 }
 
 kotlin {

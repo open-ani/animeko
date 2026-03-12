@@ -24,6 +24,7 @@ plugins {
     alias(libs.plugins.kotlin.plugin.serialization)
 
     // alias(libs.plugins.kotlinx.atomicfu)
+    alias(libs.plugins.sentry.kotlin.multiplatform)
     idea
 }
 
