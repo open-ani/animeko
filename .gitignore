@@ -37,3 +37,8 @@ out/
 
 .env
 kls_database.db
+/torrent/anitorrent/libanitorrent.dylib
+/app/ios/Animeko/GoogleService-Info.plist
+/app/ios/12.4.0
+/app/ios/xcb2.log
+/app/ios/xcodebuild.log
