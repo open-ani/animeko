@@ -25,7 +25,7 @@ kotlin {
     }
     sourceSets.commonMain.dependencies {
         api(projects.app.shared.appPlatform)
-        api(mediampLibs.mediamp.api)
+        api(libs.mediamp.api)
         api(projects.utils.coroutines)
         api(projects.danmaku.danmakuApi)
     }
@@ -35,6 +35,6 @@ kotlin {
     sourceSets.desktopMain.dependencies {
     }
     sourceSets.appleMain.dependencies {
-        api(mediampLibs.mediamp.avkit)
+        api(libs.mediamp.avkit)
     }
 }

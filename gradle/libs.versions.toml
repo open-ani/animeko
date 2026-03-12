@@ -86,6 +86,7 @@ google-firebase = "22.0.1"
 posthog-android = "3.11.3"
 posthog-java = "1.2.0"
 openapi-generator = "7.13.0"
+mediamp = "0.1.5"
 
 [plugins]
 # Plugins for projects.
@@ -265,6 +266,21 @@ androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", versi
 androidx-media3-exoplayer-dash = { module = "androidx.media3:media3-exoplayer-dash", version.ref = "androidx-media3" }
 androidx-media3-exoplayer-hls = { module = "androidx.media3:media3-exoplayer-hls", version.ref = "androidx-media3" }
 
+# mediamp
+mediamp-api = { module = "org.openani.mediamp:mediamp-api", version.ref = "mediamp" }
+mediamp-avkit = { module = "org.openani.mediamp:mediamp-avkit", version.ref = "mediamp" }
+mediamp-exoplayer = { module = "org.openani.mediamp:mediamp-exoplayer", version.ref = "mediamp" }
+mediamp-ffmpeg = { module = "org.openani.mediamp:mediamp-ffmpeg", version.ref = "mediamp" }
+mediamp-ffmpeg-desktop = { module = "org.openani.mediamp:mediamp-ffmpeg-desktop", version.ref = "mediamp" }
+mediamp-ffmpeg-runtime-windows-x64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-windows-x64", version.ref = "mediamp" }
+mediamp-ffmpeg-runtime-linux-x64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-linux-x64", version.ref = "mediamp" }
+mediamp-ffmpeg-runtime-macos-x64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-macos-x64", version.ref = "mediamp" }
+mediamp-ffmpeg-runtime-macos-arm64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-macos-arm64", version.ref = "mediamp" }
+mediamp-ffmpeg-runtime-ios-arm64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-ios-arm64", version.ref = "mediamp" }
+mediamp-ffmpeg-runtime-ios-simulator-arm64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-ios-simulator-arm64", version.ref = "mediamp" }
+mediamp-source-ktxio = { module = "org.openani.mediamp:mediamp-source-ktxio", version.ref = "mediamp" }
+mediamp-test = { module = "org.openani.mediamp:mediamp-test", version.ref = "mediamp" }
+mediamp-vlc = { module = "org.openani.mediamp:mediamp-vlc", version.ref = "mediamp" }
 
 ### All other libraries ###
 

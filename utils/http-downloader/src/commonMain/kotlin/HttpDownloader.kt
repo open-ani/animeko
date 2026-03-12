@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -196,7 +196,19 @@ data class DownloadState(
 
 @Serializable
 enum class MediaType {
-    M3U8, MP4, MKV
+    M3U8, MP4, MKV;
+
+    /**
+     * The file extension for the output file of this media type.
+     *
+     * M3U8 segments are remuxed into a single MP4 file.
+     */
+    val outputFileExtension: String
+        get() = when (this) {
+            M3U8 -> ".mp4"
+            MP4 -> ".mp4"
+            MKV -> ".mkv"
+        }
 }
 
 @Serializable
@@ -222,4 +234,3 @@ data class DownloadOptions(
     val maxRetriesPerSegment: Int = 100,
     val baseRetryDelayMillis: Long = 1000L,
 )
-

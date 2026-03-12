@@ -35,6 +35,14 @@ dependencies {
     implementation(libs.jsystemthemedetector)
     implementation(libs.bytebuddy.agent)
     implementation(libs.bytebuddy)
+    implementation(libs.mediamp.ffmpeg.desktop)
+    when (val triple = getOsTriple()) {
+        "windows-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.windows.x64)
+        "linux-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.linux.x64)
+        "macos-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.macos.x64)
+        "macos-arm64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.macos.arm64)
+        else -> throw UnsupportedOperationException("Unknown os: $triple")
+    }
 }
 
 // workaround for compose limitation

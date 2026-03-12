@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -40,9 +40,9 @@ import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.httpdownloader.DownloadId
 import me.him188.ani.utils.httpdownloader.DownloadOptions
+import me.him188.ani.utils.httpdownloader.DownloadState
 import me.him188.ani.utils.httpdownloader.DownloadStatus
 import me.him188.ani.utils.httpdownloader.HttpDownloader
-import me.him188.ani.utils.httpdownloader.MediaType
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.actualSize
 import me.him188.ani.utils.io.deleteRecursively
@@ -283,7 +283,7 @@ class HttpMediaCacheEngine(
                         cacheMediaSourceId = mediaSourceId,
                         download = ResourceLocation.LocalFile(
                             Path(saveDir, state.relativeOutputPath).inSystem.absolutePath,
-                            state.mediaType.toFileType(),
+                            state.toFileType(),
                             originalUri = state.url,
                         ),
                         properties = origin.properties.copy(
@@ -343,11 +343,9 @@ class HttpMediaCacheEngine(
     }
 }
 
-private fun MediaType.toFileType(): ResourceLocation.LocalFile.FileType? {
-    return when (this) {
-        MediaType.M3U8 -> ResourceLocation.LocalFile.FileType.MPTS
-        MediaType.MP4,
-        MediaType.MKV,
-            -> ResourceLocation.LocalFile.FileType.CONTAINED
+private fun DownloadState.toFileType(): ResourceLocation.LocalFile.FileType? {
+    return when {
+        relativeOutputPath.endsWith(".ts", ignoreCase = true) -> ResourceLocation.LocalFile.FileType.MPTS
+        else -> ResourceLocation.LocalFile.FileType.CONTAINED
     }
 }

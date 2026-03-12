@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -15,7 +15,11 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.*
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
@@ -92,6 +96,8 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         suite.player.currentPositionMillis.value = 9500L
         // Suppose the total duration is 10 seconds for easy math.
         suite.setMediaDuration(10000L)
+        advanceUntilIdle()
+
         suite.player.playbackState.value = PlaybackState.PLAYING
 
         advanceUntilIdle()
@@ -103,7 +109,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     @Test
-    fun `does mark if not playing`() = runTest(UnconfinedTestDispatcher()) {
+    fun `does mark if not playing`() = runTest {
         var setCalled = false
         val (testScope, suite, _) = createCase(
             setEpisodeCollectionType = { _, _, _ ->
@@ -115,7 +121,10 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
         // Current position is 95% but the state is not playing (IDLE, PAUSED, etc.)
         suite.setMediaDuration(10000L)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 9500L
+        suite.player.playbackState.value = PlaybackState.PLAYING
 
         advanceUntilIdle()
 
@@ -136,6 +145,8 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
 
         // Even though we are at 95% and playing, if it's already DONE, we don't mark it again.
         suite.setMediaDuration(durationMillis = 10000L)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 9500L
         suite.player.playbackState.value = PlaybackState.PLAYING
 
@@ -163,6 +174,8 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
 
         // Set up 10-second media, move position to 95%, and set state to PLAYING.
         suite.setMediaDuration(durationMillis = 10000L)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 9500L
         suite.player.playbackState.value = PlaybackState.PLAYING
 
@@ -187,8 +200,11 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
 
         // Move near 90% & mark as PLAYING -> triggers mark once.
         suite.setMediaDuration(durationMillis = 10000L)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 9500L
         suite.player.playbackState.value = PlaybackState.PLAYING
+
         advanceUntilIdle()
         assertEquals(1, callCount)
 
@@ -219,6 +235,8 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         )
 
         suite.setMediaDuration(durationMillis = 3.minutes.inWholeMilliseconds)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = (3.minutes - 100.seconds).inWholeMilliseconds
         suite.player.playbackState.value = PlaybackState.PLAYING
 
@@ -248,6 +266,8 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         )
 
         suite.setMediaDuration(durationMillis = 1_200_000L)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = (18.minutes + 21.seconds).inWholeMilliseconds
         suite.player.playbackState.value = PlaybackState.PLAYING
 
@@ -274,6 +294,8 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         // Set up a 20-minute video (1,200,000 ms)
         // Position at 80% (960,000 ms) which is less than 90% and more than 100 seconds from the end
         suite.setMediaDuration(durationMillis = 1_200_000L)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = 960_000L // 80% of video, more than 100 seconds from end
         suite.player.playbackState.value = PlaybackState.PLAYING
 
@@ -297,6 +319,8 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
 
         // Set up a video shorter than 10 seconds (9 seconds)
         suite.setMediaDuration(durationMillis = 9.seconds.inWholeMilliseconds)
+        advanceUntilIdle()
+
         // Position at 95% which would normally trigger marking
         suite.player.currentPositionMillis.value = (9.seconds.inWholeMilliseconds * 0.95).toLong()
         suite.player.playbackState.value = PlaybackState.PLAYING

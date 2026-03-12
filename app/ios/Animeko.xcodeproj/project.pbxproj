@@ -90,7 +90,6 @@
 				0E62CA675B735DF3B0C16EC1 /* Pods-Animeko.debug.xcconfig */,
 				F249EC154975837B7E34C6F8 /* Pods-Animeko.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -359,7 +358,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "\"Animeko/Preview Content\"";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 3V9435G37T;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Animeko/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
@@ -382,7 +381,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "\"Animeko/Preview Content\"";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 3V9435G37T;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Animeko/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;

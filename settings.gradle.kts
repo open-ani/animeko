@@ -46,7 +46,7 @@ dependencyResolutionManagement {
 }
 
 plugins {
-    id("org.gradle.toolchains.foojay-resolver-convention") version "0.9.0"
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
 fun includeProject(projectPath: String, dir: String? = null) {
@@ -174,8 +174,12 @@ findLocalProperty("ani.build.mediamp.path")?.let { mediampPath ->
                 .using(project(":mediamp-exoplayer"))
             substitute(module("org.openani.mediamp:mediamp-vlc"))
                 .using(project(":mediamp-vlc"))
-            substitute(module("org.openani.mediamp:mediamp-mpv"))
-                .using(project(":mediamp-mpv"))
+            /*substitute(module("org.openani.mediamp:mediamp-mpv"))
+                .using(project(":mediamp-mpv"))*/
+            substitute(module("org.openani.mediamp:mediamp-ffmpeg"))
+                .using(project(":mediamp-ffmpeg"))
+            substitute(module("org.openani.mediamp:mediamp-test"))
+                .using(project(":mediamp-test"))
             substitute(module("org.openani.mediamp:mediamp-source-ktxio"))
                 .using(project(":mediamp-source-ktxio"))
             substitute(module("org.openani.mediamp:mediamp-avkit"))

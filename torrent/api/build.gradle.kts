@@ -21,7 +21,7 @@ kotlin {
     }
     sourceSets.commonMain.dependencies {
         api(libs.kotlinx.coroutines.core)
-        api(mediampLibs.mediamp.api)
+        api(libs.mediamp.api)
         implementation(libs.kotlinx.collections.immutable)
         implementation(libs.atomicfu)
         api(projects.utils.io)

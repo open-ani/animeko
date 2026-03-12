@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -61,13 +61,21 @@ import me.him188.ani.utils.httpdownloader.m3u.M3u8Playlist
 import me.him188.ani.utils.io.DEFAULT_BUFFER_SIZE
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.copyTo
+import me.him188.ani.utils.io.delete
+import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
+import me.him188.ani.utils.io.length
 import me.him188.ani.utils.io.resolve
+import me.him188.ani.utils.io.writeText
 import me.him188.ani.utils.ktor.ScopedHttpClient
+import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.trace
+import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.Uuid
+import org.openani.mediamp.ffmpeg.FFmpegKit
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.CoroutineContext
@@ -109,6 +117,10 @@ open class KtorHttpDownloader(
 
     override val downloadStatesFlow: Flow<List<DownloadState>> =
         _downloadStatesFlow.map { it.values.map { entry -> entry.state } }
+
+    private val ffmpegKit by lazy { FFmpegKit() }
+    private var ffmpegLogHandlerSet = false
+    private val ffmpegLogHandlerLock = Mutex()
 
     override suspend fun init() {
         // No initialization needed, but place for potential future logic
@@ -162,7 +174,7 @@ open class KtorHttpDownloader(
             val initialState = DownloadState(
                 downloadId = downloadId,
                 url = url,
-                relativeOutputPath = downloadId.value,
+                relativeOutputPath = downloadId.value + mediaType.outputFileExtension,
                 segments = emptyList(),
                 totalSegments = 0,
                 downloadedBytes = 0L,
@@ -808,13 +820,18 @@ open class KtorHttpDownloader(
     protected suspend fun mergeSegments(downloadId: DownloadId) = withContext(ioDispatcher) {
         val st = getState(downloadId) ?: return@withContext
         val cacheDir = baseSaveDir.resolve(st.relativeSegmentCacheDir)
-        val finalOutput = baseSaveDir.resolve(st.relativeOutputPath)
+        val finalOutputRelativePath = st.finalOutputRelativePath()
+        val finalOutput = baseSaveDir.resolve(finalOutputRelativePath)
 
-        fileSystem.sink(finalOutput).buffered().use { out ->
-            st.segments.sortedBy { it.index }.forEach { seg ->
-                fileSystem.source(baseSaveDir.resolve(seg.relativeTempFilePath)).buffered().use { input ->
-                    input.copyTo(out)
-                }
+        when (st.mediaType) {
+            MediaType.M3U8 -> mergeM3u8Segments(st, cacheDir, finalOutput)
+            MediaType.MP4,
+            MediaType.MKV -> concatenateSegments(st, finalOutput)
+        }
+
+        if (finalOutputRelativePath != st.relativeOutputPath) {
+            updateState(downloadId) {
+                it.copy(relativeOutputPath = finalOutputRelativePath)
             }
         }
 
@@ -825,6 +842,97 @@ open class KtorHttpDownloader(
         // remove the cache dir
         fileSystem.delete(cacheDir)
         logger.info { "Segments merged into $finalOutput, removed cache dir=$cacheDir for $downloadId" }
+    }
+
+    private fun concatenateSegments(st: DownloadState, finalOutput: Path) {
+        fileSystem.sink(finalOutput).buffered().use { out ->
+            st.segments.sortedBy { it.index }.forEach { seg ->
+                fileSystem.source(baseSaveDir.resolve(seg.relativeTempFilePath)).buffered().use { input ->
+                    input.copyTo(out)
+                }
+            }
+        }
+    }
+
+    private suspend fun mergeM3u8Segments(st: DownloadState, cacheDir: Path, finalOutput: Path) {
+        setFFmpegKitLogHandler()
+        val concatListFile = cacheDir.resolve("ffmpeg-concat.txt").inSystem
+        try {
+            concatListFile.writeText(
+                buildString {
+                    st.segments.sortedBy { it.index }.forEach { seg ->
+                        val segmentPath = baseSaveDir.resolve(seg.relativeTempFilePath).inSystem.absolutePath
+                        append("file '")
+                        append(escapeFfmpegConcatPath(segmentPath))
+                        appendLine("'")
+                    }
+                },
+            )
+
+            val ffmpegArgs = listOf(
+                "-y", "-nostdin",
+                "-f", "concat",
+                "-safe", "0",
+                "-i", concatListFile.absolutePath,
+                "-map", "0",
+                "-c", "copy",
+                "-bsf:a", "aac_adtstoasc",
+                "-movflags",
+                "+faststart",
+                finalOutput.inSystem.absolutePath,
+            )
+            logger.info {
+                "Running FFmpeg merge for ${st.downloadId}: ffmpeg ${ffmpegArgs.joinToString(" ") { it.quoteForLog() }}"
+            }
+
+            if (finalOutput.inSystem.exists()) {
+                fileSystem.delete(finalOutput)
+            }
+
+            ffmpegKit.execute(ffmpegArgs)
+
+            val outputFile = finalOutput.inSystem
+            if (!outputFile.exists() || outputFile.length() <= 0L) {
+                throw IllegalStateException("FFmpeg failed to merge HLS segments for ${st.downloadId}: output file was not created")
+            }
+        } finally {
+            concatListFile.delete()
+        }
+    }
+
+    private fun String.quoteForLog(): String =
+        if (isEmpty() || any { it.isWhitespace() || it == '"' || it == '\'' }) {
+            "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+        } else {
+            this
+        }
+
+    private fun DownloadState.finalOutputRelativePath(): String {
+        if (mediaType != MediaType.M3U8) return relativeOutputPath
+        return relativeOutputPath.replaceAfterLast('.', "mp4", missingDelimiterValue = "$relativeOutputPath.mp4")
+    }
+
+    private suspend fun setFFmpegKitLogHandler() {
+        if (ffmpegLogHandlerSet) return
+        ffmpegLogHandlerLock.withLock {
+            if (ffmpegLogHandlerSet) return
+            FFmpegKit.setLogHandler { msg ->
+                // See -loglevel argument in https://ffmpeg.org/ffmpeg.html
+                if (msg.isError) {
+                    logger.error { "[FFmpeg:${msg.level}] ${msg.line}" }
+                } else if (msg.level >= 48) {
+                    logger.trace { "[FFmpeg:${msg.level}] ${msg.line}" }
+                } else if (msg.level >= 40) {
+                    logger.debug { "[FFmpeg:${msg.level}] ${msg.line}" }
+                } else if (msg.level >= 32) {
+                    logger.info { "[FFmpeg:${msg.level}] ${msg.line}" }
+                } else if (msg.level >= 24) {
+                    logger.warn { "[FFmpeg:${msg.level}] ${msg.line}" }
+                } else {
+                    logger.error { "[FFmpeg:${msg.level}] ${msg.line}" }
+                }
+            }
+        }
     }
 
     protected suspend fun emitProgress(downloadId: DownloadId) {
@@ -926,6 +1034,9 @@ open class KtorHttpDownloader(
 }
 
 private class M3u8Exception(val errorCode: DownloadErrorCode) : Exception()
+
+private fun escapeFfmpegConcatPath(path: String): String =
+    path.replace("\\", "\\\\").replace("'", "'\\''")
 
 private fun M3u8Playlist.MediaPlaylist.toSegments(resolveSegmentPath: (String) -> String): List<SegmentInfo> {
     return segments.mapIndexed { i, seg ->

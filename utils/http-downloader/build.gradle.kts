@@ -16,6 +16,18 @@ plugins {
     `ani-mpp-lib-targets`
 }
 
+val iosArm64FfmpegRuntime by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+
+val iosSimulatorArm64FfmpegRuntime by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isTransitive = false
+}
+
 kotlin {
     androidLibrary {
         namespace = "me.him188.ani.utils.http.downloader"
@@ -31,6 +43,7 @@ kotlin {
     sourceSets.commonMain.dependencies {
         api(projects.utils.coroutines)
         api(libs.kotlinx.datetime)
+        api(libs.mediamp.ffmpeg)
         implementation(projects.utils.logging)
         implementation(projects.utils.ktorClient)
         api(libs.datastore.core)
@@ -48,4 +61,37 @@ kotlin {
         implementation(libs.ktor.server.test.host)
         runtimeOnly(libs.slf4j.simple)
     }
+}
+
+dependencies {
+    "iosArm64FfmpegRuntime"(libs.mediamp.ffmpeg.runtime.ios.arm64)
+    "iosSimulatorArm64FfmpegRuntime"(libs.mediamp.ffmpeg.runtime.ios.simulator.arm64)
+}
+
+tasks.register<Sync>("preparePublishedFfmpegRuntimeIosArm64") {
+    from(
+        providers.provider {
+            val files = iosArm64FfmpegRuntime.resolve().toList()
+            check(files.size == 1) {
+                "Expected ${iosArm64FfmpegRuntime.name} to resolve exactly one runtime jar, got ${files.size}: $files"
+            }
+            zipTree(files.single())
+        },
+    )
+    into(layout.buildDirectory.dir("published-ffmpeg-runtime/ios-arm64"))
+    includeEmptyDirs = false
+}
+
+tasks.register<Sync>("preparePublishedFfmpegRuntimeIosSimulatorArm64") {
+    from(
+        providers.provider {
+            val files = iosSimulatorArm64FfmpegRuntime.resolve().toList()
+            check(files.size == 1) {
+                "Expected ${iosSimulatorArm64FfmpegRuntime.name} to resolve exactly one runtime jar, got ${files.size}: $files"
+            }
+            zipTree(files.single())
+        },
+    )
+    into(layout.buildDirectory.dir("published-ffmpeg-runtime/ios-simulator-arm64"))
+    includeEmptyDirs = false
 }

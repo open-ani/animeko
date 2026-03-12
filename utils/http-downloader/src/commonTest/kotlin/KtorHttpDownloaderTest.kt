@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -335,7 +335,7 @@ class KtorHttpDownloaderTest {
     fun `download - should complete successfully`() = testScope.runTest {
         val downloadId = downloader.downloadWithId(
             url = "https://example.com/master.m3u8",
-            downloadId = DownloadId("output.ts"),
+            downloadId = DownloadId("output"),
         )?.downloadId
         assertNotNull(downloadId)
         // Wait for actual completion
@@ -344,13 +344,13 @@ class KtorHttpDownloaderTest {
         val state = downloader.getState(downloadId)
         assertNotNull(state)
         assertEquals(DownloadStatus.COMPLETED, state.status)
-        assertTrue(fileSystem.exists(Path("$tempDir/output.ts")))
+        assertTrue(fileSystem.exists(Path("$tempDir/output.mp4")))
 
         // Merged segments directory should be cleaned
         assertFalse(fileSystem.exists(Path("$tempDir/segments_$downloadId")))
 
         // New: check final file size (segment1 + segment2 + segment3 => 1024 + 2048 + 3072 = 6144)
-        val outputFileSize = fileSystem.metadata(Path("$tempDir/output.ts")).size
+        val outputFileSize = fileSystem.metadata(Path("$tempDir/output.mp4")).size
         assertEquals(1024 + 2048 + 3072, outputFileSize, "M3U8 final output file size mismatch.")
     }
 
@@ -426,7 +426,7 @@ class KtorHttpDownloaderTest {
 
     @Test
     fun `cancel - should stop download and mark canceled`() = testScope.runTest {
-        val downloadId = DownloadId("cancellable.ts")
+        val downloadId = DownloadId("cancellable")
         downloader.downloadWithId(
             url = "https://example.com/unstable-playlist1.m3u8",
             downloadId = downloadId,
@@ -553,7 +553,7 @@ class KtorHttpDownloaderTest {
     fun `download - mp4 file should complete successfully`() = testScope.runTest {
         val downloadId = downloader.downloadWithId(
             url = "https://example.com/sample.mp4",
-            downloadId = DownloadId("sample.mp4"),
+            downloadId = DownloadId("sample"),
         )?.downloadId
         assertNotNull(downloadId)
         // Wait for actual completion
@@ -607,7 +607,7 @@ class KtorHttpDownloaderTest {
     fun `download - mkv file should complete successfully`() = testScope.runTest {
         val downloadId = downloader.downloadWithId(
             url = "https://example.com/sample.mkv",
-            downloadId = DownloadId("sample.mkv"),
+            downloadId = DownloadId("sample-mkv"),
         )?.downloadId
         assertNotNull(downloadId)
         // Wait for actual completion
@@ -616,16 +616,16 @@ class KtorHttpDownloaderTest {
         val state = downloader.getState(downloadId)
         assertNotNull(state)
         assertEquals(DownloadStatus.COMPLETED, state.status)
-        assertTrue(fileSystem.exists(Path("$tempDir/sample.mkv")))
+        assertTrue(fileSystem.exists(Path("$tempDir/sample-mkv.mkv")))
 
         // Merged segments directory should be cleaned
         assertFalse(fileSystem.exists(Path("$tempDir/segments_$downloadId")))
 
         // New: check final file size and partial content
-        val fileSize = fileSystem.metadata(Path("$tempDir/sample.mkv")).size
+        val fileSize = fileSystem.metadata(Path("$tempDir/sample-mkv.mkv")).size
         assertEquals(MKV_FILE_SIZE, fileSize, "MKV file size mismatch.")
 
-        fileSystem.read(Path("$tempDir/sample.mkv")) {
+        fileSystem.read(Path("$tempDir/sample-mkv.mkv")) {
             checkByteMatchSampleMp4(this, expectedSize = MKV_FILE_SIZE)
         }
     }
@@ -661,7 +661,7 @@ class KtorHttpDownloaderTest {
     fun `pause and resume - mp4 file should continue from paused state`() = testScope.runTest {
         val downloadId = downloader.downloadWithId(
             url = "https://example.com/sample.mp4",
-            downloadId = DownloadId("resumable.mp4"),
+            downloadId = DownloadId("resumable"),
         )?.downloadId
         assertNotNull(downloadId)
         downloader.pause(downloadId)
@@ -721,7 +721,7 @@ class KtorHttpDownloaderTest {
     fun `download - server without range support should still complete successfully`() = testScope.runTest {
         val downloadId = downloader.downloadWithId(
             url = "https://example.com/no-range-support.mp4",
-            downloadId = DownloadId("no-range-support.mp4"),
+            downloadId = DownloadId("no-range-support"),
         )?.downloadId
         assertNotNull(downloadId)
         // Wait for actual completion
@@ -743,7 +743,7 @@ class KtorHttpDownloaderTest {
         // Set a small max concurrent segments value to ensure multiple segments are created
         val options = DownloadOptions(maxConcurrentSegments = 3)
 
-        val downloadId = DownloadId("multi-segment.mp4")
+        val downloadId = DownloadId("multi-segment")
         downloader.downloadWithId(
             url = "https://example.com/sample.mp4",
             downloadId = downloadId,
@@ -865,7 +865,7 @@ class KtorHttpDownloaderTest {
     @Test
     fun `resume - segment creation fails first time - success second time`() = testScope.runTest {
         // 1) Download (which will fail on first attempt because of internal server error).
-        val downloadId = DownloadId("unstable1.ts")
+        val downloadId = DownloadId("unstable1")
         downloader.downloadWithId(
             url = "https://example.com/unstable-playlist1.m3u8",
             downloadId = downloadId,
@@ -885,7 +885,7 @@ class KtorHttpDownloaderTest {
         val finalState = downloader.getState(downloadId)
         assertNotNull(finalState)
         assertEquals(DownloadStatus.COMPLETED, finalState.status, "Expected second attempt to succeed")
-        assertTrue(fileSystem.exists(Path("$tempDir/unstable1.ts")), "Expected final file to exist")
+        assertTrue(fileSystem.exists(Path("$tempDir/unstable1.mp4")), "Expected final file to exist")
     }
 
     @Test
@@ -909,7 +909,7 @@ class KtorHttpDownloaderTest {
         val finalState = downloader.getState(downloadId)
         assertNotNull(finalState)
         assertEquals(DownloadStatus.FAILED, finalState.status, "Expected to remain FAILED after second fail")
-        assertFalse(fileSystem.exists(Path("$tempDir/unstable2.ts")), "File should not exist after repeated failures")
+        assertFalse(fileSystem.exists(Path("$tempDir/unstable2.mp4")), "File should not exist after repeated failures")
     }
 
     /**
@@ -1010,7 +1010,7 @@ class KtorHttpDownloaderTest {
         )
         val downloadId = downloader.downloadWithId(
             url = "https://example.com/unstable-single.m3u8",
-            downloadId = DownloadId("unstable-single.ts"),
+            downloadId = DownloadId("unstable-single"),
             options = options,
         )?.downloadId
         assertNotNull(downloadId)
@@ -1023,8 +1023,8 @@ class KtorHttpDownloaderTest {
         assertEquals(DownloadStatus.COMPLETED, finalState.status, "Expected success after segment eventually recovers")
 
         // Check final file's existence and size
-        assertTrue(fileSystem.exists(Path("$tempDir/unstable-single.ts")), "Output file should exist")
-        val size = fileSystem.metadata(Path("$tempDir/unstable-single.ts")).size
+        assertTrue(fileSystem.exists(Path("$tempDir/unstable-single.mp4")), "Output file should exist")
+        val size = fileSystem.metadata(Path("$tempDir/unstable-single.mp4")).size
         assertEquals(512, size, "File should contain the final recovered segment")
     }
 
