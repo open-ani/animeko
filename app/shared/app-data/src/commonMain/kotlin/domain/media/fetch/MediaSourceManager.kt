@@ -181,14 +181,16 @@ suspend fun <T> MediaSourceManager.updateMediaSourceArguments(
 
 /**
  * 根据请求创建 [MediaFetchSession].
- * 也会跟随用户设置的启用/禁用数据源 emit 新的 [MediaFetchSession].
+ *
+ * The session is frozen to the current [MediaFetcher] snapshot. Source-list changes should not
+ * rebuild the same playback query; callers need to explicitly create a new session when that is desired.
  *
  * @param requestLazy 相当于 [lazy]. 只有第一个元素会被使用. 必须至少 emit 一个元素.
  *
  * @see MediaFetchRequest.Companion.create
  */
-fun MediaSourceManager.createFetchFetchSessionFlow(requestLazy: Flow<MediaFetchRequest>): Flow<MediaFetchSession> =
-    this.mediaFetcher.map { it.newSession(requestLazy) }
+suspend fun MediaSourceManager.createFetchFetchSession(requestLazy: Flow<MediaFetchRequest>): MediaFetchSession =
+    mediaFetcher.first().newSession(requestLazy)
 
 class MediaSourceManagerImpl(
     /**

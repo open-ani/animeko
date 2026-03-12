@@ -173,7 +173,7 @@ class PlayerSession(
 //        }
 //        .distinctUntilChanged() // re-create fetch session iff part of the infos related to fetch changes.
 //        .flatMapLatest { request ->
-//            mediaSourceManager.createFetchFetchSessionFlow(flowOf(request))
+//            mediaSourceManager.createFetchFetchSession(flowOf(request))
 //        } // the above won't throw.
 //        .shareIn(flowScope, SharingStarted.WhileSubscribed(), 1)
 //

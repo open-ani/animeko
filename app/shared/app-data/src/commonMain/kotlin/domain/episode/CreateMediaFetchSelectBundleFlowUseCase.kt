@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -27,7 +26,7 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.create
-import me.him188.ani.app.domain.media.fetch.createFetchFetchSessionFlow
+import me.him188.ani.app.domain.media.fetch.createFetchFetchSession
 import me.him188.ani.app.domain.media.selector.DefaultMediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorContextFlowProducer
 import me.him188.ani.app.domain.usecase.UseCase
@@ -109,9 +108,9 @@ class CreateMediaFetchSelectBundleFlowUseCaseImpl(
                 )
             }
             .distinctUntilChanged() // very important to avoid re-query
-            .flatMapLatest { req ->
+            .mapLatest { req ->
                 logger.info { "MediaFetchRequest changed. Creating MediaFetchSession for reqeust: $req" }
-                mediaSourceManager.createFetchFetchSessionFlow(flowOf(req))
+                mediaSourceManager.createFetchFetchSession(flowOf(req))
             }
             .onStart<MediaFetchSession?> { emit(null) }
 
