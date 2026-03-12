@@ -49,20 +49,19 @@ import me.him188.ani.app.ui.adaptive.AdaptiveSearchBar
 import me.him188.ani.app.ui.foundation.interaction.onEnterKeyEvent
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
-import me.him188.ani.app.ui.search.SearchState
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SearchStart
 import me.him188.ani.utils.analytics.recordEvent
 
 @Stable
-class SuggestionSearchBarState<T : Any>(
+class SuggestionSearchBarState(
     historyPager: Flow<PagingData<String>>, // must be distinct
     suggestionsPager: Flow<PagingData<String>>, // must be distinct
-    private val searchState: SearchState<T>,
+    private val clearSearch: () -> Unit,
     private val onRemoveHistory: suspend (text: String) -> Unit,
     queryFlow: Flow<String>,
     private val setQueryValue: (String) -> Unit,
-    private val onStartSearch: (query: String) -> Unit = {},
+    private val onStartSearchRequest: (query: String) -> Unit = {},
     private val tagsProvider: () -> List<String> = { emptyList() },
     backgroundScope: CoroutineScope,
 ) {
@@ -96,7 +95,7 @@ class SuggestionSearchBarState<T : Any>(
     fun clear() {
         setQuery("")
         expanded = false
-        searchState.clear()
+        clearSearch()
     }
 
     fun setQuery(value: String) {
@@ -105,8 +104,12 @@ class SuggestionSearchBarState<T : Any>(
     }
 
     fun startSearch() {
-        val query = presentationFlow.value.query
+        val rawQuery = presentationFlow.value.query
+        val query = rawQuery.trim()
         val tags = tagsProvider()
+        if (query != rawQuery) {
+            setQuery(query)
+        }
         Analytics.recordEvent(SearchStart) {
             put("query", query)
             put("query_length", query.length)
@@ -114,9 +117,8 @@ class SuggestionSearchBarState<T : Any>(
             put("tags", tags.joinToString(","))
             put("tag_count", tags.size)
         }
-        searchState.startSearch()
         expanded = false
-        onStartSearch(query)
+        onStartSearchRequest(query)
     }
 
     private val removeHistoryTasker = MonoTasker(backgroundScope)
@@ -141,8 +143,8 @@ enum class SuggestionSearchPreviewType {
 }
 
 @Composable
-fun <T : Any> SuggestionSearchBar(
-    state: SuggestionSearchBarState<T>,
+fun SuggestionSearchBar(
+    state: SuggestionSearchBarState,
     modifier: Modifier = Modifier,
     inputFieldModifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forSearchBar(),

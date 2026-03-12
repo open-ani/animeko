@@ -57,12 +57,12 @@ class SearchPageState(
     val suggestionSearchBarState = SuggestionSearchBarState(
         historyPager = searchHistoryPager,
         suggestionsPager = suggestionsPager,
-        searchState = searchState,
+        clearSearch = searchState::clear,
         queryFlow = queryFlow.map { it.keywords },
         setQueryValue = { setQuery(queryFlow.value.copy(keywords = it)) },
         onRemoveHistory = { onRemoveHistory(it) },
-        onStartSearch = { query ->
-            onStartSearch(query)
+        onStartSearchRequest = { query ->
+            startSearch(query)
         },
         tagsProvider = { queryFlow.value.tags.orEmpty() },
         backgroundScope = backgroundScope,
@@ -151,8 +151,7 @@ class SearchPageState(
     }
 
     inline fun updateQuery(block: SubjectSearchQuery.() -> SubjectSearchQuery) {
-        setQuery(queryFlow.value.block())
-        searchState.startSearch()
+        refreshSearch(queryFlow.value.block().normalized())
     }
 
     fun updateSort(
@@ -160,6 +159,32 @@ class SearchPageState(
     ) {
         updateQuery {
             copy(sort = sort)
+        }
+    }
+
+    fun refreshSearch(query: SubjectSearchQuery = queryFlow.value.normalized()) {
+        if (query != queryFlow.value) {
+            setQuery(query)
+        }
+
+        if (query.hasSearchRequest()) {
+            searchState.startSearch()
+        } else {
+            searchState.clear()
+        }
+    }
+
+    private fun startSearch(query: String) {
+        val updatedQuery = queryFlow.value.copy(keywords = query).normalized()
+        if (updatedQuery != queryFlow.value) {
+            setQuery(updatedQuery)
+        }
+
+        if (updatedQuery.hasSearchRequest()) {
+            searchState.startSearch()
+            onStartSearch(updatedQuery.keywords)
+        } else {
+            searchState.clear()
         }
     }
 }

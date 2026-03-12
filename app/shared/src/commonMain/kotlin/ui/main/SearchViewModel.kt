@@ -58,8 +58,8 @@ class SearchViewModel(
     private val nsfwSettingFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
         .stateIn(backgroundScope, SharingStarted.Lazily, NsfwMode.HIDE)
 
-    private val hasInitialSearchQuery = initialSearchQuery.keywords.isNotEmpty() || initialSearchQuery.hasFilters()
-    private val queryFlow = MutableStateFlow(initialSearchQuery)
+    private val hasInitialSearchQuery = initialSearchQuery.normalized().hasSearchRequest()
+    private val queryFlow = MutableStateFlow(initialSearchQuery.normalized())
 
     val selfInfoFlow = SelfInfoStateProducer(koin = getKoin()).flow
     val searchPageState: SearchPageState = SearchPageState(
@@ -78,7 +78,7 @@ class SearchViewModel(
         },
         searchState = PagingSearchState(
             createPager = { scope ->
-                val rawQuery = queryFlow.value
+                val rawQuery = queryFlow.value.normalized()
                 // 搜索 R18 条目时, 需要强制显示
                 val explicitR18 = rawQuery.tags?.contains("R18") == true
 
@@ -162,7 +162,7 @@ class SearchViewModel(
         initialSearchQueryStarted = true
 
         if (hasInitialSearchQuery) {
-            searchPageState.searchState.startSearch()
+            searchPageState.refreshSearch()
         }
     }
 
@@ -170,4 +170,3 @@ class SearchViewModel(
         super.onCleared()
     }
 }
-

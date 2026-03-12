@@ -22,8 +22,16 @@ data class SubjectSearchQuery(
     val nsfw: Boolean? = null,
     val sort: SearchSort = SearchSort.MATCH,
 ) {
+    fun normalized(): SubjectSearchQuery {
+        return copy(keywords = keywords.trim())
+    }
+
     fun hasFilters(): Boolean {
         return tags != null || season != null || rating != null || nsfw != null || sort != SearchSort.MATCH
+    }
+
+    fun hasSearchRequest(): Boolean {
+        return keywords.isNotEmpty() || hasFilters()
     }
 }
 
