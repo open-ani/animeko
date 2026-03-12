@@ -9,6 +9,7 @@
 
 package me.him188.ani.utils.httpdownloader
 
+import io.ktor.client.call.body
 import io.ktor.client.request.header
 import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.HttpStatement
@@ -55,6 +56,7 @@ import me.him188.ani.utils.httpdownloader.DownloadStatus.FAILED
 import me.him188.ani.utils.httpdownloader.DownloadStatus.INITIALIZING
 import me.him188.ani.utils.httpdownloader.DownloadStatus.MERGING
 import me.him188.ani.utils.httpdownloader.DownloadStatus.PAUSED
+import me.him188.ani.utils.httpdownloader.m3u.MediaSegmentEncryption
 import me.him188.ani.utils.httpdownloader.m3u.DefaultM3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Playlist
@@ -75,10 +77,13 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.trace
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.Uuid
+import korlibs.crypto.AES
+import korlibs.crypto.CipherPadding
 import org.openani.mediamp.ffmpeg.FFmpegKit
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.CoroutineContext
+import kotlin.text.hexToByteArray
 import kotlin.time.Clock
 
 /**
@@ -722,6 +727,7 @@ open class KtorHttpDownloader(
     protected suspend fun downloadSingleSegment(
         segmentInfo: SegmentInfo,
         options: DownloadOptions,
+        loadEncryptionKey: suspend (SegmentEncryptionInfo) -> ByteArray = { error("No encryption key loader provided") },
     ): Long {
         // If we have a range, add it to the request headers.
         val finalOptions = if (segmentInfo.rangeStart != null && segmentInfo.rangeEnd != null) {
@@ -735,8 +741,6 @@ open class KtorHttpDownloader(
 
         return httpGet(segmentInfo.url, finalOptions) { statement ->
             val response = statement.execute()
-            val channel = response.bodyAsChannel()
-
             val segmentPath = baseSaveDir.resolve(segmentInfo.relativeTempFilePath)
             withContext(ioDispatcher) {
                 fileSystem.createDirectories(
@@ -744,7 +748,20 @@ open class KtorHttpDownloader(
                 )
             }
 
-            copyChannelToFile(channel, segmentPath).also {
+            val byteSize = if (segmentInfo.encryption == null) {
+                val channel = response.bodyAsChannel()
+                copyChannelToFile(channel, segmentPath)
+            } else {
+                val encryptedBytes = response.body<ByteArray>()
+                val decryptedBytes = decryptHlsSegment(
+                    encryptedBytes,
+                    segmentInfo,
+                    loadEncryptionKey(segmentInfo.encryption),
+                )
+                writeBytesToFile(segmentPath, decryptedBytes)
+                decryptedBytes.size.toLong()
+            }
+            byteSize.also {
                 logger.info { "Segment index=${segmentInfo.index} downloaded, size=$it" }
             }
         }
@@ -773,6 +790,14 @@ open class KtorHttpDownloader(
         return totalBytes.load()
     }
 
+    private suspend fun writeBytesToFile(filePath: Path, data: ByteArray) {
+        withContext(ioDispatcher) {
+            fileSystem.sink(filePath).buffered().use { sink ->
+                sink.write(data, startIndex = 0, endIndex = data.size)
+            }
+        }
+    }
+
     @OptIn(DelicateCoroutinesApi::class, ExperimentalAtomicApi::class)
     protected suspend fun downloadSegments(downloadId: DownloadId, options: DownloadOptions) {
         val snapshot = getState(downloadId) ?: return
@@ -782,6 +807,8 @@ open class KtorHttpDownloader(
         }
         logger.info { "Downloading ${snapshot.segments.size} segments for $downloadId with concurrency=${options.maxConcurrentSegments}" }
         val semaphore = Semaphore(options.maxConcurrentSegments)
+        val keyCache = mutableMapOf<String, ByteArray>()
+        val keyCacheMutex = Mutex()
 
         coroutineScope {
             snapshot.segments.forEach { seg ->
@@ -794,7 +821,18 @@ open class KtorHttpDownloader(
                             maxRetries = options.maxRetriesPerSegment,
                             baseDelayMillis = options.baseRetryDelayMillis,
                         ) {
-                            downloadSingleSegment(seg, options)
+                            downloadSingleSegment(seg, options) { encryption ->
+                                keyCacheMutex.withLock {
+                                    keyCache[encryption.keyUri] ?: httpGet(
+                                        encryption.keyUri,
+                                        options.copy(headers = snapshot.requestHeaders),
+                                    ) {
+                                        it.body<ByteArray>()
+                                    }.also { keyBytes ->
+                                        keyCache[encryption.keyUri] = keyBytes
+                                    }
+                                }
+                            }
                         }
                         markSegmentDownloaded(downloadId, seg.index, newSize)
                     } finally {
@@ -1046,7 +1084,62 @@ private fun M3u8Playlist.MediaPlaylist.toSegments(resolveSegmentPath: (String) -
             url = seg.uri,
             isDownloaded = false,
             byteSize = seg.byteRange?.length ?: -1,
+            durationSeconds = seg.duration,
+            title = seg.title,
+            isDiscontinuity = seg.isDiscontinuity,
+            encryption = seg.encryption?.toSegmentEncryptionInfo(),
             relativeTempFilePath = resolveSegmentPath("$idx.ts"),
         )
     }
 }
+
+private fun MediaSegmentEncryption.toSegmentEncryptionInfo(): SegmentEncryptionInfo =
+    SegmentEncryptionInfo(
+        method = method,
+        keyUri = uri,
+        iv = iv,
+    )
+
+private fun decryptHlsSegment(
+    encryptedBytes: ByteArray,
+    segmentInfo: SegmentInfo,
+    keyBytes: ByteArray,
+): ByteArray {
+    require(keyBytes.size == 16) {
+        "HLS AES-128 key must be 16 bytes, but was ${keyBytes.size} bytes for ${segmentInfo.url}"
+    }
+
+    val encryption = segmentInfo.encryption ?: return encryptedBytes
+    require(encryption.method.equals("AES-128", ignoreCase = true)) {
+        "Unsupported HLS encryption method '${encryption.method}' for ${segmentInfo.url}"
+    }
+
+    return AES.decryptAesCbc(
+        encryptedBytes,
+        keyBytes,
+        encryption.iv.parseHlsIvOrDefault(segmentInfo.index.toLong()),
+        CipherPadding.PKCS7Padding,
+    )
+}
+
+private fun String?.parseHlsIvOrDefault(sequenceNumber: Long): ByteArray {
+    if (this == null) {
+        return sequenceNumber.toHlsIvBytes()
+    }
+
+    val normalized = removePrefix("0x").removePrefix("0X")
+    require(normalized.length == 32) {
+        "HLS IV must be 16 bytes (32 hex chars), but was '$this'"
+    }
+
+    return normalized.hexToByteArray()
+}
+
+private fun Long.toHlsIvBytes(): ByteArray =
+    ByteArray(16).also { bytes ->
+        var value = this
+        for (index in bytes.lastIndex downTo 8) {
+            bytes[index] = (value and 0xFF).toByte()
+            value = value ushr 8
+        }
+    }

@@ -74,8 +74,16 @@ data class MediaSegment(
     val title: String? = null,
     val isDiscontinuity: Boolean = false,
     val byteRange: ByteRange? = null,
-    val keys: Map<String, String> = emptyMap(),
+    val encryption: MediaSegmentEncryption? = null,
     val tags: Map<String, String> = emptyMap(),
+)
+
+data class MediaSegmentEncryption(
+    val method: String,
+    val uri: String,
+    val iv: String? = null,
+    val keyFormat: String? = null,
+    val keyFormatVersions: String? = null,
 )
 
 /**
@@ -123,8 +131,8 @@ object DefaultM3u8Parser : M3u8Parser {
         var currentSegmentTitle: String? = null
         var currentSegmentDiscontinuity = false
         var currentSegmentByteRange: ByteRange? = null
-        val currentSegmentKeys = mutableMapOf<String, String>()
         val currentSegmentTags = mutableMapOf<String, String>()
+        var currentSegmentEncryption: MediaSegmentEncryption? = null
 
         // For current variant being built
         var currentVariantAttributes = mutableMapOf<String, String>()
@@ -170,7 +178,22 @@ object DefaultM3u8Parser : M3u8Parser {
 
                     line.startsWith("#EXT-X-KEY:") -> {
                         val keyAttributes = parseAttributes(line.substringAfter(":").trim())
-                        currentSegmentKeys.putAll(keyAttributes)
+                        val method = keyAttributes["METHOD"]?.trim().orEmpty()
+                        currentSegmentEncryption = when {
+                            method.isEmpty() -> throw M3uFormatException("Invalid EXT-X-KEY tag: missing METHOD")
+                            method.equals("NONE", ignoreCase = true) -> null
+                            else -> {
+                                val keyUri = keyAttributes["URI"]
+                                    ?: throw M3uFormatException("Invalid EXT-X-KEY tag: missing URI")
+                                MediaSegmentEncryption(
+                                    method = method,
+                                    uri = UrlHelpers.computeAbsoluteUrl(baseUrl, keyUri),
+                                    iv = keyAttributes["IV"],
+                                    keyFormat = keyAttributes["KEYFORMAT"],
+                                    keyFormatVersions = keyAttributes["KEYFORMATVERSIONS"],
+                                )
+                            }
+                        }
                     }
 
                     line.startsWith("#EXT-X-STREAM-INF:") -> {
@@ -233,7 +256,7 @@ object DefaultM3u8Parser : M3u8Parser {
                             title = currentSegmentTitle,
                             isDiscontinuity = currentSegmentDiscontinuity,
                             byteRange = currentSegmentByteRange,
-                            keys = currentSegmentKeys.toMap(),
+                            encryption = currentSegmentEncryption,
                             tags = currentSegmentTags.toMap(),
                         ),
                     )
@@ -243,7 +266,6 @@ object DefaultM3u8Parser : M3u8Parser {
                     currentSegmentTitle = null
                     currentSegmentDiscontinuity = false
                     currentSegmentByteRange = null
-                    currentSegmentKeys.clear()
                     currentSegmentTags.clear()
                 }
             }

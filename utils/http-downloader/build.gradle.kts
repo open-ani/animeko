@@ -44,6 +44,7 @@ kotlin {
         api(projects.utils.coroutines)
         api(libs.kotlinx.datetime)
         api(libs.mediamp.ffmpeg)
+        implementation(libs.korlibs.crypto)
         implementation(projects.utils.logging)
         implementation(projects.utils.ktorClient)
         api(libs.datastore.core)
@@ -64,6 +65,14 @@ kotlin {
 }
 
 dependencies {
+    when (val triple = getOsTriple()) {
+        "windows-x64" -> add("desktopTestRuntimeOnly", libs.mediamp.ffmpeg.runtime.windows.x64)
+        "linux-x64" -> add("desktopTestRuntimeOnly", libs.mediamp.ffmpeg.runtime.linux.x64)
+        "macos-x64" -> add("desktopTestRuntimeOnly", libs.mediamp.ffmpeg.runtime.macos.x64)
+        "macos-arm64" -> add("desktopTestRuntimeOnly", libs.mediamp.ffmpeg.runtime.macos.arm64)
+        else -> throw UnsupportedOperationException("Unknown os: $triple")
+    }
+
     "iosArm64FfmpegRuntime"(libs.mediamp.ffmpeg.runtime.ios.arm64)
     "iosSimulatorArm64FfmpegRuntime"(libs.mediamp.ffmpeg.runtime.ios.simulator.arm64)
 }

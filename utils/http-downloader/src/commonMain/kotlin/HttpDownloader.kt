@@ -217,10 +217,21 @@ data class SegmentInfo(
     val url: String,
     val isDownloaded: Boolean,
     val byteSize: Long = -1,
+    val durationSeconds: Float? = null,
+    val title: String? = null,
+    val isDiscontinuity: Boolean = false,
+    val encryption: SegmentEncryptionInfo? = null,
     @SerialName("tempFilePath")
     val relativeTempFilePath: String,
     val rangeStart: Long? = null,
     val rangeEnd: Long? = null,
+)
+
+@Serializable
+data class SegmentEncryptionInfo(
+    val method: String,
+    val keyUri: String,
+    val iv: String? = null,
 )
 
 @Serializable

@@ -185,8 +185,14 @@ class DefaultM3u8ParserTest {
         // Check the encryption key was recorded at the segment level or in the segment's keys map
         val segment0 = playlist.segments[0]
         assertEquals(8.0f, segment0.duration)
-        // Key info is in segment0.keys or segment0.tags
-        assertTrue(segment0.keys.isNotEmpty() || segment0.tags.isNotEmpty())
+        assertEquals("AES-128", segment0.encryption?.method)
+        assertEquals("https://keyserver.example.com/key", segment0.encryption?.uri)
+        assertEquals("0x1A2B3C4D5E6F", segment0.encryption?.iv)
+
+        val segment1 = playlist.segments[1]
+        assertEquals("AES-128", segment1.encryption?.method)
+        assertEquals("https://keyserver.example.com/key", segment1.encryption?.uri)
+        assertEquals("0x1A2B3C4D5E6F", segment1.encryption?.iv)
     }
 
     @Test
