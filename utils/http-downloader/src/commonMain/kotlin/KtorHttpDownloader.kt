@@ -882,7 +882,7 @@ open class KtorHttpDownloader(
         logger.info { "Segments merged into $finalOutput, removed cache dir=$cacheDir for $downloadId" }
     }
 
-    private fun concatenateSegments(st: DownloadState, finalOutput: Path) {
+    protected fun concatenateSegments(st: DownloadState, finalOutput: Path) {
         fileSystem.sink(finalOutput).buffered().use { out ->
             st.segments.sortedBy { it.index }.forEach { seg ->
                 fileSystem.source(baseSaveDir.resolve(seg.relativeTempFilePath)).buffered().use { input ->
@@ -892,7 +892,8 @@ open class KtorHttpDownloader(
         }
     }
 
-    private suspend fun mergeM3u8Segments(st: DownloadState, cacheDir: Path, finalOutput: Path) {
+    // mark open for tests, don't override
+    open suspend fun mergeM3u8Segments(st: DownloadState, cacheDir: Path, finalOutput: Path) {
         setFFmpegKitLogHandler()
         val concatListFile = cacheDir.resolve("ffmpeg-concat.txt").inSystem
         try {

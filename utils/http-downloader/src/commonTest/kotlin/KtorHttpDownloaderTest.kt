@@ -263,14 +263,22 @@ class KtorHttpDownloaderTest {
             }
         }
 
-        downloader = KtorHttpDownloader(
+        downloader = object : KtorHttpDownloader(
             client = mockClient.asScopedHttpClient(),
             fileSystem = fileSystem,
             clock = mockClock,
             baseSaveDir = Path(tempDir),
             parentScope = CoroutineScope(SupervisorJob() + testDispatcher),
             ioDispatcher = testDispatcher,
-        )
+        ) {
+            override suspend fun mergeM3u8Segments(st: DownloadState, cacheDir: Path, finalOutput: Path) {
+                if (st.segments.any { it.encryption != null }) {
+                    super.mergeM3u8Segments(st, cacheDir, finalOutput)
+                } else {
+                    super.concatenateSegments(st, finalOutput)
+                }
+            }
+        }
     }
 
     // Helper to handle MP4 partial or full
