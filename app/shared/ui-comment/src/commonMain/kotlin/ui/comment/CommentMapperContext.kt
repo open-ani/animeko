@@ -18,6 +18,8 @@ import me.him188.ani.utils.bbcode.BBCode
 
 // TODO: remove this and use BBCodeRichTextState
 object CommentMapperContext {
+    private fun String.toUiCommentId(): Long = hashCode().toLong()
+
     fun parseBBCode(code: String): UIRichText = UIRichText(BBCode.parse(code).toUIRichElements())
 
     fun parseBBCodeAsReply(code: String): UIRichText =
@@ -26,6 +28,7 @@ object CommentMapperContext {
     fun SubjectReview.parseToUIComment() =
         UIComment(
             id = id,
+            stableId = id.toString(),
             author = creator,
             content = parseBBCode(content),
             createdAt = updatedAt,
@@ -38,14 +41,16 @@ object CommentMapperContext {
     fun EpisodeComment.parseToUIComment(): UIComment {
         val comment = this
         return UIComment(
-            id = comment.commentId.toLong(),
+            id = comment.stableId.toUiCommentId(),
+            stableId = comment.stableId,
             author = comment.author,
             content = parseBBCode(comment.content),
             createdAt = comment.createdAt,
             reactions = emptyList(),
             briefReplies = comment.replies.map { reply ->
                 UIComment(
-                    id = reply.commentId.toLong(),
+                    id = reply.stableId.toUiCommentId(),
+                    stableId = reply.stableId,
                     author = reply.author,
                     content = parseBBCode(reply.content),
                     createdAt = reply.createdAt,
@@ -53,10 +58,22 @@ object CommentMapperContext {
                     briefReplies = emptyList(),
                     replyCount = 0,
                     rating = null,
+                    source = when (reply.source) {
+                        me.him188.ani.app.data.models.episode.EpisodeCommentSource.ANI -> UICommentSource.ANI
+                        me.him188.ani.app.data.models.episode.EpisodeCommentSource.BANGUMI -> UICommentSource.BANGUMI
+                    },
+                    sourceCommentId = reply.sourceCommentId,
+                    canReply = reply.canReply,
                 )
             },
             replyCount = comment.replies.size,
             rating = null,
+            source = when (comment.source) {
+                me.him188.ani.app.data.models.episode.EpisodeCommentSource.ANI -> UICommentSource.ANI
+                me.him188.ani.app.data.models.episode.EpisodeCommentSource.BANGUMI -> UICommentSource.BANGUMI
+            },
+            sourceCommentId = comment.sourceCommentId,
+            canReply = comment.canReply,
         )
     }
 

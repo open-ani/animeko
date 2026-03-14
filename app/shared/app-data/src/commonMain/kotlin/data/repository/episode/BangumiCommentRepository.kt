@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -13,14 +13,17 @@ import androidx.compose.ui.util.packInts
 import androidx.paging.LoadType
 import androidx.paging.Pager
 import androidx.paging.PagingData
+import androidx.paging.PagingData.Companion.from
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
 import androidx.paging.map
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.episode.EpisodeComment
+import me.him188.ani.app.data.models.episode.EpisodeCommentSource
 import me.him188.ani.app.data.models.subject.SubjectReview
 import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCommentDao
@@ -36,47 +39,22 @@ class BangumiCommentRepository(
     private val episodeCommentDao: EpisodeCommentDao,
     private val subjectReviewDao: SubjectReviewDao,
 ) : Repository() {
-    fun subjectEpisodeCommentsPager(episodeId: Int): Flow<PagingData<EpisodeComment>> {
-        return Pager(
-            config = defaultPagingConfig,
-            initialKey = 0,
-            remoteMediator = EpisodeCommentRemoteMediator(episodeId),
-            pagingSourceFactory = {
-                episodeCommentDao.filterByEpisodeIdPager(episodeId)
-            },
-        ).flow.map { page ->
-            page.map { it.toInfo() }
-        }
-    }
-
-    private inner class EpisodeCommentRemoteMediator<T : Any>(
-        private val episodeId: Int,
-    ) : RemoteMediator<Int, T>() {
-        override suspend fun initialize(): InitializeAction = InitializeAction.LAUNCH_INITIAL_REFRESH
-
-        override suspend fun load(
-            loadType: LoadType,
-            state: PagingState<Int, T>,
-        ): MediatorResult = withContext(defaultDispatcher) {
-            when (loadType) {
-                LoadType.REFRESH -> {
-                    try {
-                        val items = commentService.getSubjectEpisodeComments(episodeId)
-                            ?: return@withContext MediatorResult.Success(endOfPaginationReached = true)
-                        episodeCommentDao.upsert(items.flatMap { it.toEntityWithReplies() }.toList())
-                    } catch (e: Exception) {
-                        return@withContext MediatorResult.Error(RepositoryException.wrapOrThrowCancellation(e))
-                    }
-
-                    return@withContext MediatorResult.Success(endOfPaginationReached = true)
+    fun subjectEpisodeCommentsPager(episodeId: Long): Flow<PagingData<EpisodeComment>> {
+        return flow {
+            val data = try {
+                withContext(defaultDispatcher) {
+                    val items = commentService.getSubjectEpisodeComments(episodeId)
+                        ?: return@withContext emptyList()
+                    episodeCommentDao.upsert(items.flatMap { it.toEntityWithReplies().toList() })
+                    episodeCommentDao.findByEpisodeIdWithReplies(episodeId)
+                        .map { it.toInfo() }
                 }
-
-                LoadType.PREPEND -> return@withContext MediatorResult.Success(endOfPaginationReached = true)
-                LoadType.APPEND -> return@withContext MediatorResult.Success(endOfPaginationReached = true)
+            } catch (e: Exception) {
+                throw RepositoryException.wrapOrThrowCancellation(e)
             }
+            emit(from(data))
         }
     }
-
 
     fun subjectCommentsPager(subjectId: Int): Flow<PagingData<SubjectReview>> {
         return Pager(
@@ -138,12 +116,31 @@ private fun EpisodeComment.toEntityWithReplies(): Sequence<EpisodeCommentEntity>
     }.filterNotNull()
 }
 
-private fun EpisodeComment.toEntity(parentCommentId: Int?): EpisodeCommentEntity? {
+private suspend fun EpisodeCommentDao.findByEpisodeIdWithReplies(
+    episodeId: Long,
+): List<EpisodeCommentEntityWithReplies> {
+    val topLevelComments = findTopLevelByEpisodeId(episodeId)
+    if (topLevelComments.isEmpty()) {
+        return emptyList()
+    }
+
+    val repliesByParentId = findRepliesByParentCommentIds(topLevelComments.map { it.commentId })
+        .groupBy { requireNotNull(it.parentCommentId) }
+
+    return topLevelComments.map { entity ->
+        EpisodeCommentEntityWithReplies(
+            entity = entity,
+            replies = repliesByParentId[entity.commentId].orEmpty(),
+        )
+    }
+}
+
+private fun EpisodeComment.toEntity(parentCommentId: String?): EpisodeCommentEntity {
     return EpisodeCommentEntity(
         episodeId,
         commentId = commentId,
         parentCommentId = parentCommentId,
-        authorId = author?.id ?: return null,
+        authorId = requireNotNull(author?.id) { "EpisodeComment.author.id is required for persistence" },
         authorNickname = author.nickname ?: "",
         authorAvatarUrl = author.avatarUrl,
         createdAt = createdAt,
@@ -154,7 +151,7 @@ private fun EpisodeComment.toEntity(parentCommentId: Int?): EpisodeCommentEntity
 private fun SubjectReview.toEntity(subjectId: Int): SubjectReviewEntity? {
     return SubjectReviewEntity(
         subjectId = subjectId,
-        authorId = creator?.id ?: return null,
+        authorId = creator?.id?.toIntOrNull() ?: return null,
         content = content,
         updatedAt = updatedAt,
         rating = rating,
@@ -169,7 +166,7 @@ private fun SubjectReviewEntity.toInfo(): SubjectReview {
         updatedAt = updatedAt,
         content = content,
         creator = UserInfo(
-            id = authorId,
+            id = authorId.toString(),
             username = null,
             nickname = authorNickname,
             avatarUrl = authorAvatarUrl,
@@ -186,6 +183,9 @@ private fun EpisodeCommentEntityWithReplies.toInfo(): EpisodeComment {
 
 private fun EpisodeCommentEntity.toInfo(): EpisodeComment {
     return EpisodeComment(
+        stableId = "bangumi:$commentId",
+        source = EpisodeCommentSource.BANGUMI,
+        sourceCommentId = commentId,
         commentId = commentId,
         episodeId = episodeId,
         createdAt = createdAt,
@@ -196,5 +196,6 @@ private fun EpisodeCommentEntity.toInfo(): EpisodeComment {
             nickname = authorNickname,
             avatarUrl = authorAvatarUrl,
         ),
+        canReply = false,
     )
 }

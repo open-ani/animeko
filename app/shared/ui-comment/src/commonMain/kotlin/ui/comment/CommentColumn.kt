@@ -87,7 +87,7 @@ fun CommentColumn(
 
             items(
                 items.itemCount,
-                key = items.itemKey { "CommentColumn-" + it.id },
+                key = items.itemKey { "CommentColumn-" + it.stableId },
                 contentType = items.itemContentType(),
             ) { index ->
                 Column {

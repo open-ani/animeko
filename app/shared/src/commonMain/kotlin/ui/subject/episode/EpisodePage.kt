@@ -90,6 +90,7 @@ import me.him188.ani.app.platform.features.getComponentAccessors
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.comment.CommentEditorState
 import me.him188.ani.app.ui.comment.CommentState
+import me.him188.ani.app.ui.comment.createPreviewTurnstileState
 import me.him188.ani.app.ui.danmaku.DanmakuEditorState
 import me.him188.ani.app.ui.danmaku.DummyDanmakuEditor
 import me.him188.ani.app.ui.danmaku.PlayerDanmakuEditor
@@ -162,7 +163,6 @@ import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.Screenshots
 import org.openani.mediamp.features.VideoAspectRatio
 import org.openani.mediamp.features.toggleMute
-import org.openani.mediamp.isPlaying
 
 
 /**
@@ -372,10 +372,9 @@ private fun EpisodeScreenContent(
     if (showEditCommentSheet) {
         EpisodeEditCommentSheet(
             state = vm.commentEditorState,
-            turnstileState = vm.turnstileState,
+            turnstileState = remember { createPreviewTurnstileState() },
             onDismiss = {
                 showEditCommentSheet = false
-                vm.turnstileState.cancel()
                 vm.commentEditorState.cancelSend()
                 tryUnpause()
             },
@@ -1079,13 +1078,13 @@ private fun EpisodeCommentColumn(
         state = commentState,
         onClickReply = {
             setShowEditCommentSheet(true)
-            commentEditorState.startEdit(CommentContext.EpisodeReply(subjectId, episodeId, it.toInt()))
+            commentEditorState.startEdit(CommentContext.EpisodeReply(subjectId, episodeId.toLong(), it))
             pauseOnPlaying()
 
         },
         onNewCommentClick = {
             commentEditorState.startEdit(
-                CommentContext.Episode(subjectId, episodeId),
+                CommentContext.Episode(subjectId, episodeId.toLong()),
             )
             setShowEditCommentSheet(true)
         },

@@ -25,6 +25,7 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.network.AniApiProvider
+import me.him188.ani.app.data.network.AniEpisodeCommentService
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AniSubjectSearchService
 import me.him188.ani.app.data.network.AnimeScheduleService
@@ -42,10 +43,12 @@ import me.him188.ani.app.data.network.SubjectService
 import me.him188.ani.app.data.network.TrendsRepository
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.persistent.database.AniDatabase
+import me.him188.ani.app.data.persistent.database.MIGRATION_19_20
 import me.him188.ani.app.data.persistent.database.createDatabaseBuilder
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
+import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepositoryImpl
@@ -317,6 +320,13 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
     single<EpisodeScreenshotRepository> { WhatslinkEpisodeScreenshotRepository() }
     single<BangumiCommentService> { BangumiBangumiCommentServiceImpl(get()) }
+    single<AniEpisodeCommentService> { AniEpisodeCommentService(get<AniApiProvider>().episodesApi) }
+    single<EpisodeCommentRepository> {
+        EpisodeCommentRepository(
+            aniCommentService = get(),
+            bangumiCommentService = get(),
+        )
+    }
     single<MediaSourceInstanceRepository> {
         MediaSourceInstanceRepositoryImpl(getContext().dataStores.mediaSourceSaveStore)
     }
@@ -374,6 +384,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                     addAll(1..15) // 16 is destructive
                 }.toIntArray(),
             )
+            .addMigrations(MIGRATION_19_20)
             .setDriver(BundledSQLiteDriver())
             .setQueryCoroutineContext(Dispatchers.IO_)
             .build()

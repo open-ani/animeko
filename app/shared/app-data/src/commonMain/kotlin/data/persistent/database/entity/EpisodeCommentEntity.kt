@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,11 +9,9 @@
 
 package me.him188.ani.app.data.persistent.database.entity
 
-import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
-import androidx.room.Relation
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
 
 /**
@@ -45,11 +43,11 @@ import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
     ],
 )
 data class EpisodeCommentEntity(
-    val episodeId: Int,
-    val commentId: Int,
-    val authorId: Int,
+    val episodeId: Long,
+    val commentId: String,
+    val authorId: String,
 
-    val parentCommentId: Int?,
+    val parentCommentId: String?,
 
     val authorNickname: String, // can be empty
     val authorAvatarUrl: String?,
@@ -59,11 +57,6 @@ data class EpisodeCommentEntity(
 )
 
 data class EpisodeCommentEntityWithReplies(
-    @Embedded
     val entity: EpisodeCommentEntity,
-    @Relation(
-        parentColumn = "commentId",
-        entityColumn = "parentCommentId",
-    )
     val replies: List<EpisodeCommentEntity>,
 )

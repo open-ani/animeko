@@ -10,13 +10,9 @@
 package me.him188.ani.app.domain.comment
 
 import androidx.compose.runtime.Immutable
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.data.network.BangumiCommentService
+import me.him188.ani.app.data.network.AniEpisodeCommentService
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.domain.usecase.UseCase
@@ -29,40 +25,16 @@ interface PostCommentUseCase : UseCase {
 }
 
 class PostCommentUseCaseImpl(
-    private val turnstileState: TurnstileState,
-    private val commentService: BangumiCommentService,
-    private val turnstileContext: CoroutineContext = Dispatchers.Main,
+    private val commentService: AniEpisodeCommentService,
+    private val context: CoroutineContext = Dispatchers.Main,
 ) : PostCommentUseCase {
     private val logger = logger<PostCommentUseCase>()
 
     override suspend operator fun invoke(context: CommentContext, content: String): CommentSendResult {
-        val turnstileResult = try {
-            withContext(turnstileContext) {
-                turnstileState.reload()
-            }
-            merge(
-                turnstileState.tokenFlow.map { TurnstileResult.Ok(it) },
-                turnstileState.webErrorFlow.map { TurnstileResult.Error(it) }
-            ).first()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            return CommentSendResult.UnknownError(e.toString())
-        }
-        
-        val token = when (turnstileResult) {
-            is TurnstileResult.Error -> {
-                return when (turnstileResult.cause) {
-                    is TurnstileState.Error.Network -> 
-                        CommentSendResult.TurnstileError.Network(turnstileResult.cause.code)
-                    else -> CommentSendResult.TurnstileError.Unknown(turnstileResult.cause.code)
-                }
-            }
-            is TurnstileResult.Ok -> turnstileResult.token
-        }
-
         try {
-            commentService.postEpisodeComment(context, content, token)
+            withContext(this.context) {
+                commentService.postEpisodeComment(context, content)
+            }
             return CommentSendResult.Ok
         } catch (e: Exception) {
             val delegateEx = RepositoryException.wrapOrThrowCancellation(e)
@@ -77,22 +49,9 @@ class PostCommentUseCaseImpl(
     }
 }
 
-private sealed class TurnstileResult {
-    class Ok(val token: String) : TurnstileResult()
-    class Error(val cause: TurnstileState.Error) : TurnstileResult()
-}
-
 @Immutable
 sealed interface CommentSendResult {
     sealed class Error : CommentSendResult
-
-    sealed class TurnstileError : Error() {
-        @Immutable
-        data class Network(val code: Int) : TurnstileError()
-
-        @Immutable
-        data class Unknown(val code: Int) : TurnstileError()
-    }
 
     data object NetworkError : Error()
     
@@ -101,17 +60,16 @@ sealed interface CommentSendResult {
     data object Ok : CommentSendResult
 }
 
-private suspend fun BangumiCommentService.postEpisodeComment(
+private suspend fun AniEpisodeCommentService.postEpisodeComment(
     context: CommentContext,
     content: String,
-    turnstileToken: String
 ) {
     when (context) {
         is CommentContext.Episode ->
-            postEpisodeComment(context.episodeId, content, turnstileToken, null)
+            createEpisodeComment(context.episodeId, content)
 
         is CommentContext.EpisodeReply ->
-            postEpisodeComment(context.episodeId, content, turnstileToken, context.commentId)
+            createEpisodeReply(context.episodeId, context.commentId, content)
 
         is CommentContext.SubjectReview -> error("unreachable on postEpisodeComment")
     }

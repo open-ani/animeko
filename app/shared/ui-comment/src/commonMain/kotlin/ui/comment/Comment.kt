@@ -165,6 +165,7 @@ class UIRichText(val elements: List<UIRichElement>)
 @Immutable
 class UIComment(
     val id: Long,
+    val stableId: String,
     val author: UserInfo?,
     val content: UIRichText,
     val createdAt: Long, // timestamp millis
@@ -172,6 +173,9 @@ class UIComment(
     val briefReplies: List<UIComment>,
     val replyCount: Int,
     val rating: Int?,
+    val source: UICommentSource = UICommentSource.BANGUMI,
+    val sourceCommentId: String = stableId,
+    val canReply: Boolean = false,
 )
 
 @Immutable
@@ -181,3 +185,7 @@ class UICommentReaction(
     val selected: Boolean
 )
 
+enum class UICommentSource {
+    ANI,
+    BANGUMI,
+}

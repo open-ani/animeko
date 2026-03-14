@@ -56,13 +56,12 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.nameCnOrName
 import me.him188.ani.app.data.network.AutoSkipRepository
-import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
+import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.comment.PostCommentUseCase
-import me.him188.ani.app.domain.comment.TurnstileState
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
@@ -249,14 +248,13 @@ class EpisodeViewModel(
     private val settingsRepository: SettingsRepository by inject()
     private val danmakuRegexFilterRepository: DanmakuRegexFilterRepository by inject()
     private val mediaSourceManager: MediaSourceManager by inject()
-    private val bangumiCommentRepository: BangumiCommentRepository by inject()
+    private val episodeCommentRepository: EpisodeCommentRepository by inject()
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory by inject()
     private val setDanmakuEnabledUseCase: SetDanmakuEnabledUseCase by inject()
     private val postCommentUseCase: PostCommentUseCase by inject()
     private val autoSkipRepository: AutoSkipRepository by inject()
     private val getMediaSelectorSettings: GetMediaSelectorSettingsUseCase by inject()
     private val getMediaSourceInstances: GetMediaSourceInstancesUseCase by inject()
-    val turnstileState: TurnstileState by inject()
     val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase by inject()
     private val getSubjectRecommendations: GetSubjectRecommendationUseCase by inject()
     private val getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase by inject()
@@ -623,10 +621,8 @@ class EpisodeViewModel(
         list = episodeIdFlow
             .restartable(commentStateRestarter)
             .flatMapLatest { episodeId ->
-                bangumiCommentRepository.subjectEpisodeCommentsPager(episodeId)
-                    .map { page ->
-                        page.map { it.parseToUIComment() }
-                    }
+                episodeCommentRepository.subjectEpisodeCommentsPager(episodeId.toLong())
+                    .map { page -> page.map { it.parseToUIComment() } }
             }.cachedIn(backgroundScope),
         countState = stateOf(null),
         onSubmitCommentReaction = { _, _ -> },
