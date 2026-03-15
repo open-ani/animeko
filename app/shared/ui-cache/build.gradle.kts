@@ -31,6 +31,9 @@ kotlin {
         implementation(libs.compose.components.resources)
         implementation(projects.app.shared.placeholder)
     }
+    sourceSets.commonTest.dependencies {
+        implementation(projects.utils.uiTesting)
+    }
     sourceSets.androidMain.dependencies {
     }
     sourceSets.desktopMain.dependencies {
