@@ -58,7 +58,6 @@ ksoup = "0.2.2"
 filekit = "0.10.0-beta04" # https://github.com/vinceglb/FileKit/releases
 kotlinpoet = "1.18.1" # https://github.com/square/kotlinpoet/releases
 log4j-core = "2.20.0"
-korlibs = "6.0.0"
 ktor = "3.1.1" # https://github.com/ktorio/ktor/releases
 koin = "3.5.6" # https://github.com/InsertKoinIO/koin/releases
 slf4j = "2.0.16"
@@ -86,7 +85,7 @@ google-firebase = "22.0.1"
 posthog-android = "3.11.3"
 posthog-java = "1.2.0"
 openapi-generator = "7.13.0"
-mediamp = "0.1.5"
+mediamp = "0.1.6"
 
 [plugins]
 # Plugins for projects.
@@ -285,7 +284,6 @@ mediamp-vlc = { module = "org.openani.mediamp:mediamp-vlc", version.ref = "media
 ### All other libraries ###
 
 kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
-korlibs-crypto = { module = "com.soywiz:korlibs-crypto", version.ref = "korlibs" }
 jetbrains-annotations = { module = "org.jetbrains:annotations", version = "23.0.0" }
 directories = { module = "dev.dirs:directories", version = "26" }
 snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }

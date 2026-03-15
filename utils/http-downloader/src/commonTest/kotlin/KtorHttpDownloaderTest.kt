@@ -40,18 +40,21 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemTemporaryDirectory
 import kotlinx.io.readByteArray
+import me.him188.ani.utils.io.copyTo
 import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.ktor.asScopedHttpClient
+import org.openani.mediamp.ffmpeg.FFmpegResult
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -66,6 +69,9 @@ class KtorHttpDownloaderTest {
     private lateinit var tempDir: String
     private lateinit var downloader: KtorHttpDownloader
     private val fileSystem = SystemFileSystem
+    private var lastFfmpegArgs: List<String>? = null
+    private var lastInputPlaylistContent: String? = null
+    private var forceFfmpegFailure = false
 
     // We use this to track how many times a given URL has been requested.
     // This allows us to simulate "fails first time, succeeds second time", etc.
@@ -88,6 +94,9 @@ class KtorHttpDownloaderTest {
         if (!fileSystem.exists(Path("$tempDir/persistence"))) {
             fileSystem.createDirectories(Path("$tempDir/persistence"))
         }
+        lastFfmpegArgs = null
+        lastInputPlaylistContent = null
+        forceFfmpegFailure = false
 
         // Create mock client with preset responses
         mockClient = HttpClient(MockEngine) {
@@ -129,6 +138,14 @@ class KtorHttpDownloaderTest {
                         "https://example.com/encrypted.m3u8" -> {
                             respond(
                                 content = ENCRYPTED_MEDIA_PLAYLIST,
+                                status = HttpStatusCode.OK,
+                                headers = headersOf(HttpHeaders.ContentType, "application/vnd.apple.mpegurl"),
+                            )
+                        }
+
+                        "https://example.com/tagged.m3u8" -> {
+                            respond(
+                                content = TAGGED_MEDIA_PLAYLIST,
                                 status = HttpStatusCode.OK,
                                 headers = headersOf(HttpHeaders.ContentType, "application/vnd.apple.mpegurl"),
                             )
@@ -271,12 +288,47 @@ class KtorHttpDownloaderTest {
             parentScope = CoroutineScope(SupervisorJob() + testDispatcher),
             ioDispatcher = testDispatcher,
         ) {
-            override suspend fun mergeM3u8Segments(st: DownloadState, cacheDir: Path, finalOutput: Path) {
-                if (st.segments.any { it.encryption != null }) {
-                    super.mergeM3u8Segments(st, cacheDir, finalOutput)
-                } else {
-                    super.concatenateSegments(st, finalOutput)
+            override suspend fun executeFfmpeg(args: List<String>): FFmpegResult {
+                lastFfmpegArgs = args
+                val inputIndex = args.indexOf("-i")
+                if (inputIndex >= 0 && inputIndex + 1 < args.size) {
+                    val inputPath = Path(args[inputIndex + 1])
+                    if (fileSystem.exists(inputPath)) {
+                        lastInputPlaylistContent = fileSystem.read(inputPath) {
+                            readByteArray().decodeToString()
+                        }
+                    }
                 }
+
+                if (forceFfmpegFailure) {
+                    return FFmpegResult(exitCode = 1)
+                }
+
+                val outputPath = Path(args.last())
+                if (lastInputPlaylistContent.orEmpty().contains("#EXT-X-KEY:")) {
+                    writeBytes(
+                        outputPath,
+                        byteArrayOf(
+                            0x00, 0x00, 0x00, 0x18,
+                            'f'.code.toByte(), 't'.code.toByte(), 'y'.code.toByte(), 'p'.code.toByte(),
+                            'i'.code.toByte(), 's'.code.toByte(), 'o'.code.toByte(), 'm'.code.toByte(),
+                        ) + ByteArray(16),
+                    )
+                } else {
+                    val inputPath = Path(args[inputIndex + 1])
+                    val inputDir = inputPath.parent ?: error("Missing parent dir for $inputPath")
+                    fileSystem.sink(outputPath).buffered().use { out ->
+                        lastInputPlaylistContent.orEmpty().lines()
+                            .map { it.trim() }
+                            .filter { it.isNotEmpty() && !it.startsWith("#") }
+                            .forEach { relativeSegmentPath ->
+                                fileSystem.source(inputDir.resolve(relativeSegmentPath)).buffered().use { input ->
+                                    input.copyTo(out)
+                                }
+                            }
+                    }
+                }
+                return FFmpegResult(exitCode = 0)
             }
         }
     }
@@ -387,6 +439,9 @@ class KtorHttpDownloaderTest {
         // New: check final file size (segment1 + segment2 + segment3 => 1024 + 2048 + 3072 = 6144)
         val outputFileSize = fileSystem.metadata(Path("$tempDir/output.mp4")).size
         assertEquals(1024 + 2048 + 3072, outputFileSize, "M3U8 final output file size mismatch.")
+        assertTrue(lastFfmpegArgs?.contains("-allowed_extensions") == true)
+        assertTrue(lastFfmpegArgs?.contains("-protocol_whitelist") == true)
+        assertTrue(lastInputPlaylistContent?.contains("0.ts") == true)
     }
 
     @Test
@@ -405,10 +460,56 @@ class KtorHttpDownloaderTest {
 
         val outputPath = Path("$tempDir/encrypted-output.mp4")
         assertTrue(fileSystem.exists(outputPath), "Expected decrypted HLS output to exist")
-        assertFalse(fileSystem.exists(Path("$tempDir/segments_$downloadId")), "Merged encrypted cache dir should be removed")
+        assertFalse(
+            fileSystem.exists(Path("$tempDir/segments_$downloadId")),
+            "Merged encrypted cache dir should be removed",
+        )
+        assertEquals(1, attempts["https://example.com/key.bin"], "Expected key to be downloaded exactly once")
+        assertTrue(lastInputPlaylistContent?.contains("URI=\"keys/") == true)
+        assertFalse(lastInputPlaylistContent?.contains("https://example.com/key.bin") == true)
+        assertFalse(lastInputPlaylistContent?.contains("https://example.com/encrypted-segment0.ts") == true)
 
         val header = fileSystem.read(outputPath) { readByteArray(8) }
         assertEquals("ftyp", header.decodeToString(startIndex = 4, endIndex = 8))
+    }
+
+    @Test
+    fun `download - should preserve upstream playlist metadata in local HLS input`() = testScope.runTest {
+        val downloadId = downloader.downloadWithId(
+            url = "https://example.com/tagged.m3u8",
+            downloadId = DownloadId("tagged-output"),
+        )?.downloadId
+        assertNotNull(downloadId)
+
+        downloader.joinDownload(downloadId)
+
+        val state = downloader.getState(downloadId)
+        assertNotNull(state)
+        assertEquals(DownloadStatus.COMPLETED, state.status)
+        assertEquals(lastInputPlaylistContent?.contains("#EXT-X-PLAYLIST-TYPE:VOD"), true)
+        assertEquals(lastInputPlaylistContent?.contains("#EXT-X-INDEPENDENT-SEGMENTS"), true)
+        assertEquals(lastInputPlaylistContent?.contains("#EXT-X-MEDIA-SEQUENCE:10"), true)
+        assertEquals(lastInputPlaylistContent?.contains("10.ts"), true)
+        assertNotEquals(lastInputPlaylistContent?.contains("segment1.ts"), true)
+    }
+
+    @Test
+    fun `download - ffmpeg failure should end in FAILED state and keep cache`() = testScope.runTest {
+        forceFfmpegFailure = true
+
+        val downloadId = downloader.downloadWithId(
+            url = "https://example.com/master.m3u8",
+            downloadId = DownloadId("ffmpeg-failure"),
+        )?.downloadId
+        assertNotNull(downloadId)
+
+        downloader.joinDownload(downloadId)
+
+        val state = downloader.getState(downloadId)
+        assertNotNull(state)
+        assertEquals(DownloadStatus.FAILED, state.status)
+        assertTrue(fileSystem.exists(Path("$tempDir/segments_$downloadId")))
+        assertFalse(fileSystem.exists(Path("$tempDir/ffmpeg-failure.mp4")))
     }
 
     @Test
@@ -1120,6 +1221,21 @@ class KtorHttpDownloaderTest {
             #EXT-X-ENDLIST
         """
 
+        private const val TAGGED_MEDIA_PLAYLIST = """
+            #EXTM3U
+            #EXT-X-VERSION:6
+            #EXT-X-TARGETDURATION:5
+            #EXT-X-MEDIA-SEQUENCE:10
+            #EXT-X-PLAYLIST-TYPE:VOD
+            #EXT-X-INDEPENDENT-SEGMENTS
+
+            #EXTINF:4.0,
+            segment1.ts
+            #EXTINF:4.0,
+            segment2.ts
+            #EXT-X-ENDLIST
+        """
+
         private val HLS_ENCRYPTION_KEY = byteArrayOf(
             0x00, 0x11, 0x22, 0x33,
             0x44, 0x55, 0x66, 0x77,
@@ -1206,4 +1322,10 @@ private fun FileSystem.metadata(path: Path): FileMetadata = metadataOrNull(path)
 
 private inline fun <R> FileSystem.read(path: Path, function: Source.() -> R): R {
     return source(path).buffered().use { it.function() }
+}
+
+private fun writeBytes(path: Path, data: ByteArray) {
+    SystemFileSystem.sink(path).buffered().use { sink ->
+        sink.write(data, startIndex = 0, endIndex = data.size)
+    }
 }

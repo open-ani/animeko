@@ -44,7 +44,6 @@ kotlin {
         api(projects.utils.coroutines)
         api(libs.kotlinx.datetime)
         api(libs.mediamp.ffmpeg)
-        implementation(libs.korlibs.crypto)
         implementation(projects.utils.logging)
         implementation(projects.utils.ktorClient)
         api(libs.datastore.core)
