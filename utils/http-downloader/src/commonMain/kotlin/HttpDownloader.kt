@@ -106,6 +106,11 @@ interface HttpDownloader : AutoCloseable {
     suspend fun cancelAll()
 
     /**
+     * Removes a download, including any cached files owned by the downloader.
+     */
+    suspend fun remove(downloadId: DownloadId): Boolean
+
+    /**
      * Gets the current state of a download by ID.
      */
     suspend fun getState(downloadId: DownloadId): DownloadState?

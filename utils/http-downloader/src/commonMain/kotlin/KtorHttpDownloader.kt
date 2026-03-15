@@ -66,6 +66,7 @@ import me.him188.ani.utils.httpdownloader.m3u.parseResolvedMediaPlaylist
 import me.him188.ani.utils.io.DEFAULT_BUFFER_SIZE
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.copyTo
+import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.length
@@ -454,6 +455,37 @@ open class KtorHttpDownloader(
             onUpdateDownloadStatus(it, CANCELED)
             emitProgress(it)
         }
+    }
+
+    override suspend fun remove(downloadId: DownloadId): Boolean {
+        val removedState = stateMutex.withLock {
+            val entry = _downloadStatesFlow.value[downloadId] ?: return false
+            if (entry.job?.isActive == true) {
+                logger.info { "Removing download $downloadId and cancelling active job first" }
+                entry.job.cancel()
+            }
+            entry.state
+        }
+
+        val job = stateMutex.withLock { _downloadStatesFlow.value[downloadId]?.job }
+        if (job != null) {
+            try {
+                job.join()
+            } catch (_: CancellationException) {
+            }
+        }
+
+        stateMutex.withLock {
+            val existing = _downloadStatesFlow.value[downloadId] ?: return@withLock
+            _downloadStatesFlow.update { remove(downloadId) }
+            if (existing.job?.isActive == true) {
+                existing.job.cancel()
+            }
+        }
+
+        deleteDownloadArtifacts(removedState)
+        onRemoveDownload(downloadId)
+        return true
     }
 
 
@@ -1052,6 +1084,18 @@ open class KtorHttpDownloader(
         _progressFlow.emit(progress)
     }
 
+    private suspend fun deleteDownloadArtifacts(state: DownloadState) = withContext(ioDispatcher) {
+        val outputPath = baseSaveDir.resolve(state.relativeOutputPath)
+        if (outputPath.inSystem.exists()) {
+            fileSystem.delete(outputPath)
+        }
+
+        val cacheDir = baseSaveDir.resolve(state.relativeSegmentCacheDir)
+        if (cacheDir.inSystem.exists()) {
+            fileSystem.deleteRecursively(cacheDir)
+        }
+    }
+
     private fun createProgress(st: DownloadState): DownloadProgress {
         val downloadedSegments = st.segments.count { it.isDownloaded }
         return DownloadProgress(
@@ -1138,6 +1182,9 @@ open class KtorHttpDownloader(
     open fun onUpdateDownloadState(downloadId: DownloadId, state: DownloadState) {}
 
     open fun onRemoveAllDownloads() {}
+
+    open fun onRemoveDownload(downloadId: DownloadId) {
+    }
 
     private companion object {
         val logger = logger<KtorHttpDownloader>()

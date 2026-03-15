@@ -54,6 +54,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
@@ -599,6 +600,42 @@ class KtorHttpDownloaderTest {
         assertFalse(downloadId in downloader.getActiveDownloadIds())
         // Temporary segment directory should NOT be removed
         assertTrue(fileSystem.exists(Path("$tempDir/segments_$downloadId")))
+    }
+
+    @Test
+    fun `remove - should delete completed output file and state`() = testScope.runTest {
+        val downloadId = DownloadId("removable-complete")
+        downloader.downloadWithId(
+            url = "https://example.com/master.m3u8",
+            downloadId = downloadId,
+        )
+        downloader.joinDownload(downloadId)
+
+        assertTrue(fileSystem.exists(Path("$tempDir/removable-complete.mp4")))
+        assertEquals(DownloadStatus.COMPLETED, downloader.getState(downloadId)?.status)
+
+        val removed = downloader.remove(downloadId)
+
+        assertTrue(removed)
+        assertFalse(fileSystem.exists(Path("$tempDir/removable-complete.mp4")))
+        assertNull(downloader.getState(downloadId))
+    }
+
+    @Test
+    fun `remove - should delete active cache dir and state`() = testScope.runTest {
+        val downloadId = DownloadId("removable-active")
+        downloader.downloadWithId(
+            url = "https://example.com/unstable-playlist1.m3u8",
+            downloadId = downloadId,
+        )
+
+        assertTrue(fileSystem.exists(Path("$tempDir/segments_$downloadId")))
+
+        val removed = downloader.remove(downloadId)
+
+        assertTrue(removed)
+        assertFalse(fileSystem.exists(Path("$tempDir/segments_$downloadId")))
+        assertNull(downloader.getState(downloadId))
     }
 
     // ----------------------------------------------------

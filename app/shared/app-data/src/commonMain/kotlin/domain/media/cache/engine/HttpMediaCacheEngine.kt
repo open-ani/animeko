@@ -45,7 +45,9 @@ import me.him188.ani.utils.httpdownloader.DownloadStatus
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.actualSize
+import me.him188.ani.utils.io.delete
 import me.him188.ani.utils.io.deleteRecursively
+import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
@@ -328,10 +330,30 @@ class HttpMediaCacheEngine(
             if (isDeleted.value) return
             closeMutex.withLock {
                 if (isDeleted.value) return
-                downloader.cancel(downloadId)
+                val removed = downloader.remove(downloadId)
+                if (!removed) {
+                    dao.getById(downloadId)?.let { state ->
+                        deleteDownloadFiles(state)
+                    }
+                }
                 isDeleted.value = true
             }
         }
+    }
+
+    private suspend fun deleteDownloadFiles(state: DownloadState) {
+        withContext(Dispatchers.IO_) {
+            val outputPath = Path(saveDir, state.relativeOutputPath).inSystem
+            if (outputPath.exists()) {
+                outputPath.delete()
+            }
+
+            val cacheDir = Path(saveDir, state.relativeSegmentCacheDir).inSystem
+            if (cacheDir.exists()) {
+                cacheDir.deleteRecursively()
+            }
+        }
+        dao.deleteById(state.downloadId)
     }
 
     companion object {
