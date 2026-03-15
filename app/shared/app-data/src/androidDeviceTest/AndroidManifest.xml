@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application
+        android:networkSecurityConfig="@xml/android_device_test_network_security_config"
+        android:usesCleartextTraffic="true">
+        <activity android:name="androidx.activity.ComponentActivity" />
+    </application>
+</manifest>

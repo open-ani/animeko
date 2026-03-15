@@ -88,6 +88,13 @@ fun MediaSourceResultsView(
                 mediaSelector.removePreferencesUntilFirstCandidate()
             }
         },
+        onResolveCaptcha = { item ->
+            scope.launch {
+                if (mediaSelector.resolveCaptcha(item.instanceId)) {
+                    onRestartSource(item.instanceId)
+                }
+            }
+        },
         onRefresh,
         onRestartSource,
         modifier,
@@ -99,6 +106,7 @@ fun MediaSourceResultsView(
     sourceResults: MediaSourceResultListPresentation,
     sourceSelected: (String) -> Boolean,
     onClickEnabled: (mediaSourceId: String) -> Unit,
+    onResolveCaptcha: (MediaSourceResultPresentation) -> Unit = {},
     onRefresh: () -> Unit,
     onRestartSource: (instanceId: String) -> Unit,
     modifier: Modifier = Modifier,
@@ -156,9 +164,15 @@ fun MediaSourceResultsView(
             Modifier,
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            val onClick: (MediaSourceResultPresentation) -> Unit = remember(onClickEnabled) {
+            val onClick: (MediaSourceResultPresentation) -> Unit = remember(
+                onClickEnabled,
+                onResolveCaptcha,
+                onRestartSource,
+            ) {
                 { item ->
-                    if (item.isDisabled || item.isFailedOrAbandoned) {
+                    if (item.isCaptchaRequired) {
+                        onResolveCaptcha(item)
+                    } else if (item.isDisabled || item.isFailedOrAbandoned) {
                         onRestartSource(item.instanceId)
                     } else {
                         onClickEnabled(item.mediaSourceId)
@@ -331,6 +345,13 @@ private fun MediaSourceResultCard(
                                 }
                             }
 
+                            source.isCaptchaRequired -> {
+                                CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.error) {
+                                    Icon(Icons.AutoMirrored.Outlined.HelpOutline, "需要验证码")
+                                    Text("点击验证")
+                                }
+                            }
+
                             else -> {
                                 Icon(Icons.Outlined.Check, "查询成功")
                                 Text(remember(source.totalCount) { "${source.totalCount}" })
@@ -365,6 +386,12 @@ private fun MediaSourceResultCard(
                     source.isFailedOrAbandoned -> {
                         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.error) {
                             Icon(Icons.Outlined.Close, "查询失败")
+                        }
+                    }
+
+                    source.isCaptchaRequired -> {
+                        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.error) {
+                            Text("验证")
                         }
                     }
 

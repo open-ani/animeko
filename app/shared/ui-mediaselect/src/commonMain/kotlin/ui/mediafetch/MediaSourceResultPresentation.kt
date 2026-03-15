@@ -27,10 +27,13 @@ import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
+import me.him188.ani.app.domain.media.fetch.isCaptchaRequired
 import me.him188.ani.app.domain.media.fetch.MediaSourceResultsFilterer
 import me.him188.ani.app.domain.media.fetch.isDisabled
 import me.him188.ani.app.domain.media.fetch.isFailedOrAbandoned
 import me.him188.ani.app.domain.media.fetch.isWorking
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
+import me.him188.ani.app.domain.mediasource.web.displayName
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -59,6 +62,9 @@ data class MediaSourceResultPresentation(
     val isWorking: Boolean get() = state.isWorking
     val isDisabled: Boolean get() = state.isDisabled
     val isFailedOrAbandoned: Boolean get() = state.isFailedOrAbandoned
+    val isCaptchaRequired: Boolean get() = state.isCaptchaRequired
+    val captchaRequest: WebCaptchaRequest? get() = (state as? MediaSourceFetchState.CaptchaRequired)?.request
+    val captchaMessage: String? get() = captchaRequest?.kind?.let { "需要处理${it.displayName()}" }
 }
 
 /**
@@ -277,4 +283,3 @@ private class TestMediaSourceResult(
         }
     }
 }
-

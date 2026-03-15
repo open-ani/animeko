@@ -34,11 +34,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowOutward
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -63,7 +66,10 @@ import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresenta
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestSearchSubjectResult
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
+import me.him188.ani.app.domain.mediasource.web.NoopWebCaptchaCoordinator
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
 import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
+import me.him188.ani.app.domain.mediasource.web.displayName
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.layout.cardHorizontalPadding
@@ -114,6 +120,20 @@ fun SharedTransitionScope.SelectorTestPane(
                     stringResource(Lang.settings_mediasource_selector_test_title),
                     style = MaterialTheme.typography.headlineSmall,
                 )
+                Row(
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(
+                        onClick = { state.resetCaptchaSession() },
+                        enabled = presentation.hasCaptchaSession && !presentation.isHandlingCaptcha,
+                    ) {
+                        Icon(Icons.Rounded.Refresh, contentDescription = null)
+                        Text("重置验证码会话", Modifier.padding(start = 8.dp))
+                    }
+                }
 
                 EditTestDataCard(
                     state,
@@ -136,6 +156,12 @@ fun SharedTransitionScope.SelectorTestPane(
                         minimumDurationMillis = 300,
                     )
                 }
+
+                SelectorCaptchaHintRow(
+                    request = presentation.subjectCaptchaRequest,
+                    isHandlingCaptcha = presentation.isHandlingCaptcha,
+                    onSolve = { state.solveCaptcha(it, forEpisodeSearch = false) },
+                )
 
                 AnimatedContent(
                     presentation.subjectSearchResult,
@@ -207,6 +233,12 @@ fun SharedTransitionScope.SelectorTestPane(
                             minimumDurationMillis = 300,
                         )
                     }
+
+                    SelectorCaptchaHintRow(
+                        request = presentation.episodeCaptchaRequest,
+                        isHandlingCaptcha = presentation.isHandlingCaptcha,
+                        onSolve = { state.solveCaptcha(it, forEpisodeSearch = true) },
+                    )
                 }
             }
 
@@ -261,6 +293,32 @@ fun SharedTransitionScope.SelectorTestPane(
 }
 
 @Composable
+private fun SelectorCaptchaHintRow(
+    request: WebCaptchaRequest?,
+    isHandlingCaptcha: Boolean,
+    onSolve: (WebCaptchaRequest) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (request == null) return
+    TextButton(
+        onClick = { onSolve(request) },
+        enabled = !isHandlingCaptcha,
+        modifier = modifier,
+    ) {
+        Icon(Icons.Rounded.WarningAmber, contentDescription = null)
+        Text(
+            if (isHandlingCaptcha) {
+                "正在处理${request.kind.displayName()}"
+            } else {
+                "需要处理${request.kind.displayName()}"
+            },
+            modifier = Modifier.padding(start = 8.dp),
+            color = MaterialTheme.colorScheme.error,
+        )
+    }
+}
+
+@Composable
 private fun EditTestDataCard(
     state: SelectorTestState,
     modifier: Modifier = Modifier,
@@ -292,7 +350,11 @@ fun PreviewSelectorTestPane() = ProvideCompositionLocalsForPreview {
                     remember {
                         SelectorTestState(
                             searchConfigState = mutableStateOf(SelectorSearchConfig.Empty),
-                            tester = SelectorMediaSourceTester(TestSelectorMediaSourceEngine()),
+                            tester = SelectorMediaSourceTester(
+                                engine = TestSelectorMediaSourceEngine(),
+                                webCaptchaCoordinator = NoopWebCaptchaCoordinator,
+                                mediaSourceId = "preview-selector-test",
+                            ),
                             backgroundScope = scope,
                         ).apply {
                             restartCurrentSubjectSearch()

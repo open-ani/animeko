@@ -25,6 +25,7 @@ import me.him188.ani.app.data.models.preference.VideoResolverSettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor.Instruction
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.platform.AniCefApp
 import me.him188.ani.app.platform.Context
@@ -58,7 +59,8 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 class DesktopWebMediaResolver(
     private val context: DesktopContext,
-    private val matcherLoader: MediaSourceWebVideoMatcherLoader
+    private val matcherLoader: MediaSourceWebVideoMatcherLoader,
+    private val webCaptchaCoordinator: WebCaptchaCoordinator,
 ) : MediaResolver, KoinComponent {
     private companion object {
         private val logger = logger<DesktopWebMediaResolver>()
@@ -96,19 +98,28 @@ class DesktopWebMediaResolver(
                     .firstOrNull { it !is WebVideoMatcher.MatchResult.Continue }
             }
 
-            val webVideo = CefVideoExtractor(proxyProvider.proxy.first(), resolverSettings)
-                .getVideoResourceUrl(
-                    this@DesktopWebMediaResolver.context,
-                    media.download.uri,
-                    webViewConfig,
-                    resourceMatcher = {
-                        when (match(it)) {
-                            WebVideoMatcher.MatchResult.Continue -> Instruction.Continue
-                            WebVideoMatcher.MatchResult.LoadPage -> Instruction.LoadPage
-                            is WebVideoMatcher.MatchResult.Matched -> Instruction.FoundResource
-                            null -> Instruction.Continue
-                        }
-                    },
+            val resourceMatcher = { url: String ->
+                when (match(url)) {
+                    WebVideoMatcher.MatchResult.Continue -> Instruction.Continue
+                    WebVideoMatcher.MatchResult.LoadPage -> Instruction.LoadPage
+                    is WebVideoMatcher.MatchResult.Matched -> Instruction.FoundResource
+                    null -> Instruction.Continue
+                }
+            }
+
+            val webVideo = (
+                webCaptchaCoordinator.extractVideoResourceInSolvedSession(
+                    mediaSourceId = media.mediaSourceId,
+                    pageUrl = media.download.uri,
+                    timeoutMillis = resolverSettings.effectiveResourceExtractionTimeoutMillis,
+                    resourceMatcher = resourceMatcher,
+                ) ?: CefVideoExtractor(proxyProvider.proxy.first(), resolverSettings)
+                    .getVideoResourceUrl(
+                        this@DesktopWebMediaResolver.context,
+                        media.download.uri,
+                        webViewConfig,
+                        resourceMatcher = resourceMatcher,
+                    )
                 )?.let {
                     (match(it.url) as? WebVideoMatcher.MatchResult.Matched)?.video
                 } ?: throw MediaResolutionException(ResolutionFailures.NO_MATCHING_RESOURCE)

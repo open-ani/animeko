@@ -50,6 +50,7 @@ import me.him188.ani.app.data.repository.RepositoryRequestError
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
 import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
+import me.him188.ani.app.domain.mediasource.web.CaptchaRequiredException
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.paging.SizedSource
@@ -200,7 +201,10 @@ class MediaSourceMediaFetcher(
                         sources.results.map { it.media }
                     }
                     .catch { exception ->
-                        state.value = MediaSourceFetchState.Failed(exception, restartCount)
+                        state.value = when (exception) {
+                            is CaptchaRequiredException -> MediaSourceFetchState.CaptchaRequired(exception.request, restartCount)
+                            else -> MediaSourceFetchState.Failed(exception, restartCount)
+                        }
                         logUpstreamException(exception)
                     }
                     .runningFold(emptyList<Media>()) { acc, list ->
@@ -249,6 +253,10 @@ class MediaSourceMediaFetcher(
 
                 is IOException -> {
                     logger.warn { "Failed to fetch media from ${sourceInfo.displayName} due to network error" }
+                }
+
+                is CaptchaRequiredException -> {
+                    logger.warn { "Failed to fetch media from ${sourceInfo.displayName} due to captcha: ${exception.request.kind}" }
                 }
 
                 is CancellationException -> {

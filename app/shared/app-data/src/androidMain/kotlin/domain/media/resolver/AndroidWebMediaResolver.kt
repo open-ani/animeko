@@ -30,6 +30,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor.Instruction
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.matcher.MediaSourceWebVideoMatcherLoader
@@ -50,6 +51,7 @@ import java.util.concurrent.ConcurrentSkipListSet
 class AndroidWebMediaResolver(
     private val matcherLoader: MediaSourceWebVideoMatcherLoader,
     private val settingsRepository: SettingsRepository,
+    private val webCaptchaCoordinator: WebCaptchaCoordinator,
 ) : MediaResolver {
     private companion object {
         private val logger = logger<AndroidWebMediaResolver>()
@@ -99,18 +101,28 @@ class AndroidWebMediaResolver(
         logger.info { "Final config: $config" }
         val timeoutMillis = settingsRepository.videoResolverSettings.flow.first().effectiveResourceExtractionTimeoutMillis
 
-        val webVideo = AndroidWebViewVideoExtractor(timeoutMillis).getVideoResourceUrl(
-            attached ?: throw IllegalStateException("WebVideoSourceResolver not attached"),
-            media.download.uri,
-            config,
-        ) {
-            when (match(it)) {
+        val resourceMatcher = { url: String ->
+            when (match(url)) {
                 WebVideoMatcher.MatchResult.Continue -> Instruction.Continue
                 WebVideoMatcher.MatchResult.LoadPage -> Instruction.LoadPage
                 is WebVideoMatcher.MatchResult.Matched -> Instruction.FoundResource
                 null -> Instruction.Continue
             }
-        }?.let { resource ->
+        }
+
+        val webVideo = (
+            webCaptchaCoordinator.extractVideoResourceInSolvedSession(
+                mediaSourceId = media.mediaSourceId,
+                pageUrl = media.download.uri,
+                timeoutMillis = timeoutMillis,
+                resourceMatcher = resourceMatcher,
+            ) ?: AndroidWebViewVideoExtractor(timeoutMillis).getVideoResourceUrl(
+                attached ?: throw IllegalStateException("WebVideoSourceResolver not attached"),
+                media.download.uri,
+                config,
+                resourceMatcher,
+            )
+            )?.let { resource ->
             allMatchers.firstNotNullOfOrNull { matcher ->
                 matcher.match(resource.url, context).videoOrNull
             }
@@ -225,8 +237,6 @@ class AndroidWebViewVideoExtractor(
         webView.settings.javaScriptEnabled = true
         webView.settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
         webView.settings.domStorageEnabled = true
-        webView.settings.userAgentString =
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         webView.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(
                 view: WebView,

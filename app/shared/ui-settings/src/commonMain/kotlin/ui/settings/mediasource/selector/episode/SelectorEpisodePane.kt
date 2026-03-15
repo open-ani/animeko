@@ -72,6 +72,7 @@ import me.him188.ani.app.domain.media.resolver.TestWebViewVideoExtractor
 import me.him188.ani.app.domain.mediasource.codec.createTestMediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.test.buildMatchTags
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
+import me.him188.ani.app.domain.mediasource.web.NoopWebCaptchaCoordinator
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.platform.LocalContext
@@ -495,8 +496,10 @@ internal fun rememberTestEditSelectorMediaSourceState(
             engine = TestSelectorMediaSourceEngine(),
             webViewVideoExtractor = stateOf(TestWebViewVideoExtractor(urls)),
             codecManager = createTestMediaSourceCodecManager(),
+            webCaptchaCoordinator = NoopWebCaptchaCoordinator,
+            testMediaSourceId = "preview-selector-test",
             backgroundScope = scope,
-            context,
+            context = context,
             flowDispatcher = EmptyCoroutineContext,
         )
     }

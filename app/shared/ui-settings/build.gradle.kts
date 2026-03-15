@@ -44,6 +44,7 @@ kotlin {
         implementation(libs.atomicfu)
     }
     sourceSets.commonTest.dependencies {
+        implementation(libs.kotlinx.coroutines.test)
     }
     sourceSets.androidMain.dependencies {
     }

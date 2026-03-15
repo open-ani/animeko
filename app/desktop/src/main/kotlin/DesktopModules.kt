@@ -31,6 +31,8 @@ import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
+import me.him188.ani.app.domain.mediasource.web.DesktopWebCaptchaCoordinator
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
 import me.him188.ani.app.domain.torrent.DefaultTorrentManager
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.navigation.BrowserNavigator
@@ -121,6 +123,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
         MediampPlayerFactoryLoader.first()
     }
     single<BrowserNavigator> { DesktopBrowserNavigator() }
+    single<WebCaptchaCoordinator> { DesktopWebCaptchaCoordinator(AniDesktopCaptchaTopBar) }
     factory<MediaResolver> {
         MediaResolver.from(
             get<TorrentManager>().engines
@@ -131,6 +134,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
                     DesktopWebMediaResolver(
                         getContext(),
                         get<MediaSourceManager>().webVideoMatcherLoader,
+                        get<WebCaptchaCoordinator>(),
                     ),
                 ),
         )

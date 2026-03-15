@@ -45,6 +45,8 @@ import me.him188.ani.app.domain.media.resolver.IosWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileUriMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
+import me.him188.ani.app.domain.mediasource.web.NoopWebCaptchaCoordinator
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
 import me.him188.ani.app.domain.torrent.DefaultTorrentManager
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.navigation.AniNavigator
@@ -263,6 +265,7 @@ fun getIosModules(
         GrantedPermissionManager
     }
     single<BrowserNavigator> { IosBrowserNavigator() }
+    single<WebCaptchaCoordinator> { NoopWebCaptchaCoordinator }
     single<TorrentManager> {
         DefaultTorrentManager.create(
             coroutineScope.coroutineContext,

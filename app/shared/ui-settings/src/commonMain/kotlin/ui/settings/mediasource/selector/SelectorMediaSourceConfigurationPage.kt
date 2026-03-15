@@ -36,6 +36,7 @@ import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.web.DefaultSelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.platform.currentAniBuildConfig
@@ -59,6 +60,7 @@ class EditSelectorMediaSourceViewModel(
     private val settingsRepository: SettingsRepository by inject()
     private val proxyProvider: ProxyProvider by inject()
     private val clientProvider: HttpClientProvider by inject()
+    private val webCaptchaCoordinator: WebCaptchaCoordinator by inject()
 
     private val instanceId: MutableStateFlow<String> = MutableStateFlow(initialInstanceId)
 
@@ -112,6 +114,8 @@ class EditSelectorMediaSourceViewModel(
                         WebViewVideoExtractor(proxySettings, videoResolverSettings)
                     }.produceState(null, this),
                     codecManager = get<MediaSourceCodecManager>(),
+                    webCaptchaCoordinator = webCaptchaCoordinator,
+                    testMediaSourceId = "selector-test:$instanceId",
                     backgroundScope = this,
                     context,
                     flowDispatcher = Dispatchers.Default,

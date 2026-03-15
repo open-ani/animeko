@@ -26,15 +26,21 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.repository.RepositoryAuthorizationException
+import me.him188.ani.app.data.repository.RepositoryRateLimitedException
+import me.him188.ani.app.domain.mediasource.MediaSourceEngineHelpers
 import me.him188.ani.app.domain.mediasource.test.web.SelectorMediaSourceTester
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodeListResult
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestSearchSubjectResult
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestSubjectPresentation
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaSolveResult
 import me.him188.ani.app.ui.settings.mediasource.AbstractMediaSourceTestState
 import me.him188.ani.datasources.api.EpisodeSort
-import me.him188.ani.utils.coroutines.flows.combine
+import me.him188.ani.utils.coroutines.flows.combine as combineMany
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.seconds
 
@@ -48,6 +54,10 @@ data class SelectorTestPresentation(
     val filteredEpisodes: List<SelectorTestEpisodePresentation>?,
     val filterByChannel: String?,
     val selectedSubjectIndex: Int,
+    val subjectCaptchaRequest: WebCaptchaRequest?,
+    val episodeCaptchaRequest: WebCaptchaRequest?,
+    val hasCaptchaSession: Boolean,
+    val isHandlingCaptcha: Boolean,
     val isPlaceholder: Boolean = false,
 ) {
     @Stable
@@ -62,6 +72,10 @@ data class SelectorTestPresentation(
             filteredEpisodes = null,
             filterByChannel = null,
             selectedSubjectIndex = 0,
+            subjectCaptchaRequest = null,
+            episodeCaptchaRequest = null,
+            hasCaptchaSession = false,
+            isHandlingCaptcha = false,
             isPlaceholder = true,
         )
     }
@@ -71,26 +85,11 @@ data class SelectorTestPresentation(
 class SelectorTestState(
     private val searchConfigState: State<SelectorSearchConfig?>,
     private val tester: SelectorMediaSourceTester,
-    backgroundScope: CoroutineScope,
+    private val backgroundScope: CoroutineScope,
 ) : AbstractMediaSourceTestState() {
-    private val selectedSubjectIndexFlow = MutableStateFlow<Int>(0)
-
-    fun selectSubjectIndex(index: Int) {
-        selectedSubjectIndexFlow.value = index
-        tester.setSubjectIndex(index)
-    }
-
+    private val selectedSubjectIndexFlow = MutableStateFlow(0)
     private val filterByChannelFlow = MutableStateFlow<String?>(null)
-    fun filterByChannel(channel: String?) {
-        filterByChannelFlow.value = channel
-    }
-
-    private val selectedSubjectFlow = tester.subjectSelectionResultFlow
-        .combine(selectedSubjectIndexFlow) { subjectSearchSelectResult, selectedSubjectIndex ->
-            val success = subjectSearchSelectResult as? SelectorTestSearchSubjectResult.Success
-                ?: return@combine null
-            success.subjects.getOrNull(selectedSubjectIndex)
-        }
+    private val isHandlingCaptchaFlow = MutableStateFlow(false)
 
     private val searchUrl by derivedStateOf {
         searchConfigState.value?.searchUrl
@@ -99,20 +98,42 @@ class SelectorTestState(
         searchConfigState.value?.searchUseOnlyFirstWord
     }
 
-    private val filteredEpisodesFlow = tester.episodeListSelectionResultFlow
-        .combine(filterByChannelFlow) { result, filterByChannel ->
-            when (result) {
-                is SelectorTestEpisodeListResult.Success -> result.episodes.filter {
-                    filterByChannel == null || it.channel == filterByChannel
-                }
+    val gridState = LazyGridState()
 
-                is SelectorTestEpisodeListResult.ApiError -> null
-                SelectorTestEpisodeListResult.InvalidConfig -> null
-                is SelectorTestEpisodeListResult.UnknownError -> null
+    fun selectSubjectIndex(index: Int) {
+        selectedSubjectIndexFlow.value = index
+        tester.setSubjectIndex(index)
+    }
+
+    fun filterByChannel(channel: String?) {
+        filterByChannelFlow.value = channel
+    }
+
+    private val selectedSubjectFlow = combine(
+        tester.subjectSelectionResultFlow,
+        selectedSubjectIndexFlow,
+    ) { subjectSearchResult, selectedSubjectIndex ->
+        val success = subjectSearchResult as? SelectorTestSearchSubjectResult.Success ?: return@combine null
+        success.subjects.getOrNull(selectedSubjectIndex)
+    }
+
+    private val filteredEpisodesFlow = combine(
+        tester.episodeListSelectionResultFlow,
+        filterByChannelFlow,
+    ) { result, filterByChannel ->
+        when (result) {
+            is SelectorTestEpisodeListResult.Success -> result.episodes.filter {
+                filterByChannel == null || it.channel == filterByChannel
             }
-        }
 
-    val presentation = combine(
+            is SelectorTestEpisodeListResult.ApiError -> null
+            is SelectorTestEpisodeListResult.CaptchaRequired -> null
+            SelectorTestEpisodeListResult.InvalidConfig -> null
+            is SelectorTestEpisodeListResult.UnknownError -> null
+        }
+    }
+
+    val presentation = combineMany(
         tester.subjectSearchRunning.isRunning,
         tester.episodeSearchRunning.isRunning,
         tester.subjectSelectionResultFlow,
@@ -121,15 +142,92 @@ class SelectorTestState(
         filteredEpisodesFlow,
         filterByChannelFlow,
         selectedSubjectIndexFlow,
-        transform = ::SelectorTestPresentation,
-    ).shareIn(backgroundScope, SharingStarted.WhileSubscribed(5000), 1)
+        tester.hasCaptchaSession,
+        isHandlingCaptchaFlow,
+    ) { isSearchingSubject,
+        isSearchingEpisode,
+        subjectSearchResult,
+        episodeListSearchResult,
+        selectedSubject,
+        filteredEpisodes,
+        filterByChannel,
+        selectedSubjectIndex,
+        hasCaptchaSession,
+        isHandlingCaptcha,
+        ->
+        val normalizedSubjectSearchResult = normalizeSubjectSearchResult(subjectSearchResult)
+        val normalizedEpisodeListSearchResult =
+            normalizeEpisodeListSearchResult(episodeListSearchResult, selectedSubject)
+        SelectorTestPresentation(
+            isSearchingSubject = isSearchingSubject,
+            isSearchingEpisode = isSearchingEpisode,
+            subjectSearchResult = normalizedSubjectSearchResult,
+            episodeListSearchResult = normalizedEpisodeListSearchResult,
+            selectedSubject = selectedSubject,
+            filteredEpisodes = filteredEpisodes,
+            filterByChannel = filterByChannel,
+            selectedSubjectIndex = selectedSubjectIndex,
+            subjectCaptchaRequest = (normalizedSubjectSearchResult as? SelectorTestSearchSubjectResult.CaptchaRequired)?.request,
+            episodeCaptchaRequest = (normalizedEpisodeListSearchResult as? SelectorTestEpisodeListResult.CaptchaRequired)?.request,
+            hasCaptchaSession = hasCaptchaSession,
+            isHandlingCaptcha = isHandlingCaptcha,
+        )
+    }.shareIn(backgroundScope, SharingStarted.WhileSubscribed(5000), replay = 1)
 
-    val gridState = LazyGridState()
+    private fun normalizeSubjectSearchResult(
+        result: SelectorTestSearchSubjectResult?,
+    ): SelectorTestSearchSubjectResult? {
+        val apiError = result as? SelectorTestSearchSubjectResult.ApiError ?: return result
+        val exception = apiError.exception
+        if (exception !is RepositoryAuthorizationException && exception !is RepositoryRateLimitedException) {
+            return result
+        }
+        val searchConfig = searchConfigState.value ?: return result
+        if (searchConfig.searchUrl.isBlank()) return result
+        val pageUrl = createSearchUrl(searchConfig)
+        return SelectorTestSearchSubjectResult.CaptchaRequired(
+            WebCaptchaRequest(
+                mediaSourceId = tester.mediaSourceId,
+                pageUrl = pageUrl,
+                kind = WebCaptchaKind.Unknown,
+            ),
+        )
+    }
+
+    private fun normalizeEpisodeListSearchResult(
+        result: SelectorTestEpisodeListResult?,
+        selectedSubject: SelectorTestSubjectPresentation?,
+    ): SelectorTestEpisodeListResult? {
+        val apiError = result as? SelectorTestEpisodeListResult.ApiError ?: return result
+        val exception = apiError.exception
+        if (exception !is RepositoryAuthorizationException && exception !is RepositoryRateLimitedException) {
+            return result
+        }
+        val pageUrl = selectedSubject?.subjectDetailsPageUrl ?: return result
+        return SelectorTestEpisodeListResult.CaptchaRequired(
+            WebCaptchaRequest(
+                mediaSourceId = tester.mediaSourceId,
+                pageUrl = pageUrl,
+                kind = WebCaptchaKind.Unknown,
+            ),
+        )
+    }
+
+    private fun createSearchUrl(
+        searchConfig: SelectorSearchConfig,
+    ): String {
+        val encodedUrl = MediaSourceEngineHelpers.encodeUrlSegment(
+            MediaSourceEngineHelpers.getSearchKeyword(
+                searchKeyword,
+                searchConfig.searchRemoveSpecial,
+                searchConfig.searchUseOnlyFirstWord,
+            ),
+        )
+        return searchConfig.searchUrl.replace("{keyword}", encodedUrl)
+    }
 
     @UiThread
     suspend fun observeChanges() {
-        // 监听各 UI 编辑属性的变化, 发起重新搜索
-
         try {
             coroutineScope {
                 launch {
@@ -137,13 +235,13 @@ class SelectorTestState(
                         snapshotFlow { searchKeyword },
                         snapshotFlow { searchUrl },
                         snapshotFlow { useOnlyFirstWord },
-                        snapshotFlow { searchConfigState.value },
-                    ) { searchKeyword, searchUrl, useOnlyFirstWord, searchConfigState ->
+                        snapshotFlow { searchConfigState.value?.searchRemoveSpecial },
+                    ) { searchKeyword, searchUrl, useOnlyFirstWord, searchRemoveSpecial ->
                         SelectorMediaSourceTester.SubjectQuery(
-                            searchKeyword,
-                            searchUrl,
-                            useOnlyFirstWord,
-                            searchConfigState?.searchRemoveSpecial,
+                            searchKeyword = searchKeyword,
+                            searchUrl = searchUrl,
+                            searchUseOnlyFirstWord = useOnlyFirstWord,
+                            searchRemoveSpecial = searchRemoveSpecial,
                         )
                     }.distinctUntilChanged().debounce(0.5.seconds).collect { query ->
                         tester.setSubjectQuery(query)
@@ -151,16 +249,21 @@ class SelectorTestState(
                 }
 
                 launch {
-                    snapshotFlow { searchConfigState.value }.distinctUntilChanged().debounce(0.5.seconds)
+                    snapshotFlow { searchConfigState.value }
+                        .distinctUntilChanged()
+                        .debounce(0.5.seconds)
                         .collect { config ->
                             tester.setSelectorSearchConfig(config)
                         }
                 }
 
                 launch {
-                    snapshotFlow { sort }.distinctUntilChanged().debounce(0.5.seconds).collect { sort ->
-                        tester.setEpisodeQuery(SelectorMediaSourceTester.EpisodeQuery(EpisodeSort(sort)))
-                    }
+                    snapshotFlow { sort }
+                        .distinctUntilChanged()
+                        .debounce(0.5.seconds)
+                        .collect { sort ->
+                            tester.setEpisodeQuery(SelectorMediaSourceTester.EpisodeQuery(EpisodeSort(sort)))
+                        }
                 }
             }
         } catch (e: CancellationException) {
@@ -169,7 +272,6 @@ class SelectorTestState(
         }
     }
 
-
     fun restartCurrentSubjectSearch() {
         tester.subjectSearchLifecycle.restart()
     }
@@ -177,5 +279,27 @@ class SelectorTestState(
     fun restartCurrentEpisodeSearch() {
         tester.episodeSearchLifecycle.restart()
     }
-}
 
+    fun solveCaptcha(request: WebCaptchaRequest, forEpisodeSearch: Boolean) {
+        backgroundScope.launch {
+            isHandlingCaptchaFlow.value = true
+            try {
+                if (tester.solveCaptchaInteractively(request) is WebCaptchaSolveResult.Solved) {
+                    if (forEpisodeSearch) {
+                        restartCurrentEpisodeSearch()
+                    } else {
+                        restartCurrentSubjectSearch()
+                    }
+                }
+            } finally {
+                isHandlingCaptchaFlow.value = false
+            }
+        }
+    }
+
+    fun resetCaptchaSession() {
+        tester.resetCaptchaSession()
+        restartCurrentSubjectSearch()
+        restartCurrentEpisodeSearch()
+    }
+}

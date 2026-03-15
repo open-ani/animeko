@@ -34,6 +34,7 @@ kotlin {
         implementation(projects.utils.logging)
     }
     sourceSets.commonTest.dependencies {
+        implementation(projects.utils.uiTesting)
     }
     sourceSets.androidMain.dependencies {
     }

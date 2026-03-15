@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.media.fetch
 
 import androidx.compose.runtime.Stable
+import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
 
 /**
  * @see MediaSourceFetchResult.state
@@ -40,6 +41,11 @@ sealed class MediaSourceFetchState {
         val cause: Throwable, override val id: Int,
     ) : Completed()
 
+    data class CaptchaRequired(
+        val request: WebCaptchaRequest,
+        override val id: Int,
+    ) : Completed()
+
     /**
      * Failed because the flow collector has thrown an exception (and stopped collection)
      */
@@ -52,3 +58,4 @@ val MediaSourceFetchState.isWorking get() = this is MediaSourceFetchState.Workin
 val MediaSourceFetchState.isDisabled get() = this is MediaSourceFetchState.Disabled
 val MediaSourceFetchState.isFinal get() = this is MediaSourceFetchState.Completed || this is MediaSourceFetchState.Disabled
 val MediaSourceFetchState.isFailedOrAbandoned get() = this is MediaSourceFetchState.Failed || this is MediaSourceFetchState.Abandoned
+val MediaSourceFetchState.isCaptchaRequired get() = this is MediaSourceFetchState.CaptchaRequired
