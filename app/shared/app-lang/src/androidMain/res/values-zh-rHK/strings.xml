@@ -214,6 +214,9 @@
     <string name="settings_media_source_sort">排序</string>
     <string name="settings_media_source_stop_test">終止測試</string>
     <string name="settings_media_source_start_test">開始測試</string>
+    <string name="settings_media_source_clear_invalid">清除無效源(%1$d)</string>
+    <string name="settings_media_source_clear_invalid_confirmation">確定要刪除 %1$d 個無效數據源嗎？</string>
+    <string name="settings_media_source_clear_invalid_result">已清除 %1$d 個無效源，失敗 %2$d 個。</string>
     <string name="settings_media_source_delete">刪除數據源</string>
     <string name="settings_media_source_delete_no_config">該數據源無特殊配置，刪除後可以重新從模板直接添加，確認刪除嗎？</string>
     <string name="settings_media_source_delete_with_config">該數據源有配置，刪除後將丟失配置，之後從模板添加時需要重新配置，確認刪除嗎？</string>
