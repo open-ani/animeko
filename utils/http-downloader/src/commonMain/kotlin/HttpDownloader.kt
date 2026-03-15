@@ -148,6 +148,7 @@ data class DownloadError(
 data class DownloadProgress(
     val downloadId: DownloadId,
     val url: String,
+    val mediaType: MediaType,
     val totalSegments: Int,
     val downloadedSegments: Int,
     val downloadedBytes: Long,

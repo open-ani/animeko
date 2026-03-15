@@ -40,9 +40,11 @@ import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.httpdownloader.DownloadId
 import me.him188.ani.utils.httpdownloader.DownloadOptions
+import me.him188.ani.utils.httpdownloader.DownloadProgress
 import me.him188.ani.utils.httpdownloader.DownloadState
 import me.him188.ani.utils.httpdownloader.DownloadStatus
 import me.him188.ani.utils.httpdownloader.HttpDownloader
+import me.him188.ani.utils.httpdownloader.MediaType
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.actualSize
 import me.him188.ani.utils.io.delete
@@ -233,13 +235,7 @@ class HttpMediaCacheEngine(
             MediaCache.FileStats(
                 totalSize = totalSize.bytes,
                 downloadedBytes = downloadedBytes.bytes,
-                downloadProgress = if (
-                    it.status == DownloadStatus.COMPLETED
-                ) {
-                    1f.toProgress()
-                } else {
-                    Progress.Unspecified
-                }, // m3u8 has no total size.
+                downloadProgress = it.toHttpCacheProgress(),
             )
         }
         override val sessionStats: Flow<MediaCache.SessionStats> = run {
@@ -362,6 +358,32 @@ class HttpMediaCacheEngine(
         @Deprecated("Use HttpMediaCacheEngine.MEDIA_CACHE_DIR instead")
         const val LEGACY_MEDIA_CACHE_DIR = "web-m3u-cache"
         const val MEDIA_CACHE_DIR = "web-m3u"
+    }
+}
+
+internal fun DownloadProgress.toHttpCacheProgress(): Progress {
+    if (status == DownloadStatus.COMPLETED) {
+        return 1f.toProgress()
+    }
+
+    return when (mediaType) {
+        MediaType.M3U8 -> {
+            if (totalSegments <= 0) {
+                Progress.Unspecified
+            } else {
+                (downloadedSegments.toFloat() / totalSegments.toFloat()).toProgress()
+            }
+        }
+
+        MediaType.MP4,
+        MediaType.MKV,
+            -> {
+            if (totalBytes <= 0L) {
+                Progress.Unspecified
+            } else {
+                (downloadedBytes.toFloat() / totalBytes.toFloat()).toProgress()
+            }
+        }
     }
 }
 

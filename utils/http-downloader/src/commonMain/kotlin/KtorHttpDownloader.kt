@@ -1101,6 +1101,7 @@ open class KtorHttpDownloader(
         return DownloadProgress(
             downloadId = st.downloadId,
             url = st.url,
+            mediaType = st.mediaType,
             totalSegments = st.totalSegments,
             downloadedSegments = downloadedSegments,
             downloadedBytes = st.downloadedBytes,
