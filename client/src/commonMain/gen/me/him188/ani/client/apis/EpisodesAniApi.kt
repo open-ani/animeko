@@ -35,6 +35,8 @@ import me.him188.ani.client.infrastructure.RequestConfig
 import me.him188.ani.client.infrastructure.RequestMethod
 import me.him188.ani.client.infrastructure.wrap
 import me.him188.ani.client.models.AniAutoSkipRules
+import me.him188.ani.client.models.AniCreateEpisodeCommentRequest
+import me.him188.ani.client.models.AniEpisodeCommentsResponse
 import me.him188.ani.client.models.AniReportAutoSkipRequest
 
 open class EpisodesAniApi : ApiClient {
@@ -74,6 +76,112 @@ open class EpisodesAniApi : ApiClient {
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * Create Ani episode comment
+     * Create Ani episode comment
+     * @param episodeId
+     * @param aniCreateEpisodeCommentRequest
+     * @return kotlin.Any
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun createEpisodeComment(episodeId: kotlin.Long, aniCreateEpisodeCommentRequest: AniCreateEpisodeCommentRequest): HttpResponse<kotlin.Any> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = aniCreateEpisodeCommentRequest
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.POST,
+            "/v2/episodes/{episodeId}/comments".replace("{" + "episodeId" + "}", "$episodeId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * Create Ani episode comment reply
+     * Create Ani episode comment reply
+     * @param episodeId
+     * @param commentId
+     * @param aniCreateEpisodeCommentRequest
+     * @return kotlin.Any
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun createEpisodeReply(episodeId: kotlin.Long, commentId: kotlin.String, aniCreateEpisodeCommentRequest: AniCreateEpisodeCommentRequest): HttpResponse<kotlin.Any> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody = aniCreateEpisodeCommentRequest
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.POST,
+            "/v2/episodes/{episodeId}/comments/{commentId}/replies"
+                .replace("{" + "episodeId" + "}", "$episodeId")
+                .replace("{" + "commentId" + "}", "$commentId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * List Ani episode comments
+     * List Ani episode comments
+     * @param episodeId
+     * @param offset
+     * @param limit
+     * @return AniEpisodeCommentsResponse
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun listEpisodeComments(episodeId: kotlin.Long, offset: kotlin.Int? = 0, limit: kotlin.Int? = 30): HttpResponse<AniEpisodeCommentsResponse> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        offset?.apply { localVariableQuery["offset"] = listOf("$this") }
+        limit?.apply { localVariableQuery["limit"] = listOf("$this") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/episodes/{episodeId}/comments".replace("{" + "episodeId" + "}", "$episodeId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = false,
         )
 
         return request(

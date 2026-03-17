@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.HelpOutline
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.SelectAll
@@ -255,6 +256,7 @@ fun CacheManagementScreen(
                 selectionCount = selectionCount,
                 allSelected = allSelected,
                 hasEntries = selectionEntries.isNotEmpty(),
+                onEnterSelection = { selectionState.enterSelectionWith(emptySet()) },
                 onExitSelection = { selectionState.clear() },
                 onToggleSelectAll = {
                     selectionState.enterSelectionWith(
@@ -498,6 +500,7 @@ private fun CacheManagementTopBar(
     selectionCount: Int,
     allSelected: Boolean,
     hasEntries: Boolean,
+    onEnterSelection: () -> Unit,
     onExitSelection: () -> Unit,
     onToggleSelectAll: () -> Unit,
     onDeleteSelected: () -> Unit,
@@ -541,6 +544,14 @@ private fun CacheManagementTopBar(
         AniTopAppBar(
             title = { AniTopAppBarDefaults.Title("缓存管理") },
             navigationIcon = navigationIcon,
+            actions = {
+                IconButton(
+                    onClick = onEnterSelection,
+                    enabled = hasEntries,
+                ) {
+                    Icon(Icons.Default.Checklist, "进入选择模式")
+                }
+            },
             avatar = selfInfo?.let {
                 { recommendedSize ->
                     SelfAvatar(

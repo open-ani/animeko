@@ -129,7 +129,7 @@ fun UserInfoRow(
 private val sampleUser = UserInfo(
     username = "username",
     avatarUrl = "https://example.com/avatar.jpg",
-    id = 1,
+    id = "1",
     nickname = "Nickname",
     sign = "Sign ".repeat(3),
 )

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -34,9 +34,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
@@ -45,6 +45,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.io.buffered
 import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
+import kotlinx.io.readByteArray
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.update
@@ -58,16 +59,29 @@ import me.him188.ani.utils.httpdownloader.DownloadStatus.PAUSED
 import me.him188.ani.utils.httpdownloader.m3u.DefaultM3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Parser
 import me.him188.ani.utils.httpdownloader.m3u.M3u8Playlist
+import me.him188.ani.utils.httpdownloader.m3u.MediaSegmentEncryption
+import me.him188.ani.utils.httpdownloader.m3u.ResolvedMediaPlaylist
+import me.him188.ani.utils.httpdownloader.m3u.export
+import me.him188.ani.utils.httpdownloader.m3u.parseResolvedMediaPlaylist
 import me.him188.ani.utils.io.DEFAULT_BUFFER_SIZE
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.copyTo
+import me.him188.ani.utils.io.deleteRecursively
+import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
+import me.him188.ani.utils.io.length
 import me.him188.ani.utils.io.resolve
+import me.him188.ani.utils.io.writeText
 import me.him188.ani.utils.ktor.ScopedHttpClient
+import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.trace
+import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.Uuid
+import org.openani.mediamp.ffmpeg.FFmpegKit
+import org.openani.mediamp.ffmpeg.FFmpegResult
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.CoroutineContext
@@ -97,9 +111,11 @@ open class KtorHttpDownloader(
     override val progressFlow: Flow<DownloadProgress> = _progressFlow.asSharedFlow()
 
     override fun getProgressFlow(downloadId: DownloadId): Flow<DownloadProgress> {
-        return progressFlow.filter { it.downloadId == downloadId }.onStart {
-            emit(createProgress(getState(downloadId) ?: return@onStart))
-        }
+        return downloadStatesFlow
+            .mapNotNull { states ->
+                states.firstOrNull { it.downloadId == downloadId }?.let(::createProgress)
+            }
+            .distinctUntilChanged()
     }
 
     /**
@@ -109,6 +125,10 @@ open class KtorHttpDownloader(
 
     override val downloadStatesFlow: Flow<List<DownloadState>> =
         _downloadStatesFlow.map { it.values.map { entry -> entry.state } }
+
+    private val ffmpegKit by lazy { FFmpegKit() }
+    private var ffmpegLogHandlerSet = false
+    private val ffmpegLogHandlerLock = Mutex()
 
     override suspend fun init() {
         // No initialization needed, but place for potential future logic
@@ -162,7 +182,7 @@ open class KtorHttpDownloader(
             val initialState = DownloadState(
                 downloadId = downloadId,
                 url = url,
-                relativeOutputPath = downloadId.value,
+                relativeOutputPath = downloadId.value + mediaType.outputFileExtension,
                 segments = emptyList(),
                 totalSegments = 0,
                 downloadedBytes = 0L,
@@ -269,7 +289,7 @@ open class KtorHttpDownloader(
 
         // If we have no segments, it means we failed during segment creation
         if (st.segments.isEmpty()) {
-            if (!createSegments(downloadId, st.url, st.mediaType, DownloadOptions())) {
+            if (!createSegments(downloadId, st.url, st.mediaType, DownloadOptions(headers = st.requestHeaders))) {
                 return false // Already marked as FAILED
             }
         }
@@ -283,7 +303,7 @@ open class KtorHttpDownloader(
         val job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try {
                 logger.info { "Resumed: downloading segments for $downloadId" }
-                downloadSegments(downloadId, DownloadOptions())
+                downloadSegments(downloadId, DownloadOptions(headers = st.requestHeaders))
 
                 updateState(downloadId) {
                     it.copy(status = MERGING)
@@ -439,6 +459,37 @@ open class KtorHttpDownloader(
         }
     }
 
+    override suspend fun remove(downloadId: DownloadId): Boolean {
+        val removedState = stateMutex.withLock {
+            val entry = _downloadStatesFlow.value[downloadId] ?: return false
+            if (entry.job?.isActive == true) {
+                logger.info { "Removing download $downloadId and cancelling active job first" }
+                entry.job.cancel()
+            }
+            entry.state
+        }
+
+        val job = stateMutex.withLock { _downloadStatesFlow.value[downloadId]?.job }
+        if (job != null) {
+            try {
+                job.join()
+            } catch (_: CancellationException) {
+            }
+        }
+
+        stateMutex.withLock {
+            val existing = _downloadStatesFlow.value[downloadId] ?: return@withLock
+            _downloadStatesFlow.update { remove(downloadId) }
+            if (existing.job?.isActive == true) {
+                existing.job.cancel()
+            }
+        }
+
+        deleteDownloadArtifacts(removedState)
+        onRemoveDownload(downloadId)
+        return true
+    }
+
 
     override suspend fun getState(downloadId: DownloadId): DownloadState? {
         return stateMutex.withLock {
@@ -495,10 +546,11 @@ open class KtorHttpDownloader(
             val newSegments = when (mediaType) {
                 MediaType.M3U8 -> {
                     logger.info { "Resolving M3U8 media playlist for $downloadId" }
-                    val playlist = resolveM3u8MediaPlaylist(url, options)
+                    val resolvedPlaylist = resolveM3u8MediaPlaylist(url, options)
 
                     val segmentCacheDir = getState(downloadId)?.relativeSegmentCacheDir ?: return false
-                    playlist.toSegments { Path(segmentCacheDir).resolve(it).toString() }
+                    persistResolvedMediaPlaylist(baseSaveDir.resolve(segmentCacheDir), resolvedPlaylist)
+                    resolvedPlaylist.playlist.toSegments { Path(segmentCacheDir).resolve(it).toString() }
                 }
 
                 MediaType.MP4, MediaType.MKV -> {
@@ -547,7 +599,7 @@ open class KtorHttpDownloader(
         url: String,
         options: DownloadOptions,
         depth: Int = 0,
-    ): M3u8Playlist.MediaPlaylist {
+    ): ResolvedMediaPlaylist {
         if (depth >= 5) {
             throw M3u8Exception(DownloadErrorCode.NO_MEDIA_LIST)
         }
@@ -563,8 +615,93 @@ open class KtorHttpDownloader(
 
             is M3u8Playlist.MediaPlaylist -> {
                 logger.info { "Media playlist resolved at depth=$depth for $url" }
-                playlist
+                m3u8Parser.parseResolvedMediaPlaylist(response, url)
             }
+        }
+    }
+
+    private suspend fun persistResolvedMediaPlaylist(cacheDir: Path, resolvedPlaylist: ResolvedMediaPlaylist) {
+        withContext(ioDispatcher) {
+            fileSystem.createDirectories(cacheDir)
+        }
+        cacheDir.resolve(UPSTREAM_PLAYLIST_FILE_NAME).inSystem.writeText(resolvedPlaylist.rawContent)
+        cacheDir.resolve(UPSTREAM_PLAYLIST_URL_FILE_NAME).inSystem.writeText(resolvedPlaylist.sourceUrl)
+    }
+
+    private suspend fun downloadHlsEncryptionKeys(
+        snapshot: DownloadState,
+        requestOptions: DownloadOptions,
+    ) {
+        val cacheDir = baseSaveDir.resolve(snapshot.relativeSegmentCacheDir)
+        val keyPaths = snapshot.buildHlsKeyRelativePaths()
+        snapshot.orderedUniqueEncryptionKeys().forEach { encryption ->
+            val relativeKeyPath = keyPaths[encryption.keyUri]
+                ?: error("No local key path found for ${encryption.keyUri}")
+            val keyPath = cacheDir.resolve(relativeKeyPath)
+            if (keyPath.inSystem.exists()) {
+                return@forEach
+            }
+
+            logger.info { "Downloading HLS key for ${snapshot.downloadId}: ${encryption.keyUri}" }
+            val keyBytes = withRetry(
+                maxRetries = requestOptions.maxRetriesPerSegment,
+                baseDelayMillis = requestOptions.baseRetryDelayMillis,
+            ) {
+                httpGet(encryption.keyUri, requestOptions) { it.body<ByteArray>() }
+            }
+            writeBytesToFile(keyPath, keyBytes)
+        }
+    }
+
+    private suspend fun createLocalHlsPlaylist(st: DownloadState, cacheDir: Path): Path {
+        val upstreamPlaylistPath = cacheDir.resolve(UPSTREAM_PLAYLIST_FILE_NAME)
+        val upstreamPlaylistUrlPath = cacheDir.resolve(UPSTREAM_PLAYLIST_URL_FILE_NAME)
+        val upstreamContent = readTextFromFile(upstreamPlaylistPath)
+        val upstreamSourceUrl = readTextFromFile(upstreamPlaylistUrlPath).trim()
+        val sortedSegments = st.segments.sortedBy { it.index }
+        val keyPaths = st.buildHlsKeyRelativePaths()
+        val resolvedPlaylist = m3u8Parser.parseResolvedMediaPlaylist(upstreamContent, upstreamSourceUrl)
+        val localPlaylistContent = resolvedPlaylist.export(
+            resolveSegmentUri = { _, index ->
+                sortedSegments.getOrNull(index)?.localPlaylistPath()
+                    ?: throw IllegalStateException(
+                        "No segment found for index=$index while exporting local HLS for ${st.downloadId}",
+                    )
+            },
+            resolveKeyUri = { encryption ->
+                keyPaths[encryption.uri]
+                    ?: throw IllegalStateException(
+                        "No local key path found for ${encryption.uri} while exporting local HLS for ${st.downloadId}",
+                    )
+            },
+        )
+
+        val localPlaylistPath = cacheDir.resolve(LOCAL_PLAYLIST_FILE_NAME)
+        localPlaylistPath.inSystem.writeText(localPlaylistContent)
+        return localPlaylistPath
+    }
+
+    private suspend fun cleanupHlsArtifacts(st: DownloadState, cacheDir: Path) {
+        st.buildHlsKeyRelativePaths().values.forEach { relativeKeyPath ->
+            deleteIfExists(cacheDir.resolve(relativeKeyPath))
+        }
+        deleteIfExists(cacheDir.resolve("keys"))
+        deleteIfExists(cacheDir.resolve(UPSTREAM_PLAYLIST_FILE_NAME))
+        deleteIfExists(cacheDir.resolve(UPSTREAM_PLAYLIST_URL_FILE_NAME))
+        deleteIfExists(cacheDir.resolve(LOCAL_PLAYLIST_FILE_NAME))
+    }
+
+    private suspend fun readTextFromFile(filePath: Path): String {
+        return withContext(ioDispatcher) {
+            fileSystem.source(filePath).buffered().use { source ->
+                source.readByteArray().decodeToString()
+            }
+        }
+    }
+
+    private fun deleteIfExists(path: Path) {
+        if (path.inSystem.exists()) {
+            fileSystem.delete(path)
         }
     }
 
@@ -723,8 +860,6 @@ open class KtorHttpDownloader(
 
         return httpGet(segmentInfo.url, finalOptions) { statement ->
             val response = statement.execute()
-            val channel = response.bodyAsChannel()
-
             val segmentPath = baseSaveDir.resolve(segmentInfo.relativeTempFilePath)
             withContext(ioDispatcher) {
                 fileSystem.createDirectories(
@@ -732,7 +867,9 @@ open class KtorHttpDownloader(
                 )
             }
 
-            copyChannelToFile(channel, segmentPath).also {
+            val channel = response.bodyAsChannel()
+            val byteSize = copyChannelToFile(channel, segmentPath)
+            byteSize.also {
                 logger.info { "Segment index=${segmentInfo.index} downloaded, size=$it" }
             }
         }
@@ -761,6 +898,17 @@ open class KtorHttpDownloader(
         return totalBytes.load()
     }
 
+    private suspend fun writeBytesToFile(filePath: Path, data: ByteArray) {
+        withContext(ioDispatcher) {
+            fileSystem.createDirectories(
+                filePath.parent ?: error("Parent dir not found for filePath: $filePath"),
+            )
+            fileSystem.sink(filePath).buffered().use { sink ->
+                sink.write(data, startIndex = 0, endIndex = data.size)
+            }
+        }
+    }
+
     @OptIn(DelicateCoroutinesApi::class, ExperimentalAtomicApi::class)
     protected suspend fun downloadSegments(downloadId: DownloadId, options: DownloadOptions) {
         val snapshot = getState(downloadId) ?: return
@@ -768,8 +916,13 @@ open class KtorHttpDownloader(
             logger.info { "No segments to download for $downloadId" }
             return
         }
+        val requestOptions = options.copy(headers = snapshot.requestHeaders + options.headers)
         logger.info { "Downloading ${snapshot.segments.size} segments for $downloadId with concurrency=${options.maxConcurrentSegments}" }
         val semaphore = Semaphore(options.maxConcurrentSegments)
+
+        if (snapshot.mediaType == MediaType.M3U8) {
+            downloadHlsEncryptionKeys(snapshot, requestOptions)
+        }
 
         coroutineScope {
             snapshot.segments.forEach { seg ->
@@ -782,7 +935,7 @@ open class KtorHttpDownloader(
                             maxRetries = options.maxRetriesPerSegment,
                             baseDelayMillis = options.baseRetryDelayMillis,
                         ) {
-                            downloadSingleSegment(seg, options)
+                            downloadSingleSegment(seg, requestOptions)
                         }
                         markSegmentDownloaded(downloadId, seg.index, newSize)
                     } finally {
@@ -808,13 +961,18 @@ open class KtorHttpDownloader(
     protected suspend fun mergeSegments(downloadId: DownloadId) = withContext(ioDispatcher) {
         val st = getState(downloadId) ?: return@withContext
         val cacheDir = baseSaveDir.resolve(st.relativeSegmentCacheDir)
-        val finalOutput = baseSaveDir.resolve(st.relativeOutputPath)
+        val finalOutputRelativePath = st.finalOutputRelativePath()
+        val finalOutput = baseSaveDir.resolve(finalOutputRelativePath)
 
-        fileSystem.sink(finalOutput).buffered().use { out ->
-            st.segments.sortedBy { it.index }.forEach { seg ->
-                fileSystem.source(baseSaveDir.resolve(seg.relativeTempFilePath)).buffered().use { input ->
-                    input.copyTo(out)
-                }
+        when (st.mediaType) {
+            MediaType.M3U8 -> mergeM3u8Segments(st, cacheDir, finalOutput)
+            MediaType.MP4,
+            MediaType.MKV -> concatenateSegments(st, finalOutput)
+        }
+
+        if (finalOutputRelativePath != st.relativeOutputPath) {
+            updateState(downloadId) {
+                it.copy(relativeOutputPath = finalOutputRelativePath)
             }
         }
 
@@ -822,9 +980,104 @@ open class KtorHttpDownloader(
         st.segments.forEach { seg ->
             fileSystem.delete(baseSaveDir.resolve(seg.relativeTempFilePath))
         }
+        if (st.mediaType == MediaType.M3U8) {
+            cleanupHlsArtifacts(st, cacheDir)
+        }
         // remove the cache dir
         fileSystem.delete(cacheDir)
         logger.info { "Segments merged into $finalOutput, removed cache dir=$cacheDir for $downloadId" }
+    }
+
+    protected fun concatenateSegments(st: DownloadState, finalOutput: Path) {
+        fileSystem.sink(finalOutput).buffered().use { out ->
+            st.segments.sortedBy { it.index }.forEach { seg ->
+                fileSystem.source(baseSaveDir.resolve(seg.relativeTempFilePath)).buffered().use { input ->
+                    input.copyTo(out)
+                }
+            }
+        }
+    }
+
+    // mark open for tests, don't override
+    open suspend fun mergeM3u8Segments(st: DownloadState, cacheDir: Path, finalOutput: Path) {
+        setFFmpegKitLogHandler()
+        val localPlaylistFile = createLocalHlsPlaylist(st, cacheDir).inSystem
+        val ffmpegArgs = listOf(
+            "-y", "-nostdin",
+            "-allowed_extensions", "ALL",
+            "-protocol_whitelist", "file,crypto,data",
+            "-i", localPlaylistFile.absolutePath,
+            "-map", "0",
+            "-c", "copy",
+            "-bsf:a", "aac_adtstoasc",
+            "-movflags",
+            "+faststart",
+            finalOutput.inSystem.absolutePath,
+        )
+        logger.info {
+            "Running FFmpeg merge for ${st.downloadId}: ffmpeg ${ffmpegArgs.joinToString(" ") { it.quoteForLog() }}"
+        }
+
+        if (finalOutput.inSystem.exists()) {
+            fileSystem.delete(finalOutput)
+        }
+
+        val result = executeFfmpeg(ffmpegArgs)
+        if (!result.isSuccess) {
+            if (finalOutput.inSystem.exists()) {
+                fileSystem.delete(finalOutput)
+            }
+            throw IllegalStateException(
+                "FFmpeg failed to merge HLS segments for ${st.downloadId}: exitCode=${result.exitCode}",
+            )
+        }
+
+        val outputFile = finalOutput.inSystem
+        if (!outputFile.exists() || outputFile.length() <= 0L) {
+            if (outputFile.exists()) {
+                fileSystem.delete(finalOutput)
+            }
+            throw IllegalStateException("FFmpeg failed to merge HLS segments for ${st.downloadId}: output file was not created")
+        }
+    }
+
+    protected open suspend fun executeFfmpeg(args: List<String>): FFmpegResult {
+        return ffmpegKit.execute(args)
+    }
+
+    private fun String.quoteForLog(): String =
+        if (isEmpty() || any { it.isWhitespace() || it == '"' || it == '\'' }) {
+            "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+        } else {
+            this
+        }
+
+    private fun DownloadState.finalOutputRelativePath(): String {
+        if (mediaType != MediaType.M3U8) return relativeOutputPath
+        return relativeOutputPath.replaceAfterLast('.', "mp4", missingDelimiterValue = "$relativeOutputPath.mp4")
+    }
+
+    private suspend fun setFFmpegKitLogHandler() {
+        if (ffmpegLogHandlerSet) return
+        ffmpegLogHandlerLock.withLock {
+            if (ffmpegLogHandlerSet) return
+            FFmpegKit.setLogHandler { msg ->
+                // See -loglevel argument in https://ffmpeg.org/ffmpeg.html
+                if (msg.isError) {
+                    logger.error { "[FFmpeg:${msg.level}] ${msg.line}" }
+                } else if (msg.level >= 48) {
+                    logger.trace { "[FFmpeg:${msg.level}] ${msg.line}" }
+                } else if (msg.level >= 40) {
+                    logger.debug { "[FFmpeg:${msg.level}] ${msg.line}" }
+                } else if (msg.level >= 32) {
+                    logger.info { "[FFmpeg:${msg.level}] ${msg.line}" }
+                } else if (msg.level >= 24) {
+                    logger.warn { "[FFmpeg:${msg.level}] ${msg.line}" }
+                } else {
+                    logger.error { "[FFmpeg:${msg.level}] ${msg.line}" }
+                }
+            }
+        }
     }
 
     protected suspend fun emitProgress(downloadId: DownloadId) {
@@ -833,11 +1086,24 @@ open class KtorHttpDownloader(
         _progressFlow.emit(progress)
     }
 
+    private suspend fun deleteDownloadArtifacts(state: DownloadState) = withContext(ioDispatcher) {
+        val outputPath = baseSaveDir.resolve(state.relativeOutputPath)
+        if (outputPath.inSystem.exists()) {
+            fileSystem.delete(outputPath)
+        }
+
+        val cacheDir = baseSaveDir.resolve(state.relativeSegmentCacheDir)
+        if (cacheDir.inSystem.exists()) {
+            fileSystem.deleteRecursively(cacheDir)
+        }
+    }
+
     private fun createProgress(st: DownloadState): DownloadProgress {
         val downloadedSegments = st.segments.count { it.isDownloaded }
         return DownloadProgress(
             downloadId = st.downloadId,
             url = st.url,
+            mediaType = st.mediaType,
             totalSegments = st.totalSegments,
             downloadedSegments = downloadedSegments,
             downloadedBytes = st.downloadedBytes,
@@ -920,8 +1186,14 @@ open class KtorHttpDownloader(
 
     open fun onRemoveAllDownloads() {}
 
+    open fun onRemoveDownload(downloadId: DownloadId) {
+    }
+
     private companion object {
         val logger = logger<KtorHttpDownloader>()
+        private const val UPSTREAM_PLAYLIST_FILE_NAME = "upstream-playlist.m3u8"
+        private const val UPSTREAM_PLAYLIST_URL_FILE_NAME = "upstream-playlist.url"
+        private const val LOCAL_PLAYLIST_FILE_NAME = "local-playlist.m3u8"
     }
 }
 
@@ -935,7 +1207,36 @@ private fun M3u8Playlist.MediaPlaylist.toSegments(resolveSegmentPath: (String) -
             url = seg.uri,
             isDownloaded = false,
             byteSize = seg.byteRange?.length ?: -1,
+            durationSeconds = seg.duration,
+            title = seg.title,
+            isDiscontinuity = seg.isDiscontinuity,
+            encryption = seg.encryption?.toSegmentEncryptionInfo(),
             relativeTempFilePath = resolveSegmentPath("$idx.ts"),
         )
     }
 }
+
+private fun MediaSegmentEncryption.toSegmentEncryptionInfo(): SegmentEncryptionInfo =
+    SegmentEncryptionInfo(
+        method = method,
+        keyUri = uri,
+        iv = iv,
+    )
+
+private fun DownloadState.orderedUniqueEncryptionKeys(): List<SegmentEncryptionInfo> =
+    segments.sortedBy { it.index }
+        .mapNotNull { it.encryption }
+        .distinctBy { it.keyUri }
+
+private fun DownloadState.buildHlsKeyRelativePaths(): Map<String, String> =
+    orderedUniqueEncryptionKeys()
+        .mapIndexed { index, encryption ->
+            encryption.keyUri to "keys/key-$index-${encryption.keyUri.stablePathId()}.bin"
+        }
+        .toMap()
+
+private fun SegmentInfo.localPlaylistPath(): String =
+    relativeTempFilePath.substringAfterLast('/').substringAfterLast('\\')
+
+private fun String.stablePathId(): String =
+    hashCode().toUInt().toString(16)

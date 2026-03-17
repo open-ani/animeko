@@ -55,6 +55,7 @@ import me.him188.ani.utils.logging.logger
 import org.koin.android.ext.android.getKoin
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
+import org.openani.mediamp.ffmpeg.FFmpegKit
 import java.io.File
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
@@ -183,6 +184,7 @@ class AniApplication : Application() {
         runBlocking { analyticsInitializer.join() }
         ExternalContentProviderFactoryImpl.initializeApp(this)
         startupTimeMonitor.mark(StepName.Analytics)
+        FFmpegKit.initialize(this)
 
         scope.launch {
             Analytics.recordAppStart(startupTimeMonitor)

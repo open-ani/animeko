@@ -13,7 +13,6 @@ package me.him188.ani.app.domain.player.extension
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
@@ -21,11 +20,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
@@ -79,7 +76,6 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
             callsInPlace(config, InvocationKind.EXACTLY_ONCE)
         }
 
-        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val testScope = this.childScope()
         val suite = EpisodePlayerTestSuite(this, testScope)
         suite.registerComponent<GetMediaSelectorSettingsFlowUseCase> {
@@ -111,6 +107,7 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
             ),
         )
         state.onUIReady()
+        advanceUntilIdle()
         return Context(testScope, suite, state)
     }
 

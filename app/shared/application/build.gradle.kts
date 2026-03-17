@@ -37,6 +37,9 @@ kotlin {
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)
     }
+    sourceSets.iosMain.dependencies {
+        implementation(libs.mediamp.ffmpeg)
+    }
 }
 
 kotlin {

@@ -44,7 +44,7 @@ internal class BangumiProfileServiceImpl(
 }
 
 private fun BangumiUser.toUserInfo() = UserInfo(
-    id = id,
+    id = id.toString(),
     username = username,
     nickname = nickname,
     avatarUrl = avatar.medium,

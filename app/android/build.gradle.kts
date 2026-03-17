@@ -87,6 +87,10 @@ android {
         }
     }
     packaging {
+        jniLibs {
+            // FFmpeg is launched as a process, so the native binary must be extracted to a filesystem path.
+            useLegacyPackaging = true
+        }
         resources {
             merges.add("META-INF/DEPENDENCIES") // log4j
             pickFirsts.add("META-INF/LICENSE.md")
@@ -135,6 +139,7 @@ dependencies {
 //    implementation(libs.log4j.slf4j.impl)
 
     implementation(libs.ktor.client.core)
+    implementation(libs.mediamp.ffmpeg)
 }
 
 idea {

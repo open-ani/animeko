@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -40,12 +40,16 @@ import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.httpdownloader.DownloadId
 import me.him188.ani.utils.httpdownloader.DownloadOptions
+import me.him188.ani.utils.httpdownloader.DownloadProgress
+import me.him188.ani.utils.httpdownloader.DownloadState
 import me.him188.ani.utils.httpdownloader.DownloadStatus
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.httpdownloader.MediaType
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.actualSize
+import me.him188.ani.utils.io.delete
 import me.him188.ani.utils.io.deleteRecursively
+import me.him188.ani.utils.io.exists
 import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
@@ -231,13 +235,7 @@ class HttpMediaCacheEngine(
             MediaCache.FileStats(
                 totalSize = totalSize.bytes,
                 downloadedBytes = downloadedBytes.bytes,
-                downloadProgress = if (
-                    it.status == DownloadStatus.COMPLETED
-                ) {
-                    1f.toProgress()
-                } else {
-                    Progress.Unspecified
-                }, // m3u8 has no total size.
+                downloadProgress = it.toHttpCacheProgress(),
             )
         }
         override val sessionStats: Flow<MediaCache.SessionStats> = run {
@@ -283,7 +281,7 @@ class HttpMediaCacheEngine(
                         cacheMediaSourceId = mediaSourceId,
                         download = ResourceLocation.LocalFile(
                             Path(saveDir, state.relativeOutputPath).inSystem.absolutePath,
-                            state.mediaType.toFileType(),
+                            state.toFileType(),
                             originalUri = state.url,
                         ),
                         properties = origin.properties.copy(
@@ -328,10 +326,30 @@ class HttpMediaCacheEngine(
             if (isDeleted.value) return
             closeMutex.withLock {
                 if (isDeleted.value) return
-                downloader.cancel(downloadId)
+                val removed = downloader.remove(downloadId)
+                if (!removed) {
+                    dao.getById(downloadId)?.let { state ->
+                        deleteDownloadFiles(state)
+                    }
+                }
                 isDeleted.value = true
             }
         }
+    }
+
+    private suspend fun deleteDownloadFiles(state: DownloadState) {
+        withContext(Dispatchers.IO_) {
+            val outputPath = Path(saveDir, state.relativeOutputPath).inSystem
+            if (outputPath.exists()) {
+                outputPath.delete()
+            }
+
+            val cacheDir = Path(saveDir, state.relativeSegmentCacheDir).inSystem
+            if (cacheDir.exists()) {
+                cacheDir.deleteRecursively()
+            }
+        }
+        dao.deleteById(state.downloadId)
     }
 
     companion object {
@@ -343,11 +361,35 @@ class HttpMediaCacheEngine(
     }
 }
 
-private fun MediaType.toFileType(): ResourceLocation.LocalFile.FileType? {
-    return when (this) {
-        MediaType.M3U8 -> ResourceLocation.LocalFile.FileType.MPTS
+internal fun DownloadProgress.toHttpCacheProgress(): Progress {
+    if (status == DownloadStatus.COMPLETED) {
+        return 1f.toProgress()
+    }
+
+    return when (mediaType) {
+        MediaType.M3U8 -> {
+            if (totalSegments <= 0) {
+                Progress.Unspecified
+            } else {
+                (downloadedSegments.toFloat() / totalSegments.toFloat()).toProgress()
+            }
+        }
+
         MediaType.MP4,
         MediaType.MKV,
-            -> ResourceLocation.LocalFile.FileType.CONTAINED
+            -> {
+            if (totalBytes <= 0L) {
+                Progress.Unspecified
+            } else {
+                (downloadedBytes.toFloat() / totalBytes.toFloat()).toProgress()
+            }
+        }
+    }
+}
+
+private fun DownloadState.toFileType(): ResourceLocation.LocalFile.FileType? {
+    return when {
+        relativeOutputPath.endsWith(".ts", ignoreCase = true) -> ResourceLocation.LocalFile.FileType.MPTS
+        else -> ResourceLocation.LocalFile.FileType.CONTAINED
     }
 }

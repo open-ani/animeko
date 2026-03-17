@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -12,15 +12,13 @@
 package me.him188.ani.app.domain.episode
 
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.persistent.MemoryDataStore
 import me.him188.ani.app.data.repository.player.EpisodeHistories
@@ -47,7 +45,6 @@ class EpisodeFetchPlayStateSwitchEpisodeTest : AbstractPlayerExtensionTest() {
     private val newEpisodeId = 1000
 
     private fun TestScope.createCase(): Triple<CoroutineScope, EpisodePlayerTestSuite, EpisodeFetchSelectPlayState> {
-        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val testScope = this.childScope()
         val suite = EpisodePlayerTestSuite(this, testScope)
         suite.registerComponent<EpisodePlayHistoryRepository> { playHistory }
@@ -72,6 +69,7 @@ class EpisodeFetchPlayStateSwitchEpisodeTest : AbstractPlayerExtensionTest() {
             ),
         )
         state.onUIReady()
+        advanceUntilIdle()
         return Triple(testScope, suite, state)
     }
 
@@ -89,6 +87,8 @@ class EpisodeFetchPlayStateSwitchEpisodeTest : AbstractPlayerExtensionTest() {
 
         // 播到最尾部了
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = suite.player.mediaProperties.value!!.durationMillis
         suite.player.playbackState.value = PlaybackState.FINISHED
         advanceUntilIdle() // 自动切换到下一集数
@@ -124,6 +124,8 @@ class EpisodeFetchPlayStateSwitchEpisodeTest : AbstractPlayerExtensionTest() {
 
         // 播到最尾部了
         suite.setMediaDuration(100_000)
+        advanceUntilIdle()
+
         suite.player.currentPositionMillis.value = suite.player.mediaProperties.value!!.durationMillis
         suite.player.playbackState.value = PlaybackState.FINISHED
         advanceUntilIdle() // 自动切换到下一集数
@@ -135,11 +137,10 @@ class EpisodeFetchPlayStateSwitchEpisodeTest : AbstractPlayerExtensionTest() {
 
         val myMedia = TestMediaList[0]
         ms1.complete(listOf(myMedia))
-        state.mediaSelectorFlow.first()!!.select(myMedia)
+        state.mediaSelectorFlow.filterNotNull().first().select(myMedia)
         advanceUntilIdle() // 自动选择
 
         suite.setMediaDuration(100_000)
-        suite.player.playbackState.value = PlaybackState.READY
         advanceUntilIdle() // 自动加载播放进度
 
         // should load the saved progress for new episode

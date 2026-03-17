@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -26,6 +26,69 @@ interface M3u8Parser {
 }
 
 class M3uFormatException(override val message: String?) : RuntimeException()
+
+data class ResolvedMediaPlaylist(
+    val sourceUrl: String,
+    val rawContent: String,
+    val playlist: M3u8Playlist.MediaPlaylist,
+)
+
+fun M3u8Parser.parseResolvedMediaPlaylist(content: String, baseUrl: String): ResolvedMediaPlaylist {
+    val playlist = parse(content, baseUrl)
+    if (playlist !is M3u8Playlist.MediaPlaylist) {
+        throw M3uFormatException("Expected media playlist but parsed a non-media playlist")
+    }
+    return ResolvedMediaPlaylist(
+        sourceUrl = baseUrl,
+        rawContent = content,
+        playlist = playlist,
+    )
+}
+
+fun ResolvedMediaPlaylist.export(
+    resolveSegmentUri: (segment: MediaSegment, index: Int) -> String,
+    resolveKeyUri: (encryption: MediaSegmentEncryption) -> String,
+): String {
+    val segmentEncryptions = playlist.segments.mapNotNull { it.encryption }
+    val orderedUniqueEncryptions = segmentEncryptions.distinctBy { listOf(it.method, it.uri, it.iv) }
+    val encryptionLookup = orderedUniqueEncryptions.associateBy { listOf(it.method, it.uri, it.iv) }
+    var segmentCursor = 0
+
+    val exported = buildString {
+        rawContent.lines().forEach { line ->
+            val trimmed = line.trim()
+            when {
+                trimmed.startsWith("#EXT-X-KEY:") -> appendLine(
+                    rewriteKeyLine(
+                        line = line,
+                        sourceUrl = sourceUrl,
+                        encryptionLookup = encryptionLookup,
+                        resolveKeyUri = resolveKeyUri,
+                    ),
+                )
+
+                trimmed.isEmpty() || trimmed.startsWith("#") -> appendLine(line)
+                else -> {
+                    val segment = playlist.segments.getOrNull(segmentCursor)
+                        ?: throw M3uFormatException(
+                            "Found more media segment URI lines than parsed segments while exporting playlist",
+                        )
+                    appendLine(resolveSegmentUri(segment, segmentCursor))
+                    segmentCursor++
+                }
+            }
+        }
+    }
+
+    if (segmentCursor != playlist.segments.size) {
+        throw M3uFormatException(
+            "Found fewer media segment URI lines than parsed segments while exporting playlist: " +
+                    "expected=${playlist.segments.size}, actual=$segmentCursor",
+        )
+    }
+
+    return exported
+}
 
 /**
  * Sealed class representing an M3U8 playlist
@@ -74,8 +137,16 @@ data class MediaSegment(
     val title: String? = null,
     val isDiscontinuity: Boolean = false,
     val byteRange: ByteRange? = null,
-    val keys: Map<String, String> = emptyMap(),
+    val encryption: MediaSegmentEncryption? = null,
     val tags: Map<String, String> = emptyMap(),
+)
+
+data class MediaSegmentEncryption(
+    val method: String,
+    val uri: String,
+    val iv: String? = null,
+    val keyFormat: String? = null,
+    val keyFormatVersions: String? = null,
 )
 
 /**
@@ -123,8 +194,8 @@ object DefaultM3u8Parser : M3u8Parser {
         var currentSegmentTitle: String? = null
         var currentSegmentDiscontinuity = false
         var currentSegmentByteRange: ByteRange? = null
-        val currentSegmentKeys = mutableMapOf<String, String>()
         val currentSegmentTags = mutableMapOf<String, String>()
+        var currentSegmentEncryption: MediaSegmentEncryption? = null
 
         // For current variant being built
         var currentVariantAttributes = mutableMapOf<String, String>()
@@ -170,7 +241,22 @@ object DefaultM3u8Parser : M3u8Parser {
 
                     line.startsWith("#EXT-X-KEY:") -> {
                         val keyAttributes = parseAttributes(line.substringAfter(":").trim())
-                        currentSegmentKeys.putAll(keyAttributes)
+                        val method = keyAttributes["METHOD"]?.trim().orEmpty()
+                        currentSegmentEncryption = when {
+                            method.isEmpty() -> throw M3uFormatException("Invalid EXT-X-KEY tag: missing METHOD")
+                            method.equals("NONE", ignoreCase = true) -> null
+                            else -> {
+                                val keyUri = keyAttributes["URI"]
+                                    ?: throw M3uFormatException("Invalid EXT-X-KEY tag: missing URI")
+                                MediaSegmentEncryption(
+                                    method = method,
+                                    uri = UrlHelpers.computeAbsoluteUrl(baseUrl, keyUri),
+                                    iv = keyAttributes["IV"],
+                                    keyFormat = keyAttributes["KEYFORMAT"],
+                                    keyFormatVersions = keyAttributes["KEYFORMATVERSIONS"],
+                                )
+                            }
+                        }
                     }
 
                     line.startsWith("#EXT-X-STREAM-INF:") -> {
@@ -233,7 +319,7 @@ object DefaultM3u8Parser : M3u8Parser {
                             title = currentSegmentTitle,
                             isDiscontinuity = currentSegmentDiscontinuity,
                             byteRange = currentSegmentByteRange,
-                            keys = currentSegmentKeys.toMap(),
+                            encryption = currentSegmentEncryption,
                             tags = currentSegmentTags.toMap(),
                         ),
                     )
@@ -243,7 +329,6 @@ object DefaultM3u8Parser : M3u8Parser {
                     currentSegmentTitle = null
                     currentSegmentDiscontinuity = false
                     currentSegmentByteRange = null
-                    currentSegmentKeys.clear()
                     currentSegmentTags.clear()
                 }
             }
@@ -334,4 +419,70 @@ object DefaultM3u8Parser : M3u8Parser {
         }
         return ByteRange(length, offset)
     }
+}
+
+private fun rewriteKeyLine(
+    line: String,
+    sourceUrl: String,
+    encryptionLookup: Map<List<String?>, MediaSegmentEncryption>,
+    resolveKeyUri: (encryption: MediaSegmentEncryption) -> String,
+): String {
+    val match = KEY_URI_ATTRIBUTE_PATTERN.find(line) ?: return line
+    val rawUri = match.groupValues[2].ifEmpty { match.groupValues[3] }.trim()
+    val attributes = parseAttributesPublic(line.substringAfter(":").trim())
+    val method = attributes["METHOD"]?.trim().orEmpty()
+    if (method.equals("NONE", ignoreCase = true)) {
+        return line
+    }
+
+    val absoluteUri = UrlHelpers.computeAbsoluteUrl(sourceUrl, rawUri)
+    val encryption = encryptionLookup[listOf(method, absoluteUri, attributes["IV"])]
+        ?: throw M3uFormatException("Unable to map EXT-X-KEY line to parsed encryption: $line")
+    return line.replaceRange(match.range, "URI=\"${resolveKeyUri(encryption)}\"")
+}
+
+private val KEY_URI_ATTRIBUTE_PATTERN = Regex("""URI=("([^"]*)"|([^,]+))""")
+
+private fun parseAttributesPublic(attributesString: String): MutableMap<String, String> {
+    val attributes = mutableMapOf<String, String>()
+    var remaining = attributesString
+
+    while (remaining.isNotEmpty()) {
+        var inQuotes = false
+        var commaPos = -1
+
+        for (i in remaining.indices) {
+            val c = remaining[i]
+            if (c == '"') {
+                inQuotes = !inQuotes
+            } else if (c == ',' && !inQuotes) {
+                commaPos = i
+                break
+            }
+        }
+
+        val attribute = if (commaPos >= 0) {
+            val attr = remaining.substring(0, commaPos)
+            remaining = remaining.substring(commaPos + 1).trim()
+            attr
+        } else {
+            val attr = remaining
+            remaining = ""
+            attr
+        }
+
+        val eqPos = attribute.indexOf('=')
+        if (eqPos > 0) {
+            val key = attribute.substring(0, eqPos).trim()
+            val value = attribute.substring(eqPos + 1).trim()
+            val cleanValue = if (value.startsWith("\"") && value.endsWith("\"") && value.length >= 2) {
+                value.substring(1, value.length - 1)
+            } else {
+                value
+            }
+            attributes[key] = cleanValue
+        }
+    }
+
+    return attributes
 }

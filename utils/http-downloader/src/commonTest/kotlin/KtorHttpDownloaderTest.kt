@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -19,6 +19,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.core.readAvailable
+import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,6 +27,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.TestDispatcher
@@ -39,21 +41,28 @@ import kotlinx.io.files.FileSystem
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import kotlinx.io.files.SystemTemporaryDirectory
+import kotlinx.io.readByteArray
+import me.him188.ani.utils.io.copyTo
 import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.ktor.asScopedHttpClient
+import org.openani.mediamp.ffmpeg.FFmpegResult
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, ExperimentalEncodingApi::class)
 class KtorHttpDownloaderTest {
     private lateinit var testScope: TestScope
     private lateinit var testScheduler: TestCoroutineScheduler
@@ -63,6 +72,9 @@ class KtorHttpDownloaderTest {
     private lateinit var tempDir: String
     private lateinit var downloader: KtorHttpDownloader
     private val fileSystem = SystemFileSystem
+    private var lastFfmpegArgs: List<String>? = null
+    private var lastInputPlaylistContent: String? = null
+    private var forceFfmpegFailure = false
 
     // We use this to track how many times a given URL has been requested.
     // This allows us to simulate "fails first time, succeeds second time", etc.
@@ -85,6 +97,9 @@ class KtorHttpDownloaderTest {
         if (!fileSystem.exists(Path("$tempDir/persistence"))) {
             fileSystem.createDirectories(Path("$tempDir/persistence"))
         }
+        lastFfmpegArgs = null
+        lastInputPlaylistContent = null
+        forceFfmpegFailure = false
 
         // Create mock client with preset responses
         mockClient = HttpClient(MockEngine) {
@@ -120,6 +135,38 @@ class KtorHttpDownloaderTest {
                                 content = MEDIA_PLAYLIST.replace("segment1.ts", "missing-segment.ts"),
                                 status = HttpStatusCode.OK,
                                 headers = headersOf(HttpHeaders.ContentType, "application/vnd.apple.mpegurl"),
+                            )
+                        }
+
+                        "https://example.com/encrypted.m3u8" -> {
+                            respond(
+                                content = ENCRYPTED_MEDIA_PLAYLIST,
+                                status = HttpStatusCode.OK,
+                                headers = headersOf(HttpHeaders.ContentType, "application/vnd.apple.mpegurl"),
+                            )
+                        }
+
+                        "https://example.com/tagged.m3u8" -> {
+                            respond(
+                                content = TAGGED_MEDIA_PLAYLIST,
+                                status = HttpStatusCode.OK,
+                                headers = headersOf(HttpHeaders.ContentType, "application/vnd.apple.mpegurl"),
+                            )
+                        }
+
+                        "https://example.com/key.bin" -> {
+                            respond(
+                                content = HLS_ENCRYPTION_KEY,
+                                status = HttpStatusCode.OK,
+                                headers = headersOf(HttpHeaders.ContentType, "application/octet-stream"),
+                            )
+                        }
+
+                        "https://example.com/encrypted-segment0.ts" -> {
+                            respond(
+                                content = Base64.Default.decode(ENCRYPTED_TS_SEGMENT_BASE64),
+                                status = HttpStatusCode.OK,
+                                headers = headersOf(HttpHeaders.ContentType, "video/mp2t"),
                             )
                         }
 
@@ -236,14 +283,57 @@ class KtorHttpDownloaderTest {
             }
         }
 
-        downloader = KtorHttpDownloader(
+        downloader = object : KtorHttpDownloader(
             client = mockClient.asScopedHttpClient(),
             fileSystem = fileSystem,
             clock = mockClock,
             baseSaveDir = Path(tempDir),
             parentScope = CoroutineScope(SupervisorJob() + testDispatcher),
             ioDispatcher = testDispatcher,
-        )
+        ) {
+            override suspend fun executeFfmpeg(args: List<String>): FFmpegResult {
+                lastFfmpegArgs = args
+                val inputIndex = args.indexOf("-i")
+                if (inputIndex >= 0 && inputIndex + 1 < args.size) {
+                    val inputPath = Path(args[inputIndex + 1])
+                    if (fileSystem.exists(inputPath)) {
+                        lastInputPlaylistContent = fileSystem.read(inputPath) {
+                            readByteArray().decodeToString()
+                        }
+                    }
+                }
+
+                if (forceFfmpegFailure) {
+                    return FFmpegResult(exitCode = 1)
+                }
+
+                val outputPath = Path(args.last())
+                if (lastInputPlaylistContent.orEmpty().contains("#EXT-X-KEY:")) {
+                    writeBytes(
+                        outputPath,
+                        byteArrayOf(
+                            0x00, 0x00, 0x00, 0x18,
+                            'f'.code.toByte(), 't'.code.toByte(), 'y'.code.toByte(), 'p'.code.toByte(),
+                            'i'.code.toByte(), 's'.code.toByte(), 'o'.code.toByte(), 'm'.code.toByte(),
+                        ) + ByteArray(16),
+                    )
+                } else {
+                    val inputPath = Path(args[inputIndex + 1])
+                    val inputDir = inputPath.parent ?: error("Missing parent dir for $inputPath")
+                    fileSystem.sink(outputPath).buffered().use { out ->
+                        lastInputPlaylistContent.orEmpty().lines()
+                            .map { it.trim() }
+                            .filter { it.isNotEmpty() && !it.startsWith("#") }
+                            .forEach { relativeSegmentPath ->
+                                fileSystem.source(inputDir.resolve(relativeSegmentPath)).buffered().use { input ->
+                                    input.copyTo(out)
+                                }
+                            }
+                    }
+                }
+                return FFmpegResult(exitCode = 0)
+            }
+        }
     }
 
     // Helper to handle MP4 partial or full
@@ -335,7 +425,7 @@ class KtorHttpDownloaderTest {
     fun `download - should complete successfully`() = testScope.runTest {
         val downloadId = downloader.downloadWithId(
             url = "https://example.com/master.m3u8",
-            downloadId = DownloadId("output.ts"),
+            downloadId = DownloadId("output"),
         )?.downloadId
         assertNotNull(downloadId)
         // Wait for actual completion
@@ -344,14 +434,85 @@ class KtorHttpDownloaderTest {
         val state = downloader.getState(downloadId)
         assertNotNull(state)
         assertEquals(DownloadStatus.COMPLETED, state.status)
-        assertTrue(fileSystem.exists(Path("$tempDir/output.ts")))
+        assertTrue(fileSystem.exists(Path("$tempDir/output.mp4")))
 
         // Merged segments directory should be cleaned
         assertFalse(fileSystem.exists(Path("$tempDir/segments_$downloadId")))
 
         // New: check final file size (segment1 + segment2 + segment3 => 1024 + 2048 + 3072 = 6144)
-        val outputFileSize = fileSystem.metadata(Path("$tempDir/output.ts")).size
+        val outputFileSize = fileSystem.metadata(Path("$tempDir/output.mp4")).size
         assertEquals(1024 + 2048 + 3072, outputFileSize, "M3U8 final output file size mismatch.")
+        assertTrue(lastFfmpegArgs?.contains("-allowed_extensions") == true)
+        assertTrue(lastFfmpegArgs?.contains("-protocol_whitelist") == true)
+        assertTrue(lastInputPlaylistContent?.contains("0.ts") == true)
+    }
+
+    @Test
+    fun `download - should merge AES-128 encrypted HLS`() = testScope.runTest {
+        val downloadId = downloader.downloadWithId(
+            url = "https://example.com/encrypted.m3u8",
+            downloadId = DownloadId("encrypted-output"),
+        )?.downloadId
+        assertNotNull(downloadId)
+
+        downloader.joinDownload(downloadId)
+
+        val state = downloader.getState(downloadId)
+        assertNotNull(state)
+        assertEquals(DownloadStatus.COMPLETED, state.status)
+
+        val outputPath = Path("$tempDir/encrypted-output.mp4")
+        assertTrue(fileSystem.exists(outputPath), "Expected decrypted HLS output to exist")
+        assertFalse(
+            fileSystem.exists(Path("$tempDir/segments_$downloadId")),
+            "Merged encrypted cache dir should be removed",
+        )
+        assertEquals(1, attempts["https://example.com/key.bin"], "Expected key to be downloaded exactly once")
+        assertTrue(lastInputPlaylistContent?.contains("URI=\"keys/") == true)
+        assertFalse(lastInputPlaylistContent?.contains("https://example.com/key.bin") == true)
+        assertFalse(lastInputPlaylistContent?.contains("https://example.com/encrypted-segment0.ts") == true)
+
+        val header = fileSystem.read(outputPath) { readByteArray(8) }
+        assertEquals("ftyp", header.decodeToString(startIndex = 4, endIndex = 8))
+    }
+
+    @Test
+    fun `download - should preserve upstream playlist metadata in local HLS input`() = testScope.runTest {
+        val downloadId = downloader.downloadWithId(
+            url = "https://example.com/tagged.m3u8",
+            downloadId = DownloadId("tagged-output"),
+        )?.downloadId
+        assertNotNull(downloadId)
+
+        downloader.joinDownload(downloadId)
+
+        val state = downloader.getState(downloadId)
+        assertNotNull(state)
+        assertEquals(DownloadStatus.COMPLETED, state.status)
+        assertEquals(lastInputPlaylistContent?.contains("#EXT-X-PLAYLIST-TYPE:VOD"), true)
+        assertEquals(lastInputPlaylistContent?.contains("#EXT-X-INDEPENDENT-SEGMENTS"), true)
+        assertEquals(lastInputPlaylistContent?.contains("#EXT-X-MEDIA-SEQUENCE:10"), true)
+        assertEquals(lastInputPlaylistContent?.contains("10.ts"), true)
+        assertNotEquals(lastInputPlaylistContent?.contains("segment1.ts"), true)
+    }
+
+    @Test
+    fun `download - ffmpeg failure should end in FAILED state and keep cache`() = testScope.runTest {
+        forceFfmpegFailure = true
+
+        val downloadId = downloader.downloadWithId(
+            url = "https://example.com/master.m3u8",
+            downloadId = DownloadId("ffmpeg-failure"),
+        )?.downloadId
+        assertNotNull(downloadId)
+
+        downloader.joinDownload(downloadId)
+
+        val state = downloader.getState(downloadId)
+        assertNotNull(state)
+        assertEquals(DownloadStatus.FAILED, state.status)
+        assertTrue(fileSystem.exists(Path("$tempDir/segments_$downloadId")))
+        assertFalse(fileSystem.exists(Path("$tempDir/ffmpeg-failure.mp4")))
     }
 
     @Test
@@ -426,7 +587,7 @@ class KtorHttpDownloaderTest {
 
     @Test
     fun `cancel - should stop download and mark canceled`() = testScope.runTest {
-        val downloadId = DownloadId("cancellable.ts")
+        val downloadId = DownloadId("cancellable")
         downloader.downloadWithId(
             url = "https://example.com/unstable-playlist1.m3u8",
             downloadId = downloadId,
@@ -441,6 +602,42 @@ class KtorHttpDownloaderTest {
         assertFalse(downloadId in downloader.getActiveDownloadIds())
         // Temporary segment directory should NOT be removed
         assertTrue(fileSystem.exists(Path("$tempDir/segments_$downloadId")))
+    }
+
+    @Test
+    fun `remove - should delete completed output file and state`() = testScope.runTest {
+        val downloadId = DownloadId("removable-complete")
+        downloader.downloadWithId(
+            url = "https://example.com/master.m3u8",
+            downloadId = downloadId,
+        )
+        downloader.joinDownload(downloadId)
+
+        assertTrue(fileSystem.exists(Path("$tempDir/removable-complete.mp4")))
+        assertEquals(DownloadStatus.COMPLETED, downloader.getState(downloadId)?.status)
+
+        val removed = downloader.remove(downloadId)
+
+        assertTrue(removed)
+        assertFalse(fileSystem.exists(Path("$tempDir/removable-complete.mp4")))
+        assertNull(downloader.getState(downloadId))
+    }
+
+    @Test
+    fun `remove - should delete active cache dir and state`() = testScope.runTest {
+        val downloadId = DownloadId("removable-active")
+        downloader.downloadWithId(
+            url = "https://example.com/unstable-playlist1.m3u8",
+            downloadId = downloadId,
+        )
+
+        assertTrue(fileSystem.exists(Path("$tempDir/segments_$downloadId")))
+
+        val removed = downloader.remove(downloadId)
+
+        assertTrue(removed)
+        assertFalse(fileSystem.exists(Path("$tempDir/segments_$downloadId")))
+        assertNull(downloader.getState(downloadId))
     }
 
     // ----------------------------------------------------
@@ -494,6 +691,64 @@ class KtorHttpDownloaderTest {
             assertEquals(DownloadStatus.COMPLETED, last.status)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `getProgressFlow - should reflect latest state without explicit progress emission`() = testScope.runTest {
+        val stateAwareDownloader = object : KtorHttpDownloader(
+            client = mockClient.asScopedHttpClient(),
+            fileSystem = fileSystem,
+            clock = mockClock,
+            baseSaveDir = Path(tempDir),
+            parentScope = CoroutineScope(SupervisorJob() + testDispatcher),
+            ioDispatcher = testDispatcher,
+        ) {
+            override suspend fun executeFfmpeg(args: List<String>): FFmpegResult = FFmpegResult(exitCode = 0)
+
+            suspend fun seedState(downloadId: DownloadId, status: DownloadStatus) {
+                val state = DownloadState(
+                    downloadId = downloadId,
+                    url = "https://example.com/sample.mp4",
+                    relativeOutputPath = "${downloadId.value}.mp4",
+                    segments = emptyList(),
+                    totalSegments = 0,
+                    downloadedBytes = 0L,
+                    timestamp = 0L,
+                    status = status,
+                    relativeSegmentCacheDir = "segments_${downloadId.value}",
+                    requestHeaders = emptyMap(),
+                    mediaType = MediaType.MP4,
+                )
+                stateMutex.withLock {
+                    _downloadStatesFlow.value = persistentMapOf(
+                        downloadId to DownloadEntry(job = null, state = state),
+                    )
+                }
+            }
+
+            suspend fun forceStatus(downloadId: DownloadId, status: DownloadStatus) {
+                stateMutex.withLock {
+                    val entry = _downloadStatesFlow.value[downloadId] ?: error("Missing state for $downloadId")
+                    _downloadStatesFlow.value = _downloadStatesFlow.value.put(
+                        downloadId,
+                        entry.copy(state = entry.state.copy(status = status)),
+                    )
+                }
+            }
+        }
+        val downloadId = DownloadId("state-only")
+        stateAwareDownloader.seedState(downloadId, DownloadStatus.PAUSED)
+
+        stateAwareDownloader.getProgressFlow(downloadId).test {
+            assertEquals(DownloadStatus.PAUSED, awaitItem().status)
+
+            stateAwareDownloader.forceStatus(downloadId, DownloadStatus.COMPLETED)
+
+            assertEquals(DownloadStatus.COMPLETED, awaitItem().status)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        stateAwareDownloader.close()
     }
 
     // ----------------------------------------------------
@@ -553,7 +808,7 @@ class KtorHttpDownloaderTest {
     fun `download - mp4 file should complete successfully`() = testScope.runTest {
         val downloadId = downloader.downloadWithId(
             url = "https://example.com/sample.mp4",
-            downloadId = DownloadId("sample.mp4"),
+            downloadId = DownloadId("sample"),
         )?.downloadId
         assertNotNull(downloadId)
         // Wait for actual completion
@@ -607,7 +862,7 @@ class KtorHttpDownloaderTest {
     fun `download - mkv file should complete successfully`() = testScope.runTest {
         val downloadId = downloader.downloadWithId(
             url = "https://example.com/sample.mkv",
-            downloadId = DownloadId("sample.mkv"),
+            downloadId = DownloadId("sample-mkv"),
         )?.downloadId
         assertNotNull(downloadId)
         // Wait for actual completion
@@ -616,16 +871,16 @@ class KtorHttpDownloaderTest {
         val state = downloader.getState(downloadId)
         assertNotNull(state)
         assertEquals(DownloadStatus.COMPLETED, state.status)
-        assertTrue(fileSystem.exists(Path("$tempDir/sample.mkv")))
+        assertTrue(fileSystem.exists(Path("$tempDir/sample-mkv.mkv")))
 
         // Merged segments directory should be cleaned
         assertFalse(fileSystem.exists(Path("$tempDir/segments_$downloadId")))
 
         // New: check final file size and partial content
-        val fileSize = fileSystem.metadata(Path("$tempDir/sample.mkv")).size
+        val fileSize = fileSystem.metadata(Path("$tempDir/sample-mkv.mkv")).size
         assertEquals(MKV_FILE_SIZE, fileSize, "MKV file size mismatch.")
 
-        fileSystem.read(Path("$tempDir/sample.mkv")) {
+        fileSystem.read(Path("$tempDir/sample-mkv.mkv")) {
             checkByteMatchSampleMp4(this, expectedSize = MKV_FILE_SIZE)
         }
     }
@@ -661,7 +916,7 @@ class KtorHttpDownloaderTest {
     fun `pause and resume - mp4 file should continue from paused state`() = testScope.runTest {
         val downloadId = downloader.downloadWithId(
             url = "https://example.com/sample.mp4",
-            downloadId = DownloadId("resumable.mp4"),
+            downloadId = DownloadId("resumable"),
         )?.downloadId
         assertNotNull(downloadId)
         downloader.pause(downloadId)
@@ -721,7 +976,7 @@ class KtorHttpDownloaderTest {
     fun `download - server without range support should still complete successfully`() = testScope.runTest {
         val downloadId = downloader.downloadWithId(
             url = "https://example.com/no-range-support.mp4",
-            downloadId = DownloadId("no-range-support.mp4"),
+            downloadId = DownloadId("no-range-support"),
         )?.downloadId
         assertNotNull(downloadId)
         // Wait for actual completion
@@ -743,7 +998,7 @@ class KtorHttpDownloaderTest {
         // Set a small max concurrent segments value to ensure multiple segments are created
         val options = DownloadOptions(maxConcurrentSegments = 3)
 
-        val downloadId = DownloadId("multi-segment.mp4")
+        val downloadId = DownloadId("multi-segment")
         downloader.downloadWithId(
             url = "https://example.com/sample.mp4",
             downloadId = downloadId,
@@ -865,7 +1120,7 @@ class KtorHttpDownloaderTest {
     @Test
     fun `resume - segment creation fails first time - success second time`() = testScope.runTest {
         // 1) Download (which will fail on first attempt because of internal server error).
-        val downloadId = DownloadId("unstable1.ts")
+        val downloadId = DownloadId("unstable1")
         downloader.downloadWithId(
             url = "https://example.com/unstable-playlist1.m3u8",
             downloadId = downloadId,
@@ -885,7 +1140,7 @@ class KtorHttpDownloaderTest {
         val finalState = downloader.getState(downloadId)
         assertNotNull(finalState)
         assertEquals(DownloadStatus.COMPLETED, finalState.status, "Expected second attempt to succeed")
-        assertTrue(fileSystem.exists(Path("$tempDir/unstable1.ts")), "Expected final file to exist")
+        assertTrue(fileSystem.exists(Path("$tempDir/unstable1.mp4")), "Expected final file to exist")
     }
 
     @Test
@@ -909,7 +1164,7 @@ class KtorHttpDownloaderTest {
         val finalState = downloader.getState(downloadId)
         assertNotNull(finalState)
         assertEquals(DownloadStatus.FAILED, finalState.status, "Expected to remain FAILED after second fail")
-        assertFalse(fileSystem.exists(Path("$tempDir/unstable2.ts")), "File should not exist after repeated failures")
+        assertFalse(fileSystem.exists(Path("$tempDir/unstable2.mp4")), "File should not exist after repeated failures")
     }
 
     /**
@@ -1010,7 +1265,7 @@ class KtorHttpDownloaderTest {
         )
         val downloadId = downloader.downloadWithId(
             url = "https://example.com/unstable-single.m3u8",
-            downloadId = DownloadId("unstable-single.ts"),
+            downloadId = DownloadId("unstable-single"),
             options = options,
         )?.downloadId
         assertNotNull(downloadId)
@@ -1023,8 +1278,8 @@ class KtorHttpDownloaderTest {
         assertEquals(DownloadStatus.COMPLETED, finalState.status, "Expected success after segment eventually recovers")
 
         // Check final file's existence and size
-        assertTrue(fileSystem.exists(Path("$tempDir/unstable-single.ts")), "Output file should exist")
-        val size = fileSystem.metadata(Path("$tempDir/unstable-single.ts")).size
+        assertTrue(fileSystem.exists(Path("$tempDir/unstable-single.mp4")), "Output file should exist")
+        val size = fileSystem.metadata(Path("$tempDir/unstable-single.mp4")).size
         assertEquals(512, size, "File should contain the final recovered segment")
     }
 
@@ -1050,6 +1305,84 @@ class KtorHttpDownloaderTest {
             segment3.ts
             #EXT-X-ENDLIST
         """
+
+        private const val ENCRYPTED_MEDIA_PLAYLIST = """
+            #EXTM3U
+            #EXT-X-VERSION:3
+            #EXT-X-TARGETDURATION:2
+            #EXT-X-MEDIA-SEQUENCE:0
+            #EXT-X-KEY:METHOD=AES-128,URI="https://example.com/key.bin",IV=0x0102030405060708090A0B0C0D0E0F10
+
+            #EXTINF:1.0,
+            https://example.com/encrypted-segment0.ts
+            #EXT-X-ENDLIST
+        """
+
+        private const val TAGGED_MEDIA_PLAYLIST = """
+            #EXTM3U
+            #EXT-X-VERSION:6
+            #EXT-X-TARGETDURATION:5
+            #EXT-X-MEDIA-SEQUENCE:10
+            #EXT-X-PLAYLIST-TYPE:VOD
+            #EXT-X-INDEPENDENT-SEGMENTS
+
+            #EXTINF:4.0,
+            segment1.ts
+            #EXTINF:4.0,
+            segment2.ts
+            #EXT-X-ENDLIST
+        """
+
+        private val HLS_ENCRYPTION_KEY = byteArrayOf(
+            0x00, 0x11, 0x22, 0x33,
+            0x44, 0x55, 0x66, 0x77,
+            0x88.toByte(), 0x99.toByte(), 0xAA.toByte(), 0xBB.toByte(),
+            0xCC.toByte(), 0xDD.toByte(), 0xEE.toByte(), 0xFF.toByte(),
+        )
+
+        private val ENCRYPTED_TS_SEGMENT_BASE64 = """
+            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
+        """.trimIndent().replace("\n", "")
 
         // ------------------------------------------------------------
         // NEW: references 2 segments:
@@ -1086,4 +1419,10 @@ private fun FileSystem.metadata(path: Path): FileMetadata = metadataOrNull(path)
 
 private inline fun <R> FileSystem.read(path: Path, function: Source.() -> R): R {
     return source(path).buffered().use { it.function() }
+}
+
+private fun writeBytes(path: Path, data: ByteArray) {
+    SystemFileSystem.sink(path).buffered().use { sink ->
+        sink.write(data, startIndex = 0, endIndex = data.size)
+    }
 }

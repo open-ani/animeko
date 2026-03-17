@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -15,7 +15,6 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.launch
@@ -55,14 +54,12 @@ class TorrentMediaCacheStorage(
     /**
      * App 必须先在启动时候恢复过一次之后才能 refresh caches
      */
-    private val requestStartupRestoreFlow = MutableSharedFlow<Boolean>(extraBufferCapacity = 1)
-
+    private val requestStartupRestore = Channel<Unit>(Channel.CONFLATED)
 
     init {
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             val startupRestored = CompletableDeferred<Unit>()
             val serviceConnected = torrentEngine.isServiceConnected.buffer(Channel.RENDEZVOUS).produceIn(this)
-            val requestStartupRestore = requestStartupRestoreFlow.produceIn(this)
 
             while (true) {
                 select<Unit> {
@@ -88,7 +85,7 @@ class TorrentMediaCacheStorage(
     }
 
     override suspend fun restorePersistedCaches() {
-        requestStartupRestoreFlow.emit(true)
+        requestStartupRestore.send(Unit)
     }
 
     override suspend fun refreshCache(): List<MediaCache> {

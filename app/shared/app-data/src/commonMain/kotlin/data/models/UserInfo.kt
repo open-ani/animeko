@@ -13,7 +13,7 @@ package me.him188.ani.app.data.models
  * 与数据源无关的用户信息
  */
 data class UserInfo(
-    val id: Int,
+    val id: String,
     /**
      * 对于自己, 一定有
      */
@@ -23,6 +23,6 @@ data class UserInfo(
     val sign: String? = null
 ) {
     companion object {
-        val EMPTY = UserInfo(0, "")
+        val EMPTY = UserInfo("", "")
     }
 }

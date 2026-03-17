@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -19,7 +19,7 @@ sealed interface CommentContext {
     /**
      * 剧集评论
      */
-    data class Episode(val subjectId: Int, val episodeId: Int) : CommentContext
+    data class Episode(val subjectId: Int, val episodeId: Long) : CommentContext
 
     /**
      * 条目吐槽箱
@@ -29,5 +29,5 @@ sealed interface CommentContext {
     /**
      * 剧集回复某个人的评论
      */
-    data class EpisodeReply(val subjectId: Int, val episodeId: Int, val commentId: Int) : CommentContext
+    data class EpisodeReply(val subjectId: Int, val episodeId: Long, val commentId: String) : CommentContext
 }

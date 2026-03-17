@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -106,6 +106,11 @@ interface HttpDownloader : AutoCloseable {
     suspend fun cancelAll()
 
     /**
+     * Removes a download, including any cached files owned by the downloader.
+     */
+    suspend fun remove(downloadId: DownloadId): Boolean
+
+    /**
      * Gets the current state of a download by ID.
      */
     suspend fun getState(downloadId: DownloadId): DownloadState?
@@ -143,6 +148,7 @@ data class DownloadError(
 data class DownloadProgress(
     val downloadId: DownloadId,
     val url: String,
+    val mediaType: MediaType,
     val totalSegments: Int,
     val downloadedSegments: Int,
     val downloadedBytes: Long,
@@ -196,7 +202,19 @@ data class DownloadState(
 
 @Serializable
 enum class MediaType {
-    M3U8, MP4, MKV
+    M3U8, MP4, MKV;
+
+    /**
+     * The file extension for the output file of this media type.
+     *
+     * M3U8 segments are remuxed into a single MP4 file.
+     */
+    val outputFileExtension: String
+        get() = when (this) {
+            M3U8 -> ".mp4"
+            MP4 -> ".mp4"
+            MKV -> ".mkv"
+        }
 }
 
 @Serializable
@@ -205,10 +223,21 @@ data class SegmentInfo(
     val url: String,
     val isDownloaded: Boolean,
     val byteSize: Long = -1,
+    val durationSeconds: Float? = null,
+    val title: String? = null,
+    val isDiscontinuity: Boolean = false,
+    val encryption: SegmentEncryptionInfo? = null,
     @SerialName("tempFilePath")
     val relativeTempFilePath: String,
     val rangeStart: Long? = null,
     val rangeEnd: Long? = null,
+)
+
+@Serializable
+data class SegmentEncryptionInfo(
+    val method: String,
+    val keyUri: String,
+    val iv: String? = null,
 )
 
 @Serializable
@@ -222,4 +251,3 @@ data class DownloadOptions(
     val maxRetriesPerSegment: Int = 100,
     val baseRetryDelayMillis: Long = 1000L,
 )
-

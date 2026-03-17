@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -84,10 +84,17 @@ class PlayerSession(
                 VideoLoadingState.ResolvingSource,
                 VideoLoadingState.DecodingData(isBt = media.kind == MediaSourceKind.BitTorrent),
             )
+
             val data = source.open(scopeForCleanup = backgroundScope) // may throw MediaSourceOpenException
+
+            logger.info { "Set media data to player: $data" }
             player.setMediaData(data)
-            logger.info { "playerState.applySourceToPlayer with source = $source" }
+
             _videoLoadingStateFlow.value = VideoLoadingState.Succeed(isBt = source is TorrentMediaDataProvider)
+            withContext(mainDispatcher) {
+                player.resume()
+            }
+            logger.info { "resuming" }
         } catch (e: UnsupportedMediaException) {
             logger.warn { IllegalStateException("Failed to resolve video source, unsupported media", e) }
             _videoLoadingStateFlow.value = VideoLoadingState.UnsupportedMedia
@@ -166,7 +173,7 @@ class PlayerSession(
 //        }
 //        .distinctUntilChanged() // re-create fetch session iff part of the infos related to fetch changes.
 //        .flatMapLatest { request ->
-//            mediaSourceManager.createFetchFetchSessionFlow(flowOf(request))
+//            mediaSourceManager.createFetchFetchSession(flowOf(request))
 //        } // the above won't throw.
 //        .shareIn(flowScope, SharingStarted.WhileSubscribed(), 1)
 //

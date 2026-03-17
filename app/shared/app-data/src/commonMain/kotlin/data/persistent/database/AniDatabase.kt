@@ -19,6 +19,7 @@ import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
 import androidx.room.migration.AutoMigrationSpec
+import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 import me.him188.ani.app.data.persistent.database.converters.DurationConverter
@@ -81,7 +82,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
 
         PreferredWebMediaSource::class,
     ],
-    version = 19,
+    version = 20,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.Migration_1_2::class),
         AutoMigration(from = 2, to = 3, spec = Migrations.Migration_2_3::class),
@@ -154,6 +155,35 @@ abstract class AniDatabase : RoomDatabase() {
 
 expect object AniDatabaseConstructor : RoomDatabaseConstructor<AniDatabase> {
     override fun initialize(): AniDatabase
+}
+
+val MIGRATION_19_20 = object : Migration(startVersion = 19, endVersion = 20) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("DROP TABLE IF EXISTS `episode_comment`")
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `episode_comment` (
+                `episodeId` INTEGER NOT NULL,
+                `commentId` TEXT NOT NULL,
+                `authorId` TEXT NOT NULL,
+                `parentCommentId` TEXT,
+                `authorNickname` TEXT NOT NULL,
+                `authorAvatarUrl` TEXT,
+                `createdAt` INTEGER NOT NULL,
+                `content` TEXT NOT NULL,
+                PRIMARY KEY(`commentId`),
+                FOREIGN KEY(`episodeId`) REFERENCES `episode_collection`(`episodeId`) ON UPDATE NO ACTION ON DELETE CASCADE,
+                FOREIGN KEY(`parentCommentId`) REFERENCES `episode_comment`(`commentId`) ON UPDATE NO ACTION ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
+            )
+            """.trimIndent(),
+        )
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_episode_comment_episodeId` ON `episode_comment` (`episodeId`)",
+        )
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_episode_comment_parentCommentId` ON `episode_comment` (`parentCommentId`)",
+        )
+    }
 }
 
 @Suppress("ClassName")

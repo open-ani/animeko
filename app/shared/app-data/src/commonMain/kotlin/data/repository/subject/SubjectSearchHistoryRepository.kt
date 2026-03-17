@@ -25,7 +25,12 @@ class SubjectSearchHistoryRepository(
     private val searchTag: SearchTagDao,
 ) : Repository(), KoinComponent {
     suspend fun addHistory(content: String) = withContext(defaultDispatcher) {
-        searchHistory.insert(SearchHistoryEntity(content = content))
+        val normalizedContent = content.trim()
+        if (normalizedContent.isEmpty()) {
+            return@withContext
+        }
+
+        searchHistory.insert(SearchHistoryEntity(content = normalizedContent))
     }
 
     suspend fun removeHistory(content: String) = withContext(defaultDispatcher) {

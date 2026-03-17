@@ -190,6 +190,50 @@ val buildSignedReleaseArchive = tasks.register("buildSignedReleaseArchive", Xcod
     archivePath = layout.buildDirectory.dir("archives/release-signed/Animeko.xcarchive")
 }
 
+val httpDownloaderProject = project(":utils:http-downloader")
+val iosArm64FfmpegRuntimeDir = httpDownloaderProject.layout.buildDirectory.dir("published-ffmpeg-runtime/ios-arm64")
+val iosSimulatorArm64FfmpegRuntimeDir =
+    httpDownloaderProject.layout.buildDirectory.dir("published-ffmpeg-runtime/ios-simulator-arm64")
+
+val embedDebugArchiveFfmpegRuntime =
+    tasks.register("embedDebugArchiveFfmpegRuntime", EmbedIosFfmpegRuntimeTask::class) {
+        group = "build"
+        description = "Embeds mediamp-ffmpeg runtime files into the Debug xcarchive app bundle"
+        dependsOn(buildDebugArchive, ":utils:http-downloader:preparePublishedFfmpegRuntimeIosArm64")
+
+        runtimeDirectory = iosArm64FfmpegRuntimeDir
+        appBundleDirectory =
+            layout.buildDirectory.dir("archives/debug/Animeko.xcarchive/Products/Applications/Animeko.app")
+    }
+
+val embedReleaseArchiveFfmpegRuntime =
+    tasks.register("embedReleaseArchiveFfmpegRuntime", EmbedIosFfmpegRuntimeTask::class) {
+        group = "build"
+        description = "Embeds mediamp-ffmpeg runtime files into the Release xcarchive app bundle"
+        dependsOn(buildReleaseArchive, ":utils:http-downloader:preparePublishedFfmpegRuntimeIosArm64")
+
+        runtimeDirectory = iosArm64FfmpegRuntimeDir
+        appBundleDirectory =
+            layout.buildDirectory.dir("archives/release/Animeko.xcarchive/Products/Applications/Animeko.app")
+    }
+
+val embedSignedReleaseArchiveFfmpegRuntime =
+    tasks.register("embedSignedReleaseArchiveFfmpegRuntime", EmbedIosFfmpegRuntimeTask::class) {
+        group = "build"
+        description = "Embeds mediamp-ffmpeg runtime files into the signed Release xcarchive app bundle and re-signs it"
+        dependsOn(buildSignedReleaseArchive, ":utils:http-downloader:preparePublishedFfmpegRuntimeIosArm64")
+
+        runtimeDirectory = iosArm64FfmpegRuntimeDir
+        appBundleDirectory =
+            layout.buildDirectory.dir("archives/release-signed/Animeko.xcarchive/Products/Applications/Animeko.app")
+        signingIdentity.convention(providers.provider { "Apple Distribution" })
+        signingKeychain = layout.buildDirectory.file("release-animeko.keychain")
+    }
+
+buildDebugArchive.configure { finalizedBy(embedDebugArchiveFfmpegRuntime) }
+buildReleaseArchive.configure { finalizedBy(embedReleaseArchiveFfmpegRuntime) }
+buildSignedReleaseArchive.configure { finalizedBy(embedSignedReleaseArchiveFfmpegRuntime) }
+
 // ── Debug 未签名 IPA ──
 // 将 Debug .xcarchive 中的 .app 打包为 ad-hoc 签名的 .ipa。
 // 适用于 AltStore / SideStore 等侧载工具, 它们会在安装时重新签名。
@@ -200,7 +244,7 @@ tasks.register("buildDebugIpa", BuildUnsignedIpaTask::class) {
     // Adjust these paths as needed
     archiveDir = layout.buildDirectory.dir("archives/debug/Animeko.xcarchive")
     outputIpa = layout.buildDirectory.file("archives/debug/Animeko.ipa")
-    dependsOn(buildDebugArchive)
+    dependsOn(embedDebugArchiveFfmpegRuntime)
 }
 
 // ── Release 未签名 IPA ──
@@ -213,7 +257,7 @@ tasks.register("buildReleaseIpa", BuildUnsignedIpaTask::class) {
     // Adjust these paths as needed
     archiveDir = layout.buildDirectory.dir("archives/release/Animeko.xcarchive")
     outputIpa = layout.buildDirectory.file("archives/release/Animeko.ipa")
-    dependsOn(buildReleaseArchive)
+    dependsOn(embedReleaseArchiveFfmpegRuntime)
 }
 
 // ── 签名 Release IPA (App Store / TestFlight) ──
@@ -223,7 +267,7 @@ tasks.register("buildReleaseIpa", BuildUnsignedIpaTask::class) {
 tasks.register("buildSignedReleaseIpa", XcodeExportArchiveTask::class) {
     group = "build"
     description = "Exports a signed IPA for App Store / TestFlight distribution"
-    dependsOn(buildSignedReleaseArchive, patchExportOptionsPlist)
+    dependsOn(embedSignedReleaseArchiveFfmpegRuntime, patchExportOptionsPlist)
 
     workingDirectory = layout.projectDirectory
     archivePath = layout.buildDirectory.dir("archives/release-signed/Animeko.xcarchive")
@@ -240,8 +284,10 @@ tasks.register("buildSignedReleaseIpa", XcodeExportArchiveTask::class) {
  * Xcode 默认将模拟器构建输出到 DerivedData, 但此处使用自定义的 build 目录。
  */
 fun simulatorAppPath(): Provider<RegularFile> =
-    // Adjust this path if your build output is located differently.
-    layout.buildDirectory.file("Debug-iphonesimulator/Animeko.app")
+    layout.buildDirectory.file("derivedData/Build/Products/Debug-iphonesimulator/Animeko.app")
+
+fun simulatorAppDir(): Provider<Directory> =
+    layout.buildDirectory.dir("derivedData/Build/Products/Debug-iphonesimulator/Animeko.app")
 
 // ── 模拟器 Debug 构建 ──
 // 使用 xcodebuild build (非 archive) 为 iOS 模拟器编译 Debug 版本。
@@ -252,8 +298,12 @@ tasks.register("buildDebugForSimulator", Exec::class) {
     group = "build"
     description = "Builds a debug version of Animeko for iOS Simulator"
     val destination = project.getLocalProperty("ani.ios.simulator.destination") ?: "generic/platform=iOS Simulator"
+    val simulatorArchs = project.getLocalProperty("ani.ios.simulator.archs") ?: "arm64"
     inputs.property("destination", destination)
+    inputs.property("simulatorArchs", simulatorArchs)
     workingDir(projectDir)
+    environment("ORG_GRADLE_PROJECT_compose.ios.resources.platform", "iphonesimulator")
+    environment("ORG_GRADLE_PROJECT_compose.ios.resources.archs", simulatorArchs)
     val command = buildList {
         addAll(
             ipaArguments(
@@ -261,11 +311,31 @@ tasks.register("buildDebugForSimulator", Exec::class) {
                 sdk = "iphonesimulator",
             ),
         )
+        add("-derivedDataPath")
+        add(layout.buildDirectory.dir("derivedData").get().asFile.absolutePath)
         add("-configuration")
         add("Debug")
+        add("ARCHS=$simulatorArchs")
         add("build")
     }
     commandLine(command)
+}
+
+val embedSimulatorFfmpegRuntime = tasks.register("embedSimulatorFfmpegRuntime", EmbedIosFfmpegRuntimeTask::class) {
+    group = "build"
+    description = "Embeds mediamp-ffmpeg runtime files into the simulator app bundle and re-signs it ad-hoc"
+    dependsOn(
+        tasks.named("buildDebugForSimulator"),
+        ":utils:http-downloader:preparePublishedFfmpegRuntimeIosSimulatorArm64",
+    )
+
+    runtimeDirectory = iosSimulatorArm64FfmpegRuntimeDir
+    appBundleDirectory = simulatorAppDir()
+    signingIdentity.convention(providers.provider { "-" })
+}
+
+tasks.named("buildDebugForSimulator").configure {
+    finalizedBy(embedSimulatorFfmpegRuntime)
 }
 
 // ── 启动 iOS 模拟器 ──
@@ -287,7 +357,7 @@ tasks.register("launchSimulator", Exec::class) {
 tasks.register("installDebugOnSimulator", Exec::class) {
     group = "run"
     description = "Installs the debug build on the Simulator"
-    dependsOn("buildDebugForSimulator", "launchSimulator")
+    dependsOn(embedSimulatorFfmpegRuntime, "launchSimulator")
 
     val appPath = simulatorAppPath()
     // Typically, you want to ensure the simulator is booted before installing.

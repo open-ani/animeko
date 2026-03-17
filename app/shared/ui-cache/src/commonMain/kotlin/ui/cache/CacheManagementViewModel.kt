@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.transformLatest
@@ -27,6 +28,7 @@ import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.cache.engine.sum
+import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.torrent.api.files.averageRate
 import me.him188.ani.app.ui.cache.components.CacheEpisodePaused
 import me.him188.ani.app.ui.cache.components.CacheEpisodeState
@@ -53,25 +55,24 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
 
     val stateFlow = run {
         val overallStatsFlow = cacheManager.enabledStorages
-            .flatMapLatest { list ->
-                list.map { it.stats }.sum()
-            }
+            .overallStatsFlow()
             .sampleWithInitial(1.seconds)
             .stateInBackground(MediaStats.Unspecified)
 
-        val groupsFlow = cacheManager.enabledStorages
-            .flatMapLatest { storages ->
-                if (storages.isEmpty()) return@flatMapLatest flowOfEmptyList()
-                val listFlow = storages.map { storage ->
+        val allCachesFlow = cacheManager.enabledStorages
+            .flatMapLatest { list ->
+                if (list.isEmpty()) return@flatMapLatest flowOfEmptyList()
+                val listFlow = list.map { storage ->
                     storage.listFlow.map { caches ->
                         caches.map { CacheWithEngine(it, storage.engine.engineKey) }
                     }
                 }
-                combine(listFlow) { it.asSequence().flatten().toList() }.transformLatest {
-                    supervisorScope { emitAll(createCacheGroupStates(it)) } // supervisorScope won't finish itself
-                }
-            }
-            .shareInBackground()
+                combine(listFlow) { it.asSequence().flatten().toList() }
+            }.shareInBackground()
+
+        val groupsFlow = allCachesFlow.transformLatest {
+            supervisorScope { emitAll(createCacheGroupStates(it)) } // supervisorScope won't finish itself
+        }.shareInBackground()
 
         combine(overallStatsFlow, groupsFlow, ::CacheManagementState)
             .stateInBackground(CacheManagementState.Placeholder) // has distinctUntilChanged
@@ -185,6 +186,16 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
     fun deleteCache(cache: CacheEpisodeState) {
         backgroundScope.launch {
             deleteCacheByCacheIdUseCase(cache.subjectId, cache.episodeId, cache.cacheId)
+        }
+    }
+}
+
+internal fun Flow<List<MediaCacheStorage>>.overallStatsFlow(): Flow<MediaStats> {
+    return flatMapLatest { storages ->
+        if (storages.isEmpty()) {
+            flowOf(MediaStats.Zero)
+        } else {
+            storages.map { it.stats }.sum()
         }
     }
 }

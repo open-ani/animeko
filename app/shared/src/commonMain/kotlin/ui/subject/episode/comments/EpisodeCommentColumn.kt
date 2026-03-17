@@ -22,6 +22,10 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AddComment
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,6 +42,7 @@ import me.him188.ani.app.ui.comment.CommentColumn
 import me.him188.ani.app.ui.comment.CommentDefaults
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.UIComment
+import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.comment.UIRichText
 import me.him188.ani.app.ui.comment.generateUiComment
 import me.him188.ani.app.ui.comment.rememberTestCommentState
@@ -51,7 +56,7 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 @Composable
 fun EpisodeCommentColumn(
     state: CommentState,
-    onClickReply: (commentId: Long) -> Unit,
+    onClickReply: (commentId: String) -> Unit,
     onNewCommentClick: () -> Unit,
     onClickUrl: (url: String) -> Unit,
     modifier: Modifier = Modifier,
@@ -61,17 +66,17 @@ fun EpisodeCommentColumn(
 
     Scaffold(
         modifier,
-        // TODO: 2025.08.15 暂时去掉发评论功能, 等 ani server 做好转发再上
-        /*floatingActionButton = {
+        floatingActionButton = {
             ExtendedFloatingActionButton(
                 text = { Text("写评论") },
                 icon = {
                     Icon(Icons.Rounded.AddComment, null)
-                },
-                onNewCommentClick,
+                }
+                ,
+                onClick = onNewCommentClick,
                 expanded = !gridState.canScrollBackward,
             )
-        },*/
+        },
     ) { _ ->
         CommentColumn(
             state.list.collectAsLazyPagingItemsWithLifecycle(),
@@ -88,7 +93,7 @@ fun EpisodeCommentColumn(
                     // 如果没有回复则 ActionBar 就是最后一个元素，减小一下 bottom padding 以看起来舒服
                     .padding(top = 12.dp, bottom = if (comment.replyCount != 0) 12.dp else 4.dp),
                 onClickImage = { imageViewer.viewImage(it) },
-                onActionReply = { onClickReply(comment.id) },
+                onActionReply = { onClickReply(comment.sourceCommentId) },
                 onClickUrl = onClickUrl,
             )
         }
@@ -121,6 +126,9 @@ fun EpisodeComment(
                 overflow = TextOverflow.Ellipsis,
             )
         },
+        rhsTitle = {
+            Text(if (comment.source == UICommentSource.ANI) "Ani" else "Bangumi")
+        },
         content = {
             RichText(
                 elements = comment.content.elements,
@@ -136,14 +144,16 @@ fun EpisodeComment(
                 onClickItem = { },
             )
         },
-        actionRow = {
-            CommentDefaults.ActionRow(
-                onClickReply = onActionReply,
-                onClickReaction = {},
-                onClickBlock = {},
-                onClickReport = {},
-            )
-        },
+        actionRow = if (comment.canReply) {
+            {
+                CommentDefaults.ActionRow(
+                    onClickReply = onActionReply,
+                    onClickReaction = {},
+                    onClickBlock = {},
+                    onClickReport = {},
+                )
+            }
+        } else null,
         reply = if (comment.briefReplies.isNotEmpty()) {
             {
                 CommentDefaults.ReplyList(

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -57,7 +57,7 @@ import me.him188.ani.app.videoplayer.ui.gesture.VIDEO_GESTURE_MOUSE_MOVE_SHOW_CO
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.TAG_PROGRESS_SLIDER_PREVIEW_POPUP
-import org.openani.mediamp.DummyMediampPlayer
+import org.openani.mediamp.test.TestMediampPlayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.seconds
@@ -90,7 +90,7 @@ class EpisodeVideoCursorTest {
         ProvideCompositionLocalsForPreview(darkMode = DarkMode.DARK) {
             val scope = rememberCoroutineScope()
             val playerState = remember {
-                DummyMediampPlayer(scope.coroutineContext)
+                TestMediampPlayer(scope.coroutineContext)
             }
             Row {
                 val expanded = true

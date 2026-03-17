@@ -23,8 +23,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
-import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.network.AniApiProvider
+import me.him188.ani.app.data.network.AniEpisodeCommentService
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AniSubjectSearchService
 import me.him188.ani.app.data.network.AnimeScheduleService
@@ -42,10 +42,12 @@ import me.him188.ani.app.data.network.SubjectService
 import me.him188.ani.app.data.network.TrendsRepository
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.persistent.database.AniDatabase
+import me.him188.ani.app.data.persistent.database.MIGRATION_19_20
 import me.him188.ani.app.data.persistent.database.createDatabaseBuilder
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
+import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepository
 import me.him188.ani.app.data.repository.media.EpisodePreferencesRepositoryImpl
@@ -317,6 +319,13 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
     single<EpisodeScreenshotRepository> { WhatslinkEpisodeScreenshotRepository() }
     single<BangumiCommentService> { BangumiBangumiCommentServiceImpl(get()) }
+    single<AniEpisodeCommentService> { AniEpisodeCommentService(get<AniApiProvider>().episodesApi) }
+    single<EpisodeCommentRepository> {
+        EpisodeCommentRepository(
+            aniCommentService = get(),
+            bangumiCommentService = get(),
+        )
+    }
     single<MediaSourceInstanceRepository> {
         MediaSourceInstanceRepositoryImpl(getContext().dataStores.mediaSourceSaveStore)
     }
@@ -374,6 +383,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                     addAll(1..15) // 16 is destructive
                 }.toIntArray(),
             )
+            .addMigrations(MIGRATION_19_20)
             .setDriver(BundledSQLiteDriver())
             .setQueryCoroutineContext(Dispatchers.IO_)
             .build()
@@ -520,18 +530,7 @@ fun KoinApplication.startCommonKoinModule(
         val subscriptionUpdater = koin.get<MediaSourceSubscriptionUpdater>()
         while (currentCoroutineContext().isActive) {
             val nextDelay = subscriptionUpdater.updateAllOutdated()
-            delay(nextDelay.coerceAtLeast(1.minutes))
-        }
-    }
-
-    coroutineScope.launch {
-        // TODO: 这里是自动删除旧版数据源. 在未来 3.14 左右就可以去除这个了
-        val removedFactoryIds = setOf("ntdm", "mxdongman", "nyafun", "gugufan", "xfdm", "acg.rip")
-        val manager = koin.get<MediaSourceInstanceRepository>()
-        for (instance in manager.flow.first()) {
-            if (instance.factoryId.value in removedFactoryIds) {
-                manager.remove(instanceId = instance.instanceId)
-            }
+            delay(nextDelay.coerceAtLeast(10.minutes))
         }
     }
 
@@ -547,25 +546,6 @@ fun KoinApplication.startCommonKoinModule(
     coroutineScope.launch {
         val peerFilterRepo = koin.get<PeerFilterSubscriptionRepository>()
         peerFilterRepo.updateOrLoadAll()
-    }
-
-    // TODO: For ThemeSettings migration. Delete in the future.
-    @Suppress("DEPRECATION")
-    coroutineScope.launch {
-        val settingsRepository = koin.get<SettingsRepository>()
-        val uiSettings = settingsRepository.uiSettings
-        val uiSettingsContent = uiSettings.flow.first()
-        val legacyThemeSettings = uiSettingsContent.theme
-        val themeSettings = settingsRepository.themeSettings
-
-        if (legacyThemeSettings != null) {
-            val newThemeSettings = ThemeSettings(
-                darkMode = legacyThemeSettings.darkMode,
-                useDynamicTheme = legacyThemeSettings.dynamicTheme,
-            )
-            themeSettings.update { newThemeSettings }
-            uiSettings.update { uiSettingsContent.copy(theme = null) }
-        }
     }
 
     koin.get<SessionManager>().startBackgroundJob()

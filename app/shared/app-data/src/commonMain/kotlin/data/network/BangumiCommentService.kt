@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -35,11 +35,11 @@ interface BangumiCommentService {
     /**
      * @return `null` if [episodeId] is invalid
      */
-    suspend fun getSubjectEpisodeComments(episodeId: Int): List<EpisodeComment>?
+    suspend fun getSubjectEpisodeComments(episodeId: Long): List<EpisodeComment>?
 
     // comment.id 会被忽略
     suspend fun postEpisodeComment(
-        episodeId: Int,
+        episodeId: Long,
         content: String,
         cfTurnstileResponse: String,
         replyToCommentId: Int? = null
@@ -69,7 +69,7 @@ class BangumiBangumiCommentServiceImpl(
     }
 
     override suspend fun postEpisodeComment(
-        episodeId: Int,
+        episodeId: Long,
         content: String,
         cfTurnstileResponse: String,
         replyToCommentId: Int?
@@ -89,7 +89,7 @@ class BangumiBangumiCommentServiceImpl(
         }
     }
 
-    override suspend fun getSubjectEpisodeComments(episodeId: Int): List<EpisodeComment>? {
+    override suspend fun getSubjectEpisodeComments(episodeId: Long): List<EpisodeComment>? {
         return withContext(ioDispatcher) {
             val response = try {
                 client.nextEpisodeApi {
@@ -114,7 +114,7 @@ private fun BangumiNextSubjectInterestComment.toSubjectReview(subjectId: Int) = 
     updatedAt = updatedAt * 1000L,
     rating = rate,
     creator = UserInfo(
-        id = user.id,
+        id = user.id.toString(),
         nickname = user.nickname,
         username = null,
         avatarUrl = user.avatar.large,

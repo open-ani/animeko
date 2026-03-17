@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -185,8 +185,14 @@ class DefaultM3u8ParserTest {
         // Check the encryption key was recorded at the segment level or in the segment's keys map
         val segment0 = playlist.segments[0]
         assertEquals(8.0f, segment0.duration)
-        // Key info is in segment0.keys or segment0.tags
-        assertTrue(segment0.keys.isNotEmpty() || segment0.tags.isNotEmpty())
+        assertEquals("AES-128", segment0.encryption?.method)
+        assertEquals("https://keyserver.example.com/key", segment0.encryption?.uri)
+        assertEquals("0x1A2B3C4D5E6F", segment0.encryption?.iv)
+
+        val segment1 = playlist.segments[1]
+        assertEquals("AES-128", segment1.encryption?.method)
+        assertEquals("https://keyserver.example.com/key", segment1.encryption?.uri)
+        assertEquals("0x1A2B3C4D5E6F", segment1.encryption?.iv)
     }
 
     @Test
@@ -268,5 +274,69 @@ class DefaultM3u8ParserTest {
         assertEquals("http://example.com/segmentNoOffset.ts", segment.uri)
         assertEquals(45000, segment.byteRange?.length)
         assertNull(segment.byteRange?.offset)
+    }
+
+    @Test
+    fun `parseResolvedMediaPlaylist - should preserve raw content and resolved media playlist`() {
+        val content = """
+            #EXTM3U
+            #EXT-X-VERSION:6
+            #EXT-X-TARGETDURATION:5
+            #EXT-X-MEDIA-SEQUENCE:10
+            #EXT-X-PLAYLIST-TYPE:VOD
+
+            #EXTINF:4.0,
+            segment1.ts
+            #EXT-X-ENDLIST
+        """.trimIndent()
+
+        val resolved = parser.parseResolvedMediaPlaylist(content, "https://example.com/path/playlist.m3u8")
+
+        assertEquals("https://example.com/path/playlist.m3u8", resolved.sourceUrl)
+        assertEquals(content, resolved.rawContent)
+        assertEquals(6, resolved.playlist.version)
+        assertEquals(10, resolved.playlist.mediaSequence)
+        assertEquals("https://example.com/path/segment1.ts", resolved.playlist.segments.single().uri)
+    }
+
+    @Test
+    fun `export - should preserve metadata while rewriting segment and key URIs`() {
+        val content = """
+            #EXTM3U
+            #EXT-X-VERSION:6
+            #EXT-X-TARGETDURATION:5
+            #EXT-X-MEDIA-SEQUENCE:10
+            #EXT-X-PLAYLIST-TYPE:VOD
+            #EXT-X-KEY:METHOD=AES-128,URI="key.bin",IV=0x01020304
+
+            #EXTINF:4.0,
+            segment1.ts
+            #EXTINF:4.0,
+            https://cdn.example.com/segment2.ts
+            #EXT-X-ENDLIST
+        """.trimIndent()
+
+        val resolved = parser.parseResolvedMediaPlaylist(content, "https://example.com/path/playlist.m3u8")
+        val exported = resolved.export(
+            resolveSegmentUri = { _, index -> "local/$index.ts" },
+            resolveKeyUri = { "keys/local.key" },
+        )
+
+        val expected = """
+            #EXTM3U
+            #EXT-X-VERSION:6
+            #EXT-X-TARGETDURATION:5
+            #EXT-X-MEDIA-SEQUENCE:10
+            #EXT-X-PLAYLIST-TYPE:VOD
+            #EXT-X-KEY:METHOD=AES-128,URI="keys/local.key",IV=0x01020304
+
+            #EXTINF:4.0,
+            local/0.ts
+            #EXTINF:4.0,
+            local/1.ts
+            #EXT-X-ENDLIST
+        """.trimIndent()
+
+        assertEquals(expected, exported.trimEnd())
     }
 }

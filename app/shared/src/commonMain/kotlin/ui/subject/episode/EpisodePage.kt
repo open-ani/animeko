@@ -90,6 +90,7 @@ import me.him188.ani.app.platform.features.getComponentAccessors
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.comment.CommentEditorState
 import me.him188.ani.app.ui.comment.CommentState
+import me.him188.ani.app.ui.comment.createPreviewTurnstileState
 import me.him188.ani.app.ui.danmaku.DanmakuEditorState
 import me.him188.ani.app.ui.danmaku.DummyDanmakuEditor
 import me.him188.ani.app.ui.danmaku.PlayerDanmakuEditor
@@ -156,12 +157,14 @@ import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
+import me.him188.ani.utils.platform.isIos
 import me.him188.ani.utils.platform.isMobile
 import org.openani.mediamp.features.AudioLevelController
 import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.Screenshots
 import org.openani.mediamp.features.VideoAspectRatio
 import org.openani.mediamp.features.toggleMute
+import org.openani.mediamp.isPlaying
 
 
 /**
@@ -371,10 +374,9 @@ private fun EpisodeScreenContent(
     if (showEditCommentSheet) {
         EpisodeEditCommentSheet(
             state = vm.commentEditorState,
-            turnstileState = vm.turnstileState,
+            turnstileState = remember { createPreviewTurnstileState() },
             onDismiss = {
                 showEditCommentSheet = false
-                vm.turnstileState.cancel()
                 vm.commentEditorState.cancelSend()
                 tryUnpause()
             },
@@ -627,7 +629,14 @@ private fun EpisodeScreenContentPhone(
     val toaster = LocalToaster.current
     val videoWindowInsets = windowInsets
         .union(WindowInsets.desktopTitleBar)
-        .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+        .run {
+            // iOS 上的 top window insets 没有被正确消耗, 手动排除 top insets
+            if (LocalPlatform.current.isIos()) {
+                only(WindowInsetsSides.Horizontal)
+            } else {
+                only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+            }
+        }
     val columnInsets = videoWindowInsets.only(WindowInsetsSides.Horizontal)
 
     EpisodeScreenContentPhoneScaffold(
@@ -1078,13 +1087,13 @@ private fun EpisodeCommentColumn(
         state = commentState,
         onClickReply = {
             setShowEditCommentSheet(true)
-            commentEditorState.startEdit(CommentContext.EpisodeReply(subjectId, episodeId, it.toInt()))
+            commentEditorState.startEdit(CommentContext.EpisodeReply(subjectId, episodeId.toLong(), it))
             pauseOnPlaying()
 
         },
         onNewCommentClick = {
             commentEditorState.startEdit(
-                CommentContext.Episode(subjectId, episodeId),
+                CommentContext.Episode(subjectId, episodeId.toLong()),
             )
             setShowEditCommentSheet(true)
         },

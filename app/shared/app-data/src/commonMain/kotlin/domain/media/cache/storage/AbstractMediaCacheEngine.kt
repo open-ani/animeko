@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -20,7 +20,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
@@ -30,6 +33,7 @@ import me.him188.ani.app.domain.media.cache.LocalFileMediaCache
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
+import me.him188.ani.app.domain.media.cache.engine.sum
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
@@ -118,13 +122,25 @@ abstract class AbstractDataStoreMediaCacheStorage(
     override val cacheMediaSource: MediaSource by lazy {
         MediaCacheStorageSource(this, displayName, MediaSourceLocation.Local)
     }
-    override val stats: Flow<MediaStats> = engine.stats.map { stats ->
-        MediaStats(
-            uploaded = stats.uploaded,
-            downloaded = stats.downloaded,
-            uploadSpeed = stats.uploadSpeed,
-            downloadSpeed = stats.downloadSpeed,
-        )
+    override val stats: Flow<MediaStats> = listFlow.flatMapLatest { caches ->
+        if (caches.isEmpty()) {
+            return@flatMapLatest flowOf(MediaStats.Zero)
+        }
+
+        combine(
+            caches.map { cache ->
+                cache.sessionStats.map { stats ->
+                    MediaStats(
+                        uploaded = stats.uploadedBytes,
+                        downloaded = stats.downloadedBytes,
+                        uploadSpeed = stats.uploadSpeed,
+                        downloadSpeed = stats.downloadSpeed,
+                    )
+                }
+            },
+        ) { cacheStats ->
+            cacheStats.sum()
+        }
     }
 
     override suspend fun cache(

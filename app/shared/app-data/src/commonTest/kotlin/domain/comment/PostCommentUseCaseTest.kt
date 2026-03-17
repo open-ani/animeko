@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,175 +9,99 @@
 
 package me.him188.ani.app.domain.comment
 
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.FlowCollector
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.IOException
-import me.him188.ani.app.data.models.episode.EpisodeComment
-import me.him188.ani.app.data.models.subject.SubjectReview
-import me.him188.ani.app.data.network.BangumiCommentService
-import me.him188.ani.datasources.api.paging.Paged
+import me.him188.ani.app.data.network.AniEpisodeCommentService
+import me.him188.ani.client.apis.EpisodesAniApi
+import me.him188.ani.utils.ktor.ApiInvoker
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class PostCommentUseCaseTest {
     @Test
-    fun `send succeed`() = runTest {
-        val commentService = createCommentService { }        
-        val turnstileState = createTurnstileState()
-
+    fun `send top-level comment succeeds`() = runTest {
+        var postedEpisodeId: Long? = null
+        var postedContent: String? = null
         val sender = PostCommentUseCaseImpl(
-            turnstileState,
-            commentService,
-            turnstileContext = coroutineContext,
+            createCommentService(
+                onCreateEpisodeComment = { episodeId, content ->
+                    postedEpisodeId = episodeId
+                    postedContent = content
+                },
+            ),
+            context = coroutineContext,
         )
 
-        val result = sender(commentContext, COMMENT_CONTENT)
-        assertIs<CommentSendResult.Ok>(result, "Should send succeeded.")
-    }
-    
-    @Test
-    fun `turnstile token - web view network error`() = runTest {
-        val commentService = createCommentService { }        
-        val turnstileState = createTurnstileState(
-            tokenFlow = { },
-            errorFlow = { emit(TurnstileState.Error.Network(TURNSTILE_ERROR_CODE)) },
-        )
+        val result = sender(CommentContext.Episode(1, 2L), COMMENT_CONTENT)
 
-        val sender = PostCommentUseCaseImpl(
-            turnstileState,
-            commentService,
-            turnstileContext = coroutineContext,
-        )
-
-        val result = sender(commentContext, COMMENT_CONTENT)
-        assertIs<CommentSendResult.TurnstileError.Network>(result, "Should cause turnstile web view network error.")
-        assertEquals(TURNSTILE_ERROR_CODE, result.code)
+        assertIs<CommentSendResult.Ok>(result)
+        assertEquals(2L, postedEpisodeId)
+        assertEquals(COMMENT_CONTENT, postedContent)
     }
 
     @Test
-    fun `turnstile token - web view unknown error`() = runTest {
-        val commentService = createCommentService { }
-        val turnstileState = createTurnstileState(
-            tokenFlow = { },
-            errorFlow = { emit(TurnstileState.Error.Unknown(TURNSTILE_ERROR_CODE)) },
-        )
-
+    fun `send reply succeeds`() = runTest {
+        var replyCommentId: String? = null
         val sender = PostCommentUseCaseImpl(
-            turnstileState,
-            commentService,
-            turnstileContext = coroutineContext,
+            createCommentService(
+                onCreateEpisodeReply = { _, commentId, _ ->
+                    replyCommentId = commentId
+                },
+            ),
+            context = coroutineContext,
         )
 
-        val result = sender(commentContext, COMMENT_CONTENT)
-        assertIs<CommentSendResult.TurnstileError.Unknown>(result, "Should cause turnstile web view unknown error.")
-                assertEquals(TURNSTILE_ERROR_CODE, result.code)
+        val result = sender(CommentContext.EpisodeReply(1, 2L, "reply-target"), COMMENT_CONTENT)
+
+        assertIs<CommentSendResult.Ok>(result)
+        assertEquals("reply-target", replyCommentId)
     }
-    
+
     @Test
-    fun `turnstile token - unknown error`() = runTest {
-        val commentService = createCommentService { }
-        val turnstileState = createTurnstileState(
-            errorFlow = { throw IllegalStateException() },
-        )
-
+    fun `comment service network error`() = runTest {
         val sender = PostCommentUseCaseImpl(
-            turnstileState,
-            commentService,
-            turnstileContext = coroutineContext,
+            createCommentService(onCreateEpisodeComment = { _, _ -> throw IOException() }),
+            context = coroutineContext,
         )
 
-        val result = sender(commentContext, COMMENT_CONTENT)
-        assertIs<CommentSendResult.UnknownError>(result, "Exception in turnstile token should cause unknown error.")
-            }
-    
-    @Test
-    fun `comment service - network error`() = runTest {
-        val commentService = createCommentService { throw IOException() }
-        val turnstileState = createTurnstileState()
-
-        val sender = PostCommentUseCaseImpl(
-            turnstileState,
-            commentService,
-            turnstileContext = coroutineContext,
-        )
-
-        val result = sender(commentContext, COMMENT_CONTENT)
-        assertIs<CommentSendResult.NetworkError>(result, "Should cause network error.")
+        val result = sender(CommentContext.Episode(1, 2L), COMMENT_CONTENT)
+        assertIs<CommentSendResult.NetworkError>(result)
     }
-    
-    @Test
-    fun `comment service - unknown error`() = runTest {
-        val commentService = createCommentService { throw IllegalStateException() }
-        val turnstileState = createTurnstileState()
 
+    @Test
+    fun `comment service unknown error`() = runTest {
         val sender = PostCommentUseCaseImpl(
-            turnstileState,
-            commentService,
-            turnstileContext = coroutineContext,
+            createCommentService(onCreateEpisodeComment = { _, _ -> throw IllegalStateException("boom") }),
+            context = coroutineContext,
         )
 
-        val result = sender(commentContext, COMMENT_CONTENT)
-        assertIs<CommentSendResult.UnknownError>(result, "Should cause unknown error.")
+        val result = sender(CommentContext.Episode(1, 2L), COMMENT_CONTENT)
+        assertIs<CommentSendResult.UnknownError>(result)
     }
-    
-    
+
     private fun createCommentService(
-        onPostEpisodeComment: () -> Unit = { }
-    ): BangumiCommentService {
-        return object : BangumiCommentService {
-            override suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int): Paged<SubjectReview>? {
-                error("unreachable test")
+        onCreateEpisodeComment: suspend (episodeId: Long, content: String) -> Unit = { _, _ -> },
+        onCreateEpisodeReply: suspend (episodeId: Long, commentId: String, content: String) -> Unit = { _, _, _ -> },
+    ): AniEpisodeCommentService {
+        return object : AniEpisodeCommentService(UnusedEpisodesApi) {
+            override suspend fun createEpisodeComment(episodeId: Long, contentBbcode: String) {
+                onCreateEpisodeComment(episodeId, contentBbcode)
             }
 
-            override suspend fun getSubjectEpisodeComments(episodeId: Int): List<EpisodeComment>? {
-                error("unreachable test")
-            }
-
-            override suspend fun postEpisodeComment(
-                episodeId: Int,
-                content: String,
-                cfTurnstileResponse: String,
-                replyToCommentId: Int?
-            ) {
-                onPostEpisodeComment()
+            override suspend fun createEpisodeReply(episodeId: Long, commentId: String, contentBbcode: String) {
+                onCreateEpisodeReply(episodeId, commentId, contentBbcode)
             }
         }
     }
-    
-    private fun createTurnstileState(
-        tokenFlow: suspend FlowCollector<String>.() -> Unit = { emit(TURNSTILE_TOKEN) },
-        errorFlow: suspend FlowCollector<TurnstileState.Error>.() -> Unit = { },
-    ): TurnstileState {
-        val deferred = CompletableDeferred<Unit>()
-        
-        return object : TurnstileState {
-            override val url: String = ""
-            override val tokenFlow: Flow<String> = flow { 
-                deferred.await()
-                tokenFlow()
-            }
-            override val webErrorFlow: Flow<TurnstileState.Error> = flow {
-                deferred.await()
-                errorFlow()
-            }
 
-            override fun reload() {
-                deferred.complete(Unit)
-            }
-
-            override fun cancel() { }
-
-        }
-    }
-    
     private companion object {
-        private const val TURNSTILE_TOKEN = "test-cf-turnstile-token-114514"
-        private val commentContext = CommentContext.Episode(1, 2)
         private const val COMMENT_CONTENT = "小祈好可爱我要死了(bgm38)"
-        private const val TURNSTILE_ERROR_CODE = 114514
+    }
+}
+
+private object UnusedEpisodesApi : ApiInvoker<EpisodesAniApi> {
+    override suspend fun <R> invoke(action: suspend EpisodesAniApi.() -> R): R {
+        error("Unused in test")
     }
 }

@@ -116,10 +116,11 @@ import me.him188.ani.app.videoplayer.ui.top.SystemTime
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
-import org.openani.mediamp.DummyMediampPlayer
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.audioTracks
 import org.openani.mediamp.features.subtitleTracks
+import org.openani.mediamp.isPlaying
+import org.openani.mediamp.test.TestMediampPlayer
 import org.openani.mediamp.togglePause
 
 internal const val TAG_EPISODE_VIDEO_TOP_BAR = "EpisodeVideoTopBar"
@@ -238,7 +239,9 @@ internal fun EpisodeVideoImpl(
                                 }
                             }
                         },
-                        windowInsets = contentWindowInsets,
+                        // VideoScaffold already applies top/horizontal insets around the top bar.
+                        // Passing the same insets into TopAppBar duplicates the status-bar padding on iOS portrait.
+                        windowInsets = WindowInsets(0.dp),
                     )
                 }
             },
@@ -503,7 +506,7 @@ private fun PreviewVideoScaffoldImpl(
 ) = ProvideCompositionLocalsForPreview {
     val scope = rememberCoroutineScope()
     val playerState = remember {
-        DummyMediampPlayer(scope.coroutineContext)
+        TestMediampPlayer(scope.coroutineContext)
     }
 
     val controllerState = rememberVideoControllerState(initialVisibility = controllerVisibility)

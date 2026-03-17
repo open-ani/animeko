@@ -79,7 +79,7 @@ fun KoinApplication.useCaseModules() = module {
     single<SetEpisodeCollectionTypeUseCase> { SetEpisodeCollectionTypeUseCaseImpl(koin) }
     single<GetEpisodeCollectionTypeUseCase> { GetEpisodeCollectionTypeUseCaseImpl(koin) }
     single<GetAnimeScheduleFlowUseCase> { GetAnimeScheduleFlowUseCaseImpl(get(), get()) }
-    single<PostCommentUseCase> { PostCommentUseCaseImpl(get(), get()) }
+    single<PostCommentUseCase> { PostCommentUseCaseImpl(get()) }
     single<GetPreferredMediaSourceSortingUseCase> { GetPreferredMediaSourceSortingUseCaseImpl(get()) }
     single<GetMediaSelectorSourceTiersUseCase> { GetMediaSelectorSourceTiersUseCaseImpl(get()) }
     single<GetEpisodeTypeFiltersUseCase> { GetEpisodeTypeFiltersUseCaseImpl(get()) }

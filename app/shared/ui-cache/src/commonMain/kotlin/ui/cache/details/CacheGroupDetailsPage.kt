@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.ui.foundation.AbstractViewModel
@@ -42,6 +43,8 @@ import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.datasources.api.source.MediaSourceInfo
+import me.him188.ani.utils.logging.logger
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -73,14 +76,17 @@ class MediaCacheDetailsPageViewModel(
 
     val screenStateFlow =
         combine(sourceInfoFlow, mediaCacheFlow) { sourceInfo, mediaCache ->
-            val originalMedia = mediaCache?.origin
-            if (originalMedia == null) {
-                MediaCacheDetailsScreenState(details = null)
-            } else {
-                val cachedMedia = mediaCache.getCachedMedia()
-                MediaCacheDetailsScreenState(MediaDetails.from(originalMedia, sourceInfo, cachedMedia))
-            }
+            createMediaCacheDetailsScreenState(mediaCache, sourceInfo)
         }.stateInBackground(MediaCacheDetailsScreenState(null))
+}
+
+internal suspend fun createMediaCacheDetailsScreenState(
+    mediaCache: MediaCache?,
+    sourceInfo: MediaSourceInfo?,
+): MediaCacheDetailsScreenState {
+    val originalMedia = mediaCache?.origin ?: return MediaCacheDetailsScreenState(details = null)
+    val cachedMedia = runCatching { mediaCache.getCachedMedia() }.getOrNull()
+    return MediaCacheDetailsScreenState(MediaDetails.from(originalMedia, sourceInfo, cachedMedia))
 }
 
 data class MediaCacheDetailsScreenState(
@@ -102,6 +108,8 @@ fun MediaCacheDetailsScreen(
         windowInsets = windowInsets,
     )
 }
+
+private val logger = logger<MediaCacheDetailsPageViewModel>()
 
 @Composable
 fun MediaCacheDetailsScreen(

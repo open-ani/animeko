@@ -65,12 +65,13 @@ fun generateUiComment(
         add(
             UIComment(
                 id = i.toLong(),
+                stableId = "test:$i",
                 content = content,
                 createdAt = run {
                     currentTimeMillis() - (1..10000).random().minutes.inWholeMilliseconds
                 },
                 author = UserInfo(
-                    id = (1..100).random(),
+                    id = (1..100).random().toString(),
                     username = "",
                     nickname = "nickname him188 $i",
                     avatarUrl = "https://picsum.photos/200/300",
@@ -85,6 +86,7 @@ fun generateUiComment(
                 } else emptyList(),
                 replyCount = (0..100).random(),
                 rating = (0..10).random(),
+                canReply = true,
             ),
         )
     }

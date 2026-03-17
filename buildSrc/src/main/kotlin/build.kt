@@ -30,6 +30,7 @@ import org.jetbrains.compose.ComposePlugin
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinCommonCompilerOptions
+import org.jetbrains.kotlin.gradle.dsl.KotlinGradlePluginDsl
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
@@ -345,6 +346,7 @@ fun Project.withKotlinTargets(fn: (KotlinTarget) -> Unit) {
     }
 }
 
+@KotlinGradlePluginDsl
 internal fun KotlinMultiplatformExtension.androidLibrary(
     action: Action<KotlinMultiplatformAndroidLibraryTarget>
 ) {

@@ -237,17 +237,13 @@ fun SettingsScope.EpisodeCacheListGroup(
                     ) {
                         showDropdown = true
                     } else {
-                        if (episodeCacheState == state.currentSelectMediaTask?.episode) {
-                            // 同一个任务, 重新展开 sheet 就行 (恢复结果), 不用替换 request
-                            uiScope.launch {
-                                hideMediaSelector = false
-                            }
-                        } else {
+                        if (episodeCacheState != state.currentSelectMediaTask?.episode) {
                             state.requestCache(episodeCacheState, autoSelectCached = true)
                             uiScope.launch {
                                 KoinPlatform.getKoin().get<PermissionManager>().requestNotificationPermission(context)
                             }
                         }
+                        hideMediaSelector = false
                     }
                 },
                 isRequestHidden = hideMediaSelector,

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -177,9 +177,13 @@ class EpisodeCacheListStateImpl(
     }
 
     override fun requestCache(episode: EpisodeCacheState, autoSelectCached: Boolean) {
-        // 当已经有任务时, 忽略请求
+        // 同一个 episode 已经有任务时, 忽略请求
         if (episode.actionTasker.isRunning.value) return
         episode.actionTasker.launch {
+            currentEpisode
+                ?.takeIf { it !== episode }
+                ?.cacheRequester
+                ?.cancelRequest()
             // TODO: 处理错误 
             onRequestCache(episode, autoSelectCached)?.let {
                 if (it is CacheRequestStage.Done) {

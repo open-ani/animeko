@@ -90,7 +90,6 @@
 				0E62CA675B735DF3B0C16EC1 /* Pods-Animeko.debug.xcconfig */,
 				F249EC154975837B7E34C6F8 /* Pods-Animeko.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
