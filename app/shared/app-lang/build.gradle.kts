@@ -82,6 +82,7 @@ tasks.matching {
             || it.name.startsWith("copyNonXmlValueResources")
             // android, `generateDebugResources`
             || (it.name.startsWith("generate") && it.name.endsWith("Resources"))
+            || it.name.endsWith("NavigationResources")
             || it.name.startsWith("extractDeepLinks")
             || (it.name.startsWith("map") && it.name.endsWith("SourceSetPaths")) // mapReleaseSourceSetPaths
 }.configureEach {
