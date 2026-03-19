@@ -9,7 +9,7 @@
 
 @file:OptIn(ExperimentalKotlinGradlePluginApi::class)
 
-import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryExtension
+import com.android.build.api.dsl.LibraryExtension
 import org.jetbrains.compose.ComposeExtension
 import org.jetbrains.compose.ComposePlugin
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
@@ -28,8 +28,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
  * 如果开了 android, 就会配置 desktop + android, 否则只配置 jvm.
  */
 
-val androidLibraryExtension = extensions.findByType(KotlinMultiplatformExtension::class)
-    ?.extensions?.findByType(KotlinMultiplatformAndroidLibraryExtension::class)
+val androidLibraryExtension = extensions.findByType(LibraryExtension::class)
 val composeExtension = extensions.findByType(ComposeExtension::class)
 val composeCompilerExtension =
     extensions.findByType(org.jetbrains.kotlin.compose.compiler.gradle.ComposeCompilerGradlePluginExtension::class)
@@ -59,38 +58,10 @@ configure<KotlinMultiplatformExtension> {
     }
     if (androidLibraryExtension != null) {
         jvm("desktop")
-        /*androidTarget {
+        androidTarget {
             @OptIn(ExperimentalKotlinGradlePluginApi::class)
             instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
-            unitTestVariant.sourceSetTree.set(KotlinSourceSetTree.unitTest)
-        }*/
-        androidLibrary {
-            compileSdk = getIntProperty("android.compile.sdk")
-            minSdk = getIntProperty("android.min.sdk")
-            androidResources.enable = true
-
-            withHostTestBuilder {
-                sourceSetTreeName = KotlinSourceSetTree.test.name
-            }
-
-            withDeviceTestBuilder {
-                sourceSetTreeName = KotlinSourceSetTree.test.name
-            }.configure {
-                targetSdk {
-                    release(getIntProperty("android.min.sdk"))
-                }
-                instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-                instrumentationRunnerArguments["runnerBuilder"] = "de.mannodermaus.junit5.AndroidJUnit5Builder"
-                instrumentationRunnerArguments["package"] = "me.him188"
-                execution = "HOST"
-            }
-
-            packaging {
-                resources {
-                    pickFirsts.add("META-INF/LICENSE.md")
-                    pickFirsts.add("META-INF/LICENSE-notice.md")
-                }
-            }
+            unitTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
         }
 
         applyDefaultHierarchyTemplate {
@@ -175,31 +146,70 @@ configure<KotlinMultiplatformExtension> {
 
         if (composeExtension != null) {
             tasks.named("generateComposeResClass") {
-                mustRunAfter("generateResourceAccessorsForAndroidHostTest")
+                mustRunAfter("generateResourceAccessorsForAndroidUnitTest")
             }
             tasks.withType(KotlinCompilationTask::class) {
                 mustRunAfter(tasks.matching { it.name == "generateComposeResClass" })
                 mustRunAfter(tasks.matching { it.name == "generateResourceAccessorsForAndroidMain" })
-                mustRunAfter(tasks.matching { it.name == "generateResourceAccessorsForAndroidHostTest" })
-                mustRunAfter(tasks.matching { it.name == "generateResourceAccessorsForAndroidDeviceTest" })
+                mustRunAfter(tasks.matching { it.name == "generateResourceAccessorsForAndroidUnitTest" })
+                mustRunAfter(tasks.matching { it.name == "generateResourceAccessorsForAndroidInstrumentedTest" })
             }
 
-            val composeVersion = versionCatalogs.named("libs").findVersion("jetpack-compose").get()
             listOf(
-                sourceSets.getByName("androidDeviceTest"),
-                sourceSets.getByName("androidHostTest"),
+                sourceSets.getByName("androidInstrumentedTest"),
+                sourceSets.getByName("androidUnitTest"),
             ).forEach { sourceSet ->
                 sourceSet.dependencies {
                     // https://developer.android.com/develop/ui/compose/testing#setup
-//                implementation("androidx.compose.ui:ui-test-junit4-android:${composeVersion}")
+//                implementation("androidx.compose.ui:ui-test-junit4-android:${versionCatalogs.named("libs").findVersion("jetpack-compose").get()}")
 //                implementation("androidx.compose.ui:ui-test-manifest:${composeVersion}")
                     // TODO: this may cause dependency rejection when importing the project in IntelliJ.
                 }
             }
 
             project.dependencies {
-                "androidRuntimeClasspath"(libs.getLibrary("androidx-compose-ui-test-manifest"))
+                "debugImplementation"(libs.getLibrary("androidx-compose-ui-test-manifest"))
             }
+        }
+    }
+}
+
+if (androidLibraryExtension != null) {
+    configure<LibraryExtension> {
+        compileSdk = getIntProperty("android.compile.sdk")
+
+        defaultConfig {
+            minSdk = getIntProperty("android.min.sdk")
+            testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+            testInstrumentationRunnerArguments["runnerBuilder"] = "de.mannodermaus.junit5.AndroidJUnit5Builder"
+            testInstrumentationRunnerArguments["package"] = "me.him188"
+        }
+
+        buildFeatures {
+            androidResources = true
+        }
+
+        packaging {
+            resources {
+                pickFirsts.add("META-INF/LICENSE.md")
+                pickFirsts.add("META-INF/LICENSE-notice.md")
+            }
+        }
+
+        sourceSets.named("androidTest").configure {
+            java.srcDirs("src/androidDeviceTest/kotlin", "src/androidDeviceTest/java")
+            res.srcDirs("src/androidDeviceTest/res")
+            resources.srcDirs("src/androidDeviceTest/resources")
+            assets.srcDirs("src/androidDeviceTest/assets")
+            val androidDeviceTestManifest = project.file("src/androidDeviceTest/AndroidManifest.xml")
+            if (androidDeviceTestManifest.exists()) {
+                manifest.srcFile(androidDeviceTestManifest)
+            }
+        }
+
+        sourceSets.named("test").configure {
+            java.srcDirs("src/androidHostTest/kotlin", "src/androidHostTest/java")
+            resources.srcDirs("src/androidHostTest/resources")
         }
     }
 }
@@ -225,8 +235,8 @@ if (composeExtension != null && androidLibraryExtension != null) {
 
     val stabilityInputTaskNames = listOf(
         "compileAndroidMain",
-        "compileAndroidHostTest",
-        "compileAndroidDeviceTest",
+        "compileAndroidUnitTest",
+        "compileAndroidInstrumentedTest",
         "compileKotlinDesktop",
         "compileTestKotlinDesktop",
     )

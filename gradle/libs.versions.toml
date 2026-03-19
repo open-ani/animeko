@@ -1,6 +1,6 @@
 [versions]
 kotlin = "2.3.10"
-android-gradle-plugin = "9.0.1"
+android-gradle-plugin = "8.13.2"
 
 ### KOTLINX ###
 kotlinx-coroutines = "1.10.2" # https://github.com/Kotlin/kotlinx.coroutines/releases
@@ -92,7 +92,7 @@ mediamp = "0.1.6"
 # Plugins for projects.
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm" }
-android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library" }
+android-kotlin-multiplatform-library = { id = "com.android.library" }
 android-application = { id = "com.android.application" }
 android-library = { id = "com.android.library" }
 kotlinx-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu" }
@@ -114,7 +114,7 @@ compose-stability-analyzer = { id = "com.github.skydoves.compose.stability.analy
 [libraries]
 # Plugin libraries for build logic (buildSrc).
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "android-gradle-plugin" }
-android-kotlin-multiplatform-library-gradle-plugin = { module = "com.android.kotlin.multiplatform.library:com.android.kotlin.multiplatform.library.gradle.plugin", version.ref = "android-gradle-plugin" }
+android-kotlin-multiplatform-library-gradle-plugin = { module = "com.android.library:com.android.library.gradle.plugin", version.ref = "android-gradle-plugin" }
 android-application-gradle-plugin = { module = "com.android.application:com.android.application.gradle.plugin", version.ref = "android-gradle-plugin" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 atomicfu-gradle-plugin = { module = "org.jetbrains.kotlinx:atomicfu-gradle-plugin", version.ref = "kotlinx-atomicfu" }

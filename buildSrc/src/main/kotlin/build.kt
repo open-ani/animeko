@@ -7,8 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
-import com.android.build.gradle.api.KotlinMultiplatformAndroidPlugin
+import com.android.build.api.dsl.LibraryExtension
 import org.gradle.api.Action
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
@@ -262,10 +261,11 @@ fun Project.configureKotlinTestSettings() {
                 // has android target, configure instrumented test
                 // this must be added to `androidTest`, instead of just `androidInstrumentedTest`
 
-                // TODO AGP Migration: Check the android test
                 val androidTestSourceSets = listOf(
-                    kotlinSourceSets?.getByName("androidHostTest"),
-                    kotlinSourceSets?.getByName("androidDeviceTest"),
+                    kotlinSourceSets?.findByName("androidUnitTest")
+                        ?: kotlinSourceSets?.findByName("androidHostTest"),
+                    kotlinSourceSets?.findByName("androidInstrumentedTest")
+                        ?: kotlinSourceSets?.findByName("androidDeviceTest"),
                 )
                 androidTestSourceSets.forEach {
                     it?.dependencies {
@@ -299,7 +299,9 @@ fun Project.configureKotlinTestSettings() {
                         }
 
                         target?.platformType == KotlinPlatformType.androidJvm
+                                || sourceSet.name == "androidInstrumentedTest"
                                 || sourceSet.name == "androidDeviceTest"
+                                || sourceSet.name == "androidUnitTest"
                                 || sourceSet.name == "androidHostTest" -> {
                             sourceSet.configureJvmTest(b)
                         }
@@ -313,10 +315,12 @@ fun Project.configureKotlinTestSettings() {
 fun Project.configureComposePreviewToolingDependency() {
     val libs = versionCatalogLibs()
     if (plugins.hasPlugin(ComposePlugin::class.java) &&
-        plugins.hasPlugin(KotlinMultiplatformAndroidPlugin::class.java)
+        plugins.hasPlugin("com.android.library")
     ) {
-        dependencies.add("androidRuntimeClasspath", libs.getLibrary("compose-ui-tooling"))
-            ?.because("Automatically add org.jetbrains.compose.ui:ui-tooling dependency to Compose & Android KMP Library.")
+        kotlinSourceSets?.findByName("androidMain")?.dependencies {
+            implementation(libs.getLibrary("compose-ui-tooling"))
+                ?.because("Automatically add org.jetbrains.compose.ui:ui-tooling dependency to Compose & Android KMP Library.")
+        }
     }
 }
 
@@ -347,11 +351,83 @@ fun Project.withKotlinTargets(fn: (KotlinTarget) -> Unit) {
 }
 
 @KotlinGradlePluginDsl
-internal fun KotlinMultiplatformExtension.androidLibrary(
-    action: Action<KotlinMultiplatformAndroidLibraryTarget>
+fun KotlinMultiplatformExtension.androidLibrary(
+    action: Action<AndroidKmpLibraryCompat>
 ) {
-    if (!project.plugins.hasPlugin(KotlinMultiplatformAndroidPlugin::class.java)) {
-        throw IllegalStateException("KMP Android plugin is not applied")
+    if (!project.plugins.hasPlugin("com.android.library")) {
+        throw IllegalStateException("Android library plugin is not applied")
     }
-    extensions.configure("android", action)
+    action.execute(AndroidKmpLibraryCompat(project))
+}
+
+class AndroidKmpLibraryCompat(
+    private val project: Project,
+) {
+    private val androidExtension: LibraryExtension
+        get() = project.extensions.findByType(LibraryExtension::class.java)
+            ?: error("Android library plugin is not applied")
+
+    var namespace: String = androidExtension.namespace ?: ""
+        set(value) {
+            field = value
+            androidExtension.namespace = value
+        }
+
+    var compileSdk: Int = project.getIntProperty("android.compile.sdk")
+        set(value) {
+            field = value
+            androidExtension.compileSdk = value
+        }
+
+    var minSdk: Int = project.getIntProperty("android.min.sdk")
+        set(value) {
+            field = value
+            androidExtension.defaultConfig.minSdk = value
+        }
+
+    fun packaging(action: Action<AndroidKmpPackagingCompat>) {
+        action.execute(AndroidKmpPackagingCompat(androidExtension))
+    }
+
+    fun optimization(action: Action<AndroidKmpOptimizationCompat>) {
+        action.execute(AndroidKmpOptimizationCompat(androidExtension))
+    }
+}
+
+class AndroidKmpPackagingCompat(
+    private val androidExtension: LibraryExtension,
+) {
+    fun resources(action: Action<AndroidKmpResourcesPackagingCompat>) {
+        action.execute(AndroidKmpResourcesPackagingCompat(androidExtension))
+    }
+}
+
+class AndroidKmpResourcesPackagingCompat(
+    private val androidExtension: LibraryExtension,
+) {
+    val pickFirsts
+        get() = androidExtension.packaging.resources.pickFirsts
+
+    val excludes
+        get() = androidExtension.packaging.resources.excludes
+}
+
+class AndroidKmpOptimizationCompat(
+    private val androidExtension: LibraryExtension,
+) {
+    var minify: Boolean = androidExtension.buildTypes.getByName("release").isMinifyEnabled
+        set(value) {
+            field = value
+            androidExtension.buildTypes.getByName("release").isMinifyEnabled = value
+        }
+
+    val keepRules = AndroidKmpKeepRulesCompat(androidExtension)
+}
+
+class AndroidKmpKeepRulesCompat(
+    private val androidExtension: LibraryExtension,
+) {
+    fun files(vararg files: Any) {
+        androidExtension.defaultConfig.consumerProguardFiles(*files)
+    }
 }

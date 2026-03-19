@@ -1448,8 +1448,8 @@ class WithMatrix(
             runGradle(
                 name = "Compile Kotlin Android",
                 tasks = arrayOf(
-                    "compileDefaultDebugKotlin",
-                    "compileDefaultReleaseKotlin",
+                    "compileDebugKotlinAndroid",
+                    "compileReleaseKotlinAndroid",
                 ),
                 maxAttempts = 2,
             )
@@ -1584,7 +1584,10 @@ class WithMatrix(
             )
             runGradle(
                 name = "Check (Android Host)",
-                tasks = arrayOf("testAndroidHostTest"),
+                tasks = arrayOf(
+                    "testDebugUnitTest",
+                    "testDefaultDebugUnitTest",
+                ),
                 maxAttempts = 3,
                 timeoutMinutes = 180,
             )
@@ -1606,7 +1609,8 @@ class WithMatrix(
             runGradle(
                 name = "Build Android Instrumented Tests",
                 tasks = arrayOf(
-                    "compileAndroidDeviceTest",
+                    "compileDebugAndroidTestKotlinAndroid",
+                    ":app:android:assembleDefaultDebugAndroidTest",
                     "\"-Pandroid.min.sdk=30\"",
                 ),
                 maxAttempts = 3,
@@ -1625,7 +1629,7 @@ class WithMatrix(
                             apiLevel = apiLevel.toString(),
                             arch = arch,
                             script = buildString {
-                                append("./gradlew connectedDeviceTest \"-Pandroid.min.sdk=30\" ")
+                                append("./gradlew :app:android:connectedDefaultDebugAndroidTest \"-Pandroid.min.sdk=30\" ")
                                 append(matrix.gradleArgs)
                                 // https://github.com/ReactiveCircus/android-emulator-runner/issues/385#issuecomment-2492035091
                                 append(" && killall -INT crashpad_handler || true")

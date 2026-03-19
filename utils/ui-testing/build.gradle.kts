@@ -7,9 +7,6 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-import org.gradle.api.tasks.testing.AbstractTestTask
-
-
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
@@ -50,7 +47,5 @@ kotlin {
 }
 
 if (enableIos) {
-    tasks.named<AbstractTestTask>("iosSimulatorArm64Test") {
-        failOnNoDiscoveredTests = false
-    }
+    tasks.named("iosSimulatorArm64Test")
 }

@@ -167,7 +167,7 @@ kotlin {
     }
 
     // androidUnitTest is apart from the commonTest tree so we have to do it again
-    sourceSets.androidHostTest.dependencies {
+    sourceSets.androidUnitTest.dependencies {
         implementation(libs.kotlinx.coroutines.test)
         implementation(projects.utils.testing)
         implementation(projects.utils.uiTesting)
