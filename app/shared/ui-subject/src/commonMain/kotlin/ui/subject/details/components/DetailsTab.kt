@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -148,23 +149,32 @@ fun SubjectDetailsDefaults.DetailsTab(
     horizontalPadding: Dp = currentWindowAdaptiveInfo1().windowSizeClass.paneHorizontalPadding,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
+
+    fun Modifier.limitContentWidthAndApplyPadding() = this
+        .widthIn(max = MaximumContentWidth)
+        .fillMaxWidth()
+        .padding(horizontal = horizontalPadding)
+
     LazyColumn(
         modifier,
         state = state,
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(20.dp), // 这个页面内容比较密集, 如果用 16 显得有点拥挤
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         item("spacer header") { }
 
         // 简介
         item("description") {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.limitContentWidthAndApplyPadding(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 SelectionContainer {
                     var expanded by rememberSaveable { mutableStateOf(false) }
                     Text(
                         info.summary,
-                        Modifier.fillMaxWidth().padding(horizontal = horizontalPadding)
-                            .clickable { expanded = !expanded },
+                        Modifier.fillMaxWidth().clickable { expanded = !expanded },
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = if (expanded) Int.MAX_VALUE else 5, // TODO: add animation 
                         overflow = TextOverflow.Ellipsis,
@@ -174,7 +184,6 @@ fun SubjectDetailsDefaults.DetailsTab(
                 TagsList(
                     info,
                     onClickTag,
-                    Modifier.padding(horizontal = horizontalPadding),
                 )
             }
         }
@@ -182,7 +191,7 @@ fun SubjectDetailsDefaults.DetailsTab(
         item("characters title") {
             Text(
                 "角色",
-                Modifier.padding(horizontal = horizontalPadding),
+                Modifier.limitContentWidthAndApplyPadding(),
                 style = MaterialTheme.typography.titleMedium,
             )
         }
@@ -196,7 +205,7 @@ fun SubjectDetailsDefaults.DetailsTab(
                         if (totalCharactersCount == null) "角色" else "角色 $totalCharactersCount",
                     )
                 },
-                modifier = Modifier.padding(horizontal = horizontalPadding),
+                modifier = Modifier.limitContentWidthAndApplyPadding(),
                 itemContent = { PersonCard(it) },
             )
         }
@@ -204,7 +213,7 @@ fun SubjectDetailsDefaults.DetailsTab(
         item("staff title") {
             Text(
                 "制作人员",
-                Modifier.padding(horizontal = horizontalPadding),
+                Modifier.limitContentWidthAndApplyPadding(),
                 style = MaterialTheme.typography.titleMedium,
             )
         }
@@ -218,7 +227,7 @@ fun SubjectDetailsDefaults.DetailsTab(
                         if (totalStaffCount == null) "制作人员" else "制作人员 $totalStaffCount",
                     )
                 },
-                modifier = Modifier.padding(horizontal = horizontalPadding),
+                modifier = Modifier.limitContentWidthAndApplyPadding(),
                 itemContent = { PersonCard(it) },
             )
         }
@@ -227,7 +236,7 @@ fun SubjectDetailsDefaults.DetailsTab(
             item("related subjects title") {
                 Text(
                     "关联条目",
-                    Modifier.padding(horizontal = horizontalPadding),
+                    Modifier.limitContentWidthAndApplyPadding(),
                     style = MaterialTheme.typography.titleMedium,
                 )
             }
@@ -247,7 +256,7 @@ fun SubjectDetailsDefaults.DetailsTab(
                             ),
                         )
                     },
-                    Modifier.padding(horizontal = horizontalPadding),
+                    Modifier.limitContentWidthAndApplyPadding(),
                     horizontalSpacing = horizontalPadding,
                     verticalSpacing = horizontalPadding,
                 )
