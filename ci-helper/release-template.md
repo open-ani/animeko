@@ -58,19 +58,19 @@ uploaded.
 
 [ghproxy-android-x86_64]: https://ghfast.top/?q=https%3A%2F%2Fgithub.com%2Fopen-ani%2Fani%2Freleases%2Fdownload%2F$GIT_TAG%2Fani-$TAG_VERSION-x86_64.apk
 
-[macOS 无法打开解决方案]: https://myani.org/wiki/macOS-%E6%97%A0%E6%B3%95%E6%89%93%E5%BC%80%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88
+[macOS 无法打开解决方案]: https://myani.org/wiki/macos-unable-to-open
 
-[Windows下字体与背景颜色异常解决方案]: https://myani.org/wiki/Windows%E4%B8%8B%E5%AD%97%E4%BD%93%E4%B8%8E%E8%83%8C%E6%99%AF%E9%A2%9C%E8%89%B2%E5%BC%82%E5%B8%B8
+[Windows下字体与背景颜色异常解决方案]: https://myani.org/wiki/windows-font-bg-color-issue
 
-[Linux 安装说明]: https://myani.org/wiki/Linux-%E5%AE%89%E8%A3%85%E8%AF%B4%E6%98%8E
+[Linux 安装说明]: https://myani.org/wiki/linux-install
 
-[macOS Intel芯片版本安装教程]: https://myani.org/wiki/macOS-Intel-%E8%8A%AF%E7%89%87%E7%89%88%E6%9C%AC%E5%AE%89%E8%A3%85%E6%95%99%E7%A8%8B
+[macOS Intel芯片版本安装教程]: https://myani.org/wiki/macos-intel-install
 
 [macos-intel-issue]: https://github.com/open-ani/animeko/issues/1345
 
 [linux-issue]: https://github.com/open-ani/animeko/issues/944
 
-[iOS 自签]: https://myani.org/wiki/iOS-%E8%87%AA%E7%AD%BE
+[iOS 自签]: https://myani.org/wiki/ios-install
 
 |                  | 下载                                               | 常见问题                                        |
 |------------------|--------------------------------------------------|---------------------------------------------|
