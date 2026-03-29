@@ -318,20 +318,26 @@ open class ComposeMediaPlayerComponent @JvmOverloads constructor(
         }
     }
 
-    var composeImage: ImageBitmap by mutableStateOf(ImageBitmap(128, 128))
+    var composeImage: ImageBitmap? by mutableStateOf(null)
 
     /**
      * Default implementation of a render callback that copies video frame data directly to the data buffer of an image
      * raster.
      */
     private inner class DefaultRenderCallback : RenderCallbackAdapter() {
+        private var cachedImage: ImageBitmap? = null
+        
         fun setImageBuffer(image: BufferedImage) {
             setBuffer((image.raster.dataBuffer as DataBufferInt).data)
         }
 
         override fun onDisplay(mediaPlayer: MediaPlayer, buffer: IntArray) {
             image?.let {
-                composeImage = it.toComposeImageBitmap()
+                if (cachedImage == null) {
+                    cachedImage = it.toComposeImageBitmap()
+                }
+                composeImage = null
+                composeImage = cachedImage
             }
 //            videoSurfaceComponent!!.repaint()
         }

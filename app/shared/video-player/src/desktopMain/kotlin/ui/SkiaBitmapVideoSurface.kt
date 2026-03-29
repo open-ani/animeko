@@ -37,6 +37,10 @@ class SkiaBitmapVideoSurface : VideoSurface(VideoSurfaceAdapters.getVideoSurface
     private lateinit var frameBytes: ByteArray
     private val skiaBitmap: Bitmap = Bitmap()
     private val composeBitmap = mutableStateOf<ImageBitmap?>(null)
+    
+    private var cachedBitmap: ImageBitmap? = null
+    private var lastWidth = 0
+    private var lastHeight = 0
 
     val enableRendering = MutableStateFlow(false)
 
@@ -48,6 +52,7 @@ class SkiaBitmapVideoSurface : VideoSurface(VideoSurfaceAdapters.getVideoSurface
 
     fun clearBitmap() {
         composeBitmap.value = null
+        cachedBitmap = null
     }
 
     override fun attach(mediaPlayer: MediaPlayer) {
@@ -72,6 +77,12 @@ class SkiaBitmapVideoSurface : VideoSurface(VideoSurfaceAdapters.getVideoSurface
                 ColorType.BGRA_8888,
                 ColorAlphaType.PREMUL,
             )
+            
+            if (lastWidth != sourceWidth || lastHeight != sourceHeight) {
+                cachedBitmap = null
+                lastWidth = sourceWidth
+                lastHeight = sourceHeight
+            }
         }
     }
 
@@ -96,7 +107,13 @@ class SkiaBitmapVideoSurface : VideoSurface(VideoSurfaceAdapters.getVideoSurface
                 nativeBuffers[0].rewind()
                 nativeBuffers[0].get(frameBytes)
                 skiaBitmap.installPixels(imageInfo, frameBytes, bufferFormat.width * 4)
-                composeBitmap.value = skiaBitmap.asComposeImageBitmap()
+                
+                if (cachedBitmap == null) {
+                    cachedBitmap = skiaBitmap.asComposeImageBitmap()
+                }
+                
+                composeBitmap.value = null
+                composeBitmap.value = cachedBitmap
             }
         }
     }
