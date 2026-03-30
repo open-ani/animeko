@@ -33,6 +33,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -105,9 +106,15 @@ class PlayerProgressSliderState(
     val chapters by derivedStateOf(chapters)
 
     private var previewPositionRatio: Float by mutableFloatStateOf(Float.NaN)
+    /** 目标跳转位置（毫秒），用于在 seek 完成前显示预览位置 */
+    private var targetPositionMillis: Long by mutableLongStateOf(0L)
+    /** 是否正在执行 seek 操作，seek 期间继续显示目标位置 */
+    private var isSeeking: Boolean by mutableStateOf(false)
+    /** 记录最后一次 seek 的位置，忽略中间的 seek 完成 */
+    private var lastSeekPositionMillis: Long by mutableLongStateOf(0L)
 
     val isPreviewing: Boolean by derivedStateOf {
-        !previewPositionRatio.isNaN()
+        !previewPositionRatio.isNaN() || isSeeking
     }
 
     /**
@@ -128,6 +135,10 @@ class PlayerProgressSliderState(
             return@derivedStateOf previewPositionRatio
         }
 
+        if (isSeeking) {
+            return@derivedStateOf targetPositionRatio
+        }
+
         val total = this.totalDurationMillis
         if (total == 0L) {
             return@derivedStateOf 0f
@@ -135,11 +146,40 @@ class PlayerProgressSliderState(
         this.currentPositionMillis.toFloat() / total
     }
 
+    /** 目标位置的进度比例（0-1），用于 seek 期间显示进度条位置 */
+    private val targetPositionRatio: Float
+        get() = if (totalDurationMillis == 0L) 0f else targetPositionMillis.toFloat() / totalDurationMillis
+
+    /**
+     * 用户松开进度条时调用。
+     * 记录目标位置并启动 seek 状态，在播放器实际位置到达目标位置前继续显示预览位置。
+     */
     fun finishPreview() {
         val ratio = this.previewPositionRatio
         if (ratio.isNaN()) return
-        onPreviewFinished((ratio * totalDurationMillis).roundToLong())
+        
+        val targetPosition = (ratio * totalDurationMillis).roundToLong()
+        targetPositionMillis = targetPosition
+        lastSeekPositionMillis = targetPosition  // 记录最后一次 seek 的位置
+        isSeeking = true
         previewPositionRatio = Float.NaN
+        
+        onPreviewFinished(targetPosition)
+    }
+    
+    /**
+     * 检查 seek 操作是否完成。
+     * 当播放器当前位置接近目标位置（误差 < 500ms）或超过目标位置时，
+     * 结束 seeking 状态，进度条恢复正常显示。
+     * 只在播放器位置接近最后一次 seek 的位置时才结束 seeking。
+     */
+    fun checkSeekingComplete() {
+        if (!isSeeking) return
+        
+        val diff = kotlin.math.abs(currentPositionMillis - lastSeekPositionMillis)
+        if (diff < 500L || currentPositionMillis >= lastSeekPositionMillis) {
+            isSeeking = false
+        }
     }
 }
 
