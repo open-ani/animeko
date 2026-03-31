@@ -29,6 +29,10 @@ internal actual fun SettingsScope.AppSettingsTabPlatform() {
 }
 
 @Composable
+internal actual fun SettingsScope.AndroidLanguageSettings() {
+}
+
+@Composable
 internal actual fun SettingsScope.IosLanguageSettings() {
     RowButtonItem(
         onClick = {

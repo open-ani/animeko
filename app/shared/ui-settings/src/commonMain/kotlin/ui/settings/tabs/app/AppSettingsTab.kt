@@ -171,7 +171,7 @@ fun SettingsScope.AppearanceGroup(
 ) {
     val uiSettings by state
 
-    if (LocalPlatform.current.isDesktop() || LocalPlatform.current.isAndroid()) {
+    if (LocalPlatform.current.isDesktop()) {
         DropdownItem(
             selected = { uiSettings.appLanguage },
             values = { SupportedLocales },
@@ -187,6 +187,7 @@ fun SettingsScope.AppearanceGroup(
             } else null,
         )
     }
+    AndroidLanguageSettings()
     IosLanguageSettings()
 
     DropdownItem(
@@ -539,6 +540,9 @@ fun SettingsScope.PlayerGroup(
 internal expect fun SettingsScope.IosLanguageSettings()
 
 @Composable
+internal expect fun SettingsScope.AndroidLanguageSettings()
+
+@Composable
 internal expect fun SettingsScope.AppSettingsTabPlatform()
 
 @Composable
@@ -547,7 +551,7 @@ internal expect fun SettingsScope.PlayerGroupPlatform(
 )
 
 @Composable
-private fun renderLocale(it: Locale?): String {
+internal fun renderLocale(it: Locale?): String {
     if (it == null) {
         return "系统语言"
     }
