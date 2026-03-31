@@ -40,9 +40,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
 import me.him188.ani.app.ui.foundation.theme.weaken
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.*
 
 @Composable
 fun EpisodeListDialog(
@@ -59,7 +61,10 @@ fun EpisodeListDialog(
             Box {
                 Column(Modifier.padding(16.dp)) {
                     Row {
-                        Text("选集播放", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            stringResource(Lang.subject_episode_select_play),
+                            style = MaterialTheme.typography.titleLarge,
+                        )
                         Spacer(Modifier.weight(1f))
                     }
 
@@ -101,7 +106,10 @@ fun EpisodeListDialog(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Outlined.Lightbulb, null)
 
-                        Text("长按还可以标记为已看", Modifier.padding(start = 4.dp))
+                        Text(
+                            stringResource(Lang.subject_episode_long_press_mark_watched),
+                            Modifier.padding(start = 4.dp),
+                        )
                     }
 
                     Row(Modifier.padding(top = 16.dp).align(Alignment.End)) {
@@ -112,18 +120,18 @@ fun EpisodeListDialog(
                                     it()
                                 },
                             ) {
-                                Text("条目详情")
+                                Text(stringResource(Lang.subject_episode_details))
                             }
                         }
 
                         TextButton(onDismissRequest, Modifier.padding(start = 8.dp)) {
-                            Text("关闭")
+                            Text(stringResource(Lang.subject_episode_close))
                         }
                     }
                 }
 
                 IconButton(onCacheClick, Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-                    Icon(Icons.Rounded.Download, "缓存")
+                    Icon(Icons.Rounded.Download, stringResource(Lang.subject_episode_cache))
                 }
             }
         }

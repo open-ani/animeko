@@ -21,11 +21,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import kotlinx.coroutines.launch
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.components.SubjectCollectionActions
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import org.jetbrains.compose.resources.*
 
 object SubjectCollectionTypeSuggestions {
     @Composable
@@ -62,7 +64,7 @@ object SubjectCollectionTypeSuggestions {
         targetType = UnifiedCollectionType.DOING,
         state = state,
         icon = { Icon(Icons.Rounded.Star, null) },
-        label = { Text("追番") },
+        label = { Text(stringResource(Lang.subject_collection_collect)) },
         colors = SuggestionChipDefaults.suggestionChipColors(
             labelColor = MaterialTheme.colorScheme.primary,
             iconContentColor = MaterialTheme.colorScheme.primary,
@@ -78,7 +80,7 @@ object SubjectCollectionTypeSuggestions {
         targetType = UnifiedCollectionType.DOING,
         state = state,
         icon = SubjectCollectionActions.Doing.icon,
-        label = { Text("在看") },
+        label = { Text(stringResource(Lang.subject_collection_doing)) },
         modifier = modifier,
     )
 
@@ -90,7 +92,7 @@ object SubjectCollectionTypeSuggestions {
         targetType = UnifiedCollectionType.DROPPED,
         state = state,
         icon = SubjectCollectionActions.Dropped.icon,
-        label = { Text("抛弃") },
+        label = { Text(stringResource(Lang.subject_collection_dropped)) },
         modifier = modifier,
     )
 }

@@ -30,6 +30,7 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.isPlatformSupportDynamicTheme
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.onboarding.WizardLayoutParams
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
@@ -37,6 +38,7 @@ import me.him188.ani.app.ui.settings.tabs.theme.ColorButton
 import me.him188.ani.app.ui.settings.tabs.theme.DarkModeSelectPanel
 import me.him188.ani.app.ui.theme.DefaultSeedColor
 import me.him188.ani.app.ui.theme.themeColorOptions
+import org.jetbrains.compose.resources.*
 
 @Composable
 internal fun ThemeSelectStep(
@@ -56,7 +58,7 @@ internal fun ThemeSelectStep(
                 .padding(top = layoutParams.verticalPadding),
         )
         Group(
-            title = { Text("色彩") },
+            title = { Text(stringResource(Lang.onboarding_theme_color)) },
             useThinHeader = true,
         ) {
             if (isPlatformSupportDynamicTheme()) {
@@ -64,8 +66,8 @@ internal fun ThemeSelectStep(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onUpdateUseDynamicTheme(!config.useDynamicTheme) },
-                    title = { Text("动态色彩") },
-                    description = { Text("使用系统强调色") },
+                    title = { Text(stringResource(Lang.onboarding_theme_dynamic_color)) },
+                    description = { Text(stringResource(Lang.onboarding_theme_dynamic_color_desc)) },
                     action = {
                         Switch(
                             checked = config.useDynamicTheme,

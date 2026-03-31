@@ -481,6 +481,159 @@
     <string name="settings_update_version_expired_import_settings_hint">如果新版本要求導入設置，請點擊：</string>
     <string name="settings_update_version_expired_copied_to_clipboard">已複製到剪貼板，請到新版本點擊導入</string>
     <string name="settings_update_version_expired_export_settings">導出設置</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">歡迎使用 Animeko</string>
+    <string name="onboarding_welcome_subtitle">一站式在線彈幕追番平台 (簡稱 Ani)</string>
+    <string name="onboarding_welcome_maintained">Ani 目前由愛好者組成的組織 OpenAni 和社區貢獻者維護，完全免費，並在 GitHub 上開源。</string>
+    <string name="onboarding_welcome_goal">Ani 的目標是提供盡可能簡單且舒適的追番體驗。</string>
+    <string name="onboarding_welcome_continue">繼續</string>
+    <string name="onboarding_theme_settings">主題設置</string>
+    <string name="onboarding_network_settings">網絡設置</string>
+    <string name="onboarding_complete_welcome_with_nickname">歡迎，%1$s</string>
+    <string name="onboarding_complete_welcome">歡迎</string>
+    <string name="onboarding_complete_finish">完成</string>
+    <string name="onboarding_theme_color">色彩</string>
+    <string name="onboarding_theme_dynamic_color">動態色彩</string>
+    <string name="onboarding_theme_dynamic_color_desc">使用系統強調色</string>
+    <string name="onboarding_bittorrent_play_while_downloading">Ani 支持邊下邊播 BT 資源，BT 下載速度取決於網絡質量</string>
+    <string name="onboarding_bittorrent_notification_permission_hint">允許通知權限，在緩存時查看下載進度</string>
+    <string name="onboarding_bittorrent_enable">啟用 BitTorrent 功能</string>
+    <string name="onboarding_bittorrent_allow_notification">允許通知</string>
+    <string name="onboarding_bittorrent_notification_description">顯示 BT 下載進度和速度等資訊</string>
+    <string name="onboarding_bittorrent_authorized">已授權</string>
+    <string name="onboarding_bittorrent_grant_permission">授予權限</string>
+    <string name="onboarding_navigation_step_indicator">步驟 %1$d / %2$d</string>
+    <string name="onboarding_navigation_next">下一步</string>
+    <string name="onboarding_navigation_previous">上一步</string>
+    <string name="onboarding_navigation_skip">跳過</string>
+    <string name="onboarding_navigation_choose_theme">選擇主題</string>
+    <string name="onboarding_navigation_configure_proxy">設置代理</string>
+    <string name="onboarding_navigation_bittorrent">BitTorrent 功能</string>
+
+    <!-- Login -->
+    <string name="login_sign_in">登入</string>
+    <string name="login_sign_up">註冊</string>
+    <string name="login_sign_in_or_sign_up">登入 / 註冊</string>
+    <string name="login_bind_email">綁定電子郵件</string>
+    <string name="login_change_email">更改電子郵件</string>
+    <string name="login_email_address_title">你的電子郵件地址</string>
+    <string name="login_email_address_description">我們會發送一封驗證碼郵件</string>
+    <string name="login_email_label">電子郵件</string>
+    <string name="login_clear">清空</string>
+    <string name="login_continue">繼續</string>
+    <string name="login_email_already_used">該電子郵件已被使用</string>
+    <string name="login_invalid_otp">驗證碼無效或已過期，請重新發送</string>
+    <string name="login_verify_title">輸入驗證碼</string>
+    <string name="login_verify_check_email">請檢查電子郵件 %1$s</string>
+    <string name="login_verify_signing_in_existing">正在登入現有賬戶</string>
+    <string name="login_verify_signing_up_new">正在註冊新賬戶</string>
+    <string name="login_verification_code">驗證碼</string>
+    <string name="login_six_digit_number">6 位數字</string>
+    <string name="login_resend_otp">重新發送驗證碼</string>
+    <string name="login_resend_after_seconds">%1$d 秒後可重新發送</string>
+    <string name="login_other_methods">其他登入方式</string>
+
+    <!-- OAuth -->
+    <string name="oauth_bangumi_authorize_title">授權 Bangumi 登入</string>
+    <string name="oauth_bangumi_description">授權 Bangumi 賬戶後，可以同步你的觀看記錄到 Bangumi，或更方便地登入 Ani。</string>
+    <string name="oauth_bangumi_bind_account">綁定 Bangumi 賬戶</string>
+    <string name="oauth_bangumi_sign_in_or_sign_up">登入 / 註冊</string>
+    <string name="oauth_bangumi_waiting_result">正在等待結果</string>
+    <string name="oauth_bangumi_authorized">已授權</string>
+    <string name="oauth_bangumi_cancel">取消</string>
+    <string name="oauth_bangumi_help_title">幫助</string>
+    <string name="oauth_bangumi_help_bangumi_desc">Bangumi 是甚麼</string>
+    <string name="oauth_bangumi_help_website_blocked">瀏覽器提示網站被屏蔽或禁止訪問</string>
+    <string name="oauth_bangumi_help_register_choose">註冊時應該選擇哪一項</string>
+    <string name="oauth_bangumi_help_wrong_captcha">註冊或登入時一直提示驗證碼錯誤</string>
+    <string name="oauth_bangumi_help_cant_receive_email">無法收到電子郵件驗證碼</string>
+    <string name="oauth_bangumi_help_activation_failed">註冊時一直激活失敗</string>
+    <string name="oauth_bangumi_help_others">其他問題</string>
+    <string name="oauth_bangumi_help_bangumi_desc_content">Bangumi 番組計劃是一個中文互聯網的 ACGN 內容分享與交流網站，致力於提供一個輕鬆便捷而獨特的交流環境。\nBangumi 提供番劇索引、番劇收藏和追番進度等功能，Ani 可以將你的觀看記錄同步至 Bangumi。</string>
+    <string name="oauth_bangumi_help_website_blocked_content">請在系統設置中更換預設瀏覽器，建議使用 Google Chrome、Microsoft Edge 或 Mozilla Firefox。</string>
+    <string name="oauth_bangumi_help_register_choose_content">選擇「管理 ACG 收藏與收視進度，分享交流」這一項。</string>
+    <string name="oauth_bangumi_help_wrong_captcha_content">如果沒有驗證碼輸入框，可以多點幾次密碼輸入框；如果輸錯了驗證碼，需要重新整理頁面後再登入。</string>
+    <string name="oauth_bangumi_help_cant_receive_email_content">請檢查垃圾郵件箱，並盡量使用常見郵箱註冊，例如 QQ 郵箱、網易郵箱或 Outlook。</string>
+    <string name="oauth_bangumi_help_activation_failed_content">刪除激活碼的最後一個字，然後手動輸入刪除的字，或改用其他瀏覽器。</string>
+    <string name="oauth_bangumi_help_others_content">仍然無法解決你的問題？還可以透過以下渠道獲取幫助。</string>
+
+    <!-- Video Player -->
+    <string name="video_player_aspect_fit">適應</string>
+    <string name="video_player_aspect_stretch">填充</string>
+    <string name="video_player_aspect_crop">裁切</string>
+    <string name="video_player_auto">自動</string>
+    <string name="video_player_audio_track">音軌</string>
+    <string name="video_player_off">關閉</string>
+    <string name="video_player_subtitle">字幕</string>
+    <string name="video_player_disable_danmaku">禁用彈幕</string>
+    <string name="video_player_enable_danmaku">啟用彈幕</string>
+    <string name="video_player_mute">靜音</string>
+    <string name="video_player_volume">音量</string>
+    <string name="video_player_next_episode">下一集</string>
+    <string name="video_player_select_episode">選集</string>
+    <string name="video_player_send">發送</string>
+    <string name="video_player_speed">倍速</string>
+    <string name="video_player_skip_op_ed">即將跳過 OP 或 ED</string>
+    <string name="video_player_cancel">取消</string>
+    <string name="video_player_danmaku_placeholder_1">來發一條彈幕吧~</string>
+    <string name="video_player_danmaku_placeholder_2">小心，我要發射彈幕啦！</string>
+    <string name="video_player_danmaku_placeholder_3">每一條彈幕背後，都有一個不為人知的秘密</string>
+    <string name="video_player_danmaku_placeholder_4">召喚彈幕精靈！</string>
+    <string name="video_player_danmaku_placeholder_5">這一刻的感受，只有你最懂</string>
+    <string name="video_player_danmaku_placeholder_6">讓彈幕變得不一樣</string>
+    <string name="video_player_danmaku_placeholder_7">彈幕世界大門已開</string>
+    <string name="video_player_danmaku_placeholder_8">字裡行間，藏著宇宙的秘密</string>
+    <string name="video_player_danmaku_placeholder_9">在光與影的交織中，你的話語是唯一的真實</string>
+    <string name="video_player_danmaku_placeholder_10">有趣的靈魂萬里挑一</string>
+    <string name="video_player_danmaku_placeholder_11">說點什麼</string>
+    <string name="video_player_danmaku_placeholder_12">長期徵集有趣的彈幕廣告詞</string>
+    <string name="video_player_danmaku_placeholder_13">廣告位招租</string>
+    <string name="video_player_danmaku_placeholder_14">🤔</string>
+    <string name="video_player_danmaku_placeholder_15">夢開始的地方</string>
+    <string name="video_player_danmaku_placeholder_16">心念成形</string>
+    <string name="video_player_danmaku_placeholder_17">發個彈幕炒熱氣氛！</string>
+    <string name="video_player_danmaku_placeholder_18">來個彈幕吧！</string>
+    <string name="video_player_danmaku_placeholder_19">發個友善的彈幕吧！</string>
+    <string name="video_player_danmaku_placeholder_20">是不是忍不住想發彈幕了呢？</string>
+
+    <!-- Subject Collection -->
+    <string name="subject_collection_wish">想看</string>
+    <string name="subject_collection_doing">在看</string>
+    <string name="subject_collection_done">看過</string>
+    <string name="subject_collection_on_hold">擱置</string>
+    <string name="subject_collection_dropped">拋棄</string>
+    <string name="subject_collection_delete">取消追番</string>
+    <string name="subject_collection_collect">追番</string>
+    <string name="subject_collection_current_wish">已想看</string>
+    <string name="subject_collection_current_doing">已在看</string>
+    <string name="subject_collection_current_done">已看過</string>
+    <string name="subject_collection_current_on_hold">已擱置</string>
+    <string name="subject_collection_current_dropped">已拋棄</string>
+    <string name="subject_collection_not_collected">未追番</string>
+    <string name="subject_collection_delete_confirm_title">取消追番</string>
+    <string name="subject_collection_delete_confirm_message">這將會清除你的觀看進度和評價。此操作無法撤銷。確定要取消追番嗎？</string>
+    <string name="subject_collection_delete_action">刪除</string>
+    <string name="subject_collection_cancel">取消</string>
+    <string name="subject_collection_set_all_episodes_watched">要同時將所有劇集設為看過嗎？</string>
+    <string name="subject_collection_set">設置</string>
+    <string name="subject_collection_ignore">忽略</string>
+    <string name="subject_collection_syncing">正在同步</string>
+    <string name="subject_collection_page_title">追番</string>
+    <string name="subject_collection_move_to_watched">移至"看過"</string>
+    <string name="subject_collection_uncollected">未收藏</string>
+    <string name="subject_collection_guest_mode_tip">遊客模式下請先搜尋後觀看，或登入後使用收藏功能</string>
+
+    <!-- Subject Episode -->
+    <string name="subject_episode_unwatch">取消看過</string>
+    <string name="subject_episode_watched">已看過</string>
+    <string name="subject_episode_dropped">已拋棄</string>
+    <string name="subject_episode_mark_watched">看過</string>
+    <string name="subject_episode_select_play">選集播放</string>
+    <string name="subject_episode_long_press_mark_watched">長按還可以標記為已看</string>
+    <string name="subject_episode_details">條目詳情</string>
+    <string name="subject_episode_close">關閉</string>
+    <string name="subject_episode_cache">緩存</string>
 </resources>
 
 <!--@formatter:on-->

@@ -34,6 +34,7 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.onboarding.navigation.WizardController
 import me.him188.ani.app.ui.onboarding.navigation.WizardDefaults
 import me.him188.ani.app.ui.onboarding.navigation.WizardNavHost
@@ -56,6 +57,7 @@ import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.OnboardingStart
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.*
 
 @Composable
 fun OnboardingScreen(
@@ -127,7 +129,7 @@ fun OnboardingScreen(
     ) {
         step(
             "theme",
-            { Text("主题设置") },
+            { Text(stringResource(Lang.onboarding_theme_settings)) },
             navigationIcon = navigationIcon,
         ) {
             val themeSelectUiState by state.themeSelectState.state
@@ -142,7 +144,7 @@ fun OnboardingScreen(
         }
         step(
             "proxy",
-            title = { Text("网络设置") },
+            title = { Text(stringResource(Lang.onboarding_network_settings)) },
             autoSkip = { proxyState.overallState == ProxyOverallTestState.SUCCESS },
             forwardButton = {
                 WizardDefaults.GoForwardButton(
@@ -186,7 +188,7 @@ fun OnboardingScreen(
         }
         /*step(
             "bittorrent",
-            { Text("BT 播放和缓存") },
+            { Text("BT Playback and Cache") },
             forwardButton = {
                 WizardDefaults.GoForwardButton(
                     {

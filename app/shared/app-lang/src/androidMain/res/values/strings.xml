@@ -455,6 +455,159 @@
     <string name="settings_debug_logout">Logout</string>
     <string name="settings_debug_logged_out">Logged out</string>
     <string name="settings_tab_account">Account</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_title">Welcome to Animeko</string>
+    <string name="onboarding_welcome_subtitle">A one-stop online anime platform with danmaku (Ani for short)</string>
+    <string name="onboarding_welcome_maintained">Ani is maintained by the OpenAni community and contributors. It is completely free and open source on GitHub.</string>
+    <string name="onboarding_welcome_goal">Ani aims to provide the simplest and most comfortable anime-watching experience possible.</string>
+    <string name="onboarding_welcome_continue">Continue</string>
+    <string name="onboarding_theme_settings">Theme Settings</string>
+    <string name="onboarding_network_settings">Network Settings</string>
+    <string name="onboarding_complete_welcome_with_nickname">Welcome, %1$s</string>
+    <string name="onboarding_complete_welcome">Welcome</string>
+    <string name="onboarding_complete_finish">Finish</string>
+    <string name="onboarding_theme_color">Colors</string>
+    <string name="onboarding_theme_dynamic_color">Dynamic Colors</string>
+    <string name="onboarding_theme_dynamic_color_desc">Use system accent colors</string>
+    <string name="onboarding_bittorrent_play_while_downloading">Ani supports streaming BT resources while downloading. BT speed depends on your network quality.</string>
+    <string name="onboarding_bittorrent_notification_permission_hint">Allow notification permission to view download progress while caching.</string>
+    <string name="onboarding_bittorrent_enable">Enable BitTorrent features</string>
+    <string name="onboarding_bittorrent_allow_notification">Allow notifications</string>
+    <string name="onboarding_bittorrent_notification_description">Show BT download progress, speed, and other information</string>
+    <string name="onboarding_bittorrent_authorized">Authorized</string>
+    <string name="onboarding_bittorrent_grant_permission">Grant permission</string>
+    <string name="onboarding_navigation_step_indicator">Step %1$d / %2$d</string>
+    <string name="onboarding_navigation_next">Next</string>
+    <string name="onboarding_navigation_previous">Previous</string>
+    <string name="onboarding_navigation_skip">Skip</string>
+    <string name="onboarding_navigation_choose_theme">Choose Theme</string>
+    <string name="onboarding_navigation_configure_proxy">Configure Proxy</string>
+    <string name="onboarding_navigation_bittorrent">BitTorrent Features</string>
+
+    <!-- Login -->
+    <string name="login_sign_in">Sign In</string>
+    <string name="login_sign_up">Sign Up</string>
+    <string name="login_sign_in_or_sign_up">Sign In / Sign Up</string>
+    <string name="login_bind_email">Bind Email</string>
+    <string name="login_change_email">Change Email</string>
+    <string name="login_email_address_title">Your Email Address</string>
+    <string name="login_email_address_description">We will send you a verification email</string>
+    <string name="login_email_label">Email</string>
+    <string name="login_clear">Clear</string>
+    <string name="login_continue">Continue</string>
+    <string name="login_email_already_used">This email address is already in use</string>
+    <string name="login_invalid_otp">The verification code is invalid or expired. Please resend it.</string>
+    <string name="login_verify_title">Enter Verification Code</string>
+    <string name="login_verify_check_email">Please check your email: %1$s</string>
+    <string name="login_verify_signing_in_existing">Signing in to your existing account</string>
+    <string name="login_verify_signing_up_new">Registering a new account</string>
+    <string name="login_verification_code">Verification Code</string>
+    <string name="login_six_digit_number">6 digits</string>
+    <string name="login_resend_otp">Resend verification code</string>
+    <string name="login_resend_after_seconds">Resend available in %1$d seconds</string>
+    <string name="login_other_methods">Other sign-in methods</string>
+
+    <!-- OAuth -->
+    <string name="oauth_bangumi_authorize_title">Authorize Bangumi Sign-In</string>
+    <string name="oauth_bangumi_description">Authorize your Bangumi account to sync your watch history to Bangumi or sign in to Ani more conveniently.</string>
+    <string name="oauth_bangumi_bind_account">Bind Bangumi Account</string>
+    <string name="oauth_bangumi_sign_in_or_sign_up">Sign In / Sign Up</string>
+    <string name="oauth_bangumi_waiting_result">Waiting for result</string>
+    <string name="oauth_bangumi_authorized">Authorized</string>
+    <string name="oauth_bangumi_cancel">Cancel</string>
+    <string name="oauth_bangumi_help_title">Help</string>
+    <string name="oauth_bangumi_help_bangumi_desc">What is Bangumi?</string>
+    <string name="oauth_bangumi_help_website_blocked">The browser says the website is blocked or inaccessible</string>
+    <string name="oauth_bangumi_help_register_choose">Which option should I choose when registering?</string>
+    <string name="oauth_bangumi_help_wrong_captcha">The site keeps saying the captcha is wrong during registration or sign-in</string>
+    <string name="oauth_bangumi_help_cant_receive_email">I can\'t receive the email verification code</string>
+    <string name="oauth_bangumi_help_activation_failed">Account activation keeps failing during registration</string>
+    <string name="oauth_bangumi_help_others">Other issues</string>
+    <string name="oauth_bangumi_help_bangumi_desc_content">Bangumi is a Chinese ACGN community website for sharing and discussion.\nBangumi provides anime indexes, collections, and watch progress tracking. Ani can sync your watch history to Bangumi.</string>
+    <string name="oauth_bangumi_help_website_blocked_content">Change your default browser in system settings. Google Chrome, Microsoft Edge, and Mozilla Firefox are recommended.</string>
+    <string name="oauth_bangumi_help_register_choose_content">Choose the option for managing ACG collections and watch progress, then sharing and discussing them.</string>
+    <string name="oauth_bangumi_help_wrong_captcha_content">If there is no captcha input box, try clicking the password box a few more times. If you entered the captcha incorrectly, refresh the page before signing in again.</string>
+    <string name="oauth_bangumi_help_cant_receive_email_content">Check your spam folder and try registering with a common email provider such as QQ Mail, NetEase Mail, or Outlook.</string>
+    <string name="oauth_bangumi_help_activation_failed_content">Delete the last character of the activation code, then type that character manually, or try another browser.</string>
+    <string name="oauth_bangumi_help_others_content">Can\'t solve your issue? You can also get help through the following channels.</string>
+
+    <!-- Video Player -->
+    <string name="video_player_aspect_fit">Fit</string>
+    <string name="video_player_aspect_stretch">Stretch</string>
+    <string name="video_player_aspect_crop">Crop</string>
+    <string name="video_player_auto">Auto</string>
+    <string name="video_player_audio_track">Audio</string>
+    <string name="video_player_off">Off</string>
+    <string name="video_player_subtitle">Subtitle</string>
+    <string name="video_player_disable_danmaku">Disable danmaku</string>
+    <string name="video_player_enable_danmaku">Enable danmaku</string>
+    <string name="video_player_mute">Mute</string>
+    <string name="video_player_volume">Volume</string>
+    <string name="video_player_next_episode">Next episode</string>
+    <string name="video_player_select_episode">Episodes</string>
+    <string name="video_player_send">Send</string>
+    <string name="video_player_speed">Speed</string>
+    <string name="video_player_skip_op_ed">Skipping OP or ED soon</string>
+    <string name="video_player_cancel">Cancel</string>
+    <string name="video_player_danmaku_placeholder_1">Send a danmaku~</string>
+    <string name="video_player_danmaku_placeholder_2">Careful, I\'m about to launch a danmaku!</string>
+    <string name="video_player_danmaku_placeholder_3">Every danmaku hides a secret</string>
+    <string name="video_player_danmaku_placeholder_4">Summon the danmaku spirit!</string>
+    <string name="video_player_danmaku_placeholder_5">Only you understand this moment best</string>
+    <string name="video_player_danmaku_placeholder_6">Make this danmaku different</string>
+    <string name="video_player_danmaku_placeholder_7">The gate to the danmaku world is open</string>
+    <string name="video_player_danmaku_placeholder_8">There are secrets hidden between the lines</string>
+    <string name="video_player_danmaku_placeholder_9">In the weave of light and shadow, your words are the only truth</string>
+    <string name="video_player_danmaku_placeholder_10">Interesting souls are one in a million</string>
+    <string name="video_player_danmaku_placeholder_11">Say something</string>
+    <string name="video_player_danmaku_placeholder_12">We\'re always collecting fun danmaku slogans</string>
+    <string name="video_player_danmaku_placeholder_13">Ad space for rent</string>
+    <string name="video_player_danmaku_placeholder_14">🤔</string>
+    <string name="video_player_danmaku_placeholder_15">Where dreams begin</string>
+    <string name="video_player_danmaku_placeholder_16">Thoughts take shape</string>
+    <string name="video_player_danmaku_placeholder_17">Send a danmaku and liven things up!</string>
+    <string name="video_player_danmaku_placeholder_18">How about a danmaku?</string>
+    <string name="video_player_danmaku_placeholder_19">Send a friendly danmaku!</string>
+    <string name="video_player_danmaku_placeholder_20">Can\'t help wanting to send a danmaku?</string>
+
+    <!-- Subject Collection -->
+    <string name="subject_collection_wish">Want to Watch</string>
+    <string name="subject_collection_doing">Watching</string>
+    <string name="subject_collection_done">Watched</string>
+    <string name="subject_collection_on_hold">On Hold</string>
+    <string name="subject_collection_dropped">Dropped</string>
+    <string name="subject_collection_delete">Unfollow</string>
+    <string name="subject_collection_collect">Follow</string>
+    <string name="subject_collection_current_wish">Marked Want to Watch</string>
+    <string name="subject_collection_current_doing">Marked Watching</string>
+    <string name="subject_collection_current_done">Marked Watched</string>
+    <string name="subject_collection_current_on_hold">Marked On Hold</string>
+    <string name="subject_collection_current_dropped">Marked Dropped</string>
+    <string name="subject_collection_not_collected">Not Followed</string>
+    <string name="subject_collection_delete_confirm_title">Unfollow</string>
+    <string name="subject_collection_delete_confirm_message">This will clear your watch progress and rating. This action cannot be undone. Are you sure you want to unfollow?</string>
+    <string name="subject_collection_delete_action">Delete</string>
+    <string name="subject_collection_cancel">Cancel</string>
+    <string name="subject_collection_set_all_episodes_watched">Mark all episodes as watched too?</string>
+    <string name="subject_collection_set">Set</string>
+    <string name="subject_collection_ignore">Ignore</string>
+    <string name="subject_collection_syncing">Syncing</string>
+    <string name="subject_collection_page_title">Following</string>
+    <string name="subject_collection_move_to_watched">Move to "Watched"</string>
+    <string name="subject_collection_uncollected">Uncollected</string>
+    <string name="subject_collection_guest_mode_tip">In guest mode, please search and watch directly, or sign in to use the collection feature.</string>
+
+    <!-- Subject Episode -->
+    <string name="subject_episode_unwatch">Unmark Watched</string>
+    <string name="subject_episode_watched">Watched</string>
+    <string name="subject_episode_dropped">Dropped</string>
+    <string name="subject_episode_mark_watched">Mark Watched</string>
+    <string name="subject_episode_select_play">Episode Selection</string>
+    <string name="subject_episode_long_press_mark_watched">Long press to mark as watched</string>
+    <string name="subject_episode_details">Item Details</string>
+    <string name="subject_episode_close">Close</string>
+    <string name="subject_episode_cache">Cache</string>
 </resources>
 
 <!--@formatter:on-->

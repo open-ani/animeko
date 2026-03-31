@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
+import me.him188.ani.app.ui.lang.*
+import org.jetbrains.compose.resources.*
 
 
 @Composable
@@ -48,7 +50,7 @@ internal fun ThirdPartyLoginMethods(
         TextDivider(
             modifier = Modifier.heightIn(min = 56.dp),
         ) {
-            Text("其他登录方式")
+            Text(stringResource(Lang.login_other_methods))
         }
 
         FilledTonalButton(

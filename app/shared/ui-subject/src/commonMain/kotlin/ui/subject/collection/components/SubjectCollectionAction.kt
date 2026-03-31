@@ -23,7 +23,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import org.jetbrains.compose.resources.*
 
 /**
  * 收藏类型的展示图标和标题. 用于给各种需要展示收藏类型的地方提供一致的展示方式.
@@ -39,49 +41,49 @@ class SubjectCollectionAction(
 object SubjectCollectionActions {
     @Stable
     val Wish = SubjectCollectionAction(
-        { Text("想看") },
+        { Text(stringResource(Lang.subject_collection_wish)) },
         { Icon(Icons.AutoMirrored.Rounded.EventNote, null) },
         UnifiedCollectionType.WISH,
     )
 
     @Stable
     val Doing = SubjectCollectionAction(
-        { Text("在看") },
+        { Text(stringResource(Lang.subject_collection_doing)) },
         { Icon(Icons.Rounded.PlayCircleOutline, null) },
         UnifiedCollectionType.DOING,
     )
 
     @Stable
     val Done = SubjectCollectionAction(
-        { Text("看过") },
+        { Text(stringResource(Lang.subject_collection_done)) },
         { Icon(Icons.Rounded.TaskAlt, null) },
         UnifiedCollectionType.DONE,
     )
 
     @Stable
     val OnHold = SubjectCollectionAction(
-        { Text("搁置") },
+        { Text(stringResource(Lang.subject_collection_on_hold)) },
         { Icon(Icons.Rounded.AccessTime, null) },
         UnifiedCollectionType.ON_HOLD,
     )
 
     @Stable
     val Dropped = SubjectCollectionAction(
-        { Text("抛弃") },
+        { Text(stringResource(Lang.subject_collection_dropped)) },
         { Icon(Icons.Rounded.Block, null) },
         UnifiedCollectionType.DROPPED,
     )
 
     @Stable
     val DeleteCollection = SubjectCollectionAction(
-        { Text("取消追番", color = MaterialTheme.colorScheme.error) },
+        { Text(stringResource(Lang.subject_collection_delete), color = MaterialTheme.colorScheme.error) },
         { Icon(Icons.Rounded.DeleteOutline, null) },
         type = UnifiedCollectionType.NOT_COLLECTED,
     )
 
     @Stable
     val Collect = SubjectCollectionAction(
-        { Text("追番") },
+        { Text(stringResource(Lang.subject_collection_collect)) },
         { Icon(Icons.Rounded.Star, null) },
         type = UnifiedCollectionType.NOT_COLLECTED,
     )

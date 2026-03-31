@@ -29,8 +29,10 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
+import me.him188.ani.app.ui.lang.*
 import org.openani.mediamp.metadata.SubtitleTrack
 import org.openani.mediamp.metadata.TrackGroup
+import org.jetbrains.compose.resources.*
 
 @Stable
 class SubtitleTrackState(
@@ -99,14 +101,15 @@ fun PlayerControllerDefaults.SubtitleSwitcher(
         optionsProvider = { options },
         renderValue = {
             if (it == null) {
-                Text("关闭")
+                Text(stringResource(Lang.video_player_off))
             } else {
                 Text(it.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         },
         renderValueExposed = {
+            val subtitleText = stringResource(Lang.video_player_subtitle)
             Text(
-                remember(it) { it?.displayName ?: "字幕" },
+                remember(it, subtitleText) { it?.displayName ?: subtitleText },
                 Modifier.widthIn(max = 64.dp),
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )

@@ -148,7 +148,7 @@ import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.asLevelController
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
-import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.randomDanmakuPlaceholder
+import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.rememberRandomDanmakuPlaceholder
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.danmaku.api.DanmakuContent
 import me.him188.ani.danmaku.api.DanmakuLocation
@@ -786,7 +786,7 @@ private fun DetachedDanmakuEditorLayout(
             text = danmakuEditorState.text,
             onTextChange = { danmakuEditorState.text = it },
             isSending = { isSending.value },
-            placeholderText = remember { randomDanmakuPlaceholder() },
+            placeholderText = rememberRandomDanmakuPlaceholder(),
             onSend = onSend,
             Modifier.fillMaxWidth().focusRequester(focusRequester),
             colors = OutlinedTextFieldDefaults.colors(),
@@ -873,7 +873,7 @@ private fun EpisodeVideo(
     }
 
     // Refresh every time on configuration change (i.e. switching theme, entering fullscreen)
-    val danmakuTextPlaceholder = remember { randomDanmakuPlaceholder() }
+    val danmakuTextPlaceholder = rememberRandomDanmakuPlaceholder()
     val window = LocalPlatformWindow.current
 
     SideEffect {
