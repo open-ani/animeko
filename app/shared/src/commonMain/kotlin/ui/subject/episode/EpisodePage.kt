@@ -77,6 +77,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -890,6 +891,16 @@ private fun EpisodeVideo(
             vm.player.seekTo(it)
         },
     )
+    
+    // 定期检查 seek 是否完成，解决进度条回跳问题
+    // 在播放器实际位置到达目标位置前，保持显示预览位置
+    LaunchedEffect(progressSliderState) {
+        while (true) {
+            delay(100)
+            progressSliderState.checkSeekingComplete()
+        }
+    }
+    
     val scope = rememberCoroutineScope()
 
     // 必须在 UI 里, 跟随 context 变化. 否则 #958
