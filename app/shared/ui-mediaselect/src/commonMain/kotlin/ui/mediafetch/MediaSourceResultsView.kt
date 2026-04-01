@@ -64,10 +64,26 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.cache_details_source_online
+import me.him188.ani.app.ui.lang.media_source_results_captcha_required
+import me.him188.ani.app.ui.lang.media_source_results_click_retry
+import me.him188.ani.app.ui.lang.media_source_results_click_verify
+import me.him188.ani.app.ui.lang.media_source_results_data_sources_count
+import me.him188.ani.app.ui.lang.media_source_results_failed
+import me.him188.ani.app.ui.lang.media_source_results_help
+import me.him188.ani.app.ui.lang.media_source_results_searched
+import me.him188.ani.app.ui.lang.media_source_results_searching
+import me.him188.ani.app.ui.lang.media_source_results_settings
+import me.him188.ani.app.ui.lang.media_source_results_success
+import me.him188.ani.app.ui.lang.media_source_results_temp_enable
+import me.him188.ani.app.ui.lang.media_source_results_verify
+import me.him188.ani.app.ui.lang.settings_mediasource_refresh
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcons
 import me.him188.ani.app.ui.settings.rendering.SmallMediaSourceIcon
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun MediaSourceResultsView(
@@ -111,6 +127,18 @@ fun MediaSourceResultsView(
     onRestartSource: (instanceId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val searchingText = stringResource(Lang.media_source_results_searching)
+    val searchedText = stringResource(Lang.media_source_results_searched)
+    val dataSourcesCountText = stringResource(
+        Lang.media_source_results_data_sources_count,
+        if (sourceResults.anyLoading) searchingText else searchedText,
+        sourceResults.enabledSourceCount,
+        sourceResults.totalSourceCount,
+    )
+    val refreshText = stringResource(Lang.settings_mediasource_refresh)
+    val helpText = stringResource(Lang.media_source_results_help)
+    val settingsText = stringResource(Lang.media_source_results_settings)
+    val onlineText = stringResource(Lang.cache_details_source_online)
     Column(modifier) {
         var isShowDetails by rememberSaveable { mutableStateOf(false) }
         Row(
@@ -121,14 +149,7 @@ fun MediaSourceResultsView(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                remember(
-                    sourceResults.anyLoading,
-                    sourceResults.enabledSourceCount,
-                    sourceResults.totalSourceCount,
-                ) {
-                    val status = if (sourceResults.anyLoading) "正在查询" else "已查询"
-                    "$status ${sourceResults.enabledSourceCount}/${sourceResults.totalSourceCount} 数据源"
-                },
+                dataSourcesCountText,
                 Modifier.weight(1f),
                 style = MaterialTheme.typography.titleMedium,
             )
@@ -140,14 +161,14 @@ fun MediaSourceResultsView(
                 }
             }
             IconButton(onRefresh) {
-                Icon(Icons.Outlined.Refresh, "刷新")
+                Icon(Icons.Outlined.Refresh, refreshText)
             }
             IconButton({ showHelp = true }) {
-                Icon(Icons.AutoMirrored.Outlined.HelpOutline, "帮助")
+                Icon(Icons.AutoMirrored.Outlined.HelpOutline, helpText)
             }
             val navigator = LocalNavigator.current
             IconButton({ navigator.navigateSettings(SettingsTab.MEDIA_SOURCE) }) {
-                Icon(Icons.Outlined.Settings, "设置")
+                Icon(Icons.Outlined.Settings, settingsText)
             }
 
             // TODO: 允许展开的话可能要考虑需要把下面 FlowList 变成 Grid 
@@ -190,7 +211,7 @@ fun MediaSourceResultsView(
                             Icon(MediaSourceIcons.KindBT, null)
                             ProvideTextStyle(MaterialTheme.typography.labelSmall) {
                                 Box(Modifier.padding(top = 2.dp), contentAlignment = Alignment.Center) {
-                                    Text("在线", Modifier.alpha(0f)) // 相同宽度
+                                    Text(onlineText, Modifier.alpha(0f)) // 相同宽度
                                     Text("BT")
                                 }
                             }
@@ -209,7 +230,7 @@ fun MediaSourceResultsView(
                             Icon(MediaSourceIcons.KindWeb, null)
                             ProvideTextStyle(MaterialTheme.typography.labelSmall) {
                                 Box(Modifier.padding(top = 2.dp), contentAlignment = Alignment.Center) {
-                                    Text("在线")
+                                    Text(onlineText)
                                 }
                             }
                         }
@@ -289,6 +310,13 @@ private fun MediaSourceResultCard(
     modifier: Modifier = Modifier,
     preferredSourceContainerColor: Color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
 ) {
+    val temporaryEnableText = stringResource(Lang.media_source_results_temp_enable)
+    val failedText = stringResource(Lang.media_source_results_failed)
+    val clickRetryText = stringResource(Lang.media_source_results_click_retry)
+    val captchaRequiredText = stringResource(Lang.media_source_results_captcha_required)
+    val clickVerifyText = stringResource(Lang.media_source_results_click_verify)
+    val successText = stringResource(Lang.media_source_results_success)
+    val verifyText = stringResource(Lang.media_source_results_verify)
     if (expanded) {
         OutlinedCard(
             onClick = onClick,
@@ -330,7 +358,7 @@ private fun MediaSourceResultCard(
                         when {
                             source.isDisabled -> {
                                 Icon(Icons.Outlined.HorizontalRule, null)
-                                Text("点击临时启用")
+                                Text(temporaryEnableText)
                             }
 
                             source.isWorking -> {
@@ -340,20 +368,20 @@ private fun MediaSourceResultCard(
 
                             source.isFailedOrAbandoned -> {
                                 CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.error) {
-                                    Icon(Icons.Outlined.Close, "查询失败")
-                                    Text("点击重试")
+                                    Icon(Icons.Outlined.Close, failedText)
+                                    Text(clickRetryText)
                                 }
                             }
 
                             source.isCaptchaRequired -> {
                                 CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.error) {
-                                    Icon(Icons.AutoMirrored.Outlined.HelpOutline, "需要验证码")
-                                    Text("点击验证")
+                                    Icon(Icons.AutoMirrored.Outlined.HelpOutline, captchaRequiredText)
+                                    Text(clickVerifyText)
                                 }
                             }
 
                             else -> {
-                                Icon(Icons.Outlined.Check, "查询成功")
+                                Icon(Icons.Outlined.Check, successText)
                                 Text(remember(source.totalCount) { "${source.totalCount}" })
                             }
                         }
@@ -385,13 +413,13 @@ private fun MediaSourceResultCard(
 
                     source.isFailedOrAbandoned -> {
                         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.error) {
-                            Icon(Icons.Outlined.Close, "查询失败")
+                            Icon(Icons.Outlined.Close, failedText)
                         }
                     }
 
                     source.isCaptchaRequired -> {
                         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.error) {
-                            Text("验证")
+                            Text(verifyText)
                         }
                     }
 

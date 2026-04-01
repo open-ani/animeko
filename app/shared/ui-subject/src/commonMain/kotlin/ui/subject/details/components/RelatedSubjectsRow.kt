@@ -49,9 +49,15 @@ import me.him188.ani.app.data.models.subject.SubjectRelation
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_details_relation_derived
+import me.him188.ani.app.ui.lang.subject_details_relation_prequel
+import me.him188.ani.app.ui.lang.subject_details_relation_sequel
+import me.him188.ani.app.ui.lang.subject_details_relation_special
 import me.him188.ani.app.ui.search.createTestPager
 import me.him188.ani.app.ui.subject.details.TestRelatedSubjects
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.ceil
 
 @Composable
@@ -114,6 +120,10 @@ private fun RelatedSubjectItem(
     modifier: Modifier = Modifier,
     height: Dp = 120.dp,
 ) {
+    val prequelText = stringResource(Lang.subject_details_relation_prequel)
+    val sequelText = stringResource(Lang.subject_details_relation_sequel)
+    val derivedText = stringResource(Lang.subject_details_relation_derived)
+    val specialText = stringResource(Lang.subject_details_relation_special)
     Card(
         onClick,
         modifier,
@@ -151,10 +161,10 @@ private fun RelatedSubjectItem(
                             Box(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                                 Text(
                                     when (it) {
-                                        SubjectRelation.PREQUEL -> "前传"
-                                        SubjectRelation.SEQUEL -> "续集"
-                                        SubjectRelation.DERIVED -> "衍生"
-                                        SubjectRelation.SPECIAL -> "番外篇"
+                                        SubjectRelation.PREQUEL -> prequelText
+                                        SubjectRelation.SEQUEL -> sequelText
+                                        SubjectRelation.DERIVED -> derivedText
+                                        SubjectRelation.SPECIAL -> specialText
                                     },
                                 )
                             }

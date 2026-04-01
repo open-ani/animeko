@@ -77,6 +77,7 @@ import me.him188.ani.app.ui.lang.cache_details_subtitle_language
 import me.him188.ani.app.ui.lang.cache_details_total_segments
 import me.him188.ani.app.ui.lang.cache_unknown
 import me.him188.ani.app.ui.media.MediaDetailsRenderer
+import me.him188.ani.app.ui.media.rememberMediaDetailsStrings
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcon
 import me.him188.ani.datasources.api.CachedMedia
 import me.him188.ani.datasources.api.Media
@@ -193,6 +194,7 @@ fun MediaDetailsLazyGrid(
     val clipboard = LocalClipboard.current
     val fileRevealer = LocalContext.current.getComponentAccessors().fileRevealer
     val scope = rememberCoroutineScope()
+    val mediaDetailsStrings = rememberMediaDetailsStrings()
 
     val toaster = LocalToaster.current
     val copiedText = stringResource(Lang.cache_details_copied)
@@ -332,10 +334,11 @@ fun MediaDetailsLazyGrid(
                 supportingContent = {
                     SelectionContainer {
                         Text(
-                            remember(details) {
+                            remember(details, mediaDetailsStrings) {
                                 MediaDetailsRenderer.renderSubtitleLanguages(
                                     details.properties.subtitleKind,
                                     details.properties.subtitleLanguageIds,
+                                    mediaDetailsStrings,
                                 )
                             },
                         )

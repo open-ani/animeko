@@ -84,6 +84,10 @@ import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.icons.EditSquare
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.media_selector_view_detailed_mode
+import me.him188.ani.app.ui.lang.media_selector_view_filtered_count
+import me.him188.ani.app.ui.lang.media_selector_view_show_excluded
+import me.him188.ani.app.ui.lang.media_selector_view_simple_mode
 import me.him188.ani.app.ui.lang.settings_media_source_more
 import me.him188.ani.app.ui.mediafetch.request.MediaFetchRequestEditorDialog
 import me.him188.ani.app.ui.mediafetch.request.TestMediaFetchRequest
@@ -227,6 +231,8 @@ private fun ViewKindAndMoreRow(
     onRequestFetchRequestEdit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val simpleModeText = stringResource(Lang.media_selector_view_simple_mode)
+    val detailedModeText = stringResource(Lang.media_selector_view_detailed_mode)
     Row(
         modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -239,14 +245,14 @@ private fun ViewKindAndMoreRow(
                 onClick = { onViewKindChange(ViewKind.WEB) },
                 selected = viewKind == ViewKind.WEB,
             ) {
-                Text("简单模式", softWrap = false)
+                Text(simpleModeText, softWrap = false)
             }
             SegmentedButton(
                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                 onClick = { onViewKindChange(ViewKind.BT) },
                 selected = viewKind == ViewKind.BT,
             ) {
-                Text("详细模式", softWrap = false)
+                Text(detailedModeText, softWrap = false)
             }
         }
 
@@ -284,6 +290,11 @@ private fun LegacyBTSourceColumn(
     onShowExcludedChange: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val filteredCountText = stringResource(
+        Lang.media_selector_view_filtered_count,
+        presentation.preferredCandidates.size,
+        presentation.filteredCandidates.size,
+    )
     LazyColumn(
         modifier,
         lazyListState,
@@ -321,9 +332,7 @@ private fun LegacyBTSourceColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    remember(presentation.preferredCandidates.size, presentation.filteredCandidates.size) {
-                        "筛选到 ${presentation.preferredCandidates.size}/${presentation.filteredCandidates.size} 条资源"
-                    },
+                    filteredCountText,
                     style = MaterialTheme.typography.titleMedium,
                 )
 
@@ -345,13 +354,17 @@ private fun LegacyBTSourceColumn(
 
         if (presentation.groupedMediaListExcluded.isNotEmpty()) {
             item {
+                val showExcludedText = stringResource(
+                    Lang.media_selector_view_show_excluded,
+                    presentation.groupedMediaListExcluded.size,
+                )
                 Row(
                     Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "显示已被排除的资源 (${presentation.groupedMediaListExcluded.size})",
+                        showExcludedText,
                         Modifier.padding(end = 8.dp),
                         style = MaterialTheme.typography.labelLarge,
                     )

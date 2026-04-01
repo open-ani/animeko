@@ -35,10 +35,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_episode_edit_config
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_episode_open_link_failed
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_episode_open_original_link
 import me.him188.ani.app.ui.settings.mediasource.RefreshIndicationDefaults
 import me.him188.ani.app.ui.settings.mediasource.selector.edit.MatchVideoSection
 import me.him188.ani.app.ui.settings.mediasource.selector.edit.SelectorConfigState
 import me.him188.ani.app.ui.settings.mediasource.selector.edit.SelectorConfigurationDefaults
+import org.jetbrains.compose.resources.stringResource
 
 object SelectorEpisodePaneDefaults {
     @Composable
@@ -71,16 +76,21 @@ object SelectorEpisodePaneDefaults {
                 val uriHandler = LocalUriHandler.current
                 val toaster = LocalToaster.current
                 if (state.episodeUrl.isNotBlank() && state.episodeUrl.startsWith("http")) {
+                    val openLinkFailedText = stringResource(Lang.settings_mediasource_selector_episode_open_link_failed)
+                    val openOriginalLinkText = stringResource(
+                        Lang.settings_mediasource_selector_episode_open_original_link,
+                        state.episodeName,
+                    )
                     IconButton(
                         {
                             try {
                                 uriHandler.openUri(state.episodeUrl)
                             } catch (e: Throwable) {
-                                toaster.toast("无法打开链接")
+                                toaster.toast(openLinkFailedText)
                             }
                         },
                     ) {
-                        Icon(Icons.Rounded.ArrowOutward, "打开原始链接 ${state.episodeName}")
+                        Icon(Icons.Rounded.ArrowOutward, openOriginalLinkText)
                     }
                 }
             },
@@ -98,12 +108,13 @@ object SelectorEpisodePaneDefaults {
         textFieldShape: Shape = SelectorConfigurationDefaults.textFieldShape,
         verticalSpacing: Dp = SelectorConfigurationDefaults.verticalSpacing,
     ) {
+        val editConfigText = stringResource(Lang.settings_mediasource_selector_episode_edit_config)
         Column(modifier.padding(contentPadding)) {
             Row(Modifier.Companion.padding(bottom = 16.dp)) {
                 ProvideTextStyle(
                     MaterialTheme.typography.titleLarge,
                 ) {
-                    Text("编辑配置")
+                    Text(editConfigText)
                 }
             }
             SelectorConfigurationDefaults.MatchVideoSection(

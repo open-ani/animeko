@@ -73,6 +73,7 @@ import me.him188.ani.app.ui.lang.cache_unknown
 import me.him188.ani.app.ui.lang.episode_summary_share
 import me.him188.ani.app.ui.lang.subject_episode_cache
 import me.him188.ani.app.ui.lang.subject_episode_select_media_source
+import me.him188.ani.app.ui.media.rememberMediaDetailsStrings
 import me.him188.ani.app.ui.media.renderProperties
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcons
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingSummary
@@ -248,6 +249,7 @@ private fun PreviewEpisodeItemImpl(
     filename: String? = "filename-".repeat(3) + ".mkv",
     videoLoadingState: VideoLoadingState = VideoLoadingState.Succeed(false),
 ) {
+    val mediaDetailsStrings = rememberMediaDetailsStrings()
     Card(
         modifier = Modifier
             .padding(horizontal = 16.dp)
@@ -260,7 +262,7 @@ private fun PreviewEpisodeItemImpl(
             mediaSelected = media != null,
             mediaLabels = {
                 media?.let {
-                    Text(media.renderProperties())
+                    Text(media.renderProperties(mediaDetailsStrings))
                 }
             },
             filename = {

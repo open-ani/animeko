@@ -69,6 +69,7 @@ import me.him188.ani.app.ui.lang.subject_episode_statistics_error_message
 import me.him188.ani.app.ui.lang.subject_episode_statistics_now_playing
 import me.him188.ani.app.ui.lang.subject_episode_statistics_show_less
 import me.him188.ani.app.ui.lang.subject_episode_statistics_show_more
+import me.him188.ani.app.ui.media.rememberMediaDetailsStrings
 import me.him188.ani.app.ui.media.renderProperties
 import me.him188.ani.app.ui.mediafetch.MediaSourceInfoProvider
 import me.him188.ani.datasources.api.Media
@@ -237,13 +238,14 @@ fun VideoStatistics(
 ) {
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
+    val mediaDetailsStrings = rememberMediaDetailsStrings()
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
             when (val loadingState = state.videoLoadingState) {
                 is VideoLoadingState.Succeed -> {
-                    val mediaPropertiesText by remember {
+                    val mediaPropertiesText by remember(state.playingMedia, mediaDetailsStrings) {
                         derivedStateOf {
-                            state.playingMedia?.renderProperties()
+                            state.playingMedia?.renderProperties(mediaDetailsStrings)
                         }
                     }
                     NowPlayingLabel(mediaPropertiesText, state.playingFilename)

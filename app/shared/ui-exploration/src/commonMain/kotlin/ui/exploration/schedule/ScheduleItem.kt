@@ -24,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,7 +41,12 @@ import kotlinx.datetime.format.char
 import kotlinx.datetime.number
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.exploration_schedule_episode
+import me.him188.ani.app.ui.lang.exploration_schedule_episode_ep_and_sort
+import me.him188.ani.app.ui.lang.exploration_schedule_view_details
 import me.him188.ani.datasources.api.EpisodeSort
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 新番时间表的一个项目.
@@ -100,7 +104,11 @@ fun ScheduleItem(
             },
             trailingContent = action,
             colors = colors,
-            modifier = modifier.clickable(role = Role.Button, onClickLabel = "查看详情", onClick = onClick),
+            modifier = modifier.clickable(
+                role = Role.Button,
+                onClickLabel = stringResource(Lang.exploration_schedule_view_details),
+                onClick = onClick,
+            ),
         )
     }
 
@@ -146,9 +154,23 @@ object ScheduleItemDefaults {
         episodeName: String?,
         modifier: Modifier = Modifier,
     ) {
-        val text = remember(episodeSort) {
-            renderEpisodeDisplay(episodeSort, episodeEp, episodeName)
+        val epText = episodeEp?.toString()?.removePrefix("0")
+        val sortText = episodeSort.toString().removePrefix("0")
+        val sortDisplay = if (episodeEp == null || episodeEp == episodeSort) {
+            if (episodeSort is EpisodeSort.Normal) {
+                stringResource(Lang.exploration_schedule_episode, sortText)
+            } else {
+                sortText
+            }
+        } else {
+            check(epText != null)
+            if (episodeSort is EpisodeSort.Normal && episodeEp is EpisodeSort.Normal) {
+                stringResource(Lang.exploration_schedule_episode_ep_and_sort, epText, sortText)
+            } else {
+                "$epText ($sortText)"
+            }
         }
+        val text = if (episodeName == null) sortDisplay else "$sortDisplay  $episodeName"
         Text(
             text,
             overflow = TextOverflow.Ellipsis,
@@ -186,41 +208,9 @@ object ScheduleItemDefaults {
         val timeString = timeFormatter.format(time)
 
         return if (futureStartDate != null) {
-            "${futureStartDate.month.number}/${futureStartDate.day} 起\n${timeString}"
+            "${futureStartDate.month.number}/${futureStartDate.day}\n${timeString}"
         } else {
             timeString
-        }
-    }
-
-    // internal for testing
-    internal fun renderEpisodeDisplay(
-        episodeSort: EpisodeSort,
-        episodeEp: EpisodeSort?,
-        episodeName: String?
-    ): String {
-        val epText = episodeEp?.toString()?.removePrefix("0")
-        val sortText = episodeSort.toString().removePrefix("0")
-
-        val sortDisplay = if (episodeEp == null || episodeEp == episodeSort) {
-            if (episodeSort is EpisodeSort.Normal) {
-                "第 $sortText 话"
-            } else {
-                sortText
-            }
-        } else {
-            check(epText != null)
-            // episodeEp != episodeSort
-            if (episodeSort is EpisodeSort.Normal && episodeEp is EpisodeSort.Normal) {
-                "第 $epText ($sortText) 话"
-            } else {
-                "$epText ($sortText)"
-            }
-        }
-
-        return if (episodeName == null) {
-            sortDisplay
-        } else {
-            "$sortDisplay  $episodeName"
         }
     }
 }

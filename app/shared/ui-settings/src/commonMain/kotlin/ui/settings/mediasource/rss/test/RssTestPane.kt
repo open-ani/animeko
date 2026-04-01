@@ -47,6 +47,7 @@ import me.him188.ani.app.ui.foundation.interaction.nestedScrollWorkaround
 import me.him188.ani.app.ui.foundation.layout.connectedScroll
 import me.him188.ani.app.ui.foundation.layout.rememberConnectedScrollState
 import me.him188.ani.app.ui.foundation.widgets.FastLinearProgressIndicator
+import me.him188.ani.app.ui.media.rememberMediaDetailsStrings
 import me.him188.ani.app.ui.settings.mediasource.EditMediaSourceTestDataCardDefaults
 import me.him188.ani.app.ui.settings.mediasource.RefreshIndicatedHeadlineRow
 import me.him188.ani.app.ui.settings.mediasource.rss.detail.RssViewingItem
@@ -227,9 +228,11 @@ object RssTestPaneDefaults
 @Composable
 @PreviewLightDark
 fun PreviewRssTestResultItem() {
+    val mediaDetailsStrings = rememberMediaDetailsStrings()
     RssTestResultMediaItem(
-        TestMediaList[0],
-        false,
-        {},
+        media = TestMediaList[0],
+        mediaDetailsStrings = mediaDetailsStrings,
+        isSelected = false,
+        onClick = {},
     )
 }
