@@ -64,6 +64,13 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.foundation.theme.AniTheme
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings
+import me.him188.ani.app.ui.lang.subject_episode_collapse_sidebar
+import me.him188.ani.app.ui.lang.subject_episode_expand_sidebar
+import me.him188.ani.app.ui.lang.subject_episode_fast_forward_85_seconds
+import me.him188.ani.app.ui.lang.subject_episode_preview_mode
+import me.him188.ani.app.ui.lang.subject_episode_select_media_source
 import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
 import me.him188.ani.app.ui.mediafetch.ViewKind
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
@@ -116,6 +123,7 @@ import me.him188.ani.app.videoplayer.ui.top.SystemTime
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
+import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.audioTracks
 import org.openani.mediamp.features.subtitleTracks
@@ -177,6 +185,12 @@ internal fun EpisodeVideoImpl(
     var isLocked by remember { mutableStateOf(false) }
     val sheetsController = rememberVideoSideSheetsController<EpisodeVideoSideSheetPage>()
     val anySideSheetVisible by sheetsController.hasPageAsState()
+    val fastForward85SecondsText = stringResource(Lang.subject_episode_fast_forward_85_seconds)
+    val selectMediaSourceText = stringResource(Lang.subject_episode_select_media_source)
+    val settingsText = stringResource(Lang.settings)
+    val collapseSidebarText = stringResource(Lang.subject_episode_collapse_sidebar)
+    val expandSidebarText = stringResource(Lang.subject_episode_expand_sidebar)
+    val previewModeText = stringResource(Lang.subject_episode_preview_mode)
 
     // auto hide cursor
     val videoInteractionSource = remember { MutableInteractionSource() }
@@ -210,21 +224,21 @@ internal fun EpisodeVideoImpl(
                         },
                         actions = {
                             IconButton({ onClickSkip85(playerState.getCurrentPositionMillis()) }) {
-                                Icon(AniIcons.Forward85, "快进 85 秒")
+                                Icon(AniIcons.Forward85, fastForward85SecondsText)
                             }
                             if (expanded) {
                                 IconButton(
                                     { sheetsController.navigateTo(EpisodeVideoSideSheetPage.MEDIA_SELECTOR) },
                                     Modifier.testTag(TAG_SHOW_MEDIA_SELECTOR),
                                 ) {
-                                    Icon(Icons.Rounded.DisplaySettings, contentDescription = "数据源")
+                                    Icon(Icons.Rounded.DisplaySettings, contentDescription = selectMediaSourceText)
                                 }
                             }
                             IconButton(
                                 { sheetsController.navigateTo(EpisodeVideoSideSheetPage.PLAYER_SETTINGS) },
                                 Modifier.testTag(TAG_SHOW_SETTINGS),
                             ) {
-                                Icon(Icons.Rounded.Settings, contentDescription = "设置")
+                                Icon(Icons.Rounded.Settings, contentDescription = settingsText)
                             }
                             if (expanded && LocalPlatform.current.isDesktop()) {
                                 IconButton(
@@ -232,9 +246,9 @@ internal fun EpisodeVideoImpl(
                                     Modifier.testTag(TAG_COLLAPSE_SIDEBAR),
                                 ) {
                                     if (sidebarVisible) {
-                                        Icon(AniIcons.RightPanelClose, contentDescription = "折叠侧边栏")
+                                        Icon(AniIcons.RightPanelClose, contentDescription = collapseSidebarText)
                                     } else {
-                                        Icon(AniIcons.RightPanelOpen, contentDescription = "展开侧边栏")
+                                        Icon(AniIcons.RightPanelOpen, contentDescription = expandSidebarText)
                                     }
                                 }
                             }
@@ -252,7 +266,7 @@ internal fun EpisodeVideoImpl(
             },
             video = {
                 if (LocalIsPreviewing.current) {
-                    Text("预览模式")
+                    Text(previewModeText)
                 } else {
                     // Save the status bar height to offset the video player
                     val statusBarHeight by rememberStatusBarHeightAsState()

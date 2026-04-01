@@ -40,6 +40,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.foundation_paginated_list_next_group
+import me.him188.ani.app.ui.lang.foundation_paginated_list_previous_group
+import me.him188.ani.app.ui.lang.foundation_paginated_list_select_group
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 通用分页列表组件，支持分组显示和分页导航
@@ -111,6 +116,9 @@ private fun <T> PaginatedListNavigation(
     modifier: Modifier = Modifier,
 ) {
     var showGroupSelector by rememberSaveable { mutableStateOf(false) }
+    val previousGroupText = stringResource(Lang.foundation_paginated_list_previous_group)
+    val selectGroupText = stringResource(Lang.foundation_paginated_list_select_group)
+    val nextGroupText = stringResource(Lang.foundation_paginated_list_next_group)
 
     Row(
         modifier = modifier,
@@ -124,7 +132,7 @@ private fun <T> PaginatedListNavigation(
         ) {
             Icon(
                 Icons.Outlined.ChevronLeft,
-                contentDescription = "上一组",
+                contentDescription = previousGroupText,
                 tint = if (state.canNavigateToPreviousGroup) {
                     MaterialTheme.colorScheme.onSurface
                 } else {
@@ -158,7 +166,7 @@ private fun <T> PaginatedListNavigation(
                     )
                     Icon(
                         Icons.Outlined.ArrowDropDown,
-                        contentDescription = "选择分组",
+                        contentDescription = selectGroupText,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -197,7 +205,7 @@ private fun <T> PaginatedListNavigation(
         ) {
             Icon(
                 Icons.Outlined.ChevronRight,
-                contentDescription = "下一组",
+                contentDescription = nextGroupText,
                 tint = if (state.canNavigateToNextGroup) {
                     MaterialTheme.colorScheme.onSurface
                 } else {

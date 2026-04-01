@@ -59,10 +59,21 @@ import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_episode_select_media_source
+import me.him188.ani.app.ui.lang.subject_episode_statistics_danmaku_disabled
+import me.him188.ani.app.ui.lang.subject_episode_statistics_danmaku_load_failed_tap
+import me.him188.ani.app.ui.lang.subject_episode_statistics_danmaku_loading
+import me.him188.ani.app.ui.lang.subject_episode_statistics_danmaku_sources_count
+import me.him188.ani.app.ui.lang.subject_episode_statistics_error_message
+import me.him188.ani.app.ui.lang.subject_episode_statistics_now_playing
+import me.him188.ani.app.ui.lang.subject_episode_statistics_show_less
+import me.him188.ani.app.ui.lang.subject_episode_statistics_show_more
 import me.him188.ani.app.ui.media.renderProperties
 import me.him188.ani.app.ui.mediafetch.MediaSourceInfoProvider
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceInfo
+import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.MediampPlayer
 
 class VideoStatisticsCollector(
@@ -135,6 +146,11 @@ fun DanmakuMatchInfoSummaryRow(
     modifier: Modifier = Modifier,
 ) {
     val danmakuLoadingState = danmakuStatistics.danmakuLoadingState
+    val danmakuLoadFailedTapText = stringResource(Lang.subject_episode_statistics_danmaku_load_failed_tap)
+    val showLessText = stringResource(Lang.subject_episode_statistics_show_less)
+    val showMoreText = stringResource(Lang.subject_episode_statistics_show_more)
+    val danmakuDisabledText = stringResource(Lang.subject_episode_statistics_danmaku_disabled)
+    val danmakuLoadingText = stringResource(Lang.subject_episode_statistics_danmaku_loading)
     var showDialog by rememberSaveable { mutableStateOf(false) }
     if (showDialog) {
         val text = remember(danmakuLoadingState) {
@@ -169,7 +185,7 @@ fun DanmakuMatchInfoSummaryRow(
                         Icon(Icons.Rounded.ErrorOutline, null)
                     }
                     Text(
-                        "弹幕加载失败，点击查看",
+                        danmakuLoadFailedTapText,
                         Modifier.weight(1f),
                     )
                 }
@@ -177,30 +193,32 @@ fun DanmakuMatchInfoSummaryRow(
 
             is DanmakuLoadingState.Success -> {
                 Text(
-                    remember(danmakuStatistics) {
-                        "${danmakuStatistics.fetchResults.size} 个弹幕源，共计 ${danmakuStatistics.fetchResults.sumOf { it.matchInfo.count }} 条弹幕"
-                    },
+                    stringResource(
+                        Lang.subject_episode_statistics_danmaku_sources_count,
+                        danmakuStatistics.fetchResults.size,
+                        danmakuStatistics.fetchResults.sumOf { it.matchInfo.count },
+                    ),
                     Modifier.weight(1f),
                 )
 
                 IconButton(toggleExpanded, Modifier.padding(start = 16.dp)) {
                     if (expanded) {
-                        Icon(Icons.Rounded.ArrowDropUp, "展示更少")
+                        Icon(Icons.Rounded.ArrowDropUp, showLessText)
                     } else {
-                        Icon(Icons.Rounded.ArrowDropDown, "展示更多")
+                        Icon(Icons.Rounded.ArrowDropDown, showMoreText)
                     }
                 }
             }
 
             DanmakuLoadingState.Idle -> {
                 if (!danmakuStatistics.danmakuEnabled) {
-                    Text("弹幕已关闭，可在播放器内开启")
+                    Text(danmakuDisabledText)
                 }
             }
 
             DanmakuLoadingState.Loading -> {
                 Text(
-                    "弹幕装填中",
+                    danmakuLoadingText,
                     softWrap = false,
                 )
 
@@ -258,13 +276,15 @@ private fun NowPlayingLabel(
     filename: String?,
     modifier: Modifier = Modifier,
 ) {
+    val nowPlayingText = stringResource(Lang.subject_episode_statistics_now_playing)
+    val selectMediaSourceText = stringResource(Lang.subject_episode_select_media_source)
     Row(modifier) {
         ProvideTextStyle(MaterialTheme.typography.titleMedium) {
             if (playingMedia != null) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row {
                         Text(
-                            "正在播放: ",
+                            nowPlayingText,
                             color = MaterialTheme.colorScheme.primary,
                         )
                         Text(
@@ -283,7 +303,7 @@ private fun NowPlayingLabel(
                     }
                 }
             } else {
-                Text("请选择数据源")
+                Text(selectMediaSourceText)
             }
         }
     }
@@ -299,7 +319,7 @@ private fun ErrorTextBox(
         text,
         onValueChange = {},
         modifier,
-        label = { Text("错误信息") },
+        label = { Text(stringResource(Lang.subject_episode_statistics_error_message)) },
         shape = MaterialTheme.shapes.medium,
         readOnly = true,
         singleLine = true,

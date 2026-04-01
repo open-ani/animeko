@@ -25,6 +25,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_episode_now_playing
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 三个矩形垂直运动 (高度变化)
@@ -32,12 +35,13 @@ import androidx.compose.ui.unit.max
 @Composable
 fun PlayingIcon(
     modifier: Modifier = Modifier,
-    contentDescription: String = "正在播放",
+    contentDescription: String? = null,
     width: Dp = 24.dp,
     height: Dp = 16.dp,
     thickness: Dp = 3.dp,
     color: Color = LocalContentColor.current,
 ) {
+    val resolvedContentDescription = contentDescription ?: stringResource(Lang.subject_episode_now_playing)
     val density = LocalDensity.current
     val totalHeightPx = with(density) { height.toPx() }
     val reservedHeightPx = totalHeightPx * (1 - 0.612f)
@@ -85,7 +89,7 @@ fun PlayingIcon(
     ) {
         Canvas(
             Modifier.height(height).width(width),
-            contentDescription,
+            resolvedContentDescription,
         ) {
             // draw there vertical lines, separated evenly
             drawRoundRect(

@@ -30,6 +30,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_episode_close
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_settings_title
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.EpisodeVideoDefaults
 import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettings
@@ -44,6 +47,7 @@ import me.him188.ani.app.videoplayer.ui.hasPageAsState
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.rememberVideoSideSheetsController
 import me.him188.ani.danmaku.ui.DanmakuConfig
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * See extensions on [EpisodeVideoSideSheets] for sheet implementations.
@@ -107,16 +111,19 @@ object EpisodeVideoSideSheets {
         onDismissRequest: () -> Unit,
         onNavigateToFilterSettings: () -> Unit
     ) {
+        val danmakuSettingsText = stringResource(Lang.subject_episode_danmaku_settings_title)
+        val closeText = stringResource(Lang.subject_episode_close)
+
         // 全屏：直接展示主设置 SideSheet
         if (expanded) {
             val viewModel = remember { EpisodeVideoSettingsViewModel() }
             SideSheetLayout(
-                title = { Text("弹幕设置") },
+                title = { Text(danmakuSettingsText) },
                 onDismissRequest = onDismissRequest,
                 modifier = Modifier,
                 closeButton = {
                     IconButton(onClick = onDismissRequest) {
-                        Icon(Icons.Rounded.Close, contentDescription = "关闭")
+                        Icon(Icons.Rounded.Close, contentDescription = closeText)
                     }
                 },
             ) {
@@ -175,13 +182,16 @@ fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val danmakuSettingsText = stringResource(Lang.subject_episode_danmaku_settings_title)
+    val closeText = stringResource(Lang.subject_episode_close)
+
     SideSheetLayout(
-        title = { Text(text = "弹幕设置") },
+        title = { Text(text = danmakuSettingsText) },
         onDismissRequest = onDismissRequest,
         modifier,
         closeButton = {
             IconButton(onClick = onDismissRequest) {
-                Icon(Icons.Rounded.Close, contentDescription = "关闭")
+                Icon(Icons.Rounded.Close, contentDescription = closeText)
             }
         },
     ) {
