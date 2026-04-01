@@ -51,9 +51,16 @@ import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.interaction.hoverable
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_account_edit_profile
+import me.him188.ani.app.ui.lang.settings_account_login_register
+import me.him188.ani.app.ui.lang.settings_account_logout
+import me.him188.ani.app.ui.lang.settings_account_not_logged_in
+import me.him188.ani.app.ui.lang.settings_account_settings
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.user.SelfInfoUiState
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun ProfilePopupLayout(
@@ -66,6 +73,11 @@ internal fun ProfilePopupLayout(
     modifier: Modifier = Modifier,
 ) {
     val isLogin = remember(state) { state.selfInfo.isSessionValid == true }
+    val notLoggedInText = stringResource(Lang.settings_account_not_logged_in)
+    val editProfileText = stringResource(Lang.settings_account_edit_profile)
+    val loginRegisterText = stringResource(Lang.settings_account_login_register)
+    val settingsText = stringResource(Lang.settings_account_settings)
+    val logoutText = stringResource(Lang.settings_account_logout)
     Column(modifier) {
         Box(
             modifier = Modifier
@@ -88,7 +100,7 @@ internal fun ProfilePopupLayout(
         val showEmail = false
 
         Text(
-            if (isLogin) title else "未登录",
+            if (isLogin) title else notLoggedInText,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier
@@ -125,25 +137,25 @@ internal fun ProfilePopupLayout(
             Column {
                 if (isLogin) {
                     TextItem(
-                        icon = { Icon(Icons.Outlined.Edit, contentDescription = "Edit profile settings") },
+                        icon = { Icon(Icons.Outlined.Edit, contentDescription = editProfileText) },
                         onClick = onClickEditProfile,
                     ) {
-                        Text("编辑个人资料")
+                        Text(editProfileText)
                     }
                 } else {
                     TextItem(
-                        icon = { Icon(Icons.AutoMirrored.Outlined.Login, contentDescription = "Login") },
+                        icon = { Icon(Icons.AutoMirrored.Outlined.Login, contentDescription = loginRegisterText) },
                         onClick = onClickLogin,
                     ) {
-                        Text("登录 / 注册")
+                        Text(loginRegisterText)
                     }
                 }
 
                 TextItem(
-                    icon = { Icon(Icons.Outlined.Settings, contentDescription = "Settings") },
+                    icon = { Icon(Icons.Outlined.Settings, contentDescription = settingsText) },
                     onClick = onClickSettings,
                 ) {
-                    Text("设置")
+                    Text(settingsText)
                 }
 
                 if (isLogin) {
@@ -152,14 +164,14 @@ internal fun ProfilePopupLayout(
                             ProvideContentColor(MaterialTheme.colorScheme.error) {
                                 Icon(
                                     Icons.AutoMirrored.Outlined.Logout,
-                                    contentDescription = "Logout",
+                                    contentDescription = logoutText,
                                 )
                             }
                         },
                         onClick = onClickLogout,
                     ) {
                         ProvideContentColor(MaterialTheme.colorScheme.error) {
-                            Text("退出登录")
+                            Text(logoutText)
                         }
                     }
                 }

@@ -33,16 +33,28 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.foundation_load_error_network
+import me.him188.ani.app.ui.lang.foundation_load_error_no_results
+import me.him188.ani.app.ui.lang.foundation_load_error_rate_limited
+import me.him188.ani.app.ui.lang.foundation_load_error_request_error
+import me.him188.ani.app.ui.lang.foundation_load_error_requires_login
+import me.him188.ani.app.ui.lang.foundation_load_error_service_unavailable
+import me.him188.ani.app.ui.lang.foundation_load_error_unknown_feedback
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.getString
 import kotlin.math.max
 import kotlin.math.min
 
@@ -63,26 +75,38 @@ interface Toaster {
 
 private val logger = logger<Toaster>()
 
-fun Toaster.showLoadError(error: LoadError) { // TODO: localize
+@OptIn(DelicateCoroutinesApi::class)
+fun Toaster.showLoadError(error: LoadError) {
+    GlobalScope.launch {
+        show(renderLoadErrorToastMessage(error))
+    }
+
     when (error) {
-        LoadError.NetworkError -> show("网络错误，请检查网络连接或稍后再试")
-        LoadError.NoResults -> show("没有结果")
-        LoadError.RateLimited -> show("请求过于频繁，请稍后再试")
-        LoadError.RequiresLogin -> show("此功能需要登录")
-        LoadError.ServiceUnavailable -> show("服务不可用，请稍后再试")
         is LoadError.UnknownError -> {
-            show("发生未知错误，请在设置中反馈（附加日志）")
             logger.warn(error.throwable) {
                 "Toaster showing an LoadError.UnknownError"
             }
         }
 
         is LoadError.RequestError -> {
-            show("请求错误: ${error.localized}")
             logger.warn {
                 "Toaster showing an LoadError.RequestError: ${error.localized}"
             }
         }
+
+        else -> {}
+    }
+}
+
+private suspend fun renderLoadErrorToastMessage(error: LoadError): String {
+    return when (error) {
+        LoadError.NetworkError -> getString(Lang.foundation_load_error_network)
+        LoadError.NoResults -> getString(Lang.foundation_load_error_no_results)
+        LoadError.RateLimited -> getString(Lang.foundation_load_error_rate_limited)
+        LoadError.RequiresLogin -> getString(Lang.foundation_load_error_requires_login)
+        LoadError.ServiceUnavailable -> getString(Lang.foundation_load_error_service_unavailable)
+        is LoadError.UnknownError -> getString(Lang.foundation_load_error_unknown_feedback)
+        is LoadError.RequestError -> getString(Lang.foundation_load_error_request_error, error.localized)
     }
 }
 

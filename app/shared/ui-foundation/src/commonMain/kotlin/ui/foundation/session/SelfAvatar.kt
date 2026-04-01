@@ -41,7 +41,14 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.login_sign_in
+import me.him188.ani.app.ui.lang.settings_account_confirm_logout
+import me.him188.ani.app.ui.lang.settings_account_logout
+import me.him188.ani.app.ui.lang.settings_account_settings
+import me.him188.ani.app.ui.lang.subject_collection_cancel
 import me.him188.ani.app.ui.user.SelfInfoUiState
+import org.jetbrains.compose.resources.stringResource
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.coroutines.CoroutineContext
@@ -53,6 +60,8 @@ fun SelfAvatar(
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    val signInText = stringResource(Lang.login_sign_in)
+
     @Composable
     fun Content(onClick: () -> Unit) {
         if (state.isLoading) {
@@ -64,7 +73,7 @@ fun SelfAvatar(
         } else {
             if (state.isSessionValid == false || state.selfInfo == null) {
                 TextButton(onClick) {
-                    Text("登录")
+                    Text(signInText)
                 }
             } else {
                 AvatarImage(
@@ -120,8 +129,13 @@ private fun SelfAvatarMenus(
     handler: SelfAvatarActionHandler,
     onClickAny: () -> Unit,
 ) {
+    val settingsText = stringResource(Lang.settings_account_settings)
+    val logoutText = stringResource(Lang.settings_account_logout)
+    val confirmLogoutText = stringResource(Lang.settings_account_confirm_logout)
+    val cancelText = stringResource(Lang.subject_collection_cancel)
+
     DropdownMenuItem(
-        text = { Text("设置") },
+        text = { Text(settingsText) },
         onClick = {
             handler.onClickSettings()
             onClickAny()
@@ -133,7 +147,7 @@ private fun SelfAvatarMenus(
     var showLogoutConfirmation by rememberSaveable { mutableStateOf(false) }
     val running by logoutTasker.isRunning.collectAsStateWithLifecycle()
     DropdownMenuItem(
-        text = { Text("退出登录", color = MaterialTheme.colorScheme.error) },
+        text = { Text(logoutText, color = MaterialTheme.colorScheme.error) },
         leadingIcon = { Icon(Icons.AutoMirrored.Rounded.Logout, null) },
         onClick = { showLogoutConfirmation = true },
         enabled = !running,
@@ -141,7 +155,7 @@ private fun SelfAvatarMenus(
     if (showLogoutConfirmation) {
         AlertDialog(
             { showLogoutConfirmation = false },
-            text = { Text("确定要退出登录吗?") },
+            text = { Text(confirmLogoutText) },
             confirmButton = {
                 TextButton(
                     {
@@ -152,12 +166,12 @@ private fun SelfAvatarMenus(
                         showLogoutConfirmation = false
                     },
                 ) {
-                    Text("退出登录", color = MaterialTheme.colorScheme.error)
+                    Text(logoutText, color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton({ showLogoutConfirmation = false }) {
-                    Text("取消")
+                    Text(cancelText)
                 }
             },
         )

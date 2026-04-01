@@ -48,6 +48,11 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_account_confirm_logout
+import me.him188.ani.app.ui.lang.settings_account_logout
+import me.him188.ani.app.ui.lang.subject_collection_cancel
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 在右上角显示的个人信息弹窗
@@ -163,17 +168,16 @@ fun AccountLogoutDialog(
     AlertDialog(
         onCancel,
         icon = { Icon(Icons.AutoMirrored.Outlined.Logout, null) },
-        text = { Text("确定要退出登录吗?") },
+        text = { Text(stringResource(Lang.settings_account_confirm_logout)) },
         confirmButton = {
             TextButton(onConfirm, enabled = confirmEnabled) {
-                Text("退出登录", color = MaterialTheme.colorScheme.error)
+                Text(stringResource(Lang.settings_account_logout), color = MaterialTheme.colorScheme.error)
             }
         },
         dismissButton = {
             TextButton(onCancel) {
-                Text("取消")
+                Text(stringResource(Lang.subject_collection_cancel))
             }
         },
     )
 }
-

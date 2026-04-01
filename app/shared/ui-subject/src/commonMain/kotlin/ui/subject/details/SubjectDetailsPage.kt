@@ -121,6 +121,13 @@ import me.him188.ani.app.ui.foundation.toComposeImageBitmap
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_details_coming_soon
+import me.him188.ani.app.ui.lang.subject_details_login_to_collect
+import me.him188.ani.app.ui.lang.subject_details_tab_comments
+import me.him188.ani.app.ui.lang.subject_details_tab_details
+import me.him188.ani.app.ui.lang.subject_details_tab_discussions
+import me.him188.ani.app.ui.lang.subject_details_write_review
 import me.him188.ani.app.ui.rating.EditableRating
 import me.him188.ani.app.ui.rating.EditableRatingState
 import me.him188.ani.app.ui.richtext.RichTextDefaults
@@ -146,6 +153,7 @@ import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.toggleCollected
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isMobile
+import org.jetbrains.compose.resources.stringResource
 
 // region screen
 
@@ -316,7 +324,7 @@ private fun SubjectDetailsPage(
             collectionActions = {
                 if (selfInfo.isSessionValid == false) {
                     OutlinedButton(onClickLogin) {
-                        Text("登录后可收藏")
+                        Text(stringResource(Lang.subject_details_login_to_collect))
                     }
                 } else {
                     EditableSubjectCollectionTypeButton(state.editableSubjectCollectionTypeState)
@@ -389,7 +397,7 @@ private fun SubjectDetailsPage(
                     ) {
                         item {
                             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                Text("即将上线, 敬请期待", Modifier.padding(16.dp))
+                                Text(stringResource(Lang.subject_details_coming_soon), Modifier.padding(16.dp))
                             }
                         }
                     }
@@ -435,7 +443,7 @@ private fun PlaceholderSubjectDetailsPage(
             OutlinedButton(
                 onClick = {},
                 modifier = Modifier.placeholder(true),
-            ) { Text("登录后可收藏") }
+            ) { Text(stringResource(Lang.subject_details_login_to_collect)) }
         },
         rating = {
             val scope = rememberCoroutineScope()
@@ -677,7 +685,7 @@ private fun SubjectDetailsContentPager(
                 SubjectDetailsTab.DETAILS -> {}
                 SubjectDetailsTab.COMMENTS -> {
                     ExtendedFloatingActionButton(
-                        text = { Text("写评价") },
+                        text = { Text(stringResource(Lang.subject_details_write_review)) },
                         icon = {
                             Icon(Icons.Rounded.AddComment, null)
                         },
@@ -928,11 +936,12 @@ sealed interface SubjectDetailsUIState {
 }
 
 @Stable
+@Composable
 private fun renderSubjectDetailsTab(tab: SubjectDetailsTab): String {
     return when (tab) {
-        SubjectDetailsTab.DETAILS -> "详情"
-        SubjectDetailsTab.COMMENTS -> "评价"
-        SubjectDetailsTab.DISCUSSIONS -> "讨论"
+        SubjectDetailsTab.DETAILS -> stringResource(Lang.subject_details_tab_details)
+        SubjectDetailsTab.COMMENTS -> stringResource(Lang.subject_details_tab_comments)
+        SubjectDetailsTab.DISCUSSIONS -> stringResource(Lang.subject_details_tab_discussions)
     }
 }
 

@@ -23,6 +23,7 @@ import me.him188.ani.app.tools.WeekFormatter
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.SubjectProgressState
+import me.him188.ani.app.ui.subject.SubjectStatusStrings
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.PackedDate.Companion.Invalid
@@ -38,14 +39,31 @@ import kotlin.time.Instant
 @TestContainer
 class AiringProgressTests {
     private val today = Instant.parse("2024-08-23T12:00:00Z")
+    private val strings = SubjectStatusStrings(
+        continueWatchingFormat = "继续观看 %1\$s",
+        done = "已看完",
+        notOnAir = "还未开播",
+        startsOnFormat = "%1\$s开播",
+        startWatching = "开始观看",
+        updatesOnFormat = "%1\$s更新",
+        watchedFormat = "看过 %1\$s",
+        unknown = "未知",
+        upcoming = "未开播",
+        onAir = "连载中",
+        onAirToFormat = "连载至 %1\$s",
+        completed = "已完结",
+        totalEpisodesCompletedFormat = "全 %1\$s 话",
+        totalEpisodesScheduledFormat = "预定全 %1\$s 话",
+    )
 
     private class Scope(
         val airingLabelState: AiringLabelState,
         val subjectProgressState: SubjectProgressState,
+        val strings: SubjectStatusStrings,
     ) {
-        val airingLabel get() = airingLabelState.run { """$progressText · $totalEpisodesText""" }
+        val airingLabel get() = airingLabelState.run { """${progressText(strings)} · ${totalEpisodesText(strings)}""" }
         val highlightProgress get() = airingLabelState.highlightProgress
-        val buttonText get() = subjectProgressState.buttonText
+        val buttonText get() = subjectProgressState.buttonText(strings)
         val buttonIsPrimary get() = subjectProgressState.buttonIsPrimary
     }
 
@@ -85,6 +103,7 @@ class AiringProgressTests {
                 stateOf(subjectProgressInfo),
                 weekFormatter = WeekFormatter { today },
             ),
+            strings,
         )
     }
 

@@ -43,8 +43,11 @@ import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.cache_details_title
 import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.utils.logging.logger
+import org.jetbrains.compose.resources.stringResource
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -123,7 +126,7 @@ fun MediaCacheDetailsScreen(
         topBar = {
             WindowDragArea {
                 TopAppBar(
-                    title = { Text("详情") },
+                    title = { Text(stringResource(Lang.cache_details_title)) },
                     navigationIcon = navigationIcon,
                     colors = AniThemeDefaults.topAppBarColors(),
                     windowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),

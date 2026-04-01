@@ -15,6 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_episode_watched
+import org.jetbrains.compose.resources.stringResource
 
 
 @Composable
@@ -25,6 +28,7 @@ fun EpisodeWatchStatusButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    val watchedText = stringResource(Lang.subject_episode_watched)
     Box(
         modifier,
         contentAlignment = Alignment.CenterEnd,
@@ -41,7 +45,7 @@ fun EpisodeWatchStatusButton(
             SuggestionChip(
                 onClick = onMarkAsDone,
                 label = {
-                    Text("看过", softWrap = false)
+                    Text(watchedText, softWrap = false)
                 },
                 icon = {
                     Icon(Icons.Outlined.AddTask, null)
@@ -55,4 +59,3 @@ fun EpisodeWatchStatusButton(
         }
     }
 }
-
