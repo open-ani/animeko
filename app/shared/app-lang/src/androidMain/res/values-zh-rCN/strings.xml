@@ -80,6 +80,9 @@
     <string name="settings_developers_organization">Organization</string>
     <string name="settings_developers_view_more_on_github">在 GitHub 上查看更多</string>
 
+    <!-- Comment -->
+    <string name="comment_empty_title">暂无评论</string>
+
     <!-- SelectorMediaSource settings -->
     <string name="settings_mediasource_selector_test_dummy_line">1\n2</string>
     <string name="settings_mediasource_selector_test_dummy_tag">Dummy</string>
