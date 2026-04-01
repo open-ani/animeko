@@ -153,6 +153,10 @@
     <string name="settings_app_light_up_mode_description">高亮已經看過的劇集，而不是將要看的劇集</string>
     <string name="settings_app_language">語言</string>
     <string name="settings_app_language_restart">重啟軟件生效</string>
+    <string name="settings_app_close_behavior">關閉行為</string>
+    <string name="settings_app_close_behavior_exit">關閉應用</string>
+    <string name="settings_app_close_behavior_minimize_to_tray">最小化到系統托盤</string>
+    <string name="desktop_tray_open">顯示主視窗</string>
 
     <!-- SoftwareUpdateGroup -->
     <string name="settings_update_software">軟件更新</string>

@@ -20,8 +20,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.InternalComposeUiApi
 import androidx.compose.ui.LocalSystemTheme
@@ -31,6 +34,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.FrameWindowScope
+import androidx.compose.ui.window.Tray
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
@@ -49,6 +53,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.DarkMode
+import me.him188.ani.app.data.models.preference.DesktopCloseBehavior
+import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.repository.SavedWindowState
 import me.him188.ani.app.data.repository.WindowStateRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -97,6 +103,9 @@ import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.Toast
 import me.him188.ani.app.ui.foundation.widgets.ToastViewModel
 import me.him188.ani.app.ui.foundation.widgets.Toaster
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.desktop_tray_open
+import me.him188.ani.app.ui.lang.settings_app_close_behavior_exit
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
 import me.him188.ani.desktop.generated.resources.Res
@@ -112,8 +121,11 @@ import me.him188.ani.utils.logging.trace
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isWindows
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import org.koin.core.context.startKoin
 import org.openani.mediamp.vlc.VlcMediampPlayer
+import java.awt.Frame
+import java.awt.SystemTray
 import java.util.Locale
 import kotlin.io.path.absolutePathString
 import kotlin.system.exitProcess
@@ -415,8 +427,53 @@ object AniDesktop {
                 },
             )
 
+            val traySupported = remember { SystemTray.isSupported() }
+            val uiSettings by settingsRepository.uiSettings.flow.collectAsState(UISettings.Default)
+            var isWindowHiddenToTray by remember { mutableStateOf(false) }
+
+            fun restoreWindowFromTray() {
+                isWindowHiddenToTray = false
+            }
+
+            fun minimizeWindowToTray() {
+                if (traySupported) {
+                    isWindowHiddenToTray = true
+                } else {
+                    exitApplication()
+                }
+            }
+
+            fun handleCloseRequest() {
+                when {
+                    !traySupported -> exitApplication()
+                    uiSettings.desktopCloseBehavior == DesktopCloseBehavior.MINIMIZE -> minimizeWindowToTray()
+                    else -> exitApplication()
+                }
+            }
+
+            if (traySupported && isWindowHiddenToTray) {
+                val openTrayText = stringResource(Lang.desktop_tray_open)
+                val exitTrayText = stringResource(Lang.settings_app_close_behavior_exit)
+                Tray(
+                    icon = painterResource(Res.drawable.a_round),
+                    tooltip = "Ani",
+                    onAction = { restoreWindowFromTray() },
+                ) {
+                    Item(
+                        text = openTrayText,
+                        onClick = { restoreWindowFromTray() },
+                    )
+                    Separator()
+                    Item(
+                        text = exitTrayText,
+                        onClick = { exitApplication() },
+                    )
+                }
+            }
+
             Window(
-                onCloseRequest = { exitApplication() },
+                visible = !isWindowHiddenToTray,
+                onCloseRequest = { handleCloseRequest() },
                 state = windowState,
                 title = "Ani",
                 icon = painterResource(Res.drawable.a_round),
@@ -426,6 +483,13 @@ object AniDesktop {
                 val lifecycleOwner = LocalLifecycleOwner.current
                 val backPressedDispatcherOwner = remember {
                     SkikoOnBackPressedDispatcherOwner(navigator, lifecycleOwner)
+                }
+
+                DisposableEffect(Unit) {
+                    window.extendedState = window.extendedState and Frame.ICONIFIED.inv()
+                    window.toFront()
+                    window.requestFocus()
+                    onDispose {}
                 }
 
                 SideEffect {
@@ -469,7 +533,7 @@ object AniDesktop {
                         HandleWindowsWindowProc()
                         WindowFrame(
                             windowState = windowState,
-                            onCloseRequest = { exitApplication() },
+                            onCloseRequest = { handleCloseRequest() },
                         ) {
                             MainWindowContent(navigator)
                         }

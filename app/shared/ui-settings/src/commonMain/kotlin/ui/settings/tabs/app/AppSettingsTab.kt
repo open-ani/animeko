@@ -29,6 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
+import me.him188.ani.app.data.models.preference.DesktopCloseBehavior
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
 import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
 import me.him188.ani.app.data.models.preference.NsfwMode
@@ -45,6 +46,9 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.SupportedLocales
+import me.him188.ani.app.ui.lang.settings_app_close_behavior
+import me.him188.ani.app.ui.lang.settings_app_close_behavior_exit
+import me.him188.ani.app.ui.lang.settings_app_close_behavior_minimize_to_tray
 import me.him188.ani.app.ui.lang.settings_app_episode_playback
 import me.him188.ani.app.ui.lang.settings_app_initial_page
 import me.him188.ani.app.ui.lang.settings_app_initial_page_description
@@ -200,6 +204,22 @@ fun SettingsScope.AppearanceGroup(
         title = { Text(stringResource(Lang.settings_app_initial_page)) },
         description = { Text(stringResource(Lang.settings_app_initial_page_description)) },
     )
+    if (LocalPlatform.current.isDesktop()) {
+        DropdownItem(
+            selected = { uiSettings.desktopCloseBehavior },
+            values = { listOf(DesktopCloseBehavior.EXIT, DesktopCloseBehavior.MINIMIZE) },
+            itemText = {
+                Text(it.renderText())
+            },
+            exposedItemText = {
+                Text(it.renderText())
+            },
+            onSelect = {
+                state.update(uiSettings.copy(desktopCloseBehavior = it))
+            },
+            title = { Text(stringResource(Lang.settings_app_close_behavior)) },
+        )
+    }
 
     Group(title = { Text(stringResource(Lang.settings_app_search)) }, useThinHeader = true) {
         SwitchItem(
@@ -540,6 +560,14 @@ internal expect fun SettingsScope.IosLanguageSettings()
 
 @Composable
 internal expect fun SettingsScope.AppSettingsTabPlatform()
+
+@Composable
+private fun DesktopCloseBehavior.renderText(): String {
+    return when (this) {
+        DesktopCloseBehavior.EXIT -> stringResource(Lang.settings_app_close_behavior_exit)
+        DesktopCloseBehavior.MINIMIZE -> stringResource(Lang.settings_app_close_behavior_minimize_to_tray)
+    }
+}
 
 @Composable
 internal expect fun SettingsScope.PlayerGroupPlatform(

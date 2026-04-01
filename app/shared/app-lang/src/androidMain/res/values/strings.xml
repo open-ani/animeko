@@ -146,6 +146,10 @@
     <string name="settings_app_light_up_mode_description">Highlight the episodes that have already been watched, instead of the ones about to be watched</string>
     <string name="settings_app_language">Language</string>
     <string name="settings_app_language_restart">Restart to take effect</string>
+    <string name="settings_app_close_behavior">Close behavior</string>
+    <string name="settings_app_close_behavior_exit">Exit application</string>
+    <string name="settings_app_close_behavior_minimize_to_tray">Minimize to system tray</string>
+    <string name="desktop_tray_open">Open main window</string>
     <string name="settings_update_software">Software update</string>
     <string name="settings_update_current_version">Current version</string>
     <string name="settings_update_view_changelog">View changelog</string>
