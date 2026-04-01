@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,12 +10,15 @@
 package me.him188.ani.app.ui.comment
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridItemScope
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -40,6 +43,7 @@ import me.him188.ani.app.ui.foundation.thenNotNull
 import me.him188.ani.app.ui.foundation.widgets.PullToRefreshBox
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.SearchResultLazyVerticalGrid
+import me.him188.ani.app.ui.search.isFinishedAndEmpty
 import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
 import me.him188.ani.app.ui.search.isLoadingNextPage
 import me.him188.ani.utils.platform.isMobile
@@ -55,6 +59,20 @@ fun CommentColumn(
     state: LazyGridState = rememberLazyGridState(),
     commentItem: @Composable LazyGridItemScope.(index: Int, item: UIComment) -> Unit
 ) {
+    val emptyContentModifier = Modifier
+        .thenNotNull(
+            connectedScrollState?.let {
+                Modifier.nestedScroll(connectedScrollState.nestedScrollConnection)
+            },
+        )
+    val listContentModifier = Modifier
+        .thenNotNull(
+            connectedScrollState?.let {
+                Modifier.nestedScroll(connectedScrollState.nestedScrollConnection)
+                    .nestedScrollWorkaround(state, connectedScrollState)
+            },
+        )
+
     PullToRefreshBox(
         isRefreshing = items.isLoadingFirstPageOrRefreshing,
         onRefresh = { items.refresh() },
@@ -62,6 +80,18 @@ fun CommentColumn(
         enabled = LocalPlatform.current.isMobile(),
         contentAlignment = Alignment.TopCenter,
     ) {
+        if (items.isFinishedAndEmpty) {
+            Box(
+                modifier = emptyContentModifier
+                    .fillMaxSize()
+                    .padding(contentPadding),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+                CommentDefaults.EmptyPlaceholder()
+            }
+            return@PullToRefreshBox
+        }
+
         SearchResultLazyVerticalGrid(
             items,
             error = {
@@ -71,13 +101,7 @@ fun CommentColumn(
                     modifier = Modifier.fillMaxWidth(), // noop
                 )
             },
-            modifier = Modifier
-                .thenNotNull(
-                    connectedScrollState?.let {
-                        Modifier.nestedScroll(connectedScrollState.nestedScrollConnection)
-                            .nestedScrollWorkaround(state, connectedScrollState)
-                    },
-                ),
+            modifier = listContentModifier,
             contentPadding = contentPadding,
             cells = GridCells.Fixed(1),
             showLoadingIndicatorInFirstPage = false, // Use PTR instead

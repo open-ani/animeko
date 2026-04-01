@@ -1,5 +1,5 @@
 <!--
-  ~ Copyright (C) 2024-2025 OpenAni and contributors.
+  ~ Copyright (C) 2024-2026 OpenAni and contributors.
   ~
   ~ 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
   ~ Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -77,6 +77,10 @@
     <string name="settings_developers_ml_research">Machine learning R&amp;D</string>
     <string name="settings_developers_organization">Organization</string>
     <string name="settings_developers_view_more_on_github">View more on GitHub</string>
+
+    <!-- Comment -->
+    <string name="comment_empty_title">No comments yet</string>
+
     <string name="settings_mediasource_selector_test_dummy_line">1\n2</string>
     <string name="settings_mediasource_selector_test_dummy_tag">Dummy</string>
     <string name="settings_mediasource_selector_test_dummy_url">https://example.com/example/example</string>
