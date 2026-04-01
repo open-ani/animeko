@@ -43,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
@@ -81,6 +82,12 @@ import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.widgets.NsfwMask
 import me.him188.ani.app.ui.foundation.widgets.SelectableDropdownMenuItem
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.exploration_search_results_shown
+import me.him188.ani.app.ui.lang.exploration_search_sort_collection
+import me.him188.ani.app.ui.lang.exploration_search_sort_match
+import me.him188.ani.app.ui.lang.exploration_search_sort_rank
+import me.him188.ani.app.ui.lang.foundation_load_error_no_results
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.SearchDefaults.IconTextButton
 import me.him188.ani.app.ui.search.SearchResultLazyVerticalGrid
@@ -89,6 +96,7 @@ import me.him188.ani.app.ui.search.isFinishedAndEmpty
 import me.him188.ani.app.ui.subject.SubjectCoverCard
 import me.him188.ani.app.ui.subject.SubjectGridDefaults
 import me.him188.ani.app.ui.subject.SubjectGridLayoutParams
+import org.jetbrains.compose.resources.stringResource
 
 
 @Composable
@@ -339,10 +347,11 @@ private fun LazyGridItemScope.SearchResultColumnScopeImpl(
         modifier: Modifier
     ) {
         val modifier1 = modifier // 不要加动画, #1901
+        val noResultsText = stringResource(Lang.foundation_load_error_no_results)
         when {
             itemsState.value.isFinishedAndEmpty -> {
                 ListItem(
-                    headlineContent = { Text("无搜索结果") },
+                    headlineContent = { Text(noResultsText) },
                     modifier = modifier1,
                     colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
                 )
@@ -355,7 +364,10 @@ private fun LazyGridItemScope.SearchResultColumnScopeImpl(
                         verticalArrangement = Arrangement.aligned(Alignment.CenterVertically),
                         itemVerticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("已显示 ${itemsState.value.itemCount} 个结果", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            stringResource(Lang.exploration_search_results_shown, itemsState.value.itemCount),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
                         Row(
                             Modifier.weight(1f).align(Alignment.Bottom),
                             verticalAlignment = Alignment.CenterVertically,
@@ -425,6 +437,7 @@ private fun SortButton(
     onSortChange: (SearchSort) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val sortLabels = rememberSearchSortLabels()
     Box(
         modifier, contentAlignment = Alignment.BottomEnd,
     ) {
@@ -437,7 +450,7 @@ private fun SortButton(
                 Icon(Icons.AutoMirrored.Rounded.Sort, null)
             },
         ) {
-            Text(getSortText(currentSort), softWrap = false)
+            Text(getSortText(currentSort, sortLabels), softWrap = false)
         }
         DropdownMenu(showDropdown, { showDropdown = false }) {
             for (sort in SearchSort.entries) {
@@ -445,7 +458,7 @@ private fun SortButton(
                     selected = sort == currentSort,
                     text = {
                         Text(
-                            getSortText(sort),
+                            getSortText(sort, sortLabels),
                             softWrap = false,
                         )
                     },
@@ -459,8 +472,22 @@ private fun SortButton(
     }
 }
 
-private fun getSortText(currentSort: SearchSort): String = when (currentSort) {
-    SearchSort.MATCH -> "最佳匹配"
-    SearchSort.COLLECTION -> "最多收藏"
-    SearchSort.RANK -> "最高排名"
+@Immutable
+private data class SearchSortLabels(
+    val match: String,
+    val collection: String,
+    val rank: String,
+)
+
+@Composable
+private fun rememberSearchSortLabels(): SearchSortLabels = SearchSortLabels(
+    match = stringResource(Lang.exploration_search_sort_match),
+    collection = stringResource(Lang.exploration_search_sort_collection),
+    rank = stringResource(Lang.exploration_search_sort_rank),
+)
+
+private fun getSortText(currentSort: SearchSort, labels: SearchSortLabels): String = when (currentSort) {
+    SearchSort.MATCH -> labels.match
+    SearchSort.COLLECTION -> labels.collection
+    SearchSort.RANK -> labels.rank
 }

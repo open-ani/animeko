@@ -28,7 +28,11 @@ import me.him188.ani.app.ui.foundation.icons.AniIcons
 import me.him188.ani.app.ui.foundation.icons.GithubMark
 import me.him188.ani.app.ui.foundation.icons.QqRoundedOutline
 import me.him188.ani.app.ui.foundation.icons.Telegram
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_about_qq_group
+import me.him188.ani.app.ui.lang.settings_about_website
 import me.him188.ani.app.ui.settings.tabs.AniHelperDestination
+import org.jetbrains.compose.resources.stringResource
 
 private val ContactIconSize = 24.dp
 
@@ -38,6 +42,8 @@ fun AniContactList(
 ) {
     val browserNavigator = rememberAsyncBrowserNavigator()
     val context = LocalContext.current
+    val websiteText = stringResource(Lang.settings_about_website)
+    val qqGroupText = stringResource(Lang.settings_about_qq_group)
 
     FlowRow(
         modifier,
@@ -55,22 +61,24 @@ fun AniContactList(
             { browserNavigator.openBrowser(context, AniHelperDestination.ANI_WEBSITE) },
             icon = {
                 Icon(
-                    Icons.Rounded.Public, "官网",
+                    Icons.Rounded.Public,
+                    websiteText,
                     Modifier.size(ContactIconSize),
                 )
             },
-            label = { Text("官网") },
+            label = { Text(websiteText) },
         )
 
         SuggestionChip(
             { browserNavigator.openJoinGroup(context) },
             icon = {
                 Icon(
-                    AniIcons.QqRoundedOutline, "QQ 群",
+                    AniIcons.QqRoundedOutline,
+                    qqGroupText,
                     Modifier.size(ContactIconSize),
                 )
             },
-            label = { Text("QQ 群") },
+            label = { Text(qqGroupText) },
         )
 
         SuggestionChip(

@@ -36,9 +36,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.episode_danmaku_match_change
+import me.him188.ani.app.ui.lang.episode_danmaku_match_loading_danmaku
+import me.him188.ani.app.ui.lang.episode_danmaku_match_loading_subjects
+import me.him188.ani.app.ui.lang.episode_danmaku_match_select_episode
+import me.him188.ani.app.ui.lang.episode_danmaku_match_select_subject
+import me.him188.ani.app.ui.lang.exploration_search
+import me.him188.ani.app.ui.lang.settings_mediasource_cancel
+import me.him188.ani.app.ui.lang.settings_mediasource_test_keyword
 import me.him188.ani.danmaku.api.provider.DanmakuEpisode
 import me.him188.ani.danmaku.api.provider.DanmakuFetchResult
 import me.him188.ani.danmaku.api.provider.DanmakuSubject
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun MatchingDanmakuDialog(
@@ -50,12 +60,14 @@ fun MatchingDanmakuDialog(
     onSelectEpisode: (DanmakuEpisode) -> Unit,
     onComplete: (List<DanmakuFetchResult>) -> Unit,
 ) {
+    val changeDanmakuText = stringResource(Lang.episode_danmaku_match_change)
+    val cancelText = stringResource(Lang.settings_mediasource_cancel)
     AlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
         },
         title = {
-            Text("更换弹幕")
+            Text(changeDanmakuText)
         },
         text = {
             MatchingDanmakuScreen(
@@ -69,7 +81,7 @@ fun MatchingDanmakuDialog(
         },
         dismissButton = {
             TextButton(onDismissRequest) {
-                Text("取消")
+                Text(cancelText)
             }
         },
     )
@@ -85,6 +97,10 @@ fun MatchingDanmakuScreen(
     onSelectEpisode: (DanmakuEpisode) -> Unit,
     onComplete: (List<DanmakuFetchResult>) -> Unit,
 ) {
+    val keywordText = stringResource(Lang.settings_mediasource_test_keyword)
+    val searchText = stringResource(Lang.exploration_search)
+    val loadingEpisodesText = stringResource(Lang.episode_danmaku_match_loading_subjects)
+    val loadingDanmakuText = stringResource(Lang.episode_danmaku_match_loading_danmaku)
     if (uiState.isFlowComplete) {
         onComplete(uiState.danmakuFetchResults)
         return
@@ -122,7 +138,7 @@ fun MatchingDanmakuScreen(
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
-            label = { Text("关键词") },
+            label = { Text(keywordText) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
         )
@@ -134,7 +150,7 @@ fun MatchingDanmakuScreen(
             onClick = { onSubmitQuery(query) },
             enabled = query.isNotBlank() && !uiState.isLoadingSubjects,
         ) {
-            Text("搜索")
+            Text(searchText)
         }
 
         // Show a loading spinner if subjects are loading
@@ -152,7 +168,7 @@ fun MatchingDanmakuScreen(
         // Loading/Errors for episodes and danmaku can also be displayed in-line, if desired.
         if (uiState.isLoadingEpisodes) {
             Spacer(modifier = Modifier.height(8.dp))
-            Text("正在查询剧集列表…")
+            Text(loadingEpisodesText)
         }
         uiState.episodeError?.let { episodeErr ->
             Spacer(modifier = Modifier.height(8.dp))
@@ -161,7 +177,7 @@ fun MatchingDanmakuScreen(
 
         if (uiState.isLoadingDanmaku) {
             Spacer(modifier = Modifier.height(8.dp))
-            Text("正在查询弹幕列表…")
+            Text(loadingDanmakuText)
         }
         uiState.danmakuError?.let { danmakuErr ->
             Spacer(modifier = Modifier.height(8.dp))
@@ -200,9 +216,11 @@ fun SubjectPickerDialog(
     onSelect: (DanmakuSubject) -> Unit,
     onDismissRequest: () -> Unit,
 ) {
+    val selectSubjectText = stringResource(Lang.episode_danmaku_match_select_subject)
+    val cancelText = stringResource(Lang.settings_mediasource_cancel)
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        title = { Text("选择条目") },
+        title = { Text(selectSubjectText) },
         text = {
             LazyColumn {
                 items(subjects, key = { "MatchingDanmakuDialog-" + it.id }, contentType = { 1 }) { subject ->
@@ -217,7 +235,7 @@ fun SubjectPickerDialog(
         confirmButton = {
         },
         dismissButton = {
-            TextButton(onClick = onDismissRequest) { Text("取消") }
+            TextButton(onClick = onDismissRequest) { Text(cancelText) }
         },
     )
 }
@@ -228,9 +246,11 @@ fun EpisodePickerDialog(
     onSelect: (DanmakuEpisode) -> Unit,
     onDismissRequest: () -> Unit,
 ) {
+    val selectEpisodeText = stringResource(Lang.episode_danmaku_match_select_episode)
+    val cancelText = stringResource(Lang.settings_mediasource_cancel)
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        title = { Text("选择剧集") },
+        title = { Text(selectEpisodeText) },
         text = {
             LazyColumn {
                 items(episodes, key = { "MatchingDanmakuDialog-" + it.id }, contentType = { 1 }) { episode ->
@@ -247,7 +267,7 @@ fun EpisodePickerDialog(
         confirmButton = {
         },
         dismissButton = {
-            TextButton(onClick = onDismissRequest) { Text("取消") }
+            TextButton(onClick = onDismissRequest) { Text(cancelText) }
         },
     )
 }

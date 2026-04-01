@@ -37,7 +37,11 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.TestRatingInfo
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.rating_self_score
+import me.him188.ani.app.ui.lang.rating_summary
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 展示自己的评分和评分信息
@@ -55,7 +59,7 @@ fun Rating(
             if (selfRatingScore != 0) {
                 Row(Modifier.padding(horizontal = 2.dp).align(Alignment.End)) {
                     Text(
-                        remember(selfRatingScore) { "你的评分: $selfRatingScore" },
+                        stringResource(Lang.rating_self_score, selfRatingScore),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -76,7 +80,7 @@ fun Rating(
                 Column(Modifier.padding(start = 8.dp), horizontalAlignment = Alignment.End) {
                     FiveRatingStars(score = rating.scoreFloat.toInt(), color = LocalContentColor.current)
                     Text(
-                        "${rating.total} 人评丨#${rating.rank}",
+                        stringResource(Lang.rating_summary, rating.total, rating.rank),
                         Modifier.padding(end = 2.dp),
                         style = MaterialTheme.typography.labelMedium,
                         maxLines = 1,

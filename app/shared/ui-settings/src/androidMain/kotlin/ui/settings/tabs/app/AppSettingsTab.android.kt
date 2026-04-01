@@ -15,9 +15,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_app_danmaku_refresh_rate
+import me.him188.ani.app.ui.lang.settings_theme_mode_auto
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.DropdownItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
 @Composable
@@ -36,7 +40,7 @@ actual fun SettingsScope.PlayerGroupPlatform(videoScaffoldConfig: SettingsState<
             values = { supportedModes },
             itemText = {
                 if (it == null) {
-                    Text("自动")
+                    Text(stringResource(Lang.settings_theme_mode_auto))
                 } else {
                     Text(it.refreshRate.roundToInt().toString())
                 }
@@ -49,7 +53,7 @@ actual fun SettingsScope.PlayerGroupPlatform(videoScaffoldConfig: SettingsState<
                 )
             },
             title = {
-                Text("弹幕刷新率")
+                Text(stringResource(Lang.settings_app_danmaku_refresh_rate))
             },
         )
     }

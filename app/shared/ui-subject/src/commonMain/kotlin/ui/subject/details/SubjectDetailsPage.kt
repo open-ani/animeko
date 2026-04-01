@@ -122,6 +122,8 @@ import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.foundation_richtext_external_app_link_warning_prefix
+import me.him188.ani.app.ui.lang.foundation_richtext_open_failed_prefix
 import me.him188.ani.app.ui.lang.subject_details_coming_soon
 import me.him188.ani.app.ui.lang.subject_details_login_to_collect
 import me.him188.ani.app.ui.lang.subject_details_tab_comments
@@ -279,6 +281,8 @@ private fun SubjectDetailsPage(
     val toaster = LocalToaster.current
     val browserNavigator = LocalUriHandler.current
     val navigator = LocalNavigator.current
+    val externalAppLinkWarningPrefix = stringResource(Lang.foundation_richtext_external_app_link_warning_prefix)
+    val openLinkFailedPrefix = stringResource(Lang.foundation_richtext_open_failed_prefix)
 
     var showSelectEpisode by rememberSaveable { mutableStateOf(false) }
     val connectedScrollState = rememberConnectedScrollState()
@@ -380,7 +384,13 @@ private fun SubjectDetailsPage(
                     SubjectDetailsDefaults.SubjectCommentColumn(
                         state = state.subjectCommentState,
                         onClickUrl = {
-                            RichTextDefaults.checkSanityAndOpen(it, browserNavigator, toaster)
+                            RichTextDefaults.checkSanityAndOpen(
+                                it,
+                                browserNavigator,
+                                toaster,
+                                externalAppLinkWarningPrefix,
+                                openLinkFailedPrefix,
+                            )
                         },
                         onClickImage = { imageViewer.viewImage(it) },
                         connectedScrollState,
