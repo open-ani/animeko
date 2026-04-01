@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.text.intl.Locale
 import androidx.core.os.LocaleListCompat
+import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.lang.Lang
@@ -27,8 +28,11 @@ import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
+@Suppress("UNUSED_PARAMETER")
 @Composable
-internal actual fun SettingsScope.AndroidLanguageSettings() {
+internal actual fun SettingsScope.LanguageSettingsPlatform(
+    state: SettingsState<UISettings>,
+) {
     val supportedLocales = remember { listOf<Locale?>(null) + SupportedLocales }
 
     DropdownItem(
@@ -52,10 +56,6 @@ internal actual fun SettingsScope.AndroidLanguageSettings() {
         },
         title = { Text(stringResource(Lang.settings_app_language)) },
     )
-}
-
-@Composable
-internal actual fun SettingsScope.IosLanguageSettings() {
 }
 
 @Composable
