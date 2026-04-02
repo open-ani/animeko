@@ -11,7 +11,6 @@ package me.him188.ani.app.ui.progress
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.collections.immutable.persistentListOf
 import me.him188.ani.app.ui.framework.runComposeStateTest
@@ -20,6 +19,8 @@ import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import org.openani.mediamp.metadata.Chapter
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class PlayerProgressSliderStateTest {
 
@@ -33,8 +34,8 @@ class PlayerProgressSliderStateTest {
             totalDurationMillis = { 100_000L },
             chapters = { chapters },
             onPreview = {},
-            onPreviewFinished = {
-                positionState = it
+            onPreviewFinished = { position ->
+                positionState = position
             },
         )
 
@@ -42,6 +43,21 @@ class PlayerProgressSliderStateTest {
         state.finishPreview()
         takeSnapshot()
         assertEquals(0.5f, state.displayPositionRatio)
+        assertTrue(state.isPreviewing)
+        
+        // 播放器位置增加，但未到达目标位置，进度条仍然保持目标位置
+        positionState += 5_000L
+        takeSnapshot()
+        assertEquals(0.5f, state.displayPositionRatio)
+        assertTrue(state.isPreviewing)
+        
+        // 模拟播放器到达目标位置
+        positionState = 50_000L
+        state.checkSeekingComplete()
+        takeSnapshot()
+        assertFalse(state.isPreviewing)
+        
+        // 之后再增加位置，进度条跟随
         positionState += 5_000L
         takeSnapshot()
         assertEquals(0.55f, state.displayPositionRatio)
@@ -57,8 +73,8 @@ class PlayerProgressSliderStateTest {
             totalDurationMillis = { 100_000L },
             chapters = { chapters },
             onPreview = {},
-            onPreviewFinished = {
-                positionState = it
+            onPreviewFinished = { position ->
+                positionState = position
             },
         )
 
@@ -69,6 +85,21 @@ class PlayerProgressSliderStateTest {
         state.finishPreview()
         takeSnapshot()
         assertEquals(0.5f, state.displayPositionRatio)
+        assertTrue(state.isPreviewing)
+        
+        // 播放器位置增加，但未到达目标位置，进度条仍然保持目标位置
+        positionState += 5_000L
+        takeSnapshot()
+        assertEquals(0.5f, state.displayPositionRatio)
+        assertTrue(state.isPreviewing)
+        
+        // 模拟播放器到达目标位置
+        positionState = 50_000L
+        state.checkSeekingComplete()
+        takeSnapshot()
+        assertFalse(state.isPreviewing)
+        
+        // 之后再增加位置，进度条跟随
         positionState += 5_000L
         takeSnapshot()
         assertEquals(0.55f, state.displayPositionRatio)
