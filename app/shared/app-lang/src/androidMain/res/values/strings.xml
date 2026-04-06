@@ -463,6 +463,15 @@
     <string name="settings_debug_logout">Logout</string>
     <string name="settings_debug_logged_out">Logged out</string>
     <string name="settings_tab_account">Account</string>
+
+    <!-- Account Popup -->
+    <string name="settings_account_popup_not_logged_in">Not logged in</string>
+    <string name="settings_account_popup_edit_profile">Edit profile</string>
+    <string name="settings_account_popup_login_register">Login / Register</string>
+    <string name="settings_account_popup_logout">Logout</string>
+    <string name="settings_account_popup_logout_confirm">Are you sure you want to logout?</string>
+    <string name="settings_account_popup_logout_button">Logout</string>
+    <string name="settings_account_popup_cancel">Cancel</string>
 </resources>
 
 <!--@formatter:on-->

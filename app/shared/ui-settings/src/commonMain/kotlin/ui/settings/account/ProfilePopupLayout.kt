@@ -51,9 +51,11 @@ import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.interaction.hoverable
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
+import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.user.SelfInfoUiState
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun ProfilePopupLayout(
@@ -88,7 +90,7 @@ internal fun ProfilePopupLayout(
         val showEmail = false
 
         Text(
-            if (isLogin) title else "未登录",
+            if (isLogin) title else stringResource(Lang.settings_account_popup_not_logged_in),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier
@@ -128,14 +130,14 @@ internal fun ProfilePopupLayout(
                         icon = { Icon(Icons.Outlined.Edit, contentDescription = "Edit profile settings") },
                         onClick = onClickEditProfile,
                     ) {
-                        Text("编辑个人资料")
+                        Text(stringResource(Lang.settings_account_popup_edit_profile))
                     }
                 } else {
                     TextItem(
                         icon = { Icon(Icons.AutoMirrored.Outlined.Login, contentDescription = "Login") },
                         onClick = onClickLogin,
                     ) {
-                        Text("登录 / 注册")
+                        Text(stringResource(Lang.settings_account_popup_login_register))
                     }
                 }
 
@@ -143,7 +145,7 @@ internal fun ProfilePopupLayout(
                     icon = { Icon(Icons.Outlined.Settings, contentDescription = "Settings") },
                     onClick = onClickSettings,
                 ) {
-                    Text("设置")
+                    Text(stringResource(Lang.settings))
                 }
 
                 if (isLogin) {
@@ -159,7 +161,7 @@ internal fun ProfilePopupLayout(
                         onClick = onClickLogout,
                     ) {
                         ProvideContentColor(MaterialTheme.colorScheme.error) {
-                            Text("退出登录")
+                            Text(stringResource(Lang.settings_account_popup_logout))
                         }
                     }
                 }
