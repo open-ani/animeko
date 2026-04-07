@@ -109,7 +109,7 @@ class PlayerProgressSliderState(
     /** 目标跳转位置（毫秒），用于在 seek 完成前显示预览位置 */
     private var targetPositionMillis: Long by mutableLongStateOf(0L)
     /** 是否正在执行 seek 操作，seek 期间继续显示目标位置 */
-    private var isSeeking: Boolean by mutableStateOf(false)
+    var isSeeking: Boolean by mutableStateOf(false)
     /** 记录最后一次 seek 的位置，忽略中间的 seek 完成 */
     private var lastSeekPositionMillis: Long by mutableLongStateOf(0L)
 
@@ -153,6 +153,8 @@ class PlayerProgressSliderState(
     /**
      * 用户松开进度条时调用。
      * 记录目标位置并启动 seek 状态，在播放器实际位置到达目标位置前继续显示预览位置。
+     * 直接执行 seekTo 操作，因为 lastSeekPositionMillis 已经记录了最后一次的目标位置
+     * 即使多次调用，播放器最终也会停在最后一次的目标位置
      */
     fun finishPreview() {
         val ratio = this.previewPositionRatio
@@ -164,6 +166,8 @@ class PlayerProgressSliderState(
         isSeeking = true
         previewPositionRatio = Float.NaN
         
+        // 直接执行 seekTo 操作
+        // 即使多次调用，播放器最终也会停在最后一次的目标位置
         onPreviewFinished(targetPosition)
     }
 
@@ -172,14 +176,27 @@ class PlayerProgressSliderState(
      * 当播放器当前位置接近目标位置（误差 < 500ms）或超过目标位置时，
      * 结束 seeking 状态，进度条恢复正常显示。
      * 只在播放器位置接近最后一次 seek 的位置时才结束 seeking。
+     * 即使播放器执行 seekTo 操作的顺序与调用顺序不一致，
+     * 也能确保最终停在最后一次选择的位置。
      */
     fun checkSeekingComplete() {
         if (!isSeeking) return
         
         val diff = kotlin.math.abs(currentPositionMillis - lastSeekPositionMillis)
         if (diff < 500L || currentPositionMillis >= lastSeekPositionMillis) {
+            // 只有当播放器位置接近最后一次 seek 的位置时，才结束 seeking 状态
+            // 这样即使播放器执行 seekTo 操作的顺序与调用顺序不一致，
+            // 也能确保最终停在最后一次选择的位置
             isSeeking = false
         }
+    }
+    
+    /**
+     * 重置 seeking 状态。
+     * 当播放器停止时调用，确保 seek 状态被正确清除。
+     */
+    fun resetSeeking() {
+        isSeeking = false
     }
 }
 

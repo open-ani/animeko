@@ -160,6 +160,7 @@ import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isIos
 import me.him188.ani.utils.platform.isMobile
+import org.openani.mediamp.PlaybackState
 import org.openani.mediamp.features.AudioLevelController
 import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.Screenshots
@@ -350,6 +351,7 @@ private fun EpisodeScreenContent(
                                 pauseOnPlaying = pauseOnPlaying,
                                 tryUnpause = tryUnpause,
                                 setShowEditCommentSheet = { showEditCommentSheet = it },
+                                playbackState = playbackState,
                                 modifier = Modifier.fillMaxSize(),
                                 windowInsets = windowInsets,
                             )
@@ -363,6 +365,7 @@ private fun EpisodeScreenContent(
                             pauseOnPlaying = pauseOnPlaying,
                             tryUnpause = tryUnpause,
                             setShowEditCommentSheet = { showEditCommentSheet = it },
+                            playbackState = playbackState,
                             windowInsets,
                         )
                     }
@@ -403,6 +406,7 @@ private fun EpisodeScreenTabletVeryWide(
     pauseOnPlaying: () -> Unit,
     tryUnpause: () -> Unit,
     setShowEditCommentSheet: (Boolean) -> Unit,
+    playbackState: PlaybackState,
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
@@ -423,6 +427,7 @@ private fun EpisodeScreenTabletVeryWide(
                 danmakuEditorState,
                 vm.playerControllerState,
                 expanded = true,
+                playbackState = playbackState,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
                 maintainAspectRatio = false,
                 windowInsets = if (vm.isFullscreen) {
@@ -624,6 +629,7 @@ private fun EpisodeScreenContentPhone(
     pauseOnPlaying: () -> Unit,
     tryUnpause: () -> Unit,
     setShowEditCommentSheet: (Boolean) -> Unit,
+    playbackState: PlaybackState,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
     var showDanmakuEditor by rememberSaveable { mutableStateOf(false) }
@@ -648,6 +654,7 @@ private fun EpisodeScreenContentPhone(
                 vm, page,
                 danmakuHostState,
                 danmakuEditorState, vm.playerControllerState, vm.isFullscreen,
+                playbackState = playbackState,
                 windowInsets = videoWindowInsets,
             )
         },
@@ -862,6 +869,7 @@ private fun EpisodeVideo(
     danmakuEditorState: DanmakuEditorState,
     playerControllerState: PlayerControllerState,
     expanded: Boolean,
+    playbackState: PlaybackState,
     modifier: Modifier = Modifier,
     maintainAspectRatio: Boolean = !expanded,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
@@ -895,9 +903,25 @@ private fun EpisodeVideo(
     // 定期检查 seek 是否完成，解决进度条回跳问题
     // 在播放器实际位置到达目标位置前，保持显示预览位置
     LaunchedEffect(progressSliderState) {
-        while (true) {
-            delay(100)
-            progressSliderState.checkSeekingComplete()
+
+        try {
+            while (true) {
+                delay(100)
+                if (progressSliderState.isSeeking) {
+                    progressSliderState.checkSeekingComplete()
+                }
+            }
+        } catch (e: Exception) {
+            // 处理异常，避免协程崩溃
+            e.printStackTrace()
+        }
+    }
+
+    // 监听播放器状态变化，当播放器停止时重置 isSeeking 状态
+    LaunchedEffect(playbackState) {
+        if (!playbackState.isPlaying) {
+            // 播放器停止时，重置 isSeeking 状态
+            progressSliderState?.resetSeeking()
         }
     }
     
