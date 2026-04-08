@@ -90,7 +90,6 @@ import me.him188.ani.app.platform.features.getComponentAccessors
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.comment.CommentEditorState
 import me.him188.ani.app.ui.comment.CommentState
-import me.him188.ani.app.ui.comment.createPreviewTurnstileState
 import me.him188.ani.app.ui.danmaku.DanmakuEditorState
 import me.him188.ani.app.ui.danmaku.DummyDanmakuEditor
 import me.him188.ani.app.ui.danmaku.PlayerDanmakuEditor
@@ -374,7 +373,7 @@ private fun EpisodeScreenContent(
     if (showEditCommentSheet) {
         EpisodeEditCommentSheet(
             state = vm.commentEditorState,
-            turnstileState = remember { createPreviewTurnstileState() },
+            turnstileState = vm.turnstileState,
             onDismiss = {
                 showEditCommentSheet = false
                 vm.commentEditorState.cancelSend()
