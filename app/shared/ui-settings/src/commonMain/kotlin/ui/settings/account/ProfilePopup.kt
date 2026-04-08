@@ -49,6 +49,9 @@ import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_account_popup_cancel
+import me.him188.ani.app.ui.lang.settings_account_popup_logout_button
+import me.him188.ani.app.ui.lang.settings_account_popup_logout_confirm
 import org.jetbrains.compose.resources.stringResource
 
 /**
