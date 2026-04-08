@@ -129,7 +129,7 @@ class CacheEpisodeStateTest {
             assertEquals(false, isPaused)
             assertEquals(false, isFinished)
             assertEquals("200.0 MB", sizeText)
-            assertEquals(null, progressText)
+            assertEquals("100.0%", progressText)
             assertEquals(1f, progress.getOrNull())
             assertEquals(false, isProgressUnspecified)
         }
@@ -158,7 +158,7 @@ class CacheEpisodeStateTest {
     }
 
     @Test
-    fun `do not show speed if finished`() = runComposeStateTest {
+    fun `always show speed and progress if not finished`() = runComposeStateTest {
         cacheEpisode(
             initialPaused = CacheEpisodePaused.IN_PROGRESS,
             downloadSpeed = 100.megaBytes,
@@ -166,7 +166,7 @@ class CacheEpisodeStateTest {
         ).run {
             assertEquals("200.0 MB", sizeText)
             assertEquals("100.0%", progressText)
-            assertEquals(null, speedText)
+            assertEquals("100.0 MB/s", speedText)
         }
         cacheEpisode(
             initialPaused = CacheEpisodePaused.PAUSED,
@@ -174,11 +174,24 @@ class CacheEpisodeStateTest {
             progress = 1f.toProgress(),
         ).run {
             assertEquals("200.0 MB", sizeText)
-            assertEquals(null, progressText)
-            assertEquals(null, speedText)
+            assertEquals("100.0%", progressText)
+            assertEquals("100.0 MB/s", speedText)
         }
         cacheEpisode(
             initialPaused = CacheEpisodePaused.PAUSED,
+            downloadSpeed = 100.megaBytes,
+            progress = 2f.toProgress(),
+        ).run {
+            assertEquals("200.0 MB", sizeText)
+            assertEquals("100.0%", progressText)
+            assertEquals("100.0 MB/s", speedText)
+        }
+    }
+
+    @Test
+    fun `do not show speed if finished`() = runComposeStateTest {
+        cacheEpisode(
+            initialPaused = CacheEpisodePaused.COMPLETED,
             downloadSpeed = 100.megaBytes,
             progress = 2f.toProgress(),
         ).run {
