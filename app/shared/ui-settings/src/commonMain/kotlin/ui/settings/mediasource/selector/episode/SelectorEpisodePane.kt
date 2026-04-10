@@ -11,7 +11,6 @@
 
 package me.him188.ani.app.ui.settings.mediasource.selector.episode
 
-import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -105,81 +104,76 @@ fun SelectorTestAndEpisodePane(
     val nestedNav = rememberNavController()
     state.episodeNavController = nestedNav
 
-    SharedTransitionScope { transitionModifier ->
-        NavHost(nestedNav, initialRoute, modifier.then(transitionModifier)) {
-            composable<SelectorEpisodePaneRoutes.TEST> {
-                SelectorTestPane(
-                    state.testState,
-                    onViewEpisode = {
-                        state.viewEpisode(it)
-                    },
-                    this,
+    NavHost(nestedNav, initialRoute, modifier) {
+        composable<SelectorEpisodePaneRoutes.TEST> {
+            SelectorTestPane(
+                state.testState,
+                onViewEpisode = {
+                    state.viewEpisode(it)
+                },
+                Modifier.fillMaxSize(),
+                contentPadding = contentPadding,
+            )
+        }
+        composable<SelectorEpisodePaneRoutes.EPISODE> {
+            val onBack: () -> Unit = {
+                state.stopViewing()
+                nestedNav.popBackStack(SelectorEpisodePaneRoutes.EPISODE, inclusive = true)
+            }
+            BackHandler(onBack = onBack)
+            val cardColors: CardColors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            )
+
+            // decorate
+            val content: @Composable () -> Unit = {
+                SelectorEpisodePaneContent(
+                    state.episodeState,
                     Modifier.fillMaxSize(),
-                    contentPadding = contentPadding,
+                    itemColors = ListItemDefaults.colors(containerColor = cardColors.containerColor),
                 )
             }
-            composable<SelectorEpisodePaneRoutes.EPISODE> {
-                val onBack: () -> Unit = {
-                    state.stopViewing()
-                    nestedNav.popBackStack(SelectorEpisodePaneRoutes.EPISODE, inclusive = true)
-                }
-                BackHandler(onBack = onBack)
-                val cardColors: CardColors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                )
-
-                // decorate
-                val content: @Composable () -> Unit = {
-                    SelectorEpisodePaneContent(
-                        state.episodeState,
+            val topAppBarDecorated = if (layout.showTopBarInPane) {
+                {
+                    // list 展开, 能编辑配置
+                    Card(
                         Modifier.fillMaxSize(),
-                        itemColors = ListItemDefaults.colors(containerColor = cardColors.containerColor),
-                    )
-                }
-                val topAppBarDecorated = if (layout.showTopBarInPane) {
-                    {
-                        // list 展开, 能编辑配置
-                        Card(
-                            Modifier
-//                                .sharedBounds(rememberSharedContentState(state.episodeState.lastNonNullId), this)
-                                .fillMaxSize(),
-                            colors = cardColors,
-                            shape = MaterialTheme.shapes.large,
-                        ) {
-                            SelectorEpisodePaneDefaults.TopAppBar(
-                                state.episodeState,
-                                navigationIcon = {
-                                    BackNavigationIconButton({ onBack() })
-                                },
-                            )
-                            content()
-                        }
-                    }
-                } else content
-
-                val bottomSheetDecorated = if (layout.showBottomSheet) {
-                    {
-                        BottomSheetScaffold(
-                            sheetContent = {
-                                SelectorEpisodePaneDefaults.ConfigurationContent(
-                                    state.configurationState,
-                                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                                )
+                        colors = cardColors,
+                        shape = MaterialTheme.shapes.large,
+                    ) {
+                        SelectorEpisodePaneDefaults.TopAppBar(
+                            state.episodeState,
+                            navigationIcon = {
+                                BackNavigationIconButton({ onBack() })
                             },
-                            Modifier
-                                .fillMaxSize(),
-                            sheetPeekHeight = 78.dp,
-                        ) { paddingValues ->
-                            Box(Modifier.padding(paddingValues)) {
-                                topAppBarDecorated()
-                            }
+                        )
+                        content()
+                    }
+                }
+            } else content
+
+            val bottomSheetDecorated = if (layout.showBottomSheet) {
+                {
+                    BottomSheetScaffold(
+                        sheetContent = {
+                            SelectorEpisodePaneDefaults.ConfigurationContent(
+                                state.configurationState,
+                                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                            )
+                        },
+                        Modifier
+                            .fillMaxSize(),
+                        sheetPeekHeight = 78.dp,
+                    ) { paddingValues ->
+                        Box(Modifier.padding(paddingValues)) {
+                            topAppBarDecorated()
                         }
                     }
-                } else topAppBarDecorated
-
-                Box(Modifier.padding(contentPadding)) {
-                    bottomSheetDecorated()
                 }
+            } else topAppBarDecorated
+
+            Box(Modifier.padding(contentPadding)) {
+                bottomSheetDecorated()
             }
         }
     }

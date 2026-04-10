@@ -13,6 +13,7 @@ package me.him188.ani.app.ui.exploration.search
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,14 +24,25 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo
@@ -40,35 +52,43 @@ import androidx.compose.material3.adaptive.layout.ThreePaneScaffoldValue
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
 import androidx.paging.LoadStates
 import androidx.paging.PagingData
+import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
+import androidx.paging.compose.itemContentType
+import androidx.paging.compose.itemKey
 import androidx.window.core.layout.WindowSizeClass
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.repository.RepositoryNetworkException
 import me.him188.ani.app.domain.search.SearchSort
-import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.ui.adaptive.AdaptiveSearchBar
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.PaneScope
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.interaction.onEnterKeyEvent
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
-import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults.Text
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.layout.plus
@@ -76,7 +96,6 @@ import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.preview.PreviewSizeClasses
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.search.TestSearchState
-import me.him188.ani.app.ui.search.collectHasQueryAsState
 import me.him188.ani.app.ui.search.collectItemsWithLifecycle
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isDesktop
@@ -84,116 +103,159 @@ import me.him188.ani.utils.platform.isDesktop
 @Composable
 fun SearchPage(
     state: SearchPageState,
+    onIntent: (SearchPageIntent) -> Unit,
+    suggestionsPager: (String) -> Flow<PagingData<String>>,
     detailContent: @Composable PaneScope.(subjectId: Int) -> Unit,
     modifier: Modifier = Modifier,
-    onSelect: (index: Int, item: SubjectPreviewItemInfo) -> Unit = { _, _ -> },
     navigator: ThreePaneScaffoldNavigator<*> = rememberListDetailPaneScaffoldNavigator(),
+    gridState: LazyGridState = rememberLazyGridState(),
     contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     navigationIcon: @Composable () -> Unit = {},
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val items = state.searchState.collectItemsWithLifecycle()
+    val focusManager = LocalFocusManager.current
+    var isSearchBarExpanded by rememberSaveable { mutableStateOf(false) }
+    var layoutKind by rememberSaveable { mutableStateOf(SearchResultLayoutKind.COVER) }
+    var editingQuery by rememberSaveable(state.query.keywords) { mutableStateOf(state.query.keywords) }
+
+    LaunchedEffect(state.hasSelectedItem) {
+        if (state.hasSelectedItem) {
+            isSearchBarExpanded = false
+            focusManager.clearFocus(force = true)
+        }
+    }
+
     BackHandler(navigator.canNavigateBack()) {
         coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
             navigator.navigateBack()
         }
     }
-    val scope = rememberCoroutineScope()
 
-    val items = state.items
     SearchPageListDetailScaffold(
-        navigator,
-        hasSelectedItem = remember(state) {
-            derivedStateOf {
-                state.selectedItemIndex != -1
-            }
-        }.value,
+        navigator = navigator,
+        hasSelectedItem = state.hasSelectedItem,
         searchBar = {
-            SuggestionSearchBar(
-                state.suggestionSearchBarState,
-                Modifier.padding(bottom = 16.dp),
+            SearchPageSearchBar(
+                state = state,
+                onIntent = onIntent,
+                suggestionsPager = suggestionsPager,
+                editingQuery = editingQuery,
+                onEditingQueryChange = { editingQuery = it },
+                expanded = isSearchBarExpanded,
+                onExpandedChange = { isSearchBarExpanded = it },
+                modifier = Modifier.padding(bottom = 16.dp),
                 placeholder = { Text("关键词") },
                 windowInsets = contentWindowInsets.only(WindowInsetsSides.Horizontal),
             )
         },
-        searchResultColumn = { nestedScrollConnection ->
-            val aniNavigator = LocalNavigator.current
-
-            val hasQuery by state.searchState.collectHasQueryAsState()
-            val query by state.queryFlow.collectAsStateWithLifecycle()
+        searchResultColumn = {
             BoxWithConstraints {
                 SearchResultColumn(
                     items = items,
-                    layoutKind = state.layoutKind,
+                    layoutKind = layoutKind,
                     summary = {
-                        if (hasQuery) {
+                        if (state.hasActiveSearch) {
                             SearchSummary(
-                                state.layoutKind,
-                                query.sort,
-                                onLayoutKindChange = { state.layoutKind = it },
-                                onSortChange = { state.updateSort(it) },
+                                layoutKind = layoutKind,
+                                currentSort = state.query.sort,
+                                onLayoutKindChange = {
+                                    layoutKind = it
+                                },
+                                onSortChange = {
+                                    onIntent(SearchPageIntent.ChangeSort(it))
+                                },
                             )
                         }
                     },
                     selectedItemIndex = { state.selectedItemIndex },
                     onSelect = { index ->
-                        items[index]?.let {
-                            onSelect(index, it)
+                        val item = items[index] ?: return@SearchResultColumn
+                        if (listDetailLayoutParameters.preferSinglePane) {
+                            isSearchBarExpanded = false
+                            onIntent(
+                                SearchPageIntent.OpenSubjectDetails(
+                                    index = index,
+                                    item = item,
+                                ),
+                            )
+                            return@SearchResultColumn
                         }
-                        val didSwitchUI = if (
-                            !isSinglePane
-                            && navigator.currentDestination?.pane == ListDetailPaneScaffoldRole.List
-                            && state.layoutKind != SearchResultLayoutKind.PREVIEW
-                        ) {
-                            // 在多页模式下, 在 list 模式点击 item, 自动切换列表 layout 为详细模式, 避免左侧太拥挤
-                            state.layoutKind = SearchResultLayoutKind.PREVIEW
-                            true
-                        } else {
-                            false
+
+                        val didSwitchLayout =
+                            navigator.currentDestination?.pane == ListDetailPaneScaffoldRole.List &&
+                                    layoutKind != SearchResultLayoutKind.PREVIEW
+
+                        if (didSwitchLayout) {
+                            layoutKind = SearchResultLayoutKind.PREVIEW
                         }
+                        isSearchBarExpanded = false
+
+                        onIntent(
+                            SearchPageIntent.SelectResult(
+                                index = index,
+                                item = item,
+                            ),
+                        )
+
                         coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                            // 切换 UI 后, 被选择的位置可能会变, 所以需要 scroll 到那个元素
-                            val shouldAnimateScroll = didSwitchUI
-                                    && navigator.currentDestination?.pane != ListDetailPaneScaffoldRole.Detail // 如果已经打开了右边, 就不要动 scroll. 我们只在初次切换 UI 时 scroll.
-                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail) // 打开右边
+                            val shouldAnimateScroll = didSwitchLayout &&
+                                    navigator.currentDestination?.pane != ListDetailPaneScaffoldRole.Detail
+                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
                             if (shouldAnimateScroll) {
-                                state.gridState.animateScrollToItem(index)
+                                gridState.animateScrollToItem(index)
                             }
                         }
                     },
-                    onPlay = { info ->
-                        scope.launch(start = CoroutineStart.UNDISPATCHED) {
-                            val playInfo = state.requestPlay(info)
-                            playInfo?.let {
-                                aniNavigator.navigateEpisodeDetails(it.subjectId, playInfo.episodeId)
-                            }
-                        }
-                    }, // collect only once
+                    onPlay = {
+                        onIntent(SearchPageIntent.Play(it))
+                    },
                     headers = {
                         item(span = { GridItemSpan(maxLineSpan) }) {
-                            val filterState by state.searchFilterStateFlow.collectAsStateWithLifecycle()
                             SearchFilterChipsRow(
-                                filterState,
+                                state = state.searchFilterState,
                                 onClickItemText = { chip, value ->
-                                    state.toggleTagSelection(chip, value, unselectOthersOfSameKind = true)
+                                    val updatedQuery = state.toggleTagSelection(
+                                        tag = chip,
+                                        value = value,
+                                        unselectOthersOfSameKind = true,
+                                    ).query
+                                    onIntent(
+                                        SearchPageIntent.UpdateQuery(
+                                            updatedQuery,
+                                        ),
+                                    )
                                 },
                                 onCheckedChange = { chip, value ->
-                                    state.toggleTagSelection(chip, value, unselectOthersOfSameKind = false)
+                                    val updatedQuery = state.toggleTagSelection(
+                                        tag = chip,
+                                        value = value,
+                                        unselectOthersOfSameKind = false,
+                                    ).query
+                                    onIntent(
+                                        SearchPageIntent.UpdateQuery(
+                                            updatedQuery,
+                                        ),
+                                    )
                                 },
-                                Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth(),
                             )
                         }
                     },
                     highlightSelected = !isSinglePane,
-                    state = state.gridState,
+                    state = gridState,
                     layoutParams = SearchResultColumnLayoutParams.layoutParameters(
-                        kind = state.layoutKind,
+                        kind = layoutKind,
                         windowAdaptiveInfo = WindowAdaptiveInfo(
                             WindowSizeClass(maxWidth.value, maxHeight.value),
                             currentWindowAdaptiveInfo1().windowPosture,
                         ),
                     ),
-                    contentPadding = PaddingValues(bottom = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding)
-                        .plus(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom).asPaddingValues()),
+                    contentPadding = PaddingValues(
+                        bottom = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding,
+                    ).plus(
+                        WindowInsets.navigationBars.only(WindowInsetsSides.Bottom).asPaddingValues(),
+                    ),
                 )
             }
         },
@@ -203,13 +265,11 @@ fun SearchPage(
             }
         },
         navigateToTopButton = {
-            AnimatedVisibility(
-                state.gridState.canScrollBackward,
-            ) {
+            AnimatedVisibility(gridState.canScrollBackward) {
                 SmallFloatingActionButton(
-                    {
-                        scope.launch {
-                            state.gridState.animateScrollToItem(0)
+                    onClick = {
+                        coroutineScope.launch {
+                            gridState.animateScrollToItem(0)
                         }
                     },
                 ) {
@@ -217,16 +277,15 @@ fun SearchPage(
                 }
             }
         },
-        modifier,
+        modifier = modifier,
         navigationIcon = {
             if (
-                navigator.currentDestination?.pane == ListDetailPaneScaffoldRole.Detail
-                && state.selectedItemIndex != -1
-            ) { // navigator.canNavigate will always return false on Two Pane mode
+                navigator.currentDestination?.pane == ListDetailPaneScaffoldRole.Detail &&
+                state.hasSelectedItem
+            ) {
                 BackNavigationIconButton(
-                    {
-                        // Unselect, then hasSelectedItem will change
-                        state.selectedItemIndex = -1
+                    onNavigateBack = {
+                        onIntent(SearchPageIntent.ClearSelection)
                     },
                 )
             } else {
@@ -235,6 +294,151 @@ fun SearchPage(
         },
         contentWindowInsets = contentWindowInsets,
     )
+}
+
+@Composable
+private fun SearchPageSearchBar(
+    state: SearchPageState,
+    onIntent: (SearchPageIntent) -> Unit,
+    suggestionsPager: (String) -> Flow<PagingData<String>>,
+    editingQuery: String,
+    onEditingQueryChange: (String) -> Unit,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    inputFieldModifier: Modifier = Modifier,
+    windowInsets: WindowInsets = AniWindowInsets.forSearchBar(),
+    placeholder: @Composable (() -> Unit)? = null,
+) {
+    var debouncedEditingQuery by remember { mutableStateOf(editingQuery) }
+
+    LaunchedEffect(editingQuery) {
+        delay(200)
+        debouncedEditingQuery = editingQuery
+    }
+
+    BackHandler(expanded) {
+        onExpandedChange(false)
+    }
+
+    AdaptiveSearchBar(
+        inputField = {
+            SearchBarDefaults.InputField(
+                query = editingQuery,
+                onQueryChange = {
+                    onEditingQueryChange(it.trim('\n'))
+                },
+                onSearch = {
+                    onExpandedChange(false)
+                    onIntent(
+                        SearchPageIntent.UpdateQuery(
+                            state.query.copy(keywords = editingQuery),
+                            submit = true,
+                        ),
+                    )
+                },
+                expanded = expanded,
+                onExpandedChange = onExpandedChange,
+                modifier = inputFieldModifier
+                    .fillMaxWidth()
+                    .onFocusChanged { focusState ->
+                        if (!focusState.isFocused && expanded) {
+                            onExpandedChange(false)
+                        }
+                    }
+                    .onEnterKeyEvent {
+                        onExpandedChange(false)
+                        onIntent(
+                            SearchPageIntent.UpdateQuery(
+                                state.query.copy(keywords = editingQuery),
+                                submit = true,
+                            ),
+                        )
+                        true
+                    },
+                placeholder = placeholder,
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = if (editingQuery.isNotEmpty() || expanded) {
+                    {
+                        IconButton(
+                            onClick = {
+                                onExpandedChange(false)
+                                onEditingQueryChange("")
+                                onIntent(
+                                    SearchPageIntent.UpdateQuery(
+                                        state.query.copy(keywords = ""),
+                                    ),
+                                )
+                            },
+                        ) {
+                            Icon(Icons.Default.Close, contentDescription = null)
+                        }
+                    }
+                } else {
+                    null
+                },
+            )
+        },
+        expanded = expanded,
+        onExpandedChange = onExpandedChange,
+        modifier = modifier,
+        windowInsets = windowInsets,
+    ) {
+        val previewType = if (editingQuery.isEmpty()) {
+            SuggestionSearchPreviewType.HISTORY
+        } else {
+            SuggestionSearchPreviewType.SUGGESTIONS
+        }
+        val values = when (previewType) {
+            SuggestionSearchPreviewType.HISTORY -> state.searchHistoryPager
+            SuggestionSearchPreviewType.SUGGESTIONS -> suggestionsPager(debouncedEditingQuery)
+        }.collectAsLazyPagingItemsWithLifecycle()
+
+        LazyColumn {
+            items(
+                count = values.itemCount,
+                key = values.itemKey { "search-suggestion-$it" },
+                contentType = values.itemContentType { 1 },
+            ) { index ->
+                val text = values[index] ?: return@items
+                ListItem(
+                    leadingContent = if (previewType == SuggestionSearchPreviewType.HISTORY) {
+                        { Icon(Icons.Default.History, contentDescription = null) }
+                    } else {
+                        null
+                    },
+                    headlineContent = { Text(text) },
+                    modifier = Modifier.clickable {
+                        onEditingQueryChange(text)
+                        onExpandedChange(false)
+                        onIntent(
+                            SearchPageIntent.UpdateQuery(
+                                state.query.copy(keywords = text),
+                                submit = true,
+                            ),
+                        )
+                    },
+                    colors = ListItemDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    ),
+                    trailingContent = if (previewType == SuggestionSearchPreviewType.HISTORY) {
+                        {
+                            IconButton(
+                                onClick = {
+                                    onIntent(SearchPageIntent.RemoveHistory(text))
+                                },
+                                enabled = state.removingHistory != text,
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = "删除 $text")
+                            }
+                        }
+                    } else {
+                        null
+                    },
+                )
+            }
+        }
+    }
 }
 
 /**
@@ -255,18 +459,17 @@ internal fun SearchPageListDetailScaffold(
     val coroutineScope = rememberCoroutineScope()
 
     val topAppBarScrollBehavior: TopAppBarScrollBehavior? = if (LocalPlatform.current.isDesktop()) {
-        // Workaround for Compose bug: scrolling to the top does not work correctly.
         null
     } else {
         TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     }
 
     AniListDetailPaneScaffold(
-        navigator,
+        navigator = navigator,
         listPaneTopAppBar = {
             AniTopAppBar(
                 title = { Text("搜索") },
-                Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 navigationIcon = {
                     if (navigator.canNavigateBack()) {
                         BackNavigationIconButton(
@@ -282,7 +485,6 @@ internal fun SearchPageListDetailScaffold(
                 },
                 windowInsets = paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
                 scrollBehavior = topAppBarScrollBehavior,
-                // 此处 TopAppBar 滚动后会折叠，滚动前后使用相同的配色避免界面与状态栏颜色不同
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
                     scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
@@ -293,14 +495,17 @@ internal fun SearchPageListDetailScaffold(
             Scaffold(
                 floatingActionButton = { navigateToTopButton() },
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-            ) { _ -> // We only need window insets for the FAB
+            ) { _ ->
                 Column(
-                    Modifier
+                    modifier = Modifier
                         .paneContentPadding()
                         .paneWindowInsetsPadding()
                         .run {
-                            if (topAppBarScrollBehavior == null) this
-                            else nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
+                            if (topAppBarScrollBehavior == null) {
+                                this
+                            } else {
+                                nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
+                            }
                         },
                 ) {
                     searchBar()
@@ -308,13 +513,10 @@ internal fun SearchPageListDetailScaffold(
                 }
             }
         },
-        detailPane = {
-            detailContent()
-        },
-        modifier.background(MaterialTheme.colorScheme.surfaceContainerLowest),
+        detailPane = detailContent,
+        modifier = modifier.background(MaterialTheme.colorScheme.surfaceContainerLowest),
         useSharedTransition = false,
         scaffoldValue = if (!hasSelectedItem) {
-            // 如果没有选中项目, 全屏显示 List 页面.
             ThreePaneScaffoldValue(
                 primary = PaneAdaptedValue.Hidden,
                 secondary = PaneAdaptedValue.Expanded,
@@ -341,8 +543,7 @@ fun PreviewSearchPage() = ProvideCompositionLocalsForPreview {
 fun PreviewSearchPageEmptyResult() = ProvideCompositionLocalsForPreview {
     PreviewSearchPageImpl(
         createTestSearchPageState(
-            rememberCoroutineScope(),
-            TestSearchState(
+            searchState = TestSearchState(
                 MutableStateFlow(MutableStateFlow(PagingData.from(emptyList()))),
             ),
         ),
@@ -359,28 +560,25 @@ fun PreviewSearchPageEmptyResult() = ProvideCompositionLocalsForPreview {
 fun PreviewSearchPageError() = ProvideCompositionLocalsForPreview {
     PreviewSearchPageImpl(
         createTestSearchPageState(
-            rememberCoroutineScope(),
-            remember {
-                TestSearchState(
+            searchState = TestSearchState(
+                MutableStateFlow(
                     MutableStateFlow(
-                        MutableStateFlow(
-                            PagingData.from(
-                                emptyList(),
-                                sourceLoadStates = LoadStates(
-                                    LoadState.NotLoading(true),
-                                    LoadState.NotLoading(true),
-                                    LoadState.Error(RepositoryNetworkException()),
-                                ),
-                                mediatorLoadStates = LoadStates(
-                                    LoadState.NotLoading(true),
-                                    LoadState.NotLoading(true),
-                                    LoadState.Error(RepositoryNetworkException()),
-                                ),
+                        PagingData.from(
+                            emptyList(),
+                            sourceLoadStates = LoadStates(
+                                LoadState.NotLoading(true),
+                                LoadState.NotLoading(true),
+                                LoadState.Error(RepositoryNetworkException()),
+                            ),
+                            mediatorLoadStates = LoadStates(
+                                LoadState.NotLoading(true),
+                                LoadState.NotLoading(true),
+                                LoadState.Error(RepositoryNetworkException()),
                             ),
                         ),
                     ),
-                )
-            },
+                ),
+            ),
         ),
     )
 }
@@ -409,16 +607,14 @@ fun PreviewSearchPageResultColumn() = ProvideCompositionLocalsForPreview {
     }
 }
 
-
 @Composable
 @OptIn(TestOnly::class)
-private fun PreviewSearchPageImpl(state: SearchPageState = createTestSearchPageState(rememberCoroutineScope())) {
-    SideEffect {
-        state.searchState.startSearch()
-    }
+private fun PreviewSearchPageImpl(state: SearchPageState = createTestSearchPageState()) {
     Surface(color = MaterialTheme.colorScheme.surfaceContainerLowest) {
         SearchPage(
-            state,
+            state = state,
+            onIntent = {},
+            suggestionsPager = { MutableStateFlow(PagingData.from(listOf("suggestion1"))) },
             detailContent = { Text("Hello, World!") },
         )
     }
