@@ -104,7 +104,7 @@ class SuggestionSearchBarState(
     }
 
     fun startSearch() {
-        val rawQuery = presentationFlow.value.query
+        val rawQuery = editingQuery
         val query = rawQuery.trim()
         val tags = tagsProvider()
         if (query != rawQuery) {

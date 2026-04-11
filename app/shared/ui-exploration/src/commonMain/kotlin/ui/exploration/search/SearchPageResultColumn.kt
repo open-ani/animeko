@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -10,7 +10,6 @@
 package me.him188.ani.app.ui.exploration.search
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
@@ -70,10 +69,8 @@ import me.him188.ani.app.domain.search.SearchSort
 import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.animation.AniMotionScheme
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
-import me.him188.ani.app.ui.foundation.animation.SharedTransitionKeys
 import me.him188.ani.app.ui.foundation.icons.BackgroundDotLarge
 import me.him188.ani.app.ui.foundation.icons.GalleryThumbnail
-import me.him188.ani.app.ui.foundation.ifNotNullThen
 import me.him188.ani.app.ui.foundation.interaction.keyboardDirectionToSelectItem
 import me.him188.ani.app.ui.foundation.interaction.keyboardPageToScroll
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -156,81 +153,62 @@ internal fun SearchResultColumn(
         ) { index ->
             val info = items[index]
 
-            SharedTransitionLayout {
-                AnimatedContent(
-                    layoutParams.kind,
-                    transitionSpec = aniMotionScheme.animatedContent.topLevel,
-                ) { targetKind ->
-                    var nsfwMaskState: NsfwMode by rememberSaveable(info?.title) {
-                        mutableStateOf(info?.nsfwMode ?: NsfwMode.DISPLAY)
-                    }
-                    NsfwMask(
-                        mode = nsfwMaskState,
-                        onTemporarilyDisplay = { nsfwMaskState = NsfwMode.DISPLAY },
-                        shape = layoutParams.grid.cardShape,
-                    ) {
-                        val animatedVisibilityScope = this
-                        when (targetKind) {
-                            SearchResultLayoutKind.COVER -> {
-                                SubjectCoverCard(
-                                    info?.title,
-                                    info?.imageUrl,
-                                    isPlaceholder = info == null,
+            AnimatedContent(
+                layoutParams.kind,
+                transitionSpec = aniMotionScheme.animatedContent.topLevel,
+            ) { targetKind ->
+                var nsfwMaskState: NsfwMode by rememberSaveable(info?.title) {
+                    mutableStateOf(info?.nsfwMode ?: NsfwMode.DISPLAY)
+                }
+                NsfwMask(
+                    mode = nsfwMaskState,
+                    onTemporarilyDisplay = { nsfwMaskState = NsfwMode.DISPLAY },
+                    shape = layoutParams.grid.cardShape,
+                ) {
+                    when (targetKind) {
+                        SearchResultLayoutKind.COVER -> {
+                            SubjectCoverCard(
+                                info?.title,
+                                info?.imageUrl,
+                                isPlaceholder = info == null,
+                                onClick = { onSelect(index) },
+                                Modifier.animateItem(
+                                    aniMotionScheme.feedItemFadeInSpec,
+                                    aniMotionScheme.feedItemPlacementSpec,
+                                    aniMotionScheme.feedItemFadeOutSpec,
+                                ),
+                                shape = layoutParams.grid.cardShape,
+                            )
+                        }
+
+                        SearchResultLayoutKind.PREVIEW -> {
+                            if (info != null && !info.hide) {
+                                val requester = remember { BringIntoViewRequester() }
+                                // Shared transition disabled temporarily to avoid detach/lookahead crashes.
+                                DisposableEffect(requester) {
+                                    bringIntoViewRequesters[info.subjectId] = requester
+                                    onDispose {
+                                        bringIntoViewRequesters.remove(info.subjectId)
+                                    }
+                                }
+
+                                SearchResultItem(
+                                    info = info,
+                                    selected = highlightSelected && index == selectedItemIndex(),
+                                    shape = layoutParams.previewItem.shape,
                                     onClick = { onSelect(index) },
+                                    onPlay = onPlay,
                                     Modifier
-                                        .ifNotNullThen(info) {
-                                            sharedElement(
-                                                rememberSharedContentState(
-                                                    SharedTransitionKeys.subjectCoverImage(
-                                                        subjectId = it.subjectId,
-                                                    ),
-                                                ),
-                                                animatedVisibilityScope,
-                                                clipInOverlayDuringTransition = OverlayClip(layoutParams.grid.cardShape),
-                                            )
-                                        }
                                         .animateItem(
                                             aniMotionScheme.feedItemFadeInSpec,
                                             aniMotionScheme.feedItemPlacementSpec,
                                             aniMotionScheme.feedItemFadeOutSpec,
-                                        ),
-                                    shape = layoutParams.grid.cardShape,
+                                        )
+                                        .bringIntoViewRequester(requester),
+                                    imageModifier = Modifier,
                                 )
-                            }
-
-                            SearchResultLayoutKind.PREVIEW -> {
-                                if (info != null && !info.hide) {
-                                    val requester = remember { BringIntoViewRequester() }
-                                    // 记录 item 对应的 requester
-                                    DisposableEffect(requester) {
-                                        bringIntoViewRequesters[info.subjectId] = requester
-                                        onDispose {
-                                            bringIntoViewRequesters.remove(info.subjectId)
-                                        }
-                                    }
-
-                                    SearchResultItem(
-                                        info = info,
-                                        selected = highlightSelected && index == selectedItemIndex(),
-                                        shape = layoutParams.previewItem.shape,
-                                        onClick = { onSelect(index) },
-                                        onPlay = onPlay,
-                                        Modifier
-                                            .animateItem(
-                                                aniMotionScheme.feedItemFadeInSpec,
-                                                aniMotionScheme.feedItemPlacementSpec,
-                                                aniMotionScheme.feedItemFadeOutSpec,
-                                            )
-                                            .bringIntoViewRequester(requester),
-                                        imageModifier = Modifier.sharedElement(
-                                            rememberSharedContentState(SharedTransitionKeys.subjectCoverImage(subjectId = info.subjectId)),
-                                            animatedVisibilityScope,
-                                            clipInOverlayDuringTransition = OverlayClip(layoutParams.grid.cardShape),
-                                        ),
-                                    )
-                                } else {
-                                    Box(Modifier.size(Dp.Hairline))
-                                }
+                            } else {
+                                Box(Modifier.size(Dp.Hairline))
                             }
                         }
                     }
