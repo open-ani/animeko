@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.adaptive
 
-import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -44,7 +43,6 @@ import androidx.compose.material3.adaptive.layout.defaultDragHandleSemantics
 import androidx.compose.material3.adaptive.layout.rememberPaneExpansionState
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -64,8 +62,6 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.ListDetailAnimatedPane
-import me.him188.ani.app.ui.foundation.layout.LocalSharedTransitionScopeProvider
-import me.him188.ani.app.ui.foundation.layout.SharedTransitionScopeProvider
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
@@ -150,162 +146,160 @@ fun <T> AniListDetailPaneScaffold(
     val contentWindowInsetsState by rememberUpdatedState(contentWindowInsets)
     val scaffoldValueState by rememberUpdatedState(scaffoldValue)
 
-    SharedTransitionLayout {
-        ListDetailPaneScaffold(
-            navigator.scaffoldDirective,
-            scaffoldValue,
-            listPane = {
-                val threePaneScaffoldScope = this
-                ListDetailAnimatedPane(
-                    Modifier
-                        .requiredWidthIn(min = minListPaneWidth)
-                        .preferredWidth(listPanePreferredWidth),
-                    useSharedTransition,
-                ) {
-                    Column {
-                        val scope =
-                            remember(threePaneScaffoldScope, this@ListDetailAnimatedPane) {
-                                object : PaneScope {
-                                    override val listDetailLayoutParameters: ListDetailLayoutParameters
-                                        get() = layoutParametersState
+    ListDetailPaneScaffold(
+        navigator.scaffoldDirective,
+        scaffoldValue,
+        listPane = {
+            val threePaneScaffoldScope = this
+            ListDetailAnimatedPane(
+                Modifier
+                    .requiredWidthIn(min = minListPaneWidth)
+                    .preferredWidth(listPanePreferredWidth),
+                useSharedTransition,
+            ) {
+                Column {
+                    val scope =
+                        remember(threePaneScaffoldScope, this@ListDetailAnimatedPane) {
+                            object : PaneScope {
+                                override val listDetailLayoutParameters: ListDetailLayoutParameters
+                                    get() = layoutParametersState
 
-                                    override val isSinglePane: Boolean
-                                        get() = scaffoldValueState.isSinglePane
+                                override val isSinglePane: Boolean
+                                    get() = scaffoldValueState.isSinglePane
 
-                                    override val paneContentWindowInsets: WindowInsets
-                                        get() = when {
-                                            isSinglePane -> contentWindowInsetsState
-                                            else -> contentWindowInsetsState.only(WindowInsetsSides.Start + WindowInsetsSides.Vertical)
-                                        }
-
-                                    override fun Modifier.paneContentPadding(
-                                        extraStart: Dp,
-                                        extraEnd: Dp,
-                                    ): Modifier {
-                                        val endPadding = if (isSinglePane) {
-                                            layoutParametersState.listPaneContentEndPadding
-                                        } else {
-                                            0.dp // ListDetail 两个 pane 之间自带 24.dp
-                                        }
-                                        return Modifier
-                                            .padding(
-                                                PaddingValues(
-                                                    start = (layoutParametersState.listPaneContentStartPadding + extraStart)
-                                                        .coerceAtLeast(0.dp),
-                                                    end = (endPadding + extraEnd)
-                                                        .coerceAtLeast(0.dp),
-                                                ),
-                                            )
-                                            .consumeWindowInsets(
-                                                PaddingValues(
-                                                    start = (layoutParametersState.listPaneContentStartPadding + extraStart)
-                                                        .coerceAtLeast(layoutParametersState.listPaneContentStartPadding),
-                                                    end = (endPadding + extraEnd)
-                                                        .coerceAtLeast(endPadding),
-                                                ),
-                                            )
+                                override val paneContentWindowInsets: WindowInsets
+                                    get() = when {
+                                        isSinglePane -> contentWindowInsetsState
+                                        else -> contentWindowInsetsState.only(WindowInsetsSides.Start + WindowInsetsSides.Vertical)
                                     }
-                                }
-                            }
 
-                        CompositionLocalProvider(
-                            LocalSharedTransitionScopeProvider provides remember(
-                                this@SharedTransitionLayout,
-                                this@ListDetailAnimatedPane,
-                            ) {
-                                SharedTransitionScopeProvider(
-                                    this@SharedTransitionLayout, this@ListDetailAnimatedPane,
-                                )
-                            },
-                        ) {
-                            val decoratedPaneContent = @Composable {
-                                Column(Modifier.fillMaxWidth().wrapContentWidth().widthIn(max = 1300.dp)) {
-                                    listPaneContent(scope)
-                                }
-                            }
-
-                            if (listPaneTopAppBar == null) {
-                                decoratedPaneContent()
-                            } else {
-                                listPaneTopAppBar(scope)
-                                Column(
-                                    Modifier.consumeWindowInsets(
-                                        contentWindowInsets.only(WindowInsetsSides.Top),
-                                    ),
-                                ) {
-                                    decoratedPaneContent()
+                                override fun Modifier.paneContentPadding(
+                                    extraStart: Dp,
+                                    extraEnd: Dp,
+                                ): Modifier {
+                                    val endPadding = if (isSinglePane) {
+                                        layoutParametersState.listPaneContentEndPadding
+                                    } else {
+                                        0.dp // ListDetail 两个 pane 之间自带 24.dp
+                                    }
+                                    return Modifier
+                                        .padding(
+                                            PaddingValues(
+                                                start = (layoutParametersState.listPaneContentStartPadding + extraStart)
+                                                    .coerceAtLeast(0.dp),
+                                                end = (endPadding + extraEnd)
+                                                    .coerceAtLeast(0.dp),
+                                            ),
+                                        )
+                                        .consumeWindowInsets(
+                                            PaddingValues(
+                                                start = (layoutParametersState.listPaneContentStartPadding + extraStart)
+                                                    .coerceAtLeast(layoutParametersState.listPaneContentStartPadding),
+                                                end = (endPadding + extraEnd)
+                                                    .coerceAtLeast(endPadding),
+                                            ),
+                                        )
                                 }
                             }
                         }
+
+                    /*CompositionLocalProvider(
+                        LocalSharedTransitionScopeProvider provides remember(
+                            this@SharedTransitionLayout,
+                            this@ListDetailAnimatedPane,
+                        ) {
+                            SharedTransitionScopeProvider(
+                                this@SharedTransitionLayout, this@ListDetailAnimatedPane,
+                            )
+                        },
+                    ) {*/
+                    val decoratedPaneContent = @Composable {
+                        Column(Modifier.fillMaxWidth().wrapContentWidth().widthIn(max = 1300.dp)) {
+                            listPaneContent(scope)
+                        }
                     }
+
+                    if (listPaneTopAppBar == null) {
+                        decoratedPaneContent()
+                    } else {
+                        listPaneTopAppBar(scope)
+                        Column(
+                            Modifier.consumeWindowInsets(
+                                contentWindowInsets.only(WindowInsetsSides.Top),
+                            ),
+                        ) {
+                            decoratedPaneContent()
+                        }
+                    }
+                    // }
                 }
-            },
-            detailPane = {
-                val threePaneScaffoldScope = this
-                ListDetailAnimatedPane(
-                    Modifier.requiredWidthIn(min = minDetailPaneWidth),
-                    useSharedTransition = useSharedTransition,
+            }
+        },
+        detailPane = {
+            val threePaneScaffoldScope = this
+            ListDetailAnimatedPane(
+                Modifier.requiredWidthIn(min = minDetailPaneWidth),
+                useSharedTransition = useSharedTransition,
+            ) {
+                Card(
+                    shape = layoutParameters.detailPaneShape,
+                    colors = layoutParameters.detailPaneColors,
                 ) {
-                    Card(
-                        shape = layoutParameters.detailPaneShape,
-                        colors = layoutParameters.detailPaneColors,
-                    ) {
-                        val scope =
-                            remember(threePaneScaffoldScope, this@ListDetailAnimatedPane) {
-                                object : PaneScope {
-                                    override val listDetailLayoutParameters: ListDetailLayoutParameters
-                                        get() = layoutParametersState
+                    val scope =
+                        remember(threePaneScaffoldScope, this@ListDetailAnimatedPane) {
+                            object : PaneScope {
+                                override val listDetailLayoutParameters: ListDetailLayoutParameters
+                                    get() = layoutParametersState
 
-                                    override val isSinglePane: Boolean
-                                        get() = scaffoldValueState.isSinglePane
+                                override val isSinglePane: Boolean
+                                    get() = scaffoldValueState.isSinglePane
 
-                                    override val paneContentWindowInsets: WindowInsets
-                                        get() = when {
-                                            isSinglePane -> contentWindowInsetsState
-                                            else -> contentWindowInsetsState.only(WindowInsetsSides.End + WindowInsetsSides.Vertical)
-                                        }
-
-                                    override fun Modifier.paneContentPadding(
-                                        extraStart: Dp,
-                                        extraEnd: Dp,
-                                    ): Modifier {
-                                        return Modifier
-                                            .padding(
-                                                PaddingValues(
-                                                    start = (layoutParametersState.detailPaneContentStartPadding + extraStart)
-                                                        .coerceAtLeast(0.dp),
-                                                    end = (layoutParametersState.detailPaneContentEndPadding + extraEnd)
-                                                        .coerceAtLeast(0.dp),
-                                                ),
-                                            )
-                                            .consumeWindowInsets(
-                                                PaddingValues(
-                                                    start = (layoutParametersState.detailPaneContentStartPadding + extraStart)
-                                                        .coerceAtLeast(layoutParametersState.detailPaneContentStartPadding),
-                                                    end = (layoutParametersState.detailPaneContentEndPadding + extraEnd)
-                                                        .coerceAtLeast(layoutParametersState.detailPaneContentEndPadding),
-                                                ),
-                                            )
+                                override val paneContentWindowInsets: WindowInsets
+                                    get() = when {
+                                        isSinglePane -> contentWindowInsetsState
+                                        else -> contentWindowInsetsState.only(WindowInsetsSides.End + WindowInsetsSides.Vertical)
                                     }
+
+                                override fun Modifier.paneContentPadding(
+                                    extraStart: Dp,
+                                    extraEnd: Dp,
+                                ): Modifier {
+                                    return Modifier
+                                        .padding(
+                                            PaddingValues(
+                                                start = (layoutParametersState.detailPaneContentStartPadding + extraStart)
+                                                    .coerceAtLeast(0.dp),
+                                                end = (layoutParametersState.detailPaneContentEndPadding + extraEnd)
+                                                    .coerceAtLeast(0.dp),
+                                            ),
+                                        )
+                                        .consumeWindowInsets(
+                                            PaddingValues(
+                                                start = (layoutParametersState.detailPaneContentStartPadding + extraStart)
+                                                    .coerceAtLeast(layoutParametersState.detailPaneContentStartPadding),
+                                                end = (layoutParametersState.detailPaneContentEndPadding + extraEnd)
+                                                    .coerceAtLeast(layoutParametersState.detailPaneContentEndPadding),
+                                            ),
+                                        )
                                 }
                             }
-                        detailPane(scope)
-                    }
+                        }
+                    detailPane(scope)
                 }
-            },
-            modifier,
-            // singlePane 时不显示 handle 之类的. 否则会在切换页面时有动画问题. 应该是 CMP bug
-            paneExpansionState = if (layoutParameters.preferSinglePane) {
-                null
-            } else {
-                rememberPaneExpansionState(
-                    keyProvider = scaffoldValue,
-                    anchors = calculatePaneAnchors(minListPaneWidth, listPanePreferredWidth, minDetailPaneWidth),
-                )
-            },
-            paneExpansionDragHandle = if (layoutParameters.preferSinglePane) null else paneExpansionDragHandle,
-        )
-    }
+            }
+        },
+        modifier,
+        // singlePane 时不显示 handle 之类的. 否则会在切换页面时有动画问题. 应该是 CMP bug
+        paneExpansionState = if (layoutParameters.preferSinglePane) {
+            null
+        } else {
+            rememberPaneExpansionState(
+                keyProvider = scaffoldValue,
+                anchors = calculatePaneAnchors(minListPaneWidth, listPanePreferredWidth, minDetailPaneWidth),
+            )
+        },
+        paneExpansionDragHandle = if (layoutParameters.preferSinglePane) null else paneExpansionDragHandle,
+    )
 }
 
 @Composable
