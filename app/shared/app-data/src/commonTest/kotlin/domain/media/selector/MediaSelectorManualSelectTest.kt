@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
+import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.selector.testFramework.runSimpleMediaSelectorTestSuite
 import me.him188.ani.app.domain.player.extension.PlayerLoadErrorHandler
 import me.him188.ani.test.TestContainer
@@ -46,6 +48,12 @@ class MediaSelectorManualSelectTest {
         val handler = PlayerLoadErrorHandler(
             getPreferKind = { null },
             getSourceTiers = { MediaSelectorSourceTiers(emptyMap()) },
+            getPreferredWebMediaSourceId = { null },
+            getEpisodeMetadata = { EpisodeMetadata("", null, EpisodeSort(1)) },
+            getWebSourceDiscoveryTimeout = { kotlin.time.Duration.ZERO },
+            getWebProbeTimeout = { kotlin.time.Duration.ZERO },
+            getWebProbeConcurrency = { 1 },
+            selectFastestPlayableWebMedia = { _, _, _, _, _, _, _, _, _ -> null },
         )
 
         coroutineScope {

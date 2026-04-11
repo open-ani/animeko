@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.media.selector
 
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
@@ -19,6 +20,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.SelectBuilder
 import kotlinx.coroutines.selects.select
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
+import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
 import me.him188.ani.app.domain.mediasource.GetPreferredWebMediaSourceUseCase
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
@@ -31,9 +33,14 @@ import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import kotlin.time.Duration.Companion.milliseconds
 
 interface MediaSelectorAutoSelectUseCase : UseCase {
-    suspend operator fun invoke(session: MediaFetchSession, mediaSelector: MediaSelector)
+    suspend operator fun invoke(
+        session: MediaFetchSession,
+        mediaSelector: MediaSelector,
+        episodeMetadata: EpisodeMetadata,
+    )
 }
 
 class MediaSelectorAutoSelectUseCaseImpl(
@@ -42,10 +49,16 @@ class MediaSelectorAutoSelectUseCaseImpl(
     private val getMediaSelectorSettingsFlow: GetMediaSelectorSettingsFlowUseCase by inject()
     private val getMediaSelectorSourceTiers: GetMediaSelectorSourceTiersUseCase by inject()
     private val getPreferredWebMediaSource: GetPreferredWebMediaSourceUseCase by inject()
+    private val selectFastestPlayableWebMedia: SelectFastestPlayableWebMediaUseCase by inject()
+    private val settingsRepository: SettingsRepository by inject()
 
     private val logger = logger<MediaSelectorAutoSelectUseCase>()
 
-    override suspend fun invoke(session: MediaFetchSession, mediaSelector: MediaSelector) {
+    override suspend fun invoke(
+        session: MediaFetchSession,
+        mediaSelector: MediaSelector,
+        episodeMetadata: EpisodeMetadata,
+    ) {
         coroutineScope {
             val mediaSelectorSettingsFlow = getMediaSelectorSettingsFlow()
             val preferKindFlow = mediaSelectorSettingsFlow.map { it.preferKind }
@@ -75,9 +88,23 @@ class MediaSelectorAutoSelectUseCaseImpl(
                     this@cancellableCoroutineScope.async { block() }.onAwait { it }
                 }
 
+                suspend fun loadWebProbeTimeout() =
+                    settingsRepository.videoResolverSettings.flow
+                        .first()
+                        .effectiveResourceExtractionTimeoutMillis
+                        .milliseconds
+
+                suspend fun loadWebProbeConcurrency() =
+                    mediaSelectorSettingsFlow.first().effectiveFastSelectWebProbeConcurrency
+
                 select {
                     // 选择用户偏好的源
                     resulting {
+                        val selectorSettings = mediaSelectorSettingsFlow.first()
+                        if (selectorSettings.fastSelectWebKind && selectorSettings.preferKind == MediaSourceKind.WEB) {
+                            awaitCancellation()
+                        }
+
                         // subjectId 无效就等别的 clause.
                         val subjectId = session.request.first().subjectId.toIntOrNull() ?: awaitCancellation()
                         val result = autoSelector.selectPreferredWebSource(
@@ -96,13 +123,41 @@ class MediaSelectorAutoSelectUseCaseImpl(
                             awaitCancellation()
                         }
 
-                        val result = autoSelector.fastSelectWebSources(
-                            session,
-                            getMediaSelectorSourceTiers().first(),
-                            overrideUserSelection = false,
+                        val subjectId = session.request.first().subjectId.toIntOrNull()
+                        val preferredWebMediaSourceId = subjectId?.let {
+                            getPreferredWebMediaSource(it).first()
+                        }
+                        val sourceTiers = getMediaSelectorSourceTiers().first()
+                        val mediaResolveTimeout = loadWebProbeTimeout()
+                        val maxProbeSources = loadWebProbeConcurrency()
+                        val fastestSourceId = selectFastestPlayableWebMedia(
+                            session = session,
+                            mediaSelector = mediaSelector,
+                            episodeMetadata = episodeMetadata,
+                            preferredWebMediaSourceId = preferredWebMediaSourceId,
+                            sourceTiers = sourceTiers,
                             blacklistMediaIds = emptySet(),
-                            selectorSettings.fastSelectWebLowTierToleranceDuration,
+                            sourceDiscoveryTimeout = selectorSettings.fastSelectWebLowTierToleranceDuration,
+                            mediaResolveTimeout = mediaResolveTimeout,
+                            maxProbeSources = maxProbeSources,
                         )
+
+                        val result = if (fastestSourceId != null) {
+                            mediaSelector.trySelectFromMediaSources(
+                                candidateSources = listOf(fastestSourceId),
+                                overrideUserSelection = false,
+                                blacklistMediaIds = emptySet(),
+                                allowNonPreferred = true,
+                            )
+                        } else {
+                            autoSelector.fastSelectWebSources(
+                                session,
+                                sourceTiers = sourceTiers,
+                                overrideUserSelection = false,
+                                blacklistMediaIds = emptySet(),
+                                lowTierToleranceDuration = selectorSettings.fastSelectWebLowTierToleranceDuration,
+                            )
+                        }
 
                         logger.info { "fastSelectWebSources result: $result" }
                         result ?: awaitCancellation()
@@ -117,6 +172,11 @@ class MediaSelectorAutoSelectUseCaseImpl(
 
                     // 兜底策略: 等所有数据源都准备好后, 选择一个.
                     resulting {
+                        val selectorSettings = mediaSelectorSettingsFlow.first()
+                        if (selectorSettings.fastSelectWebKind && selectorSettings.preferKind == MediaSourceKind.WEB) {
+                            awaitCancellation()
+                        }
+
                         val result = autoSelector.awaitCompletedAndSelectDefault(session, preferKindFlow)
                         logger.info { "awaitCompletedAndSelectDefault result: $result" }
                         result
@@ -130,4 +190,3 @@ class MediaSelectorAutoSelectUseCaseImpl(
 
     override fun getKoin(): Koin = koin
 }
-

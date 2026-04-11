@@ -29,6 +29,8 @@
     <string name="settings_media_prefer_source_type_description">在线数据源载入快但清晰度可能偏低，BT 数据源相反</string>
     <string name="settings_media_fast_select_web">快速选择在线数据源</string>
     <string name="settings_media_fast_select_web_description">按数据源排序，当排序靠前的数据源查询完成后立即选择，不等待其他数据源查询。可大幅减少等待时间</string>
+    <string name="settings_media_probe_concurrency">并发探测数</string>
+    <string name="settings_media_probe_concurrency_description">源列表筛选出可用在线视频源后，同时进行解析测速的源数量。设为 1 时关闭并发探测</string>
     <string name="settings_media_wait_time_none">不等待</string>
     <string name="settings_media_wait_time_3s">3 秒后</string>
     <string name="settings_media_wait_time_5s">5 秒后</string>
