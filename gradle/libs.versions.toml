@@ -86,7 +86,7 @@ google-firebase = "22.0.1"
 posthog-android = "3.11.3"
 posthog-java = "1.2.0"
 openapi-generator = "7.13.0"
-mediamp = "0.1.6"
+mediamp = "0.1.7"
 
 [plugins]
 # Plugins for projects.
