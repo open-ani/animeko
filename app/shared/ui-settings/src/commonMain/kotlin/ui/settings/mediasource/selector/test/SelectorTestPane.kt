@@ -12,8 +12,6 @@
 package me.him188.ani.app.ui.settings.mediasource.selector.test
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,9 +39,9 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,9 +62,9 @@ import me.him188.ani.app.domain.mediasource.test.web.SelectorMediaSourceTester
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodeListResult
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestSearchSubjectResult
+import me.him188.ani.app.domain.mediasource.web.NoopWebCaptchaCoordinator
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
-import me.him188.ani.app.domain.mediasource.web.NoopWebCaptchaCoordinator
 import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
 import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
 import me.him188.ani.app.domain.mediasource.web.displayName
@@ -96,10 +94,9 @@ import org.jetbrains.compose.resources.stringResource
  * 测试数据源. 编辑
  */
 @Composable
-fun SharedTransitionScope.SelectorTestPane(
+fun SelectorTestPane(
     state: SelectorTestState,
     onViewEpisode: (SelectorTestEpisodePresentation) -> Unit,
-    animatedVisibilityScope: AnimatedVisibilityScope,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
@@ -283,8 +280,7 @@ fun SharedTransitionScope.SelectorTestPane(
                         { onViewEpisode(episode) },
                         Modifier
                             .fillMaxSize()
-                            .padding(bottom = verticalSpacing)
-                            .sharedBounds(rememberSharedContentState(episode.id), animatedVisibilityScope),
+                            .padding(bottom = verticalSpacing),
                     )
                 }
             }
@@ -342,29 +338,26 @@ private fun EditTestDataCard(
 @Preview
 fun PreviewSelectorTestPane() = ProvideCompositionLocalsForPreview {
     val scope = rememberCoroutineScope()
-    SharedTransitionScope { modifier ->
-        @Suppress("AnimatedContentLabel")
-        AnimatedContent(1) { _ ->
-            Surface {
-                SelectorTestPane(
-                    remember {
-                        SelectorTestState(
-                            searchConfigState = mutableStateOf(SelectorSearchConfig.Empty),
-                            tester = SelectorMediaSourceTester(
-                                engine = TestSelectorMediaSourceEngine(),
-                                webCaptchaCoordinator = NoopWebCaptchaCoordinator,
-                                mediaSourceId = "preview-selector-test",
-                            ),
-                            backgroundScope = scope,
-                        ).apply {
-                            restartCurrentSubjectSearch()
-                        }
-                    },
-                    {},
-                    this,
-                    modifier = modifier,
-                )
-            }
+    @Suppress("AnimatedContentLabel")
+    AnimatedContent(1) { _ ->
+        Surface {
+            SelectorTestPane(
+                remember {
+                    SelectorTestState(
+                        searchConfigState = mutableStateOf(SelectorSearchConfig.Empty),
+                        tester = SelectorMediaSourceTester(
+                            engine = TestSelectorMediaSourceEngine(),
+                            webCaptchaCoordinator = NoopWebCaptchaCoordinator,
+                            mediaSourceId = "preview-selector-test",
+                        ),
+                        backgroundScope = scope,
+                    ).apply {
+                        restartCurrentSubjectSearch()
+                    }
+                },
+                {},
+                modifier = Modifier,
+            )
         }
     }
 }
