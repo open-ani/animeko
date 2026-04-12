@@ -72,6 +72,7 @@
 -keep class ** extends uk.co.caprica.vlcj.factory.discovery.provider.DiscoveryDirectoryProvider { *; }
 -keep class org.apache.logging.slf4j.SLF4JServiceProvider { *; }
 -keep class ** extends org.slf4j.spi.SLF4JServiceProvider { *; }
+-keep class org.freedesktop.dbus.** { *; } # dbus-java uses ServiceLoader and extensive reflection
 
 # Ktor related
 

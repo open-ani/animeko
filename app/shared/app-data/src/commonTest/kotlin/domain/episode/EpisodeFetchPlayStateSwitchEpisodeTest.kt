@@ -30,7 +30,6 @@ import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.app.domain.player.extension.AbstractPlayerExtensionTest
 import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
 import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
-import me.him188.ani.app.domain.player.extension.loadMedia
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.utils.coroutines.childScope
 import org.openani.mediamp.PlaybackState
@@ -89,21 +88,14 @@ class EpisodeFetchPlayStateSwitchEpisodeTest : AbstractPlayerExtensionTest() {
         suite.setMediaDuration(100_000)
         advanceUntilIdle()
 
-        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value!!.durationMillis
+        suite.player.seekTo(suite.player.mediaProperties.value!!.durationMillis)
         suite.player.playbackState.value = PlaybackState.FINISHED
         advanceUntilIdle() // 自动切换到下一集数
 
-        // 前一集播放完毕了
-        assertEquals(null, playHistory.getPositionMillisByEpisodeId(initialEpisodeId))
+        // 没有实际加载媒体源时，不会覆盖或删除旧进度
+        assertEquals(3000, playHistory.getPositionMillisByEpisodeId(initialEpisodeId))
 
-        assertEquals(newEpisodeId, state.getCurrentEpisodeId())
-
-        // 加载新的视频
-        suite.player.loadMedia(100_000)
-        advanceUntilIdle() // 自动加载播放进度
-
-        // should load the saved progress for new episode
-        assertEquals(5000, suite.player.currentPositionMillis.value)
+        assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
 
         testScope.cancel()
     }
@@ -119,14 +111,18 @@ class EpisodeFetchPlayStateSwitchEpisodeTest : AbstractPlayerExtensionTest() {
         playHistory.saveOrUpdate(newEpisodeId, 5000)
 
         // 播放到一半
-
         assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
 
-        // 播到最尾部了
+        val myMedia = TestMediaList[0]
+        ms1.complete(listOf(myMedia))
+        state.mediaSelectorFlow.filterNotNull().first().select(myMedia)
         suite.setMediaDuration(100_000)
         advanceUntilIdle()
 
-        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value!!.durationMillis
+        assertEquals(3000, suite.player.currentPositionMillis.value)
+
+        // 播到最尾部了
+        suite.player.seekTo(suite.player.mediaProperties.value!!.durationMillis)
         suite.player.playbackState.value = PlaybackState.FINISHED
         advanceUntilIdle() // 自动切换到下一集数
 
@@ -135,11 +131,9 @@ class EpisodeFetchPlayStateSwitchEpisodeTest : AbstractPlayerExtensionTest() {
 
         assertEquals(newEpisodeId, state.getCurrentEpisodeId())
 
-        val myMedia = TestMediaList[0]
-        ms1.complete(listOf(myMedia))
-        state.mediaSelectorFlow.filterNotNull().first().select(myMedia)
-        advanceUntilIdle() // 自动选择
-
+        val myMedia1 = TestMediaList[1]
+        ms1.complete(listOf(myMedia1))
+        state.mediaSelectorFlow.filterNotNull().first().select(myMedia1)
         suite.setMediaDuration(100_000)
         advanceUntilIdle() // 自动加载播放进度
 

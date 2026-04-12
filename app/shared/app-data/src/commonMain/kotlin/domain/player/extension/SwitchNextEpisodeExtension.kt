@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,9 +9,11 @@
 
 package me.him188.ani.app.domain.player.extension
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.utils.logging.info
@@ -34,7 +36,15 @@ class SwitchNextEpisodeExtension(
     private val getVideoScaffoldConfigUseCase: GetVideoScaffoldConfigUseCase by koin.inject()
 
     override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
+        val mediaLoaded = CompletableDeferred<Unit>()
+        backgroundTaskScope.launch("MediaLoadedListener") {
+            context.subscribeEvents<EpisodeFetchSelectPlayState.MediaLoadedEvent>().collectLatest {
+                if (mediaLoaded.isActive) mediaLoaded.complete(Unit)
+            }
+        }
+
         backgroundTaskScope.launch("SwitchNextEpisode") {
+            mediaLoaded.await() // 播放器开始播放了再启用自动下一集特性
             context.sessionFlow.collectLatest { session ->
                 getVideoScaffoldConfigUseCase()
                     .map { it.autoPlayNext }
