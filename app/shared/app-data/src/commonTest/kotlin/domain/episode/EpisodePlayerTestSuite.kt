@@ -16,6 +16,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.data.models.subject.TestSubjectCollections
@@ -30,7 +31,7 @@ class EpisodePlayerTestSuite(
     testScope: TestScope,
     val backgroundScope: CoroutineScope = testScope.backgroundScope,
 ) {
-    val player = TestMediampPlayer()
+    val player = TestMediampPlayer(StandardTestDispatcher(testScope.testScheduler))
 
     @Suppress("DEPRECATION")
     val mediaSelectorTestBuilder = me.him188.ani.app.domain.media.selector.legacy.MediaSelectorTestBuilder(testScope)
@@ -48,10 +49,10 @@ class EpisodePlayerTestSuite(
                                     it.subjectId,
                                     it.episodeId,
                                     TestSubjectCollections[0].run {
-                                        copy(subjectInfo = subjectInfo.copy(subjectId = subjectId))
+                                        copy(subjectInfo = subjectInfo.copy(subjectId = it.subjectId))
                                     },
                                     TestSubjectCollections[0].episodes[0].run {
-                                        copy(episodeInfo = episodeInfo.copy(episodeId = episodeId))
+                                        copy(episodeInfo = episodeInfo.copy(episodeId = it.episodeId))
                                     },
                                     seriesInfo = SubjectSeriesInfo.Fallback,
                                     subjectCompleted = false,

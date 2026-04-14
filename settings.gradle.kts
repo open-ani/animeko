@@ -187,8 +187,8 @@ findLocalProperty("ani.build.mediamp.path")?.let { mediampPath ->
                 .using(project(":mediamp-vlc"))
             /*substitute(module("org.openani.mediamp:mediamp-mpv"))
                 .using(project(":mediamp-mpv"))*/
-            substitute(module("org.openani.mediamp:mediamp-ffmpeg"))
-                .using(project(":mediamp-ffmpeg"))
+            /*substitute(module("org.openani.mediamp:mediamp-ffmpeg"))
+                .using(project(":mediamp-ffmpeg"))*/
             substitute(module("org.openani.mediamp:mediamp-test"))
                 .using(project(":mediamp-test"))
             substitute(module("org.openani.mediamp:mediamp-source-ktxio"))
