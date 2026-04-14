@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -69,8 +69,7 @@ fun PopupSearchBar(
 ) {
     val cornerSizeDp by animateDpAsState(
         if (expanded) 0.dp else 28.dp,
-        animationSpec =
-        if (expanded) {
+        animationSpec = if (expanded) {
             // 现在要展开
             tween(
                 durationMillis = 300,
@@ -107,10 +106,7 @@ fun PopupSearchBar(
                 onDismissRequest = { onExpandedChange(false) },
             ) {
                 Surface(
-                    shape = RoundedCornerShape(
-                        topStart = cornerSizeDp,
-                        topEnd = cornerSizeDp,
-                    ),
+                    shape = RoundedCornerShape(cornerSizeDp),
                     color = colors.containerColor,
                     contentColor = contentColorFor(colors.containerColor),
                     tonalElevation = tonalElevation,

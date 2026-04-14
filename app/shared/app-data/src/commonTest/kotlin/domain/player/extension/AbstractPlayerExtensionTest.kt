@@ -17,7 +17,6 @@ import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
 import org.openani.mediamp.PlaybackState
 import org.openani.mediamp.metadata.MediaProperties
-import org.openani.mediamp.source.UriMediaData
 import org.openani.mediamp.test.TestMediampPlayer
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.AfterTest
@@ -42,10 +41,9 @@ abstract class AbstractPlayerExtensionTest {
         )
     }
 
-    suspend fun EpisodePlayerTestSuite.setMediaDuration(durationMillis: Long) {
+    fun EpisodePlayerTestSuite.setMediaDuration(durationMillis: Long) {
         player.mediaProperties.value = player.mediaProperties.value?.copy(durationMillis = durationMillis)
             ?: MediaProperties.Empty.copy(durationMillis = durationMillis)
-        player.setMediaData(UriMediaData("file://test"))
     }
 
 
