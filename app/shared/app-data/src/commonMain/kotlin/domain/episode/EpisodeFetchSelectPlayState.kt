@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -43,6 +43,7 @@ import me.him188.ani.app.domain.player.PlayerExtensionManager
 import me.him188.ani.app.domain.player.extension.EpisodePlayerExtensionFactory
 import me.him188.ani.app.domain.player.extension.ExtensionBackgroundTaskScope
 import me.him188.ani.app.domain.player.extension.PlayerExtension
+import me.him188.ani.app.domain.player.extension.PlayerExtensionEvent
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeSwitch
@@ -108,7 +109,11 @@ class EpisodeFetchSelectPlayState(
 
     private val extensionManager by lazy {
         val intrinsicExtensions = listOf(
-            EpisodePlayerExtensionFactory { _, _ -> LoadMediaOnSelectExtension() },
+            EpisodePlayerExtensionFactory { context, _ ->
+                LoadMediaOnSelectExtension { episodeId ->
+                    backgroundScope.launch { context.broadcast(MediaLoadedEvent(episodeId)) }
+                }
+            },
         )
 
         PlayerExtensionManager(
@@ -278,7 +283,9 @@ class EpisodeFetchSelectPlayState(
      *
      * This extension calls [PlayerSession.loadMedia] when a new media is selected.
      */
-    private inner class LoadMediaOnSelectExtension : PlayerExtension("LoadMediaOnSelect") {
+    private inner class LoadMediaOnSelectExtension(
+        private val onMediaLoaded: (episodeId: Int) -> Unit = { }
+    ) : PlayerExtension("LoadMediaOnSelect") {
         override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
             backgroundTaskScope.launch("LoadMediaOnSelect") {
                 episodeSessionFlow.collectLatest { episodeSession ->
@@ -287,13 +294,13 @@ class EpisodeFetchSelectPlayState(
 
                         // `filterNotNull()` is needed. Even when media is unselect, we should not stop the player.
                         fetchSelect.mediaSelector.selected.filterNotNull().collectLatest { media ->
-                            playerSession.loadMedia(
-                                media,
-                                episodeSession.infoBundleFlow
-                                    .filterNotNull()
-                                    .first()
-                                    .episodeInfo.toEpisodeMetadata(),
-                            )
+                            val episodeInfo = episodeSession.infoBundleFlow
+                                .filterNotNull()
+                                .first()
+                                .episodeInfo
+
+                            playerSession.loadMedia(media, episodeInfo.toEpisodeMetadata())
+                            onMediaLoaded(episodeInfo.episodeId)
                         }
                     }
                 }
@@ -304,6 +311,11 @@ class EpisodeFetchSelectPlayState(
     private companion object {
         private val logger = logger<EpisodeFetchSelectPlayState>()
     }
+
+    /**
+     * Event of intrinsic [LoadMediaOnSelectExtension] to indicate that the current media is loaded into player.
+     */
+    class MediaLoadedEvent(val episodeId: Int) : PlayerExtensionEvent
 }
 
 /**
