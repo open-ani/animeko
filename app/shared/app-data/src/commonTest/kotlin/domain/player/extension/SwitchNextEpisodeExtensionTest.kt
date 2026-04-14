@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -13,6 +13,8 @@ package me.him188.ani.app.domain.player.extension
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -21,10 +23,15 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.repository.RepositoryNetworkException
+import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.episode.createExceptionCapturingSupervisorScope
 import me.him188.ani.app.domain.episode.getCurrentEpisodeId
+import me.him188.ani.app.domain.episode.mediaSelectorFlow
+import me.him188.ani.app.domain.media.TestMediaList
+import me.him188.ani.app.domain.media.resolver.MediaResolver
+import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.app.domain.player.ExtensionException
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.utils.coroutines.childScope
@@ -34,6 +41,20 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
+    private suspend fun TestScope.loadSelectedMedia(
+        suite: EpisodePlayerTestSuite,
+        state: EpisodeFetchSelectPlayState,
+        durationMillis: Long = 100_000L,
+        mediaIndex: Int = 0,
+    ) {
+        val media = TestMediaList[mediaIndex]
+        val source = suite.mediaSelectorTestBuilder.delayedMediaSource("switch-$mediaIndex")
+        source.complete(listOf(media))
+        state.mediaSelectorFlow.filterNotNull().first().select(media)
+        suite.setMediaDuration(durationMillis)
+        advanceUntilIdle()
+    }
+
     private fun EpisodePlayerTestSuite.enableAutoPlayNext() {
         registerComponent<GetVideoScaffoldConfigUseCase> {
             GetVideoScaffoldConfigUseCase {
@@ -47,6 +68,7 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
         val testScope = this.childScope()
         val suite = EpisodePlayerTestSuite(this, testScope)
         suite.enableAutoPlayNext()
+        suite.registerComponent<MediaResolver> { TestUniversalMediaResolver }
 
         val state = suite.createState(
             listOf(
@@ -54,6 +76,7 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
             ),
         )
         state.onUIReady()
+        advanceUntilIdle()
         Triple(testScope, suite, state)
     }
 
@@ -62,10 +85,12 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
         val (testScope, suite, state) =
             createCase(getNextEpisode = { 1000 })
 
+        loadSelectedMedia(suite, state)
+
         assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
 
         // 播到最尾部了
-        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value!!.durationMillis
+        suite.player.seekTo(suite.player.mediaProperties.value!!.durationMillis)
         suite.player.playbackState.value = PlaybackState.PLAYING
 
         advanceUntilIdle()
@@ -80,10 +105,14 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
         val (testScope, suite, state) =
             createCase(getNextEpisode = { 1000 })
 
+        loadSelectedMedia(suite, state)
+
         assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
 
         // 播到最尾部了
-        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value!!.durationMillis - 5001
+        suite.player.seekTo(suite.player.mediaProperties.value!!.durationMillis - 5001)
+        suite.player.playbackState.value = PlaybackState.PLAYING
+        advanceUntilIdle()
         suite.player.playbackState.value = PlaybackState.FINISHED
 
         advanceUntilIdle()
@@ -98,10 +127,14 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
         val (testScope, suite, state) =
             createCase(getNextEpisode = { 1000 })
 
+        loadSelectedMedia(suite, state)
+
         assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
 
         // 播到最尾部了
-        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value!!.durationMillis
+        suite.player.seekTo(suite.player.mediaProperties.value!!.durationMillis)
+        suite.player.playbackState.value = PlaybackState.PLAYING
+        advanceUntilIdle()
         suite.player.playbackState.value = PlaybackState.FINISHED
 
         advanceUntilIdle()
@@ -122,10 +155,14 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
                 },
             )
 
+        loadSelectedMedia(suite, state)
+
         assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
 
         // 播到最尾部了
-        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value!!.durationMillis
+        suite.player.seekTo(suite.player.mediaProperties.value!!.durationMillis)
+        suite.player.playbackState.value = PlaybackState.PLAYING
+        advanceUntilIdle()
         suite.player.playbackState.value = PlaybackState.FINISHED
 
         advanceUntilIdle()
@@ -151,11 +188,16 @@ class SwitchNextEpisodeExtensionTest : AbstractPlayerExtensionTest() {
             ),
         )
         state.onUIReady()
+        advanceUntilIdle()
+
+        loadSelectedMedia(suite, state)
 
         assertEquals(initialEpisodeId, state.getCurrentEpisodeId())
 
         // 播到最尾部了
-        suite.player.currentPositionMillis.value = suite.player.mediaProperties.value!!.durationMillis
+        suite.player.seekTo(suite.player.mediaProperties.value!!.durationMillis)
+        suite.player.playbackState.value = PlaybackState.PLAYING
+        advanceUntilIdle()
         suite.player.playbackState.value = PlaybackState.FINISHED
 
         advanceUntilIdle()

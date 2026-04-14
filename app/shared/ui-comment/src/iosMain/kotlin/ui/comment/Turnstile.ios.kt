@@ -12,10 +12,18 @@ package me.him188.ani.app.ui.comment
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Constraints
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import me.him188.ani.app.domain.comment.TurnstileState
 
 actual fun createTurnstileState(url: String): TurnstileState {
-    TODO("not implemented")
+    return object : TurnstileState {
+        override val url: String = url
+        override val tokenFlow: Flow<String> = emptyFlow()
+        override val webErrorFlow: Flow<TurnstileState.Error> = emptyFlow()
+        override fun reload() {}
+        override fun cancel() {}
+    }
 }
 
 @Composable
@@ -24,5 +32,5 @@ actual fun ActualTurnstile(
     constraints: Constraints,
     modifier: Modifier,
 ) {
-    TODO("not implemented")
+    // No-op: iOS Turnstile not yet implemented
 }

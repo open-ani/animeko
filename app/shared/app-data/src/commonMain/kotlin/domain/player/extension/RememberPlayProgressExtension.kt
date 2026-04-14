@@ -9,12 +9,15 @@
 
 package me.him188.ani.app.domain.player.extension
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
+import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.utils.logging.info
@@ -37,23 +40,30 @@ class RememberPlayProgressExtension(
     private val playProgressRepository: EpisodePlayHistoryRepository by koin.inject()
 
     override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
-        backgroundTaskScope.launch("MediaSelectorListener") {
-            context.sessionFlow.collectLatest { session ->
-                session.fetchSelectFlow.collectLatest inner@{ fetchSelect ->
-                    if (fetchSelect == null) return@inner
-
-                    fetchSelect.mediaSelector.events.onBeforeSelect.collect {
-                        // 切换 数据源 前保存播放进度
-                        savePlayProgressOrRemove(session.episodeId)
-                    }
+        val mediaLoaded = CompletableDeferred<Unit>()
+        backgroundTaskScope.launch("MediaLoadedListener") {
+            context.subscribeEvents<EpisodeFetchSelectPlayState.MediaLoadedEvent>().collectLatest { event ->
+                if (event.episodeId == episodeSession.episodeId && mediaLoaded.isActive) {
+                    mediaLoaded.complete(Unit)
                 }
+            }
+        }
 
+        backgroundTaskScope.launch("MediaSelectorListener") {
+            mediaLoaded.await() // 播放器开始播放了再跑这个 extension
+            episodeSession.fetchSelectFlow.collectLatest inner@{ fetchSelect ->
+                if (fetchSelect == null) return@inner
+
+                fetchSelect.mediaSelector.events.onBeforeSelect.collect {
+                    // 切换 数据源 前保存播放进度
+                    savePlayProgressOrRemove(episodeSession.episodeId)
+                }
             }
         }
 
         backgroundTaskScope.launch("PlaybackStateListener") {
             val player = context.player
-            player.playbackState.collect { playbackState ->
+            player.playbackState.collectLatest { playbackState ->
                 when (playbackState) {
                     // 加载播放进度
                     PlaybackState.READY -> {
@@ -65,17 +75,19 @@ class RememberPlayProgressExtension(
                             logger.info { "Loaded saved position: $positionMillis, waiting for video properties" }
                             player.mediaProperties.filter { it != null && it.durationMillis > 0L }.firstOrNull()
                             logger.info { "Loaded saved position: $positionMillis, video properties ready, seeking" }
-                            withContext(Dispatchers.Main) { // android must call in main thread
+                            withContext(Dispatchers.Main + NonCancellable) { // android must call in main thread
                                 player.seekTo(positionMillis)
                             }
                         }
                     }
 
                     PlaybackState.PAUSED -> {
+                        mediaLoaded.await() // 播放器开始播放了一次之后再保存状态
                         savePlayProgressOrRemove(episodeSession.episodeId)
                     }
 
                     PlaybackState.FINISHED -> {
+                        mediaLoaded.await() // 播放器开始播放了一次之后再保存状态
                         savePlayProgressOrRemove(episodeSession.episodeId)
                     }
 

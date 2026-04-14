@@ -49,10 +49,10 @@ class EpisodePlayerTestSuite(
                                     it.subjectId,
                                     it.episodeId,
                                     TestSubjectCollections[0].run {
-                                        copy(subjectInfo = subjectInfo.copy(subjectId = subjectId))
+                                        copy(subjectInfo = subjectInfo.copy(subjectId = it.subjectId))
                                     },
                                     TestSubjectCollections[0].episodes[0].run {
-                                        copy(episodeInfo = episodeInfo.copy(episodeId = episodeId))
+                                        copy(episodeInfo = episodeInfo.copy(episodeId = it.episodeId))
                                     },
                                     seriesInfo = SubjectSeriesInfo.Fallback,
                                     subjectCompleted = false,

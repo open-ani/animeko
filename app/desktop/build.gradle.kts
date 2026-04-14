@@ -103,6 +103,7 @@ compose.desktop {
                 "gluegen.rt",
                 "jogl.all",
                 "java.instrument", // ByteBuddy, for disabling PagingLogger
+                "jdk.security.auth", // com.sun.security.auth.module.UnixSystem used by dbus-java SASL auth
             )
 
             // ./gradlew suggestRuntimeModules
