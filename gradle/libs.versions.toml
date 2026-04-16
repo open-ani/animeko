@@ -54,6 +54,7 @@ androidx-compose-material3-adaptive = "1.2.0-alpha11"
 
 bytebuddy = "1.17.4" # https://github.com/raphw/byte-buddy/releases
 jna = "5.13.0" # 不要轻易改这个版本, 它可能导致 VLC 兼容性问题
+dbus-java = "5.2.0"
 jsonpathkt-kotlinx = "3.0.2"
 ksoup = "0.2.2"
 filekit = "0.10.0-beta04" # https://github.com/vinceglb/FileKit/releases
@@ -86,7 +87,7 @@ google-firebase = "22.0.1"
 posthog-android = "3.11.3"
 posthog-java = "1.2.0"
 openapi-generator = "7.13.0"
-mediamp = "0.1.7"
+mediamp = "0.1.8"
 
 [plugins]
 # Plugins for projects.
@@ -276,8 +277,8 @@ mediamp-ffmpeg-runtime-windows-x64 = { module = "org.openani.mediamp:mediamp-ffm
 mediamp-ffmpeg-runtime-linux-x64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-linux-x64", version.ref = "mediamp" }
 mediamp-ffmpeg-runtime-macos-x64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-macos-x64", version.ref = "mediamp" }
 mediamp-ffmpeg-runtime-macos-arm64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-macos-arm64", version.ref = "mediamp" }
-mediamp-ffmpeg-runtime-ios-arm64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-ios-arm64", version.ref = "mediamp" }
-mediamp-ffmpeg-runtime-ios-simulator-arm64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-ios-simulator-arm64", version.ref = "mediamp" }
+mediamp-ffmpeg-runtime-ios-xcframework = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-ios-xcframework", version.ref = "mediamp" }
+# Apple runtime is published as a @zip XCFramework and is resolved explicitly where needed.
 mediamp-source-ktxio = { module = "org.openani.mediamp:mediamp-source-ktxio", version.ref = "mediamp" }
 mediamp-test = { module = "org.openani.mediamp:mediamp-test", version.ref = "mediamp" }
 mediamp-vlc = { module = "org.openani.mediamp:mediamp-vlc", version.ref = "mediamp" }
@@ -296,6 +297,8 @@ ipaddress-parser = { module = "com.github.seancfoley:ipaddress", version.ref = "
 vlcj = { module = "uk.co.caprica:vlcj", version.ref = "vlcj" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
+dbus-java-core = { module = "com.github.hypfvieh:dbus-java-core", version.ref = "dbus-java" }
+dbus-java-transport-native-unixsocket = { module = "com.github.hypfvieh:dbus-java-transport-native-unixsocket", version.ref = "dbus-java" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 ksoup = { module = "com.fleeksoft.ksoup:ksoup", version.ref = "ksoup" }
 ksoup-kotlinx = { module = "com.fleeksoft.ksoup:ksoup-kotlinx", version.ref = "ksoup" }

@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0A3B5C1D2E3F4A5B6C7D8E90 /* MediampFFmpegKit.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A3B5C1D2E3F4A5B6C7D8E91 /* MediampFFmpegKit.xcframework */; };
+		0A3B5C1D2E3F4A5B6C7D8E92 /* MediampFFmpegKit.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 0A3B5C1D2E3F4A5B6C7D8E91 /* MediampFFmpegKit.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557BA273AAA24004C7B11 /* Assets.xcassets */; };
 		058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */; };
 		2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2152FB032600AC8F00CF470E /* iOSApp.swift */; };
@@ -14,7 +16,22 @@
 		7555FF83242A565900829871 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FF82242A565900829871 /* ContentView.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		0A3B5C1D2E3F4A5B6C7D8E93 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				0A3B5C1D2E3F4A5B6C7D8E92 /* MediampFFmpegKit.xcframework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		0A3B5C1D2E3F4A5B6C7D8E91 /* MediampFFmpegKit.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = Frameworks/MediampFFmpegKit.xcframework; sourceTree = SOURCE_ROOT; };
 		058557BA273AAA24004C7B11 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		0E62CA675B735DF3B0C16EC1 /* Pods-Animeko.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Animeko.debug.xcconfig"; path = "Target Support Files/Pods-Animeko/Pods-Animeko.debug.xcconfig"; sourceTree = "<group>"; };
@@ -31,6 +48,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0A3B5C1D2E3F4A5B6C7D8E90 /* MediampFFmpegKit.xcframework in Frameworks */,
 				6FA72F27919077AAAC1D327A /* Pods_Animeko.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -49,6 +67,7 @@
 		6967FD3DE1F113A1DCC2353C /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				0A3B5C1D2E3F4A5B6C7D8E91 /* MediampFFmpegKit.xcframework */,
 				9394AA604B73CA09673A25D5 /* Pods_Animeko.framework */,
 			);
 			name = Frameworks;
@@ -104,6 +123,7 @@
 				7555FF77242A565900829871 /* Sources */,
 				7555FF79242A565900829871 /* Resources */,
 				CE9EDF4E63CCBE422D76C68A /* Frameworks */,
+				0A3B5C1D2E3F4A5B6C7D8E93 /* Embed Frameworks */,
 				CD93AF9E4C4DD36BC419C279 /* [CP] Embed Pods Frameworks */,
 				32AED4EACB5E805DA85594C8 /* [CP] Copy Pods Resources */,
 			);

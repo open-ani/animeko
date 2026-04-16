@@ -16,16 +16,19 @@ plugins {
     `ani-mpp-lib-targets`
 }
 
-val iosArm64FfmpegRuntime by configurations.creating {
+val mediampFfmpegAppleRuntime by configurations.creating {
     isCanBeConsumed = false
     isCanBeResolved = true
     isTransitive = false
 }
 
-val iosSimulatorArm64FfmpegRuntime by configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
-    isTransitive = false
+val mediampVersion = libs.versions.mediamp.get()
+val mediampFfmpegIOSRuntime = libs.mediamp.ffmpeg.runtime.ios.xcframework.get()
+
+val mediampFfmpegAppleRuntimeDirectory = layout.buildDirectory.dir("mediamp-ffmpeg/apple-runtime")
+val extractMediampFfmpegAppleRuntime = tasks.register<ExtractAppleXcframeworkTask>("extractMediampFfmpegAppleRuntime") {
+    archives.from(mediampFfmpegAppleRuntime)
+    outputDirectory.set(mediampFfmpegAppleRuntimeDirectory)
 }
 
 kotlin {
@@ -65,41 +68,12 @@ kotlin {
 
 dependencies {
     when (val triple = getOsTriple()) {
-        "windows-x64" -> add("desktopTestRuntimeOnly", libs.mediamp.ffmpeg.runtime.windows.x64)
-        "linux-x64" -> add("desktopTestRuntimeOnly", libs.mediamp.ffmpeg.runtime.linux.x64)
-        "macos-x64" -> add("desktopTestRuntimeOnly", libs.mediamp.ffmpeg.runtime.macos.x64)
-        "macos-arm64" -> add("desktopTestRuntimeOnly", libs.mediamp.ffmpeg.runtime.macos.arm64)
+        "windows-x64" -> desktopTestRuntimeOnly(libs.mediamp.ffmpeg.runtime.windows.x64)
+        "linux-x64" -> desktopTestRuntimeOnly(libs.mediamp.ffmpeg.runtime.linux.x64)
+        "macos-x64" -> desktopTestRuntimeOnly(libs.mediamp.ffmpeg.runtime.macos.x64)
+        "macos-arm64" -> desktopTestRuntimeOnly(libs.mediamp.ffmpeg.runtime.macos.arm64)
         else -> throw UnsupportedOperationException("Unknown os: $triple")
     }
 
-    "iosArm64FfmpegRuntime"(libs.mediamp.ffmpeg.runtime.ios.arm64)
-    "iosSimulatorArm64FfmpegRuntime"(libs.mediamp.ffmpeg.runtime.ios.simulator.arm64)
-}
-
-tasks.register<Sync>("preparePublishedFfmpegRuntimeIosArm64") {
-    from(
-        providers.provider {
-            val files = iosArm64FfmpegRuntime.resolve().toList()
-            check(files.size == 1) {
-                "Expected ${iosArm64FfmpegRuntime.name} to resolve exactly one runtime jar, got ${files.size}: $files"
-            }
-            zipTree(files.single())
-        },
-    )
-    into(layout.buildDirectory.dir("published-ffmpeg-runtime/ios-arm64"))
-    includeEmptyDirs = false
-}
-
-tasks.register<Sync>("preparePublishedFfmpegRuntimeIosSimulatorArm64") {
-    from(
-        providers.provider {
-            val files = iosSimulatorArm64FfmpegRuntime.resolve().toList()
-            check(files.size == 1) {
-                "Expected ${iosSimulatorArm64FfmpegRuntime.name} to resolve exactly one runtime jar, got ${files.size}: $files"
-            }
-            zipTree(files.single())
-        },
-    )
-    into(layout.buildDirectory.dir("published-ffmpeg-runtime/ios-simulator-arm64"))
-    includeEmptyDirs = false
+    mediampFfmpegAppleRuntime("${mediampFfmpegIOSRuntime.group}:${mediampFfmpegIOSRuntime.name}:$mediampVersion@zip")
 }

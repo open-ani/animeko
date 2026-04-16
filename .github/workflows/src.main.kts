@@ -1920,7 +1920,7 @@ class WithMatrix(
                     name = "Upload AppStore Testflight",
                     tasks = arrayOf(":ci-helper:uploadAppStoreConnectTestflight"),
                     env = ciHelperSecrets,
-                    maxAttempts = 1,
+                    maxAttempts = 6,
                 )
             }
         }
