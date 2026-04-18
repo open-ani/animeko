@@ -963,6 +963,7 @@
     <string name="exploration_search_sort_match">Best match</string>
     <string name="exploration_search_sort_collection">Most follows</string>
     <string name="exploration_search_sort_rank">Highest rank</string>
+    <string name="exploration_search_sort_date">Release date</string>
     <string name="exploration_search_staff_prefix">Staff: </string>
     <string name="exploration_search_filter_audience">Audience</string>
     <string name="exploration_search_filter_category">Category</string>
