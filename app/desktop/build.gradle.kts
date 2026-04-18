@@ -30,6 +30,7 @@ dependencies {
     implementation(projects.app.shared.uiFoundation)
     implementation(projects.app.shared.application)
     implementation(libs.compose.components.resources)
+    implementation(libs.compose.native.tray)
     implementation(libs.log4j.core)
     implementation(libs.vlcj)
     implementation(libs.jsystemthemedetector)
