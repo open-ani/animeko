@@ -441,4 +441,5 @@ private fun getSortText(currentSort: SearchSort): String = when (currentSort) {
     SearchSort.MATCH -> "最佳匹配"
     SearchSort.COLLECTION -> "最多收藏"
     SearchSort.RANK -> "最高排名"
+    SearchSort.DATE -> "发布日期"
 }

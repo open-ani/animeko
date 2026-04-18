@@ -87,7 +87,7 @@ google-firebase = "22.0.1"
 posthog-android = "3.11.3"
 posthog-java = "1.2.0"
 openapi-generator = "7.13.0"
-mediamp = "0.1.7"
+mediamp = "0.1.8"
 
 [plugins]
 # Plugins for projects.
@@ -277,8 +277,8 @@ mediamp-ffmpeg-runtime-windows-x64 = { module = "org.openani.mediamp:mediamp-ffm
 mediamp-ffmpeg-runtime-linux-x64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-linux-x64", version.ref = "mediamp" }
 mediamp-ffmpeg-runtime-macos-x64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-macos-x64", version.ref = "mediamp" }
 mediamp-ffmpeg-runtime-macos-arm64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-macos-arm64", version.ref = "mediamp" }
-mediamp-ffmpeg-runtime-ios-arm64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-ios-arm64", version.ref = "mediamp" }
-mediamp-ffmpeg-runtime-ios-simulator-arm64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-ios-simulator-arm64", version.ref = "mediamp" }
+mediamp-ffmpeg-runtime-ios-xcframework = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-ios-xcframework", version.ref = "mediamp" }
+# Apple runtime is published as a @zip XCFramework and is resolved explicitly where needed.
 mediamp-source-ktxio = { module = "org.openani.mediamp:mediamp-source-ktxio", version.ref = "mediamp" }
 mediamp-test = { module = "org.openani.mediamp:mediamp-test", version.ref = "mediamp" }
 mediamp-vlc = { module = "org.openani.mediamp:mediamp-vlc", version.ref = "mediamp" }
