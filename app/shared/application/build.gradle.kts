@@ -9,6 +9,7 @@
 
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -43,19 +44,41 @@ kotlin {
 }
 
 kotlin {
-    if (enableIos && buildIosFramework) {
+    if (enableIos && buildIosFramework && getOs() == Os.MacOS) {
         // Sentry requires cocoapods for its dependencies
-        if (getOs() == Os.MacOS) {
-            extensions.configure<CocoapodsExtension> {
-                // https://kotlinlang.org/docs/native-cocoapods.html#configure-existing-project
-                framework {
-                    baseName = "application"
-                    isStatic = false
-                    @OptIn(ExperimentalKotlinGradlePluginApi::class)
-                    transitiveExport = false
-                    export(projects.app.shared.appPlatform)
-                }
-                // iOS Firebase SDKs are linked from the host Podfile
+        extensions.configure<CocoapodsExtension> {
+            // https://kotlinlang.org/docs/native-cocoapods.html#configure-existing-project
+            framework {
+                baseName = "application"
+                isStatic = false
+                @OptIn(ExperimentalKotlinGradlePluginApi::class)
+                transitiveExport = false
+                export(projects.app.shared.appPlatform)
+            }
+            // iOS Firebase SDKs are linked from the host Podfile
+        }
+
+        val httpDownloaderProject = project(":utils:http-downloader")
+        listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
+            val capitalizedTargetName = target.name.replaceFirstChar { it.uppercase() }
+            val sliceName = when (target.name) {
+                "iosArm64" -> "ios-arm64"
+                "iosSimulatorArm64" -> "ios-arm64-simulator"
+                else -> error("Unsupported Apple target: ${target.name}")
+            }
+            val frameworkSearchPath = httpDownloaderProject.layout.buildDirectory.dir(
+                "mediamp-ffmpeg/apple-runtime/MediampFFmpegKit.xcframework/$sliceName",
+            )
+            val frameworkSearchPathValue = frameworkSearchPath.get().asFile.absolutePath
+
+            target.binaries.configureEach {
+                linkerOpts("-F$frameworkSearchPathValue", "-framework", "MediampFFmpegKit")
+            }
+
+            tasks.matching { task ->
+                task.name.startsWith("link") && task.name.endsWith(capitalizedTargetName)
+            }.configureEach {
+                dependsOn(":utils:http-downloader:extractMediampFfmpegAppleRuntime")
             }
         }
     }

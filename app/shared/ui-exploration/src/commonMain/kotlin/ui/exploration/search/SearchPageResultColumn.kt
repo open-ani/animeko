@@ -82,6 +82,7 @@ import me.him188.ani.app.ui.foundation.widgets.SelectableDropdownMenuItem
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.exploration_search_results_shown
 import me.him188.ani.app.ui.lang.exploration_search_sort_collection
+import me.him188.ani.app.ui.lang.exploration_search_sort_date
 import me.him188.ani.app.ui.lang.exploration_search_sort_match
 import me.him188.ani.app.ui.lang.exploration_search_sort_rank
 import me.him188.ani.app.ui.lang.foundation_load_error_no_results
@@ -455,6 +456,7 @@ private data class SearchSortLabels(
     val match: String,
     val collection: String,
     val rank: String,
+    val date: String,
 )
 
 @Composable
@@ -462,10 +464,12 @@ private fun rememberSearchSortLabels(): SearchSortLabels = SearchSortLabels(
     match = stringResource(Lang.exploration_search_sort_match),
     collection = stringResource(Lang.exploration_search_sort_collection),
     rank = stringResource(Lang.exploration_search_sort_rank),
+    date = stringResource(Lang.exploration_search_sort_date),
 )
 
 private fun getSortText(currentSort: SearchSort, labels: SearchSortLabels): String = when (currentSort) {
     SearchSort.MATCH -> labels.match
     SearchSort.COLLECTION -> labels.collection
     SearchSort.RANK -> labels.rank
+    SearchSort.DATE -> labels.date
 }

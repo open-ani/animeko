@@ -50,6 +50,11 @@ enum class SearchSort {
      * 收藏人数
      */
     COLLECTION,
+
+    /**
+     * 发布日期
+     */
+    DATE,
 }
 
 data class RatingRange(

@@ -124,6 +124,7 @@ class SubjectSearchRepository(
                 SearchSort.MATCH -> BangumiSort.MATCH
                 SearchSort.RANK -> BangumiSort.SCORE // 不能用 RANK, bangumi 会把 #0 也包含, 排在最前
                 SearchSort.COLLECTION -> BangumiSort.HEAT
+                SearchSort.DATE -> BangumiSort.MATCH // sorted client-side by airDate
             }
         }
 
@@ -161,6 +162,7 @@ class SubjectSearchRepository(
         ): List<BatchSubjectDetails> {
             return when (sort) {
                 SearchSort.RANK -> subjects.filter { it.subjectInfo.ratingInfo.total >= 50 }
+                SearchSort.DATE -> subjects.sortedByDescending { it.subjectInfo.airDate }
                 SearchSort.MATCH,
                 SearchSort.COLLECTION -> subjects
             }

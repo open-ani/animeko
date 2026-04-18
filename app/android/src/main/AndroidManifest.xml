@@ -29,11 +29,11 @@
             android:allowBackup="true"
             android:icon="@mipmap/ic_launcher"
             android:label="@string/app_name"
+            android:largeHeap="true"
             android:roundIcon="@mipmap/ic_launcher"
             android:supportsRtl="true"
             android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
-            android:usesCleartextTraffic="true"
-            android:largeHeap="true">
+            android:usesCleartextTraffic="true">
 
         <activity
                 android:name=".activity.MainActivity"
@@ -51,8 +51,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
-                        android:scheme="ani"
-                        android:host="bangumi-oauth-callback" />
+                        android:host="bangumi-oauth-callback"
+                        android:scheme="ani" />
             </intent-filter>
 
             <intent-filter android:autoVerify="false">
@@ -62,10 +62,19 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
-                        android:scheme="ani"
-                        android:host="subjects" />
+                        android:host="subjects"
+                        android:scheme="ani" />
             </intent-filter>
         </activity>
+
+        <service
+                android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+                android:enabled="false"
+                android:exported="false">
+            <meta-data
+                    android:name="autoStoreLocales"
+                    android:value="true" />
+        </service>
 
         <provider
                 android:name="androidx.startup.InitializationProvider"
@@ -91,9 +100,9 @@
                 android:description="@string/service_torrent_engine_description"
                 android:enabled="true"
                 android:exported="false"
-                tools:targetApi="34"
                 android:foregroundServiceType="mediaPlayback"
-                android:process=":torrent_service" />
+                android:process=":torrent_service"
+                tools:targetApi="34" />
 
         <service
                 android:name="me.him188.ani.app.domain.torrent.service.AniTorrentServiceApiDefault"

@@ -44,12 +44,9 @@ import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.SupportedLocales
 import me.him188.ani.app.ui.lang.settings_app_episode_playback
 import me.him188.ani.app.ui.lang.settings_app_initial_page
 import me.him188.ani.app.ui.lang.settings_app_initial_page_description
-import me.him188.ani.app.ui.lang.settings_app_language
-import me.him188.ani.app.ui.lang.settings_app_language_restart
 import me.him188.ani.app.ui.lang.settings_app_light_up_mode
 import me.him188.ani.app.ui.lang.settings_app_light_up_mode_description
 import me.him188.ani.app.ui.lang.settings_app_list_animation
@@ -123,8 +120,6 @@ import me.him188.ani.app.ui.update.AppUpdateViewModel
 import me.him188.ani.app.ui.update.NewVersion
 import me.him188.ani.app.ui.update.UpdateNotifier
 import me.him188.ani.utils.platform.annotations.TestOnly
-import me.him188.ani.utils.platform.isAndroid
-import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isIos
 import me.him188.ani.utils.platform.isMobile
 import org.jetbrains.compose.resources.stringResource
@@ -171,23 +166,7 @@ fun SettingsScope.AppearanceGroup(
 ) {
     val uiSettings by state
 
-    if (LocalPlatform.current.isDesktop() || LocalPlatform.current.isAndroid()) {
-        DropdownItem(
-            selected = { uiSettings.appLanguage },
-            values = { SupportedLocales },
-            itemText = {
-                Text(renderLocale(it))
-            },
-            onSelect = {
-                state.update(uiSettings.copy(appLanguage = it))
-            },
-            title = { Text(stringResource(Lang.settings_app_language)) },
-            description = if (LocalPlatform.current.isDesktop()) {
-                { Text(stringResource(Lang.settings_app_language_restart)) }
-            } else null,
-        )
-    }
-    IosLanguageSettings()
+    LanguageSettingsPlatform(state)
 
     DropdownItem(
         selected = { uiSettings.mainSceneInitialPage },
@@ -536,7 +515,9 @@ fun SettingsScope.PlayerGroup(
 }
 
 @Composable
-internal expect fun SettingsScope.IosLanguageSettings()
+internal expect fun SettingsScope.LanguageSettingsPlatform(
+    state: SettingsState<UISettings>,
+)
 
 @Composable
 internal expect fun SettingsScope.AppSettingsTabPlatform()
@@ -547,7 +528,7 @@ internal expect fun SettingsScope.PlayerGroupPlatform(
 )
 
 @Composable
-private fun renderLocale(it: Locale?): String {
+internal fun renderLocale(it: Locale?): String {
     if (it == null) {
         return "系统语言"
     }
