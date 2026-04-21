@@ -88,6 +88,7 @@ posthog-android = "3.11.3"
 posthog-java = "1.2.0"
 openapi-generator = "7.13.0"
 mediamp = "0.1.8"
+compose-native-tray = "1.3.0"
 
 [plugins]
 # Plugins for projects.
@@ -307,6 +308,7 @@ diamondedge-logging = { module = "com.diamondedge:logging", version.ref = "diamo
 jsonpathkt-kotlinx = { module = "com.eygraber:jsonpathkt-kotlinx", version.ref = "jsonpathkt-kotlinx" }
 filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs", version.ref = "filekit" }
 filekit-dialogs-compose = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
+compose-native-tray = { module = "io.github.kdroidfilter:composenativetray", version.ref = "compose-native-tray" }
 # Workaround for Kotlin compiler bug
 stately-common = { module = "co.touchlab:stately-common", version.ref = "stately-common" }
 jsystemthemedetector = { module = "org.openani.jsystemthemedetector:jSystemThemeDetector", version.ref = "jsystemthemedetector" }

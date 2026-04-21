@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -49,6 +50,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.DarkMode
+import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.repository.SavedWindowState
 import me.him188.ani.app.data.repository.WindowStateRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -114,6 +116,7 @@ import me.him188.ani.utils.platform.isWindows
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.openani.mediamp.vlc.VlcMediampPlayer
+import java.awt.Frame
 import java.util.Locale
 import kotlin.io.path.absolutePathString
 import kotlin.system.exitProcess
@@ -415,17 +418,41 @@ object AniDesktop {
                 },
             )
 
+            val uiSettings by settingsRepository.uiSettings.flow.collectAsState(UISettings.Default)
+            val trayState = rememberAniTrayState()
+            val appIcon = painterResource(Res.drawable.a_round)
+
+            AniSystemTray(
+                state = trayState,
+                icon = appIcon,
+                tooltip = "Ani",
+                onExit = ::exitApplication,
+            )
+
             Window(
-                onCloseRequest = { exitApplication() },
+                visible = !trayState.isWindowHiddenToTray,
+                onCloseRequest = {
+                    trayState.handleCloseRequest(
+                        closeBehavior = uiSettings.desktopCloseBehavior,
+                        onExit = ::exitApplication,
+                    )
+                },
                 state = windowState,
                 title = "Ani",
-                icon = painterResource(Res.drawable.a_round),
+                icon = appIcon,
             ) {
                 // In dev mode this enables hot reload,
                 // In release mode this just executes the content
                 val lifecycleOwner = LocalLifecycleOwner.current
                 val backPressedDispatcherOwner = remember {
                     SkikoOnBackPressedDispatcherOwner(navigator, lifecycleOwner)
+                }
+
+                DisposableEffect(Unit) {
+                    window.extendedState = window.extendedState and Frame.ICONIFIED.inv()
+                    window.toFront()
+                    window.requestFocus()
+                    onDispose {}
                 }
 
                 SideEffect {
@@ -469,7 +496,12 @@ object AniDesktop {
                         HandleWindowsWindowProc()
                         WindowFrame(
                             windowState = windowState,
-                            onCloseRequest = { exitApplication() },
+                            onCloseRequest = {
+                                trayState.handleCloseRequest(
+                                    closeBehavior = uiSettings.desktopCloseBehavior,
+                                    onExit = ::exitApplication,
+                                )
+                            },
                         ) {
                             MainWindowContent(navigator)
                         }
