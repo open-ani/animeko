@@ -1,5 +1,15 @@
+/*
+ * Copyright (C) 2024-2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.videoplayer.ui
 
+/*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -35,44 +45,58 @@ open class ComposeMediaPlayerComponent @JvmOverloads constructor(
     renderCallback: RenderCallback? = null,
     bufferFormatCallback: BufferFormatCallback? = null,
 ) : MediaPlayerComponent {
-    /**
-     * Flag true if this component created the media player factory, or false if it was supplied by the caller.
-     */
+    */
+/**
+ * Flag true if this component created the media player factory, or false if it was supplied by the caller.
+ *//*
+
     private val ownFactory: Boolean
 
-    /**
-     * Media player factory.
-     */
+    */
+/**
+ * Media player factory.
+ *//*
+
     protected val mediaPlayerFactory: MediaPlayerFactory
 
-    /**
-     * Default render callback implementation, will be `null` if the client application provides its own
-     * render callback.
-     */
+    */
+/**
+ * Default render callback implementation, will be `null` if the client application provides its own
+ * render callback.
+ *//*
+
     private var defaultRenderCallback: DefaultRenderCallback? = null
 
-    /**
-     * Painter used to render the video, will be `null`. if the client application provides its own render
-     * callback.
-     *
-     *
-     * Ordinarily set via constructor, but may be changed via [.setImagePainter].
-     */
+    */
+/**
+ * Painter used to render the video, will be `null`. if the client application provides its own render
+ * callback.
+ *
+ *
+ * Ordinarily set via constructor, but may be changed via [.setImagePainter].
+ *//*
+
     private var imagePainter: CallbackImagePainter? = null
 
-    /**
-     * Component used as the video surface.
-     */
+    */
+/**
+ * Component used as the video surface.
+ *//*
+
     private var videoSurfaceComponent: DefaultVideoSurfaceComponent? = null
 
-    /**
-     * Media player.
-     */
+    */
+/**
+ * Media player.
+ *//*
+
     private val mediaPlayer: EmbeddedMediaPlayer
 
-    /**
-     * Image used to render the video.
-     */
+    */
+/**
+ * Image used to render the video.
+ *//*
+
     private var image: BufferedImage? = null
 
     init {
@@ -114,17 +138,19 @@ open class ComposeMediaPlayerComponent @JvmOverloads constructor(
 //        onAfterConstruct()
     }
 
-    /**
-     * Construct a callback media list player component for external rendering (by the client application).
-     *
-     * @param mediaPlayerFactory media player factory
-     * @param fullScreenStrategy full screen strategy
-     * @param inputEvents keyboard/mouse input event configuration
-     * @param lockBuffers `true` if the native video buffer should be locked; `false` if not
-     * @param renderCallback render callback
-     * @param bufferFormatCallback buffer format callback
-     * @param videoSurfaceComponent lightweight video surface component
-     */
+    */
+/**
+ * Construct a callback media list player component for external rendering (by the client application).
+ *
+ * @param mediaPlayerFactory media player factory
+ * @param fullScreenStrategy full screen strategy
+ * @param inputEvents keyboard/mouse input event configuration
+ * @param lockBuffers `true` if the native video buffer should be locked; `false` if not
+ * @param renderCallback render callback
+ * @param bufferFormatCallback buffer format callback
+ * @param videoSurfaceComponent lightweight video surface component
+ *//*
+
     constructor(
         mediaPlayerFactory: MediaPlayerFactory?,
         fullScreenStrategy: FullScreenStrategy?,
@@ -142,11 +168,13 @@ open class ComposeMediaPlayerComponent @JvmOverloads constructor(
         bufferFormatCallback,
     )
 
-    /**
-     * Create a callback media player component with LibVLC initialisation arguments and reasonable defaults.
-     *
-     * @param libvlcArgs LibVLC initialisation arguments
-     */
+    */
+/**
+ * Create a callback media player component with LibVLC initialisation arguments and reasonable defaults.
+ *
+ * @param libvlcArgs LibVLC initialisation arguments
+ *//*
+
     constructor(vararg libvlcArgs: String?) : this(
         MediaPlayerFactory(*libvlcArgs),
         null,
@@ -157,14 +185,16 @@ open class ComposeMediaPlayerComponent @JvmOverloads constructor(
         null,
     )
 
-    /**
-     * Validate that arguments are passed for either intrinsic or external rendering, but not both.
-     *
-     * @param imagePainter image painter (video renderer)
-     * @param renderCallback render callback
-     * @param bufferFormatCallback buffer format callback
-     * @param videoSurfaceComponent video surface component
-     */
+    */
+/**
+ * Validate that arguments are passed for either intrinsic or external rendering, but not both.
+ *
+ * @param imagePainter image painter (video renderer)
+ * @param renderCallback render callback
+ * @param bufferFormatCallback buffer format callback
+ * @param videoSurfaceComponent video surface component
+ *//*
+
     private fun validateArguments(
         imagePainter: CallbackImagePainter?,
         renderCallback: RenderCallback?,
@@ -215,37 +245,43 @@ open class ComposeMediaPlayerComponent @JvmOverloads constructor(
         }
     }
 
-    /**
-     * Set a new image painter.
-     *
-     *
-     * The image painter should only be changed when the media is stopped, changing an image painter during playback has
-     * undefined behaviour.
-     *
-     *
-     * This is *not* used if the application has supplied its own [RenderCallback] on instance creation.
-     *
-     * @param imagePainter image painter
-     */
+    */
+/**
+ * Set a new image painter.
+ *
+ *
+ * The image painter should only be changed when the media is stopped, changing an image painter during playback has
+ * undefined behaviour.
+ *
+ *
+ * This is *not* used if the application has supplied its own [RenderCallback] on instance creation.
+ *
+ * @param imagePainter image painter
+ *//*
+
     fun setImagePainter(imagePainter: CallbackImagePainter?) {
         this.imagePainter = imagePainter
     }
 
-    /**
-     * Get the embedded media player reference.
-     *
-     *
-     * An application uses this handle to control the media player, add listeners and so on.
-     *
-     * @return media player
-     */
+    */
+/**
+ * Get the embedded media player reference.
+ *
+ *
+ * An application uses this handle to control the media player, add listeners and so on.
+ *
+ * @return media player
+ *//*
+
     fun mediaPlayer(): EmbeddedMediaPlayer {
         return mediaPlayer
     }
 
-    /**
-     * Release the media player component and the associated native media player resources.
-     */
+    */
+/**
+ * Release the media player component and the associated native media player resources.
+ *//*
+
     fun release() {
 //        onBeforeRelease()
 
@@ -271,10 +307,12 @@ open class ComposeMediaPlayerComponent @JvmOverloads constructor(
         return mediaPlayerFactory
     }
 
-    /**
-     * Default implementation of a video surface component that uses a [CallbackImagePainter] to render the video
-     * image.
-     */
+    */
+/**
+ * Default implementation of a video surface component that uses a [CallbackImagePainter] to render the video
+ * image.
+ *//*
+
     private inner class DefaultVideoSurfaceComponent {
         init {
             // Set a reasonable default size for the video surface component in case the client application does
@@ -283,10 +321,12 @@ open class ComposeMediaPlayerComponent @JvmOverloads constructor(
         }
     }
 
-    /**
-     * Default implementation of a buffer format callback that returns a buffer format suitable for rendering into a
-     * [BufferedImage].
-     */
+    */
+/**
+ * Default implementation of a buffer format callback that returns a buffer format suitable for rendering into a
+ * [BufferedImage].
+ *//*
+
     private inner class DefaultBufferFormatCallback : BufferFormatCallbackAdapter() {
         override fun getBufferFormat(sourceWidth: Int, sourceHeight: Int): BufferFormat {
             newVideoBuffer(sourceWidth, sourceHeight)
@@ -296,20 +336,22 @@ open class ComposeMediaPlayerComponent @JvmOverloads constructor(
 
     private var preferredSize: IntSize = IntSize.Zero
 
-    /**
-     * Used when the default buffer format callback is invoked to setup a new video buffer.
-     *
-     *
-     * Here we create a new image to match the video size, and set the data buffer within that image as the data buffer
-     * in the [DefaultRenderCallback].
-     *
-     *
-     * We also set a new preferred size on the video surface component in case the client application invalidates their
-     * layout in anticipation of re-sizing their own window to accommodate the new video size.
-     *
-     * @param width width of the video
-     * @param height height of the video
-     */
+    */
+/**
+ * Used when the default buffer format callback is invoked to setup a new video buffer.
+ *
+ *
+ * Here we create a new image to match the video size, and set the data buffer within that image as the data buffer
+ * in the [DefaultRenderCallback].
+ *
+ *
+ * We also set a new preferred size on the video surface component in case the client application invalidates their
+ * layout in anticipation of re-sizing their own window to accommodate the new video size.
+ *
+ * @param width width of the video
+ * @param height height of the video
+ *//*
+
     private fun newVideoBuffer(width: Int, height: Int) {
         image = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
         defaultRenderCallback!!.setImageBuffer(image!!)
@@ -320,10 +362,12 @@ open class ComposeMediaPlayerComponent @JvmOverloads constructor(
 
     var composeImage: ImageBitmap by mutableStateOf(ImageBitmap(128, 128))
 
-    /**
-     * Default implementation of a render callback that copies video frame data directly to the data buffer of an image
-     * raster.
-     */
+    */
+/**
+ * Default implementation of a render callback that copies video frame data directly to the data buffer of an image
+ * raster.
+ *//*
+
     private inner class DefaultRenderCallback : RenderCallbackAdapter() {
         fun setImageBuffer(image: BufferedImage) {
             setBuffer((image.raster.dataBuffer as DataBufferInt).data)
@@ -337,23 +381,27 @@ open class ComposeMediaPlayerComponent @JvmOverloads constructor(
         }
     }
 
-    /**
-     * Template methods to make it easy for a client application sub-class to render a lightweight overlay on top of the
-     * video.
-     *
-     *
-     * When this method is invoked the graphics context will already have a proper scaling applied according to the
-     * video size.
-     *
-     * @param g2 graphics drawing context
-     */
+    */
+/**
+ * Template methods to make it easy for a client application sub-class to render a lightweight overlay on top of the
+ * video.
+ *
+ *
+ * When this method is invoked the graphics context will already have a proper scaling applied according to the
+ * video size.
+ *
+ * @param g2 graphics drawing context
+ *//*
+
     protected fun onPaintOverlay(g2: Graphics2D?) {
     }
 
     companion object {
-        /**
-         * Default factory initialisation arguments.
-         */
+        */
+/**
+ * Default factory initialisation arguments.
+ *//*
+
         val DEFAULT_FACTORY_ARGUMENTS: Array<String> = arrayOf(
             "--video-title=vlcj video output",
             "--no-snapshot-preview",
@@ -364,3 +412,4 @@ open class ComposeMediaPlayerComponent @JvmOverloads constructor(
 
     }
 }
+*/

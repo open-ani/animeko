@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.desktop
 
+// import org.openani.mediamp.vlc.VlcMediampPlayer
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.LocalContextMenuRepresentation
 import androidx.compose.foundation.layout.Box
@@ -48,7 +49,6 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.repository.SavedWindowState
@@ -107,16 +107,21 @@ import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsConfig
 import me.him188.ani.utils.analytics.AnalyticsImpl
 import me.him188.ani.utils.analytics.AnalyticsSecrets
+import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.trace
+import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isWindows
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
-import org.openani.mediamp.vlc.VlcMediampPlayer
+import org.openani.mediamp.ffmpeg.FFmpegKit
+import org.openani.mediamp.mpv.MPVHandle
 import java.awt.Frame
+import java.io.File
+import java.nio.file.Paths
 import java.util.Locale
 import kotlin.io.path.absolutePathString
 import kotlin.system.exitProcess
@@ -136,10 +141,6 @@ object AniDesktop {
     init {
         System.setProperty("native.encoding", "UTF-8")
         System.setProperty("skiko.renderApi", "OPENGL")
-        /*System.setProperty(
-            "skiko.library.path",
-            "C:\\Users\\StageGuard\\Desktop\\Projects\\skiko\\skiko\\build\\out\\link\\Release-windows-jvm-x64",
-        )*/
     }
 
     private fun calculateWindowSize(
@@ -308,11 +309,44 @@ object AniDesktop {
             }
         }
 
-        val loadAnitorrentJob = coroutineScope.launch(Dispatchers.IO) {
+        val loadLibraryJob = coroutineScope.launch(Dispatchers.IO) {
             try {
                 AnitorrentLibraryLoader.loadLibraries()
             } catch (e: Throwable) {
                 logger.error(e) { "Failed to load anitorrent libraries" }
+            }
+
+            try {
+                if (currentProcessName()?.contains("java") == true) {
+                    // dev 环境将 runtime libraries 解压到 temp 里
+                    FFmpegKit.useDefaultRuntimeLibraryDirectory()
+                    MPVHandle.useDefaultRuntimeLibraryDirectory()
+                } else {
+                    // 为什么是这个目录?
+                    // CMP 打包 task 会把 resource dir 放到 jar 包的目录里
+                    // 我们 hack 打包 task 把包含 runtime library 的 jar 包解压到那一堆 jar 包的目录
+                    val userDir = File(System.getProperty("compose.application.resources.dir"))
+                        .parentFile.absolutePath
+                    FFmpegKit.setRuntimeLibraryDirectory(userDir, false)
+                    MPVHandle.setRuntimeLibraryDirectory(userDir, false)
+                }
+            } catch (e: Throwable) {
+                logger.error(e) { "Failed to load FFmpeg and mpv." }
+            }
+
+            // mpv_log_level in https://github.com/mpv-player/mpv/blob/master/include/mpv/client.h
+            MPVHandle.setLogHandler {
+                if (it.level in 1..20) {
+                    logger.error { "[mpv:${it.prefix}:${it.level}] ${it.line}" }
+                } else if (it.level <= 30) {
+                    logger.warn { "[mpv:${it.prefix}:${it.level}] ${it.line}" }
+                } else if (it.level <= 40) {
+                    logger.info { "[mpv:${it.prefix}:${it.level}] ${it.line}" }
+                } else if (it.level <= 50) {
+                    logger.debug { "[mpv:${it.prefix}:${it.level}] ${it.line}" }
+                } else {
+                    logger.trace { "[mpv:${it.prefix}:${it.level}] ${it.line}" }
+                }
             }
         }
 
@@ -321,7 +355,7 @@ object AniDesktop {
             logger.info { "[JCEF init] waiting for anitorrent load" }
             try {
                 analyticsInitializer.join()
-                loadAnitorrentJob.join()
+                loadLibraryJob.join()
             } catch (_: Throwable) {
             }
             logger.info { "[JCEF init] anitorrent loaded" }
@@ -341,10 +375,9 @@ object AniDesktop {
                 proxyAuthPassword = proxySettings?.authorization?.password,
             )
 
-            logger.info { "[JCEF init] Initialize done, now prepare VLC libraries" }
+            logger.info { "[JCEF init] Initialize done, now prepare FFmpeg and MPV libraries" }
 
-            // 预先加载 VLC, https://github.com/open-ani/ani/issues/618
-            kotlin.runCatching {
+            /*kotlin.runCatching {
                 withContext(Dispatchers.IO) {
                     VlcMediampPlayer.prepareLibraries()
                 }
@@ -352,7 +385,7 @@ object AniDesktop {
                 logger.error(it) { "Failed to prepare VLC" }
             }
 
-            logger.info { "[JCEF init] VLC libraries prepared." }
+            logger.info { "[JCEF init] VLC libraries prepared." }*/
         }
 
         coroutineScope.launch {
@@ -516,6 +549,14 @@ object AniDesktop {
 
         }
         // unreachable here
+    }
+
+    fun currentProcessName(): String? {
+        return ProcessHandle.current()
+            .info()
+            .command()
+            .map { Paths.get(it).fileName.toString() }
+            .orElse(null)
     }
 }
 

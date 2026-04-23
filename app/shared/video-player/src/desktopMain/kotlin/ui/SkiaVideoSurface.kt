@@ -1,5 +1,15 @@
+/*
+ * Copyright (C) 2024-2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 package me.him188.ani.app.videoplayer.ui
 
+/*
 import com.sun.jna.Pointer
 import com.sun.jna.ptr.IntByReference
 import com.sun.jna.ptr.PointerByReference
@@ -16,9 +26,11 @@ import uk.co.caprica.vlcj.player.embedded.videosurface.VideoSurface
 import uk.co.caprica.vlcj.player.embedded.videosurface.VideoSurfaceAdapter
 import uk.co.caprica.vlcj.player.embedded.videosurface.callback.BufferFormat
 
+*/
 /**
  * Implementation of a video surface that uses native callbacks to receive video frame data for rendering.
- */
+ *//*
+
 class SkiaVideoSurface(
     private val renderCallback: (Bitmap) -> Unit,
     videoSurfaceAdapter: VideoSurfaceAdapter?
@@ -50,11 +62,13 @@ class SkiaVideoSurface(
         LibVlc.libvlc_video_set_callbacks(mediaPlayer.mediaPlayerInstance(), lock, unlock, display, null)
     }
 
-    /**
-     * Implementation of a callback invoked by the native library to set up the required video buffer characteristics.
-     *
-     * This callback is invoked when the video format changes.
-     */
+    */
+/**
+ * Implementation of a callback invoked by the native library to set up the required video buffer characteristics.
+ *
+ * This callback is invoked when the video format changes.
+ *//*
+
     private inner class SetupCallback : libvlc_video_format_cb {
         override fun format(
             opaque: PointerByReference,
@@ -77,20 +91,22 @@ class SkiaVideoSurface(
             return format.planeCount
         }
 
-        /**
-         * Set the desired video format properties - space for these structures is already allocated by LibVlc, we
-         * simply fill the existing memory.
-         *
-         *
-         * The [BufferFormat] class restricts the chroma to maximum four bytes, so we don't need check it here, we
-         * do however need to check if it is less than four.
-         *
-         * @param chroma
-         * @param width
-         * @param height
-         * @param pitches
-         * @param lines
-         */
+        */
+/**
+ * Set the desired video format properties - space for these structures is already allocated by LibVlc, we
+ * simply fill the existing memory.
+ *
+ *
+ * The [BufferFormat] class restricts the chroma to maximum four bytes, so we don't need check it here, we
+ * do however need to check if it is less than four.
+ *
+ * @param chroma
+ * @param width
+ * @param height
+ * @param pitches
+ * @param lines
+ *//*
+
         private fun applyBufferFormat(
             bufferFormat: BufferFormat,
             chroma: PointerByReference,
@@ -131,12 +147,14 @@ class SkiaVideoSurface(
         }
     }
 
-    /**
-     * Implementation of a callback invoked by the native library to render a
-     * single frame of video.
-     *
-     * This callback is invoked every frame.
-     */
+    */
+/**
+ * Implementation of a callback invoked by the native library to render a
+ * single frame of video.
+ *
+ * This callback is invoked every frame.
+ *//*
+
     private inner class DisplayCallback : libvlc_display_callback_t {
         override fun display(opaque: Pointer, picture: Pointer) {
             renderCallback(bitmap)
@@ -144,3 +162,4 @@ class SkiaVideoSurface(
         }
     }
 }
+*/

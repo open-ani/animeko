@@ -87,7 +87,7 @@ google-firebase = "22.0.1"
 posthog-android = "3.11.3"
 posthog-java = "1.2.0"
 openapi-generator = "7.13.0"
-mediamp = "0.1.8"
+mediamp = "0.1.0-dev-666"
 compose-native-tray = "1.3.0"
 
 [plugins]
@@ -272,6 +272,11 @@ androidx-media3-exoplayer-hls = { module = "androidx.media3:media3-exoplayer-hls
 mediamp-api = { module = "org.openani.mediamp:mediamp-api", version.ref = "mediamp" }
 mediamp-avkit = { module = "org.openani.mediamp:mediamp-avkit", version.ref = "mediamp" }
 mediamp-exoplayer = { module = "org.openani.mediamp:mediamp-exoplayer", version.ref = "mediamp" }
+mediamp-mpv = { module = "org.openani.mediamp:mediamp-mpv", version.ref = "mediamp" }
+mediamp-mpv-runtime-windows-x64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-windows-x64", version.ref = "mediamp" }
+mediamp-mpv-runtime-linux-x64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-linux-x64", version.ref = "mediamp" }
+mediamp-mpv-runtime-macos-x64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-macos-x64", version.ref = "mediamp" }
+mediamp-mpv-runtime-macos-arm64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-macos-arm64", version.ref = "mediamp" }
 mediamp-ffmpeg = { module = "org.openani.mediamp:mediamp-ffmpeg", version.ref = "mediamp" }
 mediamp-ffmpeg-desktop = { module = "org.openani.mediamp:mediamp-ffmpeg-desktop", version.ref = "mediamp" }
 mediamp-ffmpeg-runtime-windows-x64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-windows-x64", version.ref = "mediamp" }

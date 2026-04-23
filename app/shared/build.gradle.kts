@@ -189,8 +189,8 @@ kotlin {
         api(libs.compose.ui.graphics.desktop)
         api(projects.utils.logging)
         api(libs.kotlinx.coroutines.swing)
-        implementation(libs.vlcj)
-        implementation(libs.jna) // required and don't change version, otherwise vlcj might crash the VM 
+        // implementation(libs.vlcj)
+        // implementation(libs.jna) // required and don't change version, otherwise vlcj might crash the VM 
 
         // This causes duplicated entry when packaging compose binaries (Task `createDistribution`).
         // https://youtrack.jetbrains.com/issue/CMP-7734/packageReleaseDmg-for-macOS-arm64-fails-since-1.8.0-alpha04

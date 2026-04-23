@@ -53,7 +53,10 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.dsl.module
 import org.openani.mediamp.MediampPlayerFactory
+import org.openani.mediamp.MediampPlayerFactoryLoader
+import org.openani.mediamp.compose.MediampPlayerSurfaceProviderLoader
 import org.openani.mediamp.mpv.MpvMediampPlayerFactory
+import org.openani.mediamp.mpv.compose.MpvMediampPlayerSurfaceProvider
 import java.io.File
 import kotlin.io.path.Path
 
@@ -115,9 +118,9 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
     }
 
     single<MediampPlayerFactory<*>> {
-        // MediampPlayerFactoryLoader.register(MpvMediampPlayerFactory())
-        // MediampPlayerSurfaceProviderLoader.register(MpvMediampPlayerSurfaceProvider())
-        MpvMediampPlayerFactory()
+        MediampPlayerFactoryLoader.register(MpvMediampPlayerFactory())
+        MediampPlayerSurfaceProviderLoader.register(MpvMediampPlayerSurfaceProvider())
+        MediampPlayerFactoryLoader.first()
     }
     single<BrowserNavigator> { DesktopBrowserNavigator() }
     single<WebCaptchaCoordinator> { DesktopWebCaptchaCoordinator(AniDesktopCaptchaTopBar) }

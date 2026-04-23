@@ -49,10 +49,16 @@ kotlin {
         }
 
         api(libs.kotlinx.coroutines.swing)
-        implementation(libs.vlcj)
-        api(libs.mediamp.vlc)
-        api("org.openani.mediamp:mediamp-mpv:0.0.1-dev")
-        api("org.openani.mediamp:mediamp-mpv-runtime:0.0.1-dev")
+        // implementation(libs.vlcj)
+        // api(libs.mediamp.vlc)
+        api(libs.mediamp.mpv)
+        when (val triple = getOsTriple()) {
+            "windows-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.windows.x64)
+            "linux-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.linux.x64)
+            "macos-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.macos.x64)
+            "macos-arm64" -> runtimeOnly(libs.mediamp.mpv.runtime.macos.arm64)
+            else -> throw UnsupportedOperationException("Unknown os: $triple")
+        }
     }
     sourceSets.appleMain.dependencies {
         api(libs.mediamp.avkit)

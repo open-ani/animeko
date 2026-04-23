@@ -108,7 +108,9 @@
 
 -keep @kotlinx.serialization.Serializable class * {*;} # Somehow kotlinx-serialization 官方的规则仍然会导致 Serializer not found, 所以干脆直接都 keep
 
--keep class ** implements org.openani.mediamp.MediampPlayerFactory { *; }
+-keep class org.openani.mediamp.ffmpeg.** { *; }
+-keep class org.openani.mediamp.mpv.** { *; }
+-keep class org.openani.mediamp.io.** { *; } # mediamp-mpv JNI looks up SeekableInput methods by name
 
 -keep class ** extends com.sun.jna.Structure { *; } # JNA C struct
 -keep class ** extends com.sun.jna.Library { *; } # JNA
@@ -140,6 +142,17 @@
 -keepclassmembers class androidx.compose.ui.scene.CanvasLayersComposeSceneImpl$AttachedComposeSceneLayer {
     private *** owner;           # 反射访问的字段
     private *** isInBounds(...); # 反射调用的方法
+}
+
+# mediamp mpv
+-keepclassmembers class org.jetbrains.skiko.redrawer.WindowsOpenGLRedrawer {
+	private *** device;
+	private *** context;
+	private *** contextHandler;
+}
+
+-keepclassmembers class org.jetbrains.skiko.context.ContextHandler {
+	protected *** context;
 }
 
 # ByteBuddy, for disabling Paging logging
