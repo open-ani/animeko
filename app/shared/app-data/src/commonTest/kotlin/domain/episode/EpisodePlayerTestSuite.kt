@@ -100,7 +100,7 @@ class EpisodePlayerTestSuite(
 fun TestScope.createExceptionCapturingSupervisorScope(parentScope: CoroutineScope = backgroundScope): Pair<CoroutineScope, CompletableDeferred<Throwable>> {
     val backgroundException = CompletableDeferred<Throwable>()
     val scope = CoroutineScope(
-        SupervisorJob(parentScope.coroutineContext[Job]) + CoroutineExceptionHandler { _, throwable ->
+        (parentScope.coroutineContext.minusKey(Job)) + SupervisorJob(parentScope.coroutineContext[Job]) + CoroutineExceptionHandler { _, throwable ->
             backgroundException.complete(throwable)
         },
     )

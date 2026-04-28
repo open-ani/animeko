@@ -60,16 +60,20 @@ class SwitchNextEpisodeExtension(
 
     private suspend fun impl(session: EpisodeSession): Nothing {
         val player = context.player
-        player.playbackState.collect { playback ->
-            val closeToEnd = player.mediaProperties.value.let { prop ->
-                prop != null && prop.durationMillis > 0L && prop.durationMillis - player.currentPositionMillis.value < 5000
-            }
+        var previous: PlaybackState? = null
+        player.playbackState.collect { current ->
+            if (previous == PlaybackState.PLAYING && current == PlaybackState.FINISHED) {
+                val closeToEnd = player.mediaProperties.value.let { prop ->
+                    prop != null && prop.durationMillis > 0L && prop.durationMillis - player.currentPositionMillis.value < 5000
+                }
 
-            if (playback == PlaybackState.FINISHED && closeToEnd) {
-                val nextEpisode = getNextEpisode(session.episodeId)
-                logger.info("播放完毕，切换下一集 $nextEpisode")
-                context.switchEpisode(nextEpisode ?: return@collect)
+                if (closeToEnd) {
+                    val nextEpisode = getNextEpisode(session.episodeId)
+                    logger.info("播放完毕，切换下一集 $nextEpisode")
+                    context.switchEpisode(nextEpisode ?: return@collect)
+                }
             }
+            previous = current
         }
     }
 
