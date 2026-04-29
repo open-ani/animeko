@@ -52,11 +52,11 @@ import me.him188.ani.app.ui.foundation.interaction.hoverable
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.settings_account_edit_profile
-import me.him188.ani.app.ui.lang.settings_account_login_register
-import me.him188.ani.app.ui.lang.settings_account_logout
-import me.him188.ani.app.ui.lang.settings_account_not_logged_in
-import me.him188.ani.app.ui.lang.settings_account_settings
+import me.him188.ani.app.ui.lang.settings
+import me.him188.ani.app.ui.lang.settings_account_popup_edit_profile
+import me.him188.ani.app.ui.lang.settings_account_popup_login_register
+import me.him188.ani.app.ui.lang.settings_account_popup_logout
+import me.him188.ani.app.ui.lang.settings_account_popup_not_logged_in
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.app.ui.user.SelfInfoUiState
@@ -73,11 +73,11 @@ internal fun ProfilePopupLayout(
     modifier: Modifier = Modifier,
 ) {
     val isLogin = remember(state) { state.selfInfo.isSessionValid == true }
-    val notLoggedInText = stringResource(Lang.settings_account_not_logged_in)
-    val editProfileText = stringResource(Lang.settings_account_edit_profile)
-    val loginRegisterText = stringResource(Lang.settings_account_login_register)
-    val settingsText = stringResource(Lang.settings_account_settings)
-    val logoutText = stringResource(Lang.settings_account_logout)
+    val notLoggedInText = stringResource(Lang.settings_account_popup_not_logged_in)
+    val editProfileText = stringResource(Lang.settings_account_popup_edit_profile)
+    val loginRegisterText = stringResource(Lang.settings_account_popup_login_register)
+    val settingsText = stringResource(Lang.settings)
+    val logoutText = stringResource(Lang.settings_account_popup_logout)
     Column(modifier) {
         Box(
             modifier = Modifier

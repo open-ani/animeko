@@ -765,6 +765,15 @@
     <string name="settings_account_settings">Settings</string>
     <string name="settings_account_logout">Logout</string>
     <string name="settings_account_confirm_logout">Are you sure you want to sign out?</string>
+
+    <!-- Account Popup -->
+    <string name="settings_account_popup_not_logged_in">Not logged in</string>
+    <string name="settings_account_popup_edit_profile">Edit profile</string>
+    <string name="settings_account_popup_login_register">Login / Register</string>
+    <string name="settings_account_popup_logout">Logout</string>
+    <string name="settings_account_popup_logout_confirm">Are you sure you want to logout?</string>
+    <string name="settings_account_popup_logout_button">Logout</string>
+    <string name="settings_account_popup_cancel">Cancel</string>
     <string name="settings_account_bangumi_manual_full_sync">Manual Full Sync</string>
     <string name="settings_account_bangumi_redownload_all_data">Re-download All Bangumi Data</string>
     <string name="settings_account_bangumi_redownload_all_data_description">Download Bangumi collection data into Animeko\'s collection service. You usually don\'t need to do this, since Animeko syncs automatically. Only run it if you notice data inconsistencies. This operation may take several minutes, and other features will be unavailable during sync. Note: full sync can only be performed once every 10 minutes.</string>

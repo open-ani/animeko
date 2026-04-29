@@ -547,7 +547,10 @@
     <string name="settings_media_auto_cache_recent_only">僅緩存最近看過的番劇</string>
     <string name="settings_media_auto_cache_count">緩存數量</string>
     <string name="settings_media_auto_cache_count_description">當前設置: 僅緩存最近看過的 %d 部番劇</string>
-    <string name="settings_media_auto_cache_manage">管理已緩存的劇集</string><string name="settings_debug_logout">登出</string><string name="settings_debug_logged_out">已登出</string><string name="settings_tab_account">賬戶</string>
+    <string name="settings_media_auto_cache_manage">管理已緩存的劇集</string>
+    <string name="settings_debug_logout">登出</string>
+    <string name="settings_debug_logged_out">已登出</string>
+    <string name="settings_tab_account">賬戶</string>
 
     <!-- Version Expired Overlay -->
     <string name="settings_update_version_expired_title">版本過期</string>
@@ -790,6 +793,15 @@
     <string name="settings_account_settings">設置</string>
     <string name="settings_account_logout">退出登入</string>
     <string name="settings_account_confirm_logout">確定要退出登入嗎?</string>
+
+    <!-- Account Popup -->
+    <string name="settings_account_popup_not_logged_in">未登入</string>
+    <string name="settings_account_popup_edit_profile">編輯個人資料</string>
+    <string name="settings_account_popup_login_register">登入 / 註冊</string>
+    <string name="settings_account_popup_logout">登出</string>
+    <string name="settings_account_popup_logout_confirm">確定要登出嗎？</string>
+    <string name="settings_account_popup_logout_button">登出</string>
+    <string name="settings_account_popup_cancel">取消</string>
     <string name="settings_account_bangumi_manual_full_sync">手動全量同步</string>
     <string name="settings_account_bangumi_redownload_all_data">重新下載全部 Bangumi 資料</string>
     <string name="settings_account_bangumi_redownload_all_data_description">將 Bangumi 的收藏資料下載到 Animeko 收藏服務。通常不需要進行這個操作，Animeko 能自動完成同步。僅在你發現資料不一致時才需要手動下載。此操作可能需要數分鐘才能完成，在同步過程中其他功能不可用。請注意，每十分鐘只能執行一次全量同步</string>

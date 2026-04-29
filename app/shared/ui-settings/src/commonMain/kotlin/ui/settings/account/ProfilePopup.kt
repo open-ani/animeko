@@ -49,9 +49,9 @@ import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.settings_account_confirm_logout
-import me.him188.ani.app.ui.lang.settings_account_logout
-import me.him188.ani.app.ui.lang.subject_collection_cancel
+import me.him188.ani.app.ui.lang.settings_account_popup_cancel
+import me.him188.ani.app.ui.lang.settings_account_popup_logout_button
+import me.him188.ani.app.ui.lang.settings_account_popup_logout_confirm
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -168,15 +168,15 @@ fun AccountLogoutDialog(
     AlertDialog(
         onCancel,
         icon = { Icon(Icons.AutoMirrored.Outlined.Logout, null) },
-        text = { Text(stringResource(Lang.settings_account_confirm_logout)) },
+        text = { Text(stringResource(Lang.settings_account_popup_logout_confirm)) },
         confirmButton = {
             TextButton(onConfirm, enabled = confirmEnabled) {
-                Text(stringResource(Lang.settings_account_logout), color = MaterialTheme.colorScheme.error)
+                Text(stringResource(Lang.settings_account_popup_logout_button), color = MaterialTheme.colorScheme.error)
             }
         },
         dismissButton = {
             TextButton(onCancel) {
-                Text(stringResource(Lang.subject_collection_cancel))
+                Text(stringResource(Lang.settings_account_popup_cancel))
             }
         },
     )

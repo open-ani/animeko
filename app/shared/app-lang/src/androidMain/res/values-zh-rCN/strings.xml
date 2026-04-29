@@ -803,6 +803,15 @@
     <string name="settings_account_settings">设置</string>
     <string name="settings_account_logout">退出登录</string>
     <string name="settings_account_confirm_logout">确定要退出登录吗?</string>
+
+    <!-- Account Popup -->
+    <string name="settings_account_popup_not_logged_in">未登录</string>
+    <string name="settings_account_popup_edit_profile">编辑个人资料</string>
+    <string name="settings_account_popup_login_register">登录 / 注册</string>
+    <string name="settings_account_popup_logout">退出登录</string>
+    <string name="settings_account_popup_logout_confirm">确定要退出登录吗？</string>
+    <string name="settings_account_popup_logout_button">退出登录</string>
+    <string name="settings_account_popup_cancel">取消</string>
     <string name="settings_account_bangumi_manual_full_sync">手动全量同步</string>
     <string name="settings_account_bangumi_redownload_all_data">重新下载全部 Bangumi 数据</string>
     <string name="settings_account_bangumi_redownload_all_data_description">将 Bangumi 的收藏数据下载到 Animeko 收藏服务。通常来说不需要进行这个操作，Animeko 能自动完成同步。仅在你有发现数据不一致的情况时才需要手动下载。此操作可能需要数分钟才能完成，在同步过程中其他功能不可用。请注意，每十分钟只能执行一次全量同步</string>
