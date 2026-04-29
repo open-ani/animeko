@@ -283,6 +283,8 @@ private fun MainScreenContent(
                             },
                             modifier = Modifier.fillMaxSize(),
                             enableAnimation = userCollectionsViewModel.myCollectionsSettings.enableListAnimation1,
+                            sortByName = userCollectionsViewModel.myCollectionsSettings.sortByName,
+                            onToggleSortByName = { coroutineScope.launch { userCollectionsViewModel.toggleSortByName() } },
                         )
                     }
 
