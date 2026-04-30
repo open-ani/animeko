@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -69,7 +69,6 @@ import me.him188.ani.utils.platform.currentTimeMillis
 import org.openani.mediamp.io.SeekableInput
 import kotlin.concurrent.Volatile
 import kotlin.coroutines.CoroutineContext
-import kotlin.jvm.JvmField
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -138,14 +137,12 @@ class AnitorrentDownloadSession(
         }
 
         scope.launch {
-            if (shouldTryLoadFiles.await()) {
-                while (true) {
-                    if (!handle.isValid) {
-                        return@launch
-                    }
-                    reloadFilesAndInitializeIfNotYet(force = false)
-                    delay(1000)
+            while (shouldTryLoadFiles.await()) {
+                if (!handle.isValid) {
+                    return@launch
                 }
+                reloadFilesAndInitializeIfNotYet(force = false)
+                delay(1000)
             }
         }
     }
