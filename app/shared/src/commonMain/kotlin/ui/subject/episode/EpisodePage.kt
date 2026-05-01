@@ -886,7 +886,7 @@ private fun EpisodeVideo(
             // not yet supported
         },
         onPreviewFinished = {
-            vm.player.seekTo(it)
+            vm.seekTo(it)
         },
     )
     val scope = rememberCoroutineScope()

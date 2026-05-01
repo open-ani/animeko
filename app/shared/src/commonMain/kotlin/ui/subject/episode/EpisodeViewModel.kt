@@ -173,6 +173,7 @@ import org.koin.core.component.inject
 import org.openani.mediamp.InternalMediampApi
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
+import org.openani.mediamp.PlaybackState
 import org.openani.mediamp.features.chapters
 import org.openani.mediamp.metadata.Chapter
 import kotlin.time.Duration.Companion.milliseconds
@@ -706,7 +707,7 @@ class EpisodeViewModel(
         chapters = combinedChaptersFlow.produceState(emptyList()),
         onSkip = {
             launchInBackground(Dispatchers.Main) {
-                player.seekTo(it)
+                seekTo(it)
             }
         },
         videoLength = player.mediaProperties.mapNotNull { it?.durationMillis?.milliseconds }
@@ -903,6 +904,20 @@ class EpisodeViewModel(
                 .filterNotNull()
                 .firstOrNull()
                 ?.restartAll()
+        }
+    }
+
+    fun seekTo(positionMillis: Long) {
+        val unlockFinished = player.playbackState.value == PlaybackState.FINISHED &&
+                !videoScaffoldConfig.autoPlayNext
+        if (unlockFinished) {
+            // Unlock mediamp's `< READY` guard on seekTo/resume. TODO: drop when mediamp#29 lands.
+            @Suppress("UNCHECKED_CAST")
+            (player.playbackState as MutableStateFlow<PlaybackState>).value = PlaybackState.PAUSED
+        }
+        player.seekTo(positionMillis)
+        if (unlockFinished) {
+            player.resume()
         }
     }
 
