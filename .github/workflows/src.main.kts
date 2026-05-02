@@ -1576,11 +1576,17 @@ class WithMatrix(
 
     fun JobBuilder<*>.gradleCheck() {
         if (matrix.runTests) {
+            val desktopTestGradleArgs = if (matrix.isWindows) {
+                "${matrix.gradleArgs} \"--no-configuration-cache\" \"--no-parallel\""
+            } else {
+                matrix.gradleArgs
+            }
             runGradle(
                 name = "Check (Desktop)",
                 tasks = arrayOf("desktopTest"),
                 maxAttempts = 3,
                 timeoutMinutes = 180,
+                gradleArgs = desktopTestGradleArgs,
             )
             runGradle(
                 name = "Check (Android Host)",
