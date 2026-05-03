@@ -33,4 +33,9 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
         }
     }
+    sourceSets.desktopTest {
+        dependencies {
+            runtimeOnly(libs.slf4j.simple)
+        }
+    }
 }

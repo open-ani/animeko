@@ -83,7 +83,7 @@ class TimeBasedDanmakuSession private constructor(
     override val totalCount: Flow<Int?> = listFlow.map { it.size }
 
     companion object {
-        private val logger = logger<TimeBasedDanmakuSession>()
+        private val logger by lazy { logger<TimeBasedDanmakuSession>() }
 
         fun create(
             listFlow: Flow<List<DanmakuInfo>>,
