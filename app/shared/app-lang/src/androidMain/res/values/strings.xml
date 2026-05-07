@@ -26,6 +26,21 @@
     <string name="settings_tab_danmaku">Server Region</string>
     <string name="settings_tab_proxy">Proxy</string>
     <string name="settings_tab_bt">BitTorrent</string>
+    <string name="settings_pikpak_description">Resolve BitTorrent magnets through PikPak\'s cloud offline servers for faster playback. The anitorrent settings above do not apply to PikPak.</string>
+    <string name="settings_pikpak_enabled">Enable PikPak</string>
+    <string name="settings_pikpak_username">Username</string>
+    <string name="settings_pikpak_username_placeholder">Email or phone</string>
+    <string name="settings_pikpak_password">Password</string>
+    <string name="settings_pikpak_password_description">Set a password in your PikPak account settings if you signed up via Google.</string>
+    <string name="settings_pikpak_password_hidden">••••••••</string>
+    <string name="settings_pikpak_queue_title">Cache slots</string>
+    <string name="settings_pikpak_queue_description">How many recent sources to keep in PikPak\'s working folder before evicting the oldest. Higher makes re-plays instant at the cost of drive space. Drag past 13 for no eviction at all.</string>
+    <string name="settings_pikpak_queue_unlimited">Unlimited</string>
+    <string name="settings_pikpak_test_connection">Test connection</string>
+    <string name="settings_pikpak_recommend_title">Align media selector?</string>
+    <string name="settings_pikpak_recommend_message">PikPak only handles BitTorrent sources. Set "Preferred source type" to BT so the default selector routes through PikPak.</string>
+    <string name="settings_pikpak_recommend_apply">Apply</string>
+    <string name="settings_pikpak_recommend_dismiss">Skip</string>
     <string name="settings_tab_cache">Auto Cache</string>
     <string name="settings_tab_storage">Storage</string>
     <string name="settings_tab_settings_backup">Settings Backup</string>
@@ -503,7 +518,7 @@
     <string name="settings_network_proxy_save_and_test">Save and test</string>
 
     <!-- TorrentEngineGroup -->
-    <string name="settings_media_torrent_title">BT Settings</string>
+    <string name="settings_media_torrent_title">anitorrent</string>
     <string name="settings_media_torrent_download_rate_limit">Download Speed Limit</string>
     <string name="settings_media_torrent_sharing_settings">Sharing Settings</string>
     <string name="settings_media_torrent_sharing_description">The BT network relies on sharing between users. The videos you watch come from other users\' sharing. Allow uploading to help maintain a healthy BT sharing environment.</string>

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2026 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -18,16 +18,24 @@ import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
+import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.datasources.api.CachedMedia
 import me.him188.ani.datasources.api.MediaCacheMetadata
-import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.koin.core.Koin
 
 /**
- * Automatically create a cache task when playing BT media.
+ * Automatically create a cache task when playback is handed to the local
+ * BitTorrent engine.
+ *
+ * The gate uses the post-resolve [VideoLoadingState.Succeed.isBt] flag rather
+ * than the pre-resolve [me.him188.ani.datasources.api.source.MediaSourceKind],
+ * so a cloud offline backend (e.g. PikPak) that intercepts BT magnets and
+ * returns a plain HTTPS URL does not trigger a redundant anitorrent download
+ * in the background — and a runtime fallback from such a backend back to
+ * anitorrent is still caught.
  */
 class CacheOnBtPlayExtension(
     private val context: PlayerExtensionContext,
@@ -46,30 +54,30 @@ class CacheOnBtPlayExtension(
                 session.fetchSelectFlow.collectLatest fsf@{ bundle ->
                     if (bundle == null) return@fsf
 
-                    bundle.mediaSelector.selected.filterNotNull().collectLatest { media ->
+                    context.videoLoadingStateFlow.collectLatest { state ->
                         deleteCurrentAutoSelectedIfNotStarted()
 
-                        if (media.kind == MediaSourceKind.BitTorrent) {
-                            val storage = mediaCacheManager.storagesIncludingDisabled
-                                .find { it.engine.engineKey == MediaCacheEngineKey.Anitorrent }
-                            if (storage == null) {
-                                logger.warn { "TorrentMediaCacheEngine is not found in MediaCachedManager." }
-                                return@collectLatest
-                            }
+                        if (state !is VideoLoadingState.Succeed || !state.isBt) return@collectLatest
 
-                            val media = bundle.mediaSelector.selected.filterNotNull().first()
-                            if (media is CachedMedia) {
-                                // 选中了正在下载中的 BT 源.
-                                return@collectLatest
-                            }
-                            logger.info { "Auto cache BitTorrent media on play: $media" }
+                        val storage = mediaCacheManager.storagesIncludingDisabled
+                            .find { it.engine.engineKey == MediaCacheEngineKey.Anitorrent }
+                        if (storage == null) {
+                            logger.warn { "TorrentMediaCacheEngine is not found in MediaCachedManager." }
+                            return@collectLatest
+                        }
 
-                            val metadata =
-                                MediaCacheMetadata(bundle.mediaFetchSession.request.first(), autoCached = true)
-                            val cache = storage.cache(media, metadata, episodeMetadata, resume = true)
-                            if (cache.metadata.autoCached) {
-                                currentCache = cache
-                            }
+                        val media = bundle.mediaSelector.selected.filterNotNull().first()
+                        if (media is CachedMedia) {
+                            // 选中了正在下载中的 BT 源.
+                            return@collectLatest
+                        }
+                        logger.info { "Auto cache BitTorrent media on play: $media" }
+
+                        val metadata =
+                            MediaCacheMetadata(bundle.mediaFetchSession.request.first(), autoCached = true)
+                        val cache = storage.cache(media, metadata, episodeMetadata, resume = true)
+                        if (cache.metadata.autoCached) {
+                            currentCache = cache
                         }
                     }
                 }

@@ -26,6 +26,21 @@
     <string name="settings_tab_danmaku">服务器区域</string>
     <string name="settings_tab_proxy">代理</string>
     <string name="settings_tab_bt">BitTorrent</string>
+    <string name="settings_pikpak_description">使用 PikPak 解析 BT 种子可以改善解析速度，上方 anitorrent 设置对 PikPak 解析无效。</string>
+    <string name="settings_pikpak_enabled">启用 PikPak</string>
+    <string name="settings_pikpak_username">用户名</string>
+    <string name="settings_pikpak_username_placeholder">邮箱 / 手机号</string>
+    <string name="settings_pikpak_password">密码</string>
+    <string name="settings_pikpak_password_description">如果你使用 Google 登录，需先在 PikPak 账号设置里设置密码。</string>
+    <string name="settings_pikpak_password_hidden">••••••••</string>
+    <string name="settings_pikpak_queue_title">缓存槽位数</string>
+    <string name="settings_pikpak_queue_description">PikPak 云盘保留多少个最近源的缓存；更多则重播更快但占更多云盘。拉到 13 右侧的"不限"档则完全不清理。</string>
+    <string name="settings_pikpak_queue_unlimited">不限</string>
+    <string name="settings_pikpak_test_connection">测试连接</string>
+    <string name="settings_pikpak_recommend_title">同步调整数据源选择器？</string>
+    <string name="settings_pikpak_recommend_message">PikPak 只处理 BT 资源。建议把"优先数据源类型"设为 BT，这样默认选择器才会实际走到 PikPak。</string>
+    <string name="settings_pikpak_recommend_apply">应用</string>
+    <string name="settings_pikpak_recommend_dismiss">跳过</string>
     <string name="settings_tab_cache">自动缓存</string>
     <string name="settings_tab_storage">存储</string>
     <string name="settings_tab_settings_backup">设置备份</string>
@@ -541,7 +556,7 @@
     <string name="settings_network_proxy_save_and_test">保存并测试</string>
 
     <!-- TorrentEngineGroup -->
-    <string name="settings_media_torrent_title">BT 设置</string>
+    <string name="settings_media_torrent_title">anitorrent</string>
     <string name="settings_media_torrent_download_rate_limit">下载速度限制</string>
     <string name="settings_media_torrent_sharing_settings">分享设置</string>
     <string name="settings_media_torrent_sharing_description">BT 网络依赖用户间分享，你所看的视频均来自其他用户的分享。允许上传，共同维护健康的 BT 分享环境。</string>

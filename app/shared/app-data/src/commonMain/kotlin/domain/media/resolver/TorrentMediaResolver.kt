@@ -187,13 +187,18 @@ class TorrentMediaResolver(
     }
 }
 
+/**
+ * Marker for [MediaDataProvider]s backed by a local BitTorrent engine.
+ */
+interface TorrentBackedMediaDataProvider
+
 class TorrentMediaDataProvider(
     private val engine: TorrentEngine,
     private val engineAccess: TorrentEngineAccess,
     private val encodedTorrentInfo: EncodedTorrentInfo,
     private val episodeMetadata: EpisodeMetadata,
     override val extraFiles: org.openani.mediamp.source.MediaExtraFiles,
-) : MediaDataProvider<TorrentMediaData> {
+) : MediaDataProvider<TorrentMediaData>, TorrentBackedMediaDataProvider {
     @OptIn(ExperimentalStdlibApi::class)
     val uri: String by lazy {
         "torrent://${encodedTorrentInfo.data.toHexString().take(32) + "..."}"

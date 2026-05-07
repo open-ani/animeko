@@ -523,7 +523,7 @@
     <string name="settings_network_proxy_save_and_test">儲存並測試</string>
 
     <!-- TorrentEngineGroup -->
-    <string name="settings_media_torrent_title">BT 設置</string>
+    <string name="settings_media_torrent_title">anitorrent</string>
     <string name="settings_media_torrent_download_rate_limit">下載速度限制</string>
     <string name="settings_media_torrent_sharing_settings">分享設置</string>
     <string name="settings_media_torrent_sharing_description">BT 網絡依賴用戶間分享，你所看的視頻均來自其他用戶的分享。允許上傳，共同維護健康的 BT 分享環境。</string>

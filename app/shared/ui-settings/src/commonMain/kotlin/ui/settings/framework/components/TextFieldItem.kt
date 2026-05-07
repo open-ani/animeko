@@ -21,6 +21,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.effects.defaultFocus
@@ -70,6 +73,11 @@ fun SettingsScope.TextFieldItem(
     sanitizeValue: (value: String) -> String = { it },
     textFieldDescription: @Composable ((value: String) -> Unit)? = description,
     exposedItem: @Composable (value: String) -> Unit = { Text(it) },
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    // When [visualTransformation] is masking (e.g. password), rendering a
+    // show/hide eye icon next to the input lets the user peek at what they
+    // typed without losing the default-masked posture.
+    showVisibilityToggle: Boolean = false,
     extra: @Composable ColumnScope.(editingValue: MutableState<String>) -> Unit = {}
 ) {
     var showDialog by rememberSaveable { mutableStateOf(false) }
@@ -133,6 +141,13 @@ fun SettingsScope.TextFieldItem(
                 }
             }
 
+            var revealMasked by rememberSaveable { mutableStateOf(false) }
+            val effectiveTransformation = if (showVisibilityToggle && revealMasked) {
+                VisualTransformation.None
+            } else {
+                visualTransformation
+            }
+
             TextFieldDialog(
                 onDismissRequest = { showDialog = false },
                 onConfirm = onConfirm,
@@ -144,6 +159,7 @@ fun SettingsScope.TextFieldItem(
                 OutlinedTextField(
                     value = editingValue,
                     onValueChange = { editingValue = sanitizeValue(it) },
+                    visualTransformation = effectiveTransformation,
                     shape = MaterialTheme.shapes.medium,
                     keyboardActions = KeyboardActions {
                         if (!error) {
@@ -153,6 +169,16 @@ fun SettingsScope.TextFieldItem(
                     keyboardOptions = KeyboardOptions.Default.copy(
                         imeAction = ImeAction.Done,
                     ),
+                    trailingIcon = if (showVisibilityToggle) {
+                        {
+                            IconButton({ revealMasked = !revealMasked }) {
+                                Icon(
+                                    if (revealMasked) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                    contentDescription = null,
+                                )
+                            }
+                        }
+                    } else null,
                     modifier = Modifier.fillMaxWidth()
                         .defaultFocus()
                         .onKey(Key.Enter) {

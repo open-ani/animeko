@@ -90,6 +90,7 @@ includeProject(":utils:build-config")
 includeProject(":torrent:torrent-api", "torrent/api") // Torrent 系统 API
 includeProject(":torrent:anitorrent")
 //includeProject(":torrent:anitorrent:anitorrent-native")
+includeProject(":torrent:pikpak") // PikPak 云离线下载后端
 
 includeProject(":app:shared")
 includeProject(":app:shared:app-platform")

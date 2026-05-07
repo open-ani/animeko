@@ -30,6 +30,7 @@ import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
+import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.ProfileSettings
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
@@ -75,6 +76,7 @@ interface SettingsRepository {
 
     val videoResolverSettings: Settings<VideoResolverSettings>
     val anitorrentConfig: Settings<AnitorrentConfig>
+    val pikpakConfig: Settings<PikPakConfig>
     val torrentPeerConfig: Settings<TorrentPeerConfig>
 
     val oneshotActionConfig: Settings<OneshotActionConfig>
@@ -222,6 +224,12 @@ class PreferencesRepositoryImpl(
         "anitorrentConfig",
         AnitorrentConfig.serializer(),
         default = { AnitorrentConfig.Default },
+    )
+
+    override val pikpakConfig: Settings<PikPakConfig> = SerializablePreference(
+        "pikpakConfig",
+        PikPakConfig.serializer(),
+        default = { PikPakConfig.Default },
     )
 
     override val torrentPeerConfig: Settings<TorrentPeerConfig> = SerializablePreference(

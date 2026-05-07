@@ -23,7 +23,7 @@ import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaSourceOpenException
 import me.him188.ani.app.domain.media.resolver.OpenFailures
 import me.him188.ani.app.domain.media.resolver.ResolutionFailures
-import me.him188.ani.app.domain.media.resolver.TorrentMediaDataProvider
+import me.him188.ani.app.domain.media.resolver.TorrentBackedMediaDataProvider
 import me.him188.ani.app.domain.media.resolver.UnsupportedMediaException
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.player.VideoLoadingState
@@ -90,7 +90,7 @@ class PlayerSession(
             logger.info { "Set media data to player: $data" }
             player.setMediaData(data)
 
-            _videoLoadingStateFlow.value = VideoLoadingState.Succeed(isBt = source is TorrentMediaDataProvider)
+            _videoLoadingStateFlow.value = VideoLoadingState.Succeed(isBt = source is TorrentBackedMediaDataProvider)
             withContext(mainDispatcher) {
                 player.resume()
             }

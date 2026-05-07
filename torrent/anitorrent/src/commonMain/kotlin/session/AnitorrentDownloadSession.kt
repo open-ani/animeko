@@ -69,6 +69,7 @@ import me.him188.ani.utils.platform.currentTimeMillis
 import org.openani.mediamp.io.SeekableInput
 import kotlin.concurrent.Volatile
 import kotlin.coroutines.CoroutineContext
+import kotlin.jvm.JvmField
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 

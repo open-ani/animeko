@@ -41,9 +41,11 @@ import me.him188.ani.app.domain.media.cache.engine.DummyMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
+import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.MediaResolver
-import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
+import me.him188.ani.app.domain.media.resolver.TestMediaDataProvider
+import me.him188.ani.app.domain.media.resolver.TorrentBackedMediaDataProvider
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCaseImpl
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
 import me.him188.ani.app.domain.media.selector.legacy.MediaSelectorTestBuilder
@@ -65,6 +67,8 @@ import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.io.resolve
+import org.openani.mediamp.source.MediaExtraFiles
+import org.openani.mediamp.source.UriMediaData
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import kotlin.test.Test
@@ -76,6 +80,25 @@ import kotlin.test.assertEquals
 @OptIn(UnsafeEpisodeSessionApi::class)
 class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
     private val nullFilePath = SystemTemporaryDirectory.resolve("null.tmp").toString()
+
+    private class FakeTorrentBackedMediaDataProvider(
+        override val extraFiles: MediaExtraFiles = MediaExtraFiles.EMPTY,
+    ) : MediaDataProvider<UriMediaData>, TorrentBackedMediaDataProvider {
+        override suspend fun open(scopeForCleanup: CoroutineScope): UriMediaData =
+            UriMediaData("fake-torrent://")
+    }
+
+    private class ConfigurableResolver(
+        private val provider: (Media) -> MediaDataProvider<*>,
+    ) : MediaResolver {
+        override fun supports(media: Media): Boolean = true
+        override suspend fun resolve(media: Media, episode: EpisodeMetadata): MediaDataProvider<*> =
+            provider(media)
+    }
+
+    private val btAsAnitorrentResolver = ConfigurableResolver { media ->
+        if (media.kind == MediaSourceKind.BitTorrent) FakeTorrentBackedMediaDataProvider() else TestMediaDataProvider()
+    }
 
     private inner class RecordingStorage : MediaCacheStorage {
         override val mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
@@ -130,7 +153,10 @@ class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
         val storage: RecordingStorage
     )
 
-    private fun TestScope.createCase(config: (RecordingStorage, MediaSelectorTestBuilder) -> Unit = { _, _ -> }): Context {
+    private fun TestScope.createCase(
+        resolver: MediaResolver = btAsAnitorrentResolver,
+        config: (RecordingStorage, MediaSelectorTestBuilder) -> Unit = { _, _ -> },
+    ): Context {
         contract { callsInPlace(config, InvocationKind.EXACTLY_ONCE) }
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val testScope = this.childScope()
@@ -152,7 +178,7 @@ class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
                 )
             }
         }
-        suite.registerComponent<MediaResolver> { TestUniversalMediaResolver }
+        suite.registerComponent<MediaResolver> { resolver }
         suite.registerComponent<MediaSelectorAutoSelectUseCaseImpl> { MediaSelectorAutoSelectUseCaseImpl(koin) }
         suite.registerComponent<DeleteCacheUseCase> {
             object : DeleteCacheUseCase {
@@ -349,6 +375,40 @@ class CacheOnBtPlayExtensionTest : AbstractPlayerExtensionTest() {
         state.mediaSelectorFlow.filterNotNull().first().select(webMedia)
         advanceUntilIdle()
         assertEquals(1, storage.listFlow.value.size)
+        scope.cancel()
+    }
+
+    @Test
+    fun skipAutoCacheWhenResolvedToHttp() = runTest {
+        // A cloud offline backend (e.g. PikPak) that intercepts a BT magnet
+        // resolves it into an HTTP stream — the post-resolve MediaDataProvider
+        // is not TorrentBackedMediaDataProvider, so starting an anitorrent
+        // download alongside the HTTP playback is pure waste.
+        val deferred = CompletableDeferred<List<Media>>()
+        val httpOnlyResolver = ConfigurableResolver { TestMediaDataProvider() }
+        val context = createCase(resolver = httpOnlyResolver) { _, builder ->
+            builder.mediaSources.add(
+                createTestMediaSourceInstance(
+                    TestHttpMediaSource(
+                        mediaSourceId = "bt",
+                        kind = MediaSourceKind.BitTorrent,
+                        fetch = {
+                            SinglePagePagedSource {
+                                deferred.await().map { MediaMatch(it, MatchKind.EXACT) }.asFlow()
+                            }
+                        },
+                    ),
+                ),
+            )
+        }
+        val (scope, suite, state, storage) = context
+        startFetcher(state, scope)
+        val media = suite.mediaSelectorTestBuilder.createMedia("bt", kind = MediaSourceKind.BitTorrent)
+        deferred.complete(listOf(media))
+        state.mediaSelectorFlow.filterNotNull().first().select(media)
+        advanceUntilIdle()
+        assertEquals(0, storage.cacheCalls)
+        assertEquals(0, storage.listFlow.value.size)
         scope.cancel()
     }
 }
