@@ -46,3 +46,8 @@
 -renamesourcefileattribute SourceFile
 -keepnames class me.him188.ani.** { *; }
 -keepnames class ** { *; } # Keep all names as this only increases pacakge size by a few MBs, but significantly helps with debugging.
+
+# JavaCPP references JVM-only management/OSGi classes not present on Android
+-dontwarn java.lang.management.BufferPoolMXBean
+-dontwarn javax.management.**
+-dontwarn org.osgi.annotation.versioning.ConsumerType
