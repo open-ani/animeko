@@ -23,8 +23,10 @@ actual fun textClipEntryOf(text: String): ClipEntry {
 }
 
 actual suspend fun Clipboard.getClipEntryText(): String? {
-    val selection = getClipEntry()?.asAwtTransferable as? StringSelection ?: return null
+    val transferable = getClipEntry()?.asAwtTransferable ?: return null
     return runInterruptible(Dispatchers.IO_) {
-        selection.getTransferData(DataFlavor.stringFlavor)?.toString()
+        runCatching {
+            transferable.getTransferData(DataFlavor.stringFlavor)?.toString()
+        }.getOrNull()
     }
 }
