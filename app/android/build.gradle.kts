@@ -95,7 +95,8 @@ android {
             merges.add("META-INF/DEPENDENCIES") // log4j
             pickFirsts.add("META-INF/LICENSE.md")
             pickFirsts.add("META-INF/LICENSE-notice.md")
-
+            // ffmpeg & javacpp android jars both ship native-image configs at the same paths
+            pickFirsts.add("META-INF/native-image/**")
         }
     }
     buildTypes {
