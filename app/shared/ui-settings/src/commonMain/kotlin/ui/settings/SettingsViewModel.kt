@@ -267,6 +267,8 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
                 danmakuRegexFilterRepository.update(it.id, it.copy(enabled = !it.enabled))
             }
         },
+        onExport = { danmakuRegexFilterRepository.export() },
+        onImport = { danmakuRegexFilterRepository.import(it) },
     )
 
     val danmakuServerTesters = DefaultConnectionTesterRunner(

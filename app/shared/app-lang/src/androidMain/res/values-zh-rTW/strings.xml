@@ -431,6 +431,12 @@
     <string name="settings_danmaku_regex_expression">正則表達式</string>
     <string name="settings_danmaku_regex_invalid">正則表達式語法不正確</string>
     <string name="settings_danmaku_regex_description">填寫用於屏蔽的正則表達式，例如：\'.*簽.*\' 會屏蔽所有含有文字\'簽\'的彈幕。</string>
+    <string name="settings_danmaku_export_to_clipboard">複製規則到剪貼板</string>
+    <string name="settings_danmaku_import_from_clipboard">從剪貼板導入規則</string>
+    <string name="settings_danmaku_import_title">導入彈幕正則過濾規則</string>
+    <string name="settings_danmaku_import_description">這會覆蓋當前創建的所有規則，且無法撤銷，確認導入嗎？</string>
+    <string name="settings_danmaku_import_failed">導入失敗，剪貼板內容無效</string>
+    <string name="settings_danmaku_import_success">導入成功</string>
 
     <!-- ConnectionTesterResultIndicator -->
     <string name="settings_framework_timeout">超時</string>

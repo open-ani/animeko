@@ -426,6 +426,12 @@
     <string name="settings_danmaku_regex_expression">Regular Expression</string>
     <string name="settings_danmaku_regex_invalid">Invalid regular expression syntax</string>
     <string name="settings_danmaku_regex_description">Enter a regular expression for filtering, e.g.: \'.*sign.*\' will filter all danmaku containing the word \'sign\'.</string>
+    <string name="settings_danmaku_export_to_clipboard">Copy rules to clipboard</string>
+    <string name="settings_danmaku_import_from_clipboard">Import rules from clipboard</string>
+    <string name="settings_danmaku_import_title">Import danmaku regex filter rules</string>
+    <string name="settings_danmaku_import_description">Import danmaku regex filter rules from clipboard. This will overwrite all current rules and cannot be undone. Confirm import?</string>
+    <string name="settings_danmaku_import_failed">Import failed, clipboard content is invalid</string>
+    <string name="settings_danmaku_import_success">Import successful</string>
 
     <!-- ConnectionTesterResultIndicator -->
     <string name="settings_framework_timeout">Timeout</string>

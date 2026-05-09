@@ -10,8 +10,14 @@
 package me.him188.ani.app.data.repository.player
 
 import androidx.datastore.core.DataStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
+import me.him188.ani.utils.coroutines.IO_
 
 interface DanmakuRegexFilterRepository {
 
@@ -21,12 +27,16 @@ interface DanmakuRegexFilterRepository {
     suspend fun remove(filter: DanmakuRegexFilter)
     suspend fun add(new: DanmakuRegexFilter)
     suspend fun replaceAll(new: List<DanmakuRegexFilter>)
+    suspend fun export(): String
+    suspend fun import(jsonString: String): Boolean
 
 }
 
 class DanmakuRegexFilterRepositoryImpl(
     private val store: DataStore<List<DanmakuRegexFilter>>,
 ) : DanmakuRegexFilterRepository {
+
+    private val json = Json { ignoreUnknownKeys = true }
 
     override val flow: Flow<List<DanmakuRegexFilter>> = store.data
 
@@ -52,6 +62,30 @@ class DanmakuRegexFilterRepositoryImpl(
 
     override suspend fun replaceAll(new: List<DanmakuRegexFilter>) {
         store.updateData { new }
+    }
+
+    override suspend fun export(): String {
+        return withContext(Dispatchers.IO_) {
+            json.encodeToString(
+                ListSerializer(DanmakuRegexFilter.serializer()),
+                store.data.first(),
+            )
+        }
+    }
+
+    override suspend fun import(jsonString: String): Boolean {
+        return withContext(Dispatchers.IO_) {
+            try {
+                val filters = json.decodeFromString(
+                    ListSerializer(DanmakuRegexFilter.serializer()),
+                    jsonString,
+                )
+                store.updateData { filters }
+                true
+            } catch (_: Exception) {
+                false
+            }
+        }
     }
 
     companion object {

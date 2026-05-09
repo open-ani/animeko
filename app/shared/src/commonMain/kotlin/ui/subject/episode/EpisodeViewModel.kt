@@ -392,6 +392,8 @@ class EpisodeViewModel(
                 danmakuRegexFilterRepository.update(it.id, it.copy(enabled = !it.enabled))
             }
         },
+        onExport = { danmakuRegexFilterRepository.export() },
+        onImport = { danmakuRegexFilterRepository.import(it) },
     )
 
 
