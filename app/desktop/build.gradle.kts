@@ -311,6 +311,9 @@ tasks.withType(AbstractJPackageTask::class) {
         val jarsToUnpack = listOf(
             "anitorrent-native",
             "anitorrent-native-desktop",
+            "javacpp", // JavaCPP JNI bridge DLLs (Windows/Linux)
+            "ffmpeg",  // FFmpeg native DLLs (.so/.dylib/.dll) from bytedeco classifier jars
+            "mediamp-ffmpeg-runtime",
         )
 
         destinationDir.get().asFile.walk().filter { file ->
