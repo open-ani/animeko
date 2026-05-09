@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -20,6 +20,7 @@ interface DanmakuRegexFilterRepository {
     suspend fun update(id: String, new: DanmakuRegexFilter)
     suspend fun remove(filter: DanmakuRegexFilter)
     suspend fun add(new: DanmakuRegexFilter)
+    suspend fun replaceAll(new: List<DanmakuRegexFilter>)
 
 }
 
@@ -47,6 +48,10 @@ class DanmakuRegexFilterRepositoryImpl(
         store.updateData { data ->
             data + new
         }
+    }
+
+    override suspend fun replaceAll(new: List<DanmakuRegexFilter>) {
+        store.updateData { new }
     }
 
     companion object {
