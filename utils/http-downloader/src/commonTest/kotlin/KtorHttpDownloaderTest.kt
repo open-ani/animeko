@@ -47,6 +47,7 @@ import me.him188.ani.utils.io.deleteRecursively
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.ktor.asScopedHttpClient
 import org.openani.mediamp.ffmpeg.FFmpegResult
+import org.openani.mediamp.ffmpeg.MediaOperation
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.test.AfterTest
@@ -72,7 +73,7 @@ class KtorHttpDownloaderTest {
     private lateinit var tempDir: String
     private lateinit var downloader: KtorHttpDownloader
     private val fileSystem = SystemFileSystem
-    private var lastFfmpegArgs: List<String>? = null
+    private var lastMediaOperation: MediaOperation? = null
     private var lastInputPlaylistContent: String? = null
     private var forceFfmpegFailure = false
 
@@ -97,7 +98,7 @@ class KtorHttpDownloaderTest {
         if (!fileSystem.exists(Path("$tempDir/persistence"))) {
             fileSystem.createDirectories(Path("$tempDir/persistence"))
         }
-        lastFfmpegArgs = null
+        lastMediaOperation = null
         lastInputPlaylistContent = null
         forceFfmpegFailure = false
 
@@ -291,15 +292,13 @@ class KtorHttpDownloaderTest {
             parentScope = CoroutineScope(SupervisorJob() + testDispatcher),
             ioDispatcher = testDispatcher,
         ) {
-            override suspend fun executeFfmpeg(args: List<String>): FFmpegResult {
-                lastFfmpegArgs = args
-                val inputIndex = args.indexOf("-i")
-                if (inputIndex >= 0 && inputIndex + 1 < args.size) {
-                    val inputPath = Path(args[inputIndex + 1])
-                    if (fileSystem.exists(inputPath)) {
-                        lastInputPlaylistContent = fileSystem.read(inputPath) {
-                            readByteArray().decodeToString()
-                        }
+            override suspend fun executeMediaOperation(operation: MediaOperation): FFmpegResult {
+                lastMediaOperation = operation
+                val remux = operation as? MediaOperation.Remux ?: return FFmpegResult(exitCode = 1)
+                val inputPath = Path(remux.input)
+                if (fileSystem.exists(inputPath)) {
+                    lastInputPlaylistContent = fileSystem.read(inputPath) {
+                        readByteArray().decodeToString()
                     }
                 }
 
@@ -307,7 +306,7 @@ class KtorHttpDownloaderTest {
                     return FFmpegResult(exitCode = 1)
                 }
 
-                val outputPath = Path(args.last())
+                val outputPath = Path(remux.output)
                 if (lastInputPlaylistContent.orEmpty().contains("#EXT-X-KEY:")) {
                     writeBytes(
                         outputPath,
@@ -318,7 +317,6 @@ class KtorHttpDownloaderTest {
                         ) + ByteArray(16),
                     )
                 } else {
-                    val inputPath = Path(args[inputIndex + 1])
                     val inputDir = inputPath.parent ?: error("Missing parent dir for $inputPath")
                     fileSystem.sink(outputPath).buffered().use { out ->
                         lastInputPlaylistContent.orEmpty().lines()
@@ -442,8 +440,9 @@ class KtorHttpDownloaderTest {
         // New: check final file size (segment1 + segment2 + segment3 => 1024 + 2048 + 3072 = 6144)
         val outputFileSize = fileSystem.metadata(Path("$tempDir/output.mp4")).size
         assertEquals(1024 + 2048 + 3072, outputFileSize, "M3U8 final output file size mismatch.")
-        assertTrue(lastFfmpegArgs?.contains("-allowed_extensions") == true)
-        assertTrue(lastFfmpegArgs?.contains("-protocol_whitelist") == true)
+        val remux = lastMediaOperation as? MediaOperation.Remux
+        assertEquals("ALL", remux?.allowedExtensions)
+        assertEquals("file,crypto,data", remux?.protocolWhitelist)
         assertTrue(lastInputPlaylistContent?.contains("0.ts") == true)
     }
 
@@ -703,7 +702,8 @@ class KtorHttpDownloaderTest {
             parentScope = CoroutineScope(SupervisorJob() + testDispatcher),
             ioDispatcher = testDispatcher,
         ) {
-            override suspend fun executeFfmpeg(args: List<String>): FFmpegResult = FFmpegResult(exitCode = 0)
+            override suspend fun executeMediaOperation(operation: MediaOperation): FFmpegResult =
+                FFmpegResult(exitCode = 0)
 
             suspend fun seedState(downloadId: DownloadId, status: DownloadStatus) {
                 val state = DownloadState(

@@ -73,15 +73,13 @@ import me.him188.ani.utils.io.length
 import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.io.writeText
 import me.him188.ani.utils.ktor.ScopedHttpClient
-import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.logging.trace
-import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.Uuid
-import org.openani.mediamp.ffmpeg.FFmpegKit
 import org.openani.mediamp.ffmpeg.FFmpegResult
+import org.openani.mediamp.ffmpeg.MediaOperation
+import org.openani.mediamp.ffmpeg.MediaTranscoder
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.CoroutineContext
@@ -125,10 +123,6 @@ open class KtorHttpDownloader(
 
     override val downloadStatesFlow: Flow<List<DownloadState>> =
         _downloadStatesFlow.map { it.values.map { entry -> entry.state } }
-
-    private val ffmpegKit by lazy { FFmpegKit() }
-    private var ffmpegLogHandlerSet = false
-    private val ffmpegLogHandlerLock = Mutex()
 
     override suspend fun init() {
         // No initialization needed, but place for potential future logic
@@ -1000,29 +994,23 @@ open class KtorHttpDownloader(
 
     // mark open for tests, don't override
     open suspend fun mergeM3u8Segments(st: DownloadState, cacheDir: Path, finalOutput: Path) {
-        setFFmpegKitLogHandler()
         val localPlaylistFile = createLocalHlsPlaylist(st, cacheDir).inSystem
-        val ffmpegArgs = listOf(
-            "-y", "-nostdin",
-            "-allowed_extensions", "ALL",
-            "-protocol_whitelist", "file,crypto,data",
-            "-i", localPlaylistFile.absolutePath,
-            "-map", "0",
-            "-c", "copy",
-            "-bsf:a", "aac_adtstoasc",
-            "-movflags",
-            "+faststart",
-            finalOutput.inSystem.absolutePath,
+        val operation = MediaOperation.Remux(
+            input = localPlaylistFile.absolutePath,
+            output = finalOutput.inSystem.absolutePath,
+            allowedExtensions = "ALL",
+            protocolWhitelist = "file,crypto,data",
+            movflags = listOf("faststart"),
         )
         logger.info {
-            "Running FFmpeg merge for ${st.downloadId}: ffmpeg ${ffmpegArgs.joinToString(" ") { it.quoteForLog() }}"
+            "Running FFmpeg merge for ${st.downloadId}: $operation"
         }
 
         if (finalOutput.inSystem.exists()) {
             fileSystem.delete(finalOutput)
         }
 
-        val result = executeFfmpeg(ffmpegArgs)
+        val result = executeMediaOperation(operation)
         if (!result.isSuccess) {
             if (finalOutput.inSystem.exists()) {
                 fileSystem.delete(finalOutput)
@@ -1041,43 +1029,13 @@ open class KtorHttpDownloader(
         }
     }
 
-    protected open suspend fun executeFfmpeg(args: List<String>): FFmpegResult {
-        return ffmpegKit.execute(args)
+    protected open suspend fun executeMediaOperation(operation: MediaOperation): FFmpegResult {
+        return MediaTranscoder().execute(operation)
     }
-
-    private fun String.quoteForLog(): String =
-        if (isEmpty() || any { it.isWhitespace() || it == '"' || it == '\'' }) {
-            "\"" + replace("\\", "\\\\").replace("\"", "\\\"") + "\""
-        } else {
-            this
-        }
 
     private fun DownloadState.finalOutputRelativePath(): String {
         if (mediaType != MediaType.M3U8) return relativeOutputPath
         return relativeOutputPath.replaceAfterLast('.', "mp4", missingDelimiterValue = "$relativeOutputPath.mp4")
-    }
-
-    private suspend fun setFFmpegKitLogHandler() {
-        if (ffmpegLogHandlerSet) return
-        ffmpegLogHandlerLock.withLock {
-            if (ffmpegLogHandlerSet) return
-            FFmpegKit.setLogHandler { msg ->
-                // See -loglevel argument in https://ffmpeg.org/ffmpeg.html
-                if (msg.isError) {
-                    logger.error { "[FFmpeg:${msg.level}] ${msg.line}" }
-                } else if (msg.level >= 48) {
-                    logger.trace { "[FFmpeg:${msg.level}] ${msg.line}" }
-                } else if (msg.level >= 40) {
-                    logger.debug { "[FFmpeg:${msg.level}] ${msg.line}" }
-                } else if (msg.level >= 32) {
-                    logger.info { "[FFmpeg:${msg.level}] ${msg.line}" }
-                } else if (msg.level >= 24) {
-                    logger.warn { "[FFmpeg:${msg.level}] ${msg.line}" }
-                } else {
-                    logger.error { "[FFmpeg:${msg.level}] ${msg.line}" }
-                }
-            }
-        }
     }
 
     protected suspend fun emitProgress(downloadId: DownloadId) {
