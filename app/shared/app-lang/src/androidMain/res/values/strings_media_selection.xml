@@ -29,6 +29,8 @@
     <string name="settings_media_prefer_source_type_description">Online sources load faster but may have lower resolution, BT sources are the opposite</string>
     <string name="settings_media_fast_select_web">Quick Select Online Sources</string>
     <string name="settings_media_fast_select_web_description">Sort by data source, and select immediately when higher-ranked sources complete their query, without waiting for other sources. Can significantly reduce waiting time</string>
+    <string name="settings_media_probe_concurrency">Concurrent Probe Count</string>
+    <string name="settings_media_probe_concurrency_description">How many available online sources are probed in parallel after source discovery completes. Set to 1 to disable parallel probing</string>
     <string name="settings_media_wait_time_none">Don\'t wait</string>
     <string name="settings_media_wait_time_3s">After 3 seconds</string>
     <string name="settings_media_wait_time_5s">After 5 seconds</string>

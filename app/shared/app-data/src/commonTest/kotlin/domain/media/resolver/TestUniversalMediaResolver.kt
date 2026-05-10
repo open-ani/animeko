@@ -26,9 +26,11 @@ object TestUniversalMediaResolver : MediaResolver {
 }
 
 class TestMediaDataProvider(
+    private val uri: String = "https://example.com",
+    private val headers: Map<String, String> = emptyMap(),
     override val extraFiles: MediaExtraFiles = MediaExtraFiles.EMPTY,
 ) : MediaDataProvider<UriMediaData> {
     override suspend fun open(scopeForCleanup: CoroutineScope): UriMediaData {
-        return UriMediaData("https://example.com")
+        return UriMediaData(uri, headers, extraFiles)
     }
 }

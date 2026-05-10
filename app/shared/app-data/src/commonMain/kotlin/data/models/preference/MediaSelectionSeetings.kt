@@ -55,6 +55,11 @@ constructor(
      */
     val fastSelectWebKind: Boolean = true,
     /**
+     * 并发探测在线数据源的数量.
+     * 设为 1 时退化为串行探测.
+     */
+    val fastSelectWebProbeConcurrency: Int = DEFAULT_FAST_SELECT_WEB_PROBE_CONCURRENCY,
+    /**
      * 给 low tier 源加载的宽容时间, 在这个时间内只接受 low tier 加载完成, 
      * 就算 high tier 比 low tier 率先加载完成也不选择.
      * 超过这个时间就放开 tier 限制, 选择所有加载好的最低 tier 的源.
@@ -63,7 +68,16 @@ constructor(
     val fastSelectWebLowTierToleranceDuration: Duration = 5.seconds, // 注意, 这是 'enum'. 查看 UI 代码以确定有哪些值可以选.
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
+    val effectiveFastSelectWebProbeConcurrency: Int
+        get() = if (fastSelectWebProbeConcurrency in FastSelectWebProbeConcurrencyOptions) {
+            fastSelectWebProbeConcurrency
+        } else {
+            DEFAULT_FAST_SELECT_WEB_PROBE_CONCURRENCY
+        }
+
     companion object {
+        const val DEFAULT_FAST_SELECT_WEB_PROBE_CONCURRENCY = 5
+        val FastSelectWebProbeConcurrencyOptions = (1..5).toList()
 
         // 新用户会使用的默认设置
         @Stable

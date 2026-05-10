@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.player.extension
 
 import androidx.annotation.VisibleForTesting
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import kotlinx.collections.immutable.persistentHashSetOf
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
@@ -25,10 +27,13 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.episode.MediaFetchSelectBundle
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
+import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
+import me.him188.ani.app.domain.media.selector.SelectFastestPlayableWebMediaUseCase
 import me.him188.ani.app.domain.media.selector.autoSelect
 import me.him188.ani.app.domain.mediasource.GetMediaSelectorSourceTiersUseCase
+import me.him188.ani.app.domain.mediasource.GetPreferredWebMediaSourceUseCase
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
@@ -37,6 +42,8 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.PlaybackState
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -49,15 +56,19 @@ class SwitchMediaOnPlayerErrorExtension(
     private val getVideoScaffoldConfigUseCase: GetVideoScaffoldConfigUseCase by koin.inject()
     private val getMediaSelectorSettingsFlowUseCase: GetMediaSelectorSettingsFlowUseCase by koin.inject()
     private val getSourceTiersUseCase: GetMediaSelectorSourceTiersUseCase by koin.inject()
+    private val getPreferredWebMediaSourceUseCase: GetPreferredWebMediaSourceUseCase by koin.inject()
+    private val selectFastestPlayableWebMedia: SelectFastestPlayableWebMediaUseCase by koin.inject()
+    private val settingsRepository: SettingsRepository by koin.inject()
 
 
     override fun onStart(
-        episodeSession: EpisodeSession,
+        ignoredEpisodeSession: EpisodeSession,
         backgroundTaskScope: ExtensionBackgroundTaskScope
     ) {
         backgroundTaskScope.launch("PlayerErrorListener") {
             context.sessionFlow.collectLatest { session ->
                 invoke(
+                    session,
                     session.fetchSelectFlow,
                     context.videoLoadingStateFlow,
                     context.player.playbackState,
@@ -73,6 +84,7 @@ class SwitchMediaOnPlayerErrorExtension(
      * 同时也监听媒体选择事件，当用户手动切换媒体时，将先前选中的媒体加入黑名单，避免自动选择时回退。
      */
     private suspend fun invoke(
+        episodeSession: EpisodeSession,
         mediaFetchSessionFlow: Flow<MediaFetchSelectBundle?>,
         videoLoadingStateFlow: Flow<VideoLoadingState>,
         playbackStateFlow: Flow<PlaybackState>
@@ -80,6 +92,41 @@ class SwitchMediaOnPlayerErrorExtension(
         val handler = PlayerLoadErrorHandler(
             getPreferKind = { getMediaSelectorSettingsFlowUseCase().first().preferKind },
             getSourceTiers = { getSourceTiersUseCase().first() },
+            getPreferredWebMediaSourceId = {
+                getPreferredWebMediaSourceUseCase(context.subjectId).first()
+            },
+            getEpisodeMetadata = {
+                episodeSession.infoBundleFlow
+                    .filterNotNull()
+                    .first()
+                    .episodeInfo
+                    .toEpisodeMetadata()
+            },
+            getWebSourceDiscoveryTimeout = {
+                getMediaSelectorSettingsFlowUseCase().first().fastSelectWebLowTierToleranceDuration
+            },
+            getWebProbeTimeout = {
+                settingsRepository.videoResolverSettings.flow
+                    .first()
+                    .effectiveResourceExtractionTimeoutMillis
+                    .milliseconds
+            },
+            getWebProbeConcurrency = {
+                getMediaSelectorSettingsFlowUseCase().first().effectiveFastSelectWebProbeConcurrency
+            },
+            selectFastestPlayableWebMedia = { session, mediaSelector, episodeMetadata, preferredWebMediaSourceId, sourceTiers, blacklistMediaIds, sourceDiscoveryTimeout, mediaResolveTimeout, maxProbeSources ->
+                selectFastestPlayableWebMedia(
+                    session = session,
+                    mediaSelector = mediaSelector,
+                    episodeMetadata = episodeMetadata,
+                    preferredWebMediaSourceId = preferredWebMediaSourceId,
+                    sourceTiers = sourceTiers,
+                    blacklistMediaIds = blacklistMediaIds,
+                    sourceDiscoveryTimeout = sourceDiscoveryTimeout,
+                    mediaResolveTimeout = mediaResolveTimeout,
+                    maxProbeSources = maxProbeSources,
+                )
+            },
         )
 
         // 播放失败时自动切换下一个 media.
@@ -141,6 +188,22 @@ class SwitchMediaOnPlayerErrorExtension(
 internal class PlayerLoadErrorHandler(
     private val getPreferKind: suspend () -> MediaSourceKind?,
     private val getSourceTiers: suspend () -> MediaSelectorSourceTiers,
+    private val getPreferredWebMediaSourceId: suspend () -> String?,
+    private val getEpisodeMetadata: suspend () -> me.him188.ani.app.domain.media.resolver.EpisodeMetadata,
+    private val getWebSourceDiscoveryTimeout: suspend () -> Duration,
+    private val getWebProbeTimeout: suspend () -> Duration,
+    private val getWebProbeConcurrency: suspend () -> Int,
+    private val selectFastestPlayableWebMedia: suspend (
+        session: MediaFetchSession,
+        mediaSelector: MediaSelector,
+        episodeMetadata: me.him188.ani.app.domain.media.resolver.EpisodeMetadata,
+        preferredWebMediaSourceId: String?,
+        sourceTiers: MediaSelectorSourceTiers,
+        blacklistMediaIds: Set<String>,
+        sourceDiscoveryTimeout: kotlin.time.Duration,
+        mediaResolveTimeout: kotlin.time.Duration,
+        maxProbeSources: Int,
+    ) -> String?,
 ) {
     private var blacklistedMediaIds = persistentHashSetOf<String>()
 
@@ -181,14 +244,37 @@ internal class PlayerLoadErrorHandler(
             return
         }
 
-        val result = mediaSelector.autoSelect.fastSelectWebSources(
+        val sourceDiscoveryTimeout = getWebSourceDiscoveryTimeout()
+        val probeTimeout = getWebProbeTimeout()
+        val maxProbeSources = getWebProbeConcurrency()
+        val fastestSourceId = selectFastestPlayableWebMedia(
             session,
-            sourceTiers = sourceTiers,
-            overrideUserSelection = true, // Note: 覆盖用户选择
-            blacklistMediaIds = blacklistedMediaIds,
-            // 错误切换不需要等太长时间.
-            lowTierToleranceDuration = 1.seconds,
+            mediaSelector,
+            getEpisodeMetadata(),
+            getPreferredWebMediaSourceId(),
+            sourceTiers,
+            blacklistedMediaIds,
+            sourceDiscoveryTimeout,
+            probeTimeout,
+            maxProbeSources,
         )
+        val result = if (fastestSourceId != null) {
+            mediaSelector.trySelectFromMediaSources(
+                candidateSources = listOf(fastestSourceId),
+                overrideUserSelection = true,
+                blacklistMediaIds = blacklistedMediaIds,
+                allowNonPreferred = true,
+            )
+        } else {
+            mediaSelector.autoSelect.fastSelectWebSources(
+                session,
+                sourceTiers = sourceTiers,
+                overrideUserSelection = true, // Note: 覆盖用户选择
+                blacklistMediaIds = blacklistedMediaIds,
+                // 错误切换不需要等太长时间.
+                lowTierToleranceDuration = 1.seconds,
+            )
+        }
         logger.info { "Player errored, automatically switched to next media: $result" }
     }
 

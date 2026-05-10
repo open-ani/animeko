@@ -10,10 +10,12 @@
 package me.him188.ani.app.domain.player.extension
 
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
+import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import org.koin.core.Koin
 
 /**
@@ -28,13 +30,24 @@ class AutoSelectExtension(
     private val mediaSelectorAutoSelectUseCase: MediaSelectorAutoSelectUseCase by koin.inject()
 
     override fun onStart(
-        episodeSession: EpisodeSession,
+        ignoredEpisodeSession: EpisodeSession,
         backgroundTaskScope: ExtensionBackgroundTaskScope
     ) {
         backgroundTaskScope.launch("AutoSelect") {
-            context.sessionFlow.flatMapLatest { it.fetchSelectFlow }.collectLatest { fetchSelect ->
-                if (fetchSelect == null) return@collectLatest
-                mediaSelectorAutoSelectUseCase(fetchSelect.mediaFetchSession, fetchSelect.mediaSelector)
+            context.sessionFlow.collectLatest { currentSession ->
+                currentSession.fetchSelectFlow.collectLatest { fetchSelect ->
+                    if (fetchSelect == null) return@collectLatest
+                    val episodeMetadata = currentSession.infoBundleFlow
+                        .filterNotNull()
+                        .first()
+                        .episodeInfo
+                        .toEpisodeMetadata()
+                    mediaSelectorAutoSelectUseCase(
+                        fetchSelect.mediaFetchSession,
+                        fetchSelect.mediaSelector,
+                        episodeMetadata,
+                    )
+                }
             }
         }
     }

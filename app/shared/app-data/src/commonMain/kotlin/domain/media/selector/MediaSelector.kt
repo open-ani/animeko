@@ -230,6 +230,39 @@ interface MediaSelector {
     ): Media?
 
     /**
+     * 根据提供的 [candidateSources], 在当前 snapshot 中查找最合适的 media, 但不更新 [selected].
+     *
+     * 这通常用于后台测速、预探测等“需要知道会选中哪个 media, 但暂时不应触发播放器切换”的场景。
+     */
+    suspend fun tryFindFromMediaSources(
+        candidateSources: List<String>,
+        blacklistMediaIds: Set<String> = emptySet(),
+        allowNonPreferred: Boolean = false,
+    ): Media?
+
+    /**
+     * 在给定的一组原始 [candidateMedia] 中, 按当前过滤与偏好规则查找最合适的 media, 但不更新 [selected].
+     *
+     * 这适用于“某个源已经返回了自己的多条线路, 现在需要只在这个源内部挑一条代表线路”之类的后台探测场景。
+     */
+    suspend fun tryFindFromCandidateMedia(
+        candidateMedia: List<Media>,
+        blacklistMediaIds: Set<String> = emptySet(),
+        allowNonPreferred: Boolean = false,
+    ): Media?
+
+    /**
+     * 根据提供的 [candidateSources], 挂起到第一个满足的 media 出现为止, 但不更新 [selected].
+     *
+     * 这适用于后台探测、测速等“需要等待候选真正出现, 但不应触发播放器切换”的场景。
+     */
+    suspend fun findFromMediaSources(
+        candidateSources: List<String>,
+        blacklistMediaIds: Set<String> = emptySet(),
+        allowNonPreferred: Boolean = false,
+    ): Media?
+
+    /**
      * 根据提供的 [candidateSources], 挂起到第一个满足的 media 出现为止.
      * 
      * @see trySelectFromMediaSources
@@ -713,35 +746,11 @@ class DefaultMediaSelector(
         blacklistMediaIds: Set<String>,
         allowNonPreferred: Boolean
     ): Media? {
-        if (candidateSources.isEmpty()) return null
-
-        fun bake(candidates: List<MaybeExcludedMedia.Included>): List<MaybeExcludedMedia.Included> {
-            return candidates.filter { it.result.mediaSourceId in candidateSources && it.result.mediaId !in blacklistMediaIds }
-                .sortedBy { candidateSources.indexOf(it.result.mediaSourceId) }
-        }
-
-        val selected = run {
-            val mergedPreference = newPreferences.first()
-
-            findUsingPreferenceFromCandidates(
-                bake(preferredCandidates.first().filterIsInstance<MaybeExcludedMedia.Included>()),
-                mergedPreference.copy(alliance = ANY_FILTER),
-            )?.let { return@run it } // 先考虑用户偏好
-
-            if (allowNonPreferred) {
-                // 如果用户偏好里面没有, 并且允许选择非偏好的, 才考虑全部列表
-                findUsingPreferenceFromCandidates(
-                    bake(filteredCandidates.first().filterIsInstance<MaybeExcludedMedia.Included>()),
-                    mergedPreference.copy(
-                        alliance = ANY_FILTER,
-                        resolution = ANY_FILTER,
-                        subtitleLanguageId = ANY_FILTER,
-                        mediaSourceId = ANY_FILTER,
-                    ),
-                )?.let { return@run it }
-            }
-            null
-        }
+        val selected = tryFindFromMediaSources(
+            candidateSources = candidateSources,
+            blacklistMediaIds = blacklistMediaIds,
+            allowNonPreferred = allowNonPreferred,
+        )
         // 实际上 this.selected 已经更新了
 
         return selected?.let {
@@ -757,11 +766,10 @@ class DefaultMediaSelector(
         }
     }
 
-    override suspend fun selectFromMediaSources(
+    override suspend fun tryFindFromMediaSources(
         candidateSources: List<String>,
-        overrideUserSelection: Boolean,
         blacklistMediaIds: Set<String>,
-        allowNonPreferred: Boolean
+        allowNonPreferred: Boolean,
     ): Media? {
         if (candidateSources.isEmpty()) return null
 
@@ -770,7 +778,101 @@ class DefaultMediaSelector(
                 .sortedBy { candidateSources.indexOf(it.result.mediaSourceId) }
         }
 
-        val selected = combine(preferredCandidates, filteredCandidates) { preferred, candidates ->
+        val mergedPreference = newPreferences.first()
+
+        findUsingPreferenceFromCandidates(
+            bake(preferredCandidates.first().filterIsInstance<MaybeExcludedMedia.Included>()),
+            mergedPreference.copy(alliance = ANY_FILTER),
+        )?.let { return it }
+
+        if (!allowNonPreferred) return null
+
+        return findUsingPreferenceFromCandidates(
+            bake(filteredCandidates.first().filterIsInstance<MaybeExcludedMedia.Included>()),
+            mergedPreference.copy(
+                alliance = ANY_FILTER,
+                resolution = ANY_FILTER,
+                subtitleLanguageId = ANY_FILTER,
+                mediaSourceId = ANY_FILTER,
+            ),
+        )
+    }
+
+    override suspend fun tryFindFromCandidateMedia(
+        candidateMedia: List<Media>,
+        blacklistMediaIds: Set<String>,
+        allowNonPreferred: Boolean,
+    ): Media? {
+        if (candidateMedia.isEmpty()) return null
+
+        val context = mediaSelectorContext.first { it.allFieldsLoaded() }
+        val settings = mediaSelectorSettings.first()
+        val defaultPreference = savedDefaultPreference.first()
+        val mergedPreference = newPreferences.first()
+
+        fun bake(candidates: List<MaybeExcludedMedia.Included>): List<MaybeExcludedMedia.Included> {
+            return candidates.filter { it.result.mediaId !in blacklistMediaIds }
+        }
+
+        val filtered = algorithm.filterMediaList(candidateMedia, defaultPreference, settings, context)
+            .let { algorithm.sortMediaList(it, settings, context) }
+
+        val preferred = algorithm.filterByPreference(filtered, mergedPreference)
+
+        findUsingPreferenceFromCandidates(
+            bake(preferred.filterIsInstance<MaybeExcludedMedia.Included>()),
+            mergedPreference.copy(alliance = ANY_FILTER),
+        )?.let { return it }
+
+        if (!allowNonPreferred) return null
+
+        return findUsingPreferenceFromCandidates(
+            bake(filtered.filterIsInstance<MaybeExcludedMedia.Included>()),
+            mergedPreference.copy(
+                alliance = ANY_FILTER,
+                resolution = ANY_FILTER,
+                subtitleLanguageId = ANY_FILTER,
+                mediaSourceId = ANY_FILTER,
+            ),
+        )
+    }
+
+    override suspend fun selectFromMediaSources(
+        candidateSources: List<String>,
+        overrideUserSelection: Boolean,
+        blacklistMediaIds: Set<String>,
+        allowNonPreferred: Boolean
+    ): Media? {
+        val selected = findFromMediaSources(
+            candidateSources = candidateSources,
+            blacklistMediaIds = blacklistMediaIds,
+            allowNonPreferred = allowNonPreferred,
+        ) ?: return null
+
+        return if (overrideUserSelection) {
+            if (selectImpl(selected, updatePreference = false)) {
+                selected
+            } else {
+                null
+            }
+        } else {
+            selectDefault(selected)
+        }
+    }
+
+    override suspend fun findFromMediaSources(
+        candidateSources: List<String>,
+        blacklistMediaIds: Set<String>,
+        allowNonPreferred: Boolean,
+    ): Media? {
+        if (candidateSources.isEmpty()) return null
+
+        fun bake(candidates: List<MaybeExcludedMedia.Included>): List<MaybeExcludedMedia.Included> {
+            return candidates.filter { it.result.mediaSourceId in candidateSources && it.result.mediaId !in blacklistMediaIds }
+                .sortedBy { candidateSources.indexOf(it.result.mediaSourceId) }
+        }
+
+        return combine(preferredCandidates, filteredCandidates) { preferred, candidates ->
             val preferredSelected = findUsingPreferenceFromCandidates(
                 bake(preferred.filterIsInstance<MaybeExcludedMedia.Included>()),
                 newPreferences.first().copy(alliance = ANY_FILTER),
@@ -791,16 +893,6 @@ class DefaultMediaSelector(
         }
             .filterNotNull()
             .first()
-
-        return if (overrideUserSelection) {
-            if (selectImpl(selected, updatePreference = false)) {
-                selected
-            } else {
-                null
-            }
-        } else {
-            selectDefault(selected)
-        }
     }
 
     @OptIn(UnsafeOriginalMediaAccess::class)

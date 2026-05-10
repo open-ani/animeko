@@ -55,6 +55,8 @@ import me.him188.ani.app.ui.lang.settings_media_prefer_source_type_description
 import me.him188.ani.app.ui.lang.settings_media_preference_description
 import me.him188.ani.app.ui.lang.settings_media_preference_override_notice
 import me.him188.ani.app.ui.lang.settings_media_preference_title
+import me.him188.ani.app.ui.lang.settings_media_probe_concurrency
+import me.him188.ani.app.ui.lang.settings_media_probe_concurrency_description
 import me.him188.ani.app.ui.lang.settings_media_resolution
 import me.him188.ani.app.ui.lang.settings_media_resolution_description
 import me.him188.ani.app.ui.lang.settings_media_show_disabled
@@ -320,6 +322,26 @@ internal fun SettingsScope.MediaSelectionGroup(
                         },
                         title = { Text(stringResource(Lang.settings_media_fast_select_web)) },
                         description = { Text(stringResource(Lang.settings_media_fast_select_web_description)) },
+                    )
+
+                    HorizontalDividerItem()
+
+                    DropdownItem(
+                        selected = { mediaSelectorSettings.effectiveFastSelectWebProbeConcurrency },
+                        values = { MediaSelectorSettings.FastSelectWebProbeConcurrencyOptions },
+                        itemText = { value ->
+                            Text(value.toString())
+                        },
+                        onSelect = {
+                            state.mediaSelectorSettingsState.update(
+                                mediaSelectorSettings.copy(
+                                    fastSelectWebProbeConcurrency = it,
+                                ),
+                            )
+                        },
+                        title = { Text(stringResource(Lang.settings_media_probe_concurrency)) },
+                        description = { Text(stringResource(Lang.settings_media_probe_concurrency_description)) },
+                        enabled = mediaSelectorSettings.fastSelectWebKind,
                     )
 
                     HorizontalDividerItem()
