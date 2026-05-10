@@ -3,6 +3,7 @@ package me.him188.ani.app.ui.settings.tabs.app
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.text.intl.Locale
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.SupportedLocales
@@ -25,7 +26,7 @@ internal actual fun SettingsScope.LanguageSettingsPlatform(
 
     DropdownItem(
         selected = { uiSettings.appLanguage },
-        values = { SupportedLocales },
+        values = { listOf<Locale?>(null) + SupportedLocales },
         itemText = { Text(renderLocale(it)) },
         onSelect = {
             state.update(uiSettings.copy(appLanguage = it))
