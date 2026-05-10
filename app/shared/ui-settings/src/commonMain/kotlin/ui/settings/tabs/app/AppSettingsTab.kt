@@ -62,6 +62,7 @@ import me.him188.ani.app.ui.lang.settings_app_nsfw_content
 import me.him188.ani.app.ui.lang.settings_app_nsfw_display
 import me.him188.ani.app.ui.lang.settings_app_nsfw_hide
 import me.him188.ani.app.ui.lang.settings_app_search
+import me.him188.ani.app.ui.lang.settings_app_language_system
 import me.him188.ani.app.ui.lang.settings_app_use_new_search_api
 import me.him188.ani.app.ui.lang.settings_app_use_new_search_api_description
 import me.him188.ani.app.ui.lang.settings_player
@@ -559,7 +560,7 @@ internal expect fun SettingsScope.PlayerGroupPlatform(
 @Composable
 internal fun renderLocale(it: Locale?): String {
     if (it == null) {
-        return "系统语言"
+        return stringResource(Lang.settings_app_language_system)
     }
 
     // The following code does not need to be localized

@@ -160,6 +160,7 @@
     <string name="settings_app_light_up_mode">Highlighting mode</string>
     <string name="settings_app_light_up_mode_description">Highlight the episodes that have already been watched, instead of the ones about to be watched</string>
     <string name="settings_app_language">Language</string>
+    <string name="settings_app_language_system">System language</string>
     <string name="settings_app_language_restart">Restart to take effect</string>
     <string name="settings_app_close_behavior">Close behavior</string>
     <string name="settings_app_close_behavior_exit">Exit application</string>

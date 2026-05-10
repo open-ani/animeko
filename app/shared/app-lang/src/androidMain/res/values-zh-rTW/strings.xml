@@ -152,6 +152,7 @@
     <string name="settings_app_light_up_mode">點亮模式</string>
     <string name="settings_app_light_up_mode_description">高亮已經看過的劇集，而不是將要看的劇集</string>
     <string name="settings_app_language">語言</string>
+    <string name="settings_app_language_system">系統語言</string>
     <string name="settings_app_language_restart">重新啟動軟體生效</string>
     <string name="settings_app_close_behavior">關閉行為</string>
     <string name="settings_app_close_behavior_exit">關閉應用</string>

@@ -33,9 +33,12 @@ import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_account_popup_login_register
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 显示当前登录的用户信息的横幅, 或者是一个登录按钮.
@@ -61,7 +64,7 @@ internal fun SelfInfoBanner(
         Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = CenterVertically) {
             if (!isLogin) {
                 FilledTonalButton(onLoginClick, Modifier.fillMaxWidth()) {
-                    Text("登录 / 注册")
+                    Text(stringResource(Lang.settings_account_popup_login_register))
                 }
             } else {
                 AvatarImage(
