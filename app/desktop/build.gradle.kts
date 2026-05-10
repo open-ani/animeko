@@ -214,6 +214,9 @@ afterEvaluate {
                     // From your (JBR's) Java Home to Packed Java Home 
                     "bin/jcef_helper.exe" to "bin/jcef_helper.exe",
                     "bin/icudtl.dat" to "bin/icudtl.dat",
+                    "bin/chrome_100_percent.pak" to "bin/chrome_100_percent.pak",
+                    "bin/chrome_200_percent.pak" to "bin/chrome_200_percent.pak",
+                    "bin/resources.pak" to "bin/resources.pak",
                     "bin/v8_context_snapshot.bin" to "bin/v8_context_snapshot.bin",
                 )
 
@@ -225,6 +228,18 @@ afterEvaluate {
                     doLast("copy $sourcePath") {
                         source.copyTo(dest.get().asFile)
                         logger.info("Copied $source to $dest")
+                    }
+                }
+
+                // Copy JCEF locales directory
+                val localesSource = File(javaHome.get()).resolve("bin/locales")
+                val localesDest = destinationDir.dir("bin/locales")
+                if (localesSource.exists()) {
+                    inputs.dir(localesSource)
+                    outputs.dir(localesDest)
+                    doLast("copy locales") {
+                        localesSource.copyRecursively(localesDest.get().asFile, overwrite = true)
+                        logger.info("Copied $localesSource to $localesDest")
                     }
                 }
             }
