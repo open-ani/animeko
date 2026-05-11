@@ -26,7 +26,7 @@
     <string name="settings_tab_danmaku">服务器区域</string>
     <string name="settings_tab_proxy">代理</string>
     <string name="settings_tab_bt">BitTorrent</string>
-    <string name="settings_pikpak_description">使用 PikPak 解析 BT 种子可以改善解析速度，上方 anitorrent 设置对 PikPak 解析无效。</string>
+    <string name="settings_pikpak_description">使用 PikPak 解析 BT 种子可以改善解析速度，需要订阅 PikPak 会员。\n上方 anitorrent 设置对 PikPak 解析无效。</string>
     <string name="settings_pikpak_enabled">启用 PikPak</string>
     <string name="settings_pikpak_username">用户名</string>
     <string name="settings_pikpak_username_placeholder">邮箱 / 手机号</string>

@@ -87,7 +87,7 @@ google-firebase = "22.0.1"
 posthog-android = "3.11.3"
 posthog-java = "1.2.0"
 openapi-generator = "7.13.0"
-mediamp = "0.1.8"
+mediamp = "0.1.11"
 compose-native-tray = "1.3.0"
 
 [plugins]

@@ -289,6 +289,7 @@ tasks.withType(KotlinCompilationTask::class) {
 
 tasks.withType(AbstractJPackageTask::class) {
     doLast {
+        val triple = getOsTriple()
         fun unpackJar(jar: File, dest: File, filter: (ZipEntry) -> Boolean = { true }) {
             val zip = ZipFile(jar)
             zip.use {
@@ -308,18 +309,29 @@ tasks.withType(AbstractJPackageTask::class) {
             }
         }
 
-        val jarsToUnpack = listOf(
-            "anitorrent-native",
-            "anitorrent-native-desktop",
-        )
-
-        destinationDir.get().asFile.walk().filter { file ->
-            jarsToUnpack.any { file.name.startsWith(it) && file.extension == "jar" }
-        }.forEach { file ->
-            unpackJar(file, file.parentFile) {
-                it.name.endsWith("dylib") || it.name.endsWith("so") || it.name.endsWith("dll")
+        fun isRuntimePayloadJar(file: File): Boolean {
+            if (!file.isFile || file.extension != "jar") {
+                return false
             }
+            val name = file.name
+            return name.startsWith("mediamp-mpv-runtime-") ||
+                    name.startsWith("mediamp-ffmpeg-runtime-") ||
+                    (name.startsWith("anitorrent-native-desktop-") && name.contains("-$triple-"))
         }
+
+        destinationDir.get().asFile
+            .walk()
+            .filter(::isRuntimePayloadJar)
+            .forEach { jar ->
+                unpackJar(jar, jar.parentFile) {
+                    !(it.name.contains("MANIFEST") || it.name.contains("META-INF"))
+                }
+                jar.delete()
+
+                logger.lifecycle(
+                    "Extracted ${jar.name} into ${jar.parentFile} and deleted the jars",
+                )
+            }
     }
 }
 

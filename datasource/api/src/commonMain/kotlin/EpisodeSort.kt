@@ -65,7 +65,7 @@ sealed class EpisodeSort : Comparable<EpisodeSort> {
             return ""
         }
         if (number.toInt().toFloat() == number) {
-            if (number < 10 && number >= 0) {
+            if (number in 0.0..<10.0) {
                 return "0${number.toInt()}"
             }
             return number.toInt().toString()
@@ -115,8 +115,7 @@ sealed class EpisodeSort : Comparable<EpisodeSort> {
 
         val otherFloat = other.number
         val thisFloat = number // one Normal one Special
-        if (otherFloat != thisFloat) return false
-        return other.raw == raw
+        return otherFloat == thisFloat && other.raw == raw
     }
 
     final override fun hashCode(): Int {
@@ -137,7 +136,7 @@ sealed class EpisodeSort : Comparable<EpisodeSort> {
                 if (typeCom != 0) return typeCom
                 if (number == null) return -1 // null < not null
                 if (other.number == null) return 0 // null == null
-                val numCom = number!!.compareTo(other.number!!) // Compare by num
+                val numCom = number.compareTo(other.number) // Compare by num
                 if (numCom != 0) return numCom
                 return raw.compareTo(other.raw) // Compare by raw when type is eq
             }

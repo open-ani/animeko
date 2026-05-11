@@ -26,7 +26,7 @@
     <string name="settings_tab_danmaku">Server Region</string>
     <string name="settings_tab_proxy">Proxy</string>
     <string name="settings_tab_bt">BitTorrent</string>
-    <string name="settings_pikpak_description">Resolve BitTorrent magnets through PikPak\'s cloud offline servers for faster playback. The anitorrent settings above do not apply to PikPak.</string>
+    <string name="settings_pikpak_description">Resolve BitTorrent magnets through PikPak\'s cloud offline servers for faster playback. Premium subscription is required.\nThe anitorrent settings above do not apply to PikPak.</string>
     <string name="settings_pikpak_enabled">Enable PikPak</string>
     <string name="settings_pikpak_username">Username</string>
     <string name="settings_pikpak_username_placeholder">Email or phone</string>

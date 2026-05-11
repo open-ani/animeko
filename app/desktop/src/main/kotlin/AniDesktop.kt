@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -115,8 +115,11 @@ import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isWindows
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
+import org.openani.mediamp.ffmpeg.FFmpegKit
 import org.openani.mediamp.vlc.VlcMediampPlayer
 import java.awt.Frame
+import java.io.File
+import java.nio.file.Paths
 import java.util.Locale
 import kotlin.io.path.absolutePathString
 import kotlin.system.exitProcess
@@ -303,11 +306,27 @@ object AniDesktop {
             }
         }
 
-        val loadAnitorrentJob = coroutineScope.launch(Dispatchers.IO) {
+        val loadLibraryJob = coroutineScope.launch(Dispatchers.IO) {
             try {
                 AnitorrentLibraryLoader.loadLibraries()
             } catch (e: Throwable) {
                 logger.error(e) { "Failed to load anitorrent libraries" }
+            }
+
+            try {
+                if (currentProcessName()?.contains("java") == true) {
+                    // dev 环境将 runtime libraries 解压到 temp 里
+                    FFmpegKit.useDefaultRuntimeLibraryDirectory()
+                } else {
+                    // 为什么是这个目录?
+                    // CMP 打包 task 会把 resource dir 放到 jar 包的目录里
+                    // 我们 hack 打包 task 把包含 runtime library 的 jar 包解压到那一堆 jar 包的目录
+                    val userDir = File(System.getProperty("compose.application.resources.dir"))
+                        .parentFile.absolutePath
+                    FFmpegKit.setRuntimeLibraryDirectory(userDir, false)
+                }
+            } catch (e: Throwable) {
+                logger.error(e) { "Failed to load FFmpeg and mpv." }
             }
         }
 
@@ -316,7 +335,7 @@ object AniDesktop {
             logger.info { "[JCEF init] waiting for anitorrent load" }
             try {
                 analyticsInitializer.join()
-                loadAnitorrentJob.join()
+                loadLibraryJob.join()
             } catch (_: Throwable) {
             }
             logger.info { "[JCEF init] anitorrent loaded" }
@@ -336,7 +355,7 @@ object AniDesktop {
                 proxyAuthPassword = proxySettings?.authorization?.password,
             )
 
-            logger.info { "[JCEF init] Initialize done, now prepare VLC libraries" }
+            logger.info { "[JCEF init] Initialize done, now prepare FFmpeg libraries" }
 
             // 预先加载 VLC, https://github.com/open-ani/ani/issues/618
             kotlin.runCatching {
@@ -511,6 +530,14 @@ object AniDesktop {
 
         }
         // unreachable here
+    }
+
+    fun currentProcessName(): String? {
+        return ProcessHandle.current()
+            .info()
+            .command()
+            .map { Paths.get(it).fileName.toString() }
+            .orElse(null)
     }
 }
 

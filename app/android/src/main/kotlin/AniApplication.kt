@@ -185,6 +185,7 @@ class AniApplication : Application() {
         ExternalContentProviderFactoryImpl.initializeApp(this)
         startupTimeMonitor.mark(StepName.Analytics)
         FFmpegKit.initialize(this)
+        FFmpegKit.useDefaultRuntimeLibraryDirectory()
 
         scope.launch {
             Analytics.recordAppStart(startupTimeMonitor)

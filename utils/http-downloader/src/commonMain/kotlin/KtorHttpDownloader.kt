@@ -235,13 +235,13 @@ open class KtorHttpDownloader(
                 logger.info { "Download cancelled for $downloadId" }
                 throw e
             } catch (e: Throwable) {
-                logger.info { "Download failed for $downloadId: ${e.message}" }
+                logger.error(e) { "Download failed for $downloadId" }
                 updateState(downloadId) {
                     it.copy(
                         status = FAILED,
                         error = DownloadError(
                             code = if (e is M3u8Exception) e.errorCode else DownloadErrorCode.UNEXPECTED_ERROR,
-                            technicalMessage = e.message,
+                            technicalMessage = e.toString(),
                         ),
                         timestamp = clock.now().toEpochMilliseconds(),
                     )
