@@ -227,17 +227,14 @@ afterEvaluate {
 
                 dirsNames.forEach { (sourcePath, destPath) ->
                     val source = File(javaHome.get()).resolve(sourcePath)
-                    val input = inputs.file(source)
-                    if (sourcePath in optionalJcefRuntimeFiles) {
-                        input.optional()
+                    if (sourcePath in optionalJcefRuntimeFiles && !source.exists()) {
+                        logger.info("Skipped missing optional JCEF runtime file $source")
+                        return@forEach
                     }
+                    inputs.file(source)
                     val dest = destinationDir.file(destPath)
                     outputs.file(dest)
                     doLast("copy $sourcePath") {
-                        if (!source.exists()) {
-                            logger.info("Skipped missing optional JCEF runtime file $source")
-                            return@doLast
-                        }
                         source.copyTo(dest.get().asFile)
                         logger.info("Copied $source to $dest")
                     }
