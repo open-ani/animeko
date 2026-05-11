@@ -62,6 +62,7 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
         defaultSettings,
     )
     val preferredWebMediaSource = MutableStateFlow<String?>(null)
+    private var preferredWebMediaSourceRequestCount = 0
 
     data class Context(
         val scope: CoroutineScope,
@@ -93,11 +94,15 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
             }
         }
         suite.registerComponent<GetPreferredWebMediaSourceUseCase> {
-            GetPreferredWebMediaSourceUseCase { preferredWebMediaSource }
+            GetPreferredWebMediaSourceUseCase {
+                preferredWebMediaSourceRequestCount++
+                preferredWebMediaSource
+            }
         }
 
         // set null by default
         preferredWebMediaSource.value = null
+        preferredWebMediaSourceRequestCount = 0
         config(testScope, suite)
 
 
@@ -296,6 +301,137 @@ class AutoSelectExtensionTest : AbstractPlayerExtensionTest() {
 
         // Check result: should select from the preferred source "web2"
         state.assertSelected(media2, suite)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `select preferred web source waits for preferred source before fast select`() = runTest {
+        val web1: CompletableDeferred<List<Media>>
+        val web2: CompletableDeferred<List<Media>>
+        val context = createCase { _, suite ->
+            web1 = suite.mediaSelectorTestBuilder.delayedMediaSource("web1", kind = MediaSourceKind.WEB)
+            web2 = suite.mediaSelectorTestBuilder.delayedMediaSource("web2", kind = MediaSourceKind.WEB)
+            preferredWebMediaSource.value = "web2"
+        }
+        val (testScope, suite, state) = context
+
+        initializeTest(
+            suite,
+            mediaSelectorSettings = defaultSettings.copy(fastSelectWebKind = true, preferKind = MediaSourceKind.WEB),
+            preference = MediaPreference.Any.copy(alliance = "A1", mediaSourceId = "web2"),
+        )
+        startMediaFetcher(state, testScope)
+
+        val media1 = suite.mediaSelectorTestBuilder.createMedia("web1", kind = MediaSourceKind.WEB)
+        val mediaA2 = suite.mediaSelectorTestBuilder.createMedia("web2", kind = MediaSourceKind.WEB, alliance = "A2")
+            .copy(mediaId = "web2.A2")
+        val mediaA1 = suite.mediaSelectorTestBuilder.createMedia("web2", kind = MediaSourceKind.WEB, alliance = "A1")
+            .copy(mediaId = "web2.A1")
+
+        web1.complete(listOf(media1))
+        advanceUntilIdle()
+        state.assertSelected(null, suite)
+
+        web2.complete(listOf(mediaA2, mediaA1))
+        advanceUntilIdle()
+        state.assertSelected(mediaA1, suite)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `select preferred web source setting disabled skips preferred source`() = runTest {
+        val web1: CompletableDeferred<List<Media>>
+        val web2: CompletableDeferred<List<Media>>
+        val settings = defaultSettings.copy(
+            fastSelectWebKind = true,
+            preferKind = MediaSourceKind.WEB,
+            preferLastSelectedWebSource = false,
+        )
+        val context = createCase { _, suite ->
+            mediaSelectorSettings.value = settings
+            web1 = suite.mediaSelectorTestBuilder.delayedMediaSource("web1", kind = MediaSourceKind.WEB)
+            web2 = suite.mediaSelectorTestBuilder.delayedMediaSource("web2", kind = MediaSourceKind.WEB)
+            preferredWebMediaSource.value = "web2"
+        }
+        val (testScope, suite, state) = context
+
+        initializeTest(
+            suite,
+            mediaSelectorSettings = settings,
+            preference = MediaPreference.Any.copy(alliance = "A1", mediaSourceId = "web2"),
+        )
+        startMediaFetcher(state, testScope)
+
+        val media1 = suite.mediaSelectorTestBuilder.createMedia("web1", kind = MediaSourceKind.WEB)
+        web1.complete(listOf(media1))
+        advanceUntilIdle()
+        assertEquals(0, preferredWebMediaSourceRequestCount)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `select preferred web source falls back to another channel from same source`() = runTest {
+        val web1: CompletableDeferred<List<Media>>
+        val web2: CompletableDeferred<List<Media>>
+        val context = createCase { _, suite ->
+            web1 = suite.mediaSelectorTestBuilder.delayedMediaSource("web1", kind = MediaSourceKind.WEB)
+            web2 = suite.mediaSelectorTestBuilder.delayedMediaSource("web2", kind = MediaSourceKind.WEB)
+            preferredWebMediaSource.value = "web2"
+        }
+        val (testScope, suite, state) = context
+
+        initializeTest(
+            suite,
+            mediaSelectorSettings = defaultSettings.copy(fastSelectWebKind = true, preferKind = MediaSourceKind.WEB),
+            preference = MediaPreference.Any.copy(alliance = "A1", mediaSourceId = "web2"),
+        )
+        startMediaFetcher(state, testScope)
+
+        val media1 = suite.mediaSelectorTestBuilder.createMedia("web1", kind = MediaSourceKind.WEB)
+        val mediaA2 = suite.mediaSelectorTestBuilder.createMedia("web2", kind = MediaSourceKind.WEB, alliance = "A2")
+            .copy(mediaId = "web2.A2")
+
+        web1.complete(listOf(media1))
+        advanceUntilIdle()
+        state.assertSelected(null, suite)
+
+        web2.complete(listOf(mediaA2))
+        advanceUntilIdle()
+        state.assertSelected(mediaA2, suite)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `select preferred web source falls back after preferred source fails`() = runTest {
+        val web1: CompletableDeferred<List<Media>>
+        val web2: CompletableDeferred<List<Media>>
+        val context = createCase { _, suite ->
+            web1 = suite.mediaSelectorTestBuilder.delayedMediaSource("web1", kind = MediaSourceKind.WEB)
+            web2 = suite.mediaSelectorTestBuilder.delayedMediaSource("web2", kind = MediaSourceKind.WEB)
+            preferredWebMediaSource.value = "web2"
+        }
+        val (testScope, suite, state) = context
+
+        initializeTest(
+            suite,
+            mediaSelectorSettings = defaultSettings.copy(fastSelectWebKind = true, preferKind = MediaSourceKind.WEB),
+            preference = MediaPreference.Any.copy(alliance = "A1", mediaSourceId = "web2"),
+        )
+        startMediaFetcher(state, testScope)
+
+        val media1 = suite.mediaSelectorTestBuilder.createMedia("web1", kind = MediaSourceKind.WEB)
+
+        web2.completeExceptionally(IllegalStateException("web2 failed"))
+        advanceUntilIdle()
+        state.assertSelected(null, suite)
+
+        web1.complete(listOf(media1))
+        advanceUntilIdle()
+        state.assertSelected(media1, suite)
 
         testScope.cancel()
     }

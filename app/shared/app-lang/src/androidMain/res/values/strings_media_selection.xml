@@ -27,6 +27,8 @@
     <string name="settings_media_source_no_preference">No preference</string>
     <string name="settings_media_prefer_source_type">Preferred Data Source Type</string>
     <string name="settings_media_prefer_source_type_description">Online sources load faster but may have lower resolution, BT sources are the opposite</string>
+    <string name="settings_media_prefer_last_web_source">Prioritize Last Selected Online Source</string>
+    <string name="settings_media_prefer_last_web_source_description">When playing another episode of the same anime, wait for the last manually selected online source first, and use another source only if it cannot be selected</string>
     <string name="settings_media_fast_select_web">Quick Select Online Sources</string>
     <string name="settings_media_fast_select_web_description">Sort by data source, and select immediately when higher-ranked sources complete their query, without waiting for other sources. Can significantly reduce waiting time</string>
     <string name="settings_media_wait_time_none">Don\'t wait</string>

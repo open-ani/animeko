@@ -126,7 +126,29 @@ Sealed class [`MaybeExcludedMedia`][MaybeExcludedMedia] 表示一个可能被排
 
 参考代码中 [`MediaSelectorFilterSortAlgorithm.filterMediaList`][MediaSelectorFilterSortAlgorithm]。
 
+## 自动选择阶段
+
+自动选择的入口是 `MediaSelectorAutoSelectUseCase`。如果当前条目记录了用户上次手选的 Web 数据源，
+会先强制尝试这个源，再进入 fast select、缓存和默认兜底等剩余策略。
+
+例如上一集手动选择了数据源 A 的线路 A1：
+
+1. 必须等待数据源 A 查询完成，失败也算完成。
+2. 如果 A 查询成功且有 A1，就播放 A1。
+3. 如果 A 查询成功但没有 A1，就播放同一个数据源 A 的其他可选线路，例如 A2。
+4. 只有 A 查询完成后仍然不能选择 A，才继续选择别的数据源。
+
+没有记录偏好 Web 源，或偏好 Web 源完成后仍不能选择时，会继续执行后续规则。后续规则会并发等待，
+谁先成功选出资源就使用谁的结果：
+
+1. **快速 Web 选择**：仅在偏好类型为 Web 且启用快速选择时执行。低 Tier Web 源先完成且有结果时可以立即选择；
+   如果等待超过 `fastSelectWebLowTierToleranceDuration`，就从已经成功查询的 Web 源里选一个。
+2. **缓存优先**：如果本地缓存源有可选资源，优先选择缓存；会先尝试满足当前偏好的缓存，再选择其他缓存。
+3. **默认兜底**：等待需要的查询完成后，按过滤、排序和偏好规则选择默认资源。通常会等待所有源完成；
+   如果设置了偏好类型，则等待该类型完成即可开始选择。
+
+如果偏好 Web 源已经确认不可用，兜底会允许忽略这个失效的 `mediaSourceId` 偏好，避免一直卡在无法选择的源上。
+
 [MediaSelectorFilterSortAlgorithm]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/selector/filter/MediaSelectorFilterSortAlgorithm.kt
 
 [MaybeExcludedMedia]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/selector/MaybeExcludedMedia.kt
-

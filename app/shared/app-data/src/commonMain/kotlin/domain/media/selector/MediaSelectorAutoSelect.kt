@@ -80,6 +80,32 @@ class MediaSelectorAutoSelect(
     }
 
     /**
+     * 等待后续查询完成后从所有可用源里选择一个。
+     *
+     * 用于记忆 Web 源已经失败或不可选的场景。此时不能继续强制使用已失效的 `mediaSourceId` 偏好，
+     * 否则兜底选择会被卡在这个源上。
+     */
+    suspend fun awaitCompletedAndSelectAnySource(
+        mediaFetchSession: MediaFetchSession,
+        waitForKind: Flow<MediaSourceKind?> = flowOf(null)
+    ): Media? {
+        mediaFetchSession.awaitCompletion { completedConditions ->
+            return@awaitCompletion waitForKind.first()?.let {
+                completedConditions[it]
+            } ?: completedConditions.allCompleted()
+        }
+        if (mediaSelector.selected.value == null) {
+            return mediaSelector.trySelectFromMediaSources(
+                mediaFetchSession.mediaSourceResults.map { it.mediaSourceId },
+                overrideUserSelection = false,
+                blacklistMediaIds = emptySet(),
+                allowNonPreferred = true,
+            )
+        }
+        return null
+    }
+
+    /**
      * 快速选择 Web 数据源的 [Media]. 逻辑详见 [MediaSelector] 中 "快速选择" 部分的说明.
      *
      * 返回成功选择的 [Media] 对象. 当用户已经手动选择过一个别的 [Media], 或者没有可选的 [Media] 时返回 `null`.
@@ -171,7 +197,12 @@ class MediaSelectorAutoSelect(
     }
 
     /**
-     * 快速选择之前用户手选的源, 没选到就一直挂起
+     * 优先选择之前用户手选的 Web 源。
+     *
+     * 如果上次选了数据源 A，就强制优先播放 A。该函数必须等待 A 查询完成，失败也算完成。
+     * A 查询成功时，如果有上次选择的线路 A1，就按普通偏好规则播放 A1；
+     * 如果没有 A1，就允许播放同一个数据源 A 的其他可选线路，例如 A2。
+     * 只有 A 查询完成后仍然不能选择 A，才返回 `null`，让调用方继续走剩余算法选择别的源。
      */
     suspend fun selectPreferredWebSource(
         mediaFetchSession: MediaFetchSession,
@@ -180,12 +211,16 @@ class MediaSelectorAutoSelect(
         if (preferredWebMediaSourceId == null) return null
 
         // 等待这个源查询完成
-        mediaFetchSession.mediaSourceResults
+        val preferredSource = mediaFetchSession.mediaSourceResults
             .firstOrNull { it.mediaSourceId == preferredWebMediaSourceId && it.kind == MediaSourceKind.WEB }
-            ?.awaitCompletion()
+            ?: return null
+        preferredSource.awaitCompletion()
+        if (preferredSource.state.value !is MediaSourceFetchState.Succeed) {
+            return null
+        }
 
-        // 尝试选择, 没有就一直挂起
-        return mediaSelector.selectFromMediaSources(
+        // 尝试选择. 没有候选时返回 null, 允许调用方继续执行其他自动选择策略.
+        return mediaSelector.trySelectFromMediaSources(
             listOf(preferredWebMediaSourceId),
             overrideUserSelection = false,
             blacklistMediaIds = emptySet(),

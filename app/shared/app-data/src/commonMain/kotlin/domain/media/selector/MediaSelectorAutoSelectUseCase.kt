@@ -51,6 +51,12 @@ class MediaSelectorAutoSelectUseCaseImpl(
             val preferKindFlow = mediaSelectorSettingsFlow.map { it.preferKind }
 
             val autoSelector = mediaSelector.autoSelect
+            val subjectId = session.request.first().subjectId.toIntOrNull()
+            val preferredWebMediaSourceId = if (mediaSelectorSettingsFlow.first().preferLastSelectedWebSource) {
+                subjectId?.let { getPreferredWebMediaSource(it).first() }
+            } else {
+                null
+            }
 
             // #355 播放时自动启用上次临时启用选择的数据源
             launch {
@@ -60,34 +66,25 @@ class MediaSelectorAutoSelectUseCaseImpl(
             }
 
             /**
-             * 为什么可以让 fast select 和 preferred select 一起跑?
-             * 
-             * 如果是热门资源, 通常不需要用户自己设置 web source preference, fast select 很快立刻就可以选好.
-             * 对于冷门资源, fast select 很大概率在 tolerance 时间内也选不到合适的, 但这时 preferred select 可能在这之内选好.
-             * 
-             * 所以一起跑, 不是 fast select 先选好, 就是 preferred 先选好, 总之能尽快选出一个合适的.
-             * 无论是 preferred select 或者 fast select 的结果, 对于用户来说都是比较优质的.
-             * 
-             * 如果 preferred 刚好也是 fast select 的一个结果也无所谓, 哪个 clause 快跑那个, 结果都是一样的.
+             * 严格优先播放用户上次手动选择的 Web 数据源。
+             *
+             * 如果上次选了数据源 A，就强制优先播放 A，而不是让 fast select、缓存或默认兜底先抢到结果。
+             * 这里必须等待 A 查询完成，失败也算完成。A 查询成功时，如果有上次选择的线路 A1，就播放 A1；
+             * 如果没有 A1，就播放同一个数据源 A 的其他可选线路，例如 A2。
+             * 只有 A 查询完成后仍然不能选择 A，才继续走剩余算法选择别的源。
              */
+            preferredWebMediaSourceId?.let {
+                val result = autoSelector.selectPreferredWebSource(session, preferredWebMediaSourceId)
+                logger.info { "selectPreferredWebSource result: $result" }
+                if (result != null) return@coroutineScope
+            }
+
             cancellableCoroutineScope {
                 fun <T> SelectBuilder<T>.resulting(block: suspend CoroutineScope.() -> T) {
                     this@cancellableCoroutineScope.async { block() }.onAwait { it }
                 }
 
                 select {
-                    // 选择用户偏好的源
-                    resulting {
-                        // subjectId 无效就等别的 clause.
-                        val subjectId = session.request.first().subjectId.toIntOrNull() ?: awaitCancellation()
-                        val result = autoSelector.selectPreferredWebSource(
-                            session, getPreferredWebMediaSource(subjectId).first(),
-                        )
-
-                        logger.info { "selectPreferredWebSource result: $result" }
-                        result ?: awaitCancellation()
-                    }
-
                     // 快速自动选择数据源: 当按规则快速选择相应 Tier 的数据源. 仅在偏好 Web 时并且启用了快速选择时才执行.
                     resulting {
                         val selectorSettings = mediaSelectorSettingsFlow.first()
@@ -117,8 +114,12 @@ class MediaSelectorAutoSelectUseCaseImpl(
 
                     // 兜底策略: 等所有数据源都准备好后, 选择一个.
                     resulting {
-                        val result = autoSelector.awaitCompletedAndSelectDefault(session, preferKindFlow)
-                        logger.info { "awaitCompletedAndSelectDefault result: $result" }
+                        val result = if (preferredWebMediaSourceId == null) {
+                            autoSelector.awaitCompletedAndSelectDefault(session, preferKindFlow)
+                        } else {
+                            autoSelector.awaitCompletedAndSelectAnySource(session, preferKindFlow)
+                        }
+                        logger.info { "awaitCompletedAndSelectFallback result: $result" }
                         result
                     }
                 }
@@ -130,4 +131,3 @@ class MediaSelectorAutoSelectUseCaseImpl(
 
     override fun getKoin(): Koin = koin
 }
-

@@ -48,6 +48,8 @@ import me.him188.ani.app.ui.lang.settings_media_hide_single_episode_description
 import me.him188.ani.app.ui.lang.settings_media_max_wait_time
 import me.him188.ani.app.ui.lang.settings_media_max_wait_time_description
 import me.him188.ani.app.ui.lang.settings_media_none
+import me.him188.ani.app.ui.lang.settings_media_prefer_last_web_source
+import me.him188.ani.app.ui.lang.settings_media_prefer_last_web_source_description
 import me.him188.ani.app.ui.lang.settings_media_prefer_seasons
 import me.him188.ani.app.ui.lang.settings_media_prefer_seasons_description
 import me.him188.ani.app.ui.lang.settings_media_prefer_source_type
@@ -306,6 +308,19 @@ internal fun SettingsScope.MediaSelectionGroup(
                     description = { Text(stringResource(Lang.settings_media_prefer_source_type_description)) },
                 )
             }
+
+            HorizontalDividerItem()
+
+            SwitchItem(
+                checked = mediaSelectorSettings.preferLastSelectedWebSource,
+                onCheckedChange = {
+                    state.mediaSelectorSettingsState.update(
+                        mediaSelectorSettings.copy(preferLastSelectedWebSource = it),
+                    )
+                },
+                title = { Text(stringResource(Lang.settings_media_prefer_last_web_source)) },
+                description = { Text(stringResource(Lang.settings_media_prefer_last_web_source_description)) },
+            )
 
             HorizontalDividerItem()
 

@@ -55,6 +55,10 @@ constructor(
      */
     val fastSelectWebKind: Boolean = true,
     /**
+     * 自动选择时强制优先使用上次手动选择的在线数据源
+     */
+    val preferLastSelectedWebSource: Boolean = true,
+    /**
      * 给 low tier 源加载的宽容时间, 在这个时间内只接受 low tier 加载完成, 
      * 就算 high tier 比 low tier 率先加载完成也不选择.
      * 超过这个时间就放开 tier 限制, 选择所有加载好的最低 tier 的源.
