@@ -219,13 +219,25 @@ afterEvaluate {
                     "bin/resources.pak" to "bin/resources.pak",
                     "bin/v8_context_snapshot.bin" to "bin/v8_context_snapshot.bin",
                 )
+                val optionalJcefRuntimeFiles = setOf(
+                    "bin/chrome_100_percent.pak",
+                    "bin/chrome_200_percent.pak",
+                    "bin/resources.pak",
+                )
 
                 dirsNames.forEach { (sourcePath, destPath) ->
                     val source = File(javaHome.get()).resolve(sourcePath)
-                    inputs.file(source)
+                    val input = inputs.file(source)
+                    if (sourcePath in optionalJcefRuntimeFiles) {
+                        input.optional()
+                    }
                     val dest = destinationDir.file(destPath)
                     outputs.file(dest)
                     doLast("copy $sourcePath") {
+                        if (!source.exists()) {
+                            logger.info("Skipped missing optional JCEF runtime file $source")
+                            return@doLast
+                        }
                         source.copyTo(dest.get().asFile)
                         logger.info("Copied $source to $dest")
                     }
