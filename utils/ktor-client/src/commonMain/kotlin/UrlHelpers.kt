@@ -9,11 +9,18 @@
 
 package me.him188.ani.utils.ktor
 
+import io.ktor.http.ParametersBuilder
 import io.ktor.http.URLBuilder
+import io.ktor.http.takeFrom
 
 object UrlHelpers {
     fun computeAbsoluteUrl(baseUrl: String, relativeUrl: String): String {
         require(baseUrl.isNotEmpty()) { "baseUrl must not be empty" }
-        return URLBuilder(baseUrl).takeFrom(relativeUrl).buildString()
+        return URLBuilder(baseUrl).apply {
+            if (relativeUrl.isNotBlank()) {
+                encodedParameters = ParametersBuilder()
+                encodedFragment = ""
+            }
+        }.takeFrom(relativeUrl).buildString()
     }
 }

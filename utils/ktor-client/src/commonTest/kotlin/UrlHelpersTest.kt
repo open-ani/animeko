@@ -95,6 +95,26 @@ class UrlHelpersTest {
             "https://example.com/", "",
         )
 
+        val encodedSubjectPath =
+            "/%E6%91%87%E6%BB%9A%E4%B9%83%E6%98%AF%E6%B7%91%E5%A5%B3%E7%9A%84%E7%88%B1%E5%A5%BD%20(2025)%20%5Btmdbid=260523%5D/"
+        case(
+            "http://37.187.76.11:8000$encodedSubjectPath",
+            "http://37.187.76.11:8000/?kw=keyword",
+            encodedSubjectPath,
+        )
+
+        case(
+            "http://192.168.31.2:8080/Downloads/TVAnimeSeason/202410/?raw=true",
+            "http://192.168.31.2:8080/Downloads/TVAnimeSeason/?raw=true",
+            "202410/?raw=true",
+        )
+
+        case(
+            "http://192.168.31.2:8080/Downloads/TVAnimeSeason/202410/?raw=true",
+            "http://192.168.31.2:8080/Downloads/TVAnimeSeason/?raw=true",
+            "/Downloads/TVAnimeSeason/202410/?raw=true",
+        )
+
 //        case(
 //            "/",
 //            "", "",
