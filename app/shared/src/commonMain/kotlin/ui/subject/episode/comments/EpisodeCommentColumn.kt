@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddComment
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -127,7 +128,11 @@ fun EpisodeComment(
             )
         },
         rhsTitle = {
-            Text(if (comment.source == UICommentSource.ANI) "Ani" else "Bangumi")
+            Text(
+                if (comment.source == UICommentSource.ANI) "Animeko" else "Bangumi",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         },
         content = {
             RichText(
