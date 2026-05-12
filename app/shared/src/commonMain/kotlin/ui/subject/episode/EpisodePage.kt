@@ -539,7 +539,6 @@ private fun EpisodeScreenTabletVeryWide(
                                             }
                                         }
                                     },
-                                    shareData = page.shareData,
                                     loadError = page.loadError,
                                     onRetryLoad = {
                                         page.loadError?.let { vm.retryLoad(it) }
@@ -707,7 +706,6 @@ private fun EpisodeScreenContentPhone(
                             }
                         }
                     },
-                    shareData = page.shareData,
                     loadError = page.loadError,
                     onRetryLoad = {
                         page.loadError?.let { vm.retryLoad(it) }
@@ -868,6 +866,7 @@ private fun EpisodeVideo(
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
     val context by rememberUpdatedState(LocalContext.current)
+    val navigator = LocalNavigator.current
 
     // Don't rememberSavable. 刻意让每次切换都是隐藏的
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -1062,6 +1061,8 @@ private fun EpisodeVideo(
                 },
             )
         },
+        shareData = page.shareData,
+        onClickCache = { navigator.navigateSubjectCaches(vm.subjectId) },
         modifier = modifier
             .fillMaxWidth().background(Color.Black)
             .then(if (expanded) Modifier.fillMaxSize() else Modifier.statusBarsPadding()),

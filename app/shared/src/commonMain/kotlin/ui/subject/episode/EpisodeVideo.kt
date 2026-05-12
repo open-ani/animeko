@@ -18,13 +18,18 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.DisplaySettings
-import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -50,6 +55,7 @@ import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.tools.rememberUiMonoTasker
+import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -57,6 +63,7 @@ import me.him188.ani.app.ui.foundation.TextWithBorder
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.cursorVisibility
 import me.him188.ani.app.ui.foundation.icons.AniIcons
+import me.him188.ani.app.ui.foundation.icons.DanmakuOn
 import me.him188.ani.app.ui.foundation.icons.Forward85
 import me.him188.ani.app.ui.foundation.icons.RightPanelClose
 import me.him188.ani.app.ui.foundation.icons.RightPanelOpen
@@ -69,6 +76,7 @@ import me.him188.ani.app.ui.mediafetch.ViewKind
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
 import me.him188.ani.app.ui.mediafetch.request.TestMediaFetchRequest
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
+import me.him188.ani.app.ui.subject.episode.details.components.ShareEpisodeDropdown
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
 import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
@@ -166,6 +174,8 @@ internal fun EpisodeVideoImpl(
     leftBottomTips: @Composable () -> Unit,
     fullscreenSwitchButton: @Composable () -> Unit,
     sideSheets: @Composable (controller: VideoSideSheetsController<EpisodeVideoSideSheetPage>) -> Unit,
+    shareData: MediaShareData,
+    onClickCache: () -> Unit,
     modifier: Modifier = Modifier,
     maintainAspectRatio: Boolean = !expanded,
     isFullscreen: Boolean = expanded,
@@ -209,35 +219,17 @@ internal fun EpisodeVideoImpl(
                             null
                         },
                         actions = {
-                            IconButton({ onClickSkip85(playerState.getCurrentPositionMillis()) }) {
-                                Icon(AniIcons.Forward85, "快进 85 秒")
-                            }
-                            if (expanded) {
-                                IconButton(
-                                    { sheetsController.navigateTo(EpisodeVideoSideSheetPage.MEDIA_SELECTOR) },
-                                    Modifier.testTag(TAG_SHOW_MEDIA_SELECTOR),
-                                ) {
-                                    Icon(Icons.Rounded.DisplaySettings, contentDescription = "数据源")
-                                }
-                            }
-                            IconButton(
-                                { sheetsController.navigateTo(EpisodeVideoSideSheetPage.PLAYER_SETTINGS) },
-                                Modifier.testTag(TAG_SHOW_SETTINGS),
-                            ) {
-                                Icon(Icons.Rounded.Settings, contentDescription = "设置")
-                            }
-                            if (expanded && LocalPlatform.current.isDesktop()) {
-                                IconButton(
-                                    { onToggleSidebar(!sidebarVisible) },
-                                    Modifier.testTag(TAG_COLLAPSE_SIDEBAR),
-                                ) {
-                                    if (sidebarVisible) {
-                                        Icon(AniIcons.RightPanelClose, contentDescription = "折叠侧边栏")
-                                    } else {
-                                        Icon(AniIcons.RightPanelOpen, contentDescription = "展开侧边栏")
-                                    }
-                                }
-                            }
+                            EpisodeVideoTopBarActions(
+                                playerState = playerState,
+                                expanded = expanded,
+                                onClickSkip85 = onClickSkip85,
+                                sheetsController = sheetsController,
+                                shareData = shareData,
+                                onClickCache = onClickCache,
+                                playerControllerState = playerControllerState,
+                                sidebarVisible = sidebarVisible,
+                                onToggleSidebar = onToggleSidebar,
+                            )
                         },
                         // VideoScaffold already applies top/horizontal insets around the top bar.
                         // Passing the same insets into TopAppBar duplicates the status-bar padding on iOS portrait.
@@ -467,6 +459,102 @@ internal fun EpisodeVideoImpl(
     }
 }
 
+@Composable
+private fun EpisodeVideoTopBarActions(
+    playerState: MediampPlayer,
+    expanded: Boolean,
+    onClickSkip85: (currentPositionMillis: Long) -> Unit,
+    sheetsController: VideoSideSheetsController<EpisodeVideoSideSheetPage>,
+    shareData: MediaShareData,
+    onClickCache: () -> Unit,
+    playerControllerState: PlayerControllerState,
+    sidebarVisible: Boolean,
+    onToggleSidebar: (isCollapsed: Boolean) -> Unit,
+) {
+    var showShareDropdown by rememberSaveable { mutableStateOf(false) }
+    var showMoreDropdown by rememberSaveable { mutableStateOf(false) }
+    val dropdownAlwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "topBarExternalActions")
+    val isExternalDropdownVisible = showShareDropdown || showMoreDropdown
+
+    DisposableEffect(dropdownAlwaysOnRequester, isExternalDropdownVisible) {
+        if (isExternalDropdownVisible) {
+            dropdownAlwaysOnRequester.request()
+        } else {
+            dropdownAlwaysOnRequester.cancelRequest()
+        }
+        onDispose {
+            if (isExternalDropdownVisible) {
+                dropdownAlwaysOnRequester.cancelRequest()
+            }
+        }
+    }
+
+    IconButton({ onClickSkip85(playerState.getCurrentPositionMillis()) }) {
+        Icon(AniIcons.Forward85, "快进 85 秒")
+    }
+
+    if (expanded) {
+        IconButton(
+            { sheetsController.navigateTo(EpisodeVideoSideSheetPage.MEDIA_SELECTOR) },
+            Modifier.testTag(TAG_SHOW_MEDIA_SELECTOR),
+        ) {
+            Icon(Icons.Rounded.DisplaySettings, contentDescription = "数据源")
+        }
+    }
+
+    IconButton(
+        { sheetsController.navigateTo(EpisodeVideoSideSheetPage.PLAYER_SETTINGS) },
+        Modifier.testTag(TAG_SHOW_SETTINGS),
+    ) {
+        Icon(AniIcons.DanmakuOn, contentDescription = "弹幕设置")
+    }
+
+    Box {
+        IconButton({ showMoreDropdown = true }) {
+            Icon(Icons.Rounded.MoreVert, contentDescription = "更多")
+        }
+        DropdownMenu(
+            expanded = showMoreDropdown,
+            onDismissRequest = { showMoreDropdown = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("外部链接") },
+                onClick = {
+                    showMoreDropdown = false
+                    showShareDropdown = true
+                },
+                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, null) },
+            )
+            DropdownMenuItem(
+                text = { Text("离线缓存") },
+                onClick = {
+                    showMoreDropdown = false
+                    onClickCache()
+                },
+                leadingIcon = { Icon(Icons.Rounded.Download, null) },
+            )
+        }
+        ShareEpisodeDropdown(
+            shareData,
+            showShareDropdown,
+            onDismissRequest = { showShareDropdown = false },
+        )
+    }
+
+    if (expanded && LocalPlatform.current.isDesktop()) {
+        IconButton(
+            { onToggleSidebar(!sidebarVisible) },
+            Modifier.testTag(TAG_COLLAPSE_SIDEBAR),
+        ) {
+            if (sidebarVisible) {
+                Icon(AniIcons.RightPanelClose, contentDescription = "折叠侧边栏")
+            } else {
+                Icon(AniIcons.RightPanelOpen, contentDescription = "展开侧边栏")
+            }
+        }
+    }
+}
+
 @Stable
 object EpisodeVideoDefaults
 
@@ -627,5 +715,7 @@ private fun PreviewVideoScaffoldImpl(
                 },
             )
         },
+        shareData = MediaShareData.from(null, null),
+        onClickCache = {},
     )
 }
