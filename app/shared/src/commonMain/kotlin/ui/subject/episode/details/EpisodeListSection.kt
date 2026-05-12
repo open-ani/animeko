@@ -67,6 +67,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
@@ -317,6 +318,7 @@ private fun NarrowEpisodeListSection(
             }
         }
 
+        val density = LocalDensity.current
         // 初始滚动到正在播放的剧集
         LaunchedEffect(episodeCarouselState.episodes) {
             if (!hasInitialScrolled && episodeCarouselState.episodes.isNotEmpty()) {
@@ -324,7 +326,13 @@ private fun NarrowEpisodeListSection(
                     episodeCarouselState.isPlaying(it)
                 }
                 if (playingIndex >= 0) {
-                    horizontalListState.animateScrollToItem(playingIndex)
+                    horizontalListState.animateScrollToItem(
+                        playingIndex,
+                        // 显示前半个卡片
+                        with(density) {
+                            -48.dp.roundToPx()
+                        },
+                    )
                     hasInitialScrolled = true
                 }
             }
@@ -406,9 +414,9 @@ private fun EpisodeCard(
     Card(
         colors = CardDefaults.cardColors(
             containerColor = if (isPlaying) {
-                MaterialTheme.colorScheme.primaryContainer
+                MaterialTheme.colorScheme.secondaryContainer
             } else if (isWatched) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.6f)
             } else {
                 MaterialTheme.colorScheme.surfaceContainer
             },
@@ -436,7 +444,7 @@ private fun EpisodeCard(
                     }
                     Text(
                         episode.episodeInfo.sort.toString(),
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.labelLarge,
                         color = if (isPlaying) {
                             MaterialTheme.colorScheme.primary
                         } else if (isWatched) {

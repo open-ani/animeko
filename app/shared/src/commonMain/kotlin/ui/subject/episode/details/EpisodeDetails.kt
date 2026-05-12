@@ -106,7 +106,6 @@ import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
-import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.app.ui.foundation.widgets.ModalSideSheet
 import me.him188.ani.app.ui.foundation.widgets.rememberModalSideSheetState
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState
@@ -117,7 +116,7 @@ import me.him188.ani.app.ui.mediafetch.ViewKind
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
 import me.him188.ani.app.ui.mediafetch.request.TestMediaFetchRequest
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummary
-import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryCard
+import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryBanner
 import me.him188.ani.app.ui.mediaselect.summary.createTestMediaSelectorSummaryAutoSelecting
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.subject.AiringLabel
@@ -140,7 +139,7 @@ import me.him188.ani.app.ui.subject.episode.details.components.PlayingEpisodeIte
 import me.him188.ani.app.ui.subject.episode.details.components.SubjectRecommendationCard
 import me.him188.ani.app.ui.subject.episode.details.components.formatDanmakuShiftMillis
 import me.him188.ani.app.ui.subject.episode.details.components.renderDanmakuServiceId
-import me.him188.ani.app.ui.subject.episode.statistics.DanmakuMatchInfoSummaryRow
+import me.him188.ani.app.ui.subject.episode.statistics.DanmakuMatchInfoSummaryBanner
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.createTestDanmakuStatistics
@@ -336,7 +335,7 @@ fun EpisodeDetails(
                 }
             }
         },
-        exposedEpisodeItem = { innerPadding ->
+        mediaSelectorItem = { innerPadding ->
             var showMediaSelector by rememberSaveable { mutableStateOf(false) }
             if (showMediaSelector) {
                 val windowAdaptiveInfo = currentWindowAdaptiveInfo1()
@@ -431,14 +430,14 @@ fun EpisodeDetails(
                 }
             }
 
-            MediaSelectorSummaryCard(
+            MediaSelectorSummaryBanner(
                 mediaSelectorSummary,
-                onClickManualSelect = { showMediaSelector = true },
+                onClickSwitchSource = { showMediaSelector = true },
                 Modifier.fillMaxWidth().padding(innerPadding),
             )
         },
         danmakuStatisticsSummary = {
-            DanmakuMatchInfoSummaryRow(
+            DanmakuMatchInfoSummaryBanner(
                 danmakuStatistics,
                 expanded = expandDanmakuStatistics,
                 { expandDanmakuStatistics = !expandDanmakuStatistics },
@@ -695,7 +694,7 @@ fun EpisodeDetailsScaffold(
     loadError: @Composable () -> Unit,
     airingStatus: @Composable (FlowRowScope.() -> Unit),
     subjectSuggestions: @Composable (FlowRowScope.() -> Unit),
-    exposedEpisodeItem: @Composable (contentPadding: PaddingValues) -> Unit,
+    mediaSelectorItem: @Composable (contentPadding: PaddingValues) -> Unit,
     danmakuStatisticsSummary: @Composable () -> Unit,
     danmakuStatistics: @Composable (contentPadding: PaddingValues) -> Unit,
     episodeListSection: @Composable () -> Unit,
@@ -797,14 +796,14 @@ fun EpisodeDetailsScaffold(
         }
 
         item("episode_detail_exposed_episode_item") {
-            Row(Modifier.paddingIfNotEmpty(top = 8.dp)) {
-                exposedEpisodeItem(horizontalPaddingValues)
+            Row(Modifier) {
+                mediaSelectorItem(horizontalPaddingValues)
             }
         }
 
         if (currentDanmakuListSelection != null) {
             item("episode_detail_danmaku_list_section") {
-                Box(Modifier.paddingIfNotEmpty(top = 8.dp)) {
+                Box(Modifier) {
                     currentDanmakuListSelection?.let {
                         it()
                     }
@@ -813,7 +812,7 @@ fun EpisodeDetailsScaffold(
         }
 
         item("episode_detail_danmaku_statistics_summary") {
-            Row(Modifier.padding(horizontalPaddingValues).paddingIfNotEmpty(top = 8.dp)) {
+            Row(Modifier.padding(horizontalPaddingValues).padding(top = 4.dp)) {
                 danmakuStatisticsSummary()
             }
         }

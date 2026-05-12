@@ -130,7 +130,7 @@ data class VideoStatistics(
 }
 
 @Composable
-fun DanmakuMatchInfoSummaryRow(
+fun DanmakuMatchInfoSummaryBanner(
     danmakuStatistics: DanmakuStatistics,
     expanded: Boolean,
     toggleExpanded: () -> Unit,
@@ -160,7 +160,7 @@ fun DanmakuMatchInfoSummaryRow(
         },
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
         shape = MaterialTheme.shapes.medium,
     ) {
@@ -206,25 +206,24 @@ fun DanmakuMatchInfoSummaryRow(
                     }
                 }
 
-                DanmakuLoadingState.Idle -> {
+                DanmakuLoadingState.Idle,
+                DanmakuLoadingState.Loading -> {
                     if (!danmakuStatistics.danmakuEnabled) {
                         Text(
                             "弹幕已关闭，可在播放器内开启",
                             Modifier.weight(1f),
                             style = MaterialTheme.typography.titleSmall,
                         )
+                    } else {
+                        Text(
+                            "弹幕装填中",
+                            Modifier.weight(1f),
+                            softWrap = false,
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+
+                        CircularProgressIndicator(Modifier.padding(start = 16.dp).size(20.dp), strokeWidth = 3.dp)
                     }
-                }
-
-                DanmakuLoadingState.Loading -> {
-                    Text(
-                        "弹幕装填中",
-                        Modifier.weight(1f),
-                        softWrap = false,
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-
-                    CircularProgressIndicator(Modifier.padding(start = 16.dp).size(24.dp))
                 }
             }
         }
