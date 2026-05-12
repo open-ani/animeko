@@ -351,7 +351,7 @@ private fun SourceSummaryRow(
     sources: List<MediaSelectorSourceSummary>,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
             "已查找：",
             softWrap = false,
