@@ -591,6 +591,7 @@ private fun TabRow(
         Tab(
             selected = pagerState.currentPage == 0,
             onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
+            modifier = Modifier.height(44.dp),
             text = { Text("详情", softWrap = false) },
             selectedContentColor = MaterialTheme.colorScheme.primary,
             unselectedContentColor = MaterialTheme.colorScheme.onSurface,
@@ -598,6 +599,7 @@ private fun TabRow(
         Tab(
             selected = pagerState.currentPage == 1,
             onClick = { scope.launch { pagerState.animateScrollToPage(1) } },
+            modifier = Modifier.height(44.dp),
             text = {
                 val text by remember(commentCount) {
                     derivedStateOf {
@@ -825,7 +827,7 @@ fun EpisodeScreenContentPhoneScaffold(
                     )
                     Box(
                         modifier = Modifier.weight(0.618f) // width
-                            .height(48.dp)
+                            .height(44.dp)
                             .padding(vertical = 4.dp, horizontal = 16.dp),
                     ) {
                         Row(Modifier.align(Alignment.CenterEnd)) {

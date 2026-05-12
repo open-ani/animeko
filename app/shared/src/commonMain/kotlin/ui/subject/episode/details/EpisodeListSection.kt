@@ -21,12 +21,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -34,9 +37,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -222,7 +225,7 @@ private fun WideEpisodeListSection(
             ListItem(
                 headlineContent = {
                     Text(
-                        "剧集列表",
+                        "选集",
                         style = MaterialTheme.typography.titleMedium,
                     )
                 },
@@ -269,13 +272,13 @@ private fun NarrowEpisodeListSection(
     Column(modifier.padding(horizontal = 16.dp)) {
         // 标题行
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "剧集列表",
+                    "选集",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.combinedClickable(
                         onClick = {},
@@ -292,7 +295,10 @@ private fun NarrowEpisodeListSection(
                     ),
                 )
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.combinedClickable { showBottomSheet = true },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 AiringLabel(
                     airingLabelState,
                     modifier = Modifier,
@@ -301,18 +307,15 @@ private fun NarrowEpisodeListSection(
                     ),
                     progressColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                IconButton(
-                    onClick = { showBottomSheet = true },
-                ) {
-                    Icon(
-                        Icons.Outlined.MoreHoriz,
-                        contentDescription = "查看更多剧集",
-                    )
-                }
+                Spacer(Modifier.width(4.dp))
+                Icon(
+                    Icons.Outlined.ChevronRight,
+                    contentDescription = "查看更多剧集",
+                    Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
-
-        Spacer(Modifier.height(8.dp))
 
         // 初始滚动到正在播放的剧集
         LaunchedEffect(episodeCarouselState.episodes) {
@@ -331,8 +334,8 @@ private fun NarrowEpisodeListSection(
 
         LazyRow(
             state = horizontalListState,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(0.dp),
         ) {
             items(
                 items = episodeCarouselState.episodes,
@@ -360,7 +363,6 @@ private fun NarrowEpisodeListSection(
             onDismissRequest = { showBottomSheet = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             contentWindowInsets = { BottomSheetDefaults.windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal) },
-            dragHandle = null,
             modifier = modifier,
         ) {
             Column {
@@ -412,15 +414,15 @@ private fun EpisodeCard(
             },
         ),
         modifier = modifier
-            .width(120.dp)
-            .height(80.dp)
+            .height(64.dp)
+            .aspectRatio(16f / 10)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,
             ),
     ) {
         Box(
-            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             Column(
                 modifier = Modifier.align(Alignment.CenterStart),
@@ -429,12 +431,12 @@ private fun EpisodeCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (isPlaying) {
-                        PlayingIcon()
+                        PlayingIcon(width = 20.dp, height = 12.dp)
                         Spacer(Modifier.width(4.dp))
                     }
                     Text(
                         episode.episodeInfo.sort.toString(),
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleSmall,
                         color = if (isPlaying) {
                             MaterialTheme.colorScheme.primary
                         } else if (isWatched) {

@@ -75,6 +75,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
@@ -105,6 +106,7 @@ import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
+import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.app.ui.foundation.widgets.ModalSideSheet
 import me.him188.ani.app.ui.foundation.widgets.rememberModalSideSheetState
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState
@@ -264,19 +266,22 @@ fun EpisodeDetails(
         },
         favoriteButton = {
             FavoriteIconButton(editableSubjectCollectionTypeState)
+            PlayingEpisodeItemDefaults.ActionCache({ navigator.navigateSubjectCaches(state.subjectId) })
         },
         episodeInfo = {
             episodeCarouselState.playingEpisode?.let {
-                Row {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(
                         "${it.episodeInfo.sort}  ${it.episodeInfo.displayName}",
-                        Modifier.weight(1f).align(Alignment.CenterVertically),
+                        Modifier.weight(1f),
                         style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
-
-
-                    PlayingEpisodeItemDefaults.ActionShare(shareData)
-                    PlayingEpisodeItemDefaults.ActionCache({ navigator.navigateSubjectCaches(state.subjectId) })
                 }
             }
         },
@@ -556,7 +561,8 @@ fun EpisodeDetails(
                         recommendation,
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontalPadding),
+                            .padding(horizontalPadding)
+                            .padding(bottom = 12.dp),
                     )
                 }
             }
@@ -663,7 +669,7 @@ private fun SectionTitle(
     content: @Composable () -> Unit,
 ) {
     Row(
-        modifier.heightIn(min = 40.dp)
+        modifier.padding(top = 12.dp, bottom = 8.dp)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -732,18 +738,12 @@ fun EpisodeDetailsScaffold(
             ) {
                 Row {
                     Box(
-                        Modifier.padding(top = 8.dp, end = 8.dp) // icon button semantics padding
+                        Modifier.padding(top = 8.dp, end = 8.dp)
                             .weight(1f)
                             .clickable(onClick = onExpandSubject),
                     ) {
                         ProvideTextStyle(MaterialTheme.typography.titleLarge) {
                             SelectionContainer { subjectTitle() }
-                        }
-                    }
-
-                    Column(Modifier.padding(start = 24.dp)) {
-                        Row {
-                            favoriteButton()
                         }
                     }
                 }
@@ -752,7 +752,7 @@ fun EpisodeDetailsScaffold(
 
         item("episode_detail_subject_suggestions") {
             FlowRow(
-                Modifier.padding(horizontalPaddingValues).paddingIfNotEmpty(top = 6.dp),
+                Modifier.padding(horizontalPaddingValues),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
             ) {
@@ -761,8 +761,16 @@ fun EpisodeDetailsScaffold(
         }
 
         item("episode_detail_episode_info") {
-            Row(Modifier.padding(horizontalPaddingValues).paddingIfNotEmpty(top = 6.dp)) {
-                episodeInfo()
+            Row(
+                Modifier.padding(horizontalPaddingValues),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.weight(1f)) {
+                    episodeInfo()
+                }
+                Row(Modifier.padding(start = 12.dp)) {
+                    favoriteButton()
+                }
             }
         }
 
@@ -804,19 +812,19 @@ fun EpisodeDetailsScaffold(
             }
         }
 
+        item("episode_detail_danmaku_statistics_summary") {
+            Row(Modifier.padding(horizontalPaddingValues).paddingIfNotEmpty(top = 8.dp)) {
+                danmakuStatisticsSummary()
+            }
+        }
+
         item("episode_detail_episode_list_section") {
-            Box(Modifier.paddingIfNotEmpty(top = 8.dp)) {
+            Box(Modifier) {
                 episodeListSection()
             }
         }
 
         if (!atLeastMedium) {
-            item("episode_detail_danmaku_statistics_summary") {
-                SectionTitle(Modifier.padding(top = 8.dp, bottom = 8.dp)) {
-                    danmakuStatisticsSummary()
-                }
-            }
-
             item("danmaku_statistics") {
                 Row(Modifier.fillMaxWidth()) {
                     danmakuStatistics(horizontalPaddingValues)

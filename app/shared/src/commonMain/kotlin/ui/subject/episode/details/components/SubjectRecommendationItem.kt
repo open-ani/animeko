@@ -46,7 +46,7 @@ fun SubjectRecommendationCard(
         color = Color.Transparent,
     ) {
         Row(
-            Modifier.padding(8.dp),
+            Modifier,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Box(Modifier.clip(MaterialTheme.shapes.medium)) {
