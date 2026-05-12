@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.rounded.ArrowDropUp
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -58,8 +59,6 @@ import me.him188.ani.app.domain.media.fetch.MediaFetcher
 import me.him188.ani.app.domain.media.player.data.filenameOrNull
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.player.VideoLoadingState
-import me.him188.ani.app.ui.foundation.icons.AniIcons
-import me.him188.ani.app.ui.foundation.icons.DanmakuOn
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.media.renderProperties
@@ -187,7 +186,7 @@ fun DanmakuMatchInfoSummaryBanner(
 
                 is DanmakuLoadingState.Success -> {
                     Icon(
-                        AniIcons.DanmakuOn,
+                        Icons.Rounded.Subtitles,
                         contentDescription = null,
                         Modifier.size(20.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,

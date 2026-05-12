@@ -63,10 +63,10 @@ import me.him188.ani.app.ui.foundation.TextWithBorder
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.cursorVisibility
 import me.him188.ani.app.ui.foundation.icons.AniIcons
-import me.him188.ani.app.ui.foundation.icons.DanmakuOn
 import me.him188.ani.app.ui.foundation.icons.Forward85
 import me.him188.ani.app.ui.foundation.icons.RightPanelClose
 import me.him188.ani.app.ui.foundation.icons.RightPanelOpen
+import me.him188.ani.app.ui.foundation.icons.SubtitleGear
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
@@ -506,7 +506,7 @@ private fun EpisodeVideoTopBarActions(
         { sheetsController.navigateTo(EpisodeVideoSideSheetPage.PLAYER_SETTINGS) },
         Modifier.testTag(TAG_SHOW_SETTINGS),
     ) {
-        Icon(AniIcons.DanmakuOn, contentDescription = "弹幕设置")
+        Icon(AniIcons.SubtitleGear, contentDescription = "弹幕设置")
     }
 
     Box {
