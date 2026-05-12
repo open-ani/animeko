@@ -76,6 +76,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
@@ -117,6 +118,7 @@ import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
 import me.him188.ani.app.ui.mediafetch.request.TestMediaFetchRequest
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummary
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryBanner
+import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryCard
 import me.him188.ani.app.ui.mediaselect.summary.createTestMediaSelectorSummaryAutoSelecting
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.subject.AiringLabel
@@ -432,11 +434,19 @@ fun EpisodeDetails(
                 }
             }
 
-            MediaSelectorSummaryBanner(
-                mediaSelectorSummary,
-                onClickSwitchSource = { showMediaSelector = true },
-                Modifier.fillMaxWidth().padding(innerPadding),
-            )
+            if (atLeastMedium) {
+                MediaSelectorSummaryCard(
+                    mediaSelectorSummary,
+                    onClickManualSelect = { showMediaSelector = true },
+                    Modifier.fillMaxWidth().padding(innerPadding),
+                )
+            } else {
+                MediaSelectorSummaryBanner(
+                    mediaSelectorSummary,
+                    onClickSwitchSource = { showMediaSelector = true },
+                    Modifier.fillMaxWidth().padding(innerPadding),
+                )
+            }
         },
         danmakuStatisticsSummary = {
             DanmakuMatchInfoSummaryBanner(
@@ -863,7 +873,7 @@ fun EpisodeDetailsScaffold(
 
         if (currentDanmakuListSelection != null) {
             item("episode_detail_danmaku_list_section") {
-                Box(Modifier) {
+                Box(Modifier.padding(top = if (atLeastMedium) 8.dp else 0.dp)) {
                     currentDanmakuListSelection?.let {
                         it()
                     }
@@ -871,14 +881,16 @@ fun EpisodeDetailsScaffold(
             }
         }
 
-        item("episode_detail_danmaku_statistics_summary") {
-            Row(Modifier.padding(horizontalPaddingValues).padding(top = 4.dp)) {
-                danmakuStatisticsSummary()
+        if (!atLeastMedium) {
+            item("episode_detail_danmaku_statistics_summary") {
+                Row(Modifier.padding(horizontalPaddingValues).padding(top = 4.dp)) {
+                    danmakuStatisticsSummary()
+                }
             }
         }
 
         item("episode_detail_episode_list_section") {
-            Box(Modifier) {
+            Box(Modifier.padding(top = if (atLeastMedium) 8.dp else 0.dp)) {
                 episodeListSection()
             }
         }
@@ -943,6 +955,23 @@ fun PreviewEpisodeDetailsScroll() = ProvideCompositionLocalsForPreview {
     Column(Modifier.height(300.dp)) {
         PreviewEpisodeDetailsImpl(state)
     }
+}
+
+@OptIn(TestOnly::class)
+@Composable
+@Preview(name = "PC", device = "spec:width=1280dp,height=800dp,dpi=240")
+fun PreviewEpisodeDetailsPc() = ProvideCompositionLocalsForPreview {
+    val state = rememberTestEpisodeDetailsState(
+        remember {
+            SubjectInfo.Empty.copy(
+                nameCn = "小市民系列",
+            )
+        },
+    )
+    PreviewEpisodeDetailsImpl(
+        state,
+        modifier = Modifier.widthIn(max = 460.dp),
+    )
 }
 
 @OptIn(TestOnly::class)
@@ -1040,6 +1069,7 @@ private fun PreviewEpisodeDetailsImpl(
     mediaSelectorState: MediaSelectorState = rememberTestMediaSelectorState(),
     playingMedia: Media? = TestMediaList.first(),
     selfInfo: SelfInfoUiState = TestSelfInfoUiState,
+    modifier: Modifier = Modifier,
 ) {
     Scaffold {
         EpisodeDetails(
@@ -1084,7 +1114,7 @@ private fun PreviewEpisodeDetailsImpl(
             onEpisodeCollectionUpdate = {},
             shareData = MediaShareData.from(null, null),
             null, {},
-            Modifier
+            modifier
                 .padding(bottom = 16.dp, top = 8.dp)
                 .padding(it),
         )
