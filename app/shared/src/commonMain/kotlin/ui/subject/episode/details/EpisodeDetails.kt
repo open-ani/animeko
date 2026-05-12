@@ -251,8 +251,10 @@ fun EpisodeDetails(
     var expandDanmakuStatistics by rememberSaveable { mutableStateOf(false) }
     var expandEpisodeList by rememberSaveable { mutableStateOf(false) }
     var expandDanmakuList by rememberSaveable { mutableStateOf(false) }
+    var showDanmakuInfoSheet by rememberSaveable { mutableStateOf(false) }
 
     val subjectRecommendations by remember(state) { state.recommendations }
+    val atLeastMedium = currentWindowAdaptiveInfo1().isWidthAtLeastMedium
 
     EditableSubjectCollectionTypeDialogsHost(editableSubjectCollectionTypeState)
 
@@ -439,8 +441,14 @@ fun EpisodeDetails(
         danmakuStatisticsSummary = {
             DanmakuMatchInfoSummaryBanner(
                 danmakuStatistics,
-                expanded = expandDanmakuStatistics,
-                { expandDanmakuStatistics = !expandDanmakuStatistics },
+                expanded = if (atLeastMedium) expandDanmakuStatistics else showDanmakuInfoSheet,
+                {
+                    if (atLeastMedium) {
+                        expandDanmakuStatistics = !expandDanmakuStatistics
+                    } else {
+                        showDanmakuInfoSheet = true
+                    }
+                },
             )
         },
         danmakuStatistics = { innerPadding ->
@@ -573,6 +581,58 @@ fun EpisodeDetails(
         modifier = modifier,
         contentPadding = contentPadding,
     )
+
+    if (showDanmakuInfoSheet) {
+        ModalBottomSheet(
+            { showDanmakuInfoSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
+            modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
+            contentWindowInsets = {
+                BottomSheetDefaults.windowInsets
+                    .add(WindowInsets.desktopTitleBar())
+                    .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
+            },
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(bottom = 24.dp),
+            ) {
+                item("danmaku_info_sheet_title") {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "弹幕列表",
+                            Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                    }
+                }
+
+                if (danmakuListState != null) {
+                    item("danmaku_info_sheet_list") {
+                        DanmakuListContent(
+                            state = danmakuListState,
+                            onSetEnabled = onSetDanmakuSourceEnabled,
+                            onManualMatch = { serviceId ->
+                                danmakuStatistics.fetchResults.find { it.serviceId == serviceId }?.let {
+                                    onManualMatchDanmaku(it.providerId)
+                                }
+                            },
+                            onAdjustShift = { serviceId ->
+                                editingShiftServiceId = serviceId
+                            },
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     val editingShiftSource = editingShiftServiceId?.let { serviceId ->
         danmakuStatistics.fetchResults.firstOrNull { it.serviceId == serviceId }
