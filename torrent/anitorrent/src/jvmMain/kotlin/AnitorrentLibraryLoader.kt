@@ -12,6 +12,7 @@ package me.him188.ani.app.torrent.anitorrent
 import me.him188.ani.app.torrent.api.TorrentLibraryLoader
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.platform.Arch
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isAndroid
@@ -144,6 +145,8 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
     @Synchronized
     @Throws(UnsatisfiedLinkError::class)
     override fun loadLibraries() = synchronized(this) {
+        // Windows ARM64 intentionally ships without the local anitorrent runtime.
+        if (platform is Platform.Windows && platform.arch == Arch.AARCH64) return@synchronized
         if (libraryLoaded) return@synchronized
 
         try {

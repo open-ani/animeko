@@ -277,6 +277,7 @@ mediamp-exoplayer = { module = "org.openani.mediamp:mediamp-exoplayer", version.
 mediamp-ffmpeg = { module = "org.openani.mediamp:mediamp-ffmpeg", version.ref = "mediamp" }
 mediamp-ffmpeg-desktop = { module = "org.openani.mediamp:mediamp-ffmpeg-desktop", version.ref = "mediamp" }
 mediamp-ffmpeg-runtime-windows-x64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-windows-x64", version.ref = "mediamp" }
+mediamp-ffmpeg-runtime-windows-arm64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-windows-arm64", version.ref = "mediamp" }
 mediamp-ffmpeg-runtime-linux-x64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-linux-x64", version.ref = "mediamp" }
 mediamp-ffmpeg-runtime-macos-x64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-macos-x64", version.ref = "mediamp" }
 mediamp-ffmpeg-runtime-macos-arm64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-macos-arm64", version.ref = "mediamp" }

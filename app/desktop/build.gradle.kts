@@ -43,6 +43,7 @@ dependencies {
         "linux-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.linux.x64)
         "macos-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.macos.x64)
         "macos-arm64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.macos.arm64)
+        "windows-arm64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.windows.arm64)
         else -> throw UnsupportedOperationException("Unknown os: $triple")
     }
 

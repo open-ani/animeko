@@ -9,8 +9,8 @@
 
 package me.him188.ani.app.desktop
 
+import me.him188.ani.utils.platform.Arch
 import me.him188.ani.utils.platform.Platform
-import me.him188.ani.utils.platform.is64bit
 import me.him188.ani.utils.platform.isAArch
 import me.him188.ani.utils.platform.isMacOS
 import me.him188.ani.utils.platform.isWindows
@@ -23,4 +23,4 @@ import me.him188.ani.utils.platform.isWindows
  * `app/desktop/build.gradle.kts` 中按平台选择的 native runtime 依赖保持一致.
  */
 internal fun Platform.Desktop.usesMpv(): Boolean =
-    (isWindows() && is64bit()) || (isMacOS() && isAArch())
+    (isWindows() && arch == Arch.X86_64) || (isMacOS() && isAArch())

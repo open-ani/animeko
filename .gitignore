@@ -40,6 +40,7 @@ kls_database.db
 /torrent/anitorrent/*.dylib
 /torrent/anitorrent/*.dll
 /torrent/anitorrent/*.so
+/app/desktop/appResources/windows-arm64/lib/
 /app/ios/Animeko/GoogleService-Info.plist
 /app/ios/12.4.0
 /app/ios/xcb2.log
