@@ -23,7 +23,8 @@ data class SelfInfo(
     val email: String?,
     val hasPassword: Boolean,
     val avatarUrl: String?,
-    val bangumiUsername: String?
+    val bangumiUsername: String?,
+    val isBangumiSessionValid: Boolean? = null,
 )
 
 data class SelfInfoDisplay(

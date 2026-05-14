@@ -491,6 +491,13 @@
     <string name="settings_debug_logged_out">已登出</string>
     <string name="settings_tab_account">賬戶</string>
 
+    <!-- Bangumi Session Expired Prompt -->
+    <string name="bangumi_session_expired">Bangumi 登入過期</string>
+    <string name="bangumi_session_expired_login_again">Bangumi 登入過期，請重新登入</string>
+    <string name="bangumi_session_expired_view">查看</string>
+    <string name="bangumi_session_expired_login">登入</string>
+    <string name="bangumi_session_expired_unbind">解除綁定 Bangumi</string>
+
     <!-- Account Popup -->
     <string name="settings_account_popup_not_logged_in">未登入</string>
     <string name="settings_account_popup_edit_profile">編輯個人資料</string>

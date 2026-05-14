@@ -31,15 +31,19 @@ import coil3.compose.LocalPlatformContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.take
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
+import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
+import me.him188.ani.app.domain.session.SessionState
+import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
@@ -78,6 +82,8 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val httpClientProvider: HttpClientProvider by inject()
     private val mediaCacheManager: MediaCacheManager by inject()
     private val webCaptchaCoordinator: WebCaptchaCoordinator by inject()
+    private val userRepository: UserRepository by inject()
+    private val sessionStateProvider: SessionStateProvider by inject()
 
     private val imageLoaderClient = httpClientProvider.get(ScopedHttpClientUserAgent.ANI)
 
@@ -87,6 +93,13 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
         }
 
     val browserNavigator by inject<BrowserNavigator>()
+
+    val bangumiSessionExpired = combine(userRepository.selfInfoFlow, sessionStateProvider.stateFlow) { selfInfo, sessionState ->
+        val isBound = selfInfo?.bangumiUsername?.isNotBlank() == true
+        val serverTokenInvalid = selfInfo?.isBangumiSessionValid == false
+        val localTokenMissing = sessionState is SessionState.Valid && !sessionState.bangumiConnected
+        isBound && (serverTokenInvalid || localTokenMissing)
+    }.distinctUntilChanged().stateInBackground(false)
 
     val appState: Flow<AniAppState?> = combine(
         settings.themeSettings.flow,
@@ -120,6 +133,10 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
             settings.uiSettings.update { copy(onboardingCompleted = false) }
         }
     }*/
+
+    suspend fun unbindBangumi() {
+        userRepository.unbindBangumi()
+    }
 
 //    /**
 //     * 跟随代理设置等配置变化而变化的 [HttpClient] 实例. 用于 coil ImageLoader.

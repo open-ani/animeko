@@ -486,6 +486,13 @@
     <string name="settings_debug_logged_out">Logged out</string>
     <string name="settings_tab_account">Account</string>
 
+    <!-- Bangumi Session Expired Prompt -->
+    <string name="bangumi_session_expired">Bangumi login expired</string>
+    <string name="bangumi_session_expired_login_again">Bangumi login expired. Please log in again.</string>
+    <string name="bangumi_session_expired_view">View</string>
+    <string name="bangumi_session_expired_login">Log in</string>
+    <string name="bangumi_session_expired_unbind">Unbind Bangumi</string>
+
     <!-- Account Popup -->
     <string name="settings_account_popup_not_logged_in">Not logged in</string>
     <string name="settings_account_popup_edit_profile">Edit profile</string>
