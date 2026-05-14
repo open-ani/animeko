@@ -68,6 +68,7 @@ import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.app.domain.episode.EpisodeDanmakuLoader
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
+import me.him188.ani.app.domain.episode.PlayerMediaSwitchCooldownConfig
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.episode.GetSubjectRecommendationUseCase
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
@@ -264,6 +265,7 @@ class EpisodeViewModel(
     private val setSubjectCollectionTypeOrDeleteUseCase: SetSubjectCollectionTypeOrDeleteUseCase by inject()
     private val getPreferredWebMediaSource: GetPreferredWebMediaSourceUseCase by inject()
     private val webCaptchaCoordinator: WebCaptchaCoordinator by inject()
+    private val playerMediaSwitchCooldownConfig: PlayerMediaSwitchCooldownConfig by inject()
     // endregion
 
     private val tasker = SingleTaskExecutor(backgroundScope.coroutineContext)
@@ -304,6 +306,7 @@ class EpisodeViewModel(
         ),
         koin,
         sharingStarted = SharingStarted.WhileSubscribed(5_000),
+        playerMediaSwitchCooldownConfig = playerMediaSwitchCooldownConfig,
         analyticsContext = object : EpisodeFetchSelectPlayState.AnalyticsContext {
             override suspend fun isFullscreen(): Boolean? {
                 return withContext(Dispatchers.Main) { this@EpisodeViewModel.isFullscreen }

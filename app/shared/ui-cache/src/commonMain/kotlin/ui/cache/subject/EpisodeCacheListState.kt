@@ -70,6 +70,8 @@ interface EpisodeCacheListState {
      * 删除一个剧集的现有缓存.
      */
     fun deleteCache(episode: EpisodeCacheState)
+
+    fun bindLocalFile(episode: EpisodeCacheState, path: String)
 }
 
 /**
@@ -99,6 +101,7 @@ class EpisodeCacheListStateImpl(
     private val onRequestCache: suspend (episode: EpisodeCacheState, autoSelectByCached: Boolean) -> CacheRequestStage?,
     private val onRequestCacheComplete: suspend (episode: EpisodeCacheTargetInfo) -> Unit,
     private val onDeleteCache: suspend (episode: EpisodeCacheState) -> Unit,
+    private val onBindLocalFile: suspend (episode: EpisodeCacheState, path: String) -> CacheRequestStage.Done,
 ) : EpisodeCacheListState {
     override val episodes: List<EpisodeCacheState> by episodes
 
@@ -220,6 +223,20 @@ class EpisodeCacheListStateImpl(
                 throw e
                 // errorMessage.value = ErrorMessage.simple("删除缓存失败", e)
             }
+        }
+    }
+
+    override fun bindLocalFile(episode: EpisodeCacheState, path: String) {
+        if (episode.actionTasker.isRunning.value) return
+        episode.actionTasker.launch {
+            currentEpisode
+                ?.takeIf { it !== episode }
+                ?.cacheRequester
+                ?.cancelRequest()
+            callComplete(
+                episode,
+                onBindLocalFile(episode, path),
+            )
         }
     }
 }

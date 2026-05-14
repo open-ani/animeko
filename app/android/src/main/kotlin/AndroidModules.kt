@@ -31,6 +31,7 @@ import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
+import me.him188.ani.app.domain.episode.PlayerMediaSwitchCooldownConfig
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -174,6 +175,7 @@ fun getAndroidModules(
         MediampPlayerSurfaceProviderLoader.register(ExoPlayerMediampPlayerSurfaceProvider())
         MediampPlayerFactoryLoader.first()
     }
+    single { PlayerMediaSwitchCooldownConfig() }
 
     single<OfflineDownloadEngine> {
         val settings = get<SettingsRepository>()

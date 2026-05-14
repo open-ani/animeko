@@ -12,6 +12,7 @@ package me.him188.ani.app.domain.episode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -52,6 +53,7 @@ class PlayerSession(
     val player: MediampPlayer,
     koin: Koin,
     private val mainDispatcher: CoroutineContext = Dispatchers.Main.immediate,
+    private val mediaSwitchCooldownConfig: PlayerMediaSwitchCooldownConfig = PlayerMediaSwitchCooldownConfig(),
 ) {
     val mediaResolver: MediaResolver by koin.inject()
 
@@ -72,6 +74,10 @@ class PlayerSession(
         stopPlayer()
         if (media == null) {
             return@coroutineScope
+        }
+        if (mediaSwitchCooldownConfig.delayMillis > 0) {
+            // VLC on desktop may freeze if media is switched immediately after stopPlayback.
+            delay(mediaSwitchCooldownConfig.delayMillis)
         }
 
         try {

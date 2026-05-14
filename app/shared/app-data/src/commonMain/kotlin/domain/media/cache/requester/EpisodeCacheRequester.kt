@@ -61,6 +61,16 @@ interface EpisodeCacheRequester {
      * 取消当前请求. 若没有请求则不做任何事情.
      */
     suspend fun cancelRequest()
+
+    /**
+     * 使用已选定的 [Media] 直接创建缓存请求.
+     *
+     * 适用于不需要查询远端资源列表的场景, 例如用户手动选择本地文件.
+     */
+    suspend fun requestSelectedMedia(
+        request: EpisodeCacheRequest,
+        media: Media,
+    ): CacheRequestStage.Done
 }
 
 /**
@@ -296,6 +306,33 @@ class EpisodeCacheRequesterImpl(
     override suspend fun cancelRequest() {
         stageLock.withLock {
             cancelRequestLocked(CacheRequestStage.Idle)
+        }
+    }
+
+    override suspend fun requestSelectedMedia(
+        request: EpisodeCacheRequest,
+        media: Media,
+    ): CacheRequestStage.Done {
+        stageLock.withLock {
+            val current = stage.value
+            current.close()
+
+            val storages = storagesLazy.first().filter { it.engine.supports(media) }
+            check(storages.isNotEmpty()) { "No media cache storage supports media: $media" }
+            check(storages.size == 1) {
+                "Selected media requires ambiguous storage selection: media=$media, storages=${storages.map { it.mediaSourceId }}"
+            }
+
+            return CacheRequestStage.Done(
+                request = request,
+                media = media,
+                storage = storages.single(),
+                metadata = MediaCacheMetadata(
+                    MediaFetchRequest.Companion.create(request.subjectInfo, request.episodeInfo),
+                ),
+            ).also {
+                stage.value = it
+            }
         }
     }
 

@@ -24,10 +24,13 @@ kotlin {
         namespace = "me.him188.ani.app.ui.cache"
     }
     sourceSets.commonMain.dependencies {
+        api(projects.app.shared.appData)
         api(projects.app.shared.uiFoundation)
         api(projects.app.shared.uiAdaptive)
         api(projects.app.shared.uiSettings)
         api(projects.app.shared.uiMediaselect)
+        implementation(libs.filekit.dialogs)
+        implementation(libs.filekit.dialogs.compose)
         implementation(libs.compose.components.resources)
         implementation(projects.app.shared.placeholder)
     }

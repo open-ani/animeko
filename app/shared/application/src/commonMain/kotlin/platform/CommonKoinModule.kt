@@ -106,6 +106,7 @@ import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.KtorPersistentHttpDownloader
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
+import me.him188.ani.app.domain.media.cache.storage.ExternalLocalFileMediaCacheStorage
 import me.him188.ani.app.domain.media.cache.storage.HttpMediaCacheStorage
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.cache.storage.TorrentMediaCacheStorage
@@ -401,13 +402,21 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
 
     // Media
+    single {
+        ExternalLocalFileMediaCacheStorage(
+            mediaSourceId = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID,
+            store = getContext().dataStores.mediaCacheMetadataStore,
+            parentCoroutineContext = coroutineScope.childScopeContext(),
+        )
+    }
     single<MediaCacheManager> {
         val id = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
         val engines = get<TorrentManager>().engines
         val metadataStore = getContext().dataStores.mediaCacheMetadataStore
 
         MediaCacheManagerImpl(
-            storagesIncludingDisabled = buildList(capacity = engines.size) {
+            storagesIncludingDisabled = buildList(capacity = engines.size + 1) {
+                add(get<ExternalLocalFileMediaCacheStorage>())
                 /*if (currentAniBuildConfig.isDebug) {
                     // 注意, 这个必须要在第一个, 见 [DefaultTorrentManager.engines] 注释
                     add(

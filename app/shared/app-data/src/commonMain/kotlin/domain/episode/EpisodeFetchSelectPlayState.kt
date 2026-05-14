@@ -85,6 +85,7 @@ class EpisodeFetchSelectPlayState(
     private val koin: Koin = GlobalKoin,
     private val sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(),
     private val mainDispatcher: CoroutineContext = Dispatchers.Main.immediate,
+    private val playerMediaSwitchCooldownConfig: PlayerMediaSwitchCooldownConfig = PlayerMediaSwitchCooldownConfig(),
     private val analyticsContext: AnalyticsContext = object : AnalyticsContext {},
 ) {
     interface AnalyticsContext {
@@ -105,6 +106,7 @@ class EpisodeFetchSelectPlayState(
         player,
         koin,
         mainDispatcher,
+        playerMediaSwitchCooldownConfig,
     )
 
     private val extensionManager by lazy {

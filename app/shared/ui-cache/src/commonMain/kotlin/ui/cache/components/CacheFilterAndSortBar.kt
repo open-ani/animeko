@@ -368,5 +368,6 @@ private fun renderCollectionType(type: UnifiedCollectionType): String {
 private fun renderEngineKey(key: MediaCacheEngineKey): String = when (key) {
     MediaCacheEngineKey.Anitorrent -> "BT"
     MediaCacheEngineKey.WebM3u -> "Web"
+    MediaCacheEngineKey.ExternalLocalFile -> "本地文件"
     else -> key.key
 }

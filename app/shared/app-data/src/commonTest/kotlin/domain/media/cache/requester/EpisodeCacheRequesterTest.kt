@@ -211,6 +211,32 @@ class EpisodeCacheRequesterTest {
     }
 
     @Test
+    fun `requestSelectedMedia goes directly to Done`() = runTest {
+        val request = createRequest()
+        val media = createTestDefaultMedia(
+            mediaId = "local-file-1",
+            mediaSourceId = "local-file-system",
+            originalTitle = "local-file-1.mkv",
+            download = ResourceLocation.LocalFile(nullFilePath),
+            originalUrl = nullFilePath,
+            publishedTime = 1L,
+            properties = createTestMediaProperties(
+                subjectName = "Test Subject",
+                episodeName = "Episode 1",
+            ),
+            episodeRange = EpisodeRange.single(EpisodeSort(1)),
+            location = MediaSourceLocation.Local,
+            kind = MediaSourceKind.LocalCache,
+        )
+
+        val done = requester.requestSelectedMedia(request, media)
+
+        assertIs<CacheRequestStage.Done>(requester.stage.value)
+        assertSame(media, done.media)
+        assertSame(storage, done.storage)
+    }
+
+    @Test
     fun `done has correct metadata`() = runTest {
         val request = createRequest().run {
             copy(

@@ -28,6 +28,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import kotlinx.io.files.Path
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -52,6 +53,7 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
 import me.him188.ani.app.domain.media.cache.DeleteCacheByEpisodeIdUseCase
+import me.him188.ani.app.domain.media.cache.ExternalLocalFileMediaFactory
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.requester.CacheRequestStage
@@ -80,6 +82,9 @@ import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.CacheCreate
 import me.him188.ani.utils.analytics.recordEvent
 import me.him188.ani.utils.coroutines.flows.combine
 import me.him188.ani.utils.coroutines.retryWithBackoffDelay
+import me.him188.ani.utils.io.exists
+import me.him188.ani.utils.io.inSystem
+import me.him188.ani.utils.io.isRegularFile
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.time.Duration
@@ -214,13 +219,33 @@ class SubjectCacheViewModelImpl(
                     when (target.media.kind) {
                         MediaSourceKind.WEB -> "web"
                         MediaSourceKind.BitTorrent -> "bt"
-                        MediaSourceKind.LocalCache -> null // impossible
+                        MediaSourceKind.LocalCache -> "local"
                     },
                 )
             }
         },
         onDeleteCache = { episode ->
             deleteCacheByEpisodeIdUseCase(subjectId, episode.episodeId)
+        },
+        onBindLocalFile = { episode, path ->
+            val file = Path(path).inSystem
+            check(file.exists() && file.isRegularFile()) {
+                "Local file does not exist or is not a regular file: $path"
+            }
+
+            val subjectInfo = subjectInfoFlow.first().subjectInfo
+            val episodeInfo = episodeCollectionsFlow.first().firstOrNull { it.episodeId == episode.episodeId }?.episodeInfo
+                ?: error(
+                    "Episode ${episode.episodeId} not found from episodes: ${
+                        episodeCollectionsFlow.first().joinToString { it.episodeId.toString() }
+                    }",
+                )
+            val request = EpisodeCacheRequest(subjectInfo, episodeInfo)
+
+            episode.cacheRequester.requestSelectedMedia(
+                request = request,
+                media = ExternalLocalFileMediaFactory.createMedia(file, subjectInfo, episodeInfo),
+            )
         },
     )
     override val mediaSourceInfoProvider: MediaSourceInfoProvider = MediaSourceInfoProvider(

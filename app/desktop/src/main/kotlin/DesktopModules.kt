@@ -28,6 +28,7 @@ import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
+import me.him188.ani.app.domain.episode.PlayerMediaSwitchCooldownConfig
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.DesktopWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
@@ -68,6 +69,8 @@ import org.openani.mediamp.vlc.VlcMediampPlayerFactory
 import org.openani.mediamp.vlc.compose.VlcMediampPlayerSurfaceProvider
 import java.io.File
 import kotlin.io.path.Path
+
+private const val VLC_MEDIA_SWITCH_COOLDOWN_MILLIS = 400L
 
 fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) = module {
     single<TorrentEngineAccess> { AlwaysUseTorrentEngineAccess }
@@ -130,6 +133,10 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
         MediampPlayerFactoryLoader.register(VlcMediampPlayerFactory())
         MediampPlayerSurfaceProviderLoader.register(VlcMediampPlayerSurfaceProvider())
         MediampPlayerFactoryLoader.first()
+    }
+    single {
+        // Work around VLC occasionally freezing when media is switched too quickly.
+        PlayerMediaSwitchCooldownConfig(VLC_MEDIA_SWITCH_COOLDOWN_MILLIS)
     }
     single<BrowserNavigator> { DesktopBrowserNavigator() }
     single<WebCaptchaCoordinator> { DesktopWebCaptchaCoordinator(AniDesktopCaptchaTopBar) }

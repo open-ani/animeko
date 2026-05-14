@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.VideoFile
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -812,6 +813,7 @@ private fun CacheListItem(
 private fun renderEngineIcon(key: MediaCacheEngineKey) = when (key) {
     MediaCacheEngineKey.Anitorrent -> Icons.Filled.P2p to "BT"
     MediaCacheEngineKey.WebM3u -> Icons.Filled.Language to "Web"
+    MediaCacheEngineKey.ExternalLocalFile -> Icons.Rounded.VideoFile to "本地文件"
     else -> Icons.AutoMirrored.Rounded.HelpOutline to "未知"
 }
 

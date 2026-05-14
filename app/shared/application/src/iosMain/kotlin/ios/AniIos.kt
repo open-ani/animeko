@@ -43,6 +43,7 @@ import me.him188.ani.app.domain.media.cache.engine.AlwaysUseTorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
+import me.him188.ani.app.domain.episode.PlayerMediaSwitchCooldownConfig
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.IosWebMediaResolver
@@ -300,6 +301,7 @@ fun getIosModules(
     single<MediampPlayerFactory<*>> {
         AVKitMediampPlayerFactory()
     }
+    single { PlayerMediaSwitchCooldownConfig() }
     single<MediaSaveDirProvider> {
         object : MediaSaveDirProvider {
             override val saveDir: String

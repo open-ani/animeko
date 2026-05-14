@@ -30,6 +30,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
+import androidx.compose.material.icons.rounded.VideoFile
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -62,6 +63,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachIndexed
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.vinceglb.filekit.dialogs.FileKitType
+import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.path
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -76,6 +80,8 @@ import me.him188.ani.app.domain.media.fetch.restart
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.tools.getOrZero
+import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
@@ -91,6 +97,7 @@ import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
+import me.him188.ani.utils.platform.isDesktop
 import org.koin.mp.KoinPlatform
 
 
@@ -247,6 +254,7 @@ fun SettingsScope.EpisodeCacheListGroup(
                     }
                 },
                 isRequestHidden = hideMediaSelector,
+                onBindLocalFile = { state.bindLocalFile(episodeCacheState, it) },
                 dropdown = {
                     ItemDropdown(
                         showDropdown = showDropdown,
@@ -308,10 +316,24 @@ fun SettingsScope.EpisodeCacheItem(
     episode: EpisodeCacheState,
     onClick: () -> Unit,
     isRequestHidden: Boolean,
+    onBindLocalFile: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     dropdown: @Composable () -> Unit = {},
 ) {
     val colorByWatchStatus = contentColorForWatchStatus(episode.info.watchStatus, episode.info.hasPublished)
+    val showProgressIndicator = episode.showProgressIndicator.collectAsStateWithLifecycle().value
+    val hasActionRunning = episode.actionTasker.isRunning.collectAsStateWithLifecycle().value
+    val asyncHandler = rememberAsyncHandler()
+    val filePicker = rememberFilePickerLauncher(
+        type = FileKitType.Video,
+        title = "选择本地视频",
+    ) { file ->
+        file?.let {
+            asyncHandler.launch {
+                onBindLocalFile(it.path)
+            }
+        }
+    }
     TextItem(
         icon = {
             CompositionLocalProvider(LocalContentColor provides colorByWatchStatus) {
@@ -322,9 +344,12 @@ fun SettingsScope.EpisodeCacheItem(
             dropdown()
 
             CompositionLocalProvider(LocalContentColor provides colorByWatchStatus) {
-                EpisodeCacheActionIcon(
-                    isLoadingIndefinitely = !isRequestHidden && episode.showProgressIndicator.collectAsStateWithLifecycle().value,
-                    hasActionRunning = episode.actionTasker.isRunning.collectAsStateWithLifecycle().value,
+                EpisodeCacheActionButtons(
+                    showBindLocalButton = LocalPlatform.current.isDesktop(),
+                    canBindLocalFile = episode.cacheStatus == EpisodeCacheStatus.NotCached,
+                    onBindLocalFile = { filePicker.launch() },
+                    isLoadingIndefinitely = !isRequestHidden && showProgressIndicator,
+                    hasActionRunning = hasActionRunning,
                     cacheStatus = episode.cacheStatus,
                     canCache = episode.canCache,
                     onClick = onClick,
@@ -369,6 +394,39 @@ fun contentColorForWatchStatus(
     } else {
         LocalContentColor.current
     }
+
+@Composable
+fun EpisodeCacheActionButtons(
+    showBindLocalButton: Boolean,
+    canBindLocalFile: Boolean,
+    onBindLocalFile: () -> Unit,
+    isLoadingIndefinitely: Boolean,
+    hasActionRunning: Boolean,
+    cacheStatus: EpisodeCacheStatus?,
+    canCache: Boolean,
+    onClick: () -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        if (showBindLocalButton) {
+            IconButton(
+                onClick = onBindLocalFile,
+                enabled = canBindLocalFile && !isLoadingIndefinitely && !hasActionRunning,
+            ) {
+                Icon(Icons.Rounded.VideoFile, "绑定本地视频")
+            }
+        }
+        EpisodeCacheActionIcon(
+            isLoadingIndefinitely = isLoadingIndefinitely,
+            hasActionRunning = hasActionRunning,
+            cacheStatus = cacheStatus,
+            canCache = canCache,
+            onClick = onClick,
+            onCancel = onCancel,
+        )
+    }
+}
 
 @Composable
 fun EpisodeCacheActionIcon(

@@ -59,6 +59,7 @@ class EpisodeCacheListStateTest {
             },
             onRequestCacheComplete = {},
             onDeleteCache = {},
+            onBindLocalFile = { _, _ -> error("not used") },
         )
 
         state.requestCache(episode1, autoSelectCached = false)
