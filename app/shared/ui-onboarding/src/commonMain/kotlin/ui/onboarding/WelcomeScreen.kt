@@ -41,7 +41,9 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.WithContentEnterAnimation
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import org.jetbrains.compose.resources.*
 
 @Composable
 fun WelcomeScreen(
@@ -93,12 +95,12 @@ internal fun WelcomeScene(
                 Column(
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    Text("欢迎使用 Animeko", style = MaterialTheme.typography.headlineMedium)
+                    Text(stringResource(Lang.onboarding_welcome_title), style = MaterialTheme.typography.headlineMedium)
 
                     ProvideTextStyle(MaterialTheme.typography.bodyLarge) {
                         Row(Modifier.padding(top = 8.dp).align(Alignment.Start)) {
                             Text(
-                                """一站式在线弹幕追番平台 (简称 Ani)""",
+                                stringResource(Lang.onboarding_welcome_subtitle),
                                 color = MaterialTheme.colorScheme.primary,
                             )
                         }
@@ -109,9 +111,9 @@ internal fun WelcomeScene(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         ProvideTextStyle(MaterialTheme.typography.bodyMedium) {
-                            Text("""Ani 目前由爱好者组成的组织 OpenAni 和社区贡献者维护，完全免费，在 GitHub 上开源。""")
+                            Text(stringResource(Lang.onboarding_welcome_maintained))
 
-                            Text("""Ani 的目标是提供尽可能简单且舒适的追番体验。""")
+                            Text(stringResource(Lang.onboarding_welcome_goal))
                         }
                     }
 
@@ -127,7 +129,7 @@ internal fun WelcomeScene(
                         onClick = onClickContinue,
                         modifier = Modifier.widthIn(300.dp),
                     ) {
-                        Text("继续")
+                        Text(stringResource(Lang.onboarding_welcome_continue))
                     }
                 }
             }

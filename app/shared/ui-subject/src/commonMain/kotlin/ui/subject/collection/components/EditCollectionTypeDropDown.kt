@@ -30,7 +30,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import org.jetbrains.compose.resources.*
 
 
 @Composable
@@ -109,8 +111,8 @@ fun EditCollectionTypeDropDown(
         if (showConfirmDeleteDialog) {
             AlertDialog(
                 onDismissRequest = { showConfirmDeleteDialog = false },
-                title = { Text("取消追番") },
-                text = { Text("这将会清除你的观看进度和评价。此操作无法撤销。确定要取消追番吗？") },
+                title = { Text(stringResource(Lang.subject_collection_delete_confirm_title)) },
+                text = { Text(stringResource(Lang.subject_collection_delete_confirm_message)) },
                 icon = { SubjectCollectionActions.DeleteCollection.icon() },
                 confirmButton = {
                     TextButton(
@@ -120,14 +122,17 @@ fun EditCollectionTypeDropDown(
                             showConfirmDeleteDialog = false
                         },
                     ) {
-                        Text("删除", color = MaterialTheme.colorScheme.error)
+                        Text(
+                            stringResource(Lang.subject_collection_delete_action),
+                            color = MaterialTheme.colorScheme.error,
+                        )
                     }
                 },
                 dismissButton = {
                     TextButton(
                         onClick = { showConfirmDeleteDialog = false },
                     ) {
-                        Text("取消")
+                        Text(stringResource(Lang.subject_collection_cancel))
                     }
                 },
             )

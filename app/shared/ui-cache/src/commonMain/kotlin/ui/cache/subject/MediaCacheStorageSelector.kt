@@ -25,6 +25,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.cache_subject_cancel
+import me.him188.ani.app.ui.lang.cache_subject_select_storage
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SelectMediaStorageDialog(
@@ -35,11 +39,11 @@ fun SelectMediaStorageDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        title = { Text("选择储存位置") },
+        title = { Text(stringResource(Lang.cache_subject_select_storage)) },
         icon = { Icon(Icons.Rounded.Save, null) },
         confirmButton = {
             TextButton(onDismissRequest) {
-                Text("取消")
+                Text(stringResource(Lang.cache_subject_cancel))
             }
         },
         text = {

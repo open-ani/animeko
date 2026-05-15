@@ -11,7 +11,10 @@ package me.him188.ani.app.ui.comment
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -21,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AddReaction
 import androidx.compose.material.icons.outlined.ModeComment
 import androidx.compose.material.icons.rounded.Face
 import androidx.compose.material3.Icon
@@ -29,7 +33,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -46,6 +49,8 @@ import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_empty_title
+import me.him188.ani.app.ui.lang.comment_reply
+import me.him188.ani.app.ui.lang.comment_view_more_replies
 import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.richtext.RichTextDefaults
 import me.him188.ani.app.ui.richtext.UIRichElement
@@ -77,7 +82,6 @@ object CommentDefaults {
         Surface(
             onClick = onClick,
             modifier = Modifier
-                .minimumInteractiveComponentSize()
                 .then(modifier),
             enabled = true,
             shape = CircleShape,
@@ -89,13 +93,14 @@ object CommentDefaults {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 val previewing = LocalIsPreviewing.current
-                val reactionDrawableRes = BangumiCommentSticker[reaction.id]
+                val reactionDrawableRes = reaction.value.bangumiReactionIdOrNull()
+                    ?.let { BangumiCommentSticker[it] }
 
                 if (previewing || reactionDrawableRes == null) Icon(
                     imageVector = Icons.Rounded.Face,
                     modifier = Modifier.padding(end = 4.dp).size(24.dp),
                     contentDescription = null,
-                ) else Icon(
+                ) else Image(
                     painter = painterResource(reactionDrawableRes),
                     modifier = Modifier.padding(end = 4.dp).size(24.dp),
                     contentDescription = null,
@@ -113,7 +118,7 @@ object CommentDefaults {
     @Composable
     fun ReactionRow(
         list: List<UICommentReaction>,
-        onClickItem: (reactionId: Int) -> Unit,
+        onClickItem: (reactionValue: String) -> Unit,
         modifier: Modifier = Modifier,
     ) {
         FlowRow(
@@ -123,8 +128,45 @@ object CommentDefaults {
             list.forEach {
                 Reaction(
                     reaction = it,
-                    onClick = { onClickItem(it.id) },
+                    onClick = { onClickItem(it.value) },
                 )
+            }
+        }
+    }
+
+    @Composable
+    fun ReactionPicker(
+        onClickItem: (reactionValue: String) -> Unit,
+        modifier: Modifier = Modifier,
+    ) {
+        val previewing = LocalIsPreviewing.current
+        FlowRow(
+            modifier = modifier
+                .verticalScroll(rememberScrollState())
+                .padding(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            BangumiCommentSticker.map { (id, drawableRes) -> id to drawableRes }.forEach { (id, drawableRes) ->
+                Surface(
+                    onClick = { onClickItem("bgm$id") },
+                    shape = CircleShape,
+                    color = Color.Transparent,
+                ) {
+                    if (previewing) {
+                        Icon(
+                            imageVector = Icons.Rounded.Face,
+                            contentDescription = null,
+                            modifier = Modifier.padding(4.dp).size(22.dp),
+                        )
+                    } else {
+                        Image(
+                            painter = painterResource(drawableRes),
+                            contentDescription = null,
+                            modifier = Modifier.padding(4.dp).size(22.dp),
+                        )
+                    }
+                }
             }
         }
     }
@@ -133,59 +175,37 @@ object CommentDefaults {
     fun ActionRow(
         onClickReply: () -> Unit,
         modifier: Modifier = Modifier,
+        showReply: Boolean = true,
+        showReaction: Boolean = true,
         onClickReaction: () -> Unit,
         onClickBlock: () -> Unit,
         onClickReport: () -> Unit
     ) {
+        val replyText = stringResource(Lang.comment_reply)
         val size = EditCommentDefaults.ActionButtonSize.dp
         val iconSize = 20.dp
-        var actionRowExpanded by rememberSaveable { mutableStateOf(false) }
-        val expandableActionWidth by animateDpAsState(if (actionRowExpanded) size else 0.dp)
-
         Row(modifier = modifier) {
             CompositionLocalProvider(
                 LocalContentColor provides MaterialTheme.colorScheme.onSurface.stronglyWeaken(),
             ) {
-                EditCommentDefaults.ActionButton(
-                    imageVector = Icons.Outlined.ModeComment,
-                    contentDescription = "回复评论",
-                    onClick = onClickReply,
-                    iconSize = iconSize,
-                )
+                if (showReply) {
+                    EditCommentDefaults.ActionButton(
+                        imageVector = Icons.Outlined.ModeComment,
+                        contentDescription = replyText,
+                        onClick = onClickReply,
+                        iconSize = iconSize,
+                    )
+                }
 
-                /*if (actionRowExpanded) {
+                if (showReaction) {
                     EditCommentDefaults.ActionButton(
                         imageVector = Icons.Outlined.AddReaction,
                         contentDescription = "添加表情",
                         onClick = onClickReaction,
                         iconSize = iconSize,
-                        modifier = Modifier.size(height = size, width = expandableActionWidth),
-                    )
-                    EditCommentDefaults.ActionButton(
-                        imageVector = Icons.Outlined.HeartBroken,
-                        contentDescription = "拉黑用户",
-                        onClick = onClickBlock,
-                        iconSize = iconSize,
-                        modifier = Modifier.size(height = size, width = expandableActionWidth),
-                    )
-                    EditCommentDefaults.ActionButton(
-                        imageVector = Icons.Outlined.Report,
-                        contentDescription = "举报用户",
-                        onClick = onClickReport,
-                        iconSize = iconSize,
-                        modifier = Modifier.size(height = size, width = expandableActionWidth),
+                        modifier = Modifier.size(size),
                     )
                 }
-
-                // 最后一个按钮不要有 ripple effect，因为有动画，看起来比较奇怪
-                EditCommentDefaults.ActionButton(
-                    imageVector = Icons.Outlined.MoreHoriz,
-                    contentDescription = "展开更多评论功能",
-                    iconSize = iconSize,
-                    onClick = { actionRowExpanded = true },
-                    modifier = Modifier.size(height = size, width = size - expandableActionWidth),
-                    hasIndication = false,
-                )*/
             }
         }
     }
@@ -223,7 +243,7 @@ object CommentDefaults {
                 }
                 if (hiddenReplyCount > 0) {
                     Text(
-                        text = "查看更多 $hiddenReplyCount 条回复>",
+                        text = stringResource(Lang.comment_view_more_replies, hiddenReplyCount),
                         color = primaryColor,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -286,5 +306,10 @@ object CommentDefaults {
         }
     }.let {
         UIRichText(it)
+    }
+
+    private fun String.bangumiReactionIdOrNull(): Int? {
+        if (!startsWith("bgm")) return null
+        return removePrefix("bgm").toIntOrNull()
     }
 }

@@ -110,9 +110,33 @@ import me.him188.ani.app.ui.foundation.session.SelfAvatar
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.cache_episode_pause_download
+import me.him188.ani.app.ui.lang.cache_episode_resume_download
+import me.him188.ani.app.ui.lang.cache_management_delete_cache_confirmation
+import me.him188.ani.app.ui.lang.cache_management_delete_cache_title
+import me.him188.ani.app.ui.lang.cache_management_delete_selected
+import me.him188.ani.app.ui.lang.cache_management_downloading_count
+import me.him188.ani.app.ui.lang.cache_management_enter_selection_mode
+import me.him188.ani.app.ui.lang.cache_management_episode_label
+import me.him188.ani.app.ui.lang.cache_management_exit_selection
+import me.him188.ani.app.ui.lang.cache_management_finished_count
+import me.him188.ani.app.ui.lang.cache_management_invalid_cache_info
+import me.him188.ani.app.ui.lang.cache_management_more_actions
+import me.him188.ani.app.ui.lang.cache_management_more_info
+import me.him188.ani.app.ui.lang.cache_management_play
+import me.him188.ani.app.ui.lang.cache_management_select_all
+import me.him188.ani.app.ui.lang.cache_management_select_item_for_details
+import me.him188.ani.app.ui.lang.cache_management_selected_count
+import me.him188.ani.app.ui.lang.cache_management_streaming_not_supported
+import me.him188.ani.app.ui.lang.cache_subject_cancel
+import me.him188.ani.app.ui.lang.cache_subject_delete
+import me.him188.ani.app.ui.lang.cache_unknown
+import me.him188.ani.app.ui.lang.main_screen_page_cache_management
 import me.him188.ani.app.ui.settings.rendering.P2p
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 全局缓存管理页面状态
@@ -462,7 +486,7 @@ private fun CacheManagementLayout(
                                         .padding(vertical = 48.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    Text("选择一个条目查看具体缓存")
+                                    Text(stringResource(Lang.cache_management_select_item_for_details))
                                 }
                             }
                         } else {
@@ -510,10 +534,14 @@ private fun CacheManagementTopBar(
     scrollBehavior: TopAppBarScrollBehavior?,
 ) {
     if (selectionMode) {
+        val selectedCountText = stringResource(Lang.cache_management_selected_count, selectionCount)
+        val exitSelectionText = stringResource(Lang.cache_management_exit_selection)
+        val selectAllText = stringResource(Lang.cache_management_select_all)
+        val deleteSelectedText = stringResource(Lang.cache_management_delete_selected)
         AniTopAppBar(
-            title = { AniTopAppBarDefaults.Title("$selectionCount 个已选") },
+            title = { AniTopAppBarDefaults.Title(selectedCountText) },
             navigationIcon = {
-                IconButton(onClick = onExitSelection) { Icon(Icons.Rounded.Close, "退出选择") }
+                IconButton(onClick = onExitSelection) { Icon(Icons.Rounded.Close, exitSelectionText) }
             },
             actions = {
                 IconButton(
@@ -522,7 +550,7 @@ private fun CacheManagementTopBar(
                 ) {
                     Icon(
                         if (allSelected) Icons.Default.Deselect else Icons.Default.SelectAll,
-                        "选择所有",
+                        selectAllText,
                     )
                 }
             },
@@ -531,7 +559,7 @@ private fun CacheManagementTopBar(
                     onClick = onDeleteSelected,
                     enabled = selectionCount > 0,
                 ) {
-                    Icon(Icons.Rounded.Delete, "删除所选", tint = MaterialTheme.colorScheme.error)
+                    Icon(Icons.Rounded.Delete, deleteSelectedText, tint = MaterialTheme.colorScheme.error)
                 }
             },
             colors = appBarColors,
@@ -540,14 +568,15 @@ private fun CacheManagementTopBar(
         )
     } else {
         AniTopAppBar(
-            title = { AniTopAppBarDefaults.Title("缓存管理") },
+            title = { AniTopAppBarDefaults.Title(stringResource(Lang.main_screen_page_cache_management)) },
             navigationIcon = navigationIcon,
             actions = {
+                val enterSelectionModeText = stringResource(Lang.cache_management_enter_selection_mode)
                 IconButton(
                     onClick = onEnterSelection,
                     enabled = hasEntries,
                 ) {
-                    Icon(Icons.Default.Checklist, "进入选择模式")
+                    Icon(Icons.Default.Checklist, enterSelectionModeText)
                 }
             },
             avatar = selfInfo?.let {
@@ -575,15 +604,15 @@ internal fun DeleteActionDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Rounded.Delete, null, tint = MaterialTheme.colorScheme.error) },
-        title = { Text("删除缓存") },
-        text = { Text("删除后不可恢复，确认删除吗？") },
+        title = { Text(stringResource(Lang.cache_management_delete_cache_title)) },
+        text = { Text(stringResource(Lang.cache_management_delete_cache_confirmation)) },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
-            ) { Text("删除", color = MaterialTheme.colorScheme.error) }
+            ) { Text(stringResource(Lang.cache_subject_delete), color = MaterialTheme.colorScheme.error) }
         },
         dismissButton = {
-            TextButton(onDismiss) { Text("取消") }
+            TextButton(onDismiss) { Text(stringResource(Lang.cache_subject_cancel)) }
         },
     )
 }
@@ -617,6 +646,11 @@ private fun CacheSubjectListItem(
                 Modifier.weight(1f).animateContentSize(),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
+                val finishedCountText = stringResource(
+                    Lang.cache_management_finished_count,
+                    group.finishedCount,
+                    group.entries.size,
+                )
                 Text(
                     group.subjectName,
                     style = MaterialTheme.typography.titleMedium,
@@ -628,13 +662,17 @@ private fun CacheSubjectListItem(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "${group.finishedCount}/${group.entries.size} 已完成",
+                        finishedCountText,
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     if (group.downloadingCount > 0) {
+                        val downloadingCountText = stringResource(
+                            Lang.cache_management_downloading_count,
+                            group.downloadingCount,
+                        )
                         Text(
-                            "${group.downloadingCount} 个下载中",
+                            downloadingCountText,
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
                         )
@@ -720,7 +758,12 @@ private fun CacheListItem(
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         entry.engineKey?.let { key ->
-                            val (icon, desc) = renderEngineIcon(key)
+                            val icon = renderEngineIcon(key)
+                            val desc = when (key) {
+                                MediaCacheEngineKey.Anitorrent -> "BT"
+                                MediaCacheEngineKey.WebM3u -> "Web"
+                                else -> stringResource(Lang.cache_unknown)
+                            }
                             Icon(icon, desc, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
 
@@ -732,7 +775,7 @@ private fun CacheListItem(
                         )
                     }
                     Text(
-                        "第${entry.sort}话 · ${entry.displayName}",
+                        stringResource(Lang.cache_management_episode_label, entry.sort, entry.displayName),
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -750,8 +793,9 @@ private fun CacheListItem(
                             onCheckedChange = { onToggleSelected() },
                         )
                     } else {
+                        val moreActionsText = stringResource(Lang.cache_management_more_actions)
                         IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Rounded.MoreVert, "更多操作")
+                            Icon(Icons.Rounded.MoreVert, moreActionsText)
                         }
                     }
 
@@ -810,9 +854,9 @@ private fun CacheListItem(
 }
 
 private fun renderEngineIcon(key: MediaCacheEngineKey) = when (key) {
-    MediaCacheEngineKey.Anitorrent -> Icons.Filled.P2p to "BT"
-    MediaCacheEngineKey.WebM3u -> Icons.Filled.Language to "Web"
-    else -> Icons.AutoMirrored.Rounded.HelpOutline to "未知"
+    MediaCacheEngineKey.Anitorrent -> Icons.Filled.P2p
+    MediaCacheEngineKey.WebM3u -> Icons.Filled.Language
+    else -> Icons.AutoMirrored.Rounded.HelpOutline
 }
 
 @Composable
@@ -829,6 +873,12 @@ internal fun CacheActionDropdown(
     offset: DpOffset = DpOffset.Zero,
 ) {
     val toaster = LocalToaster.current
+    val resumeDownloadText = stringResource(Lang.cache_episode_resume_download)
+    val pauseDownloadText = stringResource(Lang.cache_episode_pause_download)
+    val playText = stringResource(Lang.cache_management_play)
+    val invalidCacheInfoText = stringResource(Lang.cache_management_invalid_cache_info)
+    val streamingNotSupportedText = stringResource(Lang.cache_management_streaming_not_supported)
+    val moreInfoText = stringResource(Lang.cache_management_more_info)
     DropdownMenu(
         expanded = show,
         onDismissRequest = onDismiss,
@@ -838,7 +888,7 @@ internal fun CacheActionDropdown(
         if (!episode.isFinished) {
             if (episode.isPaused) {
                 DropdownMenuItem(
-                    text = { Text("继续下载") },
+                    text = { Text(resumeDownloadText) },
                     leadingIcon = { Icon(Icons.Rounded.Restore, null) },
                     onClick = {
                         onResume()
@@ -847,7 +897,7 @@ internal fun CacheActionDropdown(
                 )
             } else if (!episode.isFailed) {
                 DropdownMenuItem(
-                    text = { Text("暂停下载") },
+                    text = { Text(pauseDownloadText) },
                     leadingIcon = { Icon(Icons.Rounded.Pause, null) },
                     onClick = {
                         onPause()
@@ -858,7 +908,7 @@ internal fun CacheActionDropdown(
         }
         if (!episode.isFailed) {
             DropdownMenuItem(
-                text = { Text("播放") },
+                text = { Text(playText) },
                 leadingIcon = { Icon(Icons.Rounded.PlayArrow, null) },
                 onClick = {
                     when (episode.playability) {
@@ -868,11 +918,11 @@ internal fun CacheActionDropdown(
                         }
 
                         CacheEpisodeState.Playability.INVALID_SUBJECT_EPISODE_ID -> {
-                            toaster.toast("缓存信息无效，无法播放")
+                            toaster.toast(invalidCacheInfoText)
                         }
 
                         CacheEpisodeState.Playability.STREAMING_NOT_SUPPORTED -> {
-                            toaster.toast("此资源不支持边下边播，请等待下载完成")
+                            toaster.toast(streamingNotSupportedText)
                         }
                     }
                 },
@@ -880,7 +930,7 @@ internal fun CacheActionDropdown(
         }
         onViewDetail?.let {
             DropdownMenuItem(
-                text = { Text("更多信息") },
+                text = { Text(moreInfoText) },
                 leadingIcon = { Icon(Icons.Rounded.Info, null) },
                 onClick = {
                     it()
@@ -890,7 +940,7 @@ internal fun CacheActionDropdown(
         }
 
         DropdownMenuItem(
-            text = { Text("删除", color = MaterialTheme.colorScheme.error) },
+            text = { Text(stringResource(Lang.cache_subject_delete), color = MaterialTheme.colorScheme.error) },
             leadingIcon = { Icon(Icons.Rounded.Delete, null, tint = MaterialTheme.colorScheme.error) },
             onClick = {
                 onDelete()

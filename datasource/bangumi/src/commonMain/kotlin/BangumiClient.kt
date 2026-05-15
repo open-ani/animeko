@@ -12,9 +12,11 @@ package me.him188.ani.datasources.bangumi
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
@@ -69,6 +71,10 @@ interface BangumiClient {
     suspend fun executeGraphQL(actionName: String, query: String, variables: JsonObject? = null): JsonObject
 
     suspend fun getSelfInfoByToken(accessToken: String?): BangumiUser?
+
+    suspend fun likeEpisodeComment(commentId: Int, value: Int)
+
+    suspend fun unlikeEpisodeComment(commentId: Int)
 
     /**
      * 测试与 Bangumi 主站的连接
@@ -139,6 +145,25 @@ class BangumiClientImpl(
                 return null
             }
             throw e
+        }
+    }
+
+    override suspend fun likeEpisodeComment(commentId: Int, value: Int) {
+        client.use {
+            put("$BANGUMI_NEXT_API_HOST/p1/episodes/-/comments/$commentId/like") {
+                contentType(ContentType.Application.Json)
+                setBody(
+                    buildJsonObject {
+                        put("value", value)
+                    },
+                )
+            }
+        }
+    }
+
+    override suspend fun unlikeEpisodeComment(commentId: Int) {
+        client.use {
+            delete("$BANGUMI_NEXT_API_HOST/p1/episodes/-/comments/$commentId/like")
         }
     }
 

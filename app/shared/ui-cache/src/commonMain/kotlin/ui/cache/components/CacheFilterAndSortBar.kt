@@ -43,7 +43,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.cache_filter_cache_type
+import me.him188.ani.app.ui.lang.cache_filter_collection_doing
+import me.him188.ani.app.ui.lang.cache_filter_collection_done
+import me.him188.ani.app.ui.lang.cache_filter_collection_dropped
+import me.him188.ani.app.ui.lang.cache_filter_collection_not_collected
+import me.him188.ani.app.ui.lang.cache_filter_collection_on_hold
+import me.him188.ani.app.ui.lang.cache_filter_collection_state
+import me.him188.ani.app.ui.lang.cache_filter_collection_wish
+import me.him188.ani.app.ui.lang.cache_filter_download_status
+import me.him188.ani.app.ui.lang.cache_filter_sort
+import me.him188.ani.app.ui.lang.cache_filter_sort_episode_asc
+import me.him188.ani.app.ui.lang.cache_filter_sort_episode_desc
+import me.him188.ani.app.ui.lang.cache_filter_sort_newest
+import me.him188.ani.app.ui.lang.cache_filter_sort_oldest
+import me.him188.ani.app.ui.lang.cache_filter_sort_subject_asc
+import me.him188.ani.app.ui.lang.cache_filter_sort_subject_desc
+import me.him188.ani.app.ui.lang.cache_filter_status_downloading
+import me.him188.ani.app.ui.lang.cache_filter_status_finished
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import org.jetbrains.compose.resources.stringResource
 
 @Stable
 internal class CacheFilterAndSortState {
@@ -186,7 +206,7 @@ private fun CollectionFilterChip(
     onChange: (UnifiedCollectionType?) -> Unit,
 ) {
     FilterPill(
-        label = "收藏状态",
+        label = stringResource(Lang.cache_filter_collection_state),
         selectedLabel = selected?.let { renderCollectionType(it) },
         isSelected = selected != null,
         onClick = { isSelected ->
@@ -212,7 +232,7 @@ private fun EngineFilterChip(
     onChange: (MediaCacheEngineKey?) -> Unit,
 ) {
     FilterPill(
-        label = "缓存类型",
+        label = stringResource(Lang.cache_filter_cache_type),
         selectedLabel = selected?.let { renderEngineKey(it) },
         isSelected = selected != null,
         enabled = options.isNotEmpty(),
@@ -238,13 +258,8 @@ private fun StatusFilterChip(
     onChange: (CacheStatusFilter?) -> Unit,
 ) {
     FilterPill(
-        label = "下载状态",
-        selectedLabel = selected?.let {
-            when (it) {
-                CacheStatusFilter.Downloading -> "下载中"
-                CacheStatusFilter.Finished -> "已完成"
-            }
-        },
+        label = stringResource(Lang.cache_filter_download_status),
+        selectedLabel = selected?.let { renderStatusFilter(it) },
         isSelected = selected != null,
         onClick = { isSelected ->
             if (isSelected) onChange(null)
@@ -252,14 +267,7 @@ private fun StatusFilterChip(
     ) { onDismiss ->
         CacheStatusFilter.entries.forEach { option ->
             DropdownMenuItem(
-                text = {
-                    Text(
-                        when (option) {
-                            CacheStatusFilter.Downloading -> "下载中"
-                            CacheStatusFilter.Finished -> "已完成"
-                        },
-                    )
-                },
+                text = { Text(renderStatusFilter(option)) },
                 onClick = {
                     onChange(option)
                     onDismiss()
@@ -319,12 +327,12 @@ private fun SortMenuButton(
             shape = CircleShape,
             colors = IconButtonDefaults.iconButtonColors(),
         ) {
-            Icon(Icons.AutoMirrored.Rounded.Sort, "排序")
+            Icon(Icons.AutoMirrored.Rounded.Sort, stringResource(Lang.cache_filter_sort))
         }
         DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
             CacheSortOption.entries.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(option.label) },
+                    text = { Text(renderSortOption(option)) },
                     trailingIcon = {
                         if (option == sortOption) {
                             Icon(Icons.Rounded.Check, null)
@@ -345,23 +353,44 @@ enum class CacheStatusFilter {
     Finished,
 }
 
-internal enum class CacheSortOption(val label: String) {
-    Newest("最新下载"),
-    Oldest("最早下载"),
-    SubjectAsc("条目名 AZ"),
-    SubjectDesc("条目名 ZA"),
-    EpisodeAsc("剧集升序"),
-    EpisodeDesc("剧集降序"),
+internal enum class CacheSortOption {
+    Newest,
+    Oldest,
+    SubjectAsc,
+    SubjectDesc,
+    EpisodeAsc,
+    EpisodeDesc,
 }
 
+@Composable
+private fun renderStatusFilter(type: CacheStatusFilter): String {
+    return when (type) {
+        CacheStatusFilter.Downloading -> stringResource(Lang.cache_filter_status_downloading)
+        CacheStatusFilter.Finished -> stringResource(Lang.cache_filter_status_finished)
+    }
+}
+
+@Composable
+private fun renderSortOption(option: CacheSortOption): String {
+    return when (option) {
+        CacheSortOption.Newest -> stringResource(Lang.cache_filter_sort_newest)
+        CacheSortOption.Oldest -> stringResource(Lang.cache_filter_sort_oldest)
+        CacheSortOption.SubjectAsc -> stringResource(Lang.cache_filter_sort_subject_asc)
+        CacheSortOption.SubjectDesc -> stringResource(Lang.cache_filter_sort_subject_desc)
+        CacheSortOption.EpisodeAsc -> stringResource(Lang.cache_filter_sort_episode_asc)
+        CacheSortOption.EpisodeDesc -> stringResource(Lang.cache_filter_sort_episode_desc)
+    }
+}
+
+@Composable
 private fun renderCollectionType(type: UnifiedCollectionType): String {
     return when (type) {
-        UnifiedCollectionType.WISH -> "想看"
-        UnifiedCollectionType.DOING -> "在看"
-        UnifiedCollectionType.DONE -> "看过"
-        UnifiedCollectionType.ON_HOLD -> "搁置"
-        UnifiedCollectionType.DROPPED -> "抛弃"
-        UnifiedCollectionType.NOT_COLLECTED -> "未收藏"
+        UnifiedCollectionType.WISH -> stringResource(Lang.cache_filter_collection_wish)
+        UnifiedCollectionType.DOING -> stringResource(Lang.cache_filter_collection_doing)
+        UnifiedCollectionType.DONE -> stringResource(Lang.cache_filter_collection_done)
+        UnifiedCollectionType.ON_HOLD -> stringResource(Lang.cache_filter_collection_on_hold)
+        UnifiedCollectionType.DROPPED -> stringResource(Lang.cache_filter_collection_dropped)
+        UnifiedCollectionType.NOT_COLLECTED -> stringResource(Lang.cache_filter_collection_not_collected)
     }
 }
 

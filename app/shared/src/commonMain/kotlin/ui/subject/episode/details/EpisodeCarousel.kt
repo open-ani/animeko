@@ -50,6 +50,10 @@ import me.him188.ani.app.tools.toProgress
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.app.ui.foundation.lists.PaginatedGroup
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.episode_comments
+import me.him188.ani.app.ui.lang.subject_episode_cached
+import me.him188.ani.app.ui.lang.subject_episode_default_title
 import me.him188.ani.app.ui.subject.episode.details.components.EpisodeWatchStatusButton
 import me.him188.ani.app.ui.subject.episode.details.components.PlayingEpisodeItem
 import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
@@ -57,6 +61,7 @@ import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.format1f
+import org.jetbrains.compose.resources.stringResource
 
 
 /**
@@ -124,6 +129,7 @@ fun EpisodeCarousel(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
+    val commentsText = stringResource(Lang.episode_comments)
     LaunchedEffect(state.playingEpisode) {
         val index = state.episodes.indexOf(state.playingEpisode)
         if (index == -1) return@LaunchedEffect
@@ -158,7 +164,12 @@ fun EpisodeCarousel(
                         },
                         title = {
                             Text(
-                                collection.episodeInfo.nameCn.ifEmpty { "第 ${collection.episodeInfo.sort} 话" },
+                                collection.episodeInfo.nameCn.ifEmpty {
+                                    stringResource(
+                                        Lang.subject_episode_default_title,
+                                        collection.episodeInfo.sort.toString(),
+                                    )
+                                },
                                 color = if (isPlaying) MaterialTheme.colorScheme.primary else LocalContentColor.current,
                             )
                         },
@@ -180,7 +191,7 @@ fun EpisodeCarousel(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                Icon(Icons.AutoMirrored.Outlined.Chat, contentDescription = "评论数量")
+                                Icon(Icons.AutoMirrored.Outlined.Chat, contentDescription = commentsText)
                                 Text(collection.episodeInfo.comment.toString(), softWrap = false)
                             }
 
@@ -227,6 +238,7 @@ private fun EpisodeCacheStatusLabel(
     state: EpisodeCarouselState,
     episode: EpisodeCollectionInfo,
 ) {
+    val cachedText = stringResource(Lang.subject_episode_cached)
     val cacheStatusState by remember(state, episode) {
         derivedStateOf { state.cacheStatus(episode) }
     }
@@ -253,7 +265,7 @@ private fun EpisodeCacheStatusLabel(
             when (cacheStatusState) {
                 is EpisodeCacheStatus.Cached -> {
                     Icon(Icons.Rounded.DownloadDone, contentDescription = null)
-                    Text("已缓存", softWrap = false)
+                    Text(cachedText, softWrap = false)
                 }
 
                 is EpisodeCacheStatus.Caching -> {

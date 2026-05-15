@@ -82,6 +82,15 @@ import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.plus
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_details_characters
+import me.him188.ani.app.ui.lang.subject_details_characters_with_count
+import me.him188.ani.app.ui.lang.subject_details_related_subjects
+import me.him188.ani.app.ui.lang.subject_details_show_less
+import me.him188.ani.app.ui.lang.subject_details_show_more
+import me.him188.ani.app.ui.lang.subject_details_staff
+import me.him188.ani.app.ui.lang.subject_details_staff_with_count
+import me.him188.ani.app.ui.lang.subject_details_view_all
 import me.him188.ani.app.ui.search.rememberTestLazyPagingItems
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
@@ -91,6 +100,7 @@ import me.him188.ani.app.ui.subject.details.TestSubjectStaffInfo
 import me.him188.ani.app.ui.subject.renderSubjectSeason
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 
 
 object SubjectDetailsDefaults {
@@ -148,6 +158,15 @@ fun SubjectDetailsDefaults.DetailsTab(
     horizontalPadding: Dp = currentWindowAdaptiveInfo1().windowSizeClass.paneHorizontalPadding,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
+    val charactersText = stringResource(Lang.subject_details_characters)
+    val charactersWithCountText = totalCharactersCount?.let {
+        stringResource(Lang.subject_details_characters_with_count, it)
+    }
+    val staffText = stringResource(Lang.subject_details_staff)
+    val staffWithCountText = totalStaffCount?.let {
+        stringResource(Lang.subject_details_staff_with_count, it)
+    }
+    val relatedSubjectsText = stringResource(Lang.subject_details_related_subjects)
     LazyColumn(
         modifier,
         state = state,
@@ -181,7 +200,7 @@ fun SubjectDetailsDefaults.DetailsTab(
 
         item("characters title") {
             Text(
-                "角色",
+                charactersText,
                 Modifier.padding(horizontal = horizontalPadding),
                 style = MaterialTheme.typography.titleMedium,
             )
@@ -193,7 +212,7 @@ fun SubjectDetailsDefaults.DetailsTab(
                 exposedCharacters,
                 sheetTitle = {
                     Text(
-                        if (totalCharactersCount == null) "角色" else "角色 $totalCharactersCount",
+                        charactersWithCountText ?: charactersText,
                     )
                 },
                 modifier = Modifier.padding(horizontal = horizontalPadding),
@@ -203,7 +222,7 @@ fun SubjectDetailsDefaults.DetailsTab(
 
         item("staff title") {
             Text(
-                "制作人员",
+                staffText,
                 Modifier.padding(horizontal = horizontalPadding),
                 style = MaterialTheme.typography.titleMedium,
             )
@@ -215,7 +234,7 @@ fun SubjectDetailsDefaults.DetailsTab(
                 exposedStaff,
                 sheetTitle = {
                     Text(
-                        if (totalStaffCount == null) "制作人员" else "制作人员 $totalStaffCount",
+                        staffWithCountText ?: staffText,
                     )
                 },
                 modifier = Modifier.padding(horizontal = horizontalPadding),
@@ -226,7 +245,7 @@ fun SubjectDetailsDefaults.DetailsTab(
         if (relatedSubjects.itemCount != 0) {
             item("related subjects title") {
                 Text(
-                    "关联条目",
+                    relatedSubjectsText,
                     Modifier.padding(horizontal = horizontalPadding),
                     style = MaterialTheme.typography.titleMedium,
                 )
@@ -267,6 +286,8 @@ private fun TagsList(
     onClickTag: (Tag) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val showLessText = stringResource(Lang.subject_details_show_less)
+    val showMoreText = stringResource(Lang.subject_details_show_more)
     Column(modifier) {
         val allTags by remember(info) {
             derivedStateOf { info.tags }
@@ -328,14 +349,14 @@ private fun TagsList(
                             { isExpanded = !isExpanded },
                             Modifier.height(40.dp),
                         ) {
-                            Text("显示更少")
+                            Text(showLessText)
                         }
                     } else {
                         TextButton(
                             { isExpanded = !isExpanded },
                             Modifier.height(40.dp),
                         ) {
-                            Text("显示更多")
+                            Text(showMoreText)
                         }
                     }
                 }
@@ -354,6 +375,7 @@ private fun <T : Any> PersonCardList(
     itemSpacing: Dp = 12.dp,
     itemContent: @Composable (T) -> Unit,
 ) {
+    val viewAllText = stringResource(Lang.subject_details_view_all)
     Column(modifier) {
         var showSheet by rememberSaveable { mutableStateOf(false) }
         FlowRow(
@@ -372,7 +394,7 @@ private fun <T : Any> PersonCardList(
             { showSheet = true },
             Modifier.padding(top = 8.dp).align(Alignment.End),
         ) {
-            Text("查看全部")
+            Text(viewAllText)
         }
 
         if (showSheet) {

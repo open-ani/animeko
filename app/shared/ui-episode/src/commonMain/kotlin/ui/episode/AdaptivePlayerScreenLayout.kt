@@ -77,9 +77,14 @@ import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.theme.AniTheme
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.episode_comments
+import me.him188.ani.app.ui.lang.episode_comments_with_count
+import me.him188.ani.app.ui.lang.subject_details_tab_details
 import me.him188.ani.app.ui.search.rememberTestLazyPagingItems
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isMobile
+import org.jetbrains.compose.resources.stringResource
 
 @Stable
 class AdaptivePlayerScreenScaffoldState(
@@ -347,6 +352,7 @@ private fun TabRow(
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surface,
 ) {
+    val detailsText = stringResource(Lang.subject_details_tab_details)
     TabRow(
         selectedTabIndex = pagerState.currentPage,
         modifier,
@@ -364,7 +370,7 @@ private fun TabRow(
             selected = pagerState.currentPage == 0,
             onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
             modifier = Modifier.height(44.dp),
-            text = { Text("详情", softWrap = false) },
+            text = { Text(detailsText, softWrap = false) },
             selectedContentColor = MaterialTheme.colorScheme.primary,
             unselectedContentColor = MaterialTheme.colorScheme.onSurface,
         )
@@ -373,11 +379,11 @@ private fun TabRow(
             onClick = { scope.launch { pagerState.animateScrollToPage(1) } },
             modifier = Modifier.height(44.dp),
             text = {
-                val text by remember(commentCount) {
-                    derivedStateOf {
-                        val count = commentCount()
-                        if (count == null) "评论" else "评论 $count"
-                    }
+                val count = commentCount()
+                val text = if (count == null) {
+                    stringResource(Lang.episode_comments)
+                } else {
+                    stringResource(Lang.episode_comments_with_count, count)
                 }
                 Text(text, softWrap = false)
             },

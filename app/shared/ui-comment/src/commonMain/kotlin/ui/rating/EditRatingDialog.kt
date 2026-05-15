@@ -57,6 +57,29 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.icons.EditSquare
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.rating_comment_hint
+import me.him188.ani.app.ui.lang.rating_comment_label
+import me.him188.ani.app.ui.lang.rating_comment_optional
+import me.him188.ani.app.ui.lang.rating_discard
+import me.him188.ani.app.ui.lang.rating_discard_edit_message
+import me.him188.ani.app.ui.lang.rating_discard_edit_title
+import me.him188.ani.app.ui.lang.rating_edit_title
+import me.him188.ani.app.ui.lang.rating_private_only
+import me.him188.ani.app.ui.lang.rating_score_class_average
+import me.him188.ani.app.ui.lang.rating_score_class_bad
+import me.him188.ani.app.ui.lang.rating_score_class_highly_recommended
+import me.him188.ani.app.ui.lang.rating_score_class_legendary_caution
+import me.him188.ani.app.ui.lang.rating_score_class_masterpiece
+import me.him188.ani.app.ui.lang.rating_score_class_okay
+import me.him188.ani.app.ui.lang.rating_score_class_poor
+import me.him188.ani.app.ui.lang.rating_score_class_recommended
+import me.him188.ani.app.ui.lang.rating_score_class_terrible_caution
+import me.him188.ani.app.ui.lang.rating_score_class_very_bad
+import me.him188.ani.app.ui.lang.settings_danmaku_confirm
+import me.him188.ani.app.ui.lang.settings_media_source_continue_editing
+import me.him188.ani.app.ui.lang.settings_mediasource_cancel
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.max
 
 @Stable
@@ -91,12 +114,19 @@ fun RatingEditorDialog(
     modifier: Modifier = Modifier,
     isLoading: Boolean = false,
 ) {
+    val discardEditTitle = stringResource(Lang.rating_discard_edit_title)
+    val discardEditMessage = stringResource(Lang.rating_discard_edit_message)
+    val discardText = stringResource(Lang.rating_discard)
+    val continueEditingText = stringResource(Lang.settings_media_source_continue_editing)
+    val editRatingText = stringResource(Lang.rating_edit_title)
+    val confirmText = stringResource(Lang.settings_danmaku_confirm)
+    val cancelText = stringResource(Lang.settings_mediasource_cancel)
     var showConfirmCancelDialog by remember { mutableStateOf(false) }
     if (showConfirmCancelDialog) {
         AlertDialog(
             onDismissRequest = { showConfirmCancelDialog = false },
-            title = { Text("舍弃编辑") },
-            text = { Text("评价尚未保存，确定要舍弃吗？") },
+            title = { Text(discardEditTitle) },
+            text = { Text(discardEditMessage) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -107,14 +137,14 @@ fun RatingEditorDialog(
                         contentColor = MaterialTheme.colorScheme.error,
                     ),
                 ) {
-                    Text("舍弃")
+                    Text(discardText)
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = { showConfirmCancelDialog = false },
                 ) {
-                    Text("继续编辑")
+                    Text(continueEditingText)
                 }
             },
         )
@@ -124,7 +154,7 @@ fun RatingEditorDialog(
     AlertDialog(
         onDismissRequest = onDismissRequest,
         icon = { Icon(Icons.Rounded.EditSquare, null) },
-        title = { Text("修改评分") },
+        title = { Text(editRatingText) },
         text = {
             RatingEditor(
                 state.score, { state.score = it },
@@ -144,7 +174,7 @@ fun RatingEditorDialog(
                         onRate(RateRequest(state.score, state.comment, state.isPrivate))
                     },
                 ) {
-                    Text("确定")
+                    Text(confirmText)
                 }
             }
         },
@@ -158,7 +188,7 @@ fun RatingEditorDialog(
                     }
                 },
             ) {
-                Text("取消")
+                Text(cancelText)
             }
         },
         properties = DialogProperties(
@@ -184,6 +214,11 @@ fun RatingEditor(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    val scoreLabels = rememberRatingScoreLabels()
+    val commentLabelText = stringResource(Lang.rating_comment_label)
+    val commentHintText = stringResource(Lang.rating_comment_hint)
+    val commentOptionalText = stringResource(Lang.rating_comment_optional)
+    val privateOnlyText = stringResource(Lang.rating_private_only)
     Column(modifier) {
         Column(
             Modifier.align(Alignment.CenterHorizontally),
@@ -205,7 +240,7 @@ fun RatingEditor(
                         color = scoreColor(score.toFloat()),
                     )
                     RatingScoreText(
-                        remember(score) { renderScoreClass(score.toFloat()) },
+                        remember(score, scoreLabels) { renderScoreClass(score.toFloat(), scoreLabels) },
                         style = MaterialTheme.typography.bodyLarge,
                         color = scoreColor(score.toFloat()),
                     )
@@ -216,6 +251,7 @@ fun RatingEditor(
                 TenRatingStars(
                     score,
                     onScoreChange = onScoreChange,
+                    scoreLabels = scoreLabels,
                     enabled = enabled,
                 )
             }
@@ -236,13 +272,13 @@ fun RatingEditor(
                     shape = MaterialTheme.shapes.medium,
                     label = {
                         if (isFocused || comment.isNotEmpty()) {
-                            Text("评价")
+                            Text(commentLabelText)
                         } else {
-                            Text("说点什么...")
+                            Text(commentHintText)
                         }
                     },
                     interactionSource = interactionSource,
-                    placeholder = { Text("可留空") },
+                    placeholder = { Text(commentOptionalText) },
                     readOnly = !enabled,
                 )
             }
@@ -261,15 +297,16 @@ fun RatingEditor(
                 onCheckedChange = onIsPrivateChange,
                 enabled = enabled,
             )
-            Text("仅自己可见")
+            Text(privateOnlyText)
         }
     }
 }
 
 @Composable
-fun TenRatingStars(
+private fun TenRatingStars(
     score: Int, // range 1..10
     onScoreChange: (Int) -> Unit,
+    scoreLabels: RatingScoreLabels,
     color: Color = MaterialTheme.colorScheme.primary,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -283,7 +320,7 @@ fun TenRatingStars(
             val icon = @Composable { index: Int ->
                 Icon(
                     if (score >= index) Icons.Rounded.Star else Icons.Rounded.StarOutline,
-                    contentDescription = renderScoreClass(index.toFloat()),
+                    contentDescription = renderScoreClass(index.toFloat(), scoreLabels),
                     Modifier
                         .clip(CircleShape)
                         .clickable(
@@ -310,19 +347,46 @@ fun TenRatingStars(
     }
 }
 
+private data class RatingScoreLabels(
+    val terribleCaution: String,
+    val veryBad: String,
+    val bad: String,
+    val poor: String,
+    val average: String,
+    val okay: String,
+    val recommended: String,
+    val highlyRecommended: String,
+    val masterpiece: String,
+    val legendaryCaution: String,
+)
+
+@Composable
+private fun rememberRatingScoreLabels(): RatingScoreLabels = RatingScoreLabels(
+    terribleCaution = stringResource(Lang.rating_score_class_terrible_caution),
+    veryBad = stringResource(Lang.rating_score_class_very_bad),
+    bad = stringResource(Lang.rating_score_class_bad),
+    poor = stringResource(Lang.rating_score_class_poor),
+    average = stringResource(Lang.rating_score_class_average),
+    okay = stringResource(Lang.rating_score_class_okay),
+    recommended = stringResource(Lang.rating_score_class_recommended),
+    highlyRecommended = stringResource(Lang.rating_score_class_highly_recommended),
+    masterpiece = stringResource(Lang.rating_score_class_masterpiece),
+    legendaryCaution = stringResource(Lang.rating_score_class_legendary_caution),
+)
+
 @Stable
-fun renderScoreClass(score: Float): String {
+private fun renderScoreClass(score: Float, labels: RatingScoreLabels): String {
     return when (score) {
-        in 0f..1f -> "不忍直视（请谨慎评价）"
-        in 1f..2f -> "很差"
-        in 2f..3f -> "差"
-        in 3f..4f -> "较差"
-        in 4f..5f -> "不过不失"
-        in 5f..6f -> "还行"
-        in 6f..7f -> "推荐"
-        in 7f..8f -> "力荐"
-        in 8f..9f -> "神作"
-        in 9f..10f -> "超神作（请谨慎评价）"
+        in 0f..1f -> labels.terribleCaution
+        in 1f..2f -> labels.veryBad
+        in 2f..3f -> labels.bad
+        in 3f..4f -> labels.poor
+        in 4f..5f -> labels.average
+        in 5f..6f -> labels.okay
+        in 6f..7f -> labels.recommended
+        in 7f..8f -> labels.highlyRecommended
+        in 8f..9f -> labels.masterpiece
+        in 9f..10f -> labels.legendaryCaution
         else -> ""
     }
 }

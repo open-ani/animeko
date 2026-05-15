@@ -38,6 +38,18 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_mediasource_close
+import me.him188.ani.app.ui.lang.subject_episode_statistics_cancelled
+import me.him188.ani.app.ui.lang.subject_episode_statistics_copy
+import me.him188.ani.app.ui.lang.subject_episode_statistics_error
+import me.him188.ani.app.ui.lang.subject_episode_statistics_error_details
+import me.him188.ani.app.ui.lang.subject_episode_statistics_network_error
+import me.him188.ani.app.ui.lang.subject_episode_statistics_no_matching_file
+import me.him188.ani.app.ui.lang.subject_episode_statistics_resolution_timed_out
+import me.him188.ani.app.ui.lang.subject_episode_statistics_unknown_error_tap
+import me.him188.ani.app.ui.lang.subject_episode_statistics_unsupported_media
+import org.jetbrains.compose.resources.stringResource
 
 
 @Composable
@@ -47,6 +59,9 @@ fun SimpleErrorDialog(
 ) {
     val clipboard = LocalClipboard.current
     val scope = rememberAsyncHandler()
+    val copyText = stringResource(Lang.subject_episode_statistics_copy)
+    val closeText = stringResource(Lang.settings_mediasource_close)
+    val errorDetailsText = stringResource(Lang.subject_episode_statistics_error_details)
     val copy: () -> Unit = {
         scope.launch {
             clipboard.setClipEntryText(text())
@@ -56,22 +71,22 @@ fun SimpleErrorDialog(
         onDismissRequest,
         confirmButton = {
             TextButton(copy) {
-                Text("复制")
+                Text(copyText)
             }
         },
         dismissButton = {
             TextButton(onDismissRequest) {
-                Text("关闭")
+                Text(closeText)
             }
         },
-        title = { Text("错误详情") },
+        title = { Text(errorDetailsText) },
         text = {
             OutlinedTextField(
                 value = text(),
                 onValueChange = {},
                 trailingIcon = {
                     IconButton(copy) {
-                        Icon(Icons.Outlined.ContentCopy, "复制")
+                        Icon(Icons.Outlined.ContentCopy, copyText)
                     }
                 },
                 readOnly = true,
@@ -87,6 +102,13 @@ fun VideoLoadingSummary(
     color: Color = MaterialTheme.colorScheme.error,
 ) {
     if (state is VideoLoadingState.Failed) {
+        val errorText = stringResource(Lang.subject_episode_statistics_error)
+        val noMatchingFileText = stringResource(Lang.subject_episode_statistics_no_matching_file)
+        val resolutionTimedOutText = stringResource(Lang.subject_episode_statistics_resolution_timed_out)
+        val unsupportedMediaText = stringResource(Lang.subject_episode_statistics_unsupported_media)
+        val unknownErrorTapText = stringResource(Lang.subject_episode_statistics_unknown_error_tap)
+        val cancelledText = stringResource(Lang.subject_episode_statistics_cancelled)
+        val networkErrorText = stringResource(Lang.subject_episode_statistics_network_error)
         ProvideContentColor(color) {
             var showErrorDialog by rememberSaveable(state) { mutableStateOf(false) }
             if (showErrorDialog) {
@@ -110,20 +132,21 @@ fun VideoLoadingSummary(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        Icons.Outlined.ErrorOutline, "错误",
+                        Icons.Outlined.ErrorOutline,
+                        errorText,
                     )
                 }
 
                 when (state) {
-                    VideoLoadingState.NoMatchingFile -> Text("未匹配到文件")
-                    VideoLoadingState.ResolutionTimedOut -> Text("解析超时")
-                    VideoLoadingState.UnsupportedMedia -> Text("不支持的视频类型")
+                    VideoLoadingState.NoMatchingFile -> Text(noMatchingFileText)
+                    VideoLoadingState.ResolutionTimedOut -> Text(resolutionTimedOutText)
+                    VideoLoadingState.UnsupportedMedia -> Text(unsupportedMediaText)
                     is VideoLoadingState.UnknownError -> {
-                        Text("未知错误，点击查看")
+                        Text(unknownErrorTapText)
                     }
 
-                    VideoLoadingState.Cancelled -> Text("已取消")
-                    VideoLoadingState.NetworkError -> Text("网络错误，请检查网络连接状况")
+                    VideoLoadingState.Cancelled -> Text(cancelledText)
+                    VideoLoadingState.NetworkError -> Text(networkErrorText)
                 }
             }
         }

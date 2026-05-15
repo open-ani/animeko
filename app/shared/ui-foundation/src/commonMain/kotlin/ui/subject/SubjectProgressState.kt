@@ -48,32 +48,32 @@ class SubjectProgressState(
         info.value?.nextEpisodeIdToPlay
     }
 
-    val buttonText by derivedStateOf {
-        when (val s = continueWatchingStatus) {
-            is ContinueWatchingStatus.Continue -> "继续观看 ${renderEpAndSort(s.episodeEp, s.episodeSort)}"
-            ContinueWatchingStatus.Done -> "已看完"
+    fun buttonText(strings: SubjectStatusStrings): String {
+        return when (val s = continueWatchingStatus) {
+            is ContinueWatchingStatus.Continue -> strings.continueWatching(renderEpAndSort(s.episodeEp, s.episodeSort))
+            ContinueWatchingStatus.Done -> strings.done
             is ContinueWatchingStatus.NotOnAir -> {
                 val date = s.airDate.toLocalDateOrNull()
                 if (date != null) {
                     val week = weekFormatter.format(date)
-                    "${week}开播"
+                    strings.startsOn(week)
                 } else {
-                    "还未开播"
+                    strings.notOnAir
                 }
             }
 
-            ContinueWatchingStatus.Start -> "开始观看"
+            ContinueWatchingStatus.Start -> strings.startWatching
             is ContinueWatchingStatus.Watched -> {
                 val date = s.nextEpisodeAirDate.toLocalDateOrNull()
                 if (date != null) {
                     val week = weekFormatter.format(date)
-                    "${week}更新"
+                    strings.updatesOn(week)
                 } else {
-                    "看过 ${renderEpAndSort(s.episodeEp, s.episodeSort)}"
+                    strings.watched(renderEpAndSort(s.episodeEp, s.episodeSort))
                 }
             }
 
-            null -> "未知"
+            null -> strings.unknown
         }
     }
 

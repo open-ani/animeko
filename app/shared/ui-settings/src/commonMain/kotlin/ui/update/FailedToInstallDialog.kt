@@ -19,7 +19,15 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_update_manual_install_cancel
+import me.him188.ani.app.ui.lang.settings_update_manual_install_open_failed
+import me.him188.ani.app.ui.lang.settings_update_manual_install_package_not_found
+import me.him188.ani.app.ui.lang.settings_update_manual_install_title
+import me.him188.ani.app.ui.lang.settings_update_manual_install_view_package
 import me.him188.ani.utils.io.absolutePath
+import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.stringResource
 import org.koin.mp.KoinPlatform
 
 @Composable
@@ -39,23 +47,28 @@ fun FailedToInstallDialog(
                     scope.launch {
                         val file = (state as? AppUpdateState.Downloaded)?.file
                         if (file == null) {
-                            toaster.toast("未找到安装包")
+                            toaster.toast(getString(Lang.settings_update_manual_install_package_not_found))
                             return@launch
                         }
                         val success =
                             KoinPlatform.getKoin().get<UpdateInstaller>().openForManualInstallation(file, context)
 
                         if (!success) {
-                            toaster.toast("打开文件失败，请手动安装 ${file.absolutePath}")
+                            toaster.toast(
+                                getString(
+                                    Lang.settings_update_manual_install_open_failed,
+                                    file.absolutePath,
+                                ),
+                            )
                         }
                     }
                 },
-            ) { Text("查看安装包") }
+            ) { Text(stringResource(Lang.settings_update_manual_install_view_package)) }
         },
         dismissButton = {
-            TextButton(onDismissRequest) { Text("取消更新") }
+            TextButton(onDismissRequest) { Text(stringResource(Lang.settings_update_manual_install_cancel)) }
         },
-        title = { Text("自动安装失败，请手动安装") },
+        title = { Text(stringResource(Lang.settings_update_manual_install_title)) },
         text = { Text(message) },
     )
 }

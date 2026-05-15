@@ -33,15 +33,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.external.placeholder.placeholder
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.subject.collection.components.EditCollectionTypeDropDown
 import me.him188.ani.app.ui.subject.collection.components.SubjectCollectionAction
 import me.him188.ani.app.ui.subject.collection.components.SubjectCollectionActions
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import org.jetbrains.compose.resources.*
 
 
 private val ACTIONS = listOf(
     SubjectCollectionAction(
-        { Text("取消看过") },
+        { Text(stringResource(Lang.subject_episode_unwatch)) },
         { Icon(Icons.Rounded.AccessTime, null) },
         UnifiedCollectionType.WISH,
     ),
@@ -89,18 +91,18 @@ fun EpisodeCollectionActionButton(
     ) {
         when (collectionType) {
             UnifiedCollectionType.DONE -> {
-                Text("已看过")
+                Text(stringResource(Lang.subject_episode_watched))
             }
 
             UnifiedCollectionType.DROPPED -> {
-                Text("已抛弃")
+                Text(stringResource(Lang.subject_episode_dropped))
             }
 
             else -> {
                 Box(Modifier.size(16.dp)) {
                     Icon(Icons.Rounded.Add, null)
                 }
-                Text("看过", Modifier.padding(start = 8.dp))
+                Text(stringResource(Lang.subject_episode_mark_watched), Modifier.padding(start = 8.dp))
             }
         }
 

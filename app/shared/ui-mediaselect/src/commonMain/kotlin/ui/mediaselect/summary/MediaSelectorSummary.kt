@@ -66,7 +66,15 @@ import kotlinx.coroutines.flow.distinctUntilChangedBy
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.media_selector_summary_auto_selecting
+import me.him188.ani.app.ui.lang.media_selector_summary_change
+import me.him188.ani.app.ui.lang.media_selector_summary_manual_select
+import me.him188.ani.app.ui.lang.media_selector_summary_searched
+import me.him188.ani.app.ui.lang.media_selector_summary_select_source
+import me.him188.ani.app.ui.lang.media_selector_summary_source
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -153,11 +161,16 @@ fun MediaSelectorSummaryCard(
                 animationState.currentSummary,
                 transitionSpec = transitionSpec,
             ) { state ->
+                val manualSelectText = stringResource(Lang.media_selector_summary_manual_select)
+                val changeText = stringResource(Lang.media_selector_summary_change)
+                val autoSelectingText = stringResource(Lang.media_selector_summary_auto_selecting)
+                val selectSourceText = stringResource(Lang.media_selector_summary_select_source)
+                val sourceText = stringResource(Lang.media_selector_summary_source)
                 val button = @Composable {
                     val buttonLabel = when (state) {
-                        is MediaSelectorSummary.AutoSelecting -> "手动选择"
-                        is MediaSelectorSummary.RequiresManualSelection -> "手动选择"
-                        is MediaSelectorSummary.Selected -> "更换"
+                        is MediaSelectorSummary.AutoSelecting -> manualSelectText
+                        is MediaSelectorSummary.RequiresManualSelection -> manualSelectText
+                        is MediaSelectorSummary.Selected -> changeText
                     }
 
                     OutlinedButton(
@@ -178,7 +191,7 @@ fun MediaSelectorSummaryCard(
                     when (state) {
                         is MediaSelectorSummary.AutoSelecting -> {
                             ListItem(
-                                headlineContent = { Text("正在自动选择数据源") },
+                                headlineContent = { Text(autoSelectingText) },
                                 commonModifiers,
                                 leadingContent = {
                                     LoadingIndicator(
@@ -191,7 +204,7 @@ fun MediaSelectorSummaryCard(
 
                         is MediaSelectorSummary.RequiresManualSelection -> {
                             ListItem(
-                                headlineContent = { Text("请选择数据源") },
+                                headlineContent = { Text(selectSourceText) },
                                 commonModifiers,
                                 colors = listItemColors,
                             )
@@ -201,7 +214,7 @@ fun MediaSelectorSummaryCard(
                             ListItem(
                                 headlineContent = { Text(state.source.sourceName, softWrap = true, maxLines = 2) },
                                 commonModifiers,
-                                overlineContent = { Text("数据源") },
+                                overlineContent = { Text(sourceText) },
                                 leadingContent = {
                                     SourceIcon(
                                         state.source,
@@ -351,9 +364,10 @@ private fun SourceSummaryRow(
     sources: List<MediaSelectorSourceSummary>,
     modifier: Modifier = Modifier,
 ) {
+    val searchedText = stringResource(Lang.media_selector_summary_searched)
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
-            "已查找：",
+            searchedText,
             softWrap = false,
             style = MaterialTheme.typography.labelMedium,
             color = contentColorFor(MaterialTheme.colorScheme.surfaceContainerHigh),

@@ -42,6 +42,32 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_bottom
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_colorful
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_debug_mode
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_density
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_density_dense
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_density_medium
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_density_sparse
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_display_area
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_display_area_full
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_display_area_half
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_display_area_off
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_display_area_one_eighth
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_display_area_one_quarter
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_display_area_one_sixth
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_display_area_three_quarters
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_enable_regex_filter
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_floating
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_font_size
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_font_weight
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_manage_regex_filter
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_opacity
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_speed
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_speed_description
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_stroke_width
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_top
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.AbstractSettingsViewModel
 import me.him188.ani.app.ui.settings.framework.SettingsState
@@ -52,6 +78,7 @@ import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuStyle
 import me.him188.ani.utils.platform.isDesktop
+import org.jetbrains.compose.resources.stringResource
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.math.roundToInt
@@ -119,6 +146,32 @@ fun EpisodeVideoSettings(
     modifier: Modifier = Modifier,
     useThinSlider: Boolean = true
 ) {
+    val topText = stringResource(Lang.subject_episode_video_settings_top)
+    val floatingText = stringResource(Lang.subject_episode_video_settings_floating)
+    val bottomText = stringResource(Lang.subject_episode_video_settings_bottom)
+    val colorfulText = stringResource(Lang.subject_episode_video_settings_colorful)
+    val fontSizeText = stringResource(Lang.subject_episode_video_settings_font_size)
+    val opacityText = stringResource(Lang.subject_episode_video_settings_opacity)
+    val strokeWidthText = stringResource(Lang.subject_episode_video_settings_stroke_width)
+    val fontWeightText = stringResource(Lang.subject_episode_video_settings_font_weight)
+    val speedText = stringResource(Lang.subject_episode_video_settings_speed)
+    val speedDescriptionText = stringResource(Lang.subject_episode_video_settings_speed_description)
+    val densityText = stringResource(Lang.subject_episode_video_settings_density)
+    val denseText = stringResource(Lang.subject_episode_video_settings_density_dense)
+    val mediumText = stringResource(Lang.subject_episode_video_settings_density_medium)
+    val sparseText = stringResource(Lang.subject_episode_video_settings_density_sparse)
+    val displayAreaText = stringResource(Lang.subject_episode_video_settings_display_area)
+    val displayAreaOffText = stringResource(Lang.subject_episode_video_settings_display_area_off)
+    val displayAreaOneEighthText = stringResource(Lang.subject_episode_video_settings_display_area_one_eighth)
+    val displayAreaOneSixthText = stringResource(Lang.subject_episode_video_settings_display_area_one_sixth)
+    val displayAreaOneQuarterText = stringResource(Lang.subject_episode_video_settings_display_area_one_quarter)
+    val displayAreaHalfText = stringResource(Lang.subject_episode_video_settings_display_area_half)
+    val displayAreaThreeQuartersText = stringResource(Lang.subject_episode_video_settings_display_area_three_quarters)
+    val displayAreaFullText = stringResource(Lang.subject_episode_video_settings_display_area_full)
+    val enableRegexFilterText = stringResource(Lang.subject_episode_video_settings_enable_regex_filter)
+    val manageRegexFilterText = stringResource(Lang.subject_episode_video_settings_manage_regex_filter)
+    val debugModeText = stringResource(Lang.subject_episode_video_settings_debug_mode)
+
     SettingsTab(modifier.verticalScroll(rememberScrollState())) {
         Column {
             Surface(Modifier.fillMaxWidth(), color = SettingsDefaults.groupBackgroundColor) {
@@ -133,12 +186,12 @@ fun EpisodeVideoSettings(
                             if (danmakuConfig.enableTop) Icon(Icons.Rounded.Check, contentDescription = null)
                             else Icon(Icons.Rounded.Close, contentDescription = null)
                         },
-                        label = { Text("顶部", maxLines = 1) },
+                        label = { Text(topText, maxLines = 1) },
                     )
                     ElevatedFilterChip(
                         selected = danmakuConfig.enableFloating,
                         onClick = { setDanmakuConfig { config -> config.copy(enableFloating = !config.enableFloating) } },
-                        label = { Text("滚动", maxLines = 1) },
+                        label = { Text(floatingText, maxLines = 1) },
                         leadingIcon = {
                             if (danmakuConfig.enableFloating) Icon(Icons.Rounded.Check, contentDescription = null)
                             else Icon(Icons.Rounded.Close, contentDescription = null)
@@ -147,7 +200,7 @@ fun EpisodeVideoSettings(
                     ElevatedFilterChip(
                         selected = danmakuConfig.enableBottom,
                         onClick = { setDanmakuConfig { config -> config.copy(enableBottom = !config.enableBottom) } },
-                        label = { Text("底部", maxLines = 1) },
+                        label = { Text(bottomText, maxLines = 1) },
                         leadingIcon = {
                             if (danmakuConfig.enableBottom) Icon(Icons.Rounded.Check, contentDescription = null)
                             else Icon(Icons.Rounded.Close, contentDescription = null)
@@ -162,7 +215,7 @@ fun EpisodeVideoSettings(
                             if (danmakuConfig.enableColor) Icon(Icons.Rounded.Check, contentDescription = null)
                             else Icon(Icons.Rounded.Close, contentDescription = null)
                         },
-                        label = { Text("彩色", maxLines = 1) },
+                        label = { Text(colorfulText, maxLines = 1) },
                     )
                 }
             }
@@ -177,7 +230,7 @@ fun EpisodeVideoSettings(
                 },
                 valueRange = 0.50f..3f,
 //                steps = ((3f - 0.50f) / 0.05f).toInt() - 1,
-                title = { Text("弹幕字号") },
+                title = { Text(fontSizeText) },
                 valueLabel = { Text(remember(fontSize) { "${(fontSize * 100).roundToInt()}%" }) },
                 useThinSlider = useThinSlider,
             )
@@ -193,7 +246,7 @@ fun EpisodeVideoSettings(
                 },
                 valueRange = 0f..1f,
 //                steps = ((1f - 0f) / 0.05f).toInt() - 1,
-                title = { Text("不透明度") },
+                title = { Text(opacityText) },
                 valueLabel = { Text(remember(alpha) { "${(alpha * 100).roundToInt()}%" }) },
                 useThinSlider = useThinSlider,
             )
@@ -209,7 +262,7 @@ fun EpisodeVideoSettings(
                 },
                 valueRange = 0f..2f,
 //                steps = ((2f - 0f) / 0.1f).toInt() - 1,
-                title = { Text("描边宽度") },
+                title = { Text(strokeWidthText) },
                 valueLabel = { Text(remember(strokeWidth) { "${(strokeWidth * 100).roundToInt()}%" }) },
                 useThinSlider = useThinSlider,
             )
@@ -231,7 +284,7 @@ fun EpisodeVideoSettings(
                 },
                 valueRange = 100f..900f,
 //                steps = ((900 - 100) / 100) - 1,
-                title = { Text("弹幕字重") },
+                title = { Text(fontWeightText) },
                 valueLabel = { Text(remember(fontWeight) { "${fontWeight.toInt()}" }) },
                 useThinSlider = useThinSlider,
             )
@@ -248,8 +301,8 @@ fun EpisodeVideoSettings(
                 },
                 valueRange = 0.2f..3f,
 //                steps = ((3f - 0.2f) / 0.1f).toInt() - 1,
-                title = { Text("弹幕速度") },
-                description = { Text("弹幕速度不会跟随视频倍速变化") },
+                title = { Text(speedText) },
+                description = { Text(speedDescriptionText) },
                 valueLabel = { Text(remember(speed) { "${(speed * 100).roundToInt()}%" }) },
                 useThinSlider = useThinSlider,
             )
@@ -284,12 +337,12 @@ fun EpisodeVideoSettings(
                 },
                 valueRange = 0f..10f,
                 steps = 9,
-                title = { Text("同屏密度") },
+                title = { Text(densityText) },
                 valueLabel = {
                     when (displayDensity.toInt()) {
-                        in 7..10 -> Text("密集")
-                        in 4..6 -> Text("适中")
-                        in 0..3 -> Text("稀疏")
+                        in 7..10 -> Text(denseText)
+                        in 4..6 -> Text(mediumText)
+                        in 0..3 -> Text(sparseText)
                     }
                 },
                 useThinSlider = useThinSlider,
@@ -302,17 +355,17 @@ fun EpisodeVideoSettings(
                     setDanmakuConfig { config -> config.copy(displayArea = newValue.coerceIn(0f, 1f)) }
                 },
                 valueRange = 0f..1f,
-                title = { Text("显示区域") },
+                title = { Text(displayAreaText) },
                 valueLabel = {
                     val v = danmakuConfig.displayArea
                     when {
-                        v == 0f -> Text("关闭")
-                        v <= 1 / 8f -> Text("1/8 屏")
-                        v <= 1 / 6f -> Text("1/6 屏")
-                        v <= 1 / 4f -> Text("1/4 屏")
-                        v <= 1 / 2f -> Text("半屏")
-                        v <= 3 / 4f -> Text("3/4 屏")
-                        v == 1f -> Text("全屏")
+                        v == 0f -> Text(displayAreaOffText)
+                        v <= 1 / 8f -> Text(displayAreaOneEighthText)
+                        v <= 1 / 6f -> Text(displayAreaOneSixthText)
+                        v <= 1 / 4f -> Text(displayAreaOneQuarterText)
+                        v <= 1 / 2f -> Text(displayAreaHalfText)
+                        v <= 3 / 4f -> Text(displayAreaThreeQuartersText)
+                        v == 1f -> Text(displayAreaFullText)
                     }
                 },
                 useThinSlider = useThinSlider,
@@ -323,13 +376,13 @@ fun EpisodeVideoSettings(
                 onCheckedChange = {
                     switchDanmakuRegexFilterCompletely()
                 },
-                title = { Text("启用正则弹幕过滤器") },
+                title = { Text(enableRegexFilterText) },
             )
 
             TextItem(
                 onClick = { onManageRegexFilters() },
             ) {
-                Text("管理正则弹幕过滤器")
+                Text(manageRegexFilterText)
             }
 
             val debugViewModel = rememberDebugSettingsViewModel()
@@ -340,7 +393,7 @@ fun EpisodeVideoSettings(
                     onCheckedChange = { checked ->
                         setDanmakuConfig { config -> config.copy(isDebug = checked) }
                     },
-                    title = { Text("弹幕调试模式") },
+                    title = { Text(debugModeText) },
                 )
 
                 val debugSettings by debugViewModel.debugSettings
@@ -396,4 +449,3 @@ private fun PreviewEpisodeVideoSettingsSideSheet() = ProvideCompositionLocalsFor
         }
     }
 }
-

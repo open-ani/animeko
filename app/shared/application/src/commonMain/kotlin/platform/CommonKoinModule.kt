@@ -318,7 +318,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         )
     }
     single<EpisodeScreenshotRepository> { WhatslinkEpisodeScreenshotRepository() }
-    single<BangumiCommentService> { BangumiBangumiCommentServiceImpl(get()) }
+    single<BangumiCommentService> { BangumiBangumiCommentServiceImpl(get(), get()) }
     single<AniEpisodeCommentService> { AniEpisodeCommentService(get<AniApiProvider>().episodesApi) }
     single<EpisodeCommentRepository> {
         EpisodeCommentRepository(

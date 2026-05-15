@@ -24,7 +24,12 @@ import androidx.core.content.FileProvider
 import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.ui.foundation.setClipEntryText
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_log_copy_today_log_content
+import me.him188.ani.app.ui.lang.settings_log_share_file
+import me.him188.ani.app.ui.lang.settings_log_share_today_log_file
 import me.him188.ani.buildconfig.AndroidBuildConfig
+import org.jetbrains.compose.resources.stringResource
 import java.io.File
 
 
@@ -33,9 +38,12 @@ internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemCol
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
+    val shareTodayLogFileText = stringResource(Lang.settings_log_share_today_log_file)
+    val shareLogFileText = stringResource(Lang.settings_log_share_file)
+    val copyTodayLogContentText = stringResource(Lang.settings_log_copy_today_log_content)
 
     ListItem(
-        headlineContent = { Text("分享当日日志文件") },
+        headlineContent = { Text(shareTodayLogFileText) },
         Modifier.clickable {
             val shareIntent = Intent(Intent.ACTION_SEND)
             shareIntent.setType("text/plain") // Set appropriate MIME type
@@ -48,13 +56,13 @@ internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemCol
                 ),
             )
             shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            context.startActivity(Intent.createChooser(shareIntent, "分享日志文件"))
+            context.startActivity(Intent.createChooser(shareIntent, shareLogFileText))
         },
         colors = listItemColors,
     )
 
     ListItem(
-        headlineContent = { Text("复制当日日志内容 (很大)") },
+        headlineContent = { Text(copyTodayLogContentText) },
         Modifier.clickable {
             scope.launch {
                 clipboard.setClipEntryText(context.getCurrentLogFile().readText())

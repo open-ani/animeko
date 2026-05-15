@@ -48,7 +48,23 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_add_name
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_collapse
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_delete_name
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_episode_ep
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_episode_ep_supporting
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_episode_info
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_episode_info_supporting
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_episode_sort
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_episode_sort_supporting
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_expand
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_primary_name
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_primary_name_supporting
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_secondary_names
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_secondary_names_supporting
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 
 
 /**
@@ -65,6 +81,19 @@ fun MediaFetchRequestEditor(
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
+    val primaryNameText = stringResource(Lang.mediafetch_request_editor_primary_name)
+    val primaryNameSupportingText = stringResource(Lang.mediafetch_request_editor_primary_name_supporting)
+    val secondaryNamesText = stringResource(Lang.mediafetch_request_editor_secondary_names)
+    val secondaryNamesSupportingText = stringResource(Lang.mediafetch_request_editor_secondary_names_supporting)
+    val collapseText = stringResource(Lang.mediafetch_request_editor_collapse)
+    val expandText = stringResource(Lang.mediafetch_request_editor_expand)
+    val addNameText = stringResource(Lang.mediafetch_request_editor_add_name)
+    val episodeInfoText = stringResource(Lang.mediafetch_request_editor_episode_info)
+    val episodeInfoSupportingText = stringResource(Lang.mediafetch_request_editor_episode_info_supporting)
+    val episodeSortText = stringResource(Lang.mediafetch_request_editor_episode_sort)
+    val episodeSortSupportingText = stringResource(Lang.mediafetch_request_editor_episode_sort_supporting)
+    val episodeEpText = stringResource(Lang.mediafetch_request_editor_episode_ep)
+    val episodeEpSupportingText = stringResource(Lang.mediafetch_request_editor_episode_ep_supporting)
 
     val listItemColors = ListItemDefaults.colors(
         containerColor = Color.Transparent,
@@ -98,8 +127,8 @@ fun MediaFetchRequestEditor(
         OutlinedTextField(
             value = fetchRequest.primaryName,
             onValueChange = { onFetchRequestChange(fetchRequest.copy(primaryName = it)) },
-            label = { Text("主搜索名") },
-            supportingText = { Text("大多数数据源只使用此名称") },
+            label = { Text(primaryNameText) },
+            supportingText = { Text(primaryNameSupportingText) },
             modifier = Modifier.fillMaxWidth().padding(horizontal = horizontalPadding),
             singleLine = true,
         )
@@ -110,14 +139,14 @@ fun MediaFetchRequestEditor(
         ListItem(
             headlineContent = {
                 Text(
-                    "次要搜索名",
+                    secondaryNamesText,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
             },
             Modifier.padding(top = 8.dp),
             supportingContent = {
-                Text("在线源会忽略这些名称")
+                Text(secondaryNamesSupportingText)
             },
             colors = listItemColors,
             trailingContent = {
@@ -127,9 +156,9 @@ fun MediaFetchRequestEditor(
                 ) {
                     // expand/collapse
                     if (showComplementaryNames) {
-                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "收起")
+                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = collapseText)
                     } else {
-                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "展开")
+                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = expandText)
                     }
                 }
             },
@@ -161,7 +190,13 @@ fun MediaFetchRequestEditor(
                                 },
                                 Modifier.padding(end = horizontalPadding - 8.dp),
                             ) {
-                                Icon(Icons.Default.Delete, contentDescription = "删除名称 #$index")
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = stringResource(
+                                        Lang.mediafetch_request_editor_delete_name,
+                                        index + 1,
+                                    ),
+                                )
                             }
                         }
                     }
@@ -183,7 +218,7 @@ fun MediaFetchRequestEditor(
                         Modifier.size(ButtonDefaults.IconSize),
                     )
                     Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("添加名称")
+                    Text(addNameText)
                 }
             }
         }
@@ -193,7 +228,7 @@ fun MediaFetchRequestEditor(
         ListItem(
             headlineContent = {
                 Text(
-                    "剧集信息",
+                    episodeInfoText,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -201,7 +236,7 @@ fun MediaFetchRequestEditor(
             Modifier.padding(vertical = 8.dp),
             supportingContent = {
                 Text(
-                    "资源必须至少匹配以下两种信息中的一种，否则不会显示。可以只修改其中一种",
+                    episodeInfoSupportingText,
                 )
             },
             colors = listItemColors,
@@ -227,8 +262,8 @@ fun MediaFetchRequestEditor(
                 onValueChange = { newValue ->
                     onFetchRequestChange(fetchRequest.copy(episodeSort = newValue))
                 },
-                label = { Text("系列内剧集序号") },
-                supportingText = { Text("假设有两季，分别有 12 集，则第二季的第一集为 13") },
+                label = { Text(episodeSortText) },
+                supportingText = { Text(episodeSortSupportingText) },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = horizontalPadding),
                 singleLine = true,
                 isError = sortAndEpAreError,
@@ -238,8 +273,8 @@ fun MediaFetchRequestEditor(
                 onValueChange = { newValue ->
                     onFetchRequestChange(fetchRequest.copy(episodeEp = newValue))
                 },
-                label = { Text("条目内序号") },
-                supportingText = { Text("在当前季度内的序号，例如第二季的第一集为 01") },
+                label = { Text(episodeEpText) },
+                supportingText = { Text(episodeEpSupportingText) },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = horizontalPadding),
                 singleLine = true,
                 isError = sortAndEpAreError,

@@ -51,12 +51,22 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_episode_close
+import me.him188.ani.app.ui.lang.subject_episode_regex_filter_add
+import me.him188.ani.app.ui.lang.subject_episode_regex_filter_delete
+import me.him188.ani.app.ui.lang.subject_episode_regex_filter_example
+import me.him188.ani.app.ui.lang.subject_episode_regex_filter_invalid
+import me.him188.ani.app.ui.lang.subject_episode_regex_filter_label
+import me.him188.ani.app.ui.lang.subject_episode_regex_filter_management
+import me.him188.ani.app.ui.lang.subject_episode_regex_filter_placeholder
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.settings.danmaku.isValidRegex
 import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
 import me.him188.ani.utils.platform.Uuid
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 
 
 @Suppress("UnusedReceiverParameter")
@@ -74,6 +84,12 @@ fun DanmakuRegexFilterContent(
     val isBlank by remember { derivedStateOf { input.isBlank() } }
     val valid by remember { derivedStateOf { isValidRegex(input) } }
     var isError by remember { mutableStateOf(false) }
+    val placeholderText = stringResource(Lang.subject_episode_regex_filter_placeholder)
+    val regexExpressionText = stringResource(Lang.subject_episode_regex_filter_label)
+    val invalidRegexText = stringResource(Lang.subject_episode_regex_filter_invalid)
+    val exampleText = stringResource(Lang.subject_episode_regex_filter_example)
+    val addText = stringResource(Lang.subject_episode_regex_filter_add)
+    val deleteText = stringResource(Lang.subject_episode_regex_filter_delete)
 
     val isPortrait = !expanded
 
@@ -99,11 +115,11 @@ fun DanmakuRegexFilterContent(
         OutlinedTextField(
             value = input,
             onValueChange = { input = it; isError = false },
-            placeholder = { Text("输入要屏蔽的弹幕关键词（正则）") },
-            label = { Text("正则表达式") },
+            placeholder = { Text(placeholderText) },
+            label = { Text(regexExpressionText) },
             supportingText = {
-                if (isError) Text("正则表达式语法不正确。")
-                else Text("例如：‘签’ 会屏蔽含文字‘签’的弹幕。")
+                if (isError) Text(invalidRegexText)
+                else Text(exampleText)
             },
             isError = isError,
             singleLine = true,
@@ -116,7 +132,7 @@ fun DanmakuRegexFilterContent(
                 },
             trailingIcon = {
                 IconButton(onClick = { add() }, enabled = !isBlank && valid) {
-                    Icon(Icons.Rounded.Add, contentDescription = "添加")
+                    Icon(Icons.Rounded.Add, contentDescription = addText)
                 }
             },
             keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
@@ -147,7 +163,7 @@ fun DanmakuRegexFilterContent(
                             onClick = { onDelete(item) },
                             modifier = Modifier.size(24.dp),
                         ) {
-                            Icon(Icons.Rounded.Close, contentDescription = "删除", modifier = Modifier.size(16.dp))
+                            Icon(Icons.Rounded.Close, contentDescription = deleteText, modifier = Modifier.size(16.dp))
                         }
                     },
                     colors = AssistChipDefaults.assistChipColors(
@@ -173,14 +189,14 @@ fun DanmakuRegexFilterSettings(
     val layoutModifier = if (isPortrait) modifier.fillMaxWidth() else modifier
 
     SideSheetLayout(
-        title = { Text("正则弹幕过滤管理") },
+        title = { Text(stringResource(Lang.subject_episode_regex_filter_management)) },
         onDismissRequest = onDismissRequest,
         modifier = layoutModifier,
         containerColor = backgroundColor,
         closeButton = {
             if (expanded) {
                 IconButton(onClick = onDismissRequest) {
-                    Icon(Icons.Rounded.Close, contentDescription = "关闭")
+                    Icon(Icons.Rounded.Close, contentDescription = stringResource(Lang.subject_episode_close))
                 }
             }
         },
@@ -207,4 +223,3 @@ fun PreviewEditDanmakuRegexFilterSideSheet() {
         )
     }
 }
-

@@ -84,6 +84,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
@@ -107,6 +108,18 @@ import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
 import me.him188.ani.app.ui.foundation.widgets.ModalSideSheet
 import me.him188.ani.app.ui.foundation.widgets.rememberModalSideSheetState
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_danmaku_cancel
+import me.him188.ani.app.ui.lang.settings_danmaku_confirm
+import me.him188.ani.app.ui.lang.subject_episode_close_selector
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_current_offset
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_description
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_reset
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_restore
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_title
+import me.him188.ani.app.ui.lang.subject_episode_related_recommendations
+import me.him188.ani.app.ui.lang.subject_episode_select_media_source
+import me.him188.ani.app.ui.lang.subject_episode_wish_change_to
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState
 import me.him188.ani.app.ui.mediafetch.MediaSelectorView
 import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresentation
@@ -153,6 +166,7 @@ import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectEnter
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.SubjectRecommendationClick
 import me.him188.ani.utils.analytics.recordEvent
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToLong
 
 @Stable
@@ -269,23 +283,25 @@ fun EpisodeDetails(
         favoriteButton = {
             FavoriteIconButton(editableSubjectCollectionTypeState)
         },
-        /*episodeInfo = {
-            episodeCarouselState.playingEpisode?.let {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "${it.episodeInfo.sort}  ${it.episodeInfo.displayName}",
-                        Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+        episodeInfo = if (atLeastMedium) {
+            {
+                episodeCarouselState.playingEpisode?.let {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "${it.episodeInfo.sort}  ${it.episodeInfo.displayName}",
+                            Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
-        },*/
+        } else null,
         loadError = {
             when (loadError) {
                 is EpisodePageLoadError.SeriesError -> LoadErrorCard(
@@ -324,7 +340,8 @@ fun EpisodeDetails(
                     UnifiedCollectionType.WISH, UnifiedCollectionType.ON_HOLD -> {
                         ProvideTextStyle(MaterialTheme.typography.labelLarge) {
                             Text(
-                                "已想看，可更改为：", Modifier.align(Alignment.CenterVertically),
+                                stringResource(Lang.subject_episode_wish_change_to),
+                                Modifier.align(Alignment.CenterVertically),
                             )
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { // 一起换行
@@ -359,7 +376,7 @@ fun EpisodeDetails(
                             TopAppBar(
                                 title = {
                                     Text(
-                                        "选择数据源",
+                                        stringResource(Lang.subject_episode_select_media_source),
                                         modifier = Modifier.padding(start = 8.dp),
                                     )
                                 },
@@ -368,7 +385,10 @@ fun EpisodeDetails(
                                         onClick = { sheetState.close() },
                                         modifier = Modifier.padding(end = 8.dp),
                                     ) {
-                                        Icon(Icons.Outlined.Close, contentDescription = "关闭选择器")
+                                        Icon(
+                                            Icons.Outlined.Close,
+                                            contentDescription = stringResource(Lang.subject_episode_close_selector),
+                                        )
                                     }
                                 },
                                 colors = TopAppBarDefaults.topAppBarColors(
@@ -541,7 +561,7 @@ fun EpisodeDetails(
         subjectRecommendations = { horizontalPadding ->
             item("subject_recommendation_header") {
                 SectionTitle {
-                    Text("相关推荐")
+                    Text(stringResource(Lang.subject_episode_related_recommendations))
                 }
             }
             for (recommendation in subjectRecommendations) {
@@ -677,24 +697,31 @@ private fun DanmakuTimeShiftDialog(
     }
 
     val shiftLabel = remember(shift) { formatDanmakuShiftMillis(shift.roundToLong()) }
+    val confirmText = stringResource(Lang.settings_danmaku_confirm)
+    val cancelText = stringResource(Lang.settings_danmaku_cancel)
+    val titleText = stringResource(Lang.subject_episode_danmaku_time_shift_title, serviceName)
+    val descriptionText = stringResource(Lang.subject_episode_danmaku_time_shift_description)
+    val currentOffsetText = stringResource(Lang.subject_episode_danmaku_time_shift_current_offset, shiftLabel)
+    val resetText = stringResource(Lang.subject_episode_danmaku_time_shift_reset)
+    val restoreText = stringResource(Lang.subject_episode_danmaku_time_shift_restore)
 
     AlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
             TextButton(onClick = { onConfirm(shift.roundToLong()) }) {
-                Text("确定")
+                Text(confirmText)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismissRequest) {
-                Text("取消")
+                Text(cancelText)
             }
         },
-        title = { Text("$serviceName 弹幕时间校准") },
+        title = { Text(titleText) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text("调整弹幕出现时间以匹配当前视频。正值表示弹幕延后，负值表示弹幕提前。")
-                Text("当前偏移：$shiftLabel")
+                Text(descriptionText)
+                Text(currentOffsetText)
                 Slider(
                     value = shift,
                     onValueChange = { shift = it.coerceIn(sliderRange.start, sliderRange.endInclusive) },
@@ -714,14 +741,14 @@ private fun DanmakuTimeShiftDialog(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     OutlinedButton(onClick = { shift = 0f }) {
-                        Text("重置为 0")
+                        Text(resetText)
                     }
                     OutlinedButton(
                         onClick = {
                             shift = currentShiftMillis.toFloat().coerceIn(sliderRange.start, sliderRange.endInclusive)
                         },
                     ) {
-                        Text("恢复原值")
+                        Text(restoreText)
                     }
                 }
             }
@@ -768,6 +795,7 @@ fun EpisodeDetailsScaffold(
     onExpandSubject: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(all = 16.dp),
+    episodeInfo: (@Composable () -> Unit)? = null,
     danmakuListSection: (@Composable () -> Unit)? = null,
 ) {
     val contentPaddingState by rememberUpdatedState(contentPadding)
@@ -814,6 +842,17 @@ fun EpisodeDetailsScaffold(
                     Row(Modifier.padding(start = 12.dp)) {
                         favoriteButton()
                     }
+                }
+            }
+        }
+
+        if (episodeInfo != null) {
+            item("episode_detail_episode_info") {
+                Row(
+                    Modifier.padding(horizontalPaddingValues),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    episodeInfo()
                 }
             }
         }

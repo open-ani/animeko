@@ -20,8 +20,11 @@ import me.him188.ani.app.platform.Context
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.foundation_browser_open_failed_copied
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Please use [rememberAsyncBrowserNavigator] instead of this directly.
@@ -45,11 +48,13 @@ fun rememberAsyncBrowserNavigator(): BrowserNavigator {
     val toaster = LocalToaster.current
     val clipboard = LocalClipboard.current
     val scope = rememberAsyncHandler()
+    val openFailedCopiedText = stringResource(Lang.foundation_browser_open_failed_copied)
 
-    val failureAction: suspend (OpenBrowserResult.Failure) -> Unit = remember(clipboard, toaster) {
+    val failureAction: suspend (OpenBrowserResult.Failure) -> Unit =
+        remember(clipboard, toaster, openFailedCopiedText) {
         { failure ->
             clipboard.setClipEntryText(failure.dest)
-            toaster.toast("无法打开链接，已将链接复制到剪贴板，请打开浏览器访问")
+            toaster.toast(openFailedCopiedText)
             logger.error(failure.throwable) { "Failed to open ${failure.dest}" }
         }
     }

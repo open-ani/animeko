@@ -60,11 +60,13 @@ import me.him188.ani.app.ui.foundation.animation.AnimatedVisibilityMotionScheme
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.icons.BangumiNext
 import me.him188.ani.app.ui.foundation.icons.BangumiNextIconColor
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextItem
+import org.jetbrains.compose.resources.*
 
 sealed interface AuthState {
     data class LoggedInAni(val bound: Boolean) : Idle
@@ -108,7 +110,7 @@ fun BangumiAuthorizeLayout(
                         .fillMaxWidth(),
                 ) {
                     Text(
-                        "授权 Bangumi 账号，可以同步你的观看记录到 Bangumi 或便捷登录 Ani",
+                        stringResource(Lang.oauth_bangumi_description),
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
@@ -158,11 +160,11 @@ private fun AuthorizeButton(
             ) {
                 when (it) {
                     is AuthState.LoggedInAni -> {
-                        Text("绑定 Bangumi 账号")
+                        Text(stringResource(Lang.oauth_bangumi_bind_account))
                     }
 
                     is AuthState.Idle, is AuthState.Failed -> {
-                        Text("登录 / 注册")
+                        Text(stringResource(Lang.oauth_bangumi_sign_in_or_sign_up))
                     }
 
                     is AuthState.AwaitingResult -> {
@@ -174,12 +176,12 @@ private fun AuthorizeButton(
                                 modifier = Modifier.size(16.dp),
                                 strokeWidth = 3.dp,
                             )
-                            Text("正在等待结果")
+                            Text(stringResource(Lang.oauth_bangumi_waiting_result))
                         }
                     }
 
                     is AuthState.Success -> {
-                        Text("已授权")
+                        Text(stringResource(Lang.oauth_bangumi_authorized))
                     }
                 }
             }
@@ -214,7 +216,7 @@ private fun AuthorizeButton(
         ) {
             FilledTonalButton(
                 onClick = onClickCancel,
-                content = { Text("取消") },
+                content = { Text(stringResource(Lang.oauth_bangumi_cancel)) },
                 shape = SplitButtonDefaults.trailingButtonShapesFor(48.dp).shape,
             )
         }
@@ -263,13 +265,13 @@ private enum class HelpOption {
 @Composable
 private fun renderHelpOptionTitle(option: HelpOption): String {
     return when (option) {
-        HelpOption.BANGUMI_DESC -> "Bangumi 是什么"
-        HelpOption.WEBSITE_BLOCKED -> "浏览器提示网站被屏蔽或禁止访问"
-        HelpOption.BANGUMI_REGISTER_CHOOSE -> "注册时应该选择哪一项"
-        HelpOption.REGISTER_TYPE_WRONG_CAPTCHA -> "注册或登录时一直提示验证码错误"
-        HelpOption.CANT_RECEIVE_REGISTER_EMAIL -> "无法收到邮箱验证码"
-        HelpOption.REGISTER_ACTIVATION_FAILED -> "注册时一直激活失败"
-        HelpOption.OTHERS -> "其他问题"
+        HelpOption.BANGUMI_DESC -> stringResource(Lang.oauth_bangumi_help_bangumi_desc)
+        HelpOption.WEBSITE_BLOCKED -> stringResource(Lang.oauth_bangumi_help_website_blocked)
+        HelpOption.BANGUMI_REGISTER_CHOOSE -> stringResource(Lang.oauth_bangumi_help_register_choose)
+        HelpOption.REGISTER_TYPE_WRONG_CAPTCHA -> stringResource(Lang.oauth_bangumi_help_wrong_captcha)
+        HelpOption.CANT_RECEIVE_REGISTER_EMAIL -> stringResource(Lang.oauth_bangumi_help_cant_receive_email)
+        HelpOption.REGISTER_ACTIVATION_FAILED -> stringResource(Lang.oauth_bangumi_help_activation_failed)
+        HelpOption.OTHERS -> stringResource(Lang.oauth_bangumi_help_others)
     }
 }
 
@@ -282,38 +284,34 @@ private fun RenderHelpOptionContent(
     Box(modifier) {
         when (option) {
             HelpOption.BANGUMI_DESC -> {
-
-                Text(
-                    "Bangumi 番组计划 是一个中文互联网的 ACGN 内容分享与交流网站，致力于提供一个轻松便捷独特的交流与沟通环境。\n" +
-                            "Bangumi 提供了番剧索引、番剧收藏、追番进等功能，Ani 可以将你的观看记录同步至 Bangumi。",
-                )
+                Text(stringResource(Lang.oauth_bangumi_help_bangumi_desc_content))
             }
 
             HelpOption.WEBSITE_BLOCKED -> {
-                Text("请在系统设置中更换默认浏览器，推荐按使用 Google Chrome，Microsoft Edge 或 Mozilla Firefox 浏览器")
+                Text(stringResource(Lang.oauth_bangumi_help_website_blocked_content))
             }
 
             HelpOption.BANGUMI_REGISTER_CHOOSE -> {
-                Text("管理 ACG 收藏与收视进度，分享交流")
+                Text(stringResource(Lang.oauth_bangumi_help_register_choose_content))
             }
 
             HelpOption.REGISTER_TYPE_WRONG_CAPTCHA -> {
-                Text("如果没有验证码的输入框，可以尝试多点几次密码输入框，如果输错了验证码，需要刷新页面再登录")
+                Text(stringResource(Lang.oauth_bangumi_help_wrong_captcha_content))
             }
 
 
             HelpOption.CANT_RECEIVE_REGISTER_EMAIL -> {
-                Text("请检查垃圾箱，并且尽可能使用常见邮箱注册，例如 QQ, 网易, Outlook")
+                Text(stringResource(Lang.oauth_bangumi_help_cant_receive_email_content))
             }
 
 
             HelpOption.REGISTER_ACTIVATION_FAILED -> {
-                Text("删除激活码的最后一个字，然后手动输入删除的字，或更换其他浏览器")
+                Text(stringResource(Lang.oauth_bangumi_help_activation_failed_content))
             }
 
             HelpOption.OTHERS -> {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("无法解决你的问题？还可以通过以下渠道获取帮助")
+                    Text(stringResource(Lang.oauth_bangumi_help_others_content))
                     contactActions()
                 }
             }
@@ -336,7 +334,7 @@ private fun SettingsScope.AuthorizeHelpQA(
             horizontalAlignment = Alignment.Start,
         ) {
             Text(
-                "帮助",
+                stringResource(Lang.oauth_bangumi_help_title),
                 style = MaterialTheme.typography.headlineSmall,
             )
         }

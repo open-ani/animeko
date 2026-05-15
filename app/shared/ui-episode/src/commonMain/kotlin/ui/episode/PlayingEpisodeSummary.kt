@@ -48,11 +48,15 @@ import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.TestRatingInfo
 import me.him188.ani.app.data.models.subject.TestSelfRatingInfo
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.episode_summary_download
+import me.him188.ani.app.ui.lang.episode_summary_share
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeButton
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 
 @Immutable
 data class PlayingEpisodeSummary(
@@ -78,6 +82,8 @@ fun PlayingEpisodeSummaryRow(
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerLowest,
 ) {
+    val shareText = stringResource(Lang.episode_summary_share)
+    val downloadText = stringResource(Lang.episode_summary_download)
     Surface(color = containerColor) {
         Column(modifier) {
             if (expanded) {
@@ -140,8 +146,8 @@ fun PlayingEpisodeSummaryRow(
                             horizontalArrangement = Arrangement.spacedBy(16.dp, alignment = Alignment.End),
                             verticalArrangement = Arrangement.spacedBy(16.dp, alignment = Alignment.CenterVertically),
                         ) {
-                            TonalButtonWithIcon("分享", Icons.Rounded.Share, onClickShare)
-                            TonalButtonWithIcon("下载", Icons.Rounded.Download, onClickDownload)
+                            TonalButtonWithIcon(shareText, Icons.Rounded.Share, onClickShare)
+                            TonalButtonWithIcon(downloadText, Icons.Rounded.Download, onClickDownload)
                         }
                     }
                 }
@@ -162,8 +168,8 @@ fun PlayingEpisodeSummaryRow(
                             horizontalArrangement = Arrangement.spacedBy(0.dp, alignment = Alignment.Start),
                             verticalArrangement = Arrangement.spacedBy(0.dp, alignment = Alignment.CenterVertically),
                         ) {
-                            TonalButtonWithIcon("分享", Icons.Rounded.Share, onClickShare)
-                            TonalButtonWithIcon("下载", Icons.Rounded.Download, onClickDownload)
+                            TonalButtonWithIcon(shareText, Icons.Rounded.Share, onClickShare)
+                            TonalButtonWithIcon(downloadText, Icons.Rounded.Download, onClickDownload)
                         }
 
                         Box(Modifier.width(IntrinsicSize.Max)) {

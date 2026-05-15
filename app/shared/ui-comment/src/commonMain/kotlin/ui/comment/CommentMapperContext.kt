@@ -46,7 +46,7 @@ object CommentMapperContext {
             author = comment.author,
             content = parseBBCode(comment.content),
             createdAt = comment.createdAt,
-            reactions = emptyList(),
+            reactions = comment.reactions.map { UICommentReaction(it.value, it.count, it.selected) },
             briefReplies = comment.replies.map { reply ->
                 UIComment(
                     id = reply.stableId.toUiCommentId(),
@@ -54,7 +54,7 @@ object CommentMapperContext {
                     author = reply.author,
                     content = parseBBCode(reply.content),
                     createdAt = reply.createdAt,
-                    reactions = emptyList(),
+                    reactions = reply.reactions.map { UICommentReaction(it.value, it.count, it.selected) },
                     briefReplies = emptyList(),
                     replyCount = 0,
                     rating = null,

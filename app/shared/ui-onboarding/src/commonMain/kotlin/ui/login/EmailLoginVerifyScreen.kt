@@ -43,7 +43,9 @@ import kotlinx.coroutines.delay
 import me.him188.ani.app.data.repository.user.UserRepository.SendOtpResult
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import org.jetbrains.compose.resources.*
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -60,6 +62,8 @@ fun EmailLoginVerifyScreen(
     val state by vm.state.collectAsStateWithLifecycle(EmailLoginUiState.Initial)
     val asyncHandler = rememberAsyncHandler()
     val toaster = LocalToaster.current
+    val emailAlreadyUsedText = stringResource(Lang.login_email_already_used)
+    val invalidOtpText = stringResource(Lang.login_invalid_otp)
 
 
     EmailLoginVerifyScreenImpl(
@@ -75,8 +79,8 @@ fun EmailLoginVerifyScreen(
                 }
 
                 when (result) {
-                    SendOtpResult.EmailAlreadyExist -> toaster.show("该邮箱已被使用")
-                    SendOtpResult.InvalidOtp -> toaster.show("验证码无效或已过期，请重新发送")
+                    SendOtpResult.EmailAlreadyExist -> toaster.show(emailAlreadyUsedText)
+                    SendOtpResult.InvalidOtp -> toaster.show(invalidOtpText)
                     is SendOtpResult.Success -> onSuccess()
                 }
             }
@@ -108,7 +112,7 @@ internal fun EmailLoginVerifyScreenImpl(
     onNavigateSettings: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
-    title: @Composable () -> Unit = { Text("登录") },
+    title: @Composable () -> Unit = { Text(stringResource(Lang.login_sign_in)) },
     enabled: Boolean = true,
     showThirdPartyLogin: Boolean = true,
 ) {
@@ -121,14 +125,18 @@ internal fun EmailLoginVerifyScreenImpl(
         showThirdPartyLogin = showThirdPartyLogin,
     ) {
         CenteredSectionHeader(
-            title = { Text("输入验证码") },
+            title = { Text(stringResource(Lang.login_verify_title)) },
             description = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("请检查邮箱 $email")
+                    Text(stringResource(Lang.login_verify_check_email, email))
                     if (isExistingAccount != null) {
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            if (isExistingAccount) "正在登录现有账号" else "正在注册新账号",
+                            if (isExistingAccount) {
+                                stringResource(Lang.login_verify_signing_in_existing)
+                            } else {
+                                stringResource(Lang.login_verify_signing_up_new)
+                            },
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -149,11 +157,11 @@ internal fun EmailLoginVerifyScreenImpl(
             },
             Modifier.fillMaxWidth(),
             label = {
-                Text("验证码")
+                Text(stringResource(Lang.login_verification_code))
             },
             isError = code.any { !it.isDigit() },
             placeholder = {
-                Text("6 位数字")
+                Text(stringResource(Lang.login_six_digit_number))
             },
             keyboardOptions = KeyboardOptions.Default.copy(
                 autoCorrectEnabled = false,
@@ -170,7 +178,7 @@ internal fun EmailLoginVerifyScreenImpl(
             trailingIcon = if (code.isNotEmpty()) {
                 {
                     IconButton({ code = "" }) {
-                        Icon(Icons.Outlined.Close, "清空")
+                        Icon(Icons.Outlined.Close, stringResource(Lang.login_clear))
                     }
                 }
             } else null,
@@ -195,9 +203,9 @@ internal fun EmailLoginVerifyScreenImpl(
             enabled = enabled && canResend,
         ) {
             if (canResend) {
-                Text("重新发送验证码")
+                Text(stringResource(Lang.login_resend_otp))
             } else {
-                Text("${timeLeft.inWholeSeconds} 秒后可重新发送")
+                Text(stringResource(Lang.login_resend_after_seconds, timeLeft.inWholeSeconds))
             }
         }
     }

@@ -28,7 +28,15 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.widgets.RichDialogLayout
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.cache_details_source_online
+import me.him188.ani.app.ui.lang.media_selector_help_bt_description
+import me.him188.ani.app.ui.lang.media_selector_help_source_types
+import me.him188.ani.app.ui.lang.media_selector_help_title
+import me.him188.ani.app.ui.lang.media_selector_help_web_description
+import me.him188.ani.app.ui.lang.subject_episode_close
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcons
+import org.jetbrains.compose.resources.stringResource
 
 
 @Composable
@@ -36,16 +44,22 @@ fun MediaSelectorHelp(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val titleText = stringResource(Lang.media_selector_help_title)
+    val closeText = stringResource(Lang.subject_episode_close)
+    val sourceTypesText = stringResource(Lang.media_selector_help_source_types)
+    val btDescriptionText = stringResource(Lang.media_selector_help_bt_description)
+    val onlineText = stringResource(Lang.cache_details_source_online)
+    val webDescriptionText = stringResource(Lang.media_selector_help_web_description)
     RichDialogLayout(
-        title = { Text("数据源帮助") },
+        title = { Text(titleText) },
         buttons = {
             TextButton(onDismissRequest) {
-                Text("关闭")
+                Text(closeText)
             }
         },
         modifier,
     ) {
-        Text("数据源类型", style = MaterialTheme.typography.titleMedium)
+        Text(sourceTypesText, style = MaterialTheme.typography.titleMedium)
 
         Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ExplainerCard(
@@ -55,16 +69,16 @@ fun MediaSelectorHelp(
                     Icon(MediaSourceIcons.KindBT, null)
                 },
             ) {
-                Text("从 BitTorrent 网络获取资源，清晰度高，资源全面，加载速度可能不快")
+                Text(btDescriptionText)
             }
             ExplainerCard(
-                title = { Text("在线") },
+                title = { Text(onlineText) },
                 Modifier.weight(1f),
                 icon = {
                     Icon(MediaSourceIcons.KindWeb, null)
                 },
             ) {
-                Text("从在线视频网站获取资源，加载速度快，但清晰度通常不高")
+                Text(webDescriptionText)
             }
         }
     }

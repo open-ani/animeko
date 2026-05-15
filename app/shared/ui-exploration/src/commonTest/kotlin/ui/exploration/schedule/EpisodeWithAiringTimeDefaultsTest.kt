@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.exploration.schedule
 
-import me.him188.ani.app.ui.exploration.schedule.ScheduleItemDefaults.renderEpisodeDisplay
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import kotlin.test.Test
@@ -68,5 +67,35 @@ class EpisodeWithAiringTimeDefaultsTest {
                 "Foo",
             ),
         )
+    }
+}
+
+private fun renderEpisodeDisplay(
+    episodeSort: EpisodeSort,
+    episodeEp: EpisodeSort?,
+    episodeName: String?
+): String {
+    val epText = episodeEp?.toString()?.removePrefix("0")
+    val sortText = episodeSort.toString().removePrefix("0")
+
+    val sortDisplay = if (episodeEp == null || episodeEp == episodeSort) {
+        if (episodeSort is EpisodeSort.Normal) {
+            "第 $sortText 话"
+        } else {
+            sortText
+        }
+    } else {
+        check(epText != null)
+        if (episodeSort is EpisodeSort.Normal && episodeEp is EpisodeSort.Normal) {
+            "第 $epText ($sortText) 话"
+        } else {
+            "$epText ($sortText)"
+        }
+    }
+
+    return if (episodeName == null) {
+        sortDisplay
+    } else {
+        "$sortDisplay  $episodeName"
     }
 }

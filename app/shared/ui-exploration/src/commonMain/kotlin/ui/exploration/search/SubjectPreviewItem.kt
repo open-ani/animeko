@@ -25,8 +25,8 @@ import me.him188.ani.app.data.models.subject.CanonicalTagKind
 import me.him188.ani.app.data.models.subject.RatingCounts
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SubjectAiringInfo
+import me.him188.ani.app.data.models.subject.SubjectAiringKind
 import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.data.models.subject.computeTotalEpisodeText
 import me.him188.ani.app.data.models.subject.kind
 import me.him188.ani.app.data.models.subject.nameCnOrName
 import me.him188.ani.app.data.network.LightRelatedCharacterInfo
@@ -34,9 +34,14 @@ import me.him188.ani.app.data.network.LightRelatedPersonInfo
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.exploration_search_staff_prefix
+import me.him188.ani.app.ui.lang.subject_airing_total_episodes_completed
+import me.him188.ani.app.ui.lang.subject_airing_total_episodes_scheduled
 import me.him188.ani.app.ui.rating.RatingText
-import me.him188.ani.app.ui.subject.renderSubjectSeason
+import me.him188.ani.app.ui.subject.getSubjectSeasonText
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.getString
 
 @Immutable
 class SubjectPreviewItemInfo(
@@ -61,7 +66,7 @@ class SubjectPreviewItemInfo(
         /**
          * @param nsfwModeSettings 用户设置的 NSFW 显示模式
          */
-        fun compute(
+        suspend fun compute(
             subjectInfo: SubjectInfo,
             mainEpisodeCount: Int,
             nsfwModeSettings: NsfwMode,
@@ -73,11 +78,11 @@ class SubjectPreviewItemInfo(
             val airingInfo = SubjectAiringInfo.computeFromSubjectInfo(subjectInfo, mainEpisodeCount)
             val tags = buildString {
                 if (subjectInfo.airDate.isValid) {
-                    append(renderSubjectSeason(subjectInfo.airDate))
+                    append(getSubjectSeasonText(subjectInfo.airDate))
                     append(" · ")
                 }
-                airingInfo.computeTotalEpisodeText()?.let {
-                    append("全 $mainEpisodeCount 话")
+                renderTotalEpisodesText(airingInfo)?.let {
+                    append(it)
                     append(" · ")
                 }
 
@@ -106,7 +111,7 @@ class SubjectPreviewItemInfo(
                 if (persons.isEmpty()) return@let null
 
                 buildString {
-                    append("制作:  ")
+                    append(getString(Lang.exploration_search_staff_prefix))
                     persons.forEachIndexed { index, relatedPersonInfo ->
                         append(relatedPersonInfo.name)
                         if (index != persons.lastIndex) {
@@ -148,6 +153,21 @@ class SubjectPreviewItemInfo(
                 nsfwMode = if (subjectInfo.nsfw) nsfwModeSettings else NsfwMode.DISPLAY,
                 hide = hide,
             )
+        }
+
+        private suspend fun renderTotalEpisodesText(airingInfo: SubjectAiringInfo): String? {
+            if (airingInfo.kind == SubjectAiringKind.UPCOMING && airingInfo.mainEpisodeCount == 0) {
+                return null
+            }
+            return when (airingInfo.kind) {
+                SubjectAiringKind.COMPLETED ->
+                    getString(Lang.subject_airing_total_episodes_completed, airingInfo.mainEpisodeCount.toString())
+
+                SubjectAiringKind.UPCOMING,
+                SubjectAiringKind.ON_AIR,
+                    ->
+                    getString(Lang.subject_airing_total_episodes_scheduled, airingInfo.mainEpisodeCount.toString())
+            }
         }
     }
 }

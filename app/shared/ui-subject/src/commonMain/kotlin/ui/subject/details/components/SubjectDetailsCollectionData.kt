@@ -16,10 +16,13 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_details_collection_dropped
+import me.him188.ani.app.ui.lang.subject_details_collection_summary
+import org.jetbrains.compose.resources.stringResource
 
 // 详情页内容 (不包含背景)
 @Composable
@@ -31,16 +34,16 @@ fun SubjectDetailsDefaults.CollectionData(
     Row(modifier) {
         val collection = collectionStats
         Text(
-            remember(collection) {
-                "${collection.collect} 收藏 / ${collection.doing} 在看"
-            },
+            stringResource(
+                Lang.subject_details_collection_summary,
+                collection.collect.toString(),
+                collection.doing.toString(),
+            ),
             maxLines = 1,
             style = MaterialTheme.typography.labelLarge,
         )
         Text(
-            remember(collection) {
-                " / ${collection.dropped} 抛弃"
-            },
+            stringResource(Lang.subject_details_collection_dropped, collection.dropped.toString()),
             style = MaterialTheme.typography.labelLarge,
             maxLines = 1,
             color = LocalContentColor.current.slightlyWeaken(),

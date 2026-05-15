@@ -50,8 +50,12 @@ import me.him188.ani.app.ui.comment.CommentEditorTextState
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_danmaku_cancel
+import me.him188.ani.app.ui.lang.settings_media_source_subscription_add_confirm
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
+import org.jetbrains.compose.resources.stringResource
 
 private val IPV4_REGEX =
     Regex("^((25[0-5]|2[0-4][0-9]|[0-1]?[0-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|[0-1]?[0-9]?[0-9])\$")
@@ -157,12 +161,12 @@ fun AddBlockedIPDialog(
                 enabled = dialogAddButtonEnabled,
                 onClick = doAdd,
             ) {
-                Text("添加")
+                Text(stringResource(Lang.settings_media_source_subscription_add_confirm))
             }
         },
         dismissButton = {
             TextButton(dismiss) {
-                Text("取消")
+                Text(stringResource(Lang.settings_danmaku_cancel))
             }
         },
     )

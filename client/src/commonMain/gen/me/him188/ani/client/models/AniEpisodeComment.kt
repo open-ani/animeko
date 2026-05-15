@@ -17,9 +17,12 @@
 package me.him188.ani.client.models
 
 import me.him188.ani.client.models.AniEpisodeCommentAuthor
+import me.him188.ani.client.models.AniEpisodeCommentReaction
 import me.him188.ani.client.models.AniEpisodeCommentReply
 
 import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
  *
@@ -27,12 +30,13 @@ import kotlinx.serialization.*
  * @param id
  * @param sourceCommentId
  * @param episodeId
- * @param author
  * @param contentBbcode
  * @param createdAtMillis
  * @param replyCount
  * @param briefReplies
+ * @param reactions
  * @param canReply
+ * @param author
  */
 @Serializable
 
@@ -44,8 +48,6 @@ data class AniEpisodeComment (
 
     @SerialName(value = "episodeId") @Required val episodeId: kotlin.Long,
 
-    @SerialName(value = "author") val author: AniEpisodeCommentAuthor? = null,
-
     @SerialName(value = "contentBbcode") @Required val contentBbcode: kotlin.String,
 
     @SerialName(value = "createdAtMillis") @Required val createdAtMillis: kotlin.Long,
@@ -54,7 +56,11 @@ data class AniEpisodeComment (
 
     @SerialName(value = "briefReplies") @Required val briefReplies: kotlin.collections.List<AniEpisodeCommentReply>,
 
-    @SerialName(value = "canReply") @Required val canReply: kotlin.Boolean
+    @SerialName(value = "reactions") @Required val reactions: kotlin.collections.List<AniEpisodeCommentReaction>,
+
+    @SerialName(value = "canReply") @Required val canReply: kotlin.Boolean,
+
+    @SerialName(value = "author") val author: AniEpisodeCommentAuthor? = null
 
 ) {
 

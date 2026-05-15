@@ -25,6 +25,7 @@ import kotlinx.io.files.Path
 import kotlinx.io.files.SystemTemporaryDirectory
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.copyTo
 import me.him188.ani.utils.io.inSystem
@@ -32,6 +33,7 @@ import me.him188.ani.utils.io.readText
 import me.him188.ani.utils.logging.DefaultLoggerFactory
 import me.him188.ani.utils.logging.IosLoggingConfigurator
 import me.him188.ani.utils.logging.writer.DailyRollingFileLogWriter
+import org.jetbrains.compose.resources.stringResource
 import platform.Foundation.NSURL
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIPopoverArrowDirectionAny
@@ -44,15 +46,18 @@ internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemCol
     val uiViewController = LocalUIViewController.current
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
+    val shareTodayLogFileText = stringResource(Lang.settings_log_share_today_log_file)
+    val copyTodayLogContentText = stringResource(Lang.settings_log_copy_today_log_content)
+    val logFileNotFoundText = stringResource(Lang.settings_log_file_not_found)
 
     ListItem(
         headlineContent = {
-            Text("分享当日日志文件")
+            Text(shareTodayLogFileText)
         },
         Modifier.clickable {
             val file = getTodayLogFile()
             if (file == null) {
-                toaster.toast("未找到文件")
+                toaster.toast(logFileNotFoundText)
             } else {
                 shareFile(file.inSystem.absolutePath, uiViewController)
             }
@@ -62,12 +67,12 @@ internal actual fun ColumnScope.PlatformLoggingItems(listItemColors: ListItemCol
 
     ListItem(
         headlineContent = {
-            Text("复制当日日志内容 (很大)")
+            Text(copyTodayLogContentText)
         },
         Modifier.clickable {
             val file = getTodayLogFile()
             if (file == null) {
-                toaster.toast("未找到文件")
+                toaster.toast(logFileNotFoundText)
             } else {
                 scope.launch {
                     clipboard.setClipEntryText(file.inSystem.readText())

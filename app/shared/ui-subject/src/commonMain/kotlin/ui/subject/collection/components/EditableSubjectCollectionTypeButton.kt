@@ -39,10 +39,12 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.external.placeholder.placeholder
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.*
 import kotlin.coroutines.cancellation.CancellationException
 
 @Stable
@@ -204,15 +206,15 @@ private fun SetAllEpisodeDoneDialog(
     AlertDialog(
         onDismissRequest = onDismissRequest,
         icon = { Icon(Icons.Rounded.TaskAlt, null) },
-        text = { Text("要同时设置所有剧集为看过吗？") },
+        text = { Text(stringResource(Lang.subject_collection_set_all_episodes_watched)) },
         confirmButton = {
-            TextButton(onConfirm) { Text("设置") }
+            TextButton(onConfirm) { Text(stringResource(Lang.subject_collection_set)) }
 
             if (isWorking) {
                 CircularProgressIndicator(Modifier.padding(start = 8.dp).size(24.dp))
             }
         },
-        dismissButton = { TextButton(onDismissRequest) { Text("忽略") } },
+        dismissButton = { TextButton(onDismissRequest) { Text(stringResource(Lang.subject_collection_ignore)) } },
         modifier = modifier,
     )
 }

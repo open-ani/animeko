@@ -30,11 +30,21 @@ data class EpisodeComment(
     val createdAt: Long,
     val content: String,
     val author: UserInfo?,
+    val reactions: List<EpisodeCommentReaction> = emptyList(),
     val replies: List<EpisodeComment> = listOf(),
     val canReply: Boolean = false,
 )
 
-fun BangumiNextGetEpisodeComments200ResponseInner.toEpisodeComment(episodeId: Long) = EpisodeComment(
+data class EpisodeCommentReaction(
+    val value: String,
+    val count: Int,
+    val selected: Boolean,
+)
+
+fun BangumiNextGetEpisodeComments200ResponseInner.toEpisodeComment(
+    episodeId: Long,
+    selfBangumiUsername: String? = null,
+) = EpisodeComment(
     stableId = "bangumi:$id",
     source = EpisodeCommentSource.BANGUMI,
     sourceCommentId = id.toString(),
@@ -49,6 +59,13 @@ fun BangumiNextGetEpisodeComments200ResponseInner.toEpisodeComment(episodeId: Lo
             username = null,
             avatarUrl = u.avatar.large,
         ) // 没有username
+    },
+    reactions = reactions.orEmpty().map { reaction ->
+        EpisodeCommentReaction(
+            value = "bgm${reaction.value}",
+            count = reaction.users.size,
+            selected = selfBangumiUsername != null && reaction.users.any { it.username == selfBangumiUsername },
+        )
     },
     replies = replies.map { r ->
         EpisodeComment(
@@ -65,6 +82,13 @@ fun BangumiNextGetEpisodeComments200ResponseInner.toEpisodeComment(episodeId: Lo
                     nickname = u.nickname,
                     username = null,
                     avatarUrl = u.avatar.large,
+                )
+            },
+            reactions = r.reactions.orEmpty().map { reaction ->
+                EpisodeCommentReaction(
+                    value = "bgm${reaction.value}",
+                    count = reaction.users.size,
+                    selected = selfBangumiUsername != null && reaction.users.any { it.username == selfBangumiUsername },
                 )
             },
             canReply = false,
