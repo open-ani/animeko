@@ -68,11 +68,51 @@ import me.him188.ani.app.ui.foundation.effects.moveFocusOnEnter
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.EasingDurations
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_mediasource_rss_auto_save_hint
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_base_url
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_base_url_supporting
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_channel_format_grouped
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_channel_format_no_channel
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_default_resolution
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_default_resolution_description
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_default_subtitle_language
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_default_subtitle_language_description
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_distinguish_channel_name
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_distinguish_channel_name_description
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_distinguish_subject_name
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_distinguish_subject_name_description
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_by_episode_sort
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_by_episode_sort_description
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_by_subject_name
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_by_subject_name_description
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_filter_settings
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_icon_url
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_name
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_name_placeholder
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_player_select_resource
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_referer_description
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_request_interval
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_request_interval_description
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_first_word
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_first_word_description
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_remove_special
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_remove_special_description
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_subject_names_count
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_subject_names_count_description
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_url
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_url_placeholder
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_search_url_supporting
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_subject_format_multi_tag
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_subject_format_single_tag
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_user_agent_description
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_config_video_playback
 import me.him188.ani.app.ui.settings.mediasource.rss.createTestSaveableStorage
 import me.him188.ani.app.ui.settings.mediasource.rss.edit.MediaSourceHeadline
 import me.him188.ani.datasources.api.topic.Resolution
 import me.him188.ani.datasources.api.topic.SubtitleLanguage
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -105,8 +145,8 @@ internal fun SelectorConfigurationPane(
                     Modifier
                         .fillMaxWidth()
                         .moveFocusOnEnter(),
-                    label = { Text("名称*") },
-                    placeholder = { Text("设置显示在列表中的名称") },
+                    label = { Text(stringResource(Lang.settings_mediasource_selector_config_name)) },
+                    placeholder = { Text(stringResource(Lang.settings_mediasource_selector_config_name_placeholder)) },
                     isError = state.displayNameIsError,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     shape = textFieldShape,
@@ -117,7 +157,7 @@ internal fun SelectorConfigurationPane(
                     Modifier
                         .fillMaxWidth()
                         .moveFocusOnEnter(),
-                    label = { Text("图标链接") },
+                    label = { Text(stringResource(Lang.settings_mediasource_selector_config_icon_url)) },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     shape = textFieldShape,
                     enabled = state.enableEdit,
@@ -137,20 +177,15 @@ internal fun SelectorConfigurationPane(
                 OutlinedTextField(
                     state.searchUrl, { state.searchUrl = it },
                     Modifier.fillMaxWidth().moveFocusOnEnter(),
-                    label = { Text("搜索链接") },
+                    label = { Text(stringResource(Lang.settings_mediasource_selector_config_search_url)) },
                     placeholder = {
                         Text(
-                            "示例：https://www.nyacg.net/search.html?wd={keyword}",
+                            stringResource(Lang.settings_mediasource_selector_config_search_url_placeholder),
                             color = MaterialTheme.colorScheme.outline,
                         )
                     },
                     supportingText = {
-                        Text(
-                            """
-                                    替换规则：
-                                    {keyword} 替换为条目 (番剧) 名称
-                                """.trimIndent(),
-                        )
+                        Text(stringResource(Lang.settings_mediasource_selector_config_search_url_supporting))
                     },
                     isError = state.searchUrlIsError,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -162,16 +197,14 @@ internal fun SelectorConfigurationPane(
                     Modifier
                         .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
                         .fillMaxWidth().moveFocusOnEnter(),
-                    label = { Text("Base URL (可选)") },
+                    label = { Text(stringResource(Lang.settings_mediasource_selector_config_base_url)) },
                     placeholder = state.baseUrlPlaceholder?.let {
                         {
                             Text(it, color = MaterialTheme.colorScheme.outline)
                         }
                     },
                     supportingText = {
-                        Text(
-                            """可选。用于拼接条目详情 (剧集列表) 页面 URL，将会影响步骤 2。默认自动从搜索链接生成""".trimIndent(),
-                        )
+                        Text(stringResource(Lang.settings_mediasource_selector_config_base_url_supporting))
                     },
                     isError = state.searchUrlIsError,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -179,13 +212,15 @@ internal fun SelectorConfigurationPane(
                     enabled = state.enableEdit,
                 )
                 ListItem(
-                    headlineContent = { Text("仅使用第一个词") },
+                    headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_search_first_word)) },
                     Modifier
                         .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
                         .clickable(enabled = state.enableEdit) {
                             state.searchUseOnlyFirstWord = !state.searchUseOnlyFirstWord
                         },
-                    supportingContent = { Text("以空格分割，仅使用第一个词搜索。适用于搜索兼容性差的情况") },
+                    supportingContent = {
+                        Text(stringResource(Lang.settings_mediasource_selector_config_search_first_word_description))
+                    },
                     trailingContent = {
                         Switch(
                             state.searchUseOnlyFirstWord, { state.searchUseOnlyFirstWord = it },
@@ -195,13 +230,15 @@ internal fun SelectorConfigurationPane(
                     colors = listItemColors,
                 )
                 ListItem(
-                    headlineContent = { Text("去除特殊字符") },
+                    headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_search_remove_special)) },
                     Modifier
                         .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
                         .clickable(enabled = state.enableEdit) {
                             state.searchRemoveSpecial = !state.searchRemoveSpecial
                         },
-                    supportingContent = { Text("去除特殊字符以及 \"电影\" 等字样，提升搜索成功率") },
+                    supportingContent = {
+                        Text(stringResource(Lang.settings_mediasource_selector_config_search_remove_special_description))
+                    },
                     trailingContent = {
                         Switch(
                             state.searchRemoveSpecial, { state.searchRemoveSpecial = it },
@@ -223,15 +260,9 @@ internal fun SelectorConfigurationPane(
                     Modifier
                         .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
                         .fillMaxWidth().moveFocusOnEnter(),
-                    label = { Text("尝试条目名称数量") },
+                    label = { Text(stringResource(Lang.settings_mediasource_selector_config_search_subject_names_count)) },
                     supportingText = {
-                        Text(
-                            """
-                                每次播放使用多少个条目名称进行查询。
-                                为 1 则只使用主中文名称，为 2 额外使用日文原名，大于 2 将额外使用其他别名，别名的数量不固定。
-                                一般用 1 就够了，使用多个名称将会显著增加播放时的等待时间。
-                                """.trimIndent(),
-                        )
+                        Text(stringResource(Lang.settings_mediasource_selector_config_search_subject_names_count_description))
                     },
                     isError = searchUseSubjectNamesCount.toIntOrNull().let {
                         it == null || it < 1
@@ -252,11 +283,9 @@ internal fun SelectorConfigurationPane(
                     Modifier
                         .padding(top = (verticalSpacing - 8.dp).coerceAtLeast(0.dp))
                         .fillMaxWidth().moveFocusOnEnter(),
-                    label = { Text("搜索请求间隔时间 (毫秒)") },
+                    label = { Text(stringResource(Lang.settings_mediasource_selector_config_request_interval)) },
                     supportingText = {
-                        Text(
-                            """控制每发送一个请求后等待多久后再发送下一个请求""".trimIndent(),
-                        )
+                        Text(stringResource(Lang.settings_mediasource_selector_config_request_interval_description))
                     },
                     isError = requestIntervalString.toLongOrNull() == null,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -317,7 +346,7 @@ internal fun SelectorConfigurationPane(
                     MaterialTheme.typography.titleMedium,
                     MaterialTheme.colorScheme.primary,
                 ) {
-                    Text("过滤设置")
+                    Text(stringResource(Lang.settings_mediasource_selector_config_filter_settings))
                 }
             }
 
@@ -326,11 +355,13 @@ internal fun SelectorConfigurationPane(
                 verticalArrangement = Arrangement.spacedBy((verticalSpacing - 16.dp).coerceAtLeast(0.dp)),
             ) {
                 ListItem(
-                    headlineContent = { Text("使用条目名称过滤") },
+                    headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_filter_by_subject_name)) },
                     Modifier.focusable(false).clickable(
                         enabled = state.enableEdit,
                     ) { state.filterBySubjectName = !state.filterBySubjectName },
-                    supportingContent = { Text("要求资源标题包含条目名称。适用于数据源可能搜到无关内容的情况。此功能只对 4.4.0 以前版本有效，对其他版本无效") },
+                    supportingContent = {
+                        Text(stringResource(Lang.settings_mediasource_selector_config_filter_by_subject_name_description))
+                    },
                     trailingContent = {
                         Switch(
                             state.filterBySubjectName, { state.filterBySubjectName = it },
@@ -340,11 +371,13 @@ internal fun SelectorConfigurationPane(
                     colors = listItemColors,
                 )
                 ListItem(
-                    headlineContent = { Text("使用剧集序号过滤") },
+                    headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_filter_by_episode_sort)) },
                     Modifier.focusable(false).clickable(
                         enabled = state.enableEdit,
                     ) { state.filterByEpisodeSort = !state.filterByEpisodeSort },
-                    supportingContent = { Text("要求资源标题包含剧集序号。适用于数据源可能搜到无关内容的情况。通常建议开启") },
+                    supportingContent = {
+                        Text(stringResource(Lang.settings_mediasource_selector_config_filter_by_episode_sort_description))
+                    },
                     trailingContent = {
                         Switch(
                             state.filterByEpisodeSort, { state.filterByEpisodeSort = it },
@@ -373,11 +406,13 @@ internal fun SelectorConfigurationPane(
             kotlin.run {
                 var showMenu by rememberSaveable { mutableStateOf(false) }
                 ListItem(
-                    headlineContent = { Text("标记分辨率") },
+                    headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_default_resolution)) },
                     Modifier.focusable(false).clickable(
                         enabled = state.enableEdit,
                     ) { showMenu = !showMenu },
-                    supportingContent = { Text("将此数据源的资源都标记为该分辨率。不影响查询，只在播放器中选择数据源时用做偏好和过滤选项。") },
+                    supportingContent = {
+                        Text(stringResource(Lang.settings_mediasource_selector_config_default_resolution_description))
+                    },
                     trailingContent = {
                         TextButton(onClick = { showMenu = true }) {
                             Text(state.defaultResolution.displayName)
@@ -403,11 +438,13 @@ internal fun SelectorConfigurationPane(
             kotlin.run {
                 var showMenu by rememberSaveable { mutableStateOf(false) }
                 ListItem(
-                    headlineContent = { Text("标记字幕语言") },
+                    headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_default_subtitle_language)) },
                     Modifier.focusable(false).clickable(
                         enabled = state.enableEdit,
                     ) { showMenu = !showMenu },
-                    supportingContent = { Text("将此数据源的资源都标记为该字幕语言。不影响查询，只在播放器中选择数据源时用做偏好和过滤选项。") },
+                    supportingContent = {
+                        Text(stringResource(Lang.settings_mediasource_selector_config_default_subtitle_language_description))
+                    },
                     trailingContent = {
                         TextButton(onClick = { showMenu = true }) {
                             Text(state.defaultSubtitleLanguage.displayName)
@@ -435,23 +472,19 @@ internal fun SelectorConfigurationPane(
                     MaterialTheme.typography.titleMedium,
                     MaterialTheme.colorScheme.primary,
                 ) {
-                    Text("在播放器内选择资源时")
+                    Text(stringResource(Lang.settings_mediasource_selector_config_player_select_resource))
                 }
             }
 
             Column(Modifier, verticalArrangement = Arrangement.spacedBy(verticalSpacing)) {
                 val conf = state.selectMediaConfig
                 ListItem(
-                    headlineContent = { Text("区分条目名称") },
+                    headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_distinguish_subject_name)) },
                     Modifier.focusable(false).clickable(
                         enabled = state.enableEdit,
                     ) { conf.distinguishSubjectName = !conf.distinguishSubjectName },
                     supportingContent = {
-                        Text(
-                            "关闭后，所有步骤 1 搜索到的条目都将被视为同一个，它们的相同标题的剧集将会被去重。" +
-                                    "开启此项则不会这样去重。\n" +
-                                    "此选项不影响测试结果，影响播放器内选择数据源时的结果。",
-                        )
+                        Text(stringResource(Lang.settings_mediasource_selector_config_distinguish_subject_name_description))
                     },
                     trailingContent = {
                         Switch(
@@ -462,16 +495,12 @@ internal fun SelectorConfigurationPane(
                     colors = listItemColors,
                 )
                 ListItem(
-                    headlineContent = { Text("区分线路名称") },
+                    headlineContent = { Text(stringResource(Lang.settings_mediasource_selector_config_distinguish_channel_name)) },
                     Modifier.focusable(false).clickable(
                         enabled = state.enableEdit,
                     ) { conf.distinguishChannelName = !conf.distinguishChannelName },
                     supportingContent = {
-                        Text(
-                            "关闭后，线路名称不同，但只要标题相同的剧集就会被去重。" +
-                                    "开启此项则不会这样去重。\n" +
-                                    "此选项不影响测试结果，影响播放器内选择数据源时的结果。",
-                        )
+                        Text(stringResource(Lang.settings_mediasource_selector_config_distinguish_channel_name_description))
                     },
                     trailingContent = {
                         Switch(
@@ -488,7 +517,7 @@ internal fun SelectorConfigurationPane(
                     MaterialTheme.typography.titleMedium,
                     MaterialTheme.colorScheme.primary,
                 ) {
-                    Text("播放视频时")
+                    Text(stringResource(Lang.settings_mediasource_selector_config_video_playback))
                 }
             }
 
@@ -498,7 +527,7 @@ internal fun SelectorConfigurationPane(
                     conf.referer, { conf.referer = it },
                     Modifier.fillMaxWidth().moveFocusOnEnter(),
                     label = { Text("Referer") },
-                    supportingText = { Text("播放视频时执行的 HTTP 请求的 Referer，可留空") },
+                    supportingText = { Text(stringResource(Lang.settings_mediasource_selector_config_referer_description)) },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     shape = textFieldShape,
                     enabled = state.enableEdit,
@@ -507,7 +536,7 @@ internal fun SelectorConfigurationPane(
                     conf.userAgent, { conf.userAgent = it },
                     Modifier.fillMaxWidth().moveFocusOnEnter(),
                     label = { Text("User-Agent") },
-                    supportingText = { Text("播放视频时执行的 HTTP 请求的 User-Agent") },
+                    supportingText = { Text(stringResource(Lang.settings_mediasource_selector_config_user_agent_description)) },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     shape = textFieldShape,
                     enabled = state.enableEdit,
@@ -520,7 +549,7 @@ internal fun SelectorConfigurationPane(
                         MaterialTheme.typography.labelMedium,
                         MaterialTheme.colorScheme.outline,
                     ) {
-                        Text("提示：修改自动保存")
+                        Text(stringResource(Lang.settings_mediasource_rss_auto_save_hint))
                     }
                 }
             }
@@ -556,8 +585,8 @@ private fun SelectorSubjectFormatSelectionButtonRow(
             Btn(format.id, index) {
                 Text(
                     when (format) { // type-safe to handle all formats
-                        SelectorSubjectFormatA -> "单标签"
-                        SelectorSubjectFormatIndexed -> "多标签"
+                        SelectorSubjectFormatA -> stringResource(Lang.settings_mediasource_selector_config_subject_format_single_tag)
+                        SelectorSubjectFormatIndexed -> stringResource(Lang.settings_mediasource_selector_config_subject_format_multi_tag)
                         SelectorSubjectFormatJsonPathIndexed -> "JsonPath"
                     },
                     softWrap = false,
@@ -593,8 +622,8 @@ private fun SelectorChannelSelectionButtonRow(
             Btn(selectorChannelFormat.id, index) {
                 Text(
                     when (selectorChannelFormat) { // type-safe to handle all formats
-                        SelectorChannelFormatNoChannel -> "不区分线路"
-                        SelectorChannelFormatIndexGrouped -> "线路分组"
+                        SelectorChannelFormatNoChannel -> stringResource(Lang.settings_mediasource_selector_config_channel_format_no_channel)
+                        SelectorChannelFormatIndexGrouped -> stringResource(Lang.settings_mediasource_selector_config_channel_format_grouped)
                     },
                     softWrap = false,
                 )

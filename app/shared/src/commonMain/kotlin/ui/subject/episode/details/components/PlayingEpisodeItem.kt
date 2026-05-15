@@ -68,6 +68,12 @@ import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.cache_unknown
+import me.him188.ani.app.ui.lang.episode_summary_share
+import me.him188.ani.app.ui.lang.subject_episode_cache
+import me.him188.ani.app.ui.lang.subject_episode_select_media_source
+import me.him188.ani.app.ui.media.rememberMediaDetailsStrings
 import me.him188.ani.app.ui.media.renderProperties
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcons
 import me.him188.ani.app.ui.subject.episode.statistics.VideoLoadingSummary
@@ -76,6 +82,7 @@ import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isAndroid
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 剧集详情页中的正在播放的剧集卡片. 需要放在合适的 `Card` 中.
@@ -242,6 +249,7 @@ private fun PreviewEpisodeItemImpl(
     filename: String? = "filename-".repeat(3) + ".mkv",
     videoLoadingState: VideoLoadingState = VideoLoadingState.Succeed(false),
 ) {
+    val mediaDetailsStrings = rememberMediaDetailsStrings()
     Card(
         modifier = Modifier
             .padding(horizontal = 16.dp)
@@ -254,7 +262,7 @@ private fun PreviewEpisodeItemImpl(
             mediaSelected = media != null,
             mediaLabels = {
                 media?.let {
-                    Text(media.renderProperties())
+                    Text(media.renderProperties(mediaDetailsStrings))
                 }
             },
             filename = {
@@ -332,8 +340,9 @@ object PlayingEpisodeItemDefaults {
         onClick: () -> Unit,
         modifier: Modifier = Modifier,
     ) {
+        val cacheText = stringResource(Lang.subject_episode_cache)
         IconButton(onClick, modifier) {
-            Icon(Icons.Rounded.Download, "缓存")
+            Icon(Icons.Rounded.Download, cacheText)
         }
     }
 
@@ -343,9 +352,10 @@ object PlayingEpisodeItemDefaults {
         modifier: Modifier = Modifier,
     ) {
         var showShareDropdown by rememberSaveable { mutableStateOf(false) }
+        val shareText = stringResource(Lang.episode_summary_share)
         Box {
             IconButton({ showShareDropdown = true }, modifier) {
-                Icon(Icons.Rounded.Outbox, "分享")
+                Icon(Icons.Rounded.Outbox, shareText)
             }
             ShareEpisodeDropdown(
                 data, showShareDropdown,
@@ -362,6 +372,8 @@ object PlayingEpisodeItemDefaults {
         onClick: () -> Unit,
         modifier: Modifier = Modifier,
     ) {
+        val unknownText = stringResource(Lang.cache_unknown)
+        val selectMediaSourceText = stringResource(Lang.subject_episode_select_media_source)
         Row(modifier, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (media != null) {
                 OutlinedButton(
@@ -372,7 +384,7 @@ object PlayingEpisodeItemDefaults {
                     Icon(MediaSourceIcons.location(media.location, media.kind), null)
 
                     Text(
-                        mediaSourceInfo?.displayName ?: "未知",
+                        mediaSourceInfo?.displayName ?: unknownText,
                         Modifier.padding(start = 12.dp).align(Alignment.CenterVertically),
                         maxLines = 1,
                         softWrap = false,
@@ -386,7 +398,7 @@ object PlayingEpisodeItemDefaults {
                     Icon(Icons.Rounded.DisplaySettings, null)
 
                     Text(
-                        "选择数据源",
+                        selectMediaSourceText,
                         Modifier.padding(start = 12.dp).align(Alignment.CenterVertically),
                         maxLines = 1,
                         softWrap = false,

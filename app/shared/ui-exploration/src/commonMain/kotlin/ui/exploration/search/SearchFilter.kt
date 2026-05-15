@@ -50,7 +50,21 @@ import kotlin.time.Clock
 import me.him188.ani.app.data.models.schedule.AnimeSeason
 import me.him188.ani.app.data.models.subject.CanonicalTagKind
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.exploration_search_filter_audience
+import me.him188.ani.app.ui.lang.exploration_search_filter_category
+import me.him188.ani.app.ui.lang.exploration_search_filter_character
+import me.him188.ani.app.ui.lang.exploration_search_filter_custom
+import me.him188.ani.app.ui.lang.exploration_search_filter_emotion
+import me.him188.ani.app.ui.lang.exploration_search_filter_genre
+import me.him188.ani.app.ui.lang.exploration_search_filter_rating
+import me.him188.ani.app.ui.lang.exploration_search_filter_region
+import me.him188.ani.app.ui.lang.exploration_search_filter_series
+import me.him188.ani.app.ui.lang.exploration_search_filter_setting
+import me.him188.ani.app.ui.lang.exploration_search_filter_source
+import me.him188.ani.app.ui.lang.exploration_search_filter_technology
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 import kotlin.random.Random
 
 /**
@@ -135,6 +149,7 @@ fun SearchFilterChip(
     onCheckedChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val labels = rememberSearchFilterLabels()
     var showDropdown by rememberSaveable { mutableStateOf(false) }
     val textLayout = rememberTextMeasurer(1)
     val density = LocalDensity.current
@@ -142,7 +157,7 @@ fun SearchFilterChip(
     val maxWidth = remember(textLayout, density, styleLabelLarge) {
         with(density) {
             textLayout.measure(
-                "占位,占位位",
+                "placeholder",
                 softWrap = false,
                 maxLines = 1,
                 style = styleLabelLarge,
@@ -155,7 +170,7 @@ fun SearchFilterChip(
             onClick = { showDropdown = true },
             label = {
                 Text(
-                    renderChipLabel(state),
+                    renderChipLabel(state, labels),
                     Modifier.widthIn(max = maxWidth.coerceAtLeast(128.dp)),
                     overflow = TextOverflow.Ellipsis,
                     softWrap = false,
@@ -334,25 +349,58 @@ private fun defaultSearchYearSelection(availableYears: List<Int>): Int? {
 
 private fun renderChipLabel(
     state: SearchFilterChipState,
+    labels: SearchFilterLabels,
 ): String {
     if (state.hasSelection) {
         return state.selected.joinToString(",")
     }
     return when (state.kind) {
-        CanonicalTagKind.Audience -> "受众"
-        CanonicalTagKind.Category -> "分类"
-        CanonicalTagKind.Character -> "角色"
-        CanonicalTagKind.Emotion -> "情感"
-        CanonicalTagKind.Genre -> "类型"
-        CanonicalTagKind.Rating -> "分级"
-        CanonicalTagKind.Region -> "地区"
-        CanonicalTagKind.Series -> "系列"
-        CanonicalTagKind.Setting -> "设定"
-        CanonicalTagKind.Source -> "来源"
-        CanonicalTagKind.Technology -> "技术"
-        null -> "自定义"
+        CanonicalTagKind.Audience -> labels.audience
+        CanonicalTagKind.Category -> labels.category
+        CanonicalTagKind.Character -> labels.character
+        CanonicalTagKind.Emotion -> labels.emotion
+        CanonicalTagKind.Genre -> labels.genre
+        CanonicalTagKind.Rating -> labels.rating
+        CanonicalTagKind.Region -> labels.region
+        CanonicalTagKind.Series -> labels.series
+        CanonicalTagKind.Setting -> labels.setting
+        CanonicalTagKind.Source -> labels.source
+        CanonicalTagKind.Technology -> labels.technology
+        null -> labels.custom
     }
 }
+
+@Immutable
+private data class SearchFilterLabels(
+    val audience: String,
+    val category: String,
+    val character: String,
+    val emotion: String,
+    val genre: String,
+    val rating: String,
+    val region: String,
+    val series: String,
+    val setting: String,
+    val source: String,
+    val technology: String,
+    val custom: String,
+)
+
+@Composable
+private fun rememberSearchFilterLabels(): SearchFilterLabels = SearchFilterLabels(
+    audience = stringResource(Lang.exploration_search_filter_audience),
+    category = stringResource(Lang.exploration_search_filter_category),
+    character = stringResource(Lang.exploration_search_filter_character),
+    emotion = stringResource(Lang.exploration_search_filter_emotion),
+    genre = stringResource(Lang.exploration_search_filter_genre),
+    rating = stringResource(Lang.exploration_search_filter_rating),
+    region = stringResource(Lang.exploration_search_filter_region),
+    series = stringResource(Lang.exploration_search_filter_series),
+    setting = stringResource(Lang.exploration_search_filter_setting),
+    source = stringResource(Lang.exploration_search_filter_source),
+    technology = stringResource(Lang.exploration_search_filter_technology),
+    custom = stringResource(Lang.exploration_search_filter_custom),
+)
 
 
 @OptIn(TestOnly::class)

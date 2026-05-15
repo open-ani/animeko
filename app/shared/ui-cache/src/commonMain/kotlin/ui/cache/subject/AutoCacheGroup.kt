@@ -14,8 +14,11 @@ import androidx.compose.material.icons.automirrored.rounded.ViewList
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.cache_subject_manage_all
 import me.him188.ani.app.ui.settings.framework.components.RowButtonItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SettingsScope.AutoCacheGroup(
@@ -71,5 +74,5 @@ fun SettingsScope.AutoCacheGroup(
     RowButtonItem(
         onClick = onClickGlobalCacheManage,
         icon = { Icon(Icons.AutoMirrored.Rounded.ViewList, null) },
-    ) { Text("管理全部缓存") }
+    ) { Text(stringResource(Lang.cache_subject_manage_all)) }
 }

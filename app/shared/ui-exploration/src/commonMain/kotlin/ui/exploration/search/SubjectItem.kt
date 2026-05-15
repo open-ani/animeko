@@ -48,6 +48,9 @@ import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.cache_management_play
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Design: [SubjectItem on Figma](https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Main?node-id=101-877&t=gmFJS6LFQudIIXfK-4)
@@ -147,8 +150,9 @@ object SubjectItemDefaults {
         onClick: () -> Unit,
         modifier: Modifier = Modifier
     ) {
+        val playText = stringResource(Lang.cache_management_play)
         FilledTonalIconButton(onClick, modifier) {
-            Icon(Icons.Rounded.PlayArrow, contentDescription = "播放", Modifier.size(28.dp))
+            Icon(Icons.Rounded.PlayArrow, contentDescription = playText, Modifier.size(28.dp))
         }
     }
 

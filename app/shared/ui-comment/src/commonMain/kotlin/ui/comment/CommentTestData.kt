@@ -39,7 +39,7 @@ fun createTestCommentState(
 ) = CommentState(
     list = createTestPager(commentList),
     countState = stateOf(commentList.size),
-    onSubmitCommentReaction = { _, _ -> },
+    onSubmitCommentReaction = { _, _, _ -> },
     backgroundScope = scope,
 )
 
@@ -78,7 +78,7 @@ fun generateUiComment(
                 ),
                 reactions = buildList {
                     repeat((0..8).random()) {
-                        add(UICommentReaction((0..100).random(), (0..100).random(), Random.nextBoolean()))
+                        add(UICommentReaction("bgm${(1..125).random()}", (0..100).random(), Random.nextBoolean()))
                     }
                 },
                 briefReplies = if (generateReply) {

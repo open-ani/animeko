@@ -38,13 +38,16 @@ import me.him188.ani.app.domain.mediasource.test.rss.RssItemInfo
 import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.foundation.OutlinedTag
 import me.him188.ani.app.ui.media.MediaDetailsRenderer
+import me.him188.ani.app.ui.media.MediaDetailsStrings
+import me.him188.ani.app.ui.media.rememberMediaDetailsStrings
 import me.him188.ani.utils.platform.annotations.TestOnly
 
 @Stable
-val RssItemInfo.subtitleLanguageRendered: String
-    get() = MediaDetailsRenderer.renderSubtitleLanguages(
+fun RssItemInfo.renderSubtitleLanguageRendered(strings: MediaDetailsStrings): String =
+    MediaDetailsRenderer.renderSubtitleLanguages(
         parsed.subtitleKind,
-        parsed.subtitleLanguages.map { it.displayName },
+        parsed.subtitleLanguages,
+        strings,
     )
 
 @Composable
@@ -59,6 +62,7 @@ fun RssTestPaneDefaults.RssInfoTab(
     val selectedItem by remember(selectedItemProvider) {
         derivedStateOf(selectedItemProvider)
     }
+    val mediaDetailsStrings = rememberMediaDetailsStrings()
     LazyVerticalStaggeredGrid(
         StaggeredGridCells.Adaptive(minSize = 300.dp),
         modifier,
@@ -69,6 +73,7 @@ fun RssTestPaneDefaults.RssInfoTab(
         items(items) { item ->
             RssTestResultRssItem(
                 item,
+                mediaDetailsStrings = mediaDetailsStrings,
                 isSelected = selectedItem == item,
                 onClick = {
                     onViewDetails(item)
@@ -82,6 +87,7 @@ fun RssTestPaneDefaults.RssInfoTab(
 @Composable
 fun RssTestResultRssItem(
     item: RssItemInfo,
+    mediaDetailsStrings: MediaDetailsStrings,
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -106,6 +112,7 @@ fun RssTestResultRssItem(
                     for (tag in item.tags) {
                         OutlinedMatchTag(tag)
                     }
+                    OutlinedTag { Text(item.renderSubtitleLanguageRendered(mediaDetailsStrings)) }
                     item.rss.pubDate?.let {
                         OutlinedTag { Text(formatDateTime(it)) }
                     }

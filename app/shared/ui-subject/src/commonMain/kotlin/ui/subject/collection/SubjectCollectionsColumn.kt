@@ -70,6 +70,7 @@ import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthCompact
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.isLoadingNextPage
@@ -82,6 +83,7 @@ import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
 import me.him188.ani.app.ui.subject.collection.progress.rememberTestSubjectProgressState
 import me.him188.ani.app.ui.subject.details.components.COVER_WIDTH_TO_HEIGHT_RATIO
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.*
 
 /**
  * 用户的收藏列表.
@@ -273,7 +275,7 @@ private fun SubjectCollectionItemContent(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TextButton(onShowEpisodeList) {
-                Text("选集")
+                Text(stringResource(Lang.video_player_select_episode))
             }
 
             Box(Modifier.width(IntrinsicSize.Min)) { playButton() }

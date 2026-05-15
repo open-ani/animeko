@@ -32,7 +32,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.cache_total_download
+import me.him188.ani.app.ui.lang.cache_total_upload
 import me.him188.ani.datasources.api.topic.FileSize
+import org.jetbrains.compose.resources.stringResource
 
 
 @Composable
@@ -47,7 +51,7 @@ fun CacheManagementOverallStats(
         Stat(
             title = {
                 Icon(Icons.Rounded.Upload, null)
-                Text("总上传", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(Lang.cache_total_upload), style = MaterialTheme.typography.titleMedium)
             },
             speedText = {
                 Text(renderSpeed(remember(stats) { derivedStateOf { stats().uploadSpeed } }.value))
@@ -60,7 +64,7 @@ fun CacheManagementOverallStats(
         Stat(
             title = {
                 Icon(Icons.Rounded.Download, null)
-                Text("总下载", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(Lang.cache_total_download), style = MaterialTheme.typography.titleMedium)
             },
             speedText = {
                 Text(renderSpeed(remember(stats) { derivedStateOf { stats().downloadSpeed } }.value))

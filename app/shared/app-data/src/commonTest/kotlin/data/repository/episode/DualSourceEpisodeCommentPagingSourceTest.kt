@@ -111,6 +111,12 @@ class DualSourceEpisodeCommentPagingSourceTest {
                     cfTurnstileResponse: String,
                     replyToCommentId: Int?,
                 ) = error("unused")
+
+                override suspend fun submitEpisodeCommentReaction(
+                    commentId: String,
+                    value: String,
+                    selected: Boolean,
+                ) = error("unused")
             },
             pageSize = 2,
         )
@@ -187,6 +193,12 @@ class DualSourceEpisodeCommentPagingSourceTest {
                     cfTurnstileResponse: String,
                     replyToCommentId: Int?,
                 ) = error("unused")
+
+                override suspend fun submitEpisodeCommentReaction(
+                    commentId: String,
+                    value: String,
+                    selected: Boolean,
+                ) = error("unused")
             },
             pageSize = 2,
         )
@@ -246,6 +258,12 @@ class DualSourceEpisodeCommentPagingSourceTest {
                     cfTurnstileResponse: String,
                     replyToCommentId: Int?,
                 ) = error("unused")
+
+                override suspend fun submitEpisodeCommentReaction(
+                    commentId: String,
+                    value: String,
+                    selected: Boolean,
+                ) = error("unused")
             },
             pageSize = 2,
         )
@@ -280,6 +298,12 @@ class DualSourceEpisodeCommentPagingSourceTest {
                 cfTurnstileResponse: String,
                 replyToCommentId: Int?,
             ) = error("unused")
+
+            override suspend fun submitEpisodeCommentReaction(
+                commentId: String,
+                value: String,
+                selected: Boolean,
+            ) = error("unused")
         },
     ): DualSourceEpisodeCommentPagingSource {
         return DualSourceEpisodeCommentPagingSource(
@@ -299,6 +323,7 @@ class DualSourceEpisodeCommentPagingSourceTest {
             createdAtMillis = createdAt,
             replyCount = 0,
             briefReplies = emptyList(),
+            reactions = emptyList(),
             canReply = true,
         )
     }

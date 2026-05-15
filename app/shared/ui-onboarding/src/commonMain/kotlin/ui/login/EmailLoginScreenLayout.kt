@@ -42,8 +42,10 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
+import org.jetbrains.compose.resources.*
 
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -53,7 +55,7 @@ internal fun EmailLoginScreenLayout(
     onNavigateSettings: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
-    title: @Composable () -> Unit = { Text("登录") },
+    title: @Composable () -> Unit = { Text(stringResource(Lang.login_sign_in)) },
     showThirdPartyLogin: Boolean = true,
     content: @Composable ColumnScope.(scrollState: ScrollState) -> Unit,
 ) {
@@ -65,7 +67,11 @@ internal fun EmailLoginScreenLayout(
                 title = title,
                 navigationIcon = { BackNavigationIconButton(onNavigateBack) },
                 scrollBehavior = scrollBehavior,
-                actions = { IconButton(onNavigateSettings) { Icon(Icons.Outlined.Settings, "设置") } },
+                actions = {
+                    IconButton(onNavigateSettings) {
+                        Icon(Icons.Outlined.Settings, stringResource(Lang.settings))
+                    }
+                },
                 windowInsets = AniWindowInsets.forTopAppBar(),
             )
         },

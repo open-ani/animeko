@@ -97,6 +97,7 @@ import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
@@ -106,6 +107,7 @@ import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.renderAspectRatioMode
 import me.him188.ani.app.videoplayer.ui.top.needWorkaroundForFocusManager
 import kotlin.math.roundToInt
+import org.jetbrains.compose.resources.*
 
 const val TAG_SELECT_EPISODE_ICON_BUTTON = "SelectEpisodeIconButton"
 const val TAG_SPEED_SWITCHER_TEXT_BUTTON = "SpeedSwitcherTextButton"
@@ -151,9 +153,9 @@ object PlayerControllerDefaults {
             modifier.testTag(TAG_DANMAKU_ICON_BUTTON),
         ) {
             if (danmakuEnabled) {
-                Icon(Icons.Rounded.Subtitles, contentDescription = "禁用弹幕")
+                Icon(Icons.Rounded.Subtitles, contentDescription = stringResource(Lang.video_player_disable_danmaku))
             } else {
-                Icon(Icons.Rounded.SubtitlesOff, contentDescription = "启用弹幕")
+                Icon(Icons.Rounded.SubtitlesOff, contentDescription = stringResource(Lang.video_player_enable_danmaku))
             }
         }
     }
@@ -187,19 +189,31 @@ object PlayerControllerDefaults {
                 ) {
                     when {
                         isMute -> {
-                            Icon(Icons.AutoMirrored.Rounded.VolumeOff, contentDescription = "静音")
+                            Icon(
+                                Icons.AutoMirrored.Rounded.VolumeOff,
+                                contentDescription = stringResource(Lang.video_player_mute),
+                            )
                         }
 
                         volume < 0.33f -> {
-                            Icon(Icons.AutoMirrored.Rounded.VolumeMute, contentDescription = "音量")
+                            Icon(
+                                Icons.AutoMirrored.Rounded.VolumeMute,
+                                contentDescription = stringResource(Lang.video_player_volume),
+                            )
                         }
 
                         volume < 0.66f -> {
-                            Icon(Icons.AutoMirrored.Rounded.VolumeDown, contentDescription = "音量")
+                            Icon(
+                                Icons.AutoMirrored.Rounded.VolumeDown,
+                                contentDescription = stringResource(Lang.video_player_volume),
+                            )
                         }
 
                         else -> {
-                            Icon(Icons.AutoMirrored.Rounded.VolumeUp, contentDescription = "音量")
+                            Icon(
+                                Icons.AutoMirrored.Rounded.VolumeUp,
+                                contentDescription = stringResource(Lang.video_player_volume),
+                            )
                         }
                     }
                 }
@@ -274,7 +288,7 @@ object PlayerControllerDefaults {
             onClick,
             modifier,
         ) {
-            Icon(Icons.Rounded.SkipNext, "下一集", Modifier.size(36.dp))
+            Icon(Icons.Rounded.SkipNext, stringResource(Lang.video_player_next_episode), Modifier.size(36.dp))
         }
     }
 
@@ -290,37 +304,41 @@ object PlayerControllerDefaults {
                 contentColor = LocalContentColor.current,
             ),
         ) {
-            Text("选集")
+            Text(stringResource(Lang.video_player_select_episode))
         }
     }
 
-    // TODO: DANMAKU_PLACEHOLDERS i18n
-    // See #120
-    @Stable
-    private val DANMAKU_PLACEHOLDERS = listOf(
-        "来发一条弹幕吧~",
-        "小心，我要发射弹幕啦！",
-        "每一条弹幕背后，都有一个不为人知的秘密",
-        "召唤弹幕精灵！",
-        "这一刻的感受，只有你最懂",
-        "让弹幕变得不一样",
-        "弹幕世界大门已开",
-        "字里行间，藏着宇宙的秘密",
-        "在光与影的交织中，你的话语是唯一的真实",
-        "有趣的灵魂万里挑一",
-        "说点什么",
-        "长期征集有趣的弹幕广告词",
-        "广告位招租",
-        "\uD83E\uDD14",
-        "梦开始的地方",
-        "心念成形",
-        "發個彈幕炒熱氣氛！",
-        "來個彈幕吧！",
-        "發個友善的彈幕吧！",
-        "是不是忍不住想發彈幕了呢？",
+    @Composable
+    private fun danmakuPlaceholders(): List<String> = listOf(
+        stringResource(Lang.video_player_danmaku_placeholder_1),
+        stringResource(Lang.video_player_danmaku_placeholder_2),
+        stringResource(Lang.video_player_danmaku_placeholder_3),
+        stringResource(Lang.video_player_danmaku_placeholder_4),
+        stringResource(Lang.video_player_danmaku_placeholder_5),
+        stringResource(Lang.video_player_danmaku_placeholder_6),
+        stringResource(Lang.video_player_danmaku_placeholder_7),
+        stringResource(Lang.video_player_danmaku_placeholder_8),
+        stringResource(Lang.video_player_danmaku_placeholder_9),
+        stringResource(Lang.video_player_danmaku_placeholder_10),
+        stringResource(Lang.video_player_danmaku_placeholder_11),
+        stringResource(Lang.video_player_danmaku_placeholder_12),
+        stringResource(Lang.video_player_danmaku_placeholder_13),
+        stringResource(Lang.video_player_danmaku_placeholder_14),
+        stringResource(Lang.video_player_danmaku_placeholder_15),
+        stringResource(Lang.video_player_danmaku_placeholder_16),
+        stringResource(Lang.video_player_danmaku_placeholder_17),
+        stringResource(Lang.video_player_danmaku_placeholder_18),
+        stringResource(Lang.video_player_danmaku_placeholder_19),
+        stringResource(Lang.video_player_danmaku_placeholder_20),
     )
 
-    fun randomDanmakuPlaceholder(): String = DANMAKU_PLACEHOLDERS.random()
+    fun randomDanmakuPlaceholder(placeholders: List<String>): String = placeholders.random()
+
+    @Composable
+    fun rememberRandomDanmakuPlaceholder(): String {
+        val placeholders = danmakuPlaceholders()
+        return remember(placeholders) { randomDanmakuPlaceholder(placeholders) }
+    }
 
     /**
      * To send danmaku
@@ -332,7 +350,7 @@ object PlayerControllerDefaults {
         modifier: Modifier = Modifier,
     ) {
         IconButton(onClick = onClick, enabled = enabled, modifier = modifier) {
-            Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "发送")
+            Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = stringResource(Lang.video_player_send))
         }
     }
 
@@ -367,7 +385,7 @@ object PlayerControllerDefaults {
         interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
         placeholder: @Composable () -> Unit = {
             Text(
-                remember { randomDanmakuPlaceholder() },
+                rememberRandomDanmakuPlaceholder(),
                 overflow = TextOverflow.Ellipsis,
                 maxLines = 1,
             )
@@ -486,7 +504,8 @@ object PlayerControllerDefaults {
             renderValue = { Text(remember(it) { "${playbackSpeedControllerState.speedList[it]}x" }) },
             renderValueExposed = {
                 val speedValue = playbackSpeedControllerState.speedList[it]
-                Text(remember(speedValue) { if (speedValue == 1.0f) "倍速" else """${speedValue}x""" })
+                val speedText = stringResource(Lang.video_player_speed)
+                Text(remember(speedValue, speedText) { if (speedValue == 1.0f) speedText else """${speedValue}x""" })
             },
             modifier,
             properties = PlatformPopupProperties(
@@ -622,9 +641,9 @@ object PlayerControllerDefaults {
                         modifier = Modifier.padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("即将跳过 OP 或 ED")
+                        Text(stringResource(Lang.video_player_skip_op_ed))
                         TextButton(onClick = onClick) {
-                            Text("取消")
+                            Text(stringResource(Lang.video_player_cancel))
                         }
                     }
                 }

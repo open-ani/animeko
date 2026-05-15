@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -28,10 +30,17 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -47,12 +56,18 @@ import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.comment.UIRichText
 import me.him188.ani.app.ui.comment.generateUiComment
 import me.him188.ani.app.ui.comment.rememberTestCommentState
+import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.foundation.LocalImageViewerHandler
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.app.ui.foundation.layout.plus
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.comment_send_comment
 import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.richtext.UIRichElement
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun EpisodeCommentColumn(
@@ -64,16 +79,22 @@ fun EpisodeCommentColumn(
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
     val imageViewer = LocalImageViewerHandler.current
+    val writeCommentText = stringResource(Lang.comment_send_comment)
+    val toaster = LocalToaster.current
+    LaunchedEffect(state) {
+        state.reactionSubmitFailures.collect { error ->
+            toaster.showLoadError(LoadError.fromException(error))
+        }
+    }
 
     Scaffold(
         modifier,
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                text = { Text("写评论") },
+                text = { Text(writeCommentText) },
                 icon = {
                     Icon(Icons.Rounded.AddComment, null)
-                }
-                ,
+                },
                 onClick = onNewCommentClick,
                 expanded = !gridState.canScrollBackward,
             )
@@ -86,16 +107,18 @@ fun EpisodeCommentColumn(
             contentPadding = PaddingValues(bottom = 72.dp)
                 .plus(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom).asPaddingValues()), // 允许滚动到 FAB 上面
         ) { _, comment ->
+            val commentWithOverlay = state.withReactionOverlay(comment)
             EpisodeComment(
-                comment = comment,
+                comment = commentWithOverlay,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 12.dp)
                     // 如果没有回复则 ActionBar 就是最后一个元素，减小一下 bottom padding 以看起来舒服
-                    .padding(top = 12.dp, bottom = if (comment.replyCount != 0) 12.dp else 4.dp),
+                    .padding(top = 12.dp, bottom = if (commentWithOverlay.replyCount != 0) 12.dp else 4.dp),
                 onClickImage = { imageViewer.viewImage(it) },
-                onActionReply = { onClickReply(comment.sourceCommentId) },
+                onActionReply = { onClickReply(commentWithOverlay.sourceCommentId) },
                 onClickUrl = onClickUrl,
+                onClickReaction = { state.submitReaction(commentWithOverlay, it) },
             )
         }
     }
@@ -110,8 +133,12 @@ fun EpisodeComment(
     onClickUrl: (String) -> Unit,
     onClickImage: (String) -> Unit,
     onActionReply: () -> Unit,
+    onClickReaction: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showReactionPicker by remember(comment.stableId) { mutableStateOf(false) }
+    val canAddReaction = comment.source == UICommentSource.ANI
+
     Comment(
         avatar = { CommentDefaults.Avatar(comment.author?.avatarUrl) },
         primaryTitle = {
@@ -146,19 +173,41 @@ fun EpisodeComment(
         reactionRow = {
             CommentDefaults.ReactionRow(
                 comment.reactions,
-                onClickItem = { },
+                onClickItem = onClickReaction,
             )
         },
-        actionRow = if (comment.canReply) {
-            {
-                CommentDefaults.ActionRow(
-                    onClickReply = onActionReply,
-                    onClickReaction = {},
-                    onClickBlock = {},
-                    onClickReport = {},
-                )
+        actionRow = {
+            CommentDefaults.ActionRow(
+                onClickReply = onActionReply,
+                showReply = false,
+                showReaction = canAddReaction,
+                onClickReaction = { showReactionPicker = !showReactionPicker },
+                onClickBlock = {},
+                onClickReport = {},
+            )
+            if (canAddReaction && showReactionPicker) {
+                Popup(
+                    onDismissRequest = { showReactionPicker = false },
+                    properties = PopupProperties(focusable = true),
+                ) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        tonalElevation = 6.dp,
+                        shadowElevation = 6.dp,
+                        modifier = Modifier
+                            .width(216.dp)
+                            .heightIn(max = 280.dp),
+                    ) {
+                        CommentDefaults.ReactionPicker(
+                            onClickItem = {
+                                showReactionPicker = false
+                                onClickReaction(it)
+                            },
+                        )
+                    }
+                }
             }
-        } else null,
+        },
         reply = if (comment.briefReplies.isNotEmpty()) {
             {
                 CommentDefaults.ReplyList(
@@ -197,6 +246,7 @@ private fun PreviewEpisodeComment() {
             onActionReply = { },
             onClickImage = { },
             onClickUrl = { },
+            onClickReaction = { },
         )
     }
 }

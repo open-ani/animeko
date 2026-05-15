@@ -53,8 +53,22 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.icons.Passkey_24dp_E8EAED_FILL0_wght400_GRAD0_opsz24
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.foundation_load_error_copied_feedback
+import me.him188.ani.app.ui.lang.foundation_load_error_network
+import me.him188.ani.app.ui.lang.foundation_load_error_no_details
+import me.him188.ani.app.ui.lang.foundation_load_error_no_results
+import me.him188.ani.app.ui.lang.foundation_load_error_rate_limited
+import me.him188.ani.app.ui.lang.foundation_load_error_request_error
+import me.him188.ani.app.ui.lang.foundation_load_error_requires_login
+import me.him188.ani.app.ui.lang.foundation_load_error_service_unavailable
+import me.him188.ani.app.ui.lang.foundation_load_error_unknown_with_message
+import me.him188.ani.app.ui.lang.login_sign_in
+import me.him188.ani.app.ui.lang.settings_mediasource_copy
+import me.him188.ani.app.ui.lang.settings_mediasource_retry
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
+import org.jetbrains.compose.resources.stringResource
 
 
 @Composable
@@ -92,6 +106,10 @@ fun LoadErrorCard(
 ) {
     if (error == null) return
     val role = LoadErrorCardRole.from(error)
+    val retryText = stringResource(Lang.settings_mediasource_retry)
+    val signInText = stringResource(Lang.login_sign_in)
+    val copyText = stringResource(Lang.settings_mediasource_copy)
+    val copiedFeedbackText = stringResource(Lang.foundation_load_error_copied_feedback)
 
     val retryButton = @Composable {
         SearchDefaults.IconTextButton(
@@ -102,7 +120,7 @@ fun LoadErrorCard(
                     iconModifier,
                 )
             },
-            text = { Text("重试") },
+            text = { Text(retryText) },
         )
     }
 
@@ -163,7 +181,7 @@ fun LoadErrorCard(
                                     iconModifier,
                                 )
                             },
-                            text = { Text("登录") },
+                            text = { Text(signInText) },
                         )
                     },
                     colors = listItemColors,
@@ -203,10 +221,10 @@ fun LoadErrorCard(
                                                 "<User clicked copy, I'm just printing the stack trace>"
                                             }
                                         }
-                                        toaster.toast("已复制，请反馈到 GitHub issues 或群里")
+                                        toaster.toast(copiedFeedbackText)
                                     },
                                 ) {
-                                    Text("复制")
+                                    Text(copyText)
                                 }
                             }
 
@@ -274,19 +292,23 @@ object LoadErrorDefaults {
         get() = MaterialTheme.colorScheme.surfaceContainerHighest
 }
 
+@Composable
 fun renderLoadErrorMessage(error: LoadError): String {
     return when (error) {
-        LoadError.NetworkError -> "网络错误"
-        LoadError.RateLimited -> "操作过快，请重试"
-        LoadError.ServiceUnavailable -> "服务暂不可用"
-        LoadError.NoResults -> "无搜索结果"
-        LoadError.RequiresLogin -> "此功能需要登录"
+        LoadError.NetworkError -> stringResource(Lang.foundation_load_error_network)
+        LoadError.RateLimited -> stringResource(Lang.foundation_load_error_rate_limited)
+        LoadError.ServiceUnavailable -> stringResource(Lang.foundation_load_error_service_unavailable)
+        LoadError.NoResults -> stringResource(Lang.foundation_load_error_no_results)
+        LoadError.RequiresLogin -> stringResource(Lang.foundation_load_error_requires_login)
         is LoadError.UnknownError -> {
             error.throwable?.printStackTrace()
-            "未知错误: ${error.throwable?.message ?: "无详细信息"}"
+            stringResource(
+                Lang.foundation_load_error_unknown_with_message,
+                error.throwable?.message ?: stringResource(Lang.foundation_load_error_no_details),
+            )
         }
 
-        is LoadError.RequestError -> "请求错误: ${error.localized}"
+        is LoadError.RequestError -> stringResource(Lang.foundation_load_error_request_error, error.localized)
     }
 }
 

@@ -63,6 +63,9 @@ import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.minimumHairlineSize
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.widgets.NsfwMask
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.exploration_followed_collect_as_to_show_here
+import me.him188.ani.app.ui.lang.subject_collection_doing
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.LoadErrorCardLayout
 import me.him188.ani.app.ui.search.LoadErrorCardRole
@@ -71,7 +74,9 @@ import me.him188.ani.app.ui.search.isLoadingFirstPage
 import me.him188.ani.app.ui.search.rememberLoadErrorState
 import me.him188.ani.app.ui.search.rememberTestLazyPagingItems
 import me.him188.ani.app.ui.subject.SubjectProgressState
+import me.him188.ani.app.ui.subject.rememberSubjectStatusStrings
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 
 // https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Animeko?node-id=62-4581&node-type=frame&t=Evw0PwXZHXQNgEm3-0
 @Composable
@@ -125,12 +130,16 @@ fun FollowedSubjectsLazyRow(
 
             items.isFinishedAndEmpty -> {
                 item {
+                    val followedHintText = stringResource(
+                        Lang.exploration_followed_collect_as_to_show_here,
+                        stringResource(Lang.subject_collection_doing),
+                    )
                     Box(Modifier.minimumHairlineSize()) {
                         LoadErrorCardLayout(
                             LoadErrorCardRole.Unimportant,
                             content = {
                                 ListItem(
-                                    headlineContent = { Text("将番剧收藏为 \"在看\" 后将在这里显示") },
+                                    headlineContent = { Text(followedHintText) },
                                     colors = listItemColors,
                                 )
                             },
@@ -182,10 +191,11 @@ private fun FollowedSubjectItem(
         modifier.placeholder(item == null, shape = shape),
         supportingText = {
             if (item != null) {
+                val strings = rememberSubjectStatusStrings()
                 val airingState = remember(item) {
                     SubjectProgressState(stateOf(item.subjectProgressInfo))
                 }
-                Text(airingState.buttonText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(airingState.buttonText(strings), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         },
         maskShape = shape,

@@ -29,8 +29,10 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
+import me.him188.ani.app.ui.lang.*
 import org.openani.mediamp.metadata.AudioTrack
 import org.openani.mediamp.metadata.TrackGroup
+import org.jetbrains.compose.resources.*
 
 @Stable
 class AudioTrackState(
@@ -99,14 +101,15 @@ fun PlayerControllerDefaults.AudioSwitcher(
         optionsProvider = { options },
         renderValue = {
             if (it == null) {
-                Text("自动")
+                Text(stringResource(Lang.video_player_auto))
             } else {
                 Text(it.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         },
         renderValueExposed = {
+            val audioTrackText = stringResource(Lang.video_player_audio_track)
             Text(
-                remember(it) { it?.displayName ?: "音轨" },
+                remember(it, audioTrackText) { it?.displayName ?: audioTrackText },
                 Modifier.widthIn(max = 64.dp),
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )

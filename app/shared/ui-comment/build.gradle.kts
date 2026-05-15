@@ -32,6 +32,7 @@ kotlin {
         implementation(projects.utils.bbcode)
     }
     sourceSets.commonTest.dependencies {
+        implementation(libs.kotlinx.coroutines.test)
     }
     sourceSets.named("jvmTest").dependencies {
         implementation(kotlin("reflect"))

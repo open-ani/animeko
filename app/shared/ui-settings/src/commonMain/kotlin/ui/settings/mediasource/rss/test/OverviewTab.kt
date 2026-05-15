@@ -53,6 +53,7 @@ import me.him188.ani.app.ui.foundation.interaction.onRightClickIfSupported
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_mediasource_copy
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_copied_to_clipboard
 import me.him188.ani.datasources.api.topic.titles.ParsedTopicTitle
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -93,6 +94,7 @@ fun RssOverviewCard(
         val clipboard = LocalClipboard.current
         val scope = rememberCoroutineScope()
         val textCopied = stringResource(Lang.settings_mediasource_rss_copied_to_clipboard)
+        val copyText = stringResource(Lang.settings_mediasource_copy)
         val copy = { str: String ->
             scope.launch {
                 clipboard.setClipEntryText(str)
@@ -104,9 +106,9 @@ fun RssOverviewCard(
             val func: () -> Unit = { copy(value()) }
             return combinedClickable(
                 onLongClick = func,
-                onLongClickLabel = "复制",
+                onLongClickLabel = copyText,
                 onClick = func, // no-op
-                onClickLabel = "复制",
+                onClickLabel = copyText,
             ).onRightClickIfSupported(onClick = func)
         }
 

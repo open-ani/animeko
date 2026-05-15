@@ -25,6 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.layout.minimumHairlineSize
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.foundation_search_no_more_items
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 展示一个错误提示卡片, 仅在加载失败时显示. 建议放在 [androidx.compose.foundation.lazy.LazyColumn] 第一个 item.
@@ -64,7 +67,7 @@ fun <T : Any> LazyListScope.noMoreItemsItem(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        "没有更多了",
+                        stringResource(Lang.foundation_search_no_more_items),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall,
                     )

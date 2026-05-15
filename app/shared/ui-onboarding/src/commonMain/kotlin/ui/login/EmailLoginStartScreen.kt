@@ -41,6 +41,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
+import me.him188.ani.app.ui.lang.*
+import org.jetbrains.compose.resources.*
 
 @Composable
 fun EmailLoginStartScreen(
@@ -82,7 +84,7 @@ internal fun EmailLoginStartScreenImpl(
     onNavigateSettings: () -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
-    title: @Composable () -> Unit = { Text("登录") },
+    title: @Composable () -> Unit = { Text(stringResource(Lang.login_sign_in)) },
     enabled: Boolean = true,
     showThirdPartyLogin: Boolean = true,
 ) {
@@ -95,8 +97,8 @@ internal fun EmailLoginStartScreenImpl(
         showThirdPartyLogin,
     ) { scrollState ->
         CenteredSectionHeader(
-            title = { Text("你的邮箱地址") },
-            description = { Text("我们将发送一封验证码邮件") },
+            title = { Text(stringResource(Lang.login_email_address_title)) },
+            description = { Text(stringResource(Lang.login_email_address_description)) },
         )
 
         Spacer(Modifier.height(8.dp))
@@ -107,7 +109,7 @@ internal fun EmailLoginStartScreenImpl(
             { currentEmailContent = it.trim() },
             Modifier.fillMaxWidth(),
             label = {
-                Text("邮箱")
+                Text(stringResource(Lang.login_email_label))
             },
             isError = currentEmailContent.isNotEmpty() &&
                     (!currentEmailContent.contains('@') || !currentEmailContent.contains('.')),
@@ -123,7 +125,7 @@ internal fun EmailLoginStartScreenImpl(
             trailingIcon = if (currentEmailContent.isNotEmpty()) {
                 {
                     IconButton({ currentEmailContent = "" }) {
-                        Icon(Icons.Outlined.Close, "清空")
+                        Icon(Icons.Outlined.Close, stringResource(Lang.login_clear))
                     }
                 }
             } else null,
@@ -140,7 +142,7 @@ internal fun EmailLoginStartScreenImpl(
         ) {
             Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, Modifier.size(ButtonDefaults.IconSize))
             Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-            Text("继续")
+            Text(stringResource(Lang.login_continue))
         }
     }
 }
@@ -149,13 +151,13 @@ internal fun EmailLoginStartScreenImpl(
 internal fun EmailPageTitle(mode: EmailLoginUiState.Mode, isExistingAccount: Boolean?) {
     when (mode) {
         EmailLoginUiState.Mode.LOGIN -> when (isExistingAccount) {
-            true -> Text("登录")
-            false -> Text("注册")
-            null -> Text("登录 / 注册")
+            true -> Text(stringResource(Lang.login_sign_in))
+            false -> Text(stringResource(Lang.login_sign_up))
+            null -> Text(stringResource(Lang.login_sign_in_or_sign_up))
         }
 
-        EmailLoginUiState.Mode.BIND -> Text("绑定邮箱")
-        EmailLoginUiState.Mode.REBIND -> Text("更改邮箱")
+        EmailLoginUiState.Mode.BIND -> Text(stringResource(Lang.login_bind_email))
+        EmailLoginUiState.Mode.REBIND -> Text(stringResource(Lang.login_change_email))
     }
 }
 

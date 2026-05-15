@@ -65,6 +65,8 @@ import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.lang.*
+import org.jetbrains.compose.resources.*
 
 /**
  * A wrapper around [NavHost] that provides a wizard-like experience.
@@ -201,8 +203,9 @@ private suspend fun animateScrollTopAppBar(topAppBarState: TopAppBarState, targe
 }
 
 object WizardDefaults {
+    @Composable
     fun renderStepIndicatorText(currentStep: Int, totalStep: Int): String {
-        return "步骤 $currentStep / $totalStep"
+        return stringResource(Lang.onboarding_navigation_step_indicator, currentStep, totalStep)
     }
 
     @Composable
@@ -231,9 +234,7 @@ object WizardDefaults {
                             MaterialTheme.colorScheme.primary,
                         ) {
                             Text(
-                                text = remember(currentStep, totalStep) {
-                                    renderStepIndicatorText(currentStep, totalStep)
-                                },
+                                text = renderStepIndicatorText(currentStep, totalStep),
                                 modifier = Modifier.testTag(indicatorStepTextTestTag),
                             )
                         }
@@ -281,15 +282,16 @@ object WizardDefaults {
         enabled: Boolean,
         modifier: Modifier = Modifier,
         colors: ButtonColors = ButtonDefaults.buttonColors(),
-        text: String = "下一步"
+        text: String? = null
     ) {
+        val buttonText = text ?: stringResource(Lang.onboarding_navigation_next)
         Button(
             onClick = onClick,
             enabled = enabled,
             modifier = modifier,
             colors = colors,
         ) {
-            Text(text)
+            Text(buttonText)
         }
     }
 
@@ -297,27 +299,29 @@ object WizardDefaults {
     fun GoBackwardButton(
         onClick: () -> Unit,
         modifier: Modifier = Modifier,
-        text: String = "上一步"
+        text: String? = null
     ) {
+        val buttonText = text ?: stringResource(Lang.onboarding_navigation_previous)
         OutlinedButton(
             onClick = onClick,
             modifier = modifier,
         ) {
-            Text(text)
+            Text(buttonText)
         }
     }
 
     @Composable
     fun SkipButton(
         onClick: () -> Unit,
-        text: String = "跳过",
+        text: String? = null,
         modifier: Modifier = Modifier
     ) {
+        val buttonText = text ?: stringResource(Lang.onboarding_navigation_skip)
         TextButton(
             onClick = onClick,
             modifier = modifier,
         ) {
-            Text(text)
+            Text(buttonText)
         }
     }
 }
@@ -332,7 +336,7 @@ fun PreviewWizardNavHost() {
         ) {
             step(
                 key = "theme",
-                title = { Text("选择主题") },
+                title = { Text(stringResource(Lang.onboarding_navigation_choose_theme)) },
             ) {
                 val data = remember {
                     TestWizardData.MyTheme("theme default", 0)
@@ -347,7 +351,7 @@ fun PreviewWizardNavHost() {
 
             step(
                 key = "proxy",
-                title = { Text("设置代理") },
+                title = { Text(stringResource(Lang.onboarding_navigation_configure_proxy)) },
             ) {
                 val data = remember {
                     TestWizardData.MyProxy("proxy default", 0)
@@ -363,7 +367,7 @@ fun PreviewWizardNavHost() {
 
             step(
                 key = "bit_torrent",
-                title = { Text("BitTorrent 功能") },
+                title = { Text(stringResource(Lang.onboarding_navigation_bittorrent)) },
             ) {
                 val data = remember {
                     TestWizardData.MyBitTorrent("bittorrent default", 0)
@@ -378,7 +382,7 @@ fun PreviewWizardNavHost() {
 
             step(
                 key = "finish",
-                title = { Text("完成") },
+                title = { Text(stringResource(Lang.onboarding_complete_finish)) },
             ) {
                 Text("Finish")
             }

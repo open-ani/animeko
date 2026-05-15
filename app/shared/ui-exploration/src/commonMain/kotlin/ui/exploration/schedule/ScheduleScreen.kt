@@ -76,9 +76,22 @@ import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberHorizontalScrollControlState
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.exploration_schedule
+import me.him188.ani.app.ui.lang.exploration_schedule_last_weekday
+import me.him188.ani.app.ui.lang.exploration_schedule_next_weekday
+import me.him188.ani.app.ui.lang.exploration_schedule_this_weekday
+import me.him188.ani.app.ui.lang.exploration_schedule_weekday_friday
+import me.him188.ani.app.ui.lang.exploration_schedule_weekday_monday
+import me.him188.ani.app.ui.lang.exploration_schedule_weekday_saturday
+import me.him188.ani.app.ui.lang.exploration_schedule_weekday_sunday
+import me.him188.ani.app.ui.lang.exploration_schedule_weekday_thursday
+import me.him188.ani.app.ui.lang.exploration_schedule_weekday_tuesday
+import me.him188.ani.app.ui.lang.exploration_schedule_weekday_wednesday
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isDesktop
+import org.jetbrains.compose.resources.stringResource
 
 fun ScheduleScreenState(
     daysProvider: () -> List<ScheduleDay>,
@@ -140,7 +153,7 @@ fun ScheduleScreen(
         modifier,
         topBar = {
             AniTopAppBar(
-                title = { Text("新番时间表") },
+                title = { Text(stringResource(Lang.exploration_schedule)) },
                 Modifier.fillMaxWidth(),
                 navigationIcon = navigationIcon,
                 windowInsets = windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
@@ -381,6 +394,7 @@ object ScheduleScreenDefaults {
 
 
 @Stable
+@Composable
 private fun renderScheduleDay(day: ScheduleDay): String {
     val date = day.date
     return """
@@ -391,40 +405,25 @@ private fun renderScheduleDay(day: ScheduleDay): String {
 
 @Stable
 @Suppress("REDUNDANT_ELSE_IN_WHEN") // Compiler works fine, but IDE complains about this, so we suppress it.
-private fun renderDayOfWeek(day: DayOfWeek, kind: ScheduleDay.Kind): String = when (kind) {
-    // we manually permute them to make them real constants to avoid runtime allocations.
-    ScheduleDay.Kind.LAST_WEEK -> when (day) {
-        DayOfWeek.MONDAY -> "上周一"
-        DayOfWeek.TUESDAY -> "上周二"
-        DayOfWeek.WEDNESDAY -> "上周三"
-        DayOfWeek.THURSDAY -> "上周四"
-        DayOfWeek.FRIDAY -> "上周五"
-        DayOfWeek.SATURDAY -> "上周六"
-        DayOfWeek.SUNDAY -> "上周日"
+@Composable
+private fun renderDayOfWeek(day: DayOfWeek, kind: ScheduleDay.Kind): String {
+    val weekday = when (day) {
+        DayOfWeek.MONDAY -> stringResource(Lang.exploration_schedule_weekday_monday)
+        DayOfWeek.TUESDAY -> stringResource(Lang.exploration_schedule_weekday_tuesday)
+        DayOfWeek.WEDNESDAY -> stringResource(Lang.exploration_schedule_weekday_wednesday)
+        DayOfWeek.THURSDAY -> stringResource(Lang.exploration_schedule_weekday_thursday)
+        DayOfWeek.FRIDAY -> stringResource(Lang.exploration_schedule_weekday_friday)
+        DayOfWeek.SATURDAY -> stringResource(Lang.exploration_schedule_weekday_saturday)
+        DayOfWeek.SUNDAY -> stringResource(Lang.exploration_schedule_weekday_sunday)
         else -> day.toString()
     }
 
-    ScheduleDay.Kind.THIS_WEEK,
-    ScheduleDay.Kind.TODAY -> when (day) {
-        DayOfWeek.MONDAY -> "周一"
-        DayOfWeek.TUESDAY -> "周二"
-        DayOfWeek.WEDNESDAY -> "周三"
-        DayOfWeek.THURSDAY -> "周四"
-        DayOfWeek.FRIDAY -> "周五"
-        DayOfWeek.SATURDAY -> "周六"
-        DayOfWeek.SUNDAY -> "周日"
-        else -> day.toString()
-    }
+    return when (kind) {
+        ScheduleDay.Kind.LAST_WEEK -> stringResource(Lang.exploration_schedule_last_weekday, weekday)
+        ScheduleDay.Kind.THIS_WEEK,
+        ScheduleDay.Kind.TODAY -> stringResource(Lang.exploration_schedule_this_weekday, weekday)
 
-    ScheduleDay.Kind.NEXT_WEEK -> when (day) {
-        DayOfWeek.MONDAY -> "下周一"
-        DayOfWeek.TUESDAY -> "下周二"
-        DayOfWeek.WEDNESDAY -> "下周三"
-        DayOfWeek.THURSDAY -> "下周四"
-        DayOfWeek.FRIDAY -> "下周五"
-        DayOfWeek.SATURDAY -> "下周六"
-        DayOfWeek.SUNDAY -> "下周日"
-        else -> day.toString()
+        ScheduleDay.Kind.NEXT_WEEK -> stringResource(Lang.exploration_schedule_next_weekday, weekday)
     }
 }
 

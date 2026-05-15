@@ -13,10 +13,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.episode.EpisodeComment
+import me.him188.ani.app.data.models.episode.EpisodeCommentReaction
 import me.him188.ani.app.data.models.episode.EpisodeCommentSource
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.client.apis.EpisodesAniApi
 import me.him188.ani.client.models.AniCreateEpisodeCommentRequest
+import me.him188.ani.client.models.AniCreateEpisodeReplyRequest
 import me.him188.ani.client.models.AniEpisodeComment
 import me.him188.ani.client.models.AniEpisodeCommentReply
 import me.him188.ani.client.models.AniEpisodeCommentsResponse
@@ -72,7 +74,43 @@ open class AniEpisodeCommentService(
                 createEpisodeReply(
                     episodeId = episodeId,
                     commentId = commentId,
-                    aniCreateEpisodeCommentRequest = AniCreateEpisodeCommentRequest(contentBbcode),
+                    aniCreateEpisodeReplyRequest = AniCreateEpisodeReplyRequest(contentBbcode),
+                ).body()
+            }
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+    }
+
+    open suspend fun addEpisodeCommentReaction(
+        episodeId: Long,
+        commentId: String,
+        value: String,
+    ) = withContext(ioDispatcher) {
+        try {
+            episodesApi.invoke {
+                addEpisodeCommentReaction(
+                    episodeId = episodeId,
+                    commentId = commentId,
+                    value = value,
+                ).body()
+            }
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+    }
+
+    open suspend fun removeEpisodeCommentReaction(
+        episodeId: Long,
+        commentId: String,
+        value: String,
+    ) = withContext(ioDispatcher) {
+        try {
+            episodesApi.invoke {
+                removeEpisodeCommentReaction(
+                    episodeId = episodeId,
+                    commentId = commentId,
+                    value = value,
                 ).body()
             }
         } catch (e: Exception) {
@@ -98,6 +136,7 @@ fun AniEpisodeComment.toEpisodeComment(): EpisodeComment {
                 avatarUrl = it.avatarUrl,
             )
         },
+        reactions = reactions.map { it.toEpisodeCommentReaction() },
         replies = briefReplies.map { it.toEpisodeComment(episodeId) },
         canReply = canReply,
     )
@@ -120,6 +159,15 @@ private fun AniEpisodeCommentReply.toEpisodeComment(episodeId: Long): EpisodeCom
                 avatarUrl = it.avatarUrl,
             )
         },
+        reactions = reactions.map { it.toEpisodeCommentReaction() },
         canReply = false,
+    )
+}
+
+private fun me.him188.ani.client.models.AniEpisodeCommentReaction.toEpisodeCommentReaction(): EpisodeCommentReaction {
+    return EpisodeCommentReaction(
+        value = value,
+        count = count,
+        selected = selected,
     )
 }

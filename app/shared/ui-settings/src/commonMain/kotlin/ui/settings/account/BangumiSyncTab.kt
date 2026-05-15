@@ -43,6 +43,20 @@ import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_account_bangumi_execute_all
+import me.him188.ani.app.ui.lang.settings_account_bangumi_manual_full_sync
+import me.him188.ani.app.ui.lang.settings_account_bangumi_pending_sync_ops
+import me.him188.ani.app.ui.lang.settings_account_bangumi_redownload_all_data
+import me.him188.ani.app.ui.lang.settings_account_bangumi_redownload_all_data_description
+import me.him188.ani.app.ui.lang.settings_account_bangumi_sync_delete_collection
+import me.him188.ani.app.ui.lang.settings_account_bangumi_sync_mark_episode_unwatched
+import me.him188.ani.app.ui.lang.settings_account_bangumi_sync_mark_episode_watched
+import me.him188.ani.app.ui.lang.settings_account_bangumi_sync_queue
+import me.him188.ani.app.ui.lang.settings_account_bangumi_sync_unknown_op
+import me.him188.ani.app.ui.lang.settings_account_bangumi_sync_update_collection
+import me.him188.ani.app.ui.lang.settings_account_loading
+import me.him188.ani.app.ui.lang.settings_account_loading_placeholder
 import me.him188.ani.app.ui.search.createTestPager
 import me.him188.ani.app.ui.search.loadErrorItem
 import me.him188.ani.app.ui.search.pagingFooterStateItem
@@ -56,6 +70,7 @@ import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.logging.trace
 import me.him188.ani.utils.platform.Uuid
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.time.Clock
@@ -141,27 +156,36 @@ fun BangumiSyncTabImpl(
     isBangumiSyncing: Boolean,
     modifier: Modifier = Modifier,
 ) = SettingsTab(modifier) {
-    Group({ Text("手动全量同步") }) {
+    val fullSyncText = stringResource(Lang.settings_account_bangumi_manual_full_sync)
+    val redownloadText = stringResource(Lang.settings_account_bangumi_redownload_all_data)
+    val redownloadDescriptionText = stringResource(Lang.settings_account_bangumi_redownload_all_data_description)
+    val syncQueueText = stringResource(Lang.settings_account_bangumi_sync_queue)
+    val pendingSyncOpsText = stringResource(Lang.settings_account_bangumi_pending_sync_ops)
+    val executeAllText = stringResource(Lang.settings_account_bangumi_execute_all)
+    val loadingText = stringResource(Lang.settings_account_loading)
+    val loadingPlaceholderText = stringResource(Lang.settings_account_loading_placeholder)
+
+    Group({ Text(fullSyncText) }) {
         TextItem(
             title = {
-                Text("重新下载全部 Bangumi 数据")
+                Text(redownloadText)
             },
             onClick = onFullSyncClick,
             onClickEnabled = !isBangumiSyncing,
             description = {
-                Text("将 Bangumi 的收藏数据下载到 Animeko 收藏服务。通常来说不需要进行这个操作，Animeko 能自动完成同步。仅在你有发现数据不一致的情况时才需要手动下载。此操作可能需要数分钟才能完成，在同步过程中其他功能不可用。请注意，每十分钟只能执行一次全量同步")
+                Text(redownloadDescriptionText)
             },
         )
     }
 
     val items = syncCommandsFlow.collectAsLazyPagingItems()
     Group(
-        { Text("同步队列") },
-        description = { Text("待执行的同步操作") },
+        { Text(syncQueueText) },
+        description = { Text(pendingSyncOpsText) },
         actions = {
             TextButton(onPushClick, enabled = !isBangumiSyncing) {
                 Icon(Icons.Default.Publish, null, Modifier.size(ButtonDefaults.IconSize))
-                Text("执行全部")
+                Text(executeAllText)
             }
         },
     ) {
@@ -178,12 +202,12 @@ fun BangumiSyncTabImpl(
                 TextItem(
                     title = {
                         Text(
-                            item?.let { describe(it.op) }
-                                ?: "加载中加载中加载中加载中...", // placeholder, no localization
+                            item?.let { describeBangumiSyncOp(it.op) }
+                                ?: loadingPlaceholderText,
                         )
                     },
                     description = {
-                        Text(item?.id ?: "加载中...")
+                        Text(item?.id ?: loadingText)
                     },
                     modifier = Modifier.placeholder(item == null)
                         .animateItem(
@@ -207,22 +231,50 @@ fun BangumiSyncTabImpl(
     }
 }
 
-private fun describe(op: BangumiSyncOp?): String {
+@Composable
+private fun describeBangumiSyncOp(op: BangumiSyncOp?): String {
     return when (op) {
-        is BangumiSyncOp.AddCollection -> "更新收藏：${op.subjectId} (${op.type.name})"
-        is BangumiSyncOp.DeleteCollection -> "删除收藏：${op.subjectId}"
+        is BangumiSyncOp.AddCollection -> stringResource(
+            Lang.settings_account_bangumi_sync_update_collection,
+            op.subjectId,
+            op.type.name,
+        )
+
+        is BangumiSyncOp.DeleteCollection -> stringResource(
+            Lang.settings_account_bangumi_sync_delete_collection,
+            op.subjectId,
+        )
         is BangumiSyncOp.UpdateCollection -> {
-            if (op.type == null) return "删除收藏：${op.subjectId}"
-            "更新收藏：${op.subjectId} (${op.type?.name})"
+            val type = op.type
+            if (type == null) {
+                return stringResource(
+                    Lang.settings_account_bangumi_sync_delete_collection,
+                    op.subjectId,
+                )
+            }
+            stringResource(
+                Lang.settings_account_bangumi_sync_update_collection,
+                op.subjectId,
+                type.name,
+            )
         }
 
         is BangumiSyncOp.UpdateEpisodeCollection -> {
             val type = op.type
-            if (type == null) return "标记剧集为未看过：${op.episodeId}"
-            "标记剧集为看过：${op.episodeId} (${type.name})"
+            if (type == null) {
+                return stringResource(
+                    Lang.settings_account_bangumi_sync_mark_episode_unwatched,
+                    op.episodeId,
+                )
+            }
+            stringResource(
+                Lang.settings_account_bangumi_sync_mark_episode_watched,
+                op.episodeId,
+                type.name,
+            )
         }
 
-        null -> "未知操作（请更新版本）"
+        null -> stringResource(Lang.settings_account_bangumi_sync_unknown_op)
     }
 }
 

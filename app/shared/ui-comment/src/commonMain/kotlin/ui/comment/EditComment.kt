@@ -53,6 +53,11 @@ import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.isImeVisible
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.comment_ani_only_notice
+import me.him188.ani.app.ui.lang.comment_send_failed_network
+import me.him188.ani.app.ui.lang.comment_send_failed_unknown
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 评论编辑.
@@ -197,12 +202,14 @@ fun EditComment(
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                         .fillMaxWidth()
                 ) {
+                    val sendErrorText = when (val sendResult = state.sendResult) {
+                        is CommentSendResult.Error -> renderCommentSendError(sendResult)
+                        else -> ""
+                    }
                     Text(
-                        text = (state.sendResult as? CommentSendResult.Error)
-                            ?.let { renderCommentSendError(it) }
-                            ?: "",
+                        text = sendErrorText,
                         color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             }
@@ -213,8 +220,8 @@ fun EditComment(
 @Composable
 private fun renderCommentSendError(result: CommentSendResult.Error): String {
     return when (result) {
-        CommentSendResult.NetworkError -> "发送失败：网络错误"
-        is CommentSendResult.UnknownError -> "发送失败，请附带日志反馈此问题\n${result.message}"
+        CommentSendResult.NetworkError -> stringResource(Lang.comment_send_failed_network)
+        is CommentSendResult.UnknownError -> stringResource(Lang.comment_send_failed_unknown, result.message)
     }
 }
 
@@ -267,7 +274,7 @@ fun EditCommentScaffold(
 
         Row(Modifier.padding(horizontal = 8.dp)) {
             Text(
-                "评论将发送到 Ani，Bangumi 评论为只读",
+                stringResource(Lang.comment_ani_only_notice),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.outline,
             )

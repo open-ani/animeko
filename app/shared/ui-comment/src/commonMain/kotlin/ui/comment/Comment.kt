@@ -32,16 +32,23 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.paging.PagingData
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.UserInfo
-import me.him188.ani.app.tools.MonoTasker
-import me.him188.ani.app.ui.foundation.isInDebugMode
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.richtext.UIRichElement
@@ -108,13 +115,13 @@ fun Comment(
 
             SelectionContainer(
                 modifier = Modifier
-                    .paddingIfNotEmpty(top = 8.dp)
+                    .paddingIfNotEmpty(top = 4.dp)
                     .padding(horizontal = horizontalPadding).fillMaxWidth(),
             ) {
                 reactionRow()
             }
 
-            if (actionRow != null && isInDebugMode()) {
+            if (actionRow != null) {
                 SelectionContainer(
                     modifier = Modifier.padding(horizontal = horizontalPadding - 8.dp).fillMaxWidth(),
                 ) {
@@ -144,18 +151,51 @@ fun Comment(
 class CommentState(
     val list: Flow<PagingData<UIComment>>,
     countState: State<Int?>,
-    private val onSubmitCommentReaction: suspend (commentId: Long, reactionId: Int) -> Unit,
-    backgroundScope: CoroutineScope,
+    private val onSubmitCommentReaction: suspend (comment: UIComment, value: String, selected: Boolean) -> Unit,
+    private val backgroundScope: CoroutineScope,
 ) {
     val count by countState
+    private val reactionSubmitFailureChannel = Channel<Throwable>(Channel.BUFFERED)
+    val reactionSubmitFailures: Flow<Throwable> = reactionSubmitFailureChannel.receiveAsFlow()
 
-    private val reactionSubmitTasker = MonoTasker(backgroundScope)
+    private val reactionOverrides = mutableStateMapOf<String, List<UICommentReaction>>()
+    private val reactionJobs = mutableMapOf<ReactionKey, Job>()
 
-    fun submitReaction(commentId: Long, reactionId: Int) {
-        reactionSubmitTasker.launch {
-            onSubmitCommentReaction(commentId, reactionId)
-        }
+    fun withReactionOverlay(comment: UIComment): UIComment {
+        val overrideReactions = reactionOverrides[comment.stableId] ?: return comment
+        return comment.copyWithReactions(overrideReactions)
     }
+
+    fun submitReaction(comment: UIComment, value: String) {
+        val currentComment = withReactionOverlay(comment)
+        val before = currentComment.reactions.firstOrNull { it.value == value }
+        val afterReactions = currentComment.reactions.toggle(value)
+        val after = afterReactions.firstOrNull { it.value == value }
+        val selected = after?.selected == true
+        val key = ReactionKey(comment.stableId, value)
+
+        reactionOverrides[comment.stableId] = afterReactions
+        reactionJobs[key]?.cancel()
+        val job = backgroundScope.launch {
+            try {
+                onSubmitCommentReaction(comment, value, selected)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                reactionOverrides[comment.stableId] = reactionOverrides[comment.stableId]
+                    .orEmpty()
+                    .restore(value, before)
+                reactionSubmitFailureChannel.trySend(e)
+            } finally {
+                if (reactionJobs[key] === coroutineContext[Job]) {
+                    reactionJobs.remove(key)
+                }
+            }
+        }
+        reactionJobs[key] = job
+    }
+
+    private data class ReactionKey(val stableId: String, val value: String)
 }
 
 
@@ -180,10 +220,64 @@ class UIComment(
 
 @Immutable
 class UICommentReaction(
-    val id: Int,
+    val value: String,
     val count: Int,
     val selected: Boolean
 )
+
+private fun UIComment.copyWithReactions(reactions: List<UICommentReaction>): UIComment {
+    return UIComment(
+        id = id,
+        stableId = stableId,
+        author = author,
+        content = content,
+        createdAt = createdAt,
+        reactions = reactions,
+        briefReplies = briefReplies,
+        replyCount = replyCount,
+        rating = rating,
+        source = source,
+        sourceCommentId = sourceCommentId,
+        canReply = canReply,
+    )
+}
+
+private fun List<UICommentReaction>.toggle(value: String): List<UICommentReaction> {
+    val current = firstOrNull { it.value == value }
+    val updated = when {
+        current == null -> this + UICommentReaction(value, count = 1, selected = true)
+        current.selected && current.count <= 1 -> filterNot { it.value == value }
+        current.selected -> replace(value, UICommentReaction(value, current.count - 1, selected = false))
+        else -> replace(value, UICommentReaction(value, current.count + 1, selected = true))
+    }
+    return updated.sortedWith(UI_COMMENT_REACTION_COMPARATOR)
+}
+
+private fun List<UICommentReaction>.restore(value: String, reaction: UICommentReaction?): List<UICommentReaction> {
+    val restored = if (reaction == null) {
+        filterNot { it.value == value }
+    } else {
+        replace(value, reaction)
+    }
+    return restored.sortedWith(UI_COMMENT_REACTION_COMPARATOR)
+}
+
+private fun List<UICommentReaction>.replace(value: String, reaction: UICommentReaction): List<UICommentReaction> {
+    var replaced = false
+    val updated = map {
+        if (it.value == value) {
+            replaced = true
+            reaction
+        } else {
+            it
+        }
+    }
+    return if (replaced) updated else updated + reaction
+}
+
+private val UI_COMMENT_REACTION_COMPARATOR = compareBy<UICommentReaction> {
+    it.value.removePrefix("bgm").toIntOrNull() ?: Int.MAX_VALUE
+}.thenBy { it.value }
 
 enum class UICommentSource {
     ANI,

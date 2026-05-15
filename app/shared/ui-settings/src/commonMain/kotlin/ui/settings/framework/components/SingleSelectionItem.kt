@@ -36,6 +36,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_danmaku_cancel
+import me.him188.ani.app.ui.lang.settings_danmaku_confirm
+import org.jetbrains.compose.resources.stringResource
 
 @Stable
 class SingleSelectionElement<T>(
@@ -150,11 +154,11 @@ fun <T> SettingsScope.SingleSelectionItem(
                         showDialog = false
                         onConfirm(items.getOrNull(selectionState.currentSelected)?.value)
                     },
-                ) { Text("确认") }
+                ) { Text(stringResource(Lang.settings_danmaku_confirm)) }
             },
             dismissButton = {
                 TextButton({ showDialog = false }) {
-                    Text("取消")
+                    Text(stringResource(Lang.settings_danmaku_cancel))
                 }
             },
             text = {

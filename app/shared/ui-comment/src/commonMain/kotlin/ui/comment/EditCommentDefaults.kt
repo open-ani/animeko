@@ -73,8 +73,24 @@ import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.theme.looming
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.comment_add_emoji
+import me.him188.ani.app.ui.lang.comment_bold
+import me.him188.ani.app.ui.lang.comment_edit
+import me.him188.ani.app.ui.lang.comment_image
+import me.him188.ani.app.ui.lang.comment_italic
+import me.him188.ani.app.ui.lang.comment_link
+import me.him188.ani.app.ui.lang.comment_mask
+import me.him188.ani.app.ui.lang.comment_more_editor_actions
+import me.him188.ani.app.ui.lang.comment_preview
+import me.him188.ani.app.ui.lang.comment_rendering
+import me.him188.ani.app.ui.lang.comment_send
+import me.him188.ani.app.ui.lang.comment_send_comment
+import me.him188.ani.app.ui.lang.comment_strikethrough
+import me.him188.ani.app.ui.lang.comment_underline
 import me.him188.ani.app.ui.richtext.RichText
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 object EditCommentDefaults {
     @Suppress("ConstPropertyName")
@@ -99,7 +115,7 @@ object EditCommentDefaults {
 
     @Composable
     fun CommentTextFieldPlaceholder(modifier: Modifier = Modifier) {
-        Text(text = "发送评论", modifier, softWrap = false)
+        Text(text = stringResource(Lang.comment_send_comment), modifier, softWrap = false)
     }
 
     @Composable
@@ -154,7 +170,7 @@ object EditCommentDefaults {
                 if (content == null) {
                     item {
                         Text(
-                            text = "渲染中...",
+                            text = stringResource(Lang.comment_rendering),
                             modifier = Modifier.padding(contentPadding),
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         )
@@ -226,6 +242,18 @@ object EditCommentDefaults {
         val expandableActionWidth by animateDpAsState(if (actionRowExpanded) size else 0.dp)
 
         val actionEnabled by derivedStateOf { !sending && !previewing }
+        val addEmojiText = stringResource(Lang.comment_add_emoji)
+        val boldText = stringResource(Lang.comment_bold)
+        val italicText = stringResource(Lang.comment_italic)
+        val underlineText = stringResource(Lang.comment_underline)
+        val strikethroughText = stringResource(Lang.comment_strikethrough)
+        val maskText = stringResource(Lang.comment_mask)
+        val imageText = stringResource(Lang.comment_image)
+        val linkText = stringResource(Lang.comment_link)
+        val moreEditorActionsText = stringResource(Lang.comment_more_editor_actions)
+        val editText = stringResource(Lang.comment_edit)
+        val previewText = stringResource(Lang.comment_preview)
+        val sendText = stringResource(Lang.comment_send)
 
         // Custom FlowRow which supports a right-aligned element.
         Layout(
@@ -304,7 +332,7 @@ object EditCommentDefaults {
             content = {
                 ActionButton(
                     imageVector = Icons.Outlined.SentimentSatisfied,
-                    contentDescription = "添加表情",
+                    contentDescription = addEmojiText,
                     onClick = onClickEmoji,
                     modifier = Modifier.size(size),
                     enabled = actionEnabled,
@@ -312,28 +340,28 @@ object EditCommentDefaults {
                 if (actionRowExpanded) {
                     ActionButton(
                         imageVector = Icons.Outlined.FormatBold,
-                        contentDescription = "加粗",
+                        contentDescription = boldText,
                         onClick = onClickBold,
                         modifier = Modifier.size(height = size, width = expandableActionWidth),
                         enabled = actionEnabled,
                     )
                     ActionButton(
                         imageVector = Icons.Outlined.FormatItalic,
-                        contentDescription = "斜体",
+                        contentDescription = italicText,
                         onClick = onClickItalic,
                         modifier = Modifier.size(height = size, width = expandableActionWidth),
                         enabled = actionEnabled,
                     )
                     ActionButton(
                         imageVector = Icons.Outlined.FormatUnderlined,
-                        contentDescription = "下划线",
+                        contentDescription = underlineText,
                         onClick = onClickUnderlined,
                         modifier = Modifier.size(height = size, width = expandableActionWidth),
                         enabled = actionEnabled,
                     )
                     ActionButton(
                         imageVector = Icons.Outlined.FormatStrikethrough,
-                        contentDescription = "删除线",
+                        contentDescription = strikethroughText,
                         onClick = onClickStrikethrough,
                         modifier = Modifier.size(height = size, width = expandableActionWidth),
                         enabled = actionEnabled,
@@ -341,14 +369,14 @@ object EditCommentDefaults {
                 }
                 ActionButton(
                     imageVector = Icons.Outlined.VisibilityOff,
-                    contentDescription = "遮罩",
+                    contentDescription = maskText,
                     onClick = onClickMask,
                     modifier = Modifier.size(size),
                     enabled = actionEnabled,
                 )
                 ActionButton(
                     imageVector = Icons.Outlined.Image,
-                    contentDescription = "图片",
+                    contentDescription = imageText,
                     onClick = onClickImage,
                     modifier = Modifier.size(size),
                     enabled = actionEnabled,
@@ -356,7 +384,7 @@ object EditCommentDefaults {
                 if (actionRowExpanded) {
                     ActionButton(
                         imageVector = Icons.Outlined.Link,
-                        contentDescription = "链接",
+                        contentDescription = linkText,
                         onClick = onClickUrl,
                         modifier = Modifier.size(height = size, width = expandableActionWidth),
                         enabled = actionEnabled,
@@ -365,7 +393,7 @@ object EditCommentDefaults {
                 // 最后一个按钮不要有 ripple effect，因为有动画，看起来比较奇怪
                 ActionButton(
                     imageVector = Icons.Outlined.MoreHoriz,
-                    contentDescription = "更多评论编辑功能",
+                    contentDescription = moreEditorActionsText,
                     enabled = true,
                     onClick = { actionRowExpanded = true },
                     modifier = Modifier.size(height = size, width = size - expandableActionWidth),
@@ -377,7 +405,7 @@ object EditCommentDefaults {
                         onClick = onPreview,
                         modifier = Modifier.padding(end = 4.dp),
                     ) {
-                        Text(text = if (previewing) "编辑" else "预览")
+                        Text(text = if (previewing) editText else previewText)
                     }
                     OutlinedButton(
                         onClick = onSend,
@@ -390,7 +418,7 @@ object EditCommentDefaults {
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
-                                    Text(text = "发送", textAlign = TextAlign.Center)
+                                    Text(text = sendText, textAlign = TextAlign.Center)
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Rounded.Send,
                                         modifier = Modifier.size(24.dp),

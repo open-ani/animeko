@@ -33,11 +33,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_danmaku_cancel
+import me.him188.ani.app.ui.lang.settings_media_source_save_button
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorder
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
+import org.jetbrains.compose.resources.stringResource
 
 @Stable
 class SelectableItem<T>(
@@ -156,12 +160,12 @@ fun <T> SettingsScope.SorterItem(
                                 onSort(sortingData)
                             },
                         ) {
-                            Text("保存")
+                            Text(stringResource(Lang.settings_media_source_save_button))
                         }
                     },
                     dismissButton = {
                         TextButton({ showDialog = false }) {
-                            Text("取消")
+                            Text(stringResource(Lang.settings_danmaku_cancel))
                         }
                     },
                 )

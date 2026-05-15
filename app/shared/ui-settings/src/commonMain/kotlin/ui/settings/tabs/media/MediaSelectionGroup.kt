@@ -64,17 +64,18 @@ import me.him188.ani.app.ui.lang.settings_media_source_bt
 import me.him188.ani.app.ui.lang.settings_media_source_no_preference
 import me.him188.ani.app.ui.lang.settings_media_source_web
 import me.him188.ani.app.ui.lang.settings_media_subtitle_language
+import me.him188.ani.app.ui.lang.settings_media_video_link_resolve_timeout
+import me.him188.ani.app.ui.lang.settings_media_video_link_resolve_timeout_description
 import me.him188.ani.app.ui.lang.settings_media_wait_time_10s
 import me.him188.ani.app.ui.lang.settings_media_wait_time_15s
 import me.him188.ani.app.ui.lang.settings_media_wait_time_20s
-import me.him188.ani.app.ui.lang.settings_media_wait_time_3s
 import me.him188.ani.app.ui.lang.settings_media_wait_time_30s
+import me.him188.ani.app.ui.lang.settings_media_wait_time_3s
 import me.him188.ani.app.ui.lang.settings_media_wait_time_5s
 import me.him188.ani.app.ui.lang.settings_media_wait_time_8s
 import me.him188.ani.app.ui.lang.settings_media_wait_time_infinite
 import me.him188.ani.app.ui.lang.settings_media_wait_time_none
-import me.him188.ani.app.ui.lang.settings_media_video_link_resolve_timeout
-import me.him188.ani.app.ui.lang.settings_media_video_link_resolve_timeout_description
+import me.him188.ani.app.ui.media.rememberMediaDetailsStrings
 import me.him188.ani.app.ui.media.renderResolution
 import me.him188.ani.app.ui.media.renderSubtitleLanguage
 import me.him188.ani.app.ui.settings.framework.SettingsState
@@ -131,6 +132,7 @@ class MediaSelectionGroupState(
 internal fun SettingsScope.MediaSelectionGroup(
     state: MediaSelectionGroupState
 ) {
+    val mediaDetailsStrings = rememberMediaDetailsStrings()
     Group(
         title = {
             Text(stringResource(Lang.settings_media_preference_title))
@@ -157,20 +159,20 @@ internal fun SettingsScope.MediaSelectionGroup(
             },
             exposed = { list ->
                 Text(
-                    remember(list) {
+                    remember(list, mediaDetailsStrings) {
                         if (list.fastAll { it.selected }) {
                             textAny
                         } else if (list.fastAll { !it.selected }) {
                             textNone
                         } else
                             list.asSequence().filter { it.selected }
-                                .joinToString { renderSubtitleLanguage(it.item) }
+                                .joinToString { renderSubtitleLanguage(it.item, mediaDetailsStrings) }
                     },
                     softWrap = false,
                     overflow = TextOverflow.Ellipsis,
                 )
             },
-            item = { Text(renderSubtitleLanguage(it)) },
+            item = { Text(renderSubtitleLanguage(it, mediaDetailsStrings)) },
             key = { it },
             dialogDescription = {
                 Text(

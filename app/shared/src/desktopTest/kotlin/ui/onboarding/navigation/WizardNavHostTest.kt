@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -21,8 +21,12 @@ import androidx.compose.ui.test.hasTextExactly
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.onboarding_navigation_step_indicator
+import org.jetbrains.compose.resources.getString
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -31,6 +35,10 @@ private const val TAG_INDICATOR_TITLE = "indicatorTitle"
 private const val TAG_BUTTON_NEXT_STEP = "buttonNextStep"
 private const val TAG_BUTTON_PREV_STEP = "buttonPrevStep"
 private const val TAG_STEP_CONTENT_TEXT = "stepContentText"
+
+private fun expectedStepIndicatorText(currentStep: Int, totalStep: Int): String = runBlocking {
+    getString(Lang.onboarding_navigation_step_indicator, currentStep, totalStep)
+}
 
 class WizardNavHostTest {
     private val SemanticsNodeInteractionsProvider.indicatorText
@@ -99,7 +107,7 @@ class WizardNavHostTest {
 
         runOnIdle {
             indicatorText.assertAll(
-                hasTextExactly(WizardDefaults.renderStepIndicatorText(1, 3)),
+                hasTextExactly(expectedStepIndicatorText(1, 3)),
             )
             indicatorTitle.assertAll(hasTextExactly("Step 1"))
             stepContentText.assertTextEquals("this is my first step")
@@ -111,7 +119,7 @@ class WizardNavHostTest {
 
         runOnIdle {
             indicatorText.assertAll(
-                hasTextExactly(WizardDefaults.renderStepIndicatorText(1, 3)),
+                hasTextExactly(expectedStepIndicatorText(1, 3)),
             )
             indicatorTitle.assertAll(hasTextExactly("Step 1"))
             stepContentText.assertTextEquals("this is my first step")
@@ -123,7 +131,7 @@ class WizardNavHostTest {
 
         runOnIdle {
             indicatorText.assertAll(
-                hasTextExactly(WizardDefaults.renderStepIndicatorText(2, 3)),
+                hasTextExactly(expectedStepIndicatorText(2, 3)),
             )
             indicatorTitle.assertAll(hasTextExactly("Step 2"))
             stepContentText.assertTextEquals("this is my second step")
@@ -135,7 +143,7 @@ class WizardNavHostTest {
 
         runOnIdle {
             indicatorText.assertAll(
-                hasTextExactly(WizardDefaults.renderStepIndicatorText(3, 3)),
+                hasTextExactly(expectedStepIndicatorText(3, 3)),
             )
             indicatorTitle.assertAll(hasTextExactly("Step 3"))
             stepContentText.assertTextEquals("this is my third step")
@@ -147,7 +155,7 @@ class WizardNavHostTest {
 
         runOnIdle {
             indicatorText.assertAll(
-                hasTextExactly(WizardDefaults.renderStepIndicatorText(3, 3)),
+                hasTextExactly(expectedStepIndicatorText(3, 3)),
             )
             indicatorTitle.assertAll(hasTextExactly("Step 3"))
             stepContentText.assertTextEquals("this is my third step")
@@ -173,7 +181,7 @@ class WizardNavHostTest {
 
         runOnIdle {
             indicatorText.assertAll(
-                hasTextExactly(WizardDefaults.renderStepIndicatorText(1, 3)),
+                hasTextExactly(expectedStepIndicatorText(1, 3)),
             )
             indicatorTitle.assertAll(hasTextExactly("Step 1"))
             stepContentText.assertTextEquals("this is my first step")
@@ -185,7 +193,7 @@ class WizardNavHostTest {
 
         runOnIdle {
             indicatorText.assertAll(
-                hasTextExactly(WizardDefaults.renderStepIndicatorText(3, 3)),
+                hasTextExactly(expectedStepIndicatorText(3, 3)),
             )
             indicatorTitle.assertAll(hasTextExactly("Step 3"))
             stepContentText.assertTextEquals("this is my third step")
@@ -197,7 +205,7 @@ class WizardNavHostTest {
 
         runOnIdle {
             indicatorText.assertAll(
-                hasTextExactly(WizardDefaults.renderStepIndicatorText(3, 3)),
+                hasTextExactly(expectedStepIndicatorText(3, 3)),
             )
             indicatorTitle.assertAll(hasTextExactly("Step 3"))
             stepContentText.assertTextEquals("this is my third step")
@@ -211,7 +219,7 @@ class WizardNavHostTest {
 
         runOnIdle {
             indicatorText.assertAll(
-                hasTextExactly(WizardDefaults.renderStepIndicatorText(3, 3)),
+                hasTextExactly(expectedStepIndicatorText(3, 3)),
             )
             indicatorTitle.assertAll(hasTextExactly("Step 3"))
             stepContentText.assertTextEquals("this is my third step")
@@ -237,7 +245,7 @@ class WizardNavHostTest {
 
         runOnIdle {
             indicatorText.assertAll(
-                hasTextExactly(WizardDefaults.renderStepIndicatorText(1, 3)),
+                hasTextExactly(expectedStepIndicatorText(1, 3)),
             )
             indicatorTitle.assertAll(hasTextExactly("Step 1"))
             stepContentText.assertTextEquals("this is my first step")
@@ -249,7 +257,7 @@ class WizardNavHostTest {
 
         runOnIdle {
             indicatorText.assertAll(
-                hasTextExactly(WizardDefaults.renderStepIndicatorText(2, 3)),
+                hasTextExactly(expectedStepIndicatorText(2, 3)),
             )
             indicatorTitle.assertAll(hasTextExactly("Step 2"))
             stepContentText.assertTextEquals("this is my second step")
@@ -261,7 +269,7 @@ class WizardNavHostTest {
 
         runOnIdle {
             indicatorText.assertAll(
-                hasTextExactly(WizardDefaults.renderStepIndicatorText(2, 3)),
+                hasTextExactly(expectedStepIndicatorText(2, 3)),
             )
             indicatorTitle.assertAll(hasTextExactly("Step 2"))
             stepContentText.assertTextEquals("this is my second step")
@@ -275,7 +283,7 @@ class WizardNavHostTest {
 
         runOnIdle {
             indicatorText.assertAll(
-                hasTextExactly(WizardDefaults.renderStepIndicatorText(2, 3)),
+                hasTextExactly(expectedStepIndicatorText(2, 3)),
             )
             indicatorTitle.assertAll(hasTextExactly("Step 2"))
             stepContentText.assertTextEquals("this is my second step")

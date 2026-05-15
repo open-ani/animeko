@@ -34,8 +34,11 @@ import me.him188.ani.app.data.models.subject.RatingCounts
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.rating_summary_multiline
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.format1f
+import org.jetbrains.compose.resources.stringResource
 
 
 // https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Main?node-id=133-2765&t=innxKfrf4vLdukgs-4
@@ -67,7 +70,7 @@ fun RatingText(
             ) {
                 Column {
                     Text(
-                        "#${rating.rank}\n${rating.total} 人评",
+                        stringResource(Lang.rating_summary_multiline, rating.rank, rating.total),
                         maxLines = 2,
                         softWrap = false,
                     )
@@ -138,4 +141,3 @@ fun PreviewRatingTextIntrinsicMin() {
         }
     }
 }
-

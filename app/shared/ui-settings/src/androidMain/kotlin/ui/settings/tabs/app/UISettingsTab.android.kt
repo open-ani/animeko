@@ -30,9 +30,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_app_background_running
+import me.him188.ani.app.ui.lang.settings_app_background_running_description
+import me.him188.ani.app.ui.lang.settings_app_ignore_battery_optimizations
+import me.him188.ani.app.ui.lang.settings_app_ignore_battery_optimizations_description
+import me.him188.ani.app.ui.lang.settings_app_notification_settings
+import me.him188.ani.app.ui.lang.settings_app_open_settings
 import me.him188.ani.app.ui.settings.framework.components.RowButtonItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
+import org.jetbrains.compose.resources.stringResource
 
 
 @SuppressLint("BatteryLife")
@@ -51,8 +59,8 @@ internal actual fun SettingsScope.AppSettingsTabPlatform() {
     // 禁用电池优化
     if (powerManager != null) {
         Group(
-            title = { Text("后台运行") },
-            description = { Text(text = "缓存功能需要应用保持在后台运行才能下载视频") },
+            title = { Text(stringResource(Lang.settings_app_background_running)) },
+            description = { Text(text = stringResource(Lang.settings_app_background_running_description)) },
         ) {
             val isPreviewing = LocalIsPreviewing.current
             var isIgnoring by remember {
@@ -89,14 +97,14 @@ internal actual fun SettingsScope.AppSettingsTabPlatform() {
                         }
                     }
                 },
-                title = { Text("禁用电池优化") },
-                description = { Text("可以帮助保持在后台运行。可能增加耗电") },
+                title = { Text(stringResource(Lang.settings_app_ignore_battery_optimizations)) },
+                description = { Text(stringResource(Lang.settings_app_ignore_battery_optimizations_description)) },
             )
         }
     }
 
     Group(
-        title = { Text("通知设置") },
+        title = { Text(stringResource(Lang.settings_app_notification_settings)) },
     ) {
         RowButtonItem(
             icon = { Icon(Icons.Rounded.ArrowOutward, contentDescription = null) },
@@ -114,6 +122,6 @@ internal actual fun SettingsScope.AppSettingsTabPlatform() {
                     it.printStackTrace()
                 }
             },
-        ) { Text(text = "打开设置") }
+        ) { Text(text = stringResource(Lang.settings_app_open_settings)) }
     }
 }

@@ -39,6 +39,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.tools.formatDateTime
+import me.him188.ani.app.ui.media.MediaDetailsStrings
+import me.him188.ani.app.ui.media.rememberMediaDetailsStrings
 import me.him188.ani.app.ui.media.renderSubtitleLanguage
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.FileSize
@@ -56,6 +58,7 @@ fun RssTestPaneDefaults.FinalResultTab(
     val selectedItem by remember(selectedItemProvider) {
         derivedStateOf(selectedItemProvider)
     }
+    val mediaDetailsStrings = rememberMediaDetailsStrings()
     LazyVerticalStaggeredGrid(
         StaggeredGridCells.Adaptive(minSize = 300.dp),
         modifier,
@@ -66,6 +69,7 @@ fun RssTestPaneDefaults.FinalResultTab(
         items(result.mediaList, key = { "Rss-FinalResultTab-" + it.mediaId }) { item ->
             RssTestResultMediaItem(
                 item,
+                mediaDetailsStrings = mediaDetailsStrings,
                 isSelected = selectedItem == item,
                 onClick = {
                     onViewDetails(item)
@@ -79,6 +83,7 @@ fun RssTestPaneDefaults.FinalResultTab(
 @Composable
 fun RssTestResultMediaItem(
     media: Media,
+    mediaDetailsStrings: MediaDetailsStrings,
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -119,7 +124,7 @@ fun RssTestResultMediaItem(
                     InputChip(
                         false,
                         onClick = { },
-                        label = { Text(renderSubtitleLanguage(it)) },
+                        label = { Text(renderSubtitleLanguage(it, mediaDetailsStrings)) },
                     )
                 }
             }

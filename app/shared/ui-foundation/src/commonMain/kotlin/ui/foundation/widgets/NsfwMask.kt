@@ -34,6 +34,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.ui.foundation.effects.blurEffect
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.foundation_nsfw_hidden
+import me.him188.ani.app.ui.lang.foundation_nsfw_temporary_display
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Nsfw 模糊遮罩加提示. 点击可以临时展示.
@@ -67,9 +71,12 @@ fun NsfwMask(
                     verticalArrangement = Arrangement.Center,
                     modifier = Modifier.matchParentSize().defaultMinSize(minHeight = 30.dp).padding(top = 10.dp),
                 ) {
-                    Text("此内容不适合展示", textAlign = TextAlign.Center)
+                    Text(stringResource(Lang.foundation_nsfw_hidden), textAlign = TextAlign.Center)
                     IconButton(onTemporarilyDisplay) {
-                        Icon(Icons.Rounded.RemoveRedEye, contentDescription = "临时展示")
+                        Icon(
+                            Icons.Rounded.RemoveRedEye,
+                            contentDescription = stringResource(Lang.foundation_nsfw_temporary_display),
+                        )
                     }
                 }
             }

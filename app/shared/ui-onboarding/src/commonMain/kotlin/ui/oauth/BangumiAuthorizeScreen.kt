@@ -19,6 +19,8 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
 import me.him188.ani.app.ui.login.EmailLoginScreenLayout
+import me.him188.ani.app.ui.lang.*
+import org.jetbrains.compose.resources.*
 
 @Composable
 fun BangumiAuthorizeScreen(
@@ -73,7 +75,7 @@ internal fun BangumiAuthorizeScreen(
         onBangumiLoginClick = {},
         onNavigateSettings = onNavigateSettings,
         onNavigateBack = onNavigateBack,
-        title = { Text("授权 Bangumi 登录") },
+        title = { Text(stringResource(Lang.oauth_bangumi_authorize_title)) },
         showThirdPartyLogin = false,
     ) { scrollState ->
         BangumiAuthorizeLayout(

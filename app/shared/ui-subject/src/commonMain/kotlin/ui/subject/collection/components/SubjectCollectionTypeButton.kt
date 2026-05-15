@@ -32,7 +32,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import org.jetbrains.compose.resources.*
 
 object SubjectCollectionTypeButtonDefaults {
     @Composable
@@ -90,7 +92,7 @@ fun SubjectCollectionTypeButton(
                         Text(renderCollectionTypeAsCurrent(type))
                     }
                 } else {
-                    Text("载入") // 随便什么都行, 占空间
+                    Text("Loading") // Placeholder to preserve layout
                 }
             }
         } else {
@@ -104,7 +106,7 @@ fun SubjectCollectionTypeButton(
                         action.title()
                     }
                 } else {
-                    Text("载入") // 随便什么都行, 占空间
+                    Text("Loading") // Placeholder to preserve layout
                 }
             }
 
@@ -121,15 +123,16 @@ fun SubjectCollectionTypeButton(
     }
 }
 
+@Composable
 @Stable
 private fun renderCollectionTypeAsCurrent(type: UnifiedCollectionType): String {
     return when (type) {
-        UnifiedCollectionType.WISH -> "已想看"
-        UnifiedCollectionType.DOING -> "已在看"
-        UnifiedCollectionType.DONE -> "已看过"
-        UnifiedCollectionType.ON_HOLD -> "已搁置"
-        UnifiedCollectionType.DROPPED -> "已抛弃"
-        UnifiedCollectionType.NOT_COLLECTED -> "未追番"
+        UnifiedCollectionType.WISH -> stringResource(Lang.subject_collection_current_wish)
+        UnifiedCollectionType.DOING -> stringResource(Lang.subject_collection_current_doing)
+        UnifiedCollectionType.DONE -> stringResource(Lang.subject_collection_current_done)
+        UnifiedCollectionType.ON_HOLD -> stringResource(Lang.subject_collection_current_on_hold)
+        UnifiedCollectionType.DROPPED -> stringResource(Lang.subject_collection_current_dropped)
+        UnifiedCollectionType.NOT_COLLECTED -> stringResource(Lang.subject_collection_not_collected)
     }
 }
 

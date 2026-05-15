@@ -71,6 +71,16 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.foundation.theme.AniTheme
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_episode_cache
+import me.him188.ani.app.ui.lang.subject_episode_collapse_sidebar
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_settings_title
+import me.him188.ani.app.ui.lang.subject_episode_expand_sidebar
+import me.him188.ani.app.ui.lang.subject_episode_external_links
+import me.him188.ani.app.ui.lang.subject_episode_fast_forward_85_seconds
+import me.him188.ani.app.ui.lang.subject_episode_more_options
+import me.him188.ani.app.ui.lang.subject_episode_preview_mode
+import me.him188.ani.app.ui.lang.subject_episode_select_media_source
 import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
 import me.him188.ani.app.ui.mediafetch.ViewKind
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
@@ -124,6 +134,7 @@ import me.him188.ani.app.videoplayer.ui.top.SystemTime
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
+import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.audioTracks
 import org.openani.mediamp.features.subtitleTracks
@@ -187,6 +198,7 @@ internal fun EpisodeVideoImpl(
     var isLocked by remember { mutableStateOf(false) }
     val sheetsController = rememberVideoSideSheetsController<EpisodeVideoSideSheetPage>()
     val anySideSheetVisible by sheetsController.hasPageAsState()
+    val previewModeText = stringResource(Lang.subject_episode_preview_mode)
 
     // auto hide cursor
     val videoInteractionSource = remember { MutableInteractionSource() }
@@ -244,7 +256,7 @@ internal fun EpisodeVideoImpl(
             },
             video = {
                 if (LocalIsPreviewing.current) {
-                    Text("预览模式")
+                    Text(previewModeText)
                 } else {
                     // Save the status bar height to offset the video player
                     val statusBarHeight by rememberStatusBarHeightAsState()
@@ -475,6 +487,14 @@ private fun EpisodeVideoTopBarActions(
     var showMoreDropdown by rememberSaveable { mutableStateOf(false) }
     val dropdownAlwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "topBarExternalActions")
     val isExternalDropdownVisible = showShareDropdown || showMoreDropdown
+    val fastForward85SecondsText = stringResource(Lang.subject_episode_fast_forward_85_seconds)
+    val selectMediaSourceText = stringResource(Lang.subject_episode_select_media_source)
+    val danmakuSettingsTitleText = stringResource(Lang.subject_episode_danmaku_settings_title)
+    val moreOptionsText = stringResource(Lang.subject_episode_more_options)
+    val externalLinksText = stringResource(Lang.subject_episode_external_links)
+    val cacheText = stringResource(Lang.subject_episode_cache)
+    val collapseSidebarText = stringResource(Lang.subject_episode_collapse_sidebar)
+    val expandSidebarText = stringResource(Lang.subject_episode_expand_sidebar)
 
     DisposableEffect(dropdownAlwaysOnRequester, isExternalDropdownVisible) {
         if (isExternalDropdownVisible) {
@@ -490,7 +510,7 @@ private fun EpisodeVideoTopBarActions(
     }
 
     IconButton({ onClickSkip85(playerState.getCurrentPositionMillis()) }) {
-        Icon(AniIcons.Forward85, "快进 85 秒")
+        Icon(AniIcons.Forward85, fastForward85SecondsText)
     }
 
     if (expanded) {
@@ -498,7 +518,7 @@ private fun EpisodeVideoTopBarActions(
             { sheetsController.navigateTo(EpisodeVideoSideSheetPage.MEDIA_SELECTOR) },
             Modifier.testTag(TAG_SHOW_MEDIA_SELECTOR),
         ) {
-            Icon(Icons.Rounded.DisplaySettings, contentDescription = "数据源")
+            Icon(Icons.Rounded.DisplaySettings, contentDescription = selectMediaSourceText)
         }
     }
 
@@ -506,19 +526,19 @@ private fun EpisodeVideoTopBarActions(
         { sheetsController.navigateTo(EpisodeVideoSideSheetPage.PLAYER_SETTINGS) },
         Modifier.testTag(TAG_SHOW_SETTINGS),
     ) {
-        Icon(AniIcons.SubtitleGear, contentDescription = "弹幕设置")
+        Icon(AniIcons.SubtitleGear, contentDescription = danmakuSettingsTitleText)
     }
 
     Box {
         IconButton({ showMoreDropdown = true }) {
-            Icon(Icons.Rounded.MoreVert, contentDescription = "更多")
+            Icon(Icons.Rounded.MoreVert, contentDescription = moreOptionsText)
         }
         DropdownMenu(
             expanded = showMoreDropdown,
             onDismissRequest = { showMoreDropdown = false },
         ) {
             DropdownMenuItem(
-                text = { Text("外部链接") },
+                text = { Text(externalLinksText) },
                 onClick = {
                     showMoreDropdown = false
                     showShareDropdown = true
@@ -526,7 +546,7 @@ private fun EpisodeVideoTopBarActions(
                 leadingIcon = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, null) },
             )
             DropdownMenuItem(
-                text = { Text("离线缓存") },
+                text = { Text(cacheText) },
                 onClick = {
                     showMoreDropdown = false
                     onClickCache()
@@ -547,9 +567,9 @@ private fun EpisodeVideoTopBarActions(
             Modifier.testTag(TAG_COLLAPSE_SIDEBAR),
         ) {
             if (sidebarVisible) {
-                Icon(AniIcons.RightPanelClose, contentDescription = "折叠侧边栏")
+                Icon(AniIcons.RightPanelClose, contentDescription = collapseSidebarText)
             } else {
-                Icon(AniIcons.RightPanelOpen, contentDescription = "展开侧边栏")
+                Icon(AniIcons.RightPanelOpen, contentDescription = expandSidebarText)
             }
         }
     }

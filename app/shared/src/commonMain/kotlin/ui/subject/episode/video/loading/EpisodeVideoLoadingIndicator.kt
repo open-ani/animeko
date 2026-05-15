@@ -30,10 +30,28 @@ import me.him188.ani.app.domain.media.player.data.DownloadingMediaData
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.TextWithBorder
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_auto_selecting
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_buffering
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_buffering_bt_no_speed_try_switch
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_buffering_bt_too_long
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_buffering_too_long
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_cancelled
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_network_error
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_no_matching_file
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_resolution_timed_out
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_unknown_error
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_cause_unsupported_media
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_decoding_bt
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_decoding_data
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_failed_prefix
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_player_error
+import me.him188.ani.app.ui.lang.subject_episode_video_loading_resolving_source
 import me.him188.ani.app.videoplayer.ui.VideoLoadingIndicator
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.Unspecified
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
+import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.ExperimentalMediampApi
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.PlaybackState
@@ -87,25 +105,40 @@ fun EpisodeVideoLoadingIndicator(
     playerError: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    val playerErrorText = stringResource(Lang.subject_episode_video_loading_player_error)
+    val autoSelectingText = stringResource(Lang.subject_episode_video_loading_auto_selecting)
+    val resolvingSourceText = stringResource(Lang.subject_episode_video_loading_resolving_source)
+    val decodingDataText = stringResource(Lang.subject_episode_video_loading_decoding_data)
+    val decodingBtText = stringResource(Lang.subject_episode_video_loading_decoding_bt)
+    val bufferingText = stringResource(Lang.subject_episode_video_loading_buffering)
+    val bufferingBtTooLongText = stringResource(Lang.subject_episode_video_loading_buffering_bt_too_long)
+    val bufferingNoSpeedTrySwitchText =
+        stringResource(Lang.subject_episode_video_loading_buffering_bt_no_speed_try_switch)
+    val bufferingTooLongText = stringResource(Lang.subject_episode_video_loading_buffering_too_long)
+    val failedPrefix = stringResource(Lang.subject_episode_video_loading_failed_prefix)
+    val causeLabels = VideoLoadingCauseLabels(
+        resolutionTimedOut = stringResource(Lang.subject_episode_video_loading_cause_resolution_timed_out),
+        unknownError = stringResource(Lang.subject_episode_video_loading_cause_unknown_error),
+        unsupportedMedia = stringResource(Lang.subject_episode_video_loading_cause_unsupported_media),
+        noMatchingFile = stringResource(Lang.subject_episode_video_loading_cause_no_matching_file),
+        cancelled = stringResource(Lang.subject_episode_video_loading_cause_cancelled),
+        networkError = stringResource(Lang.subject_episode_video_loading_cause_network_error),
+    )
     VideoLoadingIndicator(
         showProgress = state is VideoLoadingState.Progressing,
         text = {
             if (playerError) {
-                TextWithBorder("播放失败, 请更换数据源", color = MaterialTheme.colorScheme.error)
+                TextWithBorder(playerErrorText, color = MaterialTheme.colorScheme.error)
                 return@VideoLoadingIndicator
             }
             when (state) {
                 VideoLoadingState.Initial -> {
-                    if (optimizeForFullscreen) {
-                        TextWithBorder("正在自动选择数据源，请稍候")
-                    } else {
-                        TextWithBorder("正在自动选择数据源，请稍候")
-                    }
+                    TextWithBorder(autoSelectingText)
                 }
 
                 VideoLoadingState.ResolvingSource -> {
                     TextWithBorder(
-                        "正在解析资源链接\n通常几秒内完成，否则请切换数据源",
+                        resolvingSourceText,
                         textAlign = TextAlign.Center,
                     )
                 }
@@ -113,9 +146,9 @@ fun EpisodeVideoLoadingIndicator(
                 is VideoLoadingState.DecodingData -> {
                     TextWithBorder(
                         if (!state.isBt) {
-                            "资源解析成功, 正在准备视频"
+                            decodingDataText
                         } else {
-                            "正在解析磁力链或查询元数据\n通常几秒内完成, 否则请尝试切换数据源或先缓存再看"
+                            decodingBtText
                         },
                         textAlign = TextAlign.Center,
                     )
@@ -136,7 +169,7 @@ fun EpisodeVideoLoadingIndicator(
                     val text by remember {
                         derivedStateOf {
                             buildString {
-                                append("正在缓冲")
+                                append(bufferingText)
                                 if (speed != FileSize.Unspecified) {
                                     appendLine()
                                     append(speed.toString())
@@ -146,11 +179,11 @@ fun EpisodeVideoLoadingIndicator(
                                 if (tooLong) {
                                     appendLine()
                                     if (state.isBt) {
-                                        append("BT 初始缓冲耗时稍长, 请耐心等待 30 秒")
+                                        append(bufferingBtTooLongText)
                                         appendLine()
-                                        append("若持续没有速度, 可尝试切换数据源")
+                                        append(bufferingNoSpeedTrySwitchText)
                                     } else {
-                                        append("缓冲耗时过长, 可尝试切换数据源")
+                                        append(bufferingTooLongText)
                                     }
                                 }
                             }
@@ -162,7 +195,7 @@ fun EpisodeVideoLoadingIndicator(
 
                 is VideoLoadingState.Failed -> {
                     TextWithBorder(
-                        "加载失败: ${renderCause(state)}",
+                        "$failedPrefix${renderCause(state, causeLabels)}",
                         color = MaterialTheme.colorScheme.error,
                         textAlign = TextAlign.Center,
                     )
@@ -173,13 +206,22 @@ fun EpisodeVideoLoadingIndicator(
     )
 }
 
-fun renderCause(cause: VideoLoadingState.Failed): String = when (cause) {
-    is VideoLoadingState.ResolutionTimedOut -> "解析超时"
-    is VideoLoadingState.UnknownError -> "未知错误"
-    is VideoLoadingState.UnsupportedMedia -> "不支持该文件类型"
-    VideoLoadingState.NoMatchingFile -> "未找到可播放的文件"
-    VideoLoadingState.Cancelled -> "已取消"
-    VideoLoadingState.NetworkError -> "网络错误"
+private data class VideoLoadingCauseLabels(
+    val resolutionTimedOut: String,
+    val unknownError: String,
+    val unsupportedMedia: String,
+    val noMatchingFile: String,
+    val cancelled: String,
+    val networkError: String,
+)
+
+private fun renderCause(cause: VideoLoadingState.Failed, labels: VideoLoadingCauseLabels): String = when (cause) {
+    is VideoLoadingState.ResolutionTimedOut -> labels.resolutionTimedOut
+    is VideoLoadingState.UnknownError -> labels.unknownError
+    is VideoLoadingState.UnsupportedMedia -> labels.unsupportedMedia
+    VideoLoadingState.NoMatchingFile -> labels.noMatchingFile
+    VideoLoadingState.Cancelled -> labels.cancelled
+    VideoLoadingState.NetworkError -> labels.networkError
 }
 
 @Preview(name = "Selecting Media")

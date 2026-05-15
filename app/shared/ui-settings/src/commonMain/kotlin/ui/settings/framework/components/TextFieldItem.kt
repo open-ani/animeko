@@ -48,7 +48,10 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.effects.defaultFocus
 import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_danmaku_cancel
 import me.him188.ani.app.ui.settings.SettingsTab
+import org.jetbrains.compose.resources.stringResource
 
 
 /**
@@ -236,7 +239,7 @@ internal fun SettingsScope.TextFieldDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismissRequest) { Text("取消") }
+            TextButton(onClick = onDismissRequest) { Text(stringResource(Lang.settings_danmaku_cancel)) }
         },
     )
 }
