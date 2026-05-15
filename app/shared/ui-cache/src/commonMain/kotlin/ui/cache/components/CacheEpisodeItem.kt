@@ -67,9 +67,18 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.cache_episode_cover
+import me.him188.ani.app.ui.lang.cache_episode_download_completed
+import me.him188.ani.app.ui.lang.cache_episode_download_failed
+import me.him188.ani.app.ui.lang.cache_episode_downloading
+import me.him188.ani.app.ui.lang.cache_episode_manage_item
+import me.him188.ani.app.ui.lang.cache_episode_pause_download
+import me.him188.ani.app.ui.lang.cache_episode_resume_download
 import me.him188.ani.datasources.api.topic.FileSize.Companion.Unspecified
 import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 
 @Immutable
 enum class CacheEpisodePaused {
@@ -93,6 +102,10 @@ fun CacheEpisodeItem(
     var showConfirm by rememberSaveable { mutableStateOf(false) }
     val listItemColors = ListItemDefaults.colors(containerColor = containerColor)
     val scope = rememberUiMonoTasker()
+    val coverText = stringResource(Lang.cache_episode_cover)
+    val resumeDownloadText = stringResource(Lang.cache_episode_resume_download)
+    val pauseDownloadText = stringResource(Lang.cache_episode_pause_download)
+    val manageItemText = stringResource(Lang.cache_episode_manage_item)
 
     if (showConfirm) {
         DeleteActionDialog(
@@ -120,7 +133,7 @@ fun CacheEpisodeItem(
         modifier.clickableAndMouseRightClick { showDropdown = true },
         leadingContent = if (state.screenShots.isEmpty()) null else {
             {
-                AsyncImage(state.screenShots.first(), "封面")
+                AsyncImage(state.screenShots.first(), coverText)
             }
         },
         supportingContent = {
@@ -212,11 +225,11 @@ fun CacheEpisodeItem(
                         if (!state.isFinished) {
                             if (state.isPaused) {
                                 IconButton(onResume) {
-                                    Icon(Icons.Rounded.Restore, "继续下载")
+                                    Icon(Icons.Rounded.Restore, resumeDownloadText)
                                 }
                             } else if (!state.isFailed) {
                                 IconButton(onPause) {
-                                    Icon(Icons.Rounded.Pause, "暂停下载", Modifier.size(28.dp))
+                                    Icon(Icons.Rounded.Pause, pauseDownloadText, Modifier.size(28.dp))
                                 }
                             }
                         }
@@ -225,7 +238,7 @@ fun CacheEpisodeItem(
 
                 // 总是展示的更多操作. 实际上点击整个 ListItem 都能展示 dropdown, 但留有这个按钮避免用户无法发现点击 list 能展开.
                 IconButton({ showDropdown = true }) {
-                    Icon(Icons.Rounded.MoreVert, "管理此项")
+                    Icon(Icons.Rounded.MoreVert, manageItemText)
                 }
             }
             CacheActionDropdown(
@@ -249,12 +262,16 @@ internal fun DownloadStateIcon(
     modifier: Modifier = Modifier
 ) {
     when (state) {
-        CacheEpisodePaused.COMPLETED -> Icon(Icons.Rounded.DownloadDone, "下载完成")
+        CacheEpisodePaused.COMPLETED -> Icon(
+            Icons.Rounded.DownloadDone,
+            stringResource(Lang.cache_episode_download_completed),
+            modifier,
+        )
         CacheEpisodePaused.FAILED -> ProvideContentColor(MaterialTheme.colorScheme.error) {
-            Icon(Icons.Rounded.FileDownloadOff, "下载失败")
+            Icon(Icons.Rounded.FileDownloadOff, stringResource(Lang.cache_episode_download_failed), modifier)
         }
 
-        else -> Icon(Icons.Rounded.Downloading, "下载中")
+        else -> Icon(Icons.Rounded.Downloading, stringResource(Lang.cache_episode_downloading), modifier)
     }
 }
 

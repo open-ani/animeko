@@ -27,6 +27,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_episode_close_selector
+import me.him188.ani.app.ui.lang.subject_episode_select_media_source
 import me.him188.ani.app.ui.mediafetch.MediaSelectorState
 import me.him188.ani.app.ui.mediafetch.MediaSelectorView
 import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresentation
@@ -39,6 +42,7 @@ import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideShe
 import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 
 @Suppress("UnusedReceiverParameter")
 @Composable
@@ -54,13 +58,16 @@ fun EpisodeVideoSideSheets.MediaSelectorSheet(
     onRestartSource: (instanceId: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val selectMediaSourceText = stringResource(Lang.subject_episode_select_media_source)
+    val closeSelectorText = stringResource(Lang.subject_episode_close_selector)
+
     SideSheetLayout(
-        title = { Text(text = "选择数据源") },
+        title = { Text(text = selectMediaSourceText) },
         onDismissRequest = onDismissRequest,
         Modifier.testTag(TAG_MEDIA_SELECTOR_SHEET),
         closeButton = {
             IconButton(onClick = onDismissRequest) {
-                Icon(Icons.Rounded.Close, contentDescription = "关闭")
+                Icon(Icons.Rounded.Close, contentDescription = closeSelectorText)
             }
         },
     ) {

@@ -30,7 +30,6 @@ import me.him188.ani.app.data.models.subject.SubjectAiringInfo
 import me.him188.ani.app.data.models.subject.SubjectAiringKind
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.TestSubjectProgressInfos
-import me.him188.ani.app.data.models.subject.computeTotalEpisodeText
 import me.him188.ani.app.data.models.subject.isOnAir
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.datasources.api.EpisodeSort
@@ -52,17 +51,17 @@ class AiringLabelState(
     /**
      * 显示当前看到的剧集, 或者最新连载到的剧集.
      */
-    val progressText by derivedStateOf {
+    fun progressText(strings: SubjectStatusStrings): String? {
         // Hi, 如果你修改这里, 务必在 AiringLabelStateTest 增加测试
 
         val airingInfo = airingInfo
         val progressInfo = progressInfo
         if (airingInfo == null || progressInfo == null) {
-            return@derivedStateOf null
+            return null
         }
-        when (airingInfo.kind) {
+        return when (airingInfo.kind) {
             SubjectAiringKind.UPCOMING -> {
-                "未开播"
+                strings.upcoming
 //                if (airingInfo.airDate.isInvalid) {
 //                    "未开播"
 //                } else {
@@ -72,32 +71,32 @@ class AiringLabelState(
 
             SubjectAiringKind.ON_AIR -> {
                 when (val s = progressInfo.continueWatchingStatus) {
-                    ContinueWatchingStatus.Done -> "已看完"
-                    is ContinueWatchingStatus.Watched -> "看过 ${renderEpAndSort(s.episodeEp, s.episodeSort)}"
+                    ContinueWatchingStatus.Done -> strings.done
+                    is ContinueWatchingStatus.Watched -> strings.watched(renderEpAndSort(s.episodeEp, s.episodeSort))
 
                     is ContinueWatchingStatus.Continue,
                     is ContinueWatchingStatus.NotOnAir,
                     is ContinueWatchingStatus.Start,
                         ->
                         if (airingInfo.latestSort == null) {
-                            "连载中"
+                            strings.onAir
                         } else {
-                            "连载至 ${renderEpAndSort(airingInfo.latestEp, airingInfo.latestSort)}"
+                            strings.onAirTo(renderEpAndSort(airingInfo.latestEp, airingInfo.latestSort))
                         }
                 }
             }
 
             SubjectAiringKind.COMPLETED -> {
                 when (val s = progressInfo.continueWatchingStatus) {
-                    ContinueWatchingStatus.Done -> "已看完"
+                    ContinueWatchingStatus.Done -> strings.done
 
-                    is ContinueWatchingStatus.Watched -> "看过 ${renderEpAndSort(s.episodeEp, s.episodeSort)}"
+                    is ContinueWatchingStatus.Watched -> strings.watched(renderEpAndSort(s.episodeEp, s.episodeSort))
                     is ContinueWatchingStatus.Continue ->
-                        "看过 ${renderEpAndSort(s.watchedEpisodeEp, s.watchedEpisodeSort)}"
+                        strings.watched(renderEpAndSort(s.watchedEpisodeEp, s.watchedEpisodeSort))
 
                     is ContinueWatchingStatus.NotOnAir,
                     ContinueWatchingStatus.Start,
-                        -> "已完结"
+                        -> strings.completed
                 }
             }
         }
@@ -122,9 +121,9 @@ class AiringLabelState(
     /**
      * "全 xx 话"
      */
-    val totalEpisodesText by derivedStateOf {
-        val airingInfo = airingInfo ?: return@derivedStateOf null
-        airingInfo.computeTotalEpisodeText()
+    fun totalEpisodesText(strings: SubjectStatusStrings): String? {
+        val airingInfo = airingInfo ?: return null
+        return renderTotalEpisodeText(airingInfo, strings)
     }
 }
 
@@ -146,19 +145,20 @@ fun AiringLabel(
     style: TextStyle = LocalTextStyle.current,
     progressColor: Color = if (state.highlightProgress) MaterialTheme.colorScheme.primary else Color.Unspecified,
 ) {
+    val strings = rememberSubjectStatusStrings()
     ProvideTextStyle(style) {
         FlowRow(
             modifier,
             verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
         ) {
-            state.progressText?.let {
+            state.progressText(strings)?.let {
                 Text(
                     it,
                     color = progressColor,
                     softWrap = false,
                 )
             }
-            state.totalEpisodesText?.let {
+            state.totalEpisodesText(strings)?.let {
                 Text(" · ", softWrap = false)
                 Text(it, softWrap = false)
             }

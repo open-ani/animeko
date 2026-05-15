@@ -41,10 +41,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
 import me.him188.ani.app.ui.onboarding.WizardLayoutParams
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.rendering.P2p
+import org.jetbrains.compose.resources.*
 
 @Composable
 internal fun BitTorrentFeatureStep(
@@ -77,8 +79,8 @@ internal fun BitTorrentFeatureStep(
                 .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Ani 支持边下边播 BT 资源，BT 下载速度取决于网络质量")
-            Text("允许通知权限，在缓存时查看下载进度")
+            Text(stringResource(Lang.onboarding_bittorrent_play_while_downloading))
+            Text(stringResource(Lang.onboarding_bittorrent_notification_permission_hint))
         }
         Column(
             modifier = Modifier.padding(vertical = 16.dp),
@@ -122,7 +124,7 @@ internal fun BitTorrentFeatureSwitchItem(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "启用 BitTorrent 功能",
+                        text = stringResource(Lang.onboarding_bittorrent_enable),
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 1,
                         modifier = Modifier.basicMarquee(),
@@ -167,7 +169,7 @@ internal fun RequestNotificationPermission(
                         modifier = Modifier.size(32.dp),
                     )
                     Text(
-                        text = "允许通知",
+                        text = stringResource(Lang.onboarding_bittorrent_allow_notification),
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 1,
                         modifier = Modifier.basicMarquee(),
@@ -175,7 +177,7 @@ internal fun RequestNotificationPermission(
                 }
                 Box(modifier = Modifier.padding(start = 48.dp)) {
                     Text(
-                        text = "显示 BT 下载进度和速度等信息",
+                        text = stringResource(Lang.onboarding_bittorrent_notification_description),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -186,13 +188,13 @@ internal fun RequestNotificationPermission(
                     onClick = { },
                     enabled = false,
                     modifier = Modifier.fillMaxWidth(),
-                    content = { Text("已授权") },
+                    content = { Text(stringResource(Lang.onboarding_bittorrent_authorized)) },
                 )
             } else {
                 Button(
                     onClick = onRequestNotificationPermission,
                     modifier = Modifier.fillMaxWidth(),
-                    content = { Text("授予权限") },
+                    content = { Text(stringResource(Lang.onboarding_bittorrent_grant_permission)) },
                 )
             }
         }

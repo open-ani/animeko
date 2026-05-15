@@ -46,7 +46,16 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.media_selector_filter_alliance
+import me.him188.ani.app.ui.lang.media_selector_filter_clear
+import me.him188.ani.app.ui.lang.media_selector_filter_expand
+import me.him188.ani.app.ui.lang.media_selector_filter_resolution
+import me.him188.ani.app.ui.lang.media_selector_filter_selected
+import me.him188.ani.app.ui.lang.media_selector_filter_subtitle
+import me.him188.ani.app.ui.media.rememberMediaDetailsStrings
 import me.him188.ani.app.ui.media.renderSubtitleLanguage
+import org.jetbrains.compose.resources.stringResource
 
 
 private inline val minWidth get() = 60.dp
@@ -64,6 +73,10 @@ fun MediaSelectorFilters(
     singleLine: Boolean = false,
 ) {
     val scope = rememberCoroutineScope()
+    val mediaDetailsStrings = rememberMediaDetailsStrings()
+    val resolutionText = stringResource(Lang.media_selector_filter_resolution)
+    val subtitleText = stringResource(Lang.media_selector_filter_subtitle)
+    val allianceText = stringResource(Lang.media_selector_filter_alliance)
     val content = @Composable {
         val resolutionPresentation by resolution.presentationFlow.collectAsStateWithLifecycle()
         MediaSelectorFilterChip(
@@ -71,7 +84,7 @@ fun MediaSelectorFilters(
             allValues = { resolutionPresentation.available },
             onSelect = { scope.launch { resolution.prefer(it) } },
             onDeselect = { scope.launch { resolution.removePreference() } },
-            name = { Text("分辨率") },
+            name = { Text(resolutionText) },
             Modifier.widthIn(min = minWidth, max = maxWidth),
         )
         val subtitleLanguagePresentation by subtitleLanguageId.presentationFlow.collectAsStateWithLifecycle()
@@ -80,9 +93,9 @@ fun MediaSelectorFilters(
             allValues = { subtitleLanguagePresentation.available },
             onSelect = { scope.launch { subtitleLanguageId.prefer(it) } },
             onDeselect = { scope.launch { subtitleLanguageId.removePreference() } },
-            name = { Text("字幕") },
+            name = { Text(subtitleText) },
             Modifier.widthIn(min = minWidth, max = maxWidth),
-            label = { MediaSelectorFilterChipText(renderSubtitleLanguage(it)) },
+            label = { MediaSelectorFilterChipText(renderSubtitleLanguage(it, mediaDetailsStrings)) },
         )
         val alliancePresentation by alliance.presentationFlow.collectAsStateWithLifecycle()
         MediaSelectorFilterChip(
@@ -90,7 +103,7 @@ fun MediaSelectorFilters(
             allValues = { alliancePresentation.available },
             onSelect = { scope.launch { alliance.prefer(it) } },
             onDeselect = { scope.launch { alliance.removePreference() } },
-            name = { Text("字幕组") },
+            name = { Text(allianceText) },
             Modifier.widthIn(min = minWidth, max = maxWidth),
         )
     }
@@ -139,6 +152,9 @@ private fun <T : Any> MediaSelectorFilterChip(
     var showDropdown by rememberSaveable {
         mutableStateOf(false)
     }
+    val expandText = stringResource(Lang.media_selector_filter_expand)
+    val clearText = stringResource(Lang.media_selector_filter_clear)
+    val selectedText = stringResource(Lang.media_selector_filter_selected)
 
     val allValuesState by remember(allValues) {
         derivedStateOf(allValues)
@@ -177,10 +193,10 @@ private fun <T : Any> MediaSelectorFilterChip(
             trailingIcon = if (isSingleValue) null else {
                 {
                     if (selected == null) {
-                        Icon(Icons.Default.ArrowDropDown, "展开")
+                        Icon(Icons.Default.ArrowDropDown, expandText)
                     } else {
                         Icon(
-                            Icons.Default.Close, "取消筛选",
+                            Icons.Default.Close, clearText,
                             Modifier.clickable { selectedState?.let { onDeselect(it) } },
                         )
                     }
@@ -204,7 +220,7 @@ private fun <T : Any> MediaSelectorFilterChip(
                     text = { label(item) },
                     trailingIcon = {
                         if (selectedState == item) {
-                            Icon(Icons.Default.Check, "当前选中")
+                            Icon(Icons.Default.Check, selectedText)
                         }
                     },
                     onClick = {

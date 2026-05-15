@@ -36,7 +36,14 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import me.him188.ani.app.ui.foundation.setClipEntryText
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.foundation_error_dialog_copy_prefix
+import me.him188.ani.app.ui.lang.foundation_error_dialog_default_message
+import me.him188.ani.app.ui.lang.settings_danmaku_cancel
+import me.him188.ani.app.ui.lang.settings_danmaku_confirm
+import me.him188.ani.app.ui.lang.settings_mediasource_copy
 import me.him188.ani.app.ui.loading.ConnectingDialog
+import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -125,6 +132,11 @@ fun ErrorDialogHost(
     val controller = remember {
         StateErrorDialogController()
     }
+    val defaultErrorMessage = stringResource(Lang.foundation_error_dialog_default_message)
+    val copyPrefixText = stringResource(Lang.foundation_error_dialog_copy_prefix)
+    val copyText = stringResource(Lang.settings_mediasource_copy)
+    val confirmText = stringResource(Lang.settings_danmaku_confirm)
+    val cancelText = stringResource(Lang.settings_danmaku_cancel)
 
     val error = remember(errorFlow) {
         errorFlow.distinctUntilChanged()
@@ -142,7 +154,7 @@ fun ErrorDialogHost(
     if (controller.isVisible) {
         ConnectingDialog(
             text = {
-                Text(text = error?.message ?: "Operation failed, please try again")
+                Text(text = error?.message ?: defaultErrorMessage)
                 val cause = error?.cause
                 if (cause != null) {
                     Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
@@ -167,13 +179,14 @@ fun ErrorDialogHost(
                         val scope = rememberCoroutineScope()
                         TextButton(
                             onClick = {
-                                val copyTarget = "删除缓存失败\n\n" + error.cause?.stackTraceToString()
+                                val copyTarget =
+                                    (error?.message ?: copyPrefixText) + "\n\n" + error.cause?.stackTraceToString()
                                 scope.launch {
                                     clipboard.setClipEntryText(copyTarget)
                                 }
                             },
                         ) {
-                            Text("复制")
+                            Text(copyText)
                         }
                     }
                     TextButton(
@@ -183,7 +196,7 @@ fun ErrorDialogHost(
                             onConfirm()
                         },
                     ) {
-                        Text("OK")
+                        Text(confirmText)
                     }
                 } else {
                     // recovering
@@ -194,7 +207,7 @@ fun ErrorDialogHost(
                             onClickCancel()
                         },
                     ) {
-                        Text("取消")
+                        Text(cancelText)
                     }
                 }
             },

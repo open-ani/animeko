@@ -49,9 +49,11 @@ import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.*
 
 @Composable
 fun OnboardingCompleteScreen(
@@ -111,8 +113,11 @@ internal fun OnboardingCompleteScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                val welcomeText = state.selfInfo?.nickname?.let {
+                    stringResource(Lang.onboarding_complete_welcome_with_nickname, it)
+                } ?: stringResource(Lang.onboarding_complete_welcome)
                 Text(
-                    text = if (state.selfInfo?.nickname != null) "欢迎，${state.selfInfo?.nickname}" else "欢迎",
+                    text = welcomeText,
                     modifier = Modifier
                         .widthIn(max = 240.dp)
                         .animateContentSize(),
@@ -139,7 +144,7 @@ internal fun OnboardingCompleteScreen(
                             Modifier.size(ButtonDefaults.IconSize),
                         )
                         Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                        Text("完成", softWrap = false)
+                        Text(stringResource(Lang.onboarding_complete_finish), softWrap = false)
                     }
                 }
             }

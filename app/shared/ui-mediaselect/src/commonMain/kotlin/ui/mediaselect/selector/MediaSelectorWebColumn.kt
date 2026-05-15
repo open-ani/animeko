@@ -9,8 +9,8 @@
 
 package me.him188.ani.app.ui.mediaselect.selector
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,9 +50,15 @@ import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
 import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.media_selector_web_edit_query_action
+import me.him188.ani.app.ui.lang.media_selector_web_edit_query_prompt
+import me.him188.ani.app.ui.lang.media_selector_web_waiting_captcha
+import me.him188.ani.app.ui.lang.settings_mediasource_refresh
 import me.him188.ani.app.ui.mediaselect.common.SourceIcon
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 
 
 data class WebSourceChannel(
@@ -95,6 +101,8 @@ fun MediaSelectorWebSourcesColumn(
     modifier: Modifier = Modifier,
     preferredSourceContainerColor: Color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.33f)
 ) {
+    val editQueryPromptText = stringResource(Lang.media_selector_web_edit_query_prompt)
+    val editQueryActionText = stringResource(Lang.media_selector_web_edit_query_action)
     val card = @Composable { source: WebSource ->
         WebSourceCard(
             source,
@@ -133,13 +141,13 @@ fun MediaSelectorWebSourcesColumn(
         ) {
             Text(
                 buildAnnotatedString {
-                    append("都不对？")
+                    append(editQueryPromptText)
                     pushStyle(
                         SpanStyle(
                             textDecoration = TextDecoration.Underline,
                         ),
                     )
-                    append("修改查询")
+                    append(editQueryActionText)
                 },
                 color = MaterialTheme.colorScheme.outline,
                 textAlign = TextAlign.Center,
@@ -159,6 +167,8 @@ private fun WebSourceCard(
 
     ) {
     val minHeight = 48.dp
+    val waitingCaptchaText = stringResource(Lang.media_selector_web_waiting_captcha)
+    val refreshText = stringResource(Lang.settings_mediasource_refresh)
     Row(
         modifier,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -173,7 +183,7 @@ private fun WebSourceCard(
             )
             Box(Modifier.padding(start = 8.dp)) {
                 Text(
-                    "五个字占位",
+                    source.name,
                     Modifier.alpha(0f).width(IntrinsicSize.Max),
                     softWrap = true,
                     maxLines = 2,
@@ -195,7 +205,7 @@ private fun WebSourceCard(
         ) {
             if (source.isCaptchaRequired) {
                 Text(
-                    text = if (source.isResolvingCaptcha) "正在等待验证码处理" else source.captchaMessage.orEmpty(),
+                    text = if (source.isResolvingCaptcha) waitingCaptchaText else source.captchaMessage.orEmpty(),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier
@@ -242,7 +252,7 @@ private fun WebSourceCard(
 
         if (source.isError) {
             IconButton(onRefresh) {
-                Icon(Icons.Rounded.Refresh, "刷新")
+                Icon(Icons.Rounded.Refresh, refreshText)
             }
         }
     }

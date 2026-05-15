@@ -80,6 +80,13 @@ import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
 import me.him188.ani.app.ui.foundation.widgets.ProgressIndicatorHeight
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.cache_filter_collection_done
+import me.him188.ani.app.ui.lang.cache_filter_collection_dropped
+import me.him188.ani.app.ui.lang.cache_subject_cache
+import me.him188.ani.app.ui.lang.cache_subject_cancel
+import me.him188.ani.app.ui.lang.cache_subject_delete
+import me.him188.ani.app.ui.lang.cache_subject_episode_cache
 import me.him188.ani.app.ui.mediafetch.MediaSelectorView
 import me.him188.ani.app.ui.mediafetch.MediaSourceInfoProvider
 import me.him188.ani.app.ui.mediafetch.MediaSourceResultListPresentation
@@ -91,6 +98,7 @@ import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
+import org.jetbrains.compose.resources.stringResource
 import org.koin.mp.KoinPlatform
 
 
@@ -221,7 +229,7 @@ fun SettingsScope.EpisodeCacheListGroup(
     }
 
     Group(
-        title = { Text("单集缓存") },
+        title = { Text(stringResource(Lang.cache_subject_episode_cache)) },
         modifier = modifier,
     ) {
         state.episodes.fastForEachIndexed { i, episodeCacheState ->
@@ -287,7 +295,7 @@ private fun ItemDropdown(
                 onDismissRequest()
             },
             text = {
-                Text("删除")
+                Text(stringResource(Lang.cache_subject_delete))
             },
             leadingIcon = {
                 Icon(
@@ -340,13 +348,13 @@ fun SettingsScope.EpisodeCacheItem(
                     when (episode.info.watchStatus) {
                         UnifiedCollectionType.DONE -> {
                             Label(Modifier.padding(start = 8.dp)) {
-                                Text("看过")
+                                Text(stringResource(Lang.cache_filter_collection_done))
                             }
                         }
 
                         UnifiedCollectionType.DROPPED -> {
                             Label(Modifier.padding(start = 8.dp)) {
-                                Text("抛弃")
+                                Text(stringResource(Lang.cache_filter_collection_dropped))
                             }
                         }
 
@@ -399,7 +407,7 @@ fun EpisodeCacheActionIcon(
                         showCancel = false
                     },
                 ) {
-                    Icon(Icons.Rounded.Close, "取消")
+                    Icon(Icons.Rounded.Close, stringResource(Lang.cache_subject_cancel))
                 }
             } else {
                 if (hasActionRunning) {
@@ -457,7 +465,7 @@ fun EpisodeCacheActionIcon(
             if (canCache) {
                 CompositionLocalProvider(LocalContentColor providesDefault MaterialTheme.colorScheme.primary) {
                     IconButton(onClick) {
-                        Icon(Icons.Rounded.Download, "缓存")
+                        Icon(Icons.Rounded.Download, stringResource(Lang.cache_subject_cache))
                     }
                 }
             }

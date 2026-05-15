@@ -9,16 +9,29 @@
 
 package me.him188.ani.app.ui.subject
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_rendering_season_year_month
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.seasonMonth
-
+import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.stringResource
 
 @Stable
+@Composable
 fun renderSubjectSeason(date: PackedDate): String {
     if (date == PackedDate.Invalid) return "TBA"
     if (date.seasonMonth == 0) {
         return date.toString()
     }
-    return "${date.year} 年 ${date.seasonMonth} 月"
+    return stringResource(Lang.subject_rendering_season_year_month, date.year.toString(), date.seasonMonth.toString())
+}
+
+suspend fun getSubjectSeasonText(date: PackedDate): String {
+    if (date == PackedDate.Invalid) return "TBA"
+    if (date.seasonMonth == 0) {
+        return date.toString()
+    }
+    return getString(Lang.subject_rendering_season_year_month, date.year.toString(), date.seasonMonth.toString())
 }

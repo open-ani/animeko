@@ -54,11 +54,26 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.episode.DanmakuFetchResultWithConfig
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.episode_danmaku_match_change
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_count
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_disabled
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_match_exact
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_match_fuzzy
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_match_none
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_match_semi_fuzzy
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_service_bilibili
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_service_dandanplay
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_settings_for
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_item
+import me.him188.ani.app.ui.lang.subject_episode_disable
+import me.him188.ani.app.ui.lang.subject_episode_enable
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuMatchInfo
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.format1f
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.abs
 
 @Composable
@@ -109,6 +124,10 @@ fun DanmakuSourceCard(
     dropdown: @Composable () -> Unit = {},
     colors: CardColors = CardDefaults.cardColors(),
 ) {
+    val serviceName = renderDanmakuServiceId(info.serviceId)
+    val settingsText = stringResource(Lang.subject_episode_danmaku_settings_for, serviceName)
+    val danmakuCountText = stringResource(Lang.subject_episode_danmaku_count)
+    val disabledText = stringResource(Lang.subject_episode_danmaku_disabled)
     Card(onClick, modifier, colors = colors) {
         Column(
             Modifier.padding(bottom = 16.dp),
@@ -128,7 +147,7 @@ fun DanmakuSourceCard(
                 trailingContent = {
                     Box {
                         IconButton(onClickSettings, Modifier.offset(x = 8.dp)) {
-                            Icon(Icons.Rounded.MoreVert, "设置 ${renderDanmakuServiceId(info.serviceId)}")
+                            Icon(Icons.Rounded.MoreVert, settingsText)
                         }
                         dropdown()
                     }
@@ -162,7 +181,7 @@ fun DanmakuSourceCard(
                         verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Icon(Icons.Outlined.Subtitles, "弹幕数量")
+                        Icon(Icons.Outlined.Subtitles, danmakuCountText)
                         Text(remember(info.count) { "${info.count}" }, softWrap = false)
                     }
                 }
@@ -178,7 +197,7 @@ fun DanmakuSourceCard(
                 }
             } else {
                 ListItem(
-                    headlineContent = { Text("已禁用") },
+                    headlineContent = { Text(disabledText) },
                     leadingContent = {
                         Icon(Icons.Rounded.Close, null)
                     },
@@ -191,12 +210,13 @@ fun DanmakuSourceCard(
     }
 }
 
+@Composable
 internal fun renderDanmakuServiceId(serviceId: DanmakuServiceId): String = when (serviceId) {
     DanmakuServiceId.Animeko -> "Animeko"
     DanmakuServiceId.AcFun -> "AcFun"
     DanmakuServiceId.Baha -> "Baha"
-    DanmakuServiceId.Bilibili -> "哔哩哔哩"
-    DanmakuServiceId.Dandanplay -> "弹弹"
+    DanmakuServiceId.Bilibili -> stringResource(Lang.subject_episode_danmaku_service_bilibili)
+    DanmakuServiceId.Dandanplay -> stringResource(Lang.subject_episode_danmaku_service_dandanplay)
     DanmakuServiceId.Tucao -> "Tucao"
 
     // `else` should not reach in production
@@ -226,23 +246,30 @@ fun DanmakuSourceSettingsDropdown(
     onClickAdjustShift: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val changeText = stringResource(Lang.episode_danmaku_match_change)
+    val enableText = stringResource(Lang.subject_episode_enable)
+    val disableText = stringResource(Lang.subject_episode_disable)
+    val timeShiftText = stringResource(
+        Lang.subject_episode_danmaku_time_shift_item,
+        formatDanmakuShiftMillis(currentShiftMillis),
+    )
     DropdownMenu(expanded, onDismissRequest, modifier) {
         DropdownMenuItem(
-            text = { Text("更换") },
+            text = { Text(changeText) },
             onClick = {
                 onClickChange()
                 onDismissRequest()
             },
         )
         DropdownMenuItem(
-            text = { Text(if (enabled) "禁用" else "启用") },
+            text = { Text(if (enabled) disableText else enableText) },
             onClick = {
                 onSetEnabled(!enabled)
                 onDismissRequest()
             },
         )
         DropdownMenuItem(
-            text = { Text("时间校准 (${formatDanmakuShiftMillis(currentShiftMillis)})") },
+            text = { Text(timeShiftText) },
             leadingIcon = { Icon(Icons.Outlined.Schedule, null) },
             onClick = {
                 onClickAdjustShift()
@@ -258,6 +285,9 @@ private fun DanmakuMatchMethodView(
     showDetails: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val semiFuzzyMatchText = stringResource(Lang.subject_episode_danmaku_match_semi_fuzzy)
+    val fuzzyMatchText = stringResource(Lang.subject_episode_danmaku_match_fuzzy)
+    val noMatchText = stringResource(Lang.subject_episode_danmaku_match_none)
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         when (method) {
             is DanmakuMatchMethod.Exact -> {
@@ -279,7 +309,7 @@ private fun DanmakuMatchMethodView(
                 ) {
                     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.tertiary) {
                         Icon(Icons.Outlined.QuestionMark, null)
-                        Text("半模糊匹配", softWrap = false)
+                        Text(semiFuzzyMatchText, softWrap = false)
                     }
                 }
                 if (showDetails) {
@@ -299,7 +329,7 @@ private fun DanmakuMatchMethodView(
                 ) {
                     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.tertiary) {
                         Icon(Icons.Outlined.QuestionMark, null)
-                        Text("模糊匹配", softWrap = false)
+                        Text(fuzzyMatchText, softWrap = false)
                     }
                 }
                 if (showDetails) {
@@ -331,7 +361,7 @@ private fun DanmakuMatchMethodView(
                 ) {
                     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.secondary) {
                         Icon(Icons.Outlined.Close, null)
-                        Text("无匹配", softWrap = false)
+                        Text(noMatchText, softWrap = false)
                     }
                 }
             }
@@ -342,13 +372,14 @@ private fun DanmakuMatchMethodView(
 
 @Composable
 private fun ExactMatch() {
+    val exactMatchText = stringResource(Lang.subject_episode_danmaku_match_exact)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
             Icon(Icons.Outlined.WorkspacePremium, null)
-            Text("精确匹配")
+            Text(exactMatchText)
         }
     }
 }

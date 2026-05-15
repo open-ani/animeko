@@ -34,7 +34,7 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.settings_account_popup_login_register
+import me.him188.ani.app.ui.lang.settings_account_login_register
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -53,6 +53,7 @@ internal fun SelfInfoBanner(
     containerColor: Color = MaterialTheme.colorScheme.surface
 ) {
     val isLogin = remember(state) { state.isSessionValid == true }
+    val loginRegisterText = stringResource(Lang.settings_account_login_register)
 
     Surface(
         checked = checked,
@@ -64,7 +65,7 @@ internal fun SelfInfoBanner(
         Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = CenterVertically) {
             if (!isLogin) {
                 FilledTonalButton(onLoginClick, Modifier.fillMaxWidth()) {
-                    Text(stringResource(Lang.settings_account_popup_login_register))
+                    Text(loginRegisterText)
                 }
             } else {
                 AvatarImage(

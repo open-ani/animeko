@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import me.him188.ani.app.ui.subject.SubjectProgressState
+import me.him188.ani.app.ui.subject.rememberSubjectStatusStrings
 
 
 /**
@@ -32,14 +33,15 @@ fun SubjectProgressButton(
     modifier: Modifier = Modifier,
 ) {
     val requiredWidth = Modifier.requiredWidth(IntrinsicSize.Max)
+    val strings = rememberSubjectStatusStrings()
     Crossfade(state.buttonIsPrimary) { isPrimary ->
         if (isPrimary) {
             Button(onClick = onPlay, modifier) {
-                Text(state.buttonText, requiredWidth, softWrap = false)
+                Text(state.buttonText(strings), requiredWidth, softWrap = false)
             }
         } else {
             FilledTonalButton(onClick = onPlay, modifier) {
-                Text(state.buttonText, requiredWidth, softWrap = false)
+                Text(state.buttonText(strings), requiredWidth, softWrap = false)
             }
         }
     }

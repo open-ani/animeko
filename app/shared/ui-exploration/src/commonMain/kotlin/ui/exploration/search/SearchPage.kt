@@ -95,10 +95,15 @@ import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.preview.PreviewSizeClasses
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.exploration_search
+import me.him188.ani.app.ui.lang.exploration_search_back_to_top
+import me.him188.ani.app.ui.lang.settings_mediasource_test_keyword
 import me.him188.ani.app.ui.search.TestSearchState
 import me.him188.ani.app.ui.search.collectItemsWithLifecycle
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isDesktop
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SearchPage(
@@ -112,6 +117,9 @@ fun SearchPage(
     contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     navigationIcon: @Composable () -> Unit = {},
 ) {
+    val searchText = stringResource(Lang.exploration_search)
+    val keywordText = stringResource(Lang.settings_mediasource_test_keyword)
+    val backToTopText = stringResource(Lang.exploration_search_back_to_top)
     val coroutineScope = rememberCoroutineScope()
     val items = state.searchState.collectItemsWithLifecycle()
     val focusManager = LocalFocusManager.current
@@ -145,7 +153,7 @@ fun SearchPage(
                 expanded = isSearchBarExpanded,
                 onExpandedChange = { isSearchBarExpanded = it },
                 modifier = Modifier.padding(bottom = 16.dp),
-                placeholder = { Text("关键词") },
+                placeholder = { Text(keywordText) },
                 windowInsets = contentWindowInsets.only(WindowInsetsSides.Horizontal),
             )
         },
@@ -273,7 +281,7 @@ fun SearchPage(
                         }
                     },
                 ) {
-                    Icon(Icons.Rounded.KeyboardArrowUp, "回到顶部")
+                    Icon(Icons.Rounded.KeyboardArrowUp, backToTopText)
                 }
             }
         },
@@ -457,6 +465,7 @@ internal fun SearchPageListDetailScaffold(
     contentWindowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val searchText = stringResource(Lang.exploration_search)
 
     val topAppBarScrollBehavior: TopAppBarScrollBehavior? = if (LocalPlatform.current.isDesktop()) {
         null
@@ -468,7 +477,7 @@ internal fun SearchPageListDetailScaffold(
         navigator = navigator,
         listPaneTopAppBar = {
             AniTopAppBar(
-                title = { Text("搜索") },
+                title = { Text(searchText) },
                 modifier = Modifier.fillMaxWidth(),
                 navigationIcon = {
                     if (navigator.canNavigateBack()) {

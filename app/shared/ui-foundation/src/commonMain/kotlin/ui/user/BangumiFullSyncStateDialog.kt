@@ -24,6 +24,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.foundation_bangumi_sync_continue_background
+import me.him188.ani.app.ui.lang.foundation_bangumi_sync_description
+import me.him188.ani.app.ui.lang.foundation_bangumi_sync_failed
+import me.him188.ani.app.ui.lang.foundation_bangumi_sync_fetching_episodes
+import me.him188.ani.app.ui.lang.foundation_bangumi_sync_fetching_metadata
+import me.him188.ani.app.ui.lang.foundation_bangumi_sync_fetching_subjects
+import me.him188.ani.app.ui.lang.foundation_bangumi_sync_finishing
+import me.him188.ani.app.ui.lang.foundation_bangumi_sync_in_progress
+import me.him188.ani.app.ui.lang.foundation_bangumi_sync_inserting
+import me.him188.ani.app.ui.lang.foundation_bangumi_sync_preparing
+import me.him188.ani.app.ui.lang.foundation_bangumi_sync_success
+import me.him188.ani.app.ui.lang.foundation_bangumi_sync_title
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun BangumiFullSyncStateDialog(
@@ -31,7 +45,7 @@ fun BangumiFullSyncStateDialog(
     onDismissRequest: () -> Unit,
 ) {
     AlertDialog(
-        title = { Text("正在下载 Bangumi 收藏数据") },
+        title = { Text(stringResource(Lang.foundation_bangumi_sync_title)) },
         text = {
             Column {
                 Text(renderBangumiSyncState(state))
@@ -42,36 +56,56 @@ fun BangumiFullSyncStateDialog(
                     LinearProgressIndicator({ 1f }, modifier = Modifier.fillMaxWidth())
                 }
                 Spacer(modifier = Modifier.height(24.dp))
-                Text("此操作可能需要 5-15 分钟时间，请耐心等待。在下载过程中，你可以正常使用其他功能。可手动刷新收藏列表查看最新进度。")
+                Text(stringResource(Lang.foundation_bangumi_sync_description))
             }
         },
         onDismissRequest = onDismissRequest,
         confirmButton = {
             TextButton(onDismissRequest) {
-                Text("在后台继续")
+                Text(stringResource(Lang.foundation_bangumi_sync_continue_background))
             }
         },
         properties = DialogProperties(dismissOnClickOutside = false),
     )
 }
 
+@Composable
 private fun renderBangumiSyncState(state: BangumiSyncState?): String {
     return when (state) {
-        null -> "准备中"
-        BangumiSyncState.Preparing -> "正在获取元数据"
-        is BangumiSyncState.FetchingSubjects -> "(已完成 ${state.fetchedCount} 条) 正在获取更多收藏列表"
-        is BangumiSyncState.FetchingEpisodes -> "(已完成 ${state.fetchedCount} 条) 正在获取观看进度"
-        is BangumiSyncState.Inserting -> "(已完成 ${state.savedCount} 条) 正在保存"
-        is BangumiSyncState.Finishing -> "(已完成 ${state.savedCount} 条) 正在完成"
+        null -> stringResource(Lang.foundation_bangumi_sync_preparing)
+        BangumiSyncState.Preparing -> stringResource(Lang.foundation_bangumi_sync_fetching_metadata)
+        is BangumiSyncState.FetchingSubjects -> stringResource(
+            Lang.foundation_bangumi_sync_fetching_subjects,
+            state.fetchedCount,
+        )
+
+        is BangumiSyncState.FetchingEpisodes -> stringResource(
+            Lang.foundation_bangumi_sync_fetching_episodes,
+            state.fetchedCount,
+        )
+
+        is BangumiSyncState.Inserting -> stringResource(
+            Lang.foundation_bangumi_sync_inserting,
+            state.savedCount,
+        )
+
+        is BangumiSyncState.Finishing -> stringResource(
+            Lang.foundation_bangumi_sync_finishing,
+            state.savedCount,
+        )
         is BangumiSyncState.Finished -> {
             if (state.error != null) {
-                "(已完成 ${state.savedCount} 条) 同步失败, 错误信息如下: \n$state"
+                stringResource(
+                    Lang.foundation_bangumi_sync_failed,
+                    state.savedCount,
+                    state.toString(),
+                )
             } else {
-                "(已完成 ${state.savedCount} 条) 同步成功"
+                stringResource(Lang.foundation_bangumi_sync_success, state.savedCount)
             }
         }
 
-        BangumiSyncState.Unsupported -> "进行中"
+        BangumiSyncState.Unsupported -> stringResource(Lang.foundation_bangumi_sync_in_progress)
     }
 }
 

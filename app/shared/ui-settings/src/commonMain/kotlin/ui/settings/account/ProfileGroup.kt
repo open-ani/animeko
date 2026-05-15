@@ -79,6 +79,30 @@ import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.rememberDragAndDropState
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_account_profile_avatar_invalid_format
+import me.him188.ani.app.ui.lang.settings_account_profile_avatar_size_exceeded
+import me.him188.ani.app.ui.lang.settings_account_profile_bind
+import me.him188.ani.app.ui.lang.settings_account_profile_crop_and_upload
+import me.him188.ani.app.ui.lang.settings_account_profile_crop_avatar
+import me.him188.ani.app.ui.lang.settings_account_profile_crop_hint
+import me.him188.ani.app.ui.lang.settings_account_profile_done
+import me.him188.ani.app.ui.lang.settings_account_profile_email
+import me.him188.ani.app.ui.lang.settings_account_profile_nickname
+import me.him188.ani.app.ui.lang.settings_account_profile_nickname_hint
+import me.him188.ani.app.ui.lang.settings_account_profile_not_bound
+import me.him188.ani.app.ui.lang.settings_account_profile_not_set
+import me.him188.ani.app.ui.lang.settings_account_profile_select_avatar
+import me.him188.ani.app.ui.lang.settings_account_profile_select_file
+import me.him188.ani.app.ui.lang.settings_account_profile_select_file_description
+import me.him188.ani.app.ui.lang.settings_account_profile_select_file_description_desktop
+import me.him188.ani.app.ui.lang.settings_account_profile_third_party_accounts
+import me.him188.ani.app.ui.lang.settings_account_profile_unbind
+import me.him188.ani.app.ui.lang.settings_account_profile_unbind_bangumi_confirmation
+import me.him188.ani.app.ui.lang.settings_account_profile_upload_avatar
+import me.him188.ani.app.ui.lang.settings_account_profile_uploading_avatar
+import me.him188.ani.app.ui.lang.settings_account_profile_user_id
+import me.him188.ani.app.ui.lang.subject_collection_cancel
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.search.LoadErrorCardLayout
 import me.him188.ani.app.ui.search.LoadErrorCardRole
@@ -88,6 +112,7 @@ import me.him188.ani.app.ui.settings.framework.components.TextFieldItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
+import org.jetbrains.compose.resources.stringResource
 
 // Crop helpers for free-drag 1:1 selector
 private enum class CropCorner { TL, TR, BL, BR }
@@ -170,6 +195,15 @@ internal fun SettingsScope.ProfileGroupImpl(
     val currentInfo = state.selfInfo.selfInfo
     val currentState by rememberUpdatedState(state.selfInfo)
     var showUploadAvatarDialog by rememberSaveable { mutableStateOf(false) }
+    val notSetText = stringResource(Lang.settings_account_profile_not_set)
+    val nicknameText = stringResource(Lang.settings_account_profile_nickname)
+    val nicknameHintText = stringResource(Lang.settings_account_profile_nickname_hint)
+    val emailText = stringResource(Lang.settings_account_profile_email)
+    val bindText = stringResource(Lang.settings_account_profile_bind)
+    val userIdText = stringResource(Lang.settings_account_profile_user_id)
+    val thirdPartyAccountsText = stringResource(Lang.settings_account_profile_third_party_accounts)
+    val notBoundText = stringResource(Lang.settings_account_profile_not_bound)
+    val unbindText = stringResource(Lang.settings_account_profile_unbind)
 
     Column(modifier) {
         Column(
@@ -201,9 +235,9 @@ internal fun SettingsScope.ProfileGroupImpl(
 
                 TextFieldItem(
                     value = currentInfo?.nickname.orEmpty(),
-                    title = { Text("昵称") },
-                    description = { Text(currentInfo?.nickname?.let { "@$it" } ?: "未设置") },
-                    textFieldDescription = { Text("最多 20 字，只能包含中文、日文、英文、数字和下划线") },
+                    title = { Text(nicknameText) },
+                    description = { Text(currentInfo?.nickname?.let { "@$it" } ?: notSetText) },
+                    textFieldDescription = { Text(nicknameHintText) },
                     onValueChangeCompleted = { onSaveNickname(it) },
                     inverseTitleDescription = true,
                     isErrorProvider = { isNicknameErrorProvider(it) },
@@ -218,19 +252,19 @@ internal fun SettingsScope.ProfileGroupImpl(
                     title = {
                         SelectionContainer {
                             Text(
-                                currentInfo?.email ?: "未设置",
+                                currentInfo?.email ?: notSetText,
                                 maxLines = 1,
                                 overflow = TextOverflow.MiddleEllipsis,
                             )
                         }
                     },
-                    description = { Text("邮箱") },
+                    description = { Text(emailText) },
                     modifier = Modifier.placeholder(isPlaceholder),
                     onClick = if (canBindEmail) onNavigateToEmail else null,
                     action = if (canBindEmail) {
                         {
                             IconButton(onNavigateToEmail) {
-                                Icon(Icons.Rounded.Edit, "绑定", tint = MaterialTheme.colorScheme.primary)
+                                Icon(Icons.Rounded.Edit, bindText, tint = MaterialTheme.colorScheme.primary)
                             }
                         }
                     } else null,
@@ -241,21 +275,21 @@ internal fun SettingsScope.ProfileGroupImpl(
                             Text(currentInfo?.id.toString())
                         }
                     },
-                    description = { Text("用户 ID") },
+                    description = { Text(userIdText) },
                     modifier = Modifier.placeholder(isPlaceholder),
                 )
 
-                Group(title = { Text("第三方账号") }) {
+                Group(title = { Text(thirdPartyAccountsText) }) {
                     TextItem(
                         title = { Text("Bangumi") },
-                        description = { Text(currentInfo?.bangumiUsername ?: "未绑定") },
+                        description = { Text(currentInfo?.bangumiUsername ?: notBoundText) },
                         icon = {
                             Image(Icons.Default.BangumiNext, contentDescription = "Bangumi Icon")
                         },
                         onClick = onBangumiClick,
                         action = if (!currentInfo?.bangumiUsername.isNullOrEmpty()) {
                             {
-                                TextButton(onClick = { showUnbindBangumiDialog = true }) { Text("解绑") }
+                                TextButton(onClick = { showUnbindBangumiDialog = true }) { Text(unbindText) }
                             }
                         } else null,
                         modifier = Modifier.placeholder(isPlaceholder),
@@ -317,15 +351,15 @@ private fun UnbindBangumiDialog(
     AlertDialog(
         onCancel,
         // icon omitted to reduce dependency on specific icon packs
-        text = { Text("确定要解绑 Bangumi 吗？解绑后将不再同步观看记录到 Bangumi。解绑后可以重新绑定。") },
+        text = { Text(stringResource(Lang.settings_account_profile_unbind_bangumi_confirmation)) },
         confirmButton = {
             TextButton(onConfirm, enabled = confirmEnabled) {
-                Text("解绑", color = MaterialTheme.colorScheme.error)
+                Text(stringResource(Lang.settings_account_profile_unbind), color = MaterialTheme.colorScheme.error)
             }
         },
         dismissButton = {
             TextButton(onCancel) {
-                Text("取消")
+                Text(stringResource(Lang.subject_collection_cancel))
             }
         },
     )
@@ -343,9 +377,16 @@ private fun SettingsScope.UploadAvatarDialog(
     var filePickerLaunched by rememberSaveable { mutableStateOf(false) }
     var cropTarget by remember { mutableStateOf<ByteArray?>(null) }
     val asyncHandler = rememberAsyncHandler()
+    val selectAvatarText = stringResource(Lang.settings_account_profile_select_avatar)
+    val doneText = stringResource(Lang.settings_account_profile_done)
+    val uploadAvatarText = stringResource(Lang.settings_account_profile_upload_avatar)
+    val selectFileText = stringResource(Lang.settings_account_profile_select_file)
+    val selectFileDescriptionText = stringResource(Lang.settings_account_profile_select_file_description)
+    val selectFileDescriptionDesktopText =
+        stringResource(Lang.settings_account_profile_select_file_description_desktop)
     val filePicker = rememberFilePickerLauncher(
         type = FileKitType.Image,
-        title = "选择头像",
+        title = selectAvatarText,
     ) {
         filePickerLaunched = false
         it?.let { file ->
@@ -381,26 +422,19 @@ private fun SettingsScope.UploadAvatarDialog(
                 onClick = onDismissRequest,
                 enabled = !filePickerLaunched,
             ) {
-                Text("完成")
+                Text(doneText)
             }
         },
         title = {
-            Text("上传头像")
+            Text(uploadAvatarText)
         },
         text = {
             Column(modifier) {
+                val selectFileDescription =
+                    if (currentPlatform() is Platform.Desktop) selectFileDescriptionDesktopText else selectFileDescriptionText
                 TextItem(
-                    title = { Text("选择文件") },
-                    description = {
-                        Text(
-                            buildString {
-                                if (currentPlatform() is Platform.Desktop) {
-                                    append("或拖动文件到此处。")
-                                }
-                                append("支持 JPEG/PNG/WebP，最大 1MB。多次上传需间隔一分钟。")
-                            },
-                        )
-                    },
+                    title = { Text(selectFileText) },
+                    description = { Text(selectFileDescription) },
                     onClickEnabled = !filePickerLaunched,
                     modifier = Modifier
                         .border(
@@ -479,13 +513,14 @@ private fun SettingsScope.UploadAvatarDialog(
     }
 }
 
+@Composable
 private fun renderAvatarUploadMessage(
     state: EditProfileState.UploadAvatarState,
 ): String {
     return when (state) {
-        is EditProfileState.UploadAvatarState.Uploading -> "正在上传..."
-        is EditProfileState.UploadAvatarState.SizeExceeded -> "图片大小超过 1MB"
-        is EditProfileState.UploadAvatarState.InvalidFormat -> "图片格式不支持"
+        is EditProfileState.UploadAvatarState.Uploading -> stringResource(Lang.settings_account_profile_uploading_avatar)
+        is EditProfileState.UploadAvatarState.SizeExceeded -> stringResource(Lang.settings_account_profile_avatar_size_exceeded)
+        is EditProfileState.UploadAvatarState.InvalidFormat -> stringResource(Lang.settings_account_profile_avatar_invalid_format)
         is EditProfileState.UploadAvatarState.UnknownError -> renderLoadErrorMessage(state.loadError)
         is EditProfileState.UploadAvatarState.UnknownErrorWithRetry -> renderLoadErrorMessage(state.loadError)
         is EditProfileState.UploadAvatarState.Success, EditProfileState.UploadAvatarState.Default -> ""
@@ -537,13 +572,13 @@ private fun CropAvatarDialog(
                     onConfirmCropped(bytes)
                 },
             ) {
-                Text("裁剪并上传")
+                Text(stringResource(Lang.settings_account_profile_crop_and_upload))
             }
         },
         dismissButton = {
-            TextButton(onDismissRequest) { Text("取消") }
+            TextButton(onDismissRequest) { Text(stringResource(Lang.subject_collection_cancel)) }
         },
-        title = { Text("裁剪头像") },
+        title = { Text(stringResource(Lang.settings_account_profile_crop_avatar)) },
         text = {
             Column(Modifier.fillMaxWidth()) {
                 val isAndroid = currentPlatform() is Platform.Mobile
@@ -776,7 +811,7 @@ private fun CropAvatarDialog(
                     drawHandle(sx + ss - handlePx / 2, sy + ss - handlePx / 2)
                 }
 
-                Text("拖动选框移动，拖动角点调整大小", Modifier.padding(top = 8.dp))
+                Text(stringResource(Lang.settings_account_profile_crop_hint), Modifier.padding(top = 8.dp))
             }
         },
     )

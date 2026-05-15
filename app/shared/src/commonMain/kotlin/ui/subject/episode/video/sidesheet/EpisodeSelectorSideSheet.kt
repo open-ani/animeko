@@ -51,12 +51,17 @@ import me.him188.ani.app.ui.foundation.BackgroundScope
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.icons.PlayingIcon
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.subject_episode_close
+import me.him188.ani.app.ui.lang.subject_episode_now_playing
+import me.him188.ani.app.ui.lang.video_player_select_episode
 import me.him188.ani.app.ui.subject.episode.EpisodePresentation
 import me.him188.ani.app.ui.subject.episode.TAG_EPISODE_SELECTOR_SHEET
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
 import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
@@ -131,13 +136,17 @@ fun EpisodeVideoSideSheets.EpisodeSelectorSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val selectEpisodeText = stringResource(Lang.video_player_select_episode)
+    val closeText = stringResource(Lang.subject_episode_close)
+    val nowPlayingText = stringResource(Lang.subject_episode_now_playing)
+
     SideSheetLayout(
         onDismissRequest = onDismissRequest,
         modifier = modifier.testTag(TAG_EPISODE_SELECTOR_SHEET),
-        title = { Text(text = "选择剧集") },
+        title = { Text(text = selectEpisodeText) },
         closeButton = {
             IconButton(onClick = onDismissRequest) {
-                Icon(Icons.Rounded.Close, contentDescription = "关闭")
+                Icon(Icons.Rounded.Close, contentDescription = closeText)
             }
         },
     ) {
@@ -172,7 +181,7 @@ fun EpisodeVideoSideSheets.EpisodeSelectorSheet(
                     },
                     trailingContent = {
                         if (selected) {
-                            PlayingIcon(contentDescription = "正在播放")
+                            PlayingIcon(contentDescription = nowPlayingText)
                         }
                     },
                     colors =
@@ -250,9 +259,10 @@ fun PreviewEpisodeSelectorSideSheet() {
 @Composable
 fun PreviewPlayingIcon() {
     ProvideCompositionLocalsForPreview {
+        val nowPlayingText = stringResource(Lang.subject_episode_now_playing)
         Box(Modifier.size(64.dp), contentAlignment = Alignment.Center) {
             Box(modifier = Modifier.border(1.dp, color = Color.Magenta)) {
-                PlayingIcon(contentDescription = "正在播放")
+                PlayingIcon(contentDescription = nowPlayingText)
             }
         }
     }

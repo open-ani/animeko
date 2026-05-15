@@ -73,6 +73,11 @@ internal fun ProfilePopupLayout(
     modifier: Modifier = Modifier,
 ) {
     val isLogin = remember(state) { state.selfInfo.isSessionValid == true }
+    val notLoggedInText = stringResource(Lang.settings_account_popup_not_logged_in)
+    val editProfileText = stringResource(Lang.settings_account_popup_edit_profile)
+    val loginRegisterText = stringResource(Lang.settings_account_popup_login_register)
+    val settingsText = stringResource(Lang.settings)
+    val logoutText = stringResource(Lang.settings_account_popup_logout)
     Column(modifier) {
         Box(
             modifier = Modifier
@@ -95,7 +100,7 @@ internal fun ProfilePopupLayout(
         val showEmail = false
 
         Text(
-            if (isLogin) title else stringResource(Lang.settings_account_popup_not_logged_in),
+            if (isLogin) title else notLoggedInText,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier
@@ -132,25 +137,25 @@ internal fun ProfilePopupLayout(
             Column {
                 if (isLogin) {
                     TextItem(
-                        icon = { Icon(Icons.Outlined.Edit, contentDescription = "Edit profile settings") },
+                        icon = { Icon(Icons.Outlined.Edit, contentDescription = editProfileText) },
                         onClick = onClickEditProfile,
                     ) {
-                        Text(stringResource(Lang.settings_account_popup_edit_profile))
+                        Text(editProfileText)
                     }
                 } else {
                     TextItem(
-                        icon = { Icon(Icons.AutoMirrored.Outlined.Login, contentDescription = "Login") },
+                        icon = { Icon(Icons.AutoMirrored.Outlined.Login, contentDescription = loginRegisterText) },
                         onClick = onClickLogin,
                     ) {
-                        Text(stringResource(Lang.settings_account_popup_login_register))
+                        Text(loginRegisterText)
                     }
                 }
 
                 TextItem(
-                    icon = { Icon(Icons.Outlined.Settings, contentDescription = "Settings") },
+                    icon = { Icon(Icons.Outlined.Settings, contentDescription = settingsText) },
                     onClick = onClickSettings,
                 ) {
-                    Text(stringResource(Lang.settings))
+                    Text(settingsText)
                 }
 
                 if (isLogin) {
@@ -159,14 +164,14 @@ internal fun ProfilePopupLayout(
                             ProvideContentColor(MaterialTheme.colorScheme.error) {
                                 Icon(
                                     Icons.AutoMirrored.Outlined.Logout,
-                                    contentDescription = "Logout",
+                                    contentDescription = logoutText,
                                 )
                             }
                         },
                         onClick = onClickLogout,
                     ) {
                         ProvideContentColor(MaterialTheme.colorScheme.error) {
-                            Text(stringResource(Lang.settings_account_popup_logout))
+                            Text(logoutText)
                         }
                     }
                 }

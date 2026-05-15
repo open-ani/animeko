@@ -49,6 +49,8 @@ import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.comment_empty_title
+import me.him188.ani.app.ui.lang.comment_reply
+import me.him188.ani.app.ui.lang.comment_view_more_replies
 import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.richtext.RichTextDefaults
 import me.him188.ani.app.ui.richtext.UIRichElement
@@ -179,6 +181,7 @@ object CommentDefaults {
         onClickBlock: () -> Unit,
         onClickReport: () -> Unit
     ) {
+        val replyText = stringResource(Lang.comment_reply)
         val size = EditCommentDefaults.ActionButtonSize.dp
         val iconSize = 20.dp
         Row(modifier = modifier) {
@@ -188,7 +191,7 @@ object CommentDefaults {
                 if (showReply) {
                     EditCommentDefaults.ActionButton(
                         imageVector = Icons.Outlined.ModeComment,
-                        contentDescription = "回复评论",
+                        contentDescription = replyText,
                         onClick = onClickReply,
                         iconSize = iconSize,
                     )
@@ -240,7 +243,7 @@ object CommentDefaults {
                 }
                 if (hiddenReplyCount > 0) {
                     Text(
-                        text = "查看更多 $hiddenReplyCount 条回复>",
+                        text = stringResource(Lang.comment_view_more_replies, hiddenReplyCount),
                         color = primaryColor,
                         modifier = Modifier
                             .fillMaxWidth()

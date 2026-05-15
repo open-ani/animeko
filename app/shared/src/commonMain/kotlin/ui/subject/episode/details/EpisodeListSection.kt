@@ -44,7 +44,6 @@ import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
@@ -80,6 +79,12 @@ import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.theme.AniTheme
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.episode_danmaku_match_select_episode
+import me.him188.ani.app.ui.lang.subject_episode_collapse
+import me.him188.ani.app.ui.lang.subject_episode_episode_list
+import me.him188.ani.app.ui.lang.subject_episode_expand
+import me.him188.ani.app.ui.lang.subject_episode_view_more_episodes
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
 import me.him188.ani.app.ui.subject.createTestAiringLabelState
@@ -88,6 +93,7 @@ import me.him188.ani.app.ui.subject.episode.details.components.PaginatedEpisodeL
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 剧集列表区域组件，根据屏幕尺寸自适应显示不同的UI布局。
@@ -146,6 +152,9 @@ private fun WideEpisodeListSection(
     modifier: Modifier = Modifier,
     onToggleExpanded: () -> Unit,
 ) {
+    val episodeListText = stringResource(Lang.subject_episode_episode_list)
+    val collapseText = stringResource(Lang.subject_episode_collapse)
+    val expandText = stringResource(Lang.subject_episode_expand)
     Box(modifier = modifier.padding(horizontal = 16.dp).fillMaxWidth()) {
         Column {
             AnimatedVisibility(
@@ -226,7 +235,7 @@ private fun WideEpisodeListSection(
             ListItem(
                 headlineContent = {
                     Text(
-                        "选集",
+                        episodeListText,
                         style = MaterialTheme.typography.titleMedium,
                     )
                 },
@@ -239,7 +248,7 @@ private fun WideEpisodeListSection(
                 trailingContent = {
                     Icon(
                         if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                        contentDescription = if (expanded) "收起" else "展开",
+                        contentDescription = if (expanded) collapseText else expandText,
                     )
                 },
                 colors = ListItemDefaults.colors(
@@ -265,6 +274,9 @@ private fun NarrowEpisodeListSection(
     airingLabelState: AiringLabelState,
     modifier: Modifier = Modifier,
 ) {
+    val episodeListText = stringResource(Lang.subject_episode_episode_list)
+    val viewMoreEpisodesText = stringResource(Lang.subject_episode_view_more_episodes)
+    val selectEpisodeText = stringResource(Lang.episode_danmaku_match_select_episode)
     var showBottomSheet by rememberSaveable { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val horizontalListState = rememberLazyListState()
@@ -279,7 +291,7 @@ private fun NarrowEpisodeListSection(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "选集",
+                    episodeListText,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.combinedClickable(
                         onClick = {},
@@ -311,7 +323,7 @@ private fun NarrowEpisodeListSection(
                 Spacer(Modifier.width(4.dp))
                 Icon(
                     Icons.Outlined.ChevronRight,
-                    contentDescription = "查看更多剧集",
+                    contentDescription = viewMoreEpisodesText,
                     Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -375,7 +387,7 @@ private fun NarrowEpisodeListSection(
         ) {
             Column {
                 TopAppBar(
-                    title = { Text("选择剧集") },
+                    title = { Text(selectEpisodeText) },
                     windowInsets = WindowInsets(0),
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = BottomSheetDefaults.ContainerColor,

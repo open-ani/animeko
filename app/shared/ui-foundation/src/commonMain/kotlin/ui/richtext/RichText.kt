@@ -130,15 +130,21 @@ object RichTextDefaults {
     val FontSize: Float = 16f
 
     @UiThread
-    fun checkSanityAndOpen(url: String, navigator: UriHandler, toaster: Toaster) {
+    fun checkSanityAndOpen(
+        url: String,
+        navigator: UriHandler,
+        toaster: Toaster,
+        externalAppLinkWarningPrefix: String,
+        openLinkFailedPrefix: String,
+    ) {
         try {
             if (url.startsWith("https://") || url.startsWith("http://")) {
                 navigator.openUri(url)
             } else {
-                toaster.toast("此链接可能会打开其他应用，ani 将不会打开此链接：\n$url")
+                toaster.toast(externalAppLinkWarningPrefix + url)
             }
         } catch (ex: Exception) {
-            toaster.toast("无法打开此链接：\n$url")
+            toaster.toast(openLinkFailedPrefix + url)
         }
     }
 

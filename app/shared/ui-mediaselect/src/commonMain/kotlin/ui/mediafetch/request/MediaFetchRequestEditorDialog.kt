@@ -25,7 +25,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import me.him188.ani.app.ui.foundation.saveable.mutableStateSaver
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_continue_editing
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_discard
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_discard_confirmation
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_invalid_request
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_save_and_refresh
+import me.him188.ani.app.ui.lang.mediafetch_request_editor_title
+import me.him188.ani.app.ui.lang.settings_danmaku_cancel
 import me.him188.ani.datasources.api.source.MediaFetchRequest
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * @see MediaFetchRequestEditor
@@ -53,6 +62,13 @@ fun MediaFetchRequestEditorDialog(
     }
 
     val toaster = LocalToaster.current
+    val invalidRequestText = stringResource(Lang.mediafetch_request_editor_invalid_request)
+    val saveAndRefreshText = stringResource(Lang.mediafetch_request_editor_save_and_refresh)
+    val cancelText = stringResource(Lang.settings_danmaku_cancel)
+    val editRequestTitle = stringResource(Lang.mediafetch_request_editor_title)
+    val discardText = stringResource(Lang.mediafetch_request_editor_discard)
+    val continueEditingText = stringResource(Lang.mediafetch_request_editor_continue_editing)
+    val discardConfirmationText = stringResource(Lang.mediafetch_request_editor_discard_confirmation)
 
     AlertDialog(
         onDismissRequestWrapped,
@@ -62,20 +78,20 @@ fun MediaFetchRequestEditorDialog(
                     editingRequest.toMediaFetchRequestOrNull()?.let {
                         onDismissRequestWrapped()
                         onFetchRequestChange(it)
-                    } ?: toaster.toast("请求无效，请检查")
+                    } ?: toaster.toast(invalidRequestText)
                 },
                 enabled = editingRequest.toMediaFetchRequestOrNull() != null,
             ) {
-                Text("保存并刷新")
+                Text(saveAndRefreshText)
             }
         },
         dismissButton = {
             TextButton(onDismissRequestWrapped) {
-                Text("取消")
+                Text(cancelText)
             }
         },
         title = {
-            Text("编辑查询请求")
+            Text(editRequestTitle)
         },
         text = {
             MediaFetchRequestEditor(
@@ -98,7 +114,7 @@ fun MediaFetchRequestEditorDialog(
                         onDismissRequest()
                     },
                 ) {
-                    Text("舍弃", color = MaterialTheme.colorScheme.error)
+                    Text(discardText, color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
@@ -107,7 +123,7 @@ fun MediaFetchRequestEditorDialog(
                         showConfirmDiscard = false
                     },
                 ) {
-                    Text("继续编辑")
+                    Text(continueEditingText)
                 }
             },
             icon = {
@@ -117,7 +133,7 @@ fun MediaFetchRequestEditorDialog(
                 )
             },
             text = {
-                Text("有未保存的编辑，要舍弃编辑吗？")
+                Text(discardConfirmationText)
             },
         )
     }

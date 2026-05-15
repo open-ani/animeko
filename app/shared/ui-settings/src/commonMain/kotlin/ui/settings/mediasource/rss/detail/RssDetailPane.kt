@@ -70,8 +70,9 @@ import me.him188.ani.app.ui.lang.settings_mediasource_rss_publish_time
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_resolution
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_subtitle_language
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_unknown
+import me.him188.ani.app.ui.media.rememberMediaDetailsStrings
 import me.him188.ani.app.ui.settings.mediasource.rss.test.TestRssItemInfos
-import me.him188.ani.app.ui.settings.mediasource.rss.test.subtitleLanguageRendered
+import me.him188.ani.app.ui.settings.mediasource.rss.test.renderSubtitleLanguageRendered
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.isSingleEpisode
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -135,6 +136,7 @@ private fun RssItemDetailColumn(
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     val toaster = LocalToaster.current
+    val mediaDetailsStrings = rememberMediaDetailsStrings()
 
     // Load string resources in composable context
     val copiedText = stringResource(Lang.settings_mediasource_rss_copied)
@@ -212,7 +214,7 @@ private fun RssItemDetailColumn(
             ListItem(
                 headlineContent = { Text(stringResource(Lang.settings_mediasource_rss_subtitle_language)) },
                 leadingContent = { Icon(Icons.Rounded.Subtitles, contentDescription = null) },
-                supportingContent = { SelectionContainer { Text(item.subtitleLanguageRendered) } },
+                supportingContent = { SelectionContainer { Text(item.renderSubtitleLanguageRendered(mediaDetailsStrings)) } },
             )
         }
         item {

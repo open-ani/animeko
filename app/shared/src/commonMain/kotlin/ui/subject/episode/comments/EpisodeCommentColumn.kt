@@ -56,15 +56,18 @@ import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.comment.UIRichText
 import me.him188.ani.app.ui.comment.generateUiComment
 import me.him188.ani.app.ui.comment.rememberTestCommentState
+import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.foundation.LocalImageViewerHandler
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
-import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.foundation.layout.plus
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.comment_send_comment
 import me.him188.ani.app.ui.richtext.RichText
 import me.him188.ani.app.ui.richtext.UIRichElement
 import me.him188.ani.utils.platform.annotations.TestOnly
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun EpisodeCommentColumn(
@@ -76,6 +79,7 @@ fun EpisodeCommentColumn(
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
     val imageViewer = LocalImageViewerHandler.current
+    val writeCommentText = stringResource(Lang.comment_send_comment)
     val toaster = LocalToaster.current
     LaunchedEffect(state) {
         state.reactionSubmitFailures.collect { error ->
@@ -87,11 +91,10 @@ fun EpisodeCommentColumn(
         modifier,
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                text = { Text("写评论") },
+                text = { Text(writeCommentText) },
                 icon = {
                     Icon(Icons.Rounded.AddComment, null)
-                }
-                ,
+                },
                 onClick = onNewCommentClick,
                 expanded = !gridState.canScrollBackward,
             )

@@ -57,7 +57,14 @@ import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.cache_unknown
+import me.him188.ani.app.ui.lang.media_selector_item_no_subtitle
+import me.him188.ani.app.ui.lang.media_selector_item_season_mismatch
+import me.him188.ani.app.ui.lang.media_selector_item_single_episode_resource
+import me.him188.ani.app.ui.lang.media_selector_item_subject_title_mismatch
+import me.him188.ani.app.ui.lang.media_selector_item_unsupported_playback
 import me.him188.ani.app.ui.lang.settings_debug_copied
+import me.him188.ani.app.ui.media.rememberMediaDetailsStrings
 import me.him188.ani.app.ui.media.renderSubtitleLanguage
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcon
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcons
@@ -65,6 +72,7 @@ import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.stringResource
 
 
 @OptIn(UnsafeOriginalMediaAccess::class)
@@ -83,9 +91,15 @@ internal fun MediaSelectorItem(
 ) {
     // We use the first media for display because the group has the same info.
     val media: Media = group.first.original
+    val mediaDetailsStrings = rememberMediaDetailsStrings()
     val clipboard = LocalClipboard.current
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
+    val noSubtitleText = stringResource(Lang.media_selector_item_no_subtitle)
+    val singleEpisodeResourceText = stringResource(Lang.media_selector_item_single_episode_resource)
+    val unsupportedPlaybackText = stringResource(Lang.media_selector_item_unsupported_playback)
+    val seasonMismatchText = stringResource(Lang.media_selector_item_season_mismatch)
+    val subjectTitleMismatchText = stringResource(Lang.media_selector_item_subject_title_mismatch)
 
     // Determine the reason text, if any
     val reasonText = group.exclusionReason?.let { reason ->
@@ -93,12 +107,12 @@ internal fun MediaSelectorItem(
             reason.toString()
         } else {
             when (reason) {
-                MediaExclusionReason.MediaWithoutSubtitle -> "无字幕"
-                is MediaExclusionReason.SingleEpisodeForCompleteSubject -> "单集资源"
-                MediaExclusionReason.UnsupportedByPlatformPlayer -> "不支持播放"
-                MediaExclusionReason.FromSequelSeason -> "季度不匹配"
-                MediaExclusionReason.FromSeriesSeason -> "季度不匹配(2)"
-                MediaExclusionReason.SubjectNameMismatch -> "条目标题不匹配"
+                MediaExclusionReason.MediaWithoutSubtitle -> noSubtitleText
+                is MediaExclusionReason.SingleEpisodeForCompleteSubject -> singleEpisodeResourceText
+                MediaExclusionReason.UnsupportedByPlatformPlayer -> unsupportedPlaybackText
+                MediaExclusionReason.FromSequelSeason -> seasonMismatchText
+                MediaExclusionReason.FromSeriesSeason -> seasonMismatchText
+                MediaExclusionReason.SubjectNameMismatch -> subjectTitleMismatchText
             }
         }
     }
@@ -139,7 +153,7 @@ internal fun MediaSelectorItem(
                 InputChip(
                     selected = false,
                     onClick = { onPreferSubtitleLanguageId(languageId) },
-                    label = { Text(renderSubtitleLanguage(languageId)) },
+                    label = { Text(renderSubtitleLanguage(languageId, mediaDetailsStrings)) },
                     enabled = preferredSubtitleLanguageId() != languageId,
                 )
             }
@@ -288,11 +302,12 @@ private fun ExposedMediaSourceMenu(
     modifier: Modifier = Modifier,
 ) {
     var showMenu by rememberSaveable { mutableStateOf(false) }
+    val unknownText = stringResource(Lang.cache_unknown)
     ExposedDropdownMenuBox(showMenu, { showMenu = it }, modifier) {
         val currentItem = groupState.selectedItem ?: group.first.original
         val currentSourceInfo by mediaSourceInfoProvider.rememberMediaSourceInfo(currentItem.mediaSourceId)
         TextField(
-            value = currentSourceInfo?.displayName ?: "未知",
+            value = currentSourceInfo?.displayName ?: unknownText,
             onValueChange = {},
             Modifier
                 .widthIn(min = 48.dp) // override default
@@ -324,7 +339,7 @@ private fun ExposedMediaSourceMenu(
                 val item = maybeExcluded.original
                 val sourceInfo by mediaSourceInfoProvider.rememberMediaSourceInfo(item.mediaSourceId)
                 DropdownMenuItem(
-                    text = { Text(sourceInfo?.displayName ?: "未知") },
+                    text = { Text(sourceInfo?.displayName ?: unknownText) },
                     leadingIcon = { MediaSourceIcon(sourceInfo, Modifier.size(24.dp)) },
                     onClick = {
                         groupState.selectedItem = item

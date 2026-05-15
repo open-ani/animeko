@@ -42,11 +42,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.episode_send_danmaku
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.danmaku.api.DanmakuContent
 import me.him188.ani.danmaku.api.DanmakuLocation
+import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.isPlaying
 
@@ -172,6 +175,7 @@ fun DummyDanmakuEditor(
     modifier: Modifier = Modifier,
 ) {
     val shape = MaterialTheme.shapes.medium
+    val sendDanmakuText = stringResource(Lang.episode_send_danmaku)
     Row(
         modifier,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -191,7 +195,7 @@ fun DummyDanmakuEditor(
             ) {
                 ProvideContentColor(MaterialTheme.colorScheme.onSurfaceVariant) {
                     Text(
-                        "发送弹幕",
+                        sendDanmakuText,
                         style = MaterialTheme.typography.labelLarge,
                     )
 

@@ -87,6 +87,7 @@ import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.exploration_search
 import me.him188.ani.app.ui.lang.settings
 import me.him188.ani.app.ui.lang.settings_update_version_expired_copied_to_clipboard
 import me.him188.ani.app.ui.lang.settings_update_version_expired_export_settings
@@ -182,7 +183,7 @@ private fun MainScreenContent(
                             },
                         elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
                     ) {
-                        Icon(Icons.Rounded.Search, "搜索")
+                        Icon(Icons.Rounded.Search, stringResource(Lang.exploration_search))
                     }
                 },
                 navigationRailFooter = {

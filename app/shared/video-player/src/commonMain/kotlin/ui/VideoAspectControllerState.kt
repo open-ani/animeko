@@ -19,9 +19,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import me.him188.ani.app.ui.lang.*
 import org.openani.mediamp.InternalForInheritanceMediampApi
 import org.openani.mediamp.features.AspectRatioMode
 import org.openani.mediamp.features.VideoAspectRatio
+import org.jetbrains.compose.resources.*
 
 @Stable
 class VideoAspectRatioControllerState(
@@ -51,9 +53,9 @@ class VideoAspectRatioControllerState(
 @Composable
 fun renderAspectRatioMode(mode: AspectRatioMode): String {
     return when (mode) {
-        AspectRatioMode.FIT -> "适应"
-        AspectRatioMode.STRETCH -> "填充"
-        AspectRatioMode.CROP -> "裁切"
+        AspectRatioMode.FIT -> stringResource(Lang.video_player_aspect_fit)
+        AspectRatioMode.STRETCH -> stringResource(Lang.video_player_aspect_stretch)
+        AspectRatioMode.CROP -> stringResource(Lang.video_player_aspect_crop)
     }
 }
 
