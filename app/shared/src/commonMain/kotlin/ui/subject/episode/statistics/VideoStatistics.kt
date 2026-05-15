@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -9,20 +9,22 @@
 
 package me.him188.ani.app.ui.subject.episode.statistics
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.rounded.ArrowDropUp
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.Subtitles
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -140,7 +142,7 @@ data class VideoStatistics(
 }
 
 @Composable
-fun DanmakuMatchInfoSummaryRow(
+fun DanmakuMatchInfoSummaryBanner(
     danmakuStatistics: DanmakuStatistics,
     expanded: Boolean,
     toggleExpanded: () -> Unit,
@@ -165,69 +167,86 @@ fun DanmakuMatchInfoSummaryRow(
             onDismissRequest = { showDialog = false },
         )
     }
-    Row(
-        modifier.clickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = null,
-            onClick = {
-                if (danmakuLoadingState is DanmakuLoadingState.Failed) {
-                    showDialog = true
-                } else {
-                    toggleExpanded()
-                }
-            },
+    Card(
+        onClick = {
+            if (danmakuLoadingState is DanmakuLoadingState.Failed) {
+                showDialog = true
+            } else {
+                toggleExpanded()
+            }
+        },
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
-        verticalAlignment = Alignment.CenterVertically,
+        shape = MaterialTheme.shapes.medium,
     ) {
-        when (danmakuLoadingState) {
-            is DanmakuLoadingState.Failed -> {
-                ProvideContentColor(MaterialTheme.colorScheme.error) {
-                    IconButton({ showDialog = true }) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 40.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            when (danmakuLoadingState) {
+                is DanmakuLoadingState.Failed -> {
+                    ProvideContentColor(MaterialTheme.colorScheme.error) {
                         Icon(Icons.Rounded.ErrorOutline, null)
+                        Text(
+                            danmakuLoadFailedTapText,
+                            Modifier.weight(1f).padding(start = 12.dp),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Icon(Icons.Outlined.ChevronRight, danmakuLoadFailedTapText, Modifier.size(20.dp))
                     }
-                    Text(
-                        danmakuLoadFailedTapText,
-                        Modifier.weight(1f),
+                }
+
+                is DanmakuLoadingState.Success -> {
+                    Icon(
+                        Icons.Rounded.Subtitles,
+                        contentDescription = null,
+                        Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                }
-            }
-
-            is DanmakuLoadingState.Success -> {
-                Text(
-                    stringResource(
-                        Lang.subject_episode_statistics_danmaku_sources_count,
-                        danmakuStatistics.fetchResults.size,
-                        danmakuStatistics.fetchResults.sumOf { it.matchInfo.count },
-                    ),
-                    Modifier.weight(1f),
-                )
-
-                IconButton(toggleExpanded, Modifier.padding(start = 16.dp)) {
+                    Text(
+                        stringResource(
+                            Lang.subject_episode_statistics_danmaku_sources_count,
+                            danmakuStatistics.fetchResults.size,
+                            danmakuStatistics.fetchResults.sumOf { it.matchInfo.count },
+                        ),
+                        Modifier.weight(1f).padding(start = 12.dp),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     if (expanded) {
-                        Icon(Icons.Rounded.ArrowDropUp, showLessText)
+                        Icon(Icons.Rounded.ArrowDropUp, showLessText, Modifier.size(20.dp))
                     } else {
-                        Icon(Icons.Rounded.ArrowDropDown, showMoreText)
+                        Icon(Icons.Outlined.ChevronRight, showMoreText, Modifier.size(20.dp))
                     }
                 }
-            }
 
-            DanmakuLoadingState.Idle -> {
-                if (!danmakuStatistics.danmakuEnabled) {
-                    Text(danmakuDisabledText)
+                DanmakuLoadingState.Idle,
+                DanmakuLoadingState.Loading -> {
+                    if (!danmakuStatistics.danmakuEnabled) {
+                        Text(
+                            danmakuDisabledText,
+                            Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                    } else {
+                        Text(
+                            danmakuLoadingText,
+                            Modifier.weight(1f),
+                            softWrap = false,
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+
+                        CircularProgressIndicator(Modifier.padding(start = 16.dp).size(20.dp), strokeWidth = 3.dp)
+                    }
                 }
-            }
-
-            DanmakuLoadingState.Loading -> {
-                Text(
-                    danmakuLoadingText,
-                    softWrap = false,
-                )
-
-                CircularProgressIndicator(Modifier.padding(start = 16.dp).size(24.dp))
             }
         }
     }
-
 }
 
 

@@ -369,6 +369,7 @@ private fun TabRow(
         Tab(
             selected = pagerState.currentPage == 0,
             onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
+            modifier = Modifier.height(44.dp),
             text = { Text(detailsText, softWrap = false) },
             selectedContentColor = MaterialTheme.colorScheme.primary,
             unselectedContentColor = MaterialTheme.colorScheme.onSurface,
@@ -376,6 +377,7 @@ private fun TabRow(
         Tab(
             selected = pagerState.currentPage == 1,
             onClick = { scope.launch { pagerState.animateScrollToPage(1) } },
+            modifier = Modifier.height(44.dp),
             text = {
                 val count = commentCount()
                 val text = if (count == null) {

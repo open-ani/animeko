@@ -49,6 +49,7 @@ val TestSelfInfoUiState
             hasPassword = false,
             avatarUrl = null,
             bangumiUsername = "TestBangumiUser",
+            isBangumiSessionValid = true,
         ),
         isLoading = false,
         isSessionValid = true,

@@ -1,12 +1,3 @@
-/*
- * Copyright (C) 2024-2026 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 // @formatter:off
 /**
  *
@@ -25,19 +16,22 @@
 
 package me.him188.ani.client.apis
 
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
-import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.json.Json
-import me.him188.ani.client.infrastructure.ApiClient
-import me.him188.ani.client.infrastructure.HttpResponse
-import me.him188.ani.client.infrastructure.RequestConfig
-import me.him188.ani.client.infrastructure.RequestMethod
-import me.him188.ani.client.infrastructure.wrap
 import me.him188.ani.client.models.AniAutoSkipRules
 import me.him188.ani.client.models.AniCreateEpisodeCommentRequest
+import me.him188.ani.client.models.AniCreateEpisodeReplyRequest
 import me.him188.ani.client.models.AniEpisodeCommentsResponse
 import me.him188.ani.client.models.AniReportAutoSkipRequest
+
+import me.him188.ani.client.infrastructure.*
+import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.request.forms.formData
+import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.json.Json
+import io.ktor.http.ParametersBuilder
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 open class EpisodesAniApi : ApiClient {
 
@@ -54,25 +48,27 @@ open class EpisodesAniApi : ApiClient {
     ): super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
-     * Get computed Auto-Skip rules for episode
-     * Get computed Auto-Skip rules for episode
-     * @param episodeId 
-     * @return AniAutoSkipRules
+     * Add Ani episode comment reaction
+     * Add Ani episode comment reaction
+     * @param episodeId
+     * @param commentId
+     * @param `value`
+     * @return kotlin.Any
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getAutoSkipRules(episodeId: kotlin.Long): HttpResponse<AniAutoSkipRules> {
+    open suspend fun addEpisodeCommentReaction(episodeId: kotlin.Long, commentId: kotlin.String, `value`: kotlin.String): HttpResponse<kotlin.Any> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
-            RequestMethod.GET,
-            "/v2/episodes/{episodeId}/auto-skip".replace("{" + "episodeId" + "}", "$episodeId"),
+            RequestMethod.PUT,
+            "/v2/episodes/{episodeId}/comments/{commentId}/reactions/{value}".replace("{" + "episodeId" + "}", "$episodeId").replace("{" + "commentId" + "}", "$commentId").replace("{" + "value" + "}", "$`value`"),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -119,29 +115,28 @@ open class EpisodesAniApi : ApiClient {
     }
 
 
+
     /**
      * Create Ani episode comment reply
      * Create Ani episode comment reply
      * @param episodeId
      * @param commentId
-     * @param aniCreateEpisodeCommentRequest
+     * @param aniCreateEpisodeReplyRequest
      * @return kotlin.Any
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun createEpisodeReply(episodeId: kotlin.Long, commentId: kotlin.String, aniCreateEpisodeCommentRequest: AniCreateEpisodeCommentRequest): HttpResponse<kotlin.Any> {
+    open suspend fun createEpisodeReply(episodeId: kotlin.Long, commentId: kotlin.String, aniCreateEpisodeReplyRequest: AniCreateEpisodeReplyRequest): HttpResponse<kotlin.Any> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody = aniCreateEpisodeCommentRequest
+        val localVariableBody = aniCreateEpisodeReplyRequest
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.POST,
-            "/v2/episodes/{episodeId}/comments/{commentId}/replies"
-                .replace("{" + "episodeId" + "}", "$episodeId")
-                .replace("{" + "commentId" + "}", "$commentId"),
+            "/v2/episodes/{episodeId}/comments/{commentId}/replies".replace("{" + "episodeId" + "}", "$episodeId").replace("{" + "commentId" + "}", "$commentId"),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -155,16 +150,15 @@ open class EpisodesAniApi : ApiClient {
     }
 
 
+
     /**
-     * List Ani episode comments
-     * List Ani episode comments
+     * Get computed Auto-Skip rules for episode
+     * Get computed Auto-Skip rules for episode
      * @param episodeId
-     * @param offset
-     * @param limit
-     * @return AniEpisodeCommentsResponse
+     * @return AniAutoSkipRules
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listEpisodeComments(episodeId: kotlin.Long, offset: kotlin.Int? = 0, limit: kotlin.Int? = 30): HttpResponse<AniEpisodeCommentsResponse> {
+    open suspend fun getAutoSkipRules(episodeId: kotlin.Long): HttpResponse<AniAutoSkipRules> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -172,8 +166,43 @@ open class EpisodesAniApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
-        offset?.apply { localVariableQuery["offset"] = listOf("$this") }
-        limit?.apply { localVariableQuery["limit"] = listOf("$this") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/episodes/{episodeId}/auto-skip".replace("{" + "episodeId" + "}", "$episodeId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * List Ani episode comments
+     * List Ani episode comments
+     * @param episodeId
+     * @param offset  (optional)
+     * @param limit  (optional)
+     * @return AniEpisodeCommentsResponse
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun listEpisodeComments(episodeId: kotlin.Long, offset: kotlin.Int? = null, limit: kotlin.Int? = null): HttpResponse<AniEpisodeCommentsResponse> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
+        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
@@ -181,7 +210,42 @@ open class EpisodesAniApi : ApiClient {
             "/v2/episodes/{episodeId}/comments".replace("{" + "episodeId" + "}", "$episodeId"),
             query = localVariableQuery,
             headers = localVariableHeaders,
-            requiresAuthentication = false,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * Remove Ani episode comment reaction
+     * Remove Ani episode comment reaction
+     * @param episodeId
+     * @param commentId
+     * @param `value`
+     * @return kotlin.Any
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun removeEpisodeCommentReaction(episodeId: kotlin.Long, commentId: kotlin.String, `value`: kotlin.String): HttpResponse<kotlin.Any> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.DELETE,
+            "/v2/episodes/{episodeId}/comments/{commentId}/reactions/{value}".replace("{" + "episodeId" + "}", "$episodeId").replace("{" + "commentId" + "}", "$commentId").replace("{" + "value" + "}", "$`value`"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
         )
 
         return request(
@@ -195,8 +259,8 @@ open class EpisodesAniApi : ApiClient {
     /**
      * Report manual skip for AutoSkip
      * Report manual skip for AutoSkip
-     * @param episodeId 
-     * @param aniReportAutoSkipRequest 
+     * @param episodeId
+     * @param aniReportAutoSkipRequest
      * @return kotlin.Any
      */
     @Suppress("UNCHECKED_CAST")

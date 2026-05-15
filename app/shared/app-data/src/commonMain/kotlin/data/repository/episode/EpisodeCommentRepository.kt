@@ -36,6 +36,28 @@ class EpisodeCommentRepository(
             )
         }.flow
     }
+
+    suspend fun submitReaction(
+        episodeId: Long,
+        source: EpisodeCommentSource,
+        commentId: String,
+        value: String,
+        selected: Boolean,
+    ) {
+        when (source) {
+            EpisodeCommentSource.ANI -> {
+                if (selected) {
+                    aniCommentService.addEpisodeCommentReaction(episodeId, commentId, value)
+                } else {
+                    aniCommentService.removeEpisodeCommentReaction(episodeId, commentId, value)
+                }
+            }
+
+            EpisodeCommentSource.BANGUMI -> {
+                bangumiCommentService.submitEpisodeCommentReaction(commentId, value, selected)
+            }
+        }
+    }
 }
 
 internal class DualSourceEpisodeCommentPagingSource(

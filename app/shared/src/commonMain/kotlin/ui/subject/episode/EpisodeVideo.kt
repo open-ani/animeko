@@ -18,13 +18,18 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.DisplaySettings
-import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -50,6 +55,7 @@ import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.tools.rememberUiMonoTasker
+import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -60,15 +66,19 @@ import me.him188.ani.app.ui.foundation.icons.AniIcons
 import me.him188.ani.app.ui.foundation.icons.Forward85
 import me.him188.ani.app.ui.foundation.icons.RightPanelClose
 import me.him188.ani.app.ui.foundation.icons.RightPanelOpen
+import me.him188.ani.app.ui.foundation.icons.SubtitleGear
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.settings
+import me.him188.ani.app.ui.lang.subject_episode_cache
 import me.him188.ani.app.ui.lang.subject_episode_collapse_sidebar
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_settings_title
 import me.him188.ani.app.ui.lang.subject_episode_expand_sidebar
+import me.him188.ani.app.ui.lang.subject_episode_external_links
 import me.him188.ani.app.ui.lang.subject_episode_fast_forward_85_seconds
+import me.him188.ani.app.ui.lang.subject_episode_more_options
 import me.him188.ani.app.ui.lang.subject_episode_preview_mode
 import me.him188.ani.app.ui.lang.subject_episode_select_media_source
 import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
@@ -76,6 +86,7 @@ import me.him188.ani.app.ui.mediafetch.ViewKind
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
 import me.him188.ani.app.ui.mediafetch.request.TestMediaFetchRequest
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
+import me.him188.ani.app.ui.subject.episode.details.components.ShareEpisodeDropdown
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
 import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
@@ -174,6 +185,8 @@ internal fun EpisodeVideoImpl(
     leftBottomTips: @Composable () -> Unit,
     fullscreenSwitchButton: @Composable () -> Unit,
     sideSheets: @Composable (controller: VideoSideSheetsController<EpisodeVideoSideSheetPage>) -> Unit,
+    shareData: MediaShareData,
+    onClickCache: () -> Unit,
     modifier: Modifier = Modifier,
     maintainAspectRatio: Boolean = !expanded,
     isFullscreen: Boolean = expanded,
@@ -185,11 +198,6 @@ internal fun EpisodeVideoImpl(
     var isLocked by remember { mutableStateOf(false) }
     val sheetsController = rememberVideoSideSheetsController<EpisodeVideoSideSheetPage>()
     val anySideSheetVisible by sheetsController.hasPageAsState()
-    val fastForward85SecondsText = stringResource(Lang.subject_episode_fast_forward_85_seconds)
-    val selectMediaSourceText = stringResource(Lang.subject_episode_select_media_source)
-    val settingsText = stringResource(Lang.settings)
-    val collapseSidebarText = stringResource(Lang.subject_episode_collapse_sidebar)
-    val expandSidebarText = stringResource(Lang.subject_episode_expand_sidebar)
     val previewModeText = stringResource(Lang.subject_episode_preview_mode)
 
     // auto hide cursor
@@ -223,35 +231,17 @@ internal fun EpisodeVideoImpl(
                             null
                         },
                         actions = {
-                            IconButton({ onClickSkip85(playerState.getCurrentPositionMillis()) }) {
-                                Icon(AniIcons.Forward85, fastForward85SecondsText)
-                            }
-                            if (expanded) {
-                                IconButton(
-                                    { sheetsController.navigateTo(EpisodeVideoSideSheetPage.MEDIA_SELECTOR) },
-                                    Modifier.testTag(TAG_SHOW_MEDIA_SELECTOR),
-                                ) {
-                                    Icon(Icons.Rounded.DisplaySettings, contentDescription = selectMediaSourceText)
-                                }
-                            }
-                            IconButton(
-                                { sheetsController.navigateTo(EpisodeVideoSideSheetPage.PLAYER_SETTINGS) },
-                                Modifier.testTag(TAG_SHOW_SETTINGS),
-                            ) {
-                                Icon(Icons.Rounded.Settings, contentDescription = settingsText)
-                            }
-                            if (expanded && LocalPlatform.current.isDesktop()) {
-                                IconButton(
-                                    { onToggleSidebar(!sidebarVisible) },
-                                    Modifier.testTag(TAG_COLLAPSE_SIDEBAR),
-                                ) {
-                                    if (sidebarVisible) {
-                                        Icon(AniIcons.RightPanelClose, contentDescription = collapseSidebarText)
-                                    } else {
-                                        Icon(AniIcons.RightPanelOpen, contentDescription = expandSidebarText)
-                                    }
-                                }
-                            }
+                            EpisodeVideoTopBarActions(
+                                playerState = playerState,
+                                expanded = expanded,
+                                onClickSkip85 = onClickSkip85,
+                                sheetsController = sheetsController,
+                                shareData = shareData,
+                                onClickCache = onClickCache,
+                                playerControllerState = playerControllerState,
+                                sidebarVisible = sidebarVisible,
+                                onToggleSidebar = onToggleSidebar,
+                            )
                         },
                         // VideoScaffold already applies top/horizontal insets around the top bar.
                         // Passing the same insets into TopAppBar duplicates the status-bar padding on iOS portrait.
@@ -481,6 +471,110 @@ internal fun EpisodeVideoImpl(
     }
 }
 
+@Composable
+private fun EpisodeVideoTopBarActions(
+    playerState: MediampPlayer,
+    expanded: Boolean,
+    onClickSkip85: (currentPositionMillis: Long) -> Unit,
+    sheetsController: VideoSideSheetsController<EpisodeVideoSideSheetPage>,
+    shareData: MediaShareData,
+    onClickCache: () -> Unit,
+    playerControllerState: PlayerControllerState,
+    sidebarVisible: Boolean,
+    onToggleSidebar: (isCollapsed: Boolean) -> Unit,
+) {
+    var showShareDropdown by rememberSaveable { mutableStateOf(false) }
+    var showMoreDropdown by rememberSaveable { mutableStateOf(false) }
+    val dropdownAlwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "topBarExternalActions")
+    val isExternalDropdownVisible = showShareDropdown || showMoreDropdown
+    val fastForward85SecondsText = stringResource(Lang.subject_episode_fast_forward_85_seconds)
+    val selectMediaSourceText = stringResource(Lang.subject_episode_select_media_source)
+    val danmakuSettingsTitleText = stringResource(Lang.subject_episode_danmaku_settings_title)
+    val moreOptionsText = stringResource(Lang.subject_episode_more_options)
+    val externalLinksText = stringResource(Lang.subject_episode_external_links)
+    val cacheText = stringResource(Lang.subject_episode_cache)
+    val collapseSidebarText = stringResource(Lang.subject_episode_collapse_sidebar)
+    val expandSidebarText = stringResource(Lang.subject_episode_expand_sidebar)
+
+    DisposableEffect(dropdownAlwaysOnRequester, isExternalDropdownVisible) {
+        if (isExternalDropdownVisible) {
+            dropdownAlwaysOnRequester.request()
+        } else {
+            dropdownAlwaysOnRequester.cancelRequest()
+        }
+        onDispose {
+            if (isExternalDropdownVisible) {
+                dropdownAlwaysOnRequester.cancelRequest()
+            }
+        }
+    }
+
+    IconButton({ onClickSkip85(playerState.getCurrentPositionMillis()) }) {
+        Icon(AniIcons.Forward85, fastForward85SecondsText)
+    }
+
+    if (expanded) {
+        IconButton(
+            { sheetsController.navigateTo(EpisodeVideoSideSheetPage.MEDIA_SELECTOR) },
+            Modifier.testTag(TAG_SHOW_MEDIA_SELECTOR),
+        ) {
+            Icon(Icons.Rounded.DisplaySettings, contentDescription = selectMediaSourceText)
+        }
+    }
+
+    IconButton(
+        { sheetsController.navigateTo(EpisodeVideoSideSheetPage.PLAYER_SETTINGS) },
+        Modifier.testTag(TAG_SHOW_SETTINGS),
+    ) {
+        Icon(AniIcons.SubtitleGear, contentDescription = danmakuSettingsTitleText)
+    }
+
+    Box {
+        IconButton({ showMoreDropdown = true }) {
+            Icon(Icons.Rounded.MoreVert, contentDescription = moreOptionsText)
+        }
+        DropdownMenu(
+            expanded = showMoreDropdown,
+            onDismissRequest = { showMoreDropdown = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text(externalLinksText) },
+                onClick = {
+                    showMoreDropdown = false
+                    showShareDropdown = true
+                },
+                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, null) },
+            )
+            DropdownMenuItem(
+                text = { Text(cacheText) },
+                onClick = {
+                    showMoreDropdown = false
+                    onClickCache()
+                },
+                leadingIcon = { Icon(Icons.Rounded.Download, null) },
+            )
+        }
+        ShareEpisodeDropdown(
+            shareData,
+            showShareDropdown,
+            onDismissRequest = { showShareDropdown = false },
+        )
+    }
+
+    if (expanded && LocalPlatform.current.isDesktop()) {
+        IconButton(
+            { onToggleSidebar(!sidebarVisible) },
+            Modifier.testTag(TAG_COLLAPSE_SIDEBAR),
+        ) {
+            if (sidebarVisible) {
+                Icon(AniIcons.RightPanelClose, contentDescription = collapseSidebarText)
+            } else {
+                Icon(AniIcons.RightPanelOpen, contentDescription = expandSidebarText)
+            }
+        }
+    }
+}
+
 @Stable
 object EpisodeVideoDefaults
 
@@ -641,5 +735,7 @@ private fun PreviewVideoScaffoldImpl(
                 },
             )
         },
+        shareData = MediaShareData.from(null, null),
+        onClickCache = {},
     )
 }

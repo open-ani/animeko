@@ -17,8 +17,11 @@
 package me.him188.ani.client.models
 
 import me.him188.ani.client.models.AniEpisodeCommentAuthor
+import me.him188.ani.client.models.AniEpisodeCommentReaction
 
 import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
  *
@@ -26,9 +29,10 @@ import kotlinx.serialization.*
  * @param id
  * @param sourceCommentId
  * @param episodeId
- * @param author
  * @param contentBbcode
  * @param createdAtMillis
+ * @param reactions
+ * @param author
  */
 @Serializable
 
@@ -40,11 +44,13 @@ data class AniEpisodeCommentReply (
 
     @SerialName(value = "episodeId") @Required val episodeId: kotlin.Long,
 
-    @SerialName(value = "author") val author: AniEpisodeCommentAuthor? = null,
-
     @SerialName(value = "contentBbcode") @Required val contentBbcode: kotlin.String,
 
-    @SerialName(value = "createdAtMillis") @Required val createdAtMillis: kotlin.Long
+    @SerialName(value = "createdAtMillis") @Required val createdAtMillis: kotlin.Long,
+
+    @SerialName(value = "reactions") @Required val reactions: kotlin.collections.List<AniEpisodeCommentReaction>,
+
+    @SerialName(value = "author") val author: AniEpisodeCommentAuthor? = null
 
 ) {
 

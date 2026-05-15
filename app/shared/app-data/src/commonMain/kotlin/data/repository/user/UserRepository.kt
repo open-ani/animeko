@@ -327,5 +327,6 @@ private fun AniAniSelfUser.toSelfInfo(): SelfInfo {
         hasPassword = hasPassword,
         avatarUrl = largeAvatar,
         bangumiUsername = bangumiUsername,
+        isBangumiSessionValid = isBangumiSessionValid,
     )
 }

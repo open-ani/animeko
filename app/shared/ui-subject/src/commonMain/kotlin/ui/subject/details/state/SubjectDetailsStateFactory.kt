@@ -251,7 +251,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
         val subjectCommentState = CommentState(
             list = comments,
             countState = stateOf(null),
-            onSubmitCommentReaction = { _, _ -> },
+            onSubmitCommentReaction = { _, _, _ -> },
             backgroundScope = this,
         )
 
@@ -410,7 +410,7 @@ class TestSubjectDetailsStateFactory : SubjectDetailsStateFactory {
 //                    hasMore = produceState(true, CoroutineScope(Dispatchers.Default)),
 //                    onReload = {},
 //                    onLoadMore = {},
-//                    onSubmitCommentReaction = { _, _ -> },
+//                    onSubmitCommentReaction = { _, _, _ -> },
 //                    CoroutineScope(Dispatchers.Default),
 //                ),
 //            ),

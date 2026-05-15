@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -108,11 +108,6 @@ fun DanmakuListSection(
     onAdjustShift: (DanmakuServiceId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val emptyText = if (state.isEmpty) {
-        stringResource(Lang.subject_episode_danmaku_list_empty)
-    } else {
-        stringResource(Lang.subject_episode_danmaku_list_empty_filtered)
-    }
     val listTitleText = stringResource(Lang.subject_episode_danmaku_list_title)
     val collapseText = stringResource(Lang.subject_episode_collapse)
     val expandText = stringResource(Lang.subject_episode_expand)
@@ -131,66 +126,13 @@ fun DanmakuListSection(
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth().offset(y = (-1).dp),
                 ) {
-                    Column(modifier = Modifier.padding(top = 64.dp)) {
-                        // 弹幕源chips
-                        if (state.sourceItems.isNotEmpty()) {
-                            DanmakuSourceChips(
-                                sourceItems = state.sourceItems,
-                                onToggleSource = onSetEnabled,
-                                onManualMatch = onManualMatch,
-                                onAdjustShift = onAdjustShift,
-                                modifier = Modifier.padding(horizontal = 8.dp),
-                            )
-                        }
-
-                        // 弹幕列表
-                        if (state.danmakuItems.isEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(120.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                if (state.isLoading) {
-                                    CircularProgressIndicator()
-                                } else {
-                                    Text(
-                                        text = emptyText,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                        } else {
-                            val listState = rememberLazyListState()
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = 360.dp),
-                            ) {
-                                LazyColumn(
-                                    state = listState,
-                                    modifier = Modifier
-                                        .fillMaxSize(),
-                                ) {
-                                    items(
-                                        items = state.danmakuItems,
-                                        key = { it.randomId.toString() },
-                                    ) { danmaku ->
-                                        DanmakuListItemView(danmaku)
-                                    }
-                                }
-                                LazyListVerticalScrollbar(
-                                    state = listState,
-                                    modifier = Modifier
-                                        .fillMaxHeight()
-                                        .padding(end = 4.dp)
-                                        .placeScrollbarToAbsoluteRight(),
-                                )
-                            }
-                        }
-                    }
+                    DanmakuListContent(
+                        state = state,
+                        onSetEnabled = onSetEnabled,
+                        onManualMatch = onManualMatch,
+                        onAdjustShift = onAdjustShift,
+                        modifier = Modifier.padding(top = 64.dp),
+                    )
                 }
             }
         }
@@ -219,6 +161,86 @@ fun DanmakuListSection(
                     containerColor = Color.Transparent,
                 ),
             )
+        }
+    }
+}
+
+/**
+ * 弹幕列表的实际内容，不包含可收起标题栏。
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun DanmakuListContent(
+    state: DanmakuListState,
+    onSetEnabled: (DanmakuServiceId, Boolean) -> Unit,
+    onManualMatch: (DanmakuServiceId) -> Unit,
+    onAdjustShift: (DanmakuServiceId) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val emptyText = if (state.isEmpty) {
+        stringResource(Lang.subject_episode_danmaku_list_empty)
+    } else {
+        stringResource(Lang.subject_episode_danmaku_list_empty_filtered)
+    }
+
+    Column(modifier = modifier) {
+        // 弹幕源chips
+        if (state.sourceItems.isNotEmpty()) {
+            DanmakuSourceChips(
+                sourceItems = state.sourceItems,
+                onToggleSource = onSetEnabled,
+                onManualMatch = onManualMatch,
+                onAdjustShift = onAdjustShift,
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
+        }
+
+        // 弹幕列表
+        if (state.danmakuItems.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (state.isLoading) {
+                    CircularProgressIndicator()
+                } else {
+                    Text(
+                        text = emptyText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        } else {
+            val listState = rememberLazyListState()
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 360.dp),
+            ) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize(),
+                ) {
+                    items(
+                        items = state.danmakuItems,
+                        key = { it.randomId.toString() },
+                    ) { danmaku ->
+                        DanmakuListItemView(danmaku)
+                    }
+                }
+                LazyListVerticalScrollbar(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .padding(end = 4.dp)
+                        .placeScrollbarToAbsoluteRight(),
+                )
+            }
         }
     }
 }

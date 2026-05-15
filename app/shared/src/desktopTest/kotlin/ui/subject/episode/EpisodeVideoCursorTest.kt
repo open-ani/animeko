@@ -38,6 +38,7 @@ import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
 import me.him188.ani.app.domain.player.VideoLoadingState
+import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.effects.TAG_CURSOR_VISIBILITY_EFFECT_INVISIBLE
 import me.him188.ani.app.ui.foundation.effects.TAG_CURSOR_VISIBILITY_EFFECT_VISIBLE
@@ -140,6 +141,8 @@ class EpisodeVideoCursorTest {
                         )
                     },
                     sideSheets = {},
+                    shareData = MediaShareData(null, null),
+                    onClickCache = {},
                     modifier = Modifier.weight(1f),
                     gestureFamily = gestureFamily,
                 )

@@ -189,6 +189,7 @@
     <string name="settings_app_light_up_mode">點亮模式</string>
     <string name="settings_app_light_up_mode_description">高亮已經看過的劇集，而不是將要看的劇集</string>
     <string name="settings_app_language">語言</string>
+    <string name="settings_app_language_system">系統語言</string>
     <string name="settings_app_language_restart">重新啟動軟體生效</string>
     <string name="settings_app_close_behavior">關閉行為</string>
     <string name="settings_app_close_behavior_exit">關閉應用</string>
@@ -486,6 +487,12 @@
     <string name="settings_danmaku_regex_expression">正則表達式</string>
     <string name="settings_danmaku_regex_invalid">正則表達式語法不正確</string>
     <string name="settings_danmaku_regex_description">填寫用於屏蔽的正則表達式，例如：\'.*簽.*\' 會屏蔽所有含有文字\'簽\'的彈幕。</string>
+    <string name="settings_danmaku_export_to_clipboard">複製規則到剪貼板</string>
+    <string name="settings_danmaku_import_from_clipboard">從剪貼板導入規則</string>
+    <string name="settings_danmaku_import_title">導入彈幕正則過濾規則</string>
+    <string name="settings_danmaku_import_description">這會覆蓋當前創建的所有規則，且無法撤銷，確認導入嗎？</string>
+    <string name="settings_danmaku_import_failed">導入失敗，剪貼板內容無效</string>
+    <string name="settings_danmaku_import_success">導入成功</string>
 
     <!-- ConnectionTesterResultIndicator -->
     <string name="settings_framework_timeout">超時</string>
@@ -782,6 +789,13 @@
     <string name="settings_account_settings">設定</string>
     <string name="settings_account_logout">退出登入</string>
     <string name="settings_account_confirm_logout">確定要退出登入嗎?</string>
+
+    <!-- Bangumi Session Expired Prompt -->
+    <string name="bangumi_session_expired">Bangumi 登入過期</string>
+    <string name="bangumi_session_expired_login_again">Bangumi 登入過期，請重新登入</string>
+    <string name="bangumi_session_expired_view">查看</string>
+    <string name="bangumi_session_expired_login">登入</string>
+    <string name="bangumi_session_expired_unbind">解除綁定 Bangumi</string>
 
     <!-- Account Popup -->
     <string name="settings_account_popup_not_logged_in">未登入</string>
@@ -1128,6 +1142,7 @@
     <string name="subject_episode_collapse">收起</string>
     <string name="subject_episode_expand">展開</string>
     <string name="subject_episode_more_options">更多選項</string>
+    <string name="subject_episode_external_links">外部連結</string>
     <string name="subject_episode_disable">停用</string>
     <string name="subject_episode_enable">啟用</string>
     <string name="subject_episode_danmaku_rematch">重新匹配</string>

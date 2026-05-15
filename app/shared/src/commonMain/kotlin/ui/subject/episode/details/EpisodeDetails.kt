@@ -75,6 +75,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
@@ -95,7 +97,6 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
-import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
@@ -127,12 +128,12 @@ import me.him188.ani.app.ui.mediafetch.ViewKind
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
 import me.him188.ani.app.ui.mediafetch.request.TestMediaFetchRequest
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummary
+import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryBanner
 import me.him188.ani.app.ui.mediaselect.summary.MediaSelectorSummaryCard
 import me.him188.ani.app.ui.mediaselect.summary.createTestMediaSelectorSummaryAutoSelecting
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.AiringLabelState
-import me.him188.ani.app.ui.subject.collection.SubjectCollectionTypeSuggestions
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeDialogsHost
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.components.rememberTestEditableSubjectCollectionTypeState
@@ -146,11 +147,10 @@ import me.him188.ani.app.ui.subject.episode.details.components.DanmakuMatchInfoG
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceCard
 import me.him188.ani.app.ui.subject.episode.details.components.DanmakuSourceSettingsDropdown
 import me.him188.ani.app.ui.subject.episode.details.components.FavoriteIconButton
-import me.him188.ani.app.ui.subject.episode.details.components.PlayingEpisodeItemDefaults
 import me.him188.ani.app.ui.subject.episode.details.components.SubjectRecommendationCard
 import me.him188.ani.app.ui.subject.episode.details.components.formatDanmakuShiftMillis
 import me.him188.ani.app.ui.subject.episode.details.components.renderDanmakuServiceId
-import me.him188.ani.app.ui.subject.episode.statistics.DanmakuMatchInfoSummaryRow
+import me.him188.ani.app.ui.subject.episode.statistics.DanmakuMatchInfoSummaryBanner
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.createTestDanmakuStatistics
@@ -215,7 +215,6 @@ fun EpisodeDetails(
     onClickTag: (Tag) -> Unit,
     onManualMatchDanmaku: (DanmakuProviderId) -> Unit,
     onEpisodeCollectionUpdate: (SetEpisodeCollectionTypeRequest) -> Unit,
-    shareData: MediaShareData,
     loadError: EpisodePageLoadError?,
     onRetryLoad: () -> Unit,
     modifier: Modifier = Modifier,
@@ -263,8 +262,10 @@ fun EpisodeDetails(
     var expandDanmakuStatistics by rememberSaveable { mutableStateOf(false) }
     var expandEpisodeList by rememberSaveable { mutableStateOf(false) }
     var expandDanmakuList by rememberSaveable { mutableStateOf(false) }
+    var showDanmakuInfoSheet by rememberSaveable { mutableStateOf(false) }
 
     val subjectRecommendations by remember(state) { state.recommendations }
+    val atLeastMedium = currentWindowAdaptiveInfo1().isWidthAtLeastMedium
 
     EditableSubjectCollectionTypeDialogsHost(editableSubjectCollectionTypeState)
 
@@ -272,27 +273,35 @@ fun EpisodeDetails(
     EpisodeDetailsScaffold(
         subjectTitle = {
             Row {
-                Text(state.subjectTitle)
+                Text(
+                    state.subjectTitle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         },
         favoriteButton = {
             FavoriteIconButton(editableSubjectCollectionTypeState)
         },
-        episodeInfo = {
-            episodeCarouselState.playingEpisode?.let {
-                Row {
-                    Text(
-                        "${it.episodeInfo.sort}  ${it.episodeInfo.displayName}",
-                        Modifier.weight(1f).align(Alignment.CenterVertically),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-
-
-                    PlayingEpisodeItemDefaults.ActionShare(shareData)
-                    PlayingEpisodeItemDefaults.ActionCache({ navigator.navigateSubjectCaches(state.subjectId) })
+        episodeInfo = if (atLeastMedium) {
+            {
+                episodeCarouselState.playingEpisode?.let {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "${it.episodeInfo.sort}  ${it.episodeInfo.displayName}",
+                            Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
-        },
+        } else null,
         loadError = {
             when (loadError) {
                 is EpisodePageLoadError.SeriesError -> LoadErrorCard(
@@ -318,7 +327,7 @@ fun EpisodeDetails(
                 )
             }
         },
-        subjectSuggestions = {
+        /* subjectSuggestions = {
             // 推荐一些状态修改操作
             val editableSubjectCollectionTypePresentation by editableSubjectCollectionTypeState.presentationFlow.collectAsStateWithLifecycle()
             if (selfInfo.isSessionValid == true) {
@@ -344,8 +353,8 @@ fun EpisodeDetails(
                     else -> {}
                 }
             }
-        },
-        exposedEpisodeItem = { innerPadding ->
+        },*/
+        mediaSelectorItem = { innerPadding ->
             var showMediaSelector by rememberSaveable { mutableStateOf(false) }
             if (showMediaSelector) {
                 val windowAdaptiveInfo = currentWindowAdaptiveInfo1()
@@ -443,17 +452,31 @@ fun EpisodeDetails(
                 }
             }
 
-            MediaSelectorSummaryCard(
-                mediaSelectorSummary,
-                onClickManualSelect = { showMediaSelector = true },
-                Modifier.fillMaxWidth().padding(innerPadding),
-            )
+            if (atLeastMedium) {
+                MediaSelectorSummaryCard(
+                    mediaSelectorSummary,
+                    onClickManualSelect = { showMediaSelector = true },
+                    Modifier.fillMaxWidth().padding(innerPadding),
+                )
+            } else {
+                MediaSelectorSummaryBanner(
+                    mediaSelectorSummary,
+                    onClickSwitchSource = { showMediaSelector = true },
+                    Modifier.fillMaxWidth().padding(innerPadding),
+                )
+            }
         },
         danmakuStatisticsSummary = {
-            DanmakuMatchInfoSummaryRow(
+            DanmakuMatchInfoSummaryBanner(
                 danmakuStatistics,
-                expanded = expandDanmakuStatistics,
-                { expandDanmakuStatistics = !expandDanmakuStatistics },
+                expanded = if (atLeastMedium) expandDanmakuStatistics else showDanmakuInfoSheet,
+                {
+                    if (atLeastMedium) {
+                        expandDanmakuStatistics = !expandDanmakuStatistics
+                    } else {
+                        showDanmakuInfoSheet = true
+                    }
+                },
             )
         },
         danmakuStatistics = { innerPadding ->
@@ -573,7 +596,8 @@ fun EpisodeDetails(
                         recommendation,
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontalPadding),
+                            .padding(horizontalPadding)
+                            .padding(bottom = 12.dp),
                     )
                 }
             }
@@ -585,6 +609,58 @@ fun EpisodeDetails(
         modifier = modifier,
         contentPadding = contentPadding,
     )
+
+    if (showDanmakuInfoSheet) {
+        ModalBottomSheet(
+            { showDanmakuInfoSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
+            modifier = Modifier.desktopTitleBarPadding().statusBarsPadding(),
+            contentWindowInsets = {
+                BottomSheetDefaults.windowInsets
+                    .add(WindowInsets.desktopTitleBar())
+                    .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
+            },
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(bottom = 24.dp),
+            ) {
+                item("danmaku_info_sheet_title") {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "弹幕列表",
+                            Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                    }
+                }
+
+                if (danmakuListState != null) {
+                    item("danmaku_info_sheet_list") {
+                        DanmakuListContent(
+                            state = danmakuListState,
+                            onSetEnabled = onSetDanmakuSourceEnabled,
+                            onManualMatch = { serviceId ->
+                                danmakuStatistics.fetchResults.find { it.serviceId == serviceId }?.let {
+                                    onManualMatchDanmaku(it.providerId)
+                                }
+                            },
+                            onAdjustShift = { serviceId ->
+                                editingShiftServiceId = serviceId
+                            },
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     val editingShiftSource = editingShiftServiceId?.let { serviceId ->
         danmakuStatistics.fetchResults.firstOrNull { it.serviceId == serviceId }
@@ -687,7 +763,7 @@ private fun SectionTitle(
     content: @Composable () -> Unit,
 ) {
     Row(
-        modifier.heightIn(min = 40.dp)
+        modifier.padding(top = 12.dp, bottom = 8.dp)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -709,11 +785,9 @@ private fun SectionTitle(
 fun EpisodeDetailsScaffold(
     subjectTitle: @Composable () -> Unit,
     favoriteButton: @Composable () -> Unit,
-    episodeInfo: @Composable () -> Unit,
     loadError: @Composable () -> Unit,
     airingStatus: @Composable (FlowRowScope.() -> Unit),
-    subjectSuggestions: @Composable (FlowRowScope.() -> Unit),
-    exposedEpisodeItem: @Composable (contentPadding: PaddingValues) -> Unit,
+    mediaSelectorItem: @Composable (contentPadding: PaddingValues) -> Unit,
     danmakuStatisticsSummary: @Composable () -> Unit,
     danmakuStatistics: @Composable (contentPadding: PaddingValues) -> Unit,
     episodeListSection: @Composable () -> Unit,
@@ -721,6 +795,7 @@ fun EpisodeDetailsScaffold(
     onExpandSubject: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(all = 16.dp),
+    episodeInfo: (@Composable () -> Unit)? = null,
     danmakuListSection: (@Composable () -> Unit)? = null,
 ) {
     val contentPaddingState by rememberUpdatedState(contentPadding)
@@ -756,7 +831,7 @@ fun EpisodeDetailsScaffold(
             ) {
                 Row {
                     Box(
-                        Modifier.padding(top = 8.dp, end = 8.dp) // icon button semantics padding
+                        Modifier.padding(top = 8.dp, end = 8.dp)
                             .weight(1f)
                             .clickable(onClick = onExpandSubject),
                     ) {
@@ -764,29 +839,21 @@ fun EpisodeDetailsScaffold(
                             SelectionContainer { subjectTitle() }
                         }
                     }
-
-                    Column(Modifier.padding(start = 24.dp)) {
-                        Row {
-                            favoriteButton()
-                        }
+                    Row(Modifier.padding(start = 12.dp)) {
+                        favoriteButton()
                     }
                 }
             }
         }
 
-        item("episode_detail_subject_suggestions") {
-            FlowRow(
-                Modifier.padding(horizontalPaddingValues).paddingIfNotEmpty(top = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-            ) {
-                subjectSuggestions()
-            }
-        }
-
-        item("episode_detail_episode_info") {
-            Row(Modifier.padding(horizontalPaddingValues).paddingIfNotEmpty(top = 6.dp)) {
-                episodeInfo()
+        if (episodeInfo != null) {
+            item("episode_detail_episode_info") {
+                Row(
+                    Modifier.padding(horizontalPaddingValues),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    episodeInfo()
+                }
             }
         }
 
@@ -813,14 +880,14 @@ fun EpisodeDetailsScaffold(
         }
 
         item("episode_detail_exposed_episode_item") {
-            Row(Modifier.paddingIfNotEmpty(top = 8.dp)) {
-                exposedEpisodeItem(horizontalPaddingValues)
+            Row(Modifier) {
+                mediaSelectorItem(horizontalPaddingValues)
             }
         }
 
         if (currentDanmakuListSelection != null) {
             item("episode_detail_danmaku_list_section") {
-                Box(Modifier.paddingIfNotEmpty(top = 8.dp)) {
+                Box(Modifier.padding(top = if (atLeastMedium) 8.dp else 0.dp)) {
                     currentDanmakuListSelection?.let {
                         it()
                     }
@@ -828,19 +895,21 @@ fun EpisodeDetailsScaffold(
             }
         }
 
+        if (!atLeastMedium) {
+            item("episode_detail_danmaku_statistics_summary") {
+                Row(Modifier.padding(horizontalPaddingValues).padding(top = 4.dp)) {
+                    danmakuStatisticsSummary()
+                }
+            }
+        }
+
         item("episode_detail_episode_list_section") {
-            Box(Modifier.paddingIfNotEmpty(top = 8.dp)) {
+            Box(Modifier.padding(top = if (atLeastMedium) 8.dp else 0.dp)) {
                 episodeListSection()
             }
         }
 
         if (!atLeastMedium) {
-            item("episode_detail_danmaku_statistics_summary") {
-                SectionTitle(Modifier.padding(top = 8.dp, bottom = 8.dp)) {
-                    danmakuStatisticsSummary()
-                }
-            }
-
             item("danmaku_statistics") {
                 Row(Modifier.fillMaxWidth()) {
                     danmakuStatistics(horizontalPaddingValues)
@@ -900,6 +969,23 @@ fun PreviewEpisodeDetailsScroll() = ProvideCompositionLocalsForPreview {
     Column(Modifier.height(300.dp)) {
         PreviewEpisodeDetailsImpl(state)
     }
+}
+
+@OptIn(TestOnly::class)
+@Composable
+@Preview(name = "PC", device = "spec:width=1280dp,height=800dp,dpi=240")
+fun PreviewEpisodeDetailsPc() = ProvideCompositionLocalsForPreview {
+    val state = rememberTestEpisodeDetailsState(
+        remember {
+            SubjectInfo.Empty.copy(
+                nameCn = "小市民系列",
+            )
+        },
+    )
+    PreviewEpisodeDetailsImpl(
+        state,
+        modifier = Modifier.widthIn(max = 460.dp),
+    )
 }
 
 @OptIn(TestOnly::class)
@@ -997,6 +1083,7 @@ private fun PreviewEpisodeDetailsImpl(
     mediaSelectorState: MediaSelectorState = rememberTestMediaSelectorState(),
     playingMedia: Media? = TestMediaList.first(),
     selfInfo: SelfInfoUiState = TestSelfInfoUiState,
+    modifier: Modifier = Modifier,
 ) {
     Scaffold {
         EpisodeDetails(
@@ -1039,9 +1126,8 @@ private fun PreviewEpisodeDetailsImpl(
             onManualMatchDanmaku = {
             },
             onEpisodeCollectionUpdate = {},
-            shareData = MediaShareData.from(null, null),
             null, {},
-            Modifier
+            modifier
                 .padding(bottom = 16.dp, top = 8.dp)
                 .padding(it),
         )

@@ -42,6 +42,7 @@ import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.danmaku.PlayerDanmakuEditor
+import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.doesNotExist
@@ -279,6 +280,8 @@ class EpisodeVideoControllerTest {
                     )
                 },
                 gestureFamily = gestureFamily,
+                shareData = MediaShareData(null, null),
+                onClickCache = {},
                 modifier = Modifier.testTag("PLAYER"),
             )
         }

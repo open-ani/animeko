@@ -365,7 +365,7 @@ private fun SourceSummaryRow(
     modifier: Modifier = Modifier,
 ) {
     val searchedText = stringResource(Lang.media_selector_summary_searched)
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
             searchedText,
             softWrap = false,

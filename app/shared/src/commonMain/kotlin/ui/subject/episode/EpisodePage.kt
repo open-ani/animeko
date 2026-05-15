@@ -546,7 +546,6 @@ private fun EpisodeScreenTabletVeryWide(
                                             }
                                         }
                                     },
-                                    shareData = page.shareData,
                                     loadError = page.loadError,
                                     onRetryLoad = {
                                         page.loadError?.let { vm.retryLoad(it) }
@@ -599,6 +598,7 @@ private fun TabRow(
         Tab(
             selected = pagerState.currentPage == 0,
             onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
+            modifier = Modifier.height(44.dp),
             text = { Text(detailsText, softWrap = false) },
             selectedContentColor = MaterialTheme.colorScheme.primary,
             unselectedContentColor = MaterialTheme.colorScheme.onSurface,
@@ -606,6 +606,7 @@ private fun TabRow(
         Tab(
             selected = pagerState.currentPage == 1,
             onClick = { scope.launch { pagerState.animateScrollToPage(1) } },
+            modifier = Modifier.height(44.dp),
             text = {
                 val count = commentCount()
                 val text = if (count == null) {
@@ -713,7 +714,6 @@ private fun EpisodeScreenContentPhone(
                             }
                         }
                     },
-                    shareData = page.shareData,
                     loadError = page.loadError,
                     onRetryLoad = {
                         page.loadError?.let { vm.retryLoad(it) }
@@ -833,7 +833,7 @@ fun EpisodeScreenContentPhoneScaffold(
                     )
                     Box(
                         modifier = Modifier.weight(0.618f) // width
-                            .height(48.dp)
+                            .height(44.dp)
                             .padding(vertical = 4.dp, horizontal = 16.dp),
                     ) {
                         Row(Modifier.align(Alignment.CenterEnd)) {
@@ -874,6 +874,7 @@ private fun EpisodeVideo(
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
     val context by rememberUpdatedState(LocalContext.current)
+    val navigator = LocalNavigator.current
 
     // Don't rememberSavable. 刻意让每次切换都是隐藏的
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -1068,6 +1069,8 @@ private fun EpisodeVideo(
                 },
             )
         },
+        shareData = page.shareData,
+        onClickCache = { navigator.navigateSubjectCaches(vm.subjectId) },
         modifier = modifier
             .fillMaxWidth().background(Color.Black)
             .then(if (expanded) Modifier.fillMaxSize() else Modifier.statusBarsPadding()),

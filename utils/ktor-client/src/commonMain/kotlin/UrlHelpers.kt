@@ -9,43 +9,18 @@
 
 package me.him188.ani.utils.ktor
 
+import io.ktor.http.ParametersBuilder
 import io.ktor.http.URLBuilder
-import io.ktor.http.path
+import io.ktor.http.takeFrom
 
 object UrlHelpers {
     fun computeAbsoluteUrl(baseUrl: String, relativeUrl: String): String {
         require(baseUrl.isNotEmpty()) { "baseUrl must not be empty" }
-        @Suppress("NAME_SHADOWING")
-        var baseUrl = baseUrl
-        return when {
-            relativeUrl.startsWith("http") -> relativeUrl
-            relativeUrl.startsWith('/') -> {
-                if (baseUrl.endsWith('/')) {
-                    baseUrl = baseUrl.dropLast(1)
-                }
-
-                URLBuilder(baseUrl).apply {
-                    pathSegments = emptyList()
-                    path(relativeUrl)
-                }.buildString()
+        return URLBuilder(baseUrl).apply {
+            if (relativeUrl.isNotBlank()) {
+                encodedParameters = ParametersBuilder()
+                encodedFragment = ""
             }
-
-            // Now relativeUrl does not start with '/', i.e. it's not an absolute path
-
-            baseUrl.endsWith('/') -> {
-                "$baseUrl$relativeUrl"
-            }
-
-            // Now baseUrl does not end with '/'.
-
-            else -> {
-                if (baseUrl.count { it == '/' } == 2) {
-                    // `https://example.com/foo`
-                    "$baseUrl/$relativeUrl"
-                } else {
-                    "${baseUrl.substringBeforeLast('/')}/$relativeUrl"
-                }
-            }
-        }
+        }.takeFrom(relativeUrl).buildString()
     }
 }

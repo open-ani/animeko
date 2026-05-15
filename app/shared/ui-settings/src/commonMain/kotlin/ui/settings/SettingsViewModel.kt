@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -23,6 +23,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.danmaku.DanmakuConfigSerializer
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
+import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.models.preference.AnalyticsSettings
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
 import me.him188.ani.app.data.models.preference.PikPakConfig
@@ -266,6 +267,8 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
                 danmakuRegexFilterRepository.update(it.id, it.copy(enabled = !it.enabled))
             }
         },
+        onExport = { danmakuRegexFilterRepository.export() },
+        onImport = { danmakuRegexFilterRepository.import(it) },
     )
 
     val danmakuServerTesters = DefaultConnectionTesterRunner(
@@ -364,6 +367,7 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
             danmakuEnabled = settingsRepository.danmakuEnabled.flow.first(),
             danmakuConfig = settingsRepository.danmakuConfig.flow.first(),
             danmakuFilterConfig = settingsRepository.danmakuFilterConfig.flow.first(),
+            danmakuRegexFilters = danmakuRegexFilterRepository.flow.first(),
             mediaSelectorSettings = settingsRepository.mediaSelectorSettings.flow.first(),
             defaultMediaPreference = settingsRepository.defaultMediaPreference.flow.first(),
             profileSettings = settingsRepository.profileSettings.flow.first(),
@@ -398,6 +402,7 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
         backup.danmakuEnabled?.let { settingsRepository.danmakuEnabled.set(it) }
         backup.danmakuConfig?.let { settingsRepository.danmakuConfig.set(it) }
         backup.danmakuFilterConfig?.let { settingsRepository.danmakuFilterConfig.set(it) }
+        backup.danmakuRegexFilters?.let { danmakuRegexFilterRepository.replaceAll(it) }
         backup.mediaSelectorSettings?.let { settingsRepository.mediaSelectorSettings.set(it) }
         backup.defaultMediaPreference?.let { settingsRepository.defaultMediaPreference.set(it) }
         backup.profileSettings?.let { settingsRepository.profileSettings.set(it) }
@@ -450,6 +455,7 @@ private data class SettingsBackup(
     val danmakuEnabled: Boolean?,
     @Serializable(with = DanmakuConfigSerializer::class) val danmakuConfig: DanmakuConfig?,
     val danmakuFilterConfig: DanmakuFilterConfig?,
+    val danmakuRegexFilters: List<DanmakuRegexFilter>? = null,
     val mediaSelectorSettings: MediaSelectorSettings?,
     val defaultMediaPreference: MediaPreference?,
     val profileSettings: ProfileSettings?,

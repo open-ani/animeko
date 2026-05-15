@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -20,6 +20,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ElevatedFilterChip
 import androidx.compose.material3.Icon
@@ -44,22 +45,34 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow.Companion.Ellipsis
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
+import me.him188.ani.app.ui.foundation.getClipEntryText
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.rememberAsyncHandler
+import me.him188.ani.app.ui.foundation.setClipEntryText
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_danmaku_add_regex
 import me.him188.ani.app.ui.lang.settings_danmaku_add_regex_filter
 import me.him188.ani.app.ui.lang.settings_danmaku_cancel
 import me.him188.ani.app.ui.lang.settings_danmaku_confirm
+import me.him188.ani.app.ui.lang.settings_danmaku_export_to_clipboard
+import me.him188.ani.app.ui.lang.settings_danmaku_import_description
+import me.him188.ani.app.ui.lang.settings_danmaku_import_failed
+import me.him188.ani.app.ui.lang.settings_danmaku_import_from_clipboard
+import me.him188.ani.app.ui.lang.settings_danmaku_import_success
+import me.him188.ani.app.ui.lang.settings_danmaku_import_title
 import me.him188.ani.app.ui.lang.settings_danmaku_regex_description
 import me.him188.ani.app.ui.lang.settings_danmaku_regex_expression
 import me.him188.ani.app.ui.lang.settings_danmaku_regex_filter_group
 import me.him188.ani.app.ui.lang.settings_danmaku_regex_invalid
+import me.him188.ani.app.ui.lang.settings_mediasource_rss_copied_to_clipboard
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.utils.platform.Uuid
 import org.jetbrains.compose.resources.stringResource
@@ -78,6 +91,7 @@ internal fun SettingsScope.DanmakuRegexFilterGroup(
     state: DanmakuRegexFilterState,
 ) {
     var showAdd by rememberSaveable { mutableStateOf(false) }
+    var showImportDialog by remember { mutableStateOf(false) }
 
     if (showAdd) {
         AddRegexFilterDialog(
@@ -86,6 +100,43 @@ internal fun SettingsScope.DanmakuRegexFilterGroup(
             },
             onAdd = state.add,
             title = { Text(stringResource(Lang.settings_danmaku_add_regex_filter)) },
+        )
+    }
+
+    val scope = rememberAsyncHandler()
+    val clipboard = LocalClipboard.current
+    val toaster = LocalToaster.current
+    val copiedToast = stringResource(Lang.settings_mediasource_rss_copied_to_clipboard)
+
+    if (showImportDialog) {
+        val importSuccess = stringResource(Lang.settings_danmaku_import_success)
+        val importFailed = stringResource(Lang.settings_danmaku_import_failed)
+
+        AlertDialog(
+            onDismissRequest = { showImportDialog = false },
+            icon = { Icon(Icons.Rounded.ContentPaste, null, tint = MaterialTheme.colorScheme.error) },
+            title = { Text(stringResource(Lang.settings_danmaku_import_title)) },
+            text = { Text(stringResource(Lang.settings_danmaku_import_description)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            val text = clipboard.getClipEntryText()
+                                ?.takeIf { it.isNotBlank() }
+                            val result = text?.let { state.onImport(it) } == true
+                            toaster.toast(if (result) importSuccess else importFailed)
+                            showImportDialog = false
+                        }
+                    },
+                ) {
+                    Text(stringResource(Lang.settings_danmaku_confirm), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showImportDialog = false }) {
+                    Text(stringResource(Lang.settings_danmaku_cancel))
+                }
+            },
         )
     }
 
@@ -118,6 +169,26 @@ internal fun SettingsScope.DanmakuRegexFilterGroup(
                     onDelete = { state.remove(item) },
                     onDisable = { state.switch(item) },
                 )
+            }
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            TextButton(
+                onClick = {
+                    scope.launch {
+                        val data = state.onExport()
+                        clipboard.setClipEntryText(data)
+                        toaster.toast(copiedToast)
+                    }
+                },
+            ) {
+                Text(stringResource(Lang.settings_danmaku_export_to_clipboard))
+            }
+
+            TextButton(onClick = { showImportDialog = true }) {
+                Text(stringResource(Lang.settings_danmaku_import_from_clipboard))
             }
         }
     }

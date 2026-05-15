@@ -21,12 +21,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -34,14 +37,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalContentColor
@@ -64,6 +66,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
@@ -282,7 +285,7 @@ private fun NarrowEpisodeListSection(
     Column(modifier.padding(horizontal = 16.dp)) {
         // 标题行
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -305,7 +308,10 @@ private fun NarrowEpisodeListSection(
                     ),
                 )
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.combinedClickable { showBottomSheet = true },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 AiringLabel(
                     airingLabelState,
                     modifier = Modifier,
@@ -314,19 +320,17 @@ private fun NarrowEpisodeListSection(
                     ),
                     progressColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                IconButton(
-                    onClick = { showBottomSheet = true },
-                ) {
-                    Icon(
-                        Icons.Outlined.MoreHoriz,
-                        contentDescription = viewMoreEpisodesText,
-                    )
-                }
+                Spacer(Modifier.width(4.dp))
+                Icon(
+                    Icons.Outlined.ChevronRight,
+                    contentDescription = viewMoreEpisodesText,
+                    Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
 
-        Spacer(Modifier.height(8.dp))
-
+        val density = LocalDensity.current
         // 初始滚动到正在播放的剧集
         LaunchedEffect(episodeCarouselState.episodes) {
             if (!hasInitialScrolled && episodeCarouselState.episodes.isNotEmpty()) {
@@ -334,7 +338,13 @@ private fun NarrowEpisodeListSection(
                     episodeCarouselState.isPlaying(it)
                 }
                 if (playingIndex >= 0) {
-                    horizontalListState.animateScrollToItem(playingIndex)
+                    horizontalListState.animateScrollToItem(
+                        playingIndex,
+                        // 显示前半个卡片
+                        with(density) {
+                            -48.dp.roundToPx()
+                        },
+                    )
                     hasInitialScrolled = true
                 }
             }
@@ -344,8 +354,8 @@ private fun NarrowEpisodeListSection(
 
         LazyRow(
             state = horizontalListState,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(0.dp),
         ) {
             items(
                 items = episodeCarouselState.episodes,
@@ -373,7 +383,6 @@ private fun NarrowEpisodeListSection(
             onDismissRequest = { showBottomSheet = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             contentWindowInsets = { BottomSheetDefaults.windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal) },
-            dragHandle = null,
             modifier = modifier,
         ) {
             Column {
@@ -417,23 +426,23 @@ private fun EpisodeCard(
     Card(
         colors = CardDefaults.cardColors(
             containerColor = if (isPlaying) {
-                MaterialTheme.colorScheme.primaryContainer
+                MaterialTheme.colorScheme.secondaryContainer
             } else if (isWatched) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.6f)
             } else {
                 MaterialTheme.colorScheme.surfaceContainer
             },
         ),
         modifier = modifier
-            .width(120.dp)
-            .height(80.dp)
+            .height(64.dp)
+            .aspectRatio(16f / 10)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,
             ),
     ) {
         Box(
-            modifier = Modifier.padding(12.dp).fillMaxWidth(),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             Column(
                 modifier = Modifier.align(Alignment.CenterStart),
@@ -442,12 +451,12 @@ private fun EpisodeCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (isPlaying) {
-                        PlayingIcon()
+                        PlayingIcon(width = 20.dp, height = 12.dp)
                         Spacer(Modifier.width(4.dp))
                     }
                     Text(
                         episode.episodeInfo.sort.toString(),
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.labelLarge,
                         color = if (isPlaying) {
                             MaterialTheme.colorScheme.primary
                         } else if (isWatched) {

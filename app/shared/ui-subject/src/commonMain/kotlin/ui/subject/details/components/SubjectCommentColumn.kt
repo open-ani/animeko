@@ -69,13 +69,14 @@ fun SubjectDetailsDefaults.SubjectCommentColumn(
             state = gridState,
             connectedScrollState = connectedScrollState,
         ) { _, comment ->
+            val commentWithOverlay = state.withReactionOverlay(comment)
             SubjectComment(
-                comment = comment,
+                comment = commentWithOverlay,
                 modifier = Modifier.fillMaxWidth().padding(12.dp),
                 onClickImage = onClickImage,
                 onClickUrl = onClickUrl,
-                onClickReaction = { commentId, reactionId ->
-                    state.submitReaction(commentId, reactionId)
+                onClickReaction = { reactionValue ->
+                    state.submitReaction(commentWithOverlay, reactionValue)
                 },
             )
         }
@@ -87,7 +88,7 @@ fun SubjectComment(
     comment: UIComment,
     onClickUrl: (String) -> Unit,
     onClickImage: (String) -> Unit,
-    onClickReaction: (commentId: Long, reactionId: Int) -> Unit,
+    onClickReaction: (reactionValue: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uriHandler = LocalUriHandler.current
@@ -138,7 +139,7 @@ fun SubjectComment(
         reactionRow = {
             CommentDefaults.ReactionRow(
                 comment.reactions,
-                onClickItem = { onClickReaction(comment.id, it) },
+                onClickItem = onClickReaction,
             )
         },
     )
@@ -154,7 +155,7 @@ private fun PreviewSubjectComment() {
             modifier = Modifier.fillMaxWidth(),
             onClickImage = { },
             onClickUrl = { },
-            onClickReaction = { _, _ -> },
+            onClickReaction = { },
         )
 
     }

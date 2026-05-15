@@ -13,10 +13,12 @@ import androidx.compose.ui.util.packInts
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.data.models.episode.toEpisodeComment
+import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.data.models.subject.SubjectReview
 import me.him188.ani.datasources.api.paging.Paged
 import me.him188.ani.datasources.api.paging.processPagedResponse
@@ -44,10 +46,17 @@ interface BangumiCommentService {
         cfTurnstileResponse: String,
         replyToCommentId: Int? = null
     )
+
+    suspend fun submitEpisodeCommentReaction(
+        commentId: String,
+        value: String,
+        selected: Boolean,
+    )
 }
 
 class BangumiBangumiCommentServiceImpl(
     private val client: BangumiClient,
+    private val userRepository: UserRepository,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : BangumiCommentService {
     override suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int): Paged<SubjectReview>? {
@@ -91,11 +100,12 @@ class BangumiBangumiCommentServiceImpl(
 
     override suspend fun getSubjectEpisodeComments(episodeId: Long): List<EpisodeComment>? {
         return withContext(ioDispatcher) {
+            val selfBangumiUsername = userRepository.selfInfoFlow.firstOrNull()?.bangumiUsername
             val response = try {
                 client.nextEpisodeApi {
                     getEpisodeComments(episodeId)
                         .body()
-                        .map { it.toEpisodeComment(episodeId) }
+                        .map { it.toEpisodeComment(episodeId, selfBangumiUsername) }
                 }
             } catch (e: ClientRequestException) {
                 if (e.response.status == HttpStatusCode.NotFound || e.response.status == HttpStatusCode.BadRequest) {
@@ -104,6 +114,23 @@ class BangumiBangumiCommentServiceImpl(
                 throw e
             }
             response
+        }
+    }
+
+    override suspend fun submitEpisodeCommentReaction(
+        commentId: String,
+        value: String,
+        selected: Boolean,
+    ) {
+        val bangumiCommentId = commentId.toIntOrNull() ?: return
+        if (!value.startsWith("bgm")) return
+        val bangumiReactionId = value.removePrefix("bgm").toIntOrNull() ?: return
+        withContext(ioDispatcher) {
+            if (selected) {
+                client.likeEpisodeComment(bangumiCommentId, bangumiReactionId)
+            } else {
+                client.unlikeEpisodeComment(bangumiCommentId)
+            }
         }
     }
 }

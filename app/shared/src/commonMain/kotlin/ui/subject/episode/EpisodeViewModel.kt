@@ -107,6 +107,7 @@ import me.him188.ani.app.ui.comment.CommentMapperContext
 import me.him188.ani.app.ui.comment.CommentMapperContext.parseToUIComment
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.EditCommentSticker
+import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.danmaku.UIDanmakuEvent
 import me.him188.ani.app.ui.episode.PlayingEpisodeSummary
 import me.him188.ani.app.ui.episode.danmaku.MatchingDanmakuPresenter
@@ -392,6 +393,8 @@ class EpisodeViewModel(
                 danmakuRegexFilterRepository.update(it.id, it.copy(enabled = !it.enabled))
             }
         },
+        onExport = { danmakuRegexFilterRepository.export() },
+        onImport = { danmakuRegexFilterRepository.import(it) },
     )
 
 
@@ -629,7 +632,18 @@ class EpisodeViewModel(
                     .map { page -> page.map { it.parseToUIComment() } }
             }.cachedIn(backgroundScope),
         countState = stateOf(null),
-        onSubmitCommentReaction = { _, _ -> },
+        onSubmitCommentReaction = { comment, value, selected ->
+            episodeCommentRepository.submitReaction(
+                episodeId = episodeIdFlow.first().toLong(),
+                source = when (comment.source) {
+                    UICommentSource.ANI -> me.him188.ani.app.data.models.episode.EpisodeCommentSource.ANI
+                    UICommentSource.BANGUMI -> me.him188.ani.app.data.models.episode.EpisodeCommentSource.BANGUMI
+                },
+                commentId = comment.sourceCommentId,
+                value = value,
+                selected = selected,
+            )
+        },
         backgroundScope = backgroundScope,
     )
 

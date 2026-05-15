@@ -197,6 +197,7 @@
     <string name="settings_app_light_up_mode">Highlighting mode</string>
     <string name="settings_app_light_up_mode_description">Highlight the episodes that have already been watched, instead of the ones about to be watched</string>
     <string name="settings_app_language">Language</string>
+    <string name="settings_app_language_system">System language</string>
     <string name="settings_app_language_restart">Restart to take effect</string>
     <string name="settings_app_close_behavior">Close behavior</string>
     <string name="settings_app_close_behavior_exit">Exit application</string>
@@ -481,6 +482,12 @@
     <string name="settings_danmaku_regex_expression">Regular Expression</string>
     <string name="settings_danmaku_regex_invalid">Invalid regular expression syntax</string>
     <string name="settings_danmaku_regex_description">Enter a regular expression for filtering, e.g.: \'.*sign.*\' will filter all danmaku containing the word \'sign\'.</string>
+    <string name="settings_danmaku_export_to_clipboard">Copy rules to clipboard</string>
+    <string name="settings_danmaku_import_from_clipboard">Import rules from clipboard</string>
+    <string name="settings_danmaku_import_title">Import danmaku regex filter rules</string>
+    <string name="settings_danmaku_import_description">Import danmaku regex filter rules from clipboard. This will overwrite all current rules and cannot be undone. Confirm import?</string>
+    <string name="settings_danmaku_import_failed">Import failed, clipboard content is invalid</string>
+    <string name="settings_danmaku_import_success">Import successful</string>
 
     <!-- ConnectionTesterResultIndicator -->
     <string name="settings_framework_timeout">Timeout</string>
@@ -780,6 +787,12 @@
     <string name="settings_account_settings">Settings</string>
     <string name="settings_account_logout">Logout</string>
     <string name="settings_account_confirm_logout">Are you sure you want to sign out?</string>
+    <!-- Bangumi Session Expired Prompt -->
+    <string name="bangumi_session_expired">Bangumi login expired</string>
+    <string name="bangumi_session_expired_login_again">Bangumi login expired. Please log in again.</string>
+    <string name="bangumi_session_expired_view">View</string>
+    <string name="bangumi_session_expired_login">Log in</string>
+    <string name="bangumi_session_expired_unbind">Unbind Bangumi</string>
 
     <!-- Account Popup -->
     <string name="settings_account_popup_not_logged_in">Not logged in</string>
@@ -1126,6 +1139,7 @@
     <string name="subject_episode_collapse">Collapse</string>
     <string name="subject_episode_expand">Expand</string>
     <string name="subject_episode_more_options">More options</string>
+    <string name="subject_episode_external_links">External links</string>
     <string name="subject_episode_disable">Disable</string>
     <string name="subject_episode_enable">Enable</string>
     <string name="subject_episode_danmaku_rematch">Rematch</string>

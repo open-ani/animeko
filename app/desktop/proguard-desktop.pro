@@ -60,6 +60,7 @@
 
 -keep class uk.co.caprica.vlcj.** { *; } # native binding
 -keep class com.sun.jna.** { *; } # native binding
+-keep class ** implements com.sun.jna.Callback { *; } # JNA callbacks are invoked via native reflection; ProGuard optimization must not remove or inline them
 
 -keep class ** extends me.him188.ani.datasources.api.subject.SubjectProvider { *; }
 -keep class ** extends me.him188.ani.datasources.api.source.MediaSource { *; }
