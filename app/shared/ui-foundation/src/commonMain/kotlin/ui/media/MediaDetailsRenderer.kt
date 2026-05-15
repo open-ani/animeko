@@ -23,6 +23,7 @@ import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.Resolution
 import me.him188.ani.datasources.api.topic.SubtitleLanguage
 import org.jetbrains.compose.resources.stringResource
+import kotlin.jvm.JvmName
 
 @Immutable
 class MediaDetailsStrings(
