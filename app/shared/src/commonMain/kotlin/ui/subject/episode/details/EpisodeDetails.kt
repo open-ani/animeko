@@ -84,6 +84,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
@@ -269,23 +270,25 @@ fun EpisodeDetails(
         favoriteButton = {
             FavoriteIconButton(editableSubjectCollectionTypeState)
         },
-        /*episodeInfo = {
-            episodeCarouselState.playingEpisode?.let {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "${it.episodeInfo.sort}  ${it.episodeInfo.displayName}",
-                        Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+        episodeInfo = if (atLeastMedium) {
+            {
+                episodeCarouselState.playingEpisode?.let {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "${it.episodeInfo.sort}  ${it.episodeInfo.displayName}",
+                            Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
-        },*/
+        } else null,
         loadError = {
             when (loadError) {
                 is EpisodePageLoadError.SeriesError -> LoadErrorCard(
@@ -768,6 +771,7 @@ fun EpisodeDetailsScaffold(
     onExpandSubject: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(all = 16.dp),
+    episodeInfo: (@Composable () -> Unit)? = null,
     danmakuListSection: (@Composable () -> Unit)? = null,
 ) {
     val contentPaddingState by rememberUpdatedState(contentPadding)
@@ -814,6 +818,17 @@ fun EpisodeDetailsScaffold(
                     Row(Modifier.padding(start = 12.dp)) {
                         favoriteButton()
                     }
+                }
+            }
+        }
+
+        if (episodeInfo != null) {
+            item("episode_detail_episode_info") {
+                Row(
+                    Modifier.padding(horizontalPaddingValues),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    episodeInfo()
                 }
             }
         }
