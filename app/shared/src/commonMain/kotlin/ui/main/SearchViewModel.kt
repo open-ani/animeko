@@ -250,6 +250,8 @@ class SearchViewModel(
                     put("has_query", updatedQuery.keywords.isNotEmpty())
                     put("tags", updatedQuery.tags.orEmpty().joinToString(","))
                     put("tag_count", updatedQuery.tags.orEmpty().size)
+                    put("year", updatedQuery.year)
+                    put("season", updatedQuery.season?.id)
                 }
             }
             refreshSearch(updatedQuery)
@@ -318,6 +320,7 @@ class SearchViewModel(
 private fun SubjectSearchQuery.shouldTriggerSearch(): Boolean {
     return keywords.isNotEmpty() ||
             !tags.isNullOrEmpty() ||
+            year != null ||
             season != null ||
             rating != null ||
             nsfw != null
