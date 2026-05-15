@@ -22,17 +22,22 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.InternalComposeUiApi
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.LocalSystemTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.SystemTheme
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.application
@@ -118,15 +123,23 @@ import org.koin.core.context.startKoin
 import org.openani.mediamp.ffmpeg.FFmpegKit
 import org.openani.mediamp.vlc.VlcMediampPlayer
 import java.awt.Frame
+import java.awt.KeyEventDispatcher
+import java.awt.KeyboardFocusManager
+import java.awt.event.KeyEvent as AwtKeyEvent
+import java.awt.event.MouseWheelListener
 import java.io.File
 import java.nio.file.Paths
 import java.util.Locale
 import kotlin.io.path.absolutePathString
+import kotlin.math.roundToInt
 import kotlin.system.exitProcess
 
 
 private val logger by lazy { logger("Ani") }
 private inline val toplevelLogger get() = logger
+private const val APP_ZOOM_MIN = 0.5f
+private const val APP_ZOOM_MAX = 2.0f
+private const val APP_ZOOM_STEP = 0.1f
 
 object AniDesktop {
 //    init {
@@ -440,21 +453,32 @@ object AniDesktop {
             val uiSettings by settingsRepository.uiSettings.flow.collectAsState(UISettings.Default)
             val trayState = rememberAniTrayState()
             val appIcon = painterResource(Res.drawable.a_round)
+            val requestExit: () -> Unit = remember {
+                {
+                    kotlin.runCatching { exitApplication() }
+                        .onFailure { logger.error(it) { "Failed to exit application" } }
+                    Unit
+                }
+            }
 
             AniSystemTray(
                 state = trayState,
                 icon = appIcon,
                 tooltip = "Ani",
-                onExit = ::exitApplication,
+                onExit = requestExit,
             )
 
             Window(
                 visible = !trayState.isWindowHiddenToTray,
                 onCloseRequest = {
-                    trayState.handleCloseRequest(
-                        closeBehavior = uiSettings.desktopCloseBehavior,
-                        onExit = ::exitApplication,
-                    )
+                    kotlin.runCatching {
+                        trayState.handleCloseRequest(
+                            closeBehavior = uiSettings.desktopCloseBehavior,
+                            onExit = requestExit,
+                        )
+                    }.onFailure {
+                        logger.error(it) { "Failed to handle close request from main window" }
+                    }
                 },
                 state = windowState,
                 title = "Ani",
@@ -516,10 +540,14 @@ object AniDesktop {
                         WindowFrame(
                             windowState = windowState,
                             onCloseRequest = {
-                                trayState.handleCloseRequest(
-                                    closeBehavior = uiSettings.desktopCloseBehavior,
-                                    onExit = ::exitApplication,
-                                )
+                                kotlin.runCatching {
+                                    trayState.handleCloseRequest(
+                                        closeBehavior = uiSettings.desktopCloseBehavior,
+                                        onExit = requestExit,
+                                    )
+                                }.onFailure {
+                                    logger.error(it) { "Failed to handle close request from custom window frame" }
+                                }
                             },
                         ) {
                             MainWindowContent(navigator)
@@ -545,6 +573,15 @@ object AniDesktop {
 @Composable
 private fun FrameWindowScope.MainWindowContent(aniNavigator: AniNavigator) {
     AniApp {
+        var zoomScale by remember { mutableStateOf(1f) }
+        val baseDensity = LocalDensity.current
+        val windowState = LocalWindowState.current
+        val zoomedDensity = remember(baseDensity, zoomScale) {
+            Density(
+                density = baseDensity.density * zoomScale,
+                fontScale = baseDensity.fontScale * zoomScale,
+            )
+        }
         val themeSettings = LocalThemeSettings.current
         val titleBarThemeController = LocalTitleBarThemeController.current
         val systemTheme = LocalSystemTheme.current
@@ -560,6 +597,38 @@ private fun FrameWindowScope.MainWindowContent(aniNavigator: AniNavigator) {
         DisposableEffect(isTitleBarDark, navContainerColor, titleBarThemeController) {
             window.setTitleBar(navContainerColor, isTitleBarDark)
             onDispose {}
+        }
+
+        DisposableEffect(window) {
+            val mouseWheelListener = MouseWheelListener { event ->
+                if (!event.isControlDown) return@MouseWheelListener
+                zoomScale = zoomScale.adjustAppZoom(
+                    direction = if (event.wheelRotation < 0) 1 else -1,
+                    isFullscreen = windowState.placement == WindowPlacement.Fullscreen,
+                )
+                event.consume()
+            }
+            val keyEventDispatcher = KeyEventDispatcher { event ->
+                if (event.id != AwtKeyEvent.KEY_PRESSED || !event.isControlDown) {
+                    return@KeyEventDispatcher false
+                }
+                val direction = when (event.keyCode) {
+                    AwtKeyEvent.VK_EQUALS, AwtKeyEvent.VK_ADD -> 1
+                    AwtKeyEvent.VK_MINUS, AwtKeyEvent.VK_SUBTRACT -> -1
+                    else -> return@KeyEventDispatcher false
+                }
+                zoomScale = zoomScale.adjustAppZoom(
+                    direction = direction,
+                    isFullscreen = windowState.placement == WindowPlacement.Fullscreen,
+                )
+                true
+            }
+            window.addMouseWheelListener(mouseWheelListener)
+            KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(keyEventDispatcher)
+            onDispose {
+                window.removeMouseWheelListener(mouseWheelListener)
+                KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(keyEventDispatcher)
+            }
         }
 
         OverrideCaptionButtonAppearance(isDark = isTitleBarDark)
@@ -580,6 +649,7 @@ private fun FrameWindowScope.MainWindowContent(aniNavigator: AniNavigator) {
                 val content by vm.content.collectAsStateWithLifecycle()
 
                 CompositionLocalProvider(
+                    LocalDensity provides zoomedDensity,
                     LocalNavigator provides aniNavigator,
                     LocalToaster provides remember(vm) {
                         object : Toaster {
@@ -598,6 +668,13 @@ private fun FrameWindowScope.MainWindowContent(aniNavigator: AniNavigator) {
             }
         }
     }
+}
+
+private fun Float.adjustAppZoom(direction: Int, isFullscreen: Boolean): Float {
+    val minScale = if (isFullscreen) APP_ZOOM_MIN else 1f
+    val scaled = (this + direction * APP_ZOOM_STEP)
+        .coerceIn(minScale, APP_ZOOM_MAX)
+    return (scaled * 10).roundToInt() / 10f
 }
 
 @Composable

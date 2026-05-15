@@ -171,7 +171,13 @@ fun MediaSelectorView(
                                 }
                             }
                         },
+                        onRefreshAll = onRefresh,
+                        hideDeadSourcesEnabled = presentation.hideDeadWebSourcesEnabled,
+                        onHideDeadSourcesEnabledChange = {
+                            state.setHideDeadWebSourcesEnabled(it)
+                        },
                         onRequestQueryEdit = { showEditRequest = true },
+                        hiddenDeadSourceCount = presentation.hiddenDeadWebSourceCount,
                         Modifier.padding(bottom = bottomPadding)
                             .weight(1f, fill = false)
                             .fillMaxWidth()

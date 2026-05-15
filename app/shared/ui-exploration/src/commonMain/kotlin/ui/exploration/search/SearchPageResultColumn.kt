@@ -123,6 +123,7 @@ internal fun SearchResultColumn(
             .onSizeChanged { height = it.height }
             .keyboardDirectionToSelectItem(
                 selectedItemIndex,
+                itemCount = { items.itemCount },
             ) {
                 state.animateScrollToItem(it)
                 onSelect(it)

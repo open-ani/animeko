@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 
 fun Modifier.keyboardDirectionToSelectItem(
     selectedItemIndex: () -> Int,
+    itemCount: () -> Int,
     onSelect: suspend (Int) -> Unit,
 ) = composed {
     val scope = rememberCoroutineScope()
@@ -28,16 +29,32 @@ fun Modifier.keyboardDirectionToSelectItem(
         if (it.type == KeyEventType.KeyUp) {
             when (it.key) {
                 Key.DirectionUp -> {
+                    val count = itemCount()
+                    if (count <= 0) {
+                        return@onPreviewKeyEvent false
+                    }
+                    val currentIndex = selectedItemIndex().coerceIn(0, count - 1)
+                    val newIndex = (currentIndex - 1).coerceAtLeast(0)
+                    if (newIndex == currentIndex) {
+                        return@onPreviewKeyEvent true
+                    }
                     scope.launch {
-                        val newIndex = (selectedItemIndex() - 1).coerceAtLeast(0)
                         onSelect(newIndex)
                     }
                     true
                 }
 
                 Key.DirectionDown -> {
+                    val count = itemCount()
+                    if (count <= 0) {
+                        return@onPreviewKeyEvent false
+                    }
+                    val currentIndex = selectedItemIndex().coerceIn(0, count - 1)
+                    val newIndex = (currentIndex + 1).coerceAtMost(count - 1)
+                    if (newIndex == currentIndex) {
+                        return@onPreviewKeyEvent true
+                    }
                     scope.launch {
-                        val newIndex = selectedItemIndex() + 1
                         onSelect(newIndex)
                     }
                     true
