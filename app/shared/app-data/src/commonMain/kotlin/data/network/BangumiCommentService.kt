@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.data.network
 
-import androidx.compose.ui.util.packInts
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
@@ -18,15 +17,17 @@ import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.UserInfo
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.data.models.episode.toEpisodeComment
-import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.data.models.subject.SubjectReview
+import me.him188.ani.app.data.repository.user.UserRepository
+import me.him188.ani.client.apis.SubjectsAniApi
+import me.him188.ani.client.models.AniSubjectReview
 import me.him188.ani.datasources.api.paging.Paged
-import me.him188.ani.datasources.api.paging.processPagedResponse
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateEpisodeCommentRequest
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextSubjectInterestComment
+import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.coroutines.IO_
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Instant
 
 interface BangumiCommentService {
     /**
@@ -57,23 +58,20 @@ interface BangumiCommentService {
 class BangumiBangumiCommentServiceImpl(
     private val client: BangumiClient,
     private val userRepository: UserRepository,
+    private val subjectsApi: ApiInvoker<SubjectsAniApi>,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : BangumiCommentService {
     override suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int): Paged<SubjectReview>? {
         return withContext(ioDispatcher) {
-            val response = try {
-                client.nextSubjectApi {
-                    getSubjectComments(subjectId, null, limit, offset)
-                        .body()
-                }
-            } catch (e: ClientRequestException) {
-                if (e.response.status == HttpStatusCode.NotFound || e.response.status == HttpStatusCode.BadRequest) {
-                    return@withContext null
-                }
-                throw e
+            val response = subjectsApi {
+                getSubjectReviews(subjectId.toLong(), offset, limit).body()
             }
-            val list = response.data.map { it.toSubjectReview(subjectId) }
-            Paged.processPagedResponse(total = response.total, pageSize = limit, data = list)
+            val list = response.items.map { it.toSubjectReview() }
+            Paged(
+                total = response.total.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+                hasMore = offset + list.size < response.total,
+                page = list,
+            )
         }
     }
 
@@ -135,15 +133,17 @@ class BangumiBangumiCommentServiceImpl(
     }
 }
 
-private fun BangumiNextSubjectInterestComment.toSubjectReview(subjectId: Int) = SubjectReview(
-    id = packInts(subjectId, user.id),
-    content = comment,
-    updatedAt = updatedAt * 1000L,
-    rating = rate,
-    creator = UserInfo(
-        id = user.id.toString(),
-        nickname = user.nickname,
-        username = null,
-        avatarUrl = user.avatar.large,
-    ), // 没有username,
+private fun AniSubjectReview.toSubjectReview() = SubjectReview(
+    id = id.hashCode().toLong(),
+    content = contentBbcode,
+    updatedAt = Instant.parse(updatedAt).toEpochMilliseconds(),
+    rating = rating,
+    creator = author?.let {
+        UserInfo(
+            id = it.id,
+            nickname = it.nickname,
+            username = null,
+            avatarUrl = it.avatarUrl,
+        )
+    },
 )

@@ -13,6 +13,7 @@ import androidx.compose.ui.util.packInts
 import androidx.paging.LoadType
 import androidx.paging.Pager
 import androidx.paging.PagingData
+import androidx.paging.PagingSource
 import androidx.paging.PagingData.Companion.from
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
@@ -60,13 +61,34 @@ class BangumiCommentRepository(
         return Pager(
             config = defaultPagingConfig,
             initialKey = 0,
-            remoteMediator = SubjectReviewRemoteMediator(subjectId),
             pagingSourceFactory = {
-                subjectReviewDao.filterBySubjectIdPager(subjectId)
+                SubjectReviewPagingSource(subjectId)
             },
-        ).flow.map { page ->
-            page.map {
-                it.toInfo()
+        ).flow
+    }
+
+    private inner class SubjectReviewPagingSource(
+        private val subjectId: Int,
+    ) : PagingSource<Int, SubjectReview>() {
+        override fun getRefreshKey(state: PagingState<Int, SubjectReview>): Int? = state.anchorPosition
+
+        override suspend fun load(params: LoadParams<Int>): LoadResult<Int, SubjectReview> = withContext(defaultDispatcher) {
+            val offset = params.key ?: 0
+            try {
+                val subjectReviews = commentService.getSubjectComments(subjectId, offset, params.loadSize)
+                    ?: return@withContext LoadResult.Page(
+                        data = emptyList(),
+                        prevKey = if (offset == 0) null else (offset - params.loadSize).coerceAtLeast(0),
+                        nextKey = null,
+                    )
+
+                LoadResult.Page(
+                    data = subjectReviews.page,
+                    prevKey = if (offset == 0) null else (offset - params.loadSize).coerceAtLeast(0),
+                    nextKey = if (subjectReviews.hasMore) offset + params.loadSize else null,
+                )
+            } catch (e: Exception) {
+                LoadResult.Error(RepositoryException.wrapOrThrowCancellation(e))
             }
         }
     }

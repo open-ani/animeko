@@ -54,6 +54,7 @@ import me.him188.ani.client.models.AniRelatedSubject
 import me.him188.ani.client.models.AniSubjectCollection
 import me.him188.ani.client.models.AniSubjectCollectionCountStats
 import me.him188.ani.client.models.AniSubjectRecommendation
+import me.him188.ani.client.models.AniSubjectReviewsResponse
 import me.him188.ani.client.models.AniSubjectSearchSortBy
 import me.him188.ani.client.models.AniUpdateEpisodeCollectionRequest
 import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
@@ -546,6 +547,43 @@ open class SubjectsAniApi : ApiClient {
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * 获取条目评价, 混合 Bangumi 评价和 Ani 本地评价.
+     * 获取条目评价, 混合 Bangumi 评价和 Ani 本地评价.
+     * @param subjectId 
+     * @param offset  (optional, default to 0)
+     * @param limit  (optional, default to 30)
+     * @return AniSubjectReviewsResponse
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getSubjectReviews(subjectId: kotlin.Long, offset: kotlin.Int? = 0, limit: kotlin.Int? = 30): HttpResponse<AniSubjectReviewsResponse> {
+
+        val localVariableAuthNames = listOf<String>()
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
+        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/subjects/{subjectId}/reviews".replace("{" + "subjectId" + "}", "$subjectId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = false,
         )
 
         return request(
