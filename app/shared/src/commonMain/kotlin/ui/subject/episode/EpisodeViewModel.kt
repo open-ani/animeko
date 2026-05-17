@@ -805,6 +805,7 @@ class EpisodeViewModel(
                         getPreferredWebMediaSource(subjectId),
                         backgroundScope,
                         webCaptchaCoordinator,
+                        settingsRepository.mediaSelectorSettings,
                     )
                 } else {
                     // TODO: 2025/1/22 We should not use createTestMediaSelectorState
