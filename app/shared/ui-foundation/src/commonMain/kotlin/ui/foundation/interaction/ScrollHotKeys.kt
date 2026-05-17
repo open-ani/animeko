@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 
 fun Modifier.keyboardDirectionToSelectItem(
     selectedItemIndex: () -> Int,
+    itemCount: () -> Int,
     onSelect: suspend (Int) -> Unit,
 ) = composed {
     val scope = rememberCoroutineScope()
@@ -29,16 +30,26 @@ fun Modifier.keyboardDirectionToSelectItem(
             when (it.key) {
                 Key.DirectionUp -> {
                     scope.launch {
-                        val newIndex = (selectedItemIndex() - 1).coerceAtLeast(0)
-                        onSelect(newIndex)
+                        calculateDirectionSelectionIndex(
+                            selectedItemIndex = selectedItemIndex(),
+                            itemCount = itemCount(),
+                            delta = -1,
+                        )?.let { newIndex ->
+                            onSelect(newIndex)
+                        }
                     }
                     true
                 }
 
                 Key.DirectionDown -> {
                     scope.launch {
-                        val newIndex = selectedItemIndex() + 1
-                        onSelect(newIndex)
+                        calculateDirectionSelectionIndex(
+                            selectedItemIndex = selectedItemIndex(),
+                            itemCount = itemCount(),
+                            delta = 1,
+                        )?.let { newIndex ->
+                            onSelect(newIndex)
+                        }
                     }
                     true
                 }
@@ -47,6 +58,22 @@ fun Modifier.keyboardDirectionToSelectItem(
             }
         } else false
     }
+}
+
+internal fun calculateDirectionSelectionIndex(
+    selectedItemIndex: Int,
+    itemCount: Int,
+    delta: Int,
+): Int? {
+    if (itemCount <= 0) return null
+
+    val currentIndex = selectedItemIndex.coerceAtLeast(-1)
+    val newIndex = if (currentIndex == -1) {
+        0
+    } else {
+        (currentIndex + delta).coerceIn(0, itemCount - 1)
+    }
+    return newIndex.takeIf { it != selectedItemIndex }
 }
 
 fun Modifier.keyboardPageToScroll(
