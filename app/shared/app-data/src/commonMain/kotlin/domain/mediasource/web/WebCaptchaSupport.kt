@@ -20,6 +20,7 @@ enum class WebCaptchaKind {
     Image,
     Cloudflare,
     CloudflareTurnstile,
+    SliderCaptcha,
     Unknown,
 }
 
@@ -127,6 +128,18 @@ object WebCaptchaDetector {
             return WebCaptchaKind.CloudflareTurnstile
         }
 
+        if (
+            "puzzle-container" in lowerHtml
+        ) {
+            return WebCaptchaKind.SliderCaptcha
+        }
+
+        if (
+            "需要输入验证码" in lowerHtml
+        ) {
+            return WebCaptchaKind.Unknown
+        }
+
         val hasChallengeUrlMarker =
             "__cf_chl_" in lowerUrl ||
                 "/cdn-cgi/challenge-platform/h/" in lowerUrl ||
@@ -213,6 +226,7 @@ fun WebCaptchaKind.displayName(): String = when (this) {
     WebCaptchaKind.Cloudflare -> "Cloudflare 验证"
     WebCaptchaKind.CloudflareTurnstile -> "Cloudflare Turnstile 验证"
     WebCaptchaKind.Unknown -> "验证码"
+    WebCaptchaKind.SliderCaptcha -> "滑动验证"
 }
 
 internal fun WebCaptchaRequest.storageKey(): String {
