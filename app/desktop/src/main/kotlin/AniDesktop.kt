@@ -112,11 +112,14 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.trace
 import me.him188.ani.utils.platform.currentPlatform
+import me.him188.ani.utils.platform.currentPlatformDesktop
+import me.him188.ani.utils.platform.isMacOS
 import me.him188.ani.utils.platform.isWindows
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.openani.mediamp.ffmpeg.FFmpegKit
 import org.openani.mediamp.vlc.VlcMediampPlayer
+import java.awt.Desktop
 import java.awt.Frame
 import java.io.File
 import java.nio.file.Paths
@@ -425,16 +428,31 @@ object AniDesktop {
                     "\nTotal time: ${startupTimeMonitor.getTotalDuration().inWholeMilliseconds}ms"
         }
         val savedWindowState: SavedWindowState? = savedWindowStateDeferred.getCompleted()
+        restoreWindowState(windowState, savedWindowState)
 
         application {
-            WindowStateRecorder(
-                windowState = windowState,
-                saved = savedWindowState,
-                update = {
-                    runBlocking {
-                        windowStateRepository.update(it)
+            val saveCurrentWindowState = remember(windowState, windowStateRepository) {
+                {
+                    saveWindowState(windowState) {
+                        runBlocking {
+                            windowStateRepository.update(it)
+                        }
                     }
-                },
+                }
+            }
+            val exitApplicationSavingWindowState = remember(saveCurrentWindowState) {
+                {
+                    saveCurrentWindowState()
+                    exitApplication()
+                }
+            }
+
+            WindowStateRecorder(
+                update = saveCurrentWindowState,
+            )
+            MacOSQuitHandler(
+                saveCurrentWindowState = saveCurrentWindowState,
+                exitApplication = ::exitApplication,
             )
 
             val uiSettings by settingsRepository.uiSettings.flow.collectAsState(UISettings.Default)
@@ -445,7 +463,7 @@ object AniDesktop {
                 state = trayState,
                 icon = appIcon,
                 tooltip = "Ani",
-                onExit = ::exitApplication,
+                onExit = exitApplicationSavingWindowState,
             )
 
             Window(
@@ -453,7 +471,7 @@ object AniDesktop {
                 onCloseRequest = {
                     trayState.handleCloseRequest(
                         closeBehavior = uiSettings.desktopCloseBehavior,
-                        onExit = ::exitApplication,
+                        onExit = exitApplicationSavingWindowState,
                     )
                 },
                 state = windowState,
@@ -518,7 +536,7 @@ object AniDesktop {
                             onCloseRequest = {
                                 trayState.handleCloseRequest(
                                     closeBehavior = uiSettings.desktopCloseBehavior,
-                                    onExit = ::exitApplication,
+                                    onExit = exitApplicationSavingWindowState,
                                 )
                             },
                         ) {
@@ -602,58 +620,94 @@ private fun FrameWindowScope.MainWindowContent(aniNavigator: AniNavigator) {
 
 @Composable
 private fun WindowStateRecorder(
-    windowState: WindowState,
-    saved: SavedWindowState?,
-    update: (SavedWindowState) -> Unit,
+    update: () -> Unit,
 ) {
-    // 记录窗口大小
+    // 记录窗口大小和位置
     DisposableEffect(Unit) {
-        if (saved != null && !saved.hasUnspecified()) {
-            val savedWindowState = WindowState(
-                position = WindowPosition(
-                    x = saved.x,
-                    y = saved.y,
-                ),
-                size = DpSize(
-                    width = saved.width,
-                    height = saved.height,
-                ),
-            )
-            //保存的窗口尺寸和大小全都合规时，才使用，否则使用默认设置
-
-            if (isWindowStateValid(savedWindowState.size, savedWindowState.position)) {
-                windowState.apply {
-                    position = savedWindowState.position
-                    size = savedWindowState.size
-                }
-            }
-        }
-
         onDispose {
-            val newState = SavedWindowState(
-                x = windowState.position.x,
-                y = windowState.position.y,
-                width = windowState.size.width,
-                height = windowState.size.height,
-            )
-            if (isWindowStateValid(
-                    DpSize(width = newState.width, height = newState.height),
-                    WindowPosition(x = newState.x, y = newState.y),
-                )
-            ) {
-                update(newState)
-            }
+            update()
         }
     }
 }
 
-private fun isWindowStateValid(
+@Composable
+private fun MacOSQuitHandler(
+    saveCurrentWindowState: () -> Unit,
+    exitApplication: () -> Unit,
+) {
+    DisposableEffect(saveCurrentWindowState, exitApplication) {
+        if (!currentPlatformDesktop().isMacOS()) {
+            return@DisposableEffect onDispose {}
+        }
+        if (!Desktop.isDesktopSupported()) {
+            return@DisposableEffect onDispose {}
+        }
+
+        val desktop = Desktop.getDesktop()
+        if (!desktop.isSupported(Desktop.Action.APP_QUIT_HANDLER)) {
+            return@DisposableEffect onDispose {}
+        }
+
+        desktop.setQuitHandler { _, response ->
+            saveCurrentWindowState()
+            exitApplication()
+            response.performQuit()
+        }
+
+        onDispose {
+            desktop.setQuitHandler(null)
+        }
+    }
+}
+
+private fun saveWindowState(
+    windowState: WindowState,
+    update: (SavedWindowState) -> Unit,
+) {
+    val newState = SavedWindowState(
+        x = windowState.position.x,
+        y = windowState.position.y,
+        width = windowState.size.width,
+        height = windowState.size.height,
+    )
+    if (isWindowSizeValid(DpSize(width = newState.width, height = newState.height))) {
+        update(newState)
+    }
+}
+
+private fun restoreWindowState(
+    windowState: WindowState,
+    saved: SavedWindowState?,
+) {
+    if (saved == null) {
+        return
+    }
+
+    val savedWindowPosition = WindowPosition(
+        x = saved.x,
+        y = saved.y,
+    )
+    val savedWindowSize = DpSize(
+        width = saved.width,
+        height = saved.height,
+    )
+    if (isWindowSizeValid(savedWindowSize)) {
+        windowState.size = savedWindowSize
+    }
+    if (isWindowPositionValid(savedWindowPosition)) {
+        windowState.position = savedWindowPosition
+    }
+}
+
+private fun isWindowSizeValid(
     windowSize: DpSize,
-    windowPosition: WindowPosition,
     minimumSize: DpSize = DpSize(400.dp, 400.dp),
+): Boolean = windowSize.width >= minimumSize.width && windowSize.height >= minimumSize.height
+
+private fun isWindowPositionValid(
+    windowPosition: WindowPosition,
     // In headless testing this will throw NoClassDefFoundError, see https://github.com/open-ani/animeko/runs/40761327501
     //  so we use runCatching to avoid this
     screenSize: DpSize = runCatching { ScreenUtils.getScreenSize() }.getOrElse { DpSize(1280.dp, 720.dp) },
-): Boolean = ((windowSize.width >= minimumSize.width && windowSize.height >= minimumSize.height)
-        && windowPosition.x > 0.dp && windowPosition.y > 0.dp
+): Boolean = (windowPosition.x > 0.dp && windowPosition.y > 0.dp
         && windowPosition.x < screenSize.width - 200.dp && windowPosition.y < screenSize.height - 200.dp)
