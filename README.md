@@ -34,7 +34,7 @@ Animeko 支持云同步观看记录 ([Bangumi][Bangumi])、多视频数据源、
 
 > Animeko 曾用名 Ani，现在也简称 Ani。
 
-[立即下载](https://github.com/open-ani/animeko/releases/latest)
+[立即下载](https://animeko.org/)
 
 https://github.com/user-attachments/assets/e63636c9-30b7-411c-aa6b-e5b78b900726
 
@@ -108,13 +108,13 @@ https://github.com/user-attachments/assets/e63636c9-30b7-411c-aa6b-e5b78b900726
 Animeko 支持所有主流平台：Android、iOS、Windows、macOS、Linux。
 
 - 稳定版本: 每两周更新, 功能稳定  
-  [下载稳定版本](https://github.com/open-ani/animeko/releases/latest)
+  [下载稳定版本](https://animeko.org/downloads/)
 
 通常建议使用稳定版本. 如果你愿意参与测试并拥有一定的对 bug 的处理能力, 也欢迎使用测试版本更快体验新功能.
 具体版本类型可查看下方.
 
 - 测试版本: 每两天更新, 体验最新功能  
-  [下载测试版本](https://github.com/open-ani/animeko/releases)
+  [下载测试版本](https://animeko.org/downloads/)
 
 <details>
 <summary> <b>点击查看具体版本类型</b> </summary>
