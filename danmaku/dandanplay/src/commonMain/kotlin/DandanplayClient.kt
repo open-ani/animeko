@@ -135,6 +135,21 @@ internal class DandanplayClient(
         }
     }
 
+    suspend fun getBangumiEpisodesByBgmtvSubjectId(
+        bgmtvSubjectId: Int,
+    ): DandanplayGetBangumiResponse = withContext(ioDispatcher) {
+        client.use {
+            val response =
+                get("https://api.dandanplay.net/api/v2/bangumi/bgmtv/$bgmtvSubjectId") {
+                    configureTimeout()
+                    accept(ContentType.Application.Json)
+                    addAuthorizationHeaders()
+                }
+
+            response.body<DandanplayGetBangumiResponse>()
+        }
+    }
+
     suspend fun matchVideo(
         filename: String,
         fileHash: String?,

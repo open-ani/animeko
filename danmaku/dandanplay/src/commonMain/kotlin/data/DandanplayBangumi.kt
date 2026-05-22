@@ -97,8 +97,8 @@ data class DandanplayBangumiTitle(
  */
 @Serializable
 data class DandanplayBangumiEpisode(
-    val episodeId: Int,
-    val episodeTitle: String,
+    val episodeId: Long,
+    val episodeTitle: String? = null,
     val episodeNumber: String?,
     val lastWatched: String?,
     val airDate: String?
