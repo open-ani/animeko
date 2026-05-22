@@ -447,9 +447,11 @@ object AniDesktop {
                 }
             }
 
-            WindowStateRecorder(
-                update = saveCurrentWindowState,
-            )
+            DisposableEffect(saveCurrentWindowState) {
+                onDispose {
+                    saveCurrentWindowState()
+                }
+            }
             MacOSQuitHandler(
                 saveCurrentWindowState = saveCurrentWindowState,
                 exitApplication = ::exitApplication,
@@ -614,18 +616,6 @@ private fun FrameWindowScope.MainWindowContent(aniNavigator: AniNavigator) {
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun WindowStateRecorder(
-    update: () -> Unit,
-) {
-    // 记录窗口大小和位置
-    DisposableEffect(Unit) {
-        onDispose {
-            update()
         }
     }
 }
