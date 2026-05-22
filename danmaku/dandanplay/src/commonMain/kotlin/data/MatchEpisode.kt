@@ -35,7 +35,7 @@ data class DandanplaySearchEpisodeResponse(
 @Serializable
 data class DandanplayGetBangumiResponse(
     val hasMore: Boolean = false,
-    val bangumi: DandanplayBangumiDetails,
+    val bangumi: DandanplayBangumiDetails? = null,
     val errorCode: Int = 0,
     val success: Boolean = true,
     val errorMessage: String? = null,
