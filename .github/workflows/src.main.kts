@@ -54,6 +54,7 @@ import Secrets.FIREBASE_GA_API_SECRET
 import Secrets.FIREBASE_GA_APP_ID
 import Secrets.GITHUB_REPOSITORY
 import Secrets.GOOGLE_SERVICES_JSON
+import Secrets.OPENAI_API_KEY
 import Secrets.SENTRY_DSN
 import Secrets.SIGNING_RELEASE_KEYALIAS
 import Secrets.SIGNING_RELEASE_KEYPASSWORD
@@ -887,26 +888,55 @@ workflow(
 
         val gitTag = getGitTag()
 
-        val releaseNotes = run(
-            name = "Generate Release Notes",
+        run(
+            name = "Install and Authenticate Codex CLI",
             command = shell(
                 $$"""
-                  # Specify the file path
-                  FILE_PATH="ci-helper/release-template.md"
-        
-                  # Read the file content
-                  file_content=$(cat "$FILE_PATH")
-        
-                  modified_content="$file_content"
-                  # Replace 'string_to_find' with 'string_to_replace_with' in the content
-                  modified_content="${modified_content//\$GIT_TAG/$${expr { gitTag.tagExpr }}}"
-                  modified_content="${modified_content//\$TAG_VERSION/$${expr { gitTag.tagVersionExpr }}}"
-        
-                  # Output the result as a step output
-                  echo "result<<EOF" >> $GITHUB_OUTPUT
-                  echo "$modified_content" >> $GITHUB_OUTPUT
-                  echo "EOF" >> $GITHUB_OUTPUT
+                  npm install -g @openai/codex@latest
+                  printenv OPENAI_API_KEY | codex login --with-api-key
             """.trimIndent(),
+            ),
+            env = mapOf(
+                "OPENAI_API_KEY" to expr { secrets.OPENAI_API_KEY },
+            ),
+        )
+
+        val releaseNotes = run(
+            name = "Generate Release Notes with Codex",
+            command = shell(
+                $$"""
+                  set -euo pipefail
+
+                  export RELEASE_NOTES="$(ci-helper/generate-release-notes-with-codex.sh "$${expr { gitTag.tagExpr }}" "$${expr { gitTag.tagVersionExpr }}")"
+
+                  python3 - <<'PY' > "$RUNNER_TEMP/release-body.md"
+                  import os
+                  from pathlib import Path
+
+                  body = Path("ci-helper/release-template.md").read_text()
+                  replacements = {
+                      "$RELEASE_NOTES": os.environ["RELEASE_NOTES"],
+                      "$GIT_TAG": os.environ["GIT_TAG"],
+                      "$TAG_VERSION": os.environ["TAG_VERSION"],
+                  }
+                  for key, value in replacements.items():
+                      body = body.replace(key, value)
+                  print(body, end="")
+                  PY
+
+                  echo "result<<EOF" >> "$GITHUB_OUTPUT"
+                  cat "$RUNNER_TEMP/release-body.md" >> "$GITHUB_OUTPUT"
+                  echo "EOF" >> "$GITHUB_OUTPUT"
+            """.trimIndent(),
+            ),
+            env = mapOf(
+                "GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN },
+                "GH_TOKEN" to expr { secrets.GITHUB_TOKEN },
+                "OPENAI_API_KEY" to expr { secrets.OPENAI_API_KEY },
+                "GITHUB_REPOSITORY" to expr { github.repository },
+                "CODEX_MODEL" to "gpt-5.5",
+                "GIT_TAG" to expr { gitTag.tagExpr },
+                "TAG_VERSION" to expr { gitTag.tagVersionExpr },
             ),
         )
 
@@ -1948,6 +1978,7 @@ object Secrets {
     val SecretsContext.ANALYTICS_KEY by SecretsContext.propertyToExprPath
 
     val SecretsContext.GOOGLE_SERVICES_JSON by SecretsContext.propertyToExprPath
+    val SecretsContext.OPENAI_API_KEY by SecretsContext.propertyToExprPath
     val SecretsContext.FIREBASE_GA_APP_ID by SecretsContext.propertyToExprPath
     val SecretsContext.FIREBASE_GA_API_SECRET by SecretsContext.propertyToExprPath
     val SecretsContext.APPSTORE_API_KEY_ID by SecretsContext.propertyToExprPath
