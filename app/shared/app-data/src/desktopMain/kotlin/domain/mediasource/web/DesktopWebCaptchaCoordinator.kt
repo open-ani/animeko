@@ -181,6 +181,21 @@ class DesktopWebCaptchaCoordinator(
             }
     }
 
+    override fun cancelAutoResolutionRequests() {
+        val interactiveSession = interactiveSolveState?.session
+        val autoSessionKeys = sessions
+            .filterValues { it !== interactiveSession }
+            .keys
+            .toList()
+        autoSessionKeys.forEach { key ->
+            sessions.remove(key)?.cancel()
+            solvedResults.remove(key)
+        }
+        solvedByMediaSource.entries.removeAll { (_, entry) ->
+            entry.key in autoSessionKeys
+        }
+    }
+
     @Composable
     override fun ComposeContent() {
         val state = interactiveSolveState ?: return
@@ -577,6 +592,14 @@ class DesktopWebCaptchaCoordinator(
                 browser?.close(true)
                 client?.dispose()
             }
+        }
+
+        fun cancel() {
+            pendingLoad?.cancel()
+            pendingLoad = null
+            videoExtractionState?.deferred?.cancel()
+            videoExtractionState = null
+            dispose()
         }
 
         private suspend fun settleLoadedPage(
