@@ -1,6 +1,4 @@
-Automatically created from tag $GIT_TAG. Do not change anything until assets are
-uploaded.
-
+$RELEASE_NOTES
 
 [//]: # (ANI-SERVER-MAGIC-SEPARATOR)
 
