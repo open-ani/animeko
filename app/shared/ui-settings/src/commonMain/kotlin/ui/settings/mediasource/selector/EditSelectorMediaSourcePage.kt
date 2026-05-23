@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -30,6 +30,7 @@ import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
@@ -63,6 +64,9 @@ import me.him188.ani.app.ui.foundation.layout.materialWindowMarginPadding
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_more
+import me.him188.ani.app.ui.lang.settings_mediasource_selector_test
 import me.him188.ani.app.ui.settings.mediasource.DropdownMenuExport
 import me.him188.ani.app.ui.settings.mediasource.DropdownMenuImport
 import me.him188.ani.app.ui.settings.mediasource.ExportMediaSourceState
@@ -78,9 +82,8 @@ import me.him188.ani.app.ui.settings.mediasource.selector.episode.SelectorEpisod
 import me.him188.ani.app.ui.settings.mediasource.selector.episode.SelectorEpisodeState
 import me.him188.ani.app.ui.settings.mediasource.selector.episode.SelectorTestAndEpisodePane
 import me.him188.ani.app.ui.settings.mediasource.selector.test.SelectorTestState
-import kotlin.coroutines.CoroutineContext
-import me.him188.ani.app.ui.lang.*
 import org.jetbrains.compose.resources.stringResource
+import kotlin.coroutines.CoroutineContext
 
 class EditSelectorMediaSourcePageState(
     private val argumentsStorage: SaveableStorage<SelectorMediaSourceArguments>,
@@ -88,7 +91,7 @@ class EditSelectorMediaSourcePageState(
     engine: SelectorMediaSourceEngine,
     webViewVideoExtractor: State<WebViewVideoExtractor?>,
     codecManager: MediaSourceCodecManager,
-    webCaptchaCoordinator: WebCaptchaCoordinator,
+    private val webCaptchaCoordinator: WebCaptchaCoordinator,
     testMediaSourceId: String,
     backgroundScope: CoroutineScope,
     context: Context,
@@ -154,6 +157,10 @@ class EditSelectorMediaSourcePageState(
         codecManager,
         onExport = { argumentsStorage.container },
     )
+
+    fun cancelAutoCaptchaResolutionRequests() {
+        webCaptchaCoordinator.cancelAutoResolutionRequests()
+    }
 }
 
 @Composable
@@ -183,6 +190,11 @@ fun EditSelectorMediaSourceScreen(
 ) {
     val episodePaneLayout = SelectorEpisodePaneLayout.calculate(navigator.scaffoldValue)
     val coroutineScope = rememberCoroutineScope()
+    DisposableEffect(state) {
+        onDispose {
+            state.cancelAutoCaptchaResolutionRequests()
+        }
+    }
     Scaffold(
         modifier,
         topBar = {

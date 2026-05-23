@@ -1000,6 +1000,7 @@ class EpisodeViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        webCaptchaCoordinator.cancelAutoResolutionRequests()
         backgroundScope.launch(NonCancellable + CoroutineName("EpisodeViewModel#onCleared")) {
             fetchPlayState.onClose()
             withContext(Dispatchers.Main) {

@@ -92,6 +92,9 @@ interface WebCaptchaCoordinator {
 
     suspend fun solveInteractively(request: WebCaptchaRequest): WebCaptchaSolveResult
 
+    fun cancelAutoResolutionRequests() {
+    }
+
     fun resetSolvedSession(mediaSourceId: String) {
     }
 }
