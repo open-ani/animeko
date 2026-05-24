@@ -31,7 +31,30 @@ PREVIOUS_TAG="${PREVIOUS_TAG:-}"
 if [[ -z "$PREVIOUS_TAG" ]]; then
   tag_commit="$(git rev-list -n 1 "$GIT_TAG" 2>/dev/null || true)"
   if [[ -n "$tag_commit" ]]; then
-    PREVIOUS_TAG="$(git describe --tags --abbrev=0 "${tag_commit}^" 2>/dev/null || true)"
+    if [[ "$GIT_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+      # Stable releases compare against the latest previous stable tag by
+      # semantic version, ignoring beta/alpha/rc tags.
+      PREVIOUS_TAG="$({
+        git tag --list 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || true
+      } | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+        | sort -V \
+        | awk -v current="$GIT_TAG" '$0 < current { previous=$0 } END { print previous }')"
+    else
+      # Pre-releases compare against the previous pre-release in the same base
+      # version sequence. For example, v5.5.0-beta02 -> v5.5.0-beta01 and
+      # v5.5.0-beta01 -> v5.5.0-alpha03, even if a v5.4.x hotfix was published
+      # in between.
+      base_version="$(echo "$GIT_TAG" | sed -E 's/^((v[0-9]+\.[0-9]+\.[0-9]+)).*/\1/')"
+      PREVIOUS_TAG="$({
+        git tag --list "${base_version}-*" 2>/dev/null || true
+      } | grep -E "^${base_version}-(alpha|beta|rc)[0-9]+$" \
+        | sort -V \
+        | awk -v current="$GIT_TAG" '$0 < current { previous=$0 } END { print previous }')"
+
+      if [[ -z "$PREVIOUS_TAG" ]]; then
+        PREVIOUS_TAG="$(git describe --tags --abbrev=0 "${tag_commit}^" 2>/dev/null || true)"
+      fi
+    fi
   fi
 fi
 
@@ -99,8 +122,8 @@ cat > "$workdir/prompt.md" <<PROMPT
 - 分割线上方只放重要更新，要面向用户，避免内部实现术语；不要把所有 commit 都塞进重要更新。
 - 分割线下方需要包含所有其他对用户使用有影响的更新；文档更新、纯构建/CI/依赖/内部重构、测试调整、代码清理等对用户使用没有直接影响的更新不要包含。
 - 如果某个更新已经在分割线上方提及，分割线下方不要重复写。
-- PR 可以放在重要更新或次要更新里；若有作者和 PR 链接，沿用类似历史格式："... by @author in https://github.com/open-ani/animeko/pull/123"。
-- 但 @Him188 和 @StageGuard 的 PR 不需要写 by 和 in，也不需要附 PR 链接；只要正文提到对应改动即可。
+- PR 可以放在重要更新或次要更新里；有关联 PR 的条目统一使用格式："内容 (#123 by @author)"。
+- 但 @Him188 和 @StageGuard 的 PR 不需要写 PR 编号和作者；只要正文提到对应改动即可。
 - 不要用“关闭 PR”“关闭链接”“关闭 https://...”这类说法来表示 PR；要直接描述用户可感知的改动。
 - 不要重复提及同一个 PR；如果某个 PR 已经在分割线上面提及，分割线下面不要再提及它。
 - 分割线下面只写其他对用户使用有影响且未在上方提及的更新；不要写文档、纯构建/CI/依赖/内部重构、测试调整、代码清理。
@@ -167,23 +190,28 @@ if "Full Changelog" not in text:
 pr_lines = [line.strip() for line in prs_path.read_text().splitlines() if line.strip()]
 missing = []
 for line in pr_lines:
-    m = re.search(r"#(\d+).*?(https://\S+/pull/\d+)?", line)
+    m = re.search(r"#(\d+):\s*(.*?)\s+by @([^\s]+)(?:\s+in\s+(https://\S+/pull/\d+))?$", line)
     if not m:
-        continue
-    number = m.group(1)
-    url_match = re.search(r"https://\S+/pull/\d+", line)
-    url = url_match.group(0) if url_match else ""
-    author_match = re.search(r"by @([^\s]+)", line)
-    author_name = author_match.group(1) if author_match else ""
+        m = re.search(r"#(\d+):\s*(https://\S+/pull/\d+)?", line)
+        if not m:
+            continue
+        number = m.group(1)
+        title = f"PR #{number} 的相关更新"
+        author_name = ""
+        url = m.group(2) or ""
+    else:
+        number = m.group(1)
+        title = m.group(2).strip()
+        author_name = m.group(3)
+        url = m.group(4) or ""
+
     if not author_name or author_name in {"Him188", "StageGuard"}:
         # Maintainer/unknown PRs do not need explicit attribution or links; avoid
         # adding generic fallback bullets that would duplicate user-facing summaries.
         continue
     mentioned = (url and url in text) or re.search(rf"(?<!\d)#?{re.escape(number)}(?!\d)", text)
     if not mentioned:
-        author = f" by @{author_name}"
-        link = f" in {url}" if url else ""
-        missing.append(f"- 包含 PR #{number} 的改动{author}{link}")
+        missing.append(f"- {title} (#{number} by @{author_name})")
 
 if missing:
     full_re = re.compile(r"\n?\*\*?Full Changelog\*\*?:.*$", re.I | re.S)
