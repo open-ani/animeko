@@ -11,12 +11,12 @@ package me.him188.ani.app.ui.main
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
@@ -89,6 +89,7 @@ internal fun BoxScope.BangumiSessionExpiredPromptHost(
                 .align(Alignment.BottomCenter)
                 .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(start = 16.dp, end = 16.dp, bottom = 96.dp)
+                .widthIn(max = SnackbarMaxWidth)
                 .fillMaxWidth(),
         )
     }
@@ -122,19 +123,13 @@ private fun BangumiSessionExpiredSnackbar(
 ) {
     Snackbar(
         modifier = modifier,
-    ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                stringResource(Lang.bangumi_session_expired),
-                Modifier.weight(1f),
-            )
+        action = {
             TextButton(onClick = onView) {
                 Text(stringResource(Lang.bangumi_session_expired_view))
             }
-        }
+        },
+    ) {
+        Text(stringResource(Lang.bangumi_session_expired))
     }
 }
 
@@ -178,6 +173,7 @@ private fun BangumiSessionExpiredSnackbarPreviewContent() {
     ) {
         BangumiSessionExpiredSnackbar(
             modifier = Modifier
+                .widthIn(max = SnackbarMaxWidth)
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter),
             onView = {},
@@ -191,6 +187,12 @@ private fun PreviewBangumiSessionExpiredSnackbar() = ProvideCompositionLocalsFor
     BangumiSessionExpiredSnackbarPreviewContent()
 }
 
+@Preview(device = "spec:width=1280dp,height=800dp,dpi=240")
+@Composable
+private fun PreviewBangumiSessionExpiredSnackbarWide() = ProvideCompositionLocalsForPreview {
+    BangumiSessionExpiredSnackbarPreviewContent()
+}
+
 @Preview
 @Composable
 private fun PreviewBangumiSessionExpiredDialog() = ProvideCompositionLocalsForPreview {
@@ -201,3 +203,5 @@ private fun PreviewBangumiSessionExpiredDialog() = ProvideCompositionLocalsForPr
         unbindEnabled = true,
     )
 }
+
+private val SnackbarMaxWidth = 600.dp
