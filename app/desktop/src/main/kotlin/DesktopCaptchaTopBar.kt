@@ -9,11 +9,13 @@
 
 package me.him188.ani.app.desktop
 
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.Modifier
@@ -21,17 +23,25 @@ import me.him188.ani.app.domain.mediasource.web.DesktopCaptchaTopBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 
-internal val AniDesktopCaptchaTopBar = DesktopCaptchaTopBar { pageUrl, onDismiss, onConfirm ->
+internal val AniDesktopCaptchaTopBar = DesktopCaptchaTopBar { pageUrl, onDismiss, onRefresh, onConfirm ->
     AniTopAppBar(
         title = {
             AniTopAppBarDefaults.Title(captchaTitle(pageUrl))
         },
         navigationIcon = {
-            IconButton(onClick = onDismiss) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "返回",
-                )
+            Row {
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                        contentDescription = "返回",
+                    )
+                }
+                IconButton(onClick = onRefresh) {
+                    Icon(
+                        imageVector = Icons.Rounded.Refresh,
+                        contentDescription = "刷新",
+                    )
+                }
             }
         },
         actions = {
