@@ -35,7 +35,7 @@ internal actual suspend fun storeCaptchaCookies(
             val name = cookie.substringBefore("=").trim()
             val value = cookie.substringAfter("=", missingDelimiterValue = "").trim()
             if (name.isBlank() || value.isBlank()) continue
-            storage.addCookie(url, Cookie(name, value))
+            storage.addCookie(url, Cookie(name, value, path = "/"))
         }
     } finally {
         client.returnClient(ticket)

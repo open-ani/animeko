@@ -18,8 +18,8 @@ import androidx.compose.ui.test.performClick
 import me.him188.ani.app.ui.framework.exists
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import kotlin.test.Test
-import kotlin.test.assertTrue
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class DesktopWebCaptchaCoordinatorUiTest {
     @Test
@@ -37,6 +37,7 @@ class DesktopWebCaptchaCoordinatorUiTest {
         runOnIdle {
             assertTrue(onNodeWithContentDescription("返回").exists())
             assertTrue(onNodeWithText("captcha.example.com").exists())
+            assertTrue(onNodeWithContentDescription("刷新").exists())
             assertTrue(onNodeWithContentDescription("完成").exists())
         }
     }
@@ -44,12 +45,14 @@ class DesktopWebCaptchaCoordinatorUiTest {
     @Test
     fun `dialog content actions invoke callbacks`() = runAniComposeUiTest {
         var dismissCount = 0
+        var refreshCount = 0
         var confirmCount = 0
 
         setContent {
             DesktopCaptchaDialogContent(
                 pageUrl = "https://example.com/challenge",
                 onDismiss = { dismissCount++ },
+                onRefresh = { refreshCount++ },
                 onConfirm = { confirmCount++ },
             ) {
                 Box(Modifier.fillMaxSize())
@@ -57,10 +60,12 @@ class DesktopWebCaptchaCoordinatorUiTest {
         }
 
         onNodeWithContentDescription("返回").performClick()
+        onNodeWithContentDescription("刷新").performClick()
         onNodeWithContentDescription("完成").performClick()
 
         runOnIdle {
             assertEquals(1, dismissCount)
+            assertEquals(1, refreshCount)
             assertEquals(1, confirmCount)
         }
     }

@@ -294,7 +294,12 @@ class SelectorMediaSource(
                 webCaptchaCoordinator.tryAutoSolve(request)
             }
             when (result) {
-                is WebCaptchaSolveResult.Solved -> storeCaptchaCookies(client, result.finalUrl, result.cookies)
+                is WebCaptchaSolveResult.Solved -> {
+                    storeCaptchaCookies(client, request.pageUrl, result.cookies)
+                    if (result.finalUrl != request.pageUrl) {
+                        storeCaptchaCookies(client, result.finalUrl, result.cookies)
+                    }
+                }
                 is WebCaptchaSolveResult.StillBlocked,
                 WebCaptchaSolveResult.Cancelled,
                 WebCaptchaSolveResult.Unsupported,
