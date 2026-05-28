@@ -1,12 +1,3 @@
-/*
- * Copyright (C) 2024-2026 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 // @formatter:off
 /**
  *
@@ -25,16 +16,18 @@
 
 package me.him188.ani.client.apis
 
+import me.him188.ani.client.models.AniUpdateProfileRequest
+
+import me.him188.ani.client.infrastructure.*
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
+import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
 import kotlinx.serialization.json.Json
-import me.him188.ani.client.infrastructure.ApiClient
-import me.him188.ani.client.infrastructure.HttpResponse
-import me.him188.ani.client.infrastructure.RequestConfig
-import me.him188.ani.client.infrastructure.RequestMethod
-import me.him188.ani.client.infrastructure.wrap
-import me.him188.ani.client.models.AniUpdateProfileRequest
+import io.ktor.http.ParametersBuilder
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 open class UserProfileAniApi : ApiClient {
 
@@ -51,8 +44,8 @@ open class UserProfileAniApi : ApiClient {
     ): super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
-     * 
-     * 
+     *
+     *
      * @param aniUpdateProfileRequest  (optional)
      * @return kotlin.Any
      */
@@ -84,9 +77,9 @@ open class UserProfileAniApi : ApiClient {
 
 
     /**
-     * 
-     * 
-     * @param body 
+     *
+     *
+     * @param body
      * @return kotlin.Any
      */
     @Suppress("UNCHECKED_CAST")

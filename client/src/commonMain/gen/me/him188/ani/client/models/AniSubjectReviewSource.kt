@@ -1,12 +1,3 @@
-/*
- * Copyright (C) 2024-2026 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 // @formatter:off
 /**
  *
@@ -25,16 +16,48 @@
 
 package me.him188.ani.client.models
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 
+import kotlinx.serialization.*
+
+/**
+ *
+ *
+ * Values: ANIMEKO,BANGUMI
+ */
 @Serializable
 enum class AniSubjectReviewSource(val value: kotlin.String) {
+
     @SerialName(value = "animeko")
-    animeko("animeko"),
+    ANIMEKO("animeko"),
 
     @SerialName(value = "bangumi")
-    bangumi("bangumi");
+    BANGUMI("bangumi");
+
+    /**
+     * Override [toString()] to avoid using the enum variable name as the value, and instead use
+     * the actual value defined in the API spec file.
+     *
+     * This solves a problem when the variable name and its value are different, and ensures that
+     * the client sends the correct enum values to the server always.
+     */
+    override fun toString(): kotlin.String = value
+
+    companion object {
+        /**
+         * Converts the provided [data] to a [String] on success, null otherwise.
+         */
+        fun encode(data: kotlin.Any?): kotlin.String? = if (data is AniSubjectReviewSource) "$data" else null
+
+        /**
+         * Returns a valid [AniSubjectReviewSource] for [data], null otherwise.
+         */
+        fun decode(data: kotlin.Any?): AniSubjectReviewSource? = data?.let {
+          val normalizedData = "$it".lowercase()
+          values().firstOrNull { value ->
+            it == value || normalizedData == "$value".lowercase()
+          }
+        }
+    }
 }
 
 

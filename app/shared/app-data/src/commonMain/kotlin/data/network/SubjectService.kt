@@ -37,6 +37,7 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.search.SubjectType
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.session.checkAccessAniApiNow
+import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.client.models.AniCollectionType
 import me.him188.ani.client.models.AniPerson
@@ -307,7 +308,11 @@ class RemoteSubjectService(
 
     override suspend fun getSubjectRecommendations(subjectId: Int, limit: Int): List<AniSubjectRecommendation> {
         return subjectApi {
-            this.getSubjectRecommendations(subjectId.toLong(), limit = limit).body()
+            this.getSubjectRecommendations(
+                subjectId = subjectId.toLong(),
+                userAgent = getAniUserAgent(),
+                limit = limit,
+            ).body()
         }
     }
 

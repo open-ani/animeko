@@ -1,12 +1,3 @@
-/*
- * Copyright (C) 2024-2026 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 // @formatter:off
 /**
  *
@@ -25,34 +16,44 @@
 
 package me.him188.ani.client.models
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import me.him188.ani.client.models.AniCollectionType
+import me.him188.ani.client.models.AniEpisodeCollection
+import me.him188.ani.client.models.AniFavourite
+import me.him188.ani.client.models.AniInfobox
+import me.him188.ani.client.models.AniSelfRatingInfo
+import me.him188.ani.client.models.AniSubjectAiringInfo
+import me.him188.ani.client.models.AniSubjectRelations
+import me.him188.ani.client.models.AniSubjectType
+import me.him188.ani.client.models.AniTag
+
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
- * 
  *
- * @param id 
- * @param type 
- * @param name 
- * @param nameCn 
- * @param summary 
- * @param nsfw 
- * @param airDate 
- * @param aliases 
- * @param favorite 
- * @param tags 
- * @param metaTags 
- * @param scoreDetails 
- * @param selfRating 
+ *
+ * @param id
+ * @param type
+ * @param name
+ * @param nameCn
+ * @param summary
+ * @param nsfw
+ * @param airDate
+ * @param aliases
+ * @param favorite
+ * @param tags
+ * @param metaTags
+ * @param scoreDetails
+ * @param selfRating
  * @param episodes 条目对应的剧集的收藏状态
- * @param relations 
- * @param infobox 
- * @param platform 
+ * @param relations
+ * @param infobox
+ * @param platform
  * @param score 如果不为空, 则必定为浮点
- * @param rank 
- * @param collectionType 
- * @param airingInfo 
+ * @param rank
+ * @param collectionType
+ * @param airingInfo
  * @param updatedAt 收藏更新的时间. 如果没有收藏, 则为 `null`.
  */
 @Serializable

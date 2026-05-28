@@ -22,11 +22,11 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * 
  *
- * @param bangumiId 
- * @param nameCn 
- * @param imageLarge 
+ *
+ * @param bangumiId
+ * @param nameCn
+ * @param imageLarge
  */
 @Serializable
 

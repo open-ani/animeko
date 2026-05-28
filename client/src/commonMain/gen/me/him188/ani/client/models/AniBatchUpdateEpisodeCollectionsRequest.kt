@@ -23,10 +23,10 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * 
  *
- * @param episodeIds 
- * @param episodeCollectionType 
+ *
+ * @param episodeIds
+ * @param episodeCollectionType
  */
 @Serializable
 

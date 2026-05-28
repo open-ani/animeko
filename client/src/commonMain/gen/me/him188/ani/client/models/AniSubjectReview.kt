@@ -1,12 +1,3 @@
-/*
- * Copyright (C) 2024-2026 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 // @formatter:off
 /**
  *
@@ -25,11 +16,26 @@
 
 package me.him188.ani.client.models
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import me.him188.ani.client.models.AniEpisodeCommentAuthor
+import me.him188.ani.client.models.AniSubjectReviewSource
 
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
+
+/**
+ *
+ *
+ * @param id
+ * @param subjectId
+ * @param source
+ * @param contentBbcode
+ * @param updatedAt
+ * @param rating
+ * @param author
+ */
 @Serializable
+
 data class AniSubjectReview (
 
     @SerialName(value = "id") @Required val id: kotlin.String,
@@ -38,13 +44,13 @@ data class AniSubjectReview (
 
     @SerialName(value = "source") @Required val source: AniSubjectReviewSource,
 
-    @SerialName(value = "author") val author: AniEpisodeCommentAuthor? = null,
-
     @SerialName(value = "contentBbcode") @Required val contentBbcode: kotlin.String,
 
     @SerialName(value = "updatedAt") @Required val updatedAt: kotlin.String,
 
-    @SerialName(value = "rating") @Required val rating: kotlin.Int
+    @SerialName(value = "rating") @Required val rating: kotlin.Int,
+
+    @SerialName(value = "author") val author: AniEpisodeCommentAuthor? = null
 
 ) {
 

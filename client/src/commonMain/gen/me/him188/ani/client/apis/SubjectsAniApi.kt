@@ -1,12 +1,3 @@
-/*
- * Copyright (C) 2024-2026 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 // @formatter:off
 /**
  *
@@ -25,22 +16,6 @@
 
 package me.him188.ani.client.apis
 
-import io.ktor.client.HttpClient
-import io.ktor.client.HttpClientConfig
-import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
-import me.him188.ani.client.infrastructure.ApiClient
-import me.him188.ani.client.infrastructure.HttpResponse
-import me.him188.ani.client.infrastructure.RequestConfig
-import me.him188.ani.client.infrastructure.RequestMethod
-import me.him188.ani.client.infrastructure.map
-import me.him188.ani.client.infrastructure.toMultiValue
-import me.him188.ani.client.infrastructure.wrap
 import me.him188.ani.client.models.AniBangumiSyncStateEntity
 import me.him188.ani.client.models.AniBatchUpdateEpisodeCollectionsRequest
 import me.him188.ani.client.models.AniCollectionType
@@ -58,6 +33,17 @@ import me.him188.ani.client.models.AniSubjectReviewsResponse
 import me.him188.ani.client.models.AniSubjectSearchSortBy
 import me.him188.ani.client.models.AniUpdateEpisodeCollectionRequest
 import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
+
+import me.him188.ani.client.infrastructure.*
+import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.request.forms.formData
+import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.json.Json
+import io.ktor.http.ParametersBuilder
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 open class SubjectsAniApi : ApiClient {
 
@@ -83,7 +69,7 @@ open class SubjectsAniApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -108,8 +94,8 @@ open class SubjectsAniApi : ApiClient {
     /**
      * 批量编辑自己的条目收藏中的剧集进度
      * 批量编辑自己的条目收藏中的剧集进度
-     * @param subjectId 
-     * @param aniBatchUpdateEpisodeCollectionsRequest 
+     * @param subjectId
+     * @param aniBatchUpdateEpisodeCollectionsRequest
      * @return kotlin.Any
      */
     @Suppress("UNCHECKED_CAST")
@@ -142,7 +128,7 @@ open class SubjectsAniApi : ApiClient {
     /**
      * 删除自己的收藏
      * 删除自己的收藏
-     * @param subjectId 
+     * @param subjectId
      * @return kotlin.Any
      */
     @Suppress("UNCHECKED_CAST")
@@ -150,7 +136,7 @@ open class SubjectsAniApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -182,7 +168,7 @@ open class SubjectsAniApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -207,8 +193,8 @@ open class SubjectsAniApi : ApiClient {
     /**
      * 获取单个剧集信息. 如果已登录, 还会返回 collectionType 字段
      * 获取单个剧集信息. 如果已登录, 还会返回 collectionType 字段
-     * @param subjectId 
-     * @param episodeId 
+     * @param subjectId
+     * @param episodeId
      * @return AniEpisodeCollection
      */
     @Suppress("UNCHECKED_CAST")
@@ -216,7 +202,7 @@ open class SubjectsAniApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -241,7 +227,7 @@ open class SubjectsAniApi : ApiClient {
     /**
      * 获取关联条目列表
      * 获取关联条目列表
-     * @param subjectId 
+     * @param subjectId
      * @return kotlin.collections.List<AniRelatedSubject>
      */
     @Suppress("UNCHECKED_CAST")
@@ -249,7 +235,7 @@ open class SubjectsAniApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -283,7 +269,7 @@ open class SubjectsAniApi : ApiClient {
     /**
      * 获取单个条目信息. 如果已登录, 还会返回 collectionType 等字段.
      * 获取单个条目信息. 如果已登录, 还会返回 collectionType 等字段.
-     * @param subjectId 
+     * @param subjectId
      * @return AniSubjectCollection
      */
     @Suppress("UNCHECKED_CAST")
@@ -291,7 +277,7 @@ open class SubjectsAniApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -316,7 +302,7 @@ open class SubjectsAniApi : ApiClient {
     /**
      * 获取条目的角色 (characters). 默认返回配音演员.
      * 获取条目的角色 (characters). 默认返回配音演员.
-     * @param subjectId 
+     * @param subjectId
      * @param withActors  (optional)
      * @return kotlin.collections.List<AniRelatedCharacter>
      */
@@ -325,7 +311,7 @@ open class SubjectsAniApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -367,7 +353,7 @@ open class SubjectsAniApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -402,7 +388,7 @@ open class SubjectsAniApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -430,21 +416,23 @@ open class SubjectsAniApi : ApiClient {
     /**
      * 获取番剧条目推荐列表
      * 获取番剧条目推荐列表
-     * @param subjectId 
+     * @param subjectId
+     * @param userAgent
      * @param limit  (optional)
      * @return kotlin.collections.List<AniSubjectRecommendation>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getSubjectRecommendations(subjectId: kotlin.Long, limit: kotlin.Int? = null): HttpResponse<kotlin.collections.List<AniSubjectRecommendation>> {
+    open suspend fun getSubjectRecommendations(subjectId: kotlin.Long, userAgent: kotlin.String, limit: kotlin.Int? = null): HttpResponse<kotlin.collections.List<AniSubjectRecommendation>> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
         val localVariableHeaders = mutableMapOf<String, String>()
+        userAgent?.apply { localVariableHeaders["User-Agent"] = this.toString() }
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
@@ -472,9 +460,46 @@ open class SubjectsAniApi : ApiClient {
     }
 
     /**
+     * 获取条目评价, 混合 Bangumi 评价和 Ani 本地评价.
+     * 获取条目评价, 混合 Bangumi 评价和 Ani 本地评价.
+     * @param subjectId
+     * @param offset  (optional)
+     * @param limit  (optional)
+     * @return AniSubjectReviewsResponse
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getSubjectReviews(subjectId: kotlin.Long, offset: kotlin.Int? = null, limit: kotlin.Int? = null): HttpResponse<AniSubjectReviewsResponse> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
+        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v2/subjects/{subjectId}/reviews".replace("{" + "subjectId" + "}", "$subjectId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
      * 获取条目的制作人员 (staff)
      * 获取条目的制作人员 (staff)
-     * @param subjectId 
+     * @param subjectId
      * @return kotlin.collections.List<AniRelatedPerson>
      */
     @Suppress("UNCHECKED_CAST")
@@ -482,7 +507,7 @@ open class SubjectsAniApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -516,7 +541,7 @@ open class SubjectsAniApi : ApiClient {
     /**
      * 搜索条目
      * 搜索条目
-     * @param q 
+     * @param q
      * @param offset  (optional)
      * @param limit  (optional)
      * @param tags  (optional)
@@ -529,7 +554,7 @@ open class SubjectsAniApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -558,48 +583,11 @@ open class SubjectsAniApi : ApiClient {
 
 
     /**
-     * 获取条目评价, 混合 Bangumi 评价和 Ani 本地评价.
-     * 获取条目评价, 混合 Bangumi 评价和 Ani 本地评价.
-     * @param subjectId 
-     * @param offset  (optional, default to 0)
-     * @param limit  (optional, default to 30)
-     * @return AniSubjectReviewsResponse
-     */
-    @Suppress("UNCHECKED_CAST")
-    open suspend fun getSubjectReviews(subjectId: kotlin.Long, offset: kotlin.Int? = 0, limit: kotlin.Int? = 30): HttpResponse<AniSubjectReviewsResponse> {
-
-        val localVariableAuthNames = listOf<String>()
-
-        val localVariableBody = 
-            io.ktor.client.utils.EmptyContent
-
-        val localVariableQuery = mutableMapOf<String, List<String>>()
-        offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
-        limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
-        val localVariableHeaders = mutableMapOf<String, String>()
-
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
-            RequestMethod.GET,
-            "/v2/subjects/{subjectId}/reviews".replace("{" + "subjectId" + "}", "$subjectId"),
-            query = localVariableQuery,
-            headers = localVariableHeaders,
-            requiresAuthentication = false,
-        )
-
-        return request(
-            localVariableConfig,
-            localVariableBody,
-            localVariableAuthNames
-        ).wrap()
-    }
-
-
-    /**
      * 编辑自己的条目收藏中的单个剧集进度
      * 编辑自己的条目收藏中的单个剧集进度
-     * @param subjectId 
-     * @param episodeId 
-     * @param aniUpdateEpisodeCollectionRequest 
+     * @param subjectId
+     * @param episodeId
+     * @param aniUpdateEpisodeCollectionRequest
      * @return kotlin.Any
      */
     @Suppress("UNCHECKED_CAST")
@@ -632,7 +620,7 @@ open class SubjectsAniApi : ApiClient {
     /**
      * 编辑自己的收藏或创建一个收藏
      * 编辑自己的收藏或创建一个收藏
-     * @param subjectId 
+     * @param subjectId
      * @param aniUpdateSubjectCollectionRequest  (optional)
      * @return kotlin.Any
      */

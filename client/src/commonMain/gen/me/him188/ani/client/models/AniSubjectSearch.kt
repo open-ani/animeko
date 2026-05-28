@@ -1,12 +1,3 @@
-/*
- * Copyright (C) 2024-2026 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 // @formatter:off
 /**
  *
@@ -25,27 +16,31 @@
 
 package me.him188.ani.client.models
 
-import kotlinx.serialization.Required
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import me.him188.ani.client.models.AniFavourite
+import me.him188.ani.client.models.AniLightRelatedPersonInfo
+import me.him188.ani.client.models.AniTag
+
+import kotlinx.serialization.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 
 /**
- * 
  *
- * @param id 
- * @param name 
- * @param nameCn 
- * @param summary 
- * @param imageLarge 
- * @param nsfw 
- * @param airDate 
- * @param ratingTotal 
- * @param favorite 
- * @param tags 
- * @param mainEpisodeCount 
- * @param lightRelatedPersonInfoList 
- * @param score 
- * @param rank 
+ *
+ * @param id
+ * @param name
+ * @param nameCn
+ * @param summary
+ * @param imageLarge
+ * @param nsfw
+ * @param airDate
+ * @param ratingTotal
+ * @param favorite
+ * @param tags
+ * @param mainEpisodeCount
+ * @param lightRelatedPersonInfoList
+ * @param score
+ * @param rank
  */
 @Serializable
 

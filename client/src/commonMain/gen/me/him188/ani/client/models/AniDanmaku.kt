@@ -23,11 +23,11 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * 
  *
- * @param id 
- * @param senderId 
- * @param danmakuInfo 
+ *
+ * @param id
+ * @param senderId
+ * @param danmakuInfo
  */
 @Serializable
 

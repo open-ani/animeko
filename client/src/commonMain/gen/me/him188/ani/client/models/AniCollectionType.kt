@@ -20,7 +20,7 @@ package me.him188.ani.client.models
 import kotlinx.serialization.*
 
 /**
- * 
+ *
  *
  * Values: WISH,DONE,DOING,ON_HOLD,DROPPED
  */

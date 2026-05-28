@@ -23,9 +23,9 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * 
  *
- * @param trendingSubjects 
+ *
+ * @param trendingSubjects
  */
 @Serializable
 
