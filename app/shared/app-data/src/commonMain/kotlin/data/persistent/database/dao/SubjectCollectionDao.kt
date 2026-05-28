@@ -10,18 +10,17 @@
 package me.him188.ani.app.data.persistent.database.dao
 
 import androidx.compose.runtime.Immutable
-import androidx.paging.PagingSource
-import androidx.room.ColumnInfo
-import androidx.room.Dao
-import androidx.room.Embedded
-import androidx.room.Entity
-import androidx.room.Index
-import androidx.room.PrimaryKey
-import androidx.room.Query
-import androidx.room.Relation
-import androidx.room.Transaction
-import androidx.room.TypeConverters
-import androidx.room.Upsert
+import androidx.room3.ColumnInfo
+import androidx.room3.Dao
+import androidx.room3.Embedded
+import androidx.room3.Entity
+import androidx.room3.Index
+import androidx.room3.PrimaryKey
+import androidx.room3.Query
+import androidx.room3.Relation
+import androidx.room3.Transaction
+import androidx.room3.TypeConverters
+import androidx.room3.Upsert
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.schedule.AnimeRecurrence
 import me.him188.ani.app.data.models.subject.RatingInfo
@@ -201,13 +200,16 @@ interface SubjectCollectionDao {
         where (collectionType is NOT NULL AND (:collectionType IS NULL OR collectionType = :collectionType))
         AND (:includeNsfw OR NOT nsfw)
         order by lastUpdated DESC, subjectId DESC
+        limit :limit offset :offset
         """,
     )
     @Transaction
-    fun filterByCollectionTypePaging(
+    suspend fun filterByCollectionTypePage(
         collectionType: UnifiedCollectionType? = null,
         includeNsfw: Boolean,
-    ): PagingSource<Int, SubjectCollectionAndEpisodes>
+        limit: Int,
+        offset: Int,
+    ): List<SubjectCollectionAndEpisodes>
 
     @Query("""SELECT * FROM subject_collection WHERE subjectId = :subjectId""")
     fun findById(subjectId: Int): Flow<SubjectCollectionEntity?>
@@ -289,8 +291,8 @@ data class SubjectCollectionAndEpisodes(
     val collection: SubjectCollectionEntity,
     @Relation(
         entity = EpisodeCollectionEntity::class,
-        parentColumn = "subjectId",
-        entityColumn = "subjectId",
+        parentColumns = ["subjectId"],
+        entityColumns = ["subjectId"],
     )
     val episodesOfAnyType: List<EpisodeCollectionEntity>,
 ) {

@@ -9,7 +9,7 @@
 
 package me.him188.ani.app.data.persistent.database
 
-import androidx.room.TypeConverter
+import androidx.room3.TypeConverter
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.datasources.api.EpisodeSort

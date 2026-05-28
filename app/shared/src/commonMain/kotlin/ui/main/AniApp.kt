@@ -47,6 +47,7 @@ import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
+import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.foundation.AbstractViewModel
@@ -108,10 +109,10 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
         mediaCacheComposablesFlow,
     ) { themeSettings, mainSceneInitialPage, uiSettings, mediaCacheComposables ->
         AniAppState(
-            if (!uiSettings.onboardingCompleted) {
-                NavRoutes.Welcome
-            } else {
+            if (uiSettings.onboardingCompleted || currentAniBuildConfig.distroChannel == "web") {
                 NavRoutes.Main(mainSceneInitialPage)
+            } else {
+                NavRoutes.Welcome
             },
             uiSettings.mainSceneInitialPage,
             themeSettings,

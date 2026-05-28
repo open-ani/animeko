@@ -11,8 +11,8 @@
 
 import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryExtension
 import org.jetbrains.compose.ComposeExtension
-import org.jetbrains.compose.ComposePlugin
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
@@ -35,6 +35,13 @@ val composeCompilerExtension =
     extensions.findByType(org.jetbrains.kotlin.compose.compiler.gradle.ComposeCompilerGradlePluginExtension::class)
 val enableHotReload = getLocalProperty("ani.compose.hot.reload")?.toBooleanStrict() != false
 
+val enableWasmTarget = project.findProperty("ani.disable.wasm")?.toString()?.toBooleanStrictOrNull() != true &&
+        project.path !in setOf(
+    // The PikPak SDK does not publish a wasm variant. Web builds keep the
+    // browser app functional by omitting this optional accelerator module.
+    ":torrent:pikpak",
+)
+
 configure<KotlinMultiplatformExtension> {
     /**
      * 平台架构:
@@ -56,6 +63,12 @@ configure<KotlinMultiplatformExtension> {
         iosArm64()
         iosSimulatorArm64() // to run tests
         // no x86
+    }
+    if (enableWasmTarget) {
+        @OptIn(ExperimentalWasmDsl::class)
+        wasmJs {
+            browser()
+        }
     }
     if (androidLibraryExtension != null) {
         jvm("desktop")
@@ -95,6 +108,11 @@ configure<KotlinMultiplatformExtension> {
 
         applyDefaultHierarchyTemplate {
             common {
+                if (enableWasmTarget) {
+                    group("web") {
+                        withWasmJs()
+                    }
+                }
                 group("jvm") {
                     withJvm()
                     group("android")
@@ -125,7 +143,15 @@ configure<KotlinMultiplatformExtension> {
     } else {
         jvm()
 
-        applyDefaultHierarchyTemplate()
+        applyDefaultHierarchyTemplate {
+            common {
+                if (enableWasmTarget) {
+                    group("web") {
+                        withWasmJs()
+                    }
+                }
+            }
+        }
     }
 
     compilerOptions {
@@ -220,7 +246,7 @@ if (androidLibraryExtension != null) {
     apply(plugin = "de.mannodermaus.android-junit5")
 }
 
-if (composeExtension != null && androidLibraryExtension != null) {
+if (composeExtension != null && androidLibraryExtension != null && !enableWasmTarget) {
     apply(plugin = "com.github.skydoves.compose.stability.analyzer")
 
     val stabilityInputTaskNames = listOf(

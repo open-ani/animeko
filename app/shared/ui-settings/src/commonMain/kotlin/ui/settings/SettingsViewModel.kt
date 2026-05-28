@@ -90,7 +90,6 @@ import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.datasources.api.source.ConnectionStatus
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
-import me.him188.ani.torrent.pikpak.testPikPakLogin
 import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
@@ -159,7 +158,7 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
             val scoped = clientProvider.get(ScopedHttpClientUserAgent.ANI)
             val ticket = scoped.borrow()
             try {
-                if (testPikPakLogin(cfg.username, cfg.password, cfg.refreshToken, ticket.client)) {
+                if (testPikPakLoginCompat(cfg.username, cfg.password, cfg.refreshToken, ticket.client)) {
                     ConnectionTestResult.SUCCESS
                 } else {
                     ConnectionTestResult.FAILED

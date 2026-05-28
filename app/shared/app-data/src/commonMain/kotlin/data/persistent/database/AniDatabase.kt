@@ -9,17 +9,17 @@
 
 package me.him188.ani.app.data.persistent.database
 
-import androidx.room.AutoMigration
-import androidx.room.ConstructedBy
-import androidx.room.Database
-import androidx.room.DeleteColumn
-import androidx.room.RenameColumn
-import androidx.room.RenameTable
-import androidx.room.RoomDatabase
-import androidx.room.RoomDatabaseConstructor
-import androidx.room.TypeConverters
-import androidx.room.migration.AutoMigrationSpec
-import androidx.room.migration.Migration
+import androidx.room3.AutoMigration
+import androidx.room3.ConstructedBy
+import androidx.room3.Database
+import androidx.room3.DeleteColumn
+import androidx.room3.RenameColumn
+import androidx.room3.RenameTable
+import androidx.room3.RoomDatabase
+import androidx.room3.RoomDatabaseConstructor
+import androidx.room3.TypeConverters
+import androidx.room3.migration.AutoMigrationSpec
+import androidx.room3.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 import me.him188.ani.app.data.persistent.database.converters.DurationConverter
@@ -158,7 +158,7 @@ expect object AniDatabaseConstructor : RoomDatabaseConstructor<AniDatabase> {
 }
 
 val MIGRATION_19_20 = object : Migration(startVersion = 19, endVersion = 20) {
-    override fun migrate(connection: SQLiteConnection) {
+    override suspend fun migrate(connection: SQLiteConnection) {
         connection.execSQL("DROP TABLE IF EXISTS `episode_comment`")
         connection.execSQL(
             """
@@ -195,7 +195,7 @@ internal object Migrations {
      * @since 4.0.0-alpha03
      */
     class Migration_1_2 : AutoMigrationSpec {
-        override fun onPostMigrate(connection: SQLiteConnection) {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
         }
     }
 
@@ -203,7 +203,7 @@ internal object Migrations {
      * @since 4.0.0-alpha03
      */
     class Migration_2_3 : AutoMigrationSpec {
-        override fun onPostMigrate(connection: SQLiteConnection) {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
             connection.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `distinct_content` ON `search_history`(`content`)")
             connection.execSQL("CREATE INDEX IF NOT EXISTS `sequence_desc` ON `search_history`(`sequence` DESC)")
         }
@@ -225,7 +225,7 @@ internal object Migrations {
      * @since 4.0.0-alpha04
      */
     class Migration_3_4 : AutoMigrationSpec {
-        override fun onPostMigrate(connection: SQLiteConnection) {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
         }
     }
 
@@ -236,7 +236,7 @@ internal object Migrations {
      */
     @RenameTable("related_character", "character_actor")
     class Migration_4_5 : AutoMigrationSpec {
-        override fun onPostMigrate(connection: SQLiteConnection) {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
         }
     }
 
@@ -247,7 +247,7 @@ internal object Migrations {
      * @since 4.0.0-alpha04
      */
     class Migration_5_6 : AutoMigrationSpec {
-        override fun onPostMigrate(connection: SQLiteConnection) {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
         }
     }
 
@@ -259,7 +259,7 @@ internal object Migrations {
      */
     @DeleteColumn("subject_collection", "_index")
     class Migration_6_7 : AutoMigrationSpec {
-        override fun onPostMigrate(connection: SQLiteConnection) {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
         }
     }
 
@@ -268,7 +268,7 @@ internal object Migrations {
      * @since 4.0.0-beta03
      */
     class Migration_7_8 : AutoMigrationSpec {
-        override fun onPostMigrate(connection: SQLiteConnection) {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
         }
     }
 
@@ -278,7 +278,7 @@ internal object Migrations {
      */
     @RenameColumn("episode_collection", "lastUpdated", "lastFetched")
     class Migration_8_9 : AutoMigrationSpec {
-        override fun onPostMigrate(connection: SQLiteConnection) {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
         }
     }
 
@@ -287,7 +287,7 @@ internal object Migrations {
      * @since 4.1.0-alpha01
      */
     class Migration_9_10 : AutoMigrationSpec {
-        override fun onPostMigrate(connection: SQLiteConnection) {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
         }
     }
 
@@ -298,7 +298,7 @@ internal object Migrations {
      * @since 4.1.0-alpha02
      */
     class Migration_10_11 : AutoMigrationSpec {
-        override fun onPostMigrate(connection: SQLiteConnection) {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
         }
     }
 
@@ -307,7 +307,7 @@ internal object Migrations {
      * @since 4.1.0-alpha02
      */
     class Migration_11_12 : AutoMigrationSpec {
-        override fun onPostMigrate(connection: SQLiteConnection) {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
         }
     }
 
@@ -317,7 +317,7 @@ internal object Migrations {
      * @since 4.1.0-alpha03
      */
     class Migration_12_13 : AutoMigrationSpec {
-        override fun onPostMigrate(connection: SQLiteConnection) {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
         }
     }
 
@@ -327,7 +327,7 @@ internal object Migrations {
      * @since 4.9.0-alpha03
      */
     class Migration_13_14 : AutoMigrationSpec {
-        override fun onPostMigrate(connection: SQLiteConnection) {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
         }
     }
 
@@ -337,7 +337,7 @@ internal object Migrations {
      * @since 5.0.0
      */
     class Migration_14_15 : AutoMigrationSpec {
-        override fun onPostMigrate(connection: SQLiteConnection) {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
         }
     }
 
@@ -347,7 +347,7 @@ internal object Migrations {
      * @since 5.2.0
      */
     class Migration_16_17 : AutoMigrationSpec {
-        override fun onPostMigrate(connection: SQLiteConnection) {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
         }
     }
 
@@ -357,7 +357,7 @@ internal object Migrations {
      * @since 5.3.0
      */
     class Migration_17_18 : AutoMigrationSpec {
-        override fun onPostMigrate(connection: SQLiteConnection) {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
         }
     }
 
@@ -367,7 +367,7 @@ internal object Migrations {
      * @since 5.3.0
      */
     class Migration_18_19 : AutoMigrationSpec {
-        override fun onPostMigrate(connection: SQLiteConnection) {
+        override suspend fun onPostMigrate(connection: SQLiteConnection) {
         }
     }
 }

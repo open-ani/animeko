@@ -87,6 +87,7 @@ includeProject(":utils:http-downloader")
 includeProject(":utils:build-config")
 
 
+includeProject(":torrent:offline", "torrent/offline")
 includeProject(":torrent:torrent-api", "torrent/api") // Torrent 系统 API
 includeProject(":torrent:anitorrent")
 //includeProject(":torrent:anitorrent:anitorrent-native")
@@ -121,6 +122,7 @@ includeProject(":app:shared:reorderable", "app/shared/thirdparty/reorderable")
 includeProject(":app:desktop", "app/desktop") // desktop JVM client for macOS, Windows, and Linux
 includeProject(":app:android", "app/android") // Android client
 includeProject(":app:ios", "app/ios") // iOS Launcher
+includeProject(":app:web", "app/web") // Compose for Web (wasm) client
 
 includeProject(":client")
 

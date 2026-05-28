@@ -9,17 +9,17 @@
 
 package me.him188.ani.app.data.persistent.database.dao
 
-import androidx.room.Dao
-import androidx.room.Embedded
-import androidx.room.Entity
-import androidx.room.Index
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.PrimaryKey
-import androidx.room.Query
-import androidx.room.Relation
-import androidx.room.Transaction
-import androidx.room.Upsert
+import androidx.room3.Dao
+import androidx.room3.Embedded
+import androidx.room3.Entity
+import androidx.room3.Index
+import androidx.room3.Insert
+import androidx.room3.OnConflictStrategy
+import androidx.room3.PrimaryKey
+import androidx.room3.Query
+import androidx.room3.Relation
+import androidx.room3.Transaction
+import androidx.room3.Upsert
 
 @Entity(
     tableName = "web_search_subject",
@@ -72,8 +72,8 @@ data class WebSearchSubjectInfoAndEpisodes(
     val webSubjectInfo: WebSearchSubjectInfoEntity,
     @Relation(
         entity = WebSearchEpisodeInfoEntity::class,
-        parentColumn = "id",
-        entityColumn = "parentId",
+        parentColumns = ["id"],
+        entityColumns = ["parentId"],
     )
     val webEpisodeInfos: List<WebSearchEpisodeInfoEntity>,
 ) 

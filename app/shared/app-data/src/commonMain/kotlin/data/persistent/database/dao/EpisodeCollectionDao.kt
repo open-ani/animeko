@@ -9,17 +9,16 @@
 
 package me.him188.ani.app.data.persistent.database.dao
 
-import androidx.paging.PagingSource
-import androidx.room.ColumnInfo
-import androidx.room.Dao
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.Index
-import androidx.room.PrimaryKey
-import androidx.room.Query
-import androidx.room.Transaction
-import androidx.room.TypeConverters
-import androidx.room.Upsert
+import androidx.room3.ColumnInfo
+import androidx.room3.Dao
+import androidx.room3.Entity
+import androidx.room3.ForeignKey
+import androidx.room3.Index
+import androidx.room3.PrimaryKey
+import androidx.room3.Query
+import androidx.room3.Transaction
+import androidx.room3.TypeConverters
+import androidx.room3.Upsert
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.persistent.database.converters.PackedDateConverter
 import me.him188.ani.datasources.api.EpisodeSort
@@ -142,9 +141,11 @@ interface EpisodeCollectionDao {
         """
         SELECT * FROM episode_collection
         WHERE subjectId = :subjectId 
-        ORDER BY sortNumber ASC, sort ASC""",
+        ORDER BY sortNumber ASC, sort ASC
+        LIMIT :limit OFFSET :offset
+        """,
     )
-    fun filterBySubjectIdPaging(subjectId: Int): PagingSource<Int, EpisodeCollectionEntity>
+    suspend fun filterBySubjectIdPage(subjectId: Int, limit: Int, offset: Int): List<EpisodeCollectionEntity>
 
 
     @Upsert

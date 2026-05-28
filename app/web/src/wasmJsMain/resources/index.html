@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animeko Web</title>
+    <link rel="icon" href="data:,">
+    <style>
+        html, body, #root {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #101318;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+    </style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+    (() => {
+        const proxyHosts = new Set([
+            "api.animeko.org",
+            "danmaku-global.myani.org",
+            "danmaku-cn.myani.org",
+            "s1.animeko.openani.org",
+            "next.bgm.tv",
+            "api.bgm.tv",
+            "lain.bgm.tv",
+        ]);
+        const originalFetch = window.fetch.bind(window);
+
+        function proxiedUrl(url) {
+            try {
+                const parsed = new URL(url, window.location.href);
+                if (parsed.protocol === "https:" && proxyHosts.has(parsed.hostname)) {
+                    return `/__animeko_proxy?url=${encodeURIComponent(parsed.toString())}`;
+                }
+            } catch (_) {
+            }
+            return null;
+        }
+
+        window.fetch = (input, init) => {
+            const url = typeof input === "string" || input instanceof URL ? input.toString() : input && input.url;
+            const proxyUrl = url && proxiedUrl(url);
+            if (!proxyUrl) return originalFetch(input, init);
+            if (input instanceof Request) {
+                input = new Request(proxyUrl, input);
+            } else {
+                input = proxyUrl;
+            }
+            return originalFetch(input, init);
+        };
+    })();
+</script>
+<script src="animeko-web.js"></script>
+</body>
+</html>

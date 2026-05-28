@@ -9,11 +9,10 @@
 
 package me.him188.ani.app.data.persistent.database.dao
 
-import androidx.paging.PagingSource
-import androidx.room.Dao
-import androidx.room.Query
-import androidx.room.Transaction
-import androidx.room.Upsert
+import androidx.room3.Dao
+import androidx.room3.Query
+import androidx.room3.Transaction
+import androidx.room3.Upsert
 import me.him188.ani.app.data.persistent.database.entity.SubjectReviewEntity
 
 @Dao
@@ -30,9 +29,12 @@ interface SubjectReviewDao {
         SELECT * FROM subject_review 
         WHERE subjectId = :subjectId
         ORDER BY updatedAt DESC
+        LIMIT :limit OFFSET :offset
         """,
     )
-    fun filterBySubjectIdPager(
+    suspend fun filterBySubjectIdPage(
         subjectId: Int,
-    ): PagingSource<Int, SubjectReviewEntity>
+        limit: Int,
+        offset: Int,
+    ): List<SubjectReviewEntity>
 }

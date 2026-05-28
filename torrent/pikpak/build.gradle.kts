@@ -44,6 +44,7 @@ kotlin {
         api(projects.utils.io)
         api(projects.utils.ktorClient)
         api(projects.utils.logging)
+        api(projects.torrent.offline)
         implementation(libs.kotlinx.serialization.json)
         implementation(libs.ktor.client.content.negotiation)
         implementation(libs.ktor.serialization.kotlinx.json)

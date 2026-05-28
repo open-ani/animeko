@@ -402,7 +402,8 @@ private fun SettingsScope.UploadAvatarDialog(
 
         onResetAvatarUploadState()
         asyncHandler.launch {
-            cropTarget = PlatformFile(it.files.first()).readBytes()
+            val platformFile = platformFileFromPath(it.files.first()) ?: return@launch
+            cropTarget = platformFile.readBytes()
         }
         return@dnd true
     }

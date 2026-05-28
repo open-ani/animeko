@@ -14,7 +14,6 @@ import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
@@ -262,9 +261,9 @@ abstract class AbstractTorrentFileEntry(
 
     protected suspend fun resolveDownloadingFile(): SystemPath {
         while (true) {
-            val file = withContext(Dispatchers.IO) { resolveFileMaybeEmptyOrNull() }
+            val file = withContext(Dispatchers.Default) { resolveFileMaybeEmptyOrNull() }
             if (file != null) {
-                if (withContext(Dispatchers.IO) { file.length() == 0L }) {
+                if (withContext(Dispatchers.Default) { file.length() == 0L }) {
                     logger.info { "[$torrentId][resolveDownloadingFile]: Got file, but it's length is zero. Waiting..." }
                     delay(1.seconds)
                     continue

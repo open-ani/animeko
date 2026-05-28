@@ -10,11 +10,13 @@
 package me.him188.ani.app.ui.main
 
 import androidx.compose.runtime.Stable
+import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.compose.launchAsLazyPagingItemsIn
 import androidx.paging.filter
 import androidx.paging.flatMap
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.NsfwMode
@@ -24,6 +26,7 @@ import me.him188.ani.app.data.network.TrendsRepository
 import me.him188.ani.app.data.repository.subject.FollowedSubjectsRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.session.SessionManager
+import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.exploration.ExplorationPageState
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import org.koin.core.component.KoinComponent
@@ -55,13 +58,17 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
 //                .map { it.subjects }
 //                .produceState(null),
 //        ),
-        followedSubjectsPager = combine(
-            settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode },
-            followedSubjectsRepository.followedSubjectsPager(),
-        ) { nsfwMode, subjects ->
-            if (nsfwMode != NsfwMode.HIDE) return@combine subjects
-            subjects.filter { !it.subjectInfo.nsfw }
-        }.cachedIn(backgroundScope),
+        followedSubjectsPager = if (currentAniBuildConfig.distroChannel == "web") {
+            flowOf(PagingData.empty())
+        } else {
+            combine(
+                settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode },
+                followedSubjectsRepository.followedSubjectsPager(),
+            ) { nsfwMode, subjects ->
+                if (nsfwMode != NsfwMode.HIDE) return@combine subjects
+                subjects.filter { !it.subjectInfo.nsfw }
+            }.cachedIn(backgroundScope)
+        },
         recommendationPager = recommendationRepository.recommendedSubjectsPager().cachedIn(backgroundScope),
         horizontalScrollTipFlow = horizontalScrollTipFlow,
         onSetDisableHorizontalScrollTip = {

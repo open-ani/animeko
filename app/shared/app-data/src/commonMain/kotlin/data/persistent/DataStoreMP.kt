@@ -16,7 +16,6 @@ import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
@@ -37,7 +36,7 @@ fun <T> DataStoreFactory.create(
     defaultValue: () -> T,
     corruptionHandler: ReplaceFileCorruptionHandler<T>?,
     migrations: List<DataMigration<T>> = listOf(),
-    scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
+    scope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob()),
     produceFile: () -> SystemPath
 ): DataStore<T> {
     return create(
@@ -53,7 +52,7 @@ expect fun <T> DataStoreFactory.create(
     serializer: DataStoreSerializer<T>,
     corruptionHandler: ReplaceFileCorruptionHandler<T>?,
     migrations: List<DataMigration<T>> = listOf(),
-    scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
+    scope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob()),
     produceFile: () -> SystemPath
 ): DataStore<T>
 

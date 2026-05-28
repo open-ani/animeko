@@ -9,13 +9,13 @@
 
 package me.him188.ani.app.data.persistent.database.dao
 
-import androidx.room.Dao
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.Index
-import androidx.room.PrimaryKey
-import androidx.room.Transaction
-import androidx.room.Upsert
+import androidx.room3.Dao
+import androidx.room3.Entity
+import androidx.room3.ForeignKey
+import androidx.room3.Index
+import androidx.room3.PrimaryKey
+import androidx.room3.Transaction
+import androidx.room3.Upsert
 import me.him188.ani.datasources.api.EpisodeSort
 
 @Entity(

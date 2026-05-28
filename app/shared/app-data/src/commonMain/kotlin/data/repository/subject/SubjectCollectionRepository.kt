@@ -15,6 +15,7 @@ import androidx.paging.LoadType
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
 import androidx.paging.map
@@ -63,6 +64,7 @@ import me.him188.ani.app.data.network.SubjectService
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
 import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionDao
+import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionAndEpisodes
 import me.him188.ani.app.data.persistent.database.dao.SubjectCollectionEntity
 import me.him188.ani.app.data.persistent.database.dao.SubjectRelations
 import me.him188.ani.app.data.persistent.database.dao.SubjectRelationsDao
@@ -373,10 +375,25 @@ class SubjectCollectionRepositoryImpl(
                 initialKey = 0,
                 remoteMediator = SubjectCollectionRemoteMediator(query),
                 pagingSourceFactory = {
-                    subjectCollectionDao.filterByCollectionTypePaging(
-                        query.type,
-                        includeNsfw = nsfwModeSettings != NsfwMode.HIDE,
-                    )
+                    object : PagingSource<Int, SubjectCollectionAndEpisodes>() {
+                        override fun getRefreshKey(state: PagingState<Int, SubjectCollectionAndEpisodes>): Int? =
+                            state.anchorPosition
+
+                        override suspend fun load(params: LoadParams<Int>): LoadResult<Int, SubjectCollectionAndEpisodes> {
+                            val offset = params.key ?: 0
+                            val data = subjectCollectionDao.filterByCollectionTypePage(
+                                query.type,
+                                includeNsfw = nsfwModeSettings != NsfwMode.HIDE,
+                                limit = params.loadSize,
+                                offset = offset,
+                            )
+                            return LoadResult.Page(
+                                data = data,
+                                prevKey = if (offset == 0) null else (offset - params.loadSize).coerceAtLeast(0),
+                                nextKey = if (data.size < params.loadSize) null else offset + data.size,
+                            )
+                        }
+                    }
                 },
             ).flow.map { data ->
                 data.map { (entity, episodesOfAnyType) ->

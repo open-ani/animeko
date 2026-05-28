@@ -1,23 +1,21 @@
-/*
- * Copyright (C) 2024-2025 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 package me.him188.ani.app.platform
 
 import io.sentry.kotlin.multiplatform.Sentry
 import io.sentry.kotlin.multiplatform.protocol.User
+import me.him188.ani.utils.platform.currentPlatform
 
 internal actual fun initializeSentry(userId: String) {
     Sentry.init { options ->
-        CommonTracingInitializer.configureSentryOptions(options)
+        val buildConfig = currentAniBuildConfig
+        options.dsn = buildConfig.sentryDsn
+        options.debug = buildConfig.isDebug
+        options.release = "me.him188.ani@${buildConfig.versionName}"
     }
     Sentry.configureScope {
+        val platform = currentPlatform()
         it.user = User(id = userId)
-        CommonTracingInitializer.configureGlobalScope(it)
+        it.setContext("os", platform.name)
+        it.setContext("arch", platform.arch.name)
+        it.setContext("version", currentAniBuildConfig.versionName)
     }
 }

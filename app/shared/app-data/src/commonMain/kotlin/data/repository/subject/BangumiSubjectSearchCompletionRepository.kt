@@ -30,7 +30,7 @@ import me.him188.ani.utils.logging.error
  */
 class BangumiSubjectSearchCompletionRepository(
     private val bangumiSubjectSearchService: BangumiSubjectSearchService,
-    private val subjectCollectionRepository: SubjectCollectionRepository,
+    private val subjectCollectionRepository: SubjectCollectionRepository?,
     settingsRepository: SettingsRepository,
 ) : Repository() {
     private val useNewApiFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.enableNewSearchSubjectApi }
@@ -55,7 +55,8 @@ class BangumiSubjectSearchCompletionRepository(
                         limit = params.loadSize,
                     )
 
-                    val filteredCompletions = if (ignoreDoneAndDroppedFlow.first()) {
+                    val filteredCompletions =
+                        if (ignoreDoneAndDroppedFlow.first() && subjectCollectionRepository != null) {
                         val excludedNames = subjectCollectionRepository.getSubjectNamesCnByCollectionType(
                             types = listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED),
                         ).first()

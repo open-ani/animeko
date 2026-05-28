@@ -12,16 +12,15 @@ package me.him188.ani.app.domain.mediasource.subscription
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsChannel
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode.Companion.UnprocessableEntity
-import kotlinx.serialization.json.io.decodeFromSource
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
+import me.him188.ani.app.domain.mediasource.web.rewriteWebCorsProxyUrl
 import me.him188.ani.client.apis.SubscriptionsAniApi
 import me.him188.ani.utils.coroutines.withExceptionCollector
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.ktor.ScopedHttpClient
-import me.him188.ani.utils.ktor.toSource
 import kotlin.coroutines.cancellation.CancellationException
 
 fun interface MediaSourceSubscriptionRequester {
@@ -42,18 +41,16 @@ class MediaSourceSubscriptionRequesterImpl(
     override suspend fun request(
         subscription: MediaSourceSubscription,
     ): SubscriptionUpdateData {
-        suspend fun HttpResponse.decode() = bodyAsChannel().toSource().use {
-            MediaSourceCodecManager.Companion.json.decodeFromSource(
-                SubscriptionUpdateData.serializer(),
-                it,
-            )
-        }
+        suspend fun HttpResponse.decode() = MediaSourceCodecManager.Companion.json.decodeFromString(
+            SubscriptionUpdateData.serializer(),
+            bodyAsText(),
+        )
 
         withExceptionCollector {
             // 首先直连
             try {
                 return client.use {
-                    get(subscription.url).decode()
+                    get(rewriteWebCorsProxyUrl(subscription.url)).decode()
                 }
             } catch (e: CancellationException) {
                 throw e

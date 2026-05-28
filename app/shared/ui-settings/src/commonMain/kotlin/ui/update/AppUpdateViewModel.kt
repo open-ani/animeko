@@ -13,7 +13,6 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.platform.UriHandler
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -206,7 +205,7 @@ class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
                 }
             }
 
-            withContext(Dispatchers.IO) { dir.createDirectories() }
+            withContext(Dispatchers.Default) { dir.createDirectories() }
             fileDownloader.download(
                 alternativeUrls = ver.downloadUrlAlternatives,
                 filenameProvider = { it.substringAfterLast("/", "") },

@@ -11,7 +11,7 @@ package me.him188.ani.app.data.models.subject
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import androidx.room.TypeConverters
+import androidx.room3.TypeConverters
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.persistent.database.ProtoConverters
 import me.him188.ani.utils.platform.annotations.TestOnly

@@ -11,8 +11,14 @@ package me.him188.ani.app.data.repository.subject
 
 import androidx.paging.Pager
 import androidx.paging.PagingData
+import androidx.paging.PagingData.Companion.from
+import androidx.paging.PagingSource
+import androidx.paging.PagingState
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.persistent.database.dao.SearchHistoryDao
 import me.him188.ani.app.data.persistent.database.dao.SearchHistoryEntity
@@ -21,26 +27,48 @@ import me.him188.ani.app.data.repository.Repository
 import org.koin.core.component.KoinComponent
 
 class SubjectSearchHistoryRepository(
-    private val searchHistory: SearchHistoryDao,
-    private val searchTag: SearchTagDao,
+    private val searchHistory: SearchHistoryDao?,
+    private val searchTag: SearchTagDao?,
 ) : Repository(), KoinComponent {
+    private val inMemoryHistory = MutableStateFlow<List<String>>(emptyList())
+
     suspend fun addHistory(content: String) = withContext(defaultDispatcher) {
         val normalizedContent = content.trim()
         if (normalizedContent.isEmpty()) {
             return@withContext
         }
 
-        searchHistory.insert(SearchHistoryEntity(content = normalizedContent))
+        searchHistory?.let {
+            it.deleteByContent(normalizedContent)
+            it.insert(SearchHistoryEntity(content = normalizedContent))
+        }
+            ?: inMemoryHistory.update { history -> listOf(normalizedContent) + history.filter { it != normalizedContent } }
     }
 
     suspend fun removeHistory(content: String) = withContext(defaultDispatcher) {
-        searchHistory.deleteByContent(content)
+        searchHistory?.deleteByContent(content)
+            ?: inMemoryHistory.update { history -> history.filter { it != content } }
     }
 
     fun getHistoryPager(): Flow<PagingData<String>> {
+        val searchHistory = searchHistory ?: return inMemoryHistory.map { from(it) }.flowOn(defaultDispatcher)
         return Pager(
             config = defaultPagingConfig,
-            pagingSourceFactory = { searchHistory.allPager() },
+            pagingSourceFactory = {
+                object : PagingSource<Int, String>() {
+                    override fun getRefreshKey(state: PagingState<Int, String>): Int? = state.anchorPosition
+
+                    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, String> {
+                        val offset = params.key ?: 0
+                        val data = searchHistory.listPage(limit = params.loadSize, offset = offset)
+                        return LoadResult.Page(
+                            data = data,
+                            prevKey = if (offset == 0) null else (offset - params.loadSize).coerceAtLeast(0),
+                            nextKey = if (data.size < params.loadSize) null else offset + data.size,
+                        )
+                    }
+                }
+            },
         ).flow.flowOn(defaultDispatcher)
     }
 

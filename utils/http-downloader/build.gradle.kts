@@ -46,7 +46,6 @@ kotlin {
     sourceSets.commonMain.dependencies {
         api(projects.utils.coroutines)
         api(libs.kotlinx.datetime)
-        api(libs.mediamp.ffmpeg)
         implementation(projects.utils.logging)
         implementation(projects.utils.ktorClient)
         api(libs.datastore.core)
@@ -57,6 +56,13 @@ kotlin {
     }
     sourceSets.desktopMain.dependencies {
 //        runtimeOnly(libs.slf4j.simple)
+        api(libs.mediamp.ffmpeg)
+    }
+    sourceSets.androidMain.dependencies {
+        api(libs.mediamp.ffmpeg)
+    }
+    sourceSets.findByName("iosMain")?.dependencies {
+        api(libs.mediamp.ffmpeg)
     }
     sourceSets.commonTest.dependencies {
         implementation(libs.turbine)

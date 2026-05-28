@@ -43,7 +43,7 @@ import kotlin.coroutines.cancellation.CancellationException
 class SubjectSearchRepository(
     private val bangumiSubjectSearchService: BangumiSubjectSearchService,
     private val aniSubjectSearchService: AniSubjectSearchService,
-    private val subjectCollectionRepository: SubjectCollectionRepository,
+    private val subjectCollectionRepository: SubjectCollectionRepository?,
     private val subjectService: SubjectService,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
 ) : Repository(defaultDispatcher) {
@@ -89,7 +89,7 @@ class SubjectSearchRepository(
                     sort = searchQuery.sort.toBangumiSort(),
                 )
 
-                val filteredIds = if (ignoreDoneAndDropped()) {
+                val filteredIds = if (ignoreDoneAndDropped() && subjectCollectionRepository != null) {
                     val excludedIds = subjectCollectionRepository.getSubjectIdsByCollectionType(
                         types = listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED),
                     ).first()

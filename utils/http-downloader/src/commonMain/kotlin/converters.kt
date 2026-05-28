@@ -10,7 +10,7 @@
 
 package me.him188.ani.utils.httpdownloader
 
-import androidx.room.TypeConverter
+import androidx.room3.TypeConverter
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
