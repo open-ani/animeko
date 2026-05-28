@@ -321,7 +321,7 @@ private fun SearchPageSearchBar(
     var debouncedEditingQuery by remember { mutableStateOf(editingQuery) }
 
     LaunchedEffect(editingQuery) {
-        delay(200)
+        delay(800)
         debouncedEditingQuery = editingQuery
     }
 
