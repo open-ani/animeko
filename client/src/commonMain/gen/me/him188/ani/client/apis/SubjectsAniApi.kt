@@ -545,12 +545,15 @@ open class SubjectsAniApi : ApiClient {
      * @param offset  (optional)
      * @param limit  (optional)
      * @param tags  (optional)
+     * @param airDates  (optional)
+     * @param ratings  (optional)
+     * @param ranks  (optional)
      * @param includeNsfw  (optional)
      * @param sortBy  (optional)
      * @return AniPaginatedResponse2
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun searchSubjects(q: kotlin.String, offset: kotlin.Int? = null, limit: kotlin.Int? = null, tags: kotlin.collections.List<kotlin.String>? = null, includeNsfw: AniNsfwFilter? = null, sortBy: AniSubjectSearchSortBy? = null): HttpResponse<AniPaginatedResponse2> {
+    open suspend fun searchSubjects(q: kotlin.String, offset: kotlin.Int? = null, limit: kotlin.Int? = null, tags: kotlin.collections.List<kotlin.String>? = null, airDates: kotlin.collections.List<kotlin.String>? = null, ratings: kotlin.collections.List<kotlin.String>? = null, ranks: kotlin.collections.List<kotlin.String>? = null, includeNsfw: AniNsfwFilter? = null, sortBy: AniSubjectSearchSortBy? = null): HttpResponse<AniPaginatedResponse2> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -562,6 +565,9 @@ open class SubjectsAniApi : ApiClient {
         offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
         limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
         tags?.apply { localVariableQuery["tags"] = toMultiValue(this, "csv") }
+        airDates?.apply { localVariableQuery["airDates"] = toMultiValue(this, "csv") }
+        ratings?.apply { localVariableQuery["ratings"] = toMultiValue(this, "csv") }
+        ranks?.apply { localVariableQuery["ranks"] = toMultiValue(this, "csv") }
         includeNsfw?.apply { localVariableQuery["include_nsfw"] = listOf("${ includeNsfw.value }") }
         sortBy?.apply { localVariableQuery["sortBy"] = listOf("${ sortBy.value }") }
         val localVariableHeaders = mutableMapOf<String, String>()

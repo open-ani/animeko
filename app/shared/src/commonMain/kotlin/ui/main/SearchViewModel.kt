@@ -87,11 +87,6 @@ class SearchViewModel(
 
             subjectSearchRepository.searchSubjects(
                 searchQuery = query,
-                useNewApi = {
-                    query.hasFilters() ||
-                            settingsRepository.uiSettings.flow.map { it.searchSettings.enableNewSearchSubjectApi }
-                                .first()
-                },
                 ignoreDoneAndDropped = {
                     settingsRepository.uiSettings.flow.map {
                         it.searchSettings.ignoreDoneAndDroppedSubjects

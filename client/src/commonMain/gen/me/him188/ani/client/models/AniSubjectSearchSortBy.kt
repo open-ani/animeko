@@ -22,7 +22,7 @@ import kotlinx.serialization.*
 /**
  *
  *
- * Values: RELEVANCE,AIR_DATE_ASC,AIR_DATE_DESC,RATING_ASC,RATING_DESC,RANK_ASC,RANK_DESC
+ * Values: RELEVANCE,AIR_DATE_ASC,AIR_DATE_DESC,RATING_ASC,RATING_DESC,RANK_ASC,RANK_DESC,COLLECTION_DESC
  */
 @Serializable
 enum class AniSubjectSearchSortBy(val value: kotlin.String) {
@@ -46,7 +46,10 @@ enum class AniSubjectSearchSortBy(val value: kotlin.String) {
     RANK_ASC("rankAsc"),
 
     @SerialName(value = "rankDesc")
-    RANK_DESC("rankDesc");
+    RANK_DESC("rankDesc"),
+
+    @SerialName(value = "collectionDesc")
+    COLLECTION_DESC("collectionDesc");
 
     /**
      * Override [toString()] to avoid using the enum variable name as the value, and instead use

@@ -18,13 +18,13 @@ import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.domain.mediasource.MediaListFilters
+import me.him188.ani.app.domain.search.SearchSort
 import me.him188.ani.app.domain.search.SubjectType
 import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.client.models.AniNsfwFilter
 import me.him188.ani.client.models.AniSubjectSearch
 import me.him188.ani.client.models.AniSubjectSearchSortBy
 import me.him188.ani.datasources.api.PackedDate
-import me.him188.ani.datasources.bangumi.models.search.BangumiSort
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.ktor.ApiInvoker
 import kotlin.coroutines.CoroutineContext
@@ -36,11 +36,10 @@ class AniSubjectSearchService(
 ) {
     suspend fun searchSubjects(
         keyword: String,
-        useNewApi: Boolean,
         offset: Int? = null,
         limit: Int? = null,
 
-        sort: BangumiSort? = null,
+        sort: SearchSort = SearchSort.MATCH,
         filters: BangumiSearchFilters? = null,
     ): List<BatchSubjectDetails> = withContext(ioDispatcher) {
         val result = subjectApi.invoke {
@@ -49,17 +48,19 @@ class AniSubjectSearchService(
                 offset = offset,
                 limit = limit,
                 tags = filters?.tags,
+                airDates = filters?.airDates,
+                ratings = filters?.ratings,
+                ranks = filters?.ranks,
                 includeNsfw = when (filters?.nsfw) {
-                    true -> AniNsfwFilter.INCLUDE
+                    true -> AniNsfwFilter.ONLY
                     false -> AniNsfwFilter.EXCLUDE
-                    null -> null
+                    null -> AniNsfwFilter.INCLUDE
                 },
                 sortBy = when (sort) {
-                    BangumiSort.MATCH -> AniSubjectSearchSortBy.RELEVANCE
-                    BangumiSort.HEAT -> AniSubjectSearchSortBy.AIR_DATE_DESC
-                    BangumiSort.RANK -> AniSubjectSearchSortBy.RANK_ASC
-                    BangumiSort.SCORE -> AniSubjectSearchSortBy.RATING_DESC
-                    null -> null
+                    SearchSort.MATCH -> AniSubjectSearchSortBy.RELEVANCE
+                    SearchSort.RANK -> AniSubjectSearchSortBy.RATING_DESC
+                    SearchSort.COLLECTION -> AniSubjectSearchSortBy.COLLECTION_DESC
+                    SearchSort.DATE -> AniSubjectSearchSortBy.AIR_DATE_DESC
                 },
             )
         }.body()
