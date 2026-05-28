@@ -343,7 +343,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<BangumiProfileService> { BangumiProfileService() }
     single<AnimeScheduleService> { AnimeScheduleService(get<AniApiProvider>().scheduleApi) }
     single<TrendsRepository> { TrendsRepository(get<AniApiProvider>().trendsApi, get<BangumiClient>().nextTrendingApi) }
-    single<RecommendationRepository> { RecommendationRepository(get<TrendsRepository>()) }
+    single<RecommendationRepository> { RecommendationRepository(get<AniApiProvider>().homeApi) }
     single<AutoSkipRepository> { AutoSkipRepository(get<AniApiProvider>().episodesApi) }
 
     single<DanmakuRepository> {

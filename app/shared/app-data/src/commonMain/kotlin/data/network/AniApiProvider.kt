@@ -14,6 +14,7 @@ import me.him188.ani.client.apis.BangumiAniApi
 import me.him188.ani.client.apis.BangumiOAuthAniApi
 import me.him188.ani.client.apis.DanmakuAniApi
 import me.him188.ani.client.apis.EpisodesAniApi
+import me.him188.ani.client.apis.HomeAniApi
 import me.him188.ani.client.apis.PeerFilterRuleAniApi
 import me.him188.ani.client.apis.ScheduleAniApi
 import me.him188.ani.client.apis.SubjectRelationsAniApi
@@ -34,6 +35,7 @@ class AniApiProvider(
     val trendsApi = ApiInvoker(client) { TrendsAniApi(baseurl, it) }
     val scheduleApi = ApiInvoker(client) { ScheduleAniApi(baseurl, it) }
     val oauthApi = ApiInvoker(client) { BangumiOAuthAniApi(baseurl, it) }
+    val homeApi = ApiInvoker(client) { HomeAniApi(baseurl, it) }
     val subjectRelationsApi = ApiInvoker(client) { SubjectRelationsAniApi(baseurl, it) }
     val danmakuApi = ApiInvoker(client) { DanmakuAniApi(baseurl, it) }
     val pfRuleApi = ApiInvoker(client) { PeerFilterRuleAniApi(baseurl, it) }

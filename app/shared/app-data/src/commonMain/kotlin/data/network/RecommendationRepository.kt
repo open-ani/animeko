@@ -9,28 +9,71 @@
 
 package me.him188.ani.app.data.network
 
+import androidx.paging.Pager
 import androidx.paging.PagingData
-import androidx.paging.map
+import androidx.paging.PagingSource
+import androidx.paging.PagingState
+import io.ktor.client.call.body
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.recommend.RecommendedItemInfo
 import me.him188.ani.app.data.models.recommend.RecommendedSubjectInfo
-import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
+import me.him188.ani.app.data.repository.Repository
+import me.him188.ani.app.data.repository.runWrappingExceptionAsLoadResult
+import me.him188.ani.client.apis.HomeAniApi
+import me.him188.ani.client.models.AniSubjectRecommendation
+import me.him188.ani.utils.coroutines.IO_
+import me.him188.ani.utils.ktor.ApiInvoker
+import me.him188.ani.utils.logging.error
+import kotlin.coroutines.CoroutineContext
 
 class RecommendationRepository(
-    private val trendsRepository: TrendsRepository,
-) {
+    private val homeApi: ApiInvoker<HomeAniApi>,
+    private val ioDispatcher: CoroutineContext = Dispatchers.IO_
+) : Repository() {
     fun recommendedSubjectsPager(): Flow<PagingData<RecommendedItemInfo>> {
-        return trendsRepository.bangumiTrendingSubjectsPager().map { pagingData ->
-            pagingData.map { info ->
-                info.toRecommendedSubjectInfo()
+        return Pager(defaultPagingConfig, initialKey = 0) {
+            HomeRecommendationPagingSource()
+        }.flow
+    }
+
+    private inner class HomeRecommendationPagingSource : PagingSource<Int, RecommendedItemInfo>() {
+        override fun getRefreshKey(state: PagingState<Int, RecommendedItemInfo>): Int? = state.anchorPosition
+
+        override suspend fun load(params: LoadParams<Int>): LoadResult<Int, RecommendedItemInfo> {
+            val offset = params.key ?: 0
+            val loadSize = params.loadSize
+            return runWrappingExceptionAsLoadResult {
+                val response = withContext(ioDispatcher) {
+                    homeApi {
+                        getHomeRecommendations(
+                            offset = offset,
+                            limit = loadSize,
+                        ).body()
+                    }
+                }
+                val list: List<RecommendedItemInfo> = response.items.mapNotNull { it.toRecommendedSubjectInfo() }
+
+                LoadResult.Page(
+                    list,
+                    prevKey = if (offset == 0) null else (offset - loadSize).coerceAtLeast(0),
+                    nextKey = if (offset + list.size >= response.total) null else offset + loadSize,
+                )
+            }.also {
+                if (it is LoadResult.Error) {
+                    logger.error(it.throwable) { "Failed to load home recommendations." }
+                }
             }
         }
     }
 
-    private fun TrendingSubjectInfo.toRecommendedSubjectInfo(): RecommendedSubjectInfo = RecommendedSubjectInfo(
-        bangumiId = bangumiId,
-        nameCn = nameCn,
-        imageLarge = imageLarge,
-    )
+    private fun AniSubjectRecommendation.toRecommendedSubjectInfo(): RecommendedSubjectInfo? {
+        val id = subjectId?.takeIf { it > 0 }?.toInt() ?: return null
+        return RecommendedSubjectInfo(
+            bangumiId = id,
+            nameCn = subjectNameCn.ifEmpty { subjectName },
+            imageLarge = imageUrl,
+        )
+    }
 }
