@@ -260,8 +260,6 @@ internal fun createTestOnboardingPresentationState(scope: CoroutineScope): Onboa
                         testRunning = false,
                         items = buildList {
                             add(ProxyTestItem(ProxyTestCase.AniDanmakuApi, ProxyTestCaseState.RUNNING))
-                            add(ProxyTestItem(ProxyTestCase.BangumiApi, ProxyTestCaseState.SUCCESS))
-                            add(ProxyTestItem(ProxyTestCase.BangumiNextApi, ProxyTestCaseState.FAILED))
                         },
                     ),
                 ),

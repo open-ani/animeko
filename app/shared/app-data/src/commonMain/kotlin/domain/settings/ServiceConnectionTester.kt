@@ -197,9 +197,12 @@ object ServiceConnectionTesters {
     const val ID_BANGUMI_NEXT = "BANGUMI_NEXT"
     const val ID_ANI = "ANI"
 
+    val DefaultServiceIds = setOf(ID_BANGUMI, ID_BANGUMI_NEXT, ID_ANI)
+
     fun createDefault(
         bangumiClient: BangumiClient,
         aniClient: ApiInvoker<TrendsAniApi>,
+        serviceIds: Set<String> = DefaultServiceIds,
         defaultDispatcher: CoroutineContext = Dispatchers.Default,
     ): ServiceConnectionTester {
         return ServiceConnectionTester(
@@ -218,7 +221,7 @@ object ServiceConnectionTesters {
                         }
                     }.getOrElse { false }
                 },
-            ),
+            ).filter { it.id in serviceIds },
             defaultDispatcher,
         )
 

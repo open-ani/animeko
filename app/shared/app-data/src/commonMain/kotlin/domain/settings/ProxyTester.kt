@@ -39,7 +39,8 @@ private val isFirstTestResult = AtomicBoolean(true)
  */
 class ProxyTester(
     clientProvider: HttpClientProvider,
-    flowScope: CoroutineScope
+    flowScope: CoroutineScope,
+    serviceIds: Set<String> = ServiceConnectionTesters.DefaultServiceIds,
 ) {
     private val proxyTestRunning = FlowRunning()
     private val proxyTestRestarter = FlowRestarter()
@@ -52,6 +53,7 @@ class ProxyTester(
         ServiceConnectionTesters.createDefault(
             bangumiClient = BangumiClientImpl(client),
             aniClient = AniApiProvider(client).trendsApi,
+            serviceIds = serviceIds,
         )
     }
         .shareIn(
