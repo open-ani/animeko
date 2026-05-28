@@ -29,6 +29,7 @@ import me.him188.ani.client.models.AniAnimeRecurrence
 import me.him188.ani.client.models.AniAnimeSeason
 import me.him188.ani.client.models.AniAnimeSeasonId
 import me.him188.ani.client.models.AniLatestAnimeSchedules
+import me.him188.ani.client.models.AniLatestAiringSchedule
 import me.him188.ani.client.models.AniOnAirAnimeInfo
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.ktor.ApiInvoker
@@ -106,6 +107,16 @@ class AnimeScheduleService(
                 resp.typedBody<AniLatestAnimeSchedules>(typeInfo<AniLatestAnimeSchedules>()).list.map { item ->
                     AnimeScheduleInfo(item.seasonId.toAnimeSeasonId(), item.list.map { it.toAnimeScheduleInfo() })
                 }
+            }
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+    }
+
+    suspend fun getLatestAiringSchedule(today: String, timeZone: String): AniLatestAiringSchedule = withContext(ioDispatcher) {
+        try {
+            scheduleApi {
+                getLatestAiringSchedule(today, timeZone).body()
             }
         } catch (e: Exception) {
             throw RepositoryException.wrapOrThrowCancellation(e)

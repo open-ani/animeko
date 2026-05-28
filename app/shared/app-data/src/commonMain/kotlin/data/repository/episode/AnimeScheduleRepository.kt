@@ -14,21 +14,34 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
-import me.him188.ani.app.data.models.schedule.AnimeScheduleInfo
-import me.him188.ani.app.data.models.schedule.AnimeSeasonId
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import me.him188.ani.app.data.models.subject.LightEpisodeInfo
+import me.him188.ani.app.data.models.subject.LightSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectRecurrence
 import me.him188.ani.app.data.network.AnimeScheduleService
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
+import me.him188.ani.app.domain.episode.AiringScheduleForDate
+import me.him188.ani.app.domain.episode.EpisodeWithAiringTime
+import me.him188.ani.client.models.AniAiringScheduleForDate
+import me.him188.ani.client.models.AniScheduledAnimeEpisode
+import me.him188.ani.client.models.AniScheduledAnimeEpisodeInfo
+import me.him188.ani.client.models.AniScheduledAnimeSubject
+import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.EpisodeType
+import me.him188.ani.datasources.api.PackedDate
+import me.him188.ani.datasources.api.UTC9
 import me.him188.ani.utils.logging.error
+import me.him188.ani.utils.serialization.BigNum
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.Instant
 
 class AnimeScheduleRepository(
     private val animeScheduleService: AnimeScheduleService,
-//    private val subjectCollectionRepository: SubjectCollectionRepository,
     private val updatePeriod: Duration = 1.hours,
     defaultDispatcher: CoroutineContext = Dispatchers.Default,
 ) : Repository(defaultDispatcher) {
@@ -39,24 +52,9 @@ class AnimeScheduleRepository(
         }
     }
 
-    /**
-     * 获取所有新番季度的 ID
-     */
-    private fun animeSeasonIdsFlow(): Flow<List<AnimeSeasonId>> =
-        refreshTicker.mapLatest { animeScheduleService.getSeasonIds().sortedDescending() }
-
-    /**
-     * 获取指定季度的新番时间表
-     */
-    private fun animeScheduleFlow(seasonId: AnimeSeasonId): Flow<AnimeScheduleInfo?> =
-        refreshTicker.mapLatest { animeScheduleService.getScheduleInfo(seasonId) }
-
     suspend fun getSubjectRecurrence(subjectId: Int): SubjectRecurrence? {
         try {
             return batchGetSubjectRecurrence(listOf(subjectId)).first()
-//            val seasons = animeSeasonIdsFlow().firstOrNull()?.take(4) ?: return null
-//            val schedules = seasons.asFlow().mapNotNull { animeScheduleFlow(it).firstOrNull() }
-//            return schedules.mapNotNull { it.findRecurrence(subjectId) }.firstOrNull()
         } catch (e: CancellationException) {
             throw e
         } catch (e: RepositoryServiceUnavailableException) {
@@ -69,27 +67,59 @@ class AnimeScheduleRepository(
         return animeScheduleService.batchGetSubjectRecurrences(subjectIds)
     }
 
-    /**
-     * 获取最近两季度的新番时间表
-     */
-    fun recentSchedulesFlow(): Flow<List<AnimeScheduleInfo>> {
-        return flow {
-            emit(animeScheduleService.getLatestAnimeScheduleInfos())
+    fun recentAiringSchedulesFlow(today: LocalDate, timeZone: TimeZone): Flow<List<AiringScheduleForDate>> {
+        return refreshTicker.mapLatest {
+            animeScheduleService.getLatestAiringSchedule(today.toString(), timeZone.id)
+                .list
+                .map { it.toAiringScheduleForDate() }
         }.flowOn(defaultDispatcher)
     }
+}
 
+private fun AniAiringScheduleForDate.toAiringScheduleForDate(): AiringScheduleForDate {
+    return AiringScheduleForDate(
+        date = LocalDate.parse(date),
+        list = list.map { it.toEpisodeWithAiringTime() },
+    )
+}
 
-//    fun recentScheduleSubjectsFlow(): Flow<List<SubjectCollectionInfo>> =
-//        recentSchedulesFlow()
-//            .mapLatest { schedules ->
-//                schedules.flatMap { it.list }
-//            }.flatMapLatest { list ->
-//                combine(
-//                    list.map {
-//                        subjectCollectionRepository.subjectCollectionFlow(it.bangumiId)
-//                    },
-//                ) {
-//                    it.toList()
-//                }
-//            }
+private fun AniScheduledAnimeEpisode.toEpisodeWithAiringTime(): EpisodeWithAiringTime {
+    return EpisodeWithAiringTime(
+        subject = subject.toLightSubjectInfo(),
+        episode = episode.toLightEpisodeInfo(),
+        airingTime = Instant.parse(airingTime),
+    )
+}
+
+private fun AniScheduledAnimeSubject.toLightSubjectInfo(): LightSubjectInfo {
+    return LightSubjectInfo(
+        subjectId = subjectId.toInt(),
+        name = name,
+        nameCn = nameCn,
+        imageLarge = imageLarge,
+    )
+}
+
+private fun AniScheduledAnimeEpisodeInfo.toLightEpisodeInfo(): LightEpisodeInfo {
+    return LightEpisodeInfo(
+        episodeId = episodeId.toInt(),
+        name = name,
+        nameCn = nameCn,
+        airDate = PackedDate.parseFromDate(airDate),
+        timezone = UTC9,
+        sort = EpisodeSort(BigNum(sort), parseEpisodeType(type)),
+        ep = ep?.let { EpisodeSort(BigNum(it), parseEpisodeType(type)) },
+    )
+}
+
+private fun parseEpisodeType(type: Int): EpisodeType? {
+    return when (type) {
+        0 -> EpisodeType.MainStory
+        1 -> EpisodeType.SP
+        2 -> EpisodeType.OP
+        3 -> EpisodeType.ED
+        4 -> EpisodeType.PV
+        5 -> EpisodeType.MAD
+        else -> null
+    }
 }

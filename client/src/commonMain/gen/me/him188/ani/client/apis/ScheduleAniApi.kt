@@ -19,6 +19,7 @@ package me.him188.ani.client.apis
 import me.him188.ani.client.models.AniAnimeSchedule
 import me.him188.ani.client.models.AniAnimeSeasonIdList
 import me.him188.ani.client.models.AniBatchGetSubjectRecurrenceResponse
+import me.him188.ani.client.models.AniLatestAiringSchedule
 import me.him188.ani.client.models.AniLatestAnimeSchedules
 
 import me.him188.ani.client.infrastructure.*
@@ -98,6 +99,42 @@ open class ScheduleAniApi : ApiClient {
         val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/v1/schedule/seasons",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = false,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * 获取最近的新番播出时间表
+     * 获取最近的新番播出时间表
+     * @param today
+     * @param timeZone
+     * @return AniLatestAiringSchedule
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getLatestAiringSchedule(today: kotlin.String, timeZone: kotlin.String): HttpResponse<AniLatestAiringSchedule> {
+
+        val localVariableAuthNames = listOf<String>()
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        today?.apply { localVariableQuery["today"] = listOf("$today") }
+        timeZone?.apply { localVariableQuery["timeZone"] = listOf("$timeZone") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/v1/schedule/airing",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = false,

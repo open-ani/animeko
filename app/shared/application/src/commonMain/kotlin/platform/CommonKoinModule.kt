@@ -276,8 +276,6 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     // Data layer network services
     single<SubjectService> {
         RemoteSubjectService(
-            client,
-            client.api,
             aniApiProvider.subjectApi,
             sessionManager = get(),
         )

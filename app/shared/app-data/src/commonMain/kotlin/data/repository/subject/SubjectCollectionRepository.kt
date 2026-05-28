@@ -9,8 +9,6 @@
 
 package me.him188.ani.app.data.repository.subject
 
-import androidx.collection.IntList
-import androidx.collection.mutableIntListOf
 import androidx.paging.LoadType
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
@@ -19,22 +17,17 @@ import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
 import androidx.paging.map
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retry
-import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.sync.Mutex
@@ -44,9 +37,6 @@ import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.NsfwMode
-import me.him188.ani.app.data.models.subject.LightEpisodeInfo
-import me.him188.ani.app.data.models.subject.LightSubjectAndEpisodes
-import me.him188.ani.app.data.models.subject.LightSubjectInfo
 import me.him188.ani.app.data.models.subject.RatingCounts
 import me.him188.ani.app.data.models.subject.RatingInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
@@ -92,15 +82,12 @@ import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
-import me.him188.ani.datasources.api.UTC9
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
-import me.him188.ani.datasources.bangumi.apis.DefaultApi
 import me.him188.ani.datasources.bangumi.processing.toSubjectCollectionType
 import me.him188.ani.utils.coroutines.combine
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.platform.collections.toIntArray
 import me.him188.ani.utils.platform.currentTimeMillis
 import me.him188.ani.utils.serialization.BigNum
 import kotlin.coroutines.CoroutineContext
@@ -108,8 +95,6 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
-
-typealias BangumiSubjectApi = DefaultApi
 
 /**
  * 条目信息和条目收藏的仓库.
@@ -125,11 +110,6 @@ sealed class SubjectCollectionRepository(
     abstract fun subjectCollectionCountsFlow(): Flow<SubjectCollectionCounts?>
 
     abstract fun subjectCollectionFlow(subjectId: Int): Flow<SubjectCollectionInfo>
-
-    /**
-     * 批量获取多个条目的基本信息和前 100 剧集列表.
-     */
-    abstract fun batchLightSubjectAndEpisodesFlow(subjectIds: IntList): Flow<List<LightSubjectAndEpisodes>>
 
     abstract fun subjectCollectionsPager(
         query: CollectionsFilterQuery = CollectionsFilterQuery.Empty,
@@ -297,41 +277,6 @@ class SubjectCollectionRepositoryImpl(
                 )
             }
     }.flowOn(defaultDispatcher)
-
-    override fun batchLightSubjectAndEpisodesFlow(subjectIds: IntList): Flow<List<LightSubjectAndEpisodes>> {
-        return flow {
-            val existing = subjectCollectionDao.filterByIds(subjectIds.toIntArray()).first()
-            val missingIds = mutableIntListOf()
-            subjectIds.forEach { subjectId ->
-                val existingSubject = existing.find { it.subjectId == subjectId }
-                if (existingSubject == null || existingSubject.isExpired()) {
-                    missingIds.add(subjectId)
-                }
-            }
-
-            coroutineScope {
-                val fromExistingDeferred = async {
-                    existing.asFlow()
-                        .flatMapMerge(concurrency = 4) { entity ->
-                            episodeCollectionRepository
-                                .subjectEpisodeCollectionInfosFlow(entity.subjectId)
-                                .take(1)
-                                .map { episodes ->
-                                    LightSubjectAndEpisodes(
-                                        entity.toLightSubjectInfo(),
-                                        episodes.map { it.episodeInfo.toLightEpisodeInfo() },
-                                    )
-                                }
-                        }
-                        .toList()
-                }
-                val fromMissingDeferred = async {
-                    subjectService.batchGetLightSubjectAndEpisodes(missingIds) // TODO: 2025/1/14 batchGetLightSubjectEpisodes 没有按 epType 过滤
-                }
-                emit(fromExistingDeferred.await() + fromMissingDeferred.await())
-            }
-        }
-    }
 
     override fun mostRecentlyUpdatedSubjectCollectionsFlow(
         limit: Int,
@@ -609,21 +554,6 @@ class SubjectCollectionRepositoryImpl(
         private val logger = logger<SubjectCollectionRepository>()
     }
 }
-
-internal fun EpisodeInfo.toLightEpisodeInfo(): LightEpisodeInfo {
-    return LightEpisodeInfo(
-        episodeId = episodeId,
-        name = name,
-        nameCn = nameCn,
-        airDate = airDate,
-        timezone = UTC9,
-        sort = sort,
-        ep = ep,
-    )
-}
-
-internal fun SubjectCollectionEntity.toLightSubjectInfo() =
-    LightSubjectInfo(subjectId, name, nameCn, imageLarge)
 
 data class CollectionsFilterQuery(
     val type: UnifiedCollectionType?,

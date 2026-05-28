@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.data.network
 
-import kotlinx.datetime.TimeZone
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -19,18 +18,11 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import me.him188.ani.app.data.models.subject.CharacterInfo
 import me.him188.ani.app.data.models.subject.CharacterRole
-import me.him188.ani.app.data.models.subject.LightEpisodeInfo
-import me.him188.ani.app.data.models.subject.LightSubjectAndEpisodes
-import me.him188.ani.app.data.models.subject.LightSubjectInfo
 import me.him188.ani.app.data.models.subject.PersonInfo
 import me.him188.ani.app.data.models.subject.PersonPosition
 import me.him188.ani.app.data.models.subject.PersonType
 import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.RelatedPersonInfo
-import me.him188.ani.datasources.api.EpisodeSort
-import me.him188.ani.datasources.api.EpisodeType
-import me.him188.ani.datasources.api.PackedDate
-import me.him188.ani.utils.serialization.BigNum
 import me.him188.ani.utils.serialization.getIntOrFail
 import me.him188.ani.utils.serialization.getOrFail
 import me.him188.ani.utils.serialization.getString
@@ -38,7 +30,6 @@ import me.him188.ani.utils.serialization.getStringOrFail
 import me.him188.ani.utils.serialization.jsonObjectOrNull
 
 object BangumiSubjectGraphQLParser {
-    private val utc9 = TimeZone.of("UTC+9")
     private fun JsonElement.vSequence(): Sequence<String> {
         return when (this) {
             is JsonArray -> this.asSequence().flatMap { it.vSequence() }
@@ -137,49 +128,5 @@ object BangumiSubjectGraphQLParser {
 
                 action(subjectId, characterId)
             }
-    }
-
-    fun parseLightSubjectAndEpisodes(jsonObject: JsonObject): LightSubjectAndEpisodes {
-        val episodes = jsonObject.getOrFail("episodes").jsonArray.map {
-            val episode = it.jsonObject
-            LightEpisodeInfo(
-                episodeId = episode.getIntOrFail("id"),
-                name = episode.getStringOrFail("name"),
-                nameCn = episode.getStringOrFail("name_cn"),
-                airDate = PackedDate.parseFromDate(episode.getStringOrFail("airdate")),
-                timezone = utc9,
-                sort = EpisodeSort(
-                    BigNum(episode.getStringOrFail("sort")),
-                    type = parseBangumiEpisodeType(episode.getIntOrFail("type")),
-                ),
-                ep = null, // TODO: parseLightSubjectAndEpisodes does not support EP because bangumi graphql API does not provide it
-//                    EpisodeSort(
-//                    episode.getIntOrFail("ep"),
-//                    type = parseBangumiEpisodeType(episode.getIntOrFail("type")),
-//                ),
-            )
-        }
-
-        return LightSubjectAndEpisodes(
-            subject = LightSubjectInfo(
-                subjectId = jsonObject.getIntOrFail("id"),
-                name = jsonObject.getStringOrFail("name"),
-                nameCn = jsonObject.getStringOrFail("name_cn"),
-                imageLarge = jsonObject.getOrFail("images").jsonObjectOrNull?.getStringOrFail("large") ?: "",
-            ),
-            episodes = episodes,
-        )
-    }
-
-    private fun parseBangumiEpisodeType(type: Int): EpisodeType? {
-        return when (type) {
-            0 -> EpisodeType.MainStory
-            1 -> EpisodeType.SP
-            2 -> EpisodeType.OP
-            3 -> EpisodeType.ED
-            4 -> EpisodeType.PV
-            5 -> EpisodeType.MAD
-            else -> null
-        }
     }
 }

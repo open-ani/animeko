@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.data.network
 
-import androidx.collection.IntList
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.ResponseException
 import io.ktor.http.HttpStatusCode
@@ -22,8 +21,6 @@ import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.bangumi.BangumiSyncState
 import me.him188.ani.app.data.models.subject.CharacterInfo
 import me.him188.ani.app.data.models.subject.CharacterRole
-import me.him188.ani.app.data.models.subject.LightSubjectAndEpisodes
-import me.him188.ani.app.data.models.subject.LightSubjectInfo
 import me.him188.ani.app.data.models.subject.PersonInfo
 import me.him188.ani.app.data.models.subject.PersonPosition
 import me.him188.ani.app.data.models.subject.PersonType
@@ -42,8 +39,6 @@ import me.him188.ani.client.models.AniPerson
 import me.him188.ani.client.models.AniSubjectCollection
 import me.him188.ani.client.models.AniSubjectRecommendation
 import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
-import me.him188.ani.datasources.bangumi.BangumiClient
-import me.him188.ani.datasources.bangumi.apis.DefaultApi
 import me.him188.ani.datasources.bangumi.models.BangumiCount
 import me.him188.ani.datasources.bangumi.models.BangumiSubjectCollectionType
 import me.him188.ani.datasources.bangumi.models.BangumiUserSubjectCollection
@@ -75,10 +70,6 @@ interface SubjectService {
         subjectId: Int,
         withCharacterActors: Boolean,
     ): BatchSubjectRelations
-
-    suspend fun batchGetLightSubjectAndEpisodes(
-        subjectIds: IntList,
-    ): List<LightSubjectAndEpisodes>
 
     /**
      * 获取用户对这个条目的收藏状态. flow 一定会 emit 至少一个值或抛出异常. 当用户没有收藏这个条目时 emit `null`. 当没有登录时 emit `null`.
@@ -123,8 +114,6 @@ suspend inline fun SubjectService.setSubjectCollectionTypeOrDelete(
 }
 
 class RemoteSubjectService(
-    private val client: BangumiClient, // only used by GraphQL executor
-    private val api: ApiInvoker<DefaultApi>,
     private val subjectApi: ApiInvoker<SubjectsAniApi>,
     private val sessionManager: SessionStateProvider,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
@@ -194,34 +183,6 @@ class RemoteSubjectService(
                 )
             },
         )
-    }
-
-    override suspend fun batchGetLightSubjectAndEpisodes(subjectIds: IntList): List<LightSubjectAndEpisodes> {
-        if (subjectIds.isEmpty()) {
-            return emptyList()
-        }
-        return withContext(ioDispatcher) {
-            // 等待查询条目信息
-            val (response, errors) = BangumiLightSubjectGraphQLExecutor.execute(client, subjectIds)
-
-            // 解析条目详情
-            response.mapIndexed { index, element ->
-                if (element == null) { // error
-                    val subjectId = subjectIds[index]
-                    LightSubjectAndEpisodes(
-                        subject = LightSubjectInfo(
-                            subjectId,
-                            name = "错误 $subjectId: $errors",
-                            nameCn = "错误 $subjectId: $errors",
-                            imageLarge = "",
-                        ),
-                        episodes = emptyList(),
-                    )
-                } else {
-                    BangumiSubjectGraphQLParser.parseLightSubjectAndEpisodes(element)
-                }
-            }
-        }
     }
 
     val subjectCountStatsRestarter = FlowRestarter()
