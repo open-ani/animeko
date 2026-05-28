@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.UserInfo
@@ -153,6 +154,7 @@ class CommentState(
     countState: State<Int?>,
     private val onSubmitCommentReaction: suspend (comment: UIComment, value: String, selected: Boolean) -> Unit,
     private val backgroundScope: CoroutineScope,
+    val commentLoadFailures: Flow<Throwable> = emptyFlow(),
 ) {
     val count by countState
     private val reactionSubmitFailureChannel = Channel<Throwable>(Channel.BUFFERED)

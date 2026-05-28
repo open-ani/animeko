@@ -22,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -44,6 +45,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
@@ -622,13 +624,17 @@ class EpisodeViewModel(
 
 
     private val commentStateRestarter = FlowRestarter()
+    private val commentLoadFailureChannel = Channel<Throwable>(Channel.BUFFERED)
 
     @OptIn(UnsafeEpisodeSessionApi::class)
     val episodeCommentState: CommentState = CommentState(
         list = episodeIdFlow
             .restartable(commentStateRestarter)
             .flatMapLatest { episodeId ->
-                episodeCommentRepository.subjectEpisodeCommentsPager(episodeId.toLong())
+                episodeCommentRepository.subjectEpisodeCommentsPager(
+                    episodeId.toLong(),
+                    onAniLoadFailed = { commentLoadFailureChannel.trySend(it) },
+                )
                     .map { page -> page.map { it.parseToUIComment() } }
             }.cachedIn(backgroundScope),
         countState = stateOf(null),
@@ -645,6 +651,7 @@ class EpisodeViewModel(
             )
         },
         backgroundScope = backgroundScope,
+        commentLoadFailures = commentLoadFailureChannel.receiveAsFlow(),
     )
 
     @OptIn(UnsafeEpisodeSessionApi::class)

@@ -86,6 +86,11 @@ fun EpisodeCommentColumn(
             toaster.showLoadError(LoadError.fromException(error))
         }
     }
+    LaunchedEffect(state) {
+        state.commentLoadFailures.collect { error ->
+            toaster.showLoadError(LoadError.fromException(error))
+        }
+    }
 
     Scaffold(
         modifier,
