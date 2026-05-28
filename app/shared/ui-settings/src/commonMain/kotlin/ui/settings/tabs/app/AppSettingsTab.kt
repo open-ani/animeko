@@ -63,8 +63,6 @@ import me.him188.ani.app.ui.lang.settings_app_nsfw_display
 import me.him188.ani.app.ui.lang.settings_app_nsfw_hide
 import me.him188.ani.app.ui.lang.settings_app_search
 import me.him188.ani.app.ui.lang.settings_app_language_system
-import me.him188.ani.app.ui.lang.settings_app_use_new_search_api
-import me.him188.ani.app.ui.lang.settings_app_use_new_search_api_description
 import me.him188.ani.app.ui.lang.settings_player
 import me.him188.ani.app.ui.lang.settings_player_auto_fullscreen_on_landscape
 import me.him188.ani.app.ui.lang.settings_player_auto_mark_done
@@ -203,20 +201,6 @@ fun SettingsScope.AppearanceGroup(
     }
 
     Group(title = { Text(stringResource(Lang.settings_app_search)) }, useThinHeader = true) {
-        SwitchItem(
-            checked = uiSettings.searchSettings.enableNewSearchSubjectApi,
-            onCheckedChange = {
-                state.update(
-                    uiSettings.copy(
-                        searchSettings = uiSettings.searchSettings.copy(
-                            enableNewSearchSubjectApi = !uiSettings.searchSettings.enableNewSearchSubjectApi,
-                        ),
-                    ),
-                )
-            },
-            title = { Text(stringResource(Lang.settings_app_use_new_search_api)) },
-            description = { Text(stringResource(Lang.settings_app_use_new_search_api_description)) },
-        )
         SwitchItem(
             checked = uiSettings.searchSettings.ignoreDoneAndDroppedSubjects,
             onCheckedChange = {

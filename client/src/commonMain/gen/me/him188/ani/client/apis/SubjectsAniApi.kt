@@ -30,6 +30,7 @@ import me.him188.ani.client.models.AniSubjectCollection
 import me.him188.ani.client.models.AniSubjectCollectionCountStats
 import me.him188.ani.client.models.AniSubjectRecommendation
 import me.him188.ani.client.models.AniSubjectReviewsResponse
+import me.him188.ani.client.models.AniSubjectSearchField
 import me.him188.ani.client.models.AniSubjectSearchSortBy
 import me.him188.ani.client.models.AniUpdateEpisodeCollectionRequest
 import me.him188.ani.client.models.AniUpdateSubjectCollectionRequest
@@ -550,10 +551,11 @@ open class SubjectsAniApi : ApiClient {
      * @param ranks  (optional)
      * @param includeNsfw  (optional)
      * @param sortBy  (optional)
+     * @param fields  (optional)
      * @return AniPaginatedResponse2
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun searchSubjects(q: kotlin.String, offset: kotlin.Int? = null, limit: kotlin.Int? = null, tags: kotlin.collections.List<kotlin.String>? = null, airDates: kotlin.collections.List<kotlin.String>? = null, ratings: kotlin.collections.List<kotlin.String>? = null, ranks: kotlin.collections.List<kotlin.String>? = null, includeNsfw: AniNsfwFilter? = null, sortBy: AniSubjectSearchSortBy? = null): HttpResponse<AniPaginatedResponse2> {
+    open suspend fun searchSubjects(q: kotlin.String, offset: kotlin.Int? = null, limit: kotlin.Int? = null, tags: kotlin.collections.List<kotlin.String>? = null, airDates: kotlin.collections.List<kotlin.String>? = null, ratings: kotlin.collections.List<kotlin.String>? = null, ranks: kotlin.collections.List<kotlin.String>? = null, includeNsfw: AniNsfwFilter? = null, sortBy: AniSubjectSearchSortBy? = null, fields: kotlin.collections.List<AniSubjectSearchField>? = null): HttpResponse<AniPaginatedResponse2> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -570,6 +572,7 @@ open class SubjectsAniApi : ApiClient {
         ranks?.apply { localVariableQuery["ranks"] = toMultiValue(this, "csv") }
         includeNsfw?.apply { localVariableQuery["include_nsfw"] = listOf("${ includeNsfw.value }") }
         sortBy?.apply { localVariableQuery["sortBy"] = listOf("${ sortBy.value }") }
+        fields?.apply { localVariableQuery["fields"] = toMultiValue(this, "csv") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
         val localVariableConfig = RequestConfig<kotlin.Any?>(

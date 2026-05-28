@@ -27,8 +27,8 @@ import kotlinx.coroutines.flow.update
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
-import me.him188.ani.app.data.repository.subject.BangumiSubjectSearchCompletionRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
+import me.him188.ani.app.data.repository.subject.SubjectSearchCompletionRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
@@ -57,7 +57,7 @@ class SearchViewModel(
     initialSearchQuery: SubjectSearchQuery,
 ) : AbstractViewModel(), KoinComponent {
     private val searchHistoryRepository: SubjectSearchHistoryRepository by inject()
-    private val bangumiSubjectSearchCompletionRepository: BangumiSubjectSearchCompletionRepository by inject()
+    private val subjectSearchCompletionRepository: SubjectSearchCompletionRepository by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
     private val subjectSearchRepository: SubjectSearchRepository by inject()
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory by inject()
@@ -134,7 +134,7 @@ class SearchViewModel(
     private var initialSearchQueryStarted = false
 
     fun suggestionsPager(query: String): Flow<PagingData<String>> {
-        return bangumiSubjectSearchCompletionRepository.completionsFlow(query.trim())
+        return subjectSearchCompletionRepository.completionsFlow(query.trim())
     }
 
     fun onSearchPageIntent(intent: SearchPageIntent) {

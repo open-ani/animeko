@@ -23,6 +23,7 @@ import me.him188.ani.app.domain.search.SubjectType
 import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.client.models.AniNsfwFilter
 import me.him188.ani.client.models.AniSubjectSearch
+import me.him188.ani.client.models.AniSubjectSearchField
 import me.him188.ani.client.models.AniSubjectSearchSortBy
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.utils.coroutines.IO_
@@ -40,7 +41,8 @@ class AniSubjectSearchService(
         limit: Int? = null,
 
         sort: SearchSort = SearchSort.MATCH,
-        filters: BangumiSearchFilters? = null,
+        filters: SubjectSearchFilters? = null,
+        fields: List<SubjectSearchField>? = null,
     ): List<BatchSubjectDetails> = withContext(ioDispatcher) {
         val result = subjectApi.invoke {
             searchSubjects(
@@ -62,6 +64,7 @@ class AniSubjectSearchService(
                     SearchSort.COLLECTION -> AniSubjectSearchSortBy.COLLECTION_DESC
                     SearchSort.DATE -> AniSubjectSearchSortBy.AIR_DATE_DESC
                 },
+                fields = fields?.map { it.toAniField() },
             )
         }.body()
 
@@ -110,4 +113,19 @@ class AniSubjectSearchService(
             ),
         )
     }
+}
+
+private fun SubjectSearchField.toAniField(): AniSubjectSearchField = when (this) {
+    SubjectSearchField.NAME -> AniSubjectSearchField.NAME
+    SubjectSearchField.SUMMARY -> AniSubjectSearchField.SUMMARY
+    SubjectSearchField.IMAGE_LARGE -> AniSubjectSearchField.IMAGE_LARGE
+    SubjectSearchField.NSFW -> AniSubjectSearchField.NSFW
+    SubjectSearchField.AIR_DATE -> AniSubjectSearchField.AIR_DATE
+    SubjectSearchField.SCORE -> AniSubjectSearchField.SCORE
+    SubjectSearchField.RANK -> AniSubjectSearchField.RANK
+    SubjectSearchField.RATING_TOTAL -> AniSubjectSearchField.RATING_TOTAL
+    SubjectSearchField.FAVORITE -> AniSubjectSearchField.FAVORITE
+    SubjectSearchField.TAGS -> AniSubjectSearchField.TAGS
+    SubjectSearchField.MAIN_EPISODE_COUNT -> AniSubjectSearchField.MAIN_EPISODE_COUNT
+    SubjectSearchField.LIGHT_RELATED_PERSON_INFO -> AniSubjectSearchField.LIGHT_RELATED_PERSON_INFO
 }

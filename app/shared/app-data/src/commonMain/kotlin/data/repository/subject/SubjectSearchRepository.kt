@@ -22,8 +22,9 @@ import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.schedule.AnimeSeasonId
 import me.him188.ani.app.data.models.schedule.yearMonths
 import me.him188.ani.app.data.network.AniSubjectSearchService
-import me.him188.ani.app.data.network.BangumiSearchFilters
 import me.him188.ani.app.data.network.BatchSubjectDetails
+import me.him188.ani.app.data.network.SubjectSearchField
+import me.him188.ani.app.data.network.SubjectSearchFilters
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.search.RatingRange
@@ -60,7 +61,7 @@ class SubjectSearchRepository(
         private val ignoreDoneAndDropped: suspend () -> Boolean,
         private val searchQuery: SubjectSearchQuery
     ) : PagingSource<Int, BatchSubjectDetails>() {
-        private val filters = searchQuery.toBangumiSearchFilters()
+        private val filters = searchQuery.toSubjectSearchFilters()
         override fun getRefreshKey(state: PagingState<Int, BatchSubjectDetails>): Int? = null
         override suspend fun load(
             params: LoadParams<Int>
@@ -74,6 +75,7 @@ class SubjectSearchRepository(
                     limit = params.loadSize,
                     filters = filters,
                     sort = searchQuery.sort,
+                    fields = subjectSearchFields,
                 )
 
                 val filteredSubjects = if (ignoreDoneAndDropped()) {
@@ -104,8 +106,8 @@ class SubjectSearchRepository(
             }
         }
 
-        private fun SubjectSearchQuery.toBangumiSearchFilters(): BangumiSearchFilters {
-            return BangumiSearchFilters(
+        private fun SubjectSearchQuery.toSubjectSearchFilters(): SubjectSearchFilters {
+            return SubjectSearchFilters(
                 tags,
                 airDates = season?.toBangumiAirDates(),
                 ratings = rating?.toBangumiRatings(),
@@ -149,6 +151,20 @@ class SubjectSearchRepository(
         private val bangumiSearchPagingConfig = PagingConfig(
             pageSize = 20, // Bangumi API 实际最多返回 20 个结果 #2417
             initialLoadSize = 20,
+        )
+
+        private val subjectSearchFields = listOf(
+            SubjectSearchField.NAME,
+            SubjectSearchField.SUMMARY,
+            SubjectSearchField.IMAGE_LARGE,
+            SubjectSearchField.NSFW,
+            SubjectSearchField.AIR_DATE,
+            SubjectSearchField.SCORE,
+            SubjectSearchField.RANK,
+            SubjectSearchField.RATING_TOTAL,
+            SubjectSearchField.TAGS,
+            SubjectSearchField.MAIN_EPISODE_COUNT,
+            SubjectSearchField.LIGHT_RELATED_PERSON_INFO,
         )
     }
 }

@@ -18,7 +18,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.data.models.preference.NsfwMode
-import me.him188.ani.app.data.network.BangumiSubjectSearchService
+import me.him188.ani.app.data.network.AniSubjectSearchService
+import me.him188.ani.app.data.network.SubjectSearchField
+import me.him188.ani.app.data.network.SubjectSearchFilters
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.runWrappingExceptionAsLoadResult
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -28,12 +30,11 @@ import me.him188.ani.utils.logging.error
 /**
  * 搜索补全 (推荐)
  */
-class BangumiSubjectSearchCompletionRepository(
-    private val bangumiSubjectSearchService: BangumiSubjectSearchService,
+class SubjectSearchCompletionRepository(
+    private val aniSubjectSearchService: AniSubjectSearchService,
     private val subjectCollectionRepository: SubjectCollectionRepository,
     settingsRepository: SettingsRepository,
 ) : Repository() {
-    private val useNewApiFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.enableNewSearchSubjectApi }
     private val ignoreDoneAndDroppedFlow =
         settingsRepository.uiSettings.flow.map { it.searchSettings.ignoreDoneAndDroppedSubjects }
     private val nsfwSettings = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
@@ -48,25 +49,34 @@ class BangumiSubjectSearchCompletionRepository(
                     params: LoadParams<Int>
                 ): LoadResult<Int, String> = runWrappingExceptionAsLoadResult<Int, String> {
                     // 只加载第一页
-                    val completions = bangumiSubjectSearchService.searchSubjectNames(
+                    val subjects = aniSubjectSearchService.searchSubjects(
                         keyword = query,
-                        useNewApi = useNewApiFlow.first(),
-                        includeNsfw = nsfwSettings.first() == NsfwMode.DISPLAY,
                         limit = params.loadSize,
+                        filters = SubjectSearchFilters(
+                            nsfw = when (nsfwSettings.first()) {
+                                NsfwMode.DISPLAY -> null
+                                NsfwMode.BLUR -> false
+                                NsfwMode.HIDE -> false
+                            },
+                        ),
+                        fields = listOf(SubjectSearchField.NAME),
                     )
 
-                    val filteredCompletions = if (ignoreDoneAndDroppedFlow.first()) {
-                        val excludedNames = subjectCollectionRepository.getSubjectNamesCnByCollectionType(
+                    val filteredSubjects = if (ignoreDoneAndDroppedFlow.first()) {
+                        val excludedIds = subjectCollectionRepository.getSubjectIdsByCollectionType(
                             types = listOf(UnifiedCollectionType.DONE, UnifiedCollectionType.DROPPED),
                         ).first()
 
-                        completions.filter { it !in excludedNames }
+                        subjects.filter { it.subjectInfo.subjectId !in excludedIds }
                     } else {
-                        completions
+                        subjects
                     }
 
                     LoadResult.Page(
-                        data = filteredCompletions.distinct(),
+                        data = filteredSubjects
+                            .map { it.subjectInfo.nameCn.ifEmpty { it.subjectInfo.name } }
+                            .filter { it.isNotBlank() }
+                            .distinct(),
                         prevKey = null,
                         nextKey = null,
                     )
