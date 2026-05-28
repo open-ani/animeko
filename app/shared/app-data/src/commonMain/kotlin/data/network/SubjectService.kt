@@ -14,7 +14,6 @@ import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.ResponseException
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
@@ -34,7 +33,6 @@ import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.SelfRatingInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectInfo
-import me.him188.ani.app.domain.search.SubjectType
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.session.checkAccessAniApiNow
 import me.him188.ani.app.platform.getAniUserAgent
@@ -72,11 +70,6 @@ interface SubjectService {
      * 当 [subjectId] 不存在时, 返回 `null`.
      */
     suspend fun getSubjectCollection(subjectId: Int): AniSubjectCollection?
-
-    suspend fun batchGetSubjectDetails(
-        ids: IntList,
-        withCharacterActors: Boolean = true,
-    ): List<BatchSubjectDetails>
 
     suspend fun getSubjectRelations(
         subjectId: Int,
@@ -165,65 +158,6 @@ class RemoteSubjectService(
 
     override suspend fun getSubjectCollection(subjectId: Int): AniSubjectCollection? {
         return subjectCollectionById(subjectId).first()
-    }
-
-    override suspend fun batchGetSubjectDetails(
-        ids: IntList,
-        withCharacterActors: Boolean
-    ): List<BatchSubjectDetails> {
-        if (ids.isEmpty()) {
-            return emptyList()
-        }
-        return withContext(ioDispatcher) {
-            val respDeferred = async {
-                BangumiSubjectGraphQLExecutor.execute(client, ids)
-            }
-
-            // 等待查询条目信息
-            val (response, errors) = respDeferred.await()
-
-            // 解析条目详情
-            response.mapIndexed { index, element ->
-                if (element == null) { // error
-                    if (errors == null) {
-                        // 没有错误, 说明这个条目是没权限获取
-                        val subjectId = ids[index]
-                        BatchSubjectDetails(
-                            SubjectInfo.Empty.copy(
-                                subjectId = subjectId,
-                                subjectType = SubjectType.ANIME,
-                                nameCn = "账号注册满四个月后可看 $subjectId",
-                                name = "账号注册满四个月后可看 $subjectId",
-                                summary = "此条目已被隐藏, 请尝试登录后再次尝试. 如已登录, 请等待注册时间满四个月后再看.",
-                                nsfw = true,
-                            ),
-                            mainEpisodeCount = 0,
-                            LightSubjectRelations(
-                                emptyList(),
-                                emptyList(),
-                            ),
-                        )
-                    } else {
-                        val subjectId = ids[index]
-                        BatchSubjectDetails(
-                            SubjectInfo.Empty.copy(
-                                subjectId = subjectId, subjectType = SubjectType.ANIME,
-                                nameCn = "<$subjectId 错误>",
-                                name = "<$subjectId 错误>",
-                                summary = errors,
-                            ),
-                            mainEpisodeCount = 0,
-                            LightSubjectRelations(
-                                emptyList(),
-                                emptyList(),
-                            ),
-                        )
-                    }
-                } else {
-                    BangumiSubjectGraphQLParser.parseBatchSubjectDetails(element)
-                }
-            }
-        }
     }
 
     override suspend fun getSubjectRelations(
