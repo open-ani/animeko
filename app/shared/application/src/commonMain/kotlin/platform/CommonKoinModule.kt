@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.platform
 
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +19,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.network.AniApiProvider
@@ -44,6 +42,7 @@ import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.persistent.database.MIGRATION_19_20
 import me.him188.ani.app.data.persistent.database.createDatabaseBuilder
+import me.him188.ani.app.data.persistent.database.createDatabaseDriver
 import me.him188.ani.app.data.repository.episode.AnimeScheduleRepository
 import me.him188.ani.app.data.repository.episode.BangumiCommentRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
@@ -384,7 +383,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                 }.toIntArray(),
             )
             .addMigrations(MIGRATION_19_20)
-            .setDriver(BundledSQLiteDriver())
+            .setDriver(getContext().createDatabaseDriver())
             .setQueryCoroutineContext(Dispatchers.IO_)
             .build()
     }
@@ -508,15 +507,14 @@ fun KoinApplication.startCommonKoinModule(
     context: Context,
     coroutineScope: CoroutineScope,
 ): KoinApplication {
-    // Start the proxy provider very soon (before initialization of any other components)
-    runBlocking {
-        // We have to block here to read the saved proxy settings
-        when (val proxyProvider = koin.get<HttpClientProvider>()) {
-            // compile-safe type cast
-            is DefaultHttpClientProvider -> proxyProvider.startProxyListening(holdingInstanceMatrixSequence())
-        }
+    // Start the proxy provider very soon (before initialization of any other components).
+    // Native targets block until saved proxy settings are loaded; the browser target starts it asynchronously.
+    startProxyProviderBeforeInit()
+    // Now, the proxy settings is ready. Other components can use http clients on native targets.
+    if (currentAniBuildConfig.distroChannel == "web") {
+        koin.get<SessionManager>().startBackgroundJob()
+        return this
     }
-    // Now, the proxy settings is ready. Other components can use http clients.
 
     coroutineScope.launch {
         koin.get<HttpDownloader>().init() // restore http download states first
@@ -555,7 +553,7 @@ fun KoinApplication.startCommonKoinModule(
 /**
  * 需要一直持有的 http client 实例列表
  */
-private fun holdingInstanceMatrixSequence() = sequence {
+internal fun holdingInstanceMatrixSequence() = sequence {
     for (userAgent in ScopedHttpClientUserAgent.entries) {
         yield(
             HoldingInstanceMatrix(
@@ -590,3 +588,5 @@ fun createAppRootCoroutineScope(): CoroutineScope {
         } + SupervisorJob() + Dispatchers.Default,
     )
 }
+
+internal expect fun KoinApplication.startProxyProviderBeforeInit()

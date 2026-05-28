@@ -41,6 +41,7 @@ import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
+import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.app.tools.ServiceLoader
@@ -250,6 +251,9 @@ class MediaSourceManagerImpl(
     private fun createInstance(save: MediaSourceSave, config: ProxyConfig?): MediaSourceInstance? {
         val factory = factories.find { it.factoryId == save.factoryId }
         return if (factory == null) {
+            if (currentAniBuildConfig.distroChannel == "web" && save.factoryId.value == "dmhy") {
+                return null
+            }
             logger.error { "MediaSourceFactory '${save.factoryId}' not found for ${save.mediaSourceId}" }
             null
         } else {

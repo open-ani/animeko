@@ -395,7 +395,7 @@ class DefaultSelectorMediaSourceEngine(
     ): SearchSubjectResult = withContext(ioDispatcher) {
         try {
             client.use {
-                prepareGet(finalUrl) {
+                prepareGet(rewriteWebCorsProxyUrl(finalUrl.toString())) {
                     accept(ContentType.Text.Html)
                 }.execute { response ->
                     when (response.status) {
@@ -450,7 +450,7 @@ class DefaultSelectorMediaSourceEngine(
     public override suspend fun doHttpGet(uri: String): Document = withContext(ioDispatcher) {
         try {
             client.use {
-                prepareGet(uri) {
+                prepareGet(rewriteWebCorsProxyUrl(uri)) {
                     accept(ContentType.Text.Html)
                 }.execute { response ->
                     if (response.status in blockedSearchStatuses) {

@@ -38,6 +38,13 @@ kotlin {
         }
     }
 
+
+    sourceSets.getByName("wasmJsMain") {
+        dependencies {
+            api(libs.ktor.client.js)
+        }
+    }
+
     sourceSets.appleMain {
         dependencies {
             api(libs.ktor.client.darwin)

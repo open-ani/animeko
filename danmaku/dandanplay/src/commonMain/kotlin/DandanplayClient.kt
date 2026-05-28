@@ -23,7 +23,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.encodedPath
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
 import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.serialization.json.buildJsonObject
@@ -48,7 +47,7 @@ internal class DandanplayClient(
     private val client: ScopedHttpClient,
     private val appId: String,
     private val appSecret: String,
-    private val ioDispatcher: CoroutineContext = Dispatchers.IO,
+    private val ioDispatcher: CoroutineContext = Dispatchers.Default,
 ) {
     /**
      * Must be used at the last step of building the request.

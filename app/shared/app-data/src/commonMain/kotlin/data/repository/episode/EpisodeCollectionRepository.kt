@@ -128,7 +128,24 @@ class EpisodeCollectionRepository(
             subjectId,
         ),
         pagingSourceFactory = {
-            episodeCollectionDao.filterBySubjectIdPaging(subjectId)
+            object : PagingSource<Int, EpisodeCollectionEntity>() {
+                override fun getRefreshKey(state: PagingState<Int, EpisodeCollectionEntity>): Int? =
+                    state.anchorPosition
+
+                override suspend fun load(params: LoadParams<Int>): LoadResult<Int, EpisodeCollectionEntity> {
+                    val offset = params.key ?: 0
+                    val data = episodeCollectionDao.filterBySubjectIdPage(
+                        subjectId = subjectId,
+                        limit = params.loadSize,
+                        offset = offset,
+                    )
+                    return LoadResult.Page(
+                        data = data,
+                        prevKey = if (offset == 0) null else (offset - params.loadSize).coerceAtLeast(0),
+                        nextKey = if (data.size < params.loadSize) null else offset + data.size,
+                    )
+                }
+            }
         },
     ).flow.map { data ->
         data.map {

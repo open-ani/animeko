@@ -48,8 +48,13 @@ kotlin {
     }
     sourceSets.androidMain.dependencies {
         implementation(libs.androidx.appcompat)
+        implementation(projects.torrent.pikpak)
     }
     sourceSets.desktopMain.dependencies {
+        implementation(projects.torrent.pikpak)
+    }
+    sourceSets.findByName("iosMain")?.dependencies {
+        implementation(projects.torrent.pikpak)
     }
     sourceSets.getByName("jvmTest").dependencies {
         implementation(libs.slf4j.simple)

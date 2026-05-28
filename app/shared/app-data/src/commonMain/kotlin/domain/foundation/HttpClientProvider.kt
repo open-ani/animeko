@@ -173,6 +173,7 @@ class DefaultHttpClientProvider(
             }
             proxy(proxyConfig?.toClientProxyConfig())
         }.apply {
+            installWebCorsProxy()
             registerLogging(clientLogger)
 
             for (feature in features) {
@@ -296,4 +297,3 @@ class DefaultHttpClientProvider(
         pool.forceReleaseAll()
     }
 }
-

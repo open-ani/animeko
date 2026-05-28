@@ -9,7 +9,9 @@
 
 package me.him188.ani.app.data.persistent.database
 
-import androidx.room.RoomDatabase
+import androidx.room3.RoomDatabase
+import androidx.sqlite.SQLiteDriver
 import me.him188.ani.app.platform.Context
 
 expect fun Context.createDatabaseBuilder(): RoomDatabase.Builder<AniDatabase>
+expect fun Context.createDatabaseDriver(): SQLiteDriver

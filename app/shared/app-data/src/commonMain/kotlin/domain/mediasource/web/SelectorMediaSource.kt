@@ -150,7 +150,7 @@ class SelectorMediaSource(
         return kotlin.runCatching {
             runApiRequest {
                 client.use {
-                    get(searchConfig.searchUrl) // 提交一个请求, 只要它不是因为网络错误就行
+                    get(rewriteWebCorsProxyUrl(searchConfig.searchUrl)) // 提交一个请求, 只要它不是因为网络错误就行
                 }
             }.fold(
                 onSuccess = { ConnectionStatus.SUCCESS },

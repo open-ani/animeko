@@ -53,15 +53,14 @@ kotlin {
         api(projects.utils.httpDownloader)
         api(projects.utils.serialization)
 
+        api(projects.torrent.offline)
         api(projects.torrent.torrentApi)
         api(projects.torrent.anitorrent)
-        api(projects.torrent.pikpak)
 
         api(libs.datastore.core) // Data Persistence
         api(libs.datastore.preferences.core) // Preferences
         api(libs.androidx.room.runtime)
         api(libs.androidx.room.paging)
-        api(libs.sqlite.bundled)
 
         api(projects.datasource.datasourceApi)
         api(projects.datasource.datasourceCore)
@@ -88,6 +87,7 @@ kotlin {
         implementation(libs.slf4j.simple)
     }
     sourceSets.androidMain.dependencies {
+        api(libs.sqlite.bundled)
         implementation(libs.androidx.browser)
         api(libs.androidx.lifecycle.runtime.ktx)
         api(libs.androidx.lifecycle.service)
@@ -98,9 +98,19 @@ kotlin {
         implementation(libs.stately.common) // fixes koin bug
         implementation(libs.kotlinx.io.okio)
     }
+    sourceSets.desktopMain.dependencies {
+        api(libs.sqlite.bundled)
+    }
+    sourceSets.findByName("iosMain")?.dependencies {
+        api(libs.sqlite.bundled)
+    }
+    sourceSets.wasmJsMain.dependencies {
+        api(libs.sqlite.web)
+        implementation(npm("sqlite-wasm-worker", layout.projectDirectory.dir("sqlite-wasm-worker").asFile))
+    }
 }
 
-room {
+room3 {
     schemaDirectory("$projectDir/schemas")
 }
 
@@ -111,6 +121,7 @@ ksp {
 dependencies {
     kspDesktop(libs.androidx.room.compiler)
     kspAndroid(libs.androidx.room.compiler)
+    kspWasmJs(libs.androidx.room.compiler)
     if (enableIos) {
         add("kspIosArm64", libs.androidx.room.compiler)
         add("kspIosSimulatorArm64", libs.androidx.room.compiler)

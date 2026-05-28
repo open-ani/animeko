@@ -1,0 +1,8 @@
+{
+  "name": "sqlite-wasm-worker",
+  "version": "0.0.1",
+  "license": "APACHE-2.0",
+  "dependencies": {
+    "@sqlite.org/sqlite-wasm": "^3.50.1-build1"
+  }
+}

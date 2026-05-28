@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.3.10"
+kotlin = "2.3.20"
 android-gradle-plugin = "9.0.1"
 
 ### KOTLINX ###
@@ -18,10 +18,10 @@ paging = "3.4.1" # https://developer.android.com/jetpack/androidx/releases/pagin
 datastore = "1.2.0" # https://developer.android.com/jetpack/androidx/releases/datastore
 ksp = "2.3.5" # https://github.com/google/ksp/releases
 # note: room 2.7.0-rc01 cannot compile
-room = "2.8.4" # https://developer.android.com/jetpack/androidx/releases/room#declaring_dependencies
+room = "3.0.0-alpha05" # https://developer.android.com/jetpack/androidx/releases/room3
 s3 = "2.42.14"
 sentry-kotlin-multiplatform = "0.11.0"
-sqlite = "2.6.1"
+sqlite = "2.7.0-alpha05"
 androidx-activity = "1.12.4"
 androidx-core = "1.17.0"
 stability-analyzer = "0.7.0"
@@ -61,7 +61,7 @@ filekit = "0.10.0-beta04" # https://github.com/vinceglb/FileKit/releases
 kotlinpoet = "1.18.1" # https://github.com/square/kotlinpoet/releases
 log4j-core = "2.20.0"
 ktor = "3.1.1" # https://github.com/ktorio/ktor/releases
-koin = "3.5.6" # https://github.com/InsertKoinIO/koin/releases
+koin = "4.2.1" # https://github.com/InsertKoinIO/koin/releases
 slf4j = "2.0.16"
 jsoup = "1.18.1" # https://github.com/jhy/jsoup/releases
 snakeyaml = "2.2"
@@ -105,7 +105,7 @@ kotlin-native-cocoapods = { id = "org.jetbrains.kotlin.native.cocoapods" }
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "google-gms-google-services" }
 google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-androidx-room = { id = "androidx.room", version.ref = "room" }
+androidx-room = { id = "androidx.room3", version.ref = "room" }
 antlr-kotlin = { id = "com.strumenta.antlr-kotlin", version.ref = "antlr-kotlin" }
 mannodermaus-android-junit5 = { id = "de.mannodermaus.android-junit5", version.ref = "mannodermaus-android-junit5" }
 sentry-kotlin-multiplatform = { id = "io.sentry.kotlin.multiplatform.gradle", version.ref = "sentry-kmp" }
@@ -158,6 +158,7 @@ ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "kto
 ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
 ktor-client-auth = { module = "io.ktor:ktor-client-auth", version.ref = "ktor" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-js = { module = "io.ktor:ktor-client-js", version.ref = "ktor" }
 ktor-client-websockets = { module = "io.ktor:ktor-client-websockets", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
@@ -195,14 +196,15 @@ datastore-preferences = { module = "androidx.datastore:datastore-preferences", v
 datastore-preferences-core = { module = "androidx.datastore:datastore-preferences-core", version.ref = "datastore" }
 
 # Room, SQLite, and Paging
-androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
-androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
-androidx-room-paging = { group = "androidx.room", name = "room-paging", version.ref = "room" }
-androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
-androidx-room-common = { group = "androidx.room", name = "room-common", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room3", name = "room3-compiler", version.ref = "room" }
+androidx-room-ktx = { group = "androidx.room3", name = "room3-ktx", version.ref = "room" }
+androidx-room-paging = { group = "androidx.room3", name = "room3-paging", version.ref = "room" }
+androidx-room-runtime = { group = "androidx.room3", name = "room3-runtime", version.ref = "room" }
+androidx-room-common = { group = "androidx.room3", name = "room3-common", version.ref = "room" }
 sqlite = { module = "androidx.sqlite:sqlite", version.ref = "sqlite" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 sqlite-bundled-jvm = { module = "androidx.sqlite:sqlite-bundled-jvm", version.ref = "sqlite" }
+sqlite-web = { module = "androidx.sqlite:sqlite-web", version.ref = "sqlite" }
 paging-common = { module = "androidx.paging:paging-common", version.ref = "paging" }
 paging-compose-android = { module = "androidx.paging:paging-compose", version.ref = "paging" }
 
@@ -254,7 +256,7 @@ androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtim
 androidx-lifecycle-service = { module = "androidx.lifecycle:lifecycle-service", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-runtime-testing = { module = "androidx.lifecycle:lifecycle-runtime-testing", version.ref = "androidx-lifecycle" }
-androidx-collection = { module = "androidx.collection:collection", version = "1.4.5" }
+androidx-collection = { module = "androidx.collection:collection", version = "1.6.0" }
 # Used dynamically, don't remove.
 androidx-test-runner = { module = "androidx.test:runner", version = "1.5.0" }
 

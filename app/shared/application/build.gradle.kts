@@ -9,7 +9,6 @@
 
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension
-import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -21,7 +20,6 @@ plugins {
     alias(libs.plugins.kotlin.plugin.serialization)
 
     // alias(libs.plugins.kotlinx.atomicfu)
-    alias(libs.plugins.sentry.kotlin.multiplatform)
 }
 
 kotlin {

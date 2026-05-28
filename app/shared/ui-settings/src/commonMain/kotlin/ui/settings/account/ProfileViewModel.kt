@@ -15,7 +15,6 @@ import io.github.vinceglb.filekit.readBytes
 import io.github.vinceglb.filekit.size
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -89,7 +88,7 @@ class ProfileViewModel : AbstractViewModel(), KoinComponent {
                 if (file.size() > 1.megaBytes.inBytes) {
                     EditProfileState.UploadAvatarState.SizeExceeded
                 } else {
-                    val bytes = withContext(Dispatchers.IO) { file.readBytes() }
+                    val bytes = withContext(Dispatchers.Default) { file.readBytes() }
                     uploadAvatarInternal(
                         imageBytes = bytes,
                         unknownMapper = { err ->

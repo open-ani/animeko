@@ -80,8 +80,6 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.trace
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.Uuid
-import org.openani.mediamp.ffmpeg.FFmpegKit
-import org.openani.mediamp.ffmpeg.FFmpegResult
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.CoroutineContext

@@ -11,7 +11,7 @@ package me.him188.ani.app.data.models.subject
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import androidx.room.Embedded
+import androidx.room3.Embedded
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import me.him188.ani.utils.platform.annotations.TestOnly

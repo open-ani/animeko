@@ -9,13 +9,12 @@
 
 package me.him188.ani.app.data.persistent.database.dao
 
-import androidx.paging.PagingSource
-import androidx.room.Dao
-import androidx.room.Entity
-import androidx.room.Index
-import androidx.room.PrimaryKey
-import androidx.room.Query
-import androidx.room.Upsert
+import androidx.room3.Dao
+import androidx.room3.Entity
+import androidx.room3.Index
+import androidx.room3.PrimaryKey
+import androidx.room3.Query
+import androidx.room3.Upsert
 
 @Dao
 interface SearchHistoryDao {
@@ -25,8 +24,15 @@ interface SearchHistoryDao {
     @Query("delete from `search_history` where `content`=:content")
     suspend fun deleteByContent(content: String)
 
-    @Query("select content from `search_history` where trim(`content`) != '' order by sequence desc")
-    fun allPager(): PagingSource<Int, String>
+    @Query(
+        """
+        select content from `search_history`
+        where trim(`content`) != ''
+        order by sequence desc
+        limit :limit offset :offset
+        """,
+    )
+    suspend fun listPage(limit: Int, offset: Int): List<String>
 }
 
 @Entity(

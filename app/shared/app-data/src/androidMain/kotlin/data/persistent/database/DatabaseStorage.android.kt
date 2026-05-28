@@ -9,8 +9,10 @@
 
 package me.him188.ani.app.data.persistent.database
 
-import androidx.room.Room
-import androidx.room.RoomDatabase
+import androidx.room3.Room
+import androidx.room3.RoomDatabase
+import androidx.sqlite.SQLiteDriver
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import me.him188.ani.app.platform.Context
 
 actual fun Context.createDatabaseBuilder(): RoomDatabase.Builder<AniDatabase> {
@@ -19,3 +21,4 @@ actual fun Context.createDatabaseBuilder(): RoomDatabase.Builder<AniDatabase> {
         name = applicationContext.getDatabasePath("ani_room_database_main.db").absolutePath,
     )
 }
+actual fun Context.createDatabaseDriver(): SQLiteDriver = BundledSQLiteDriver()

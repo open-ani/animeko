@@ -9,7 +9,7 @@
 
 package me.him188.ani.app.data.persistent.database.converters
 
-import androidx.room.TypeConverter
+import androidx.room3.TypeConverter
 import kotlin.time.Instant
 
 class InstantConverter {

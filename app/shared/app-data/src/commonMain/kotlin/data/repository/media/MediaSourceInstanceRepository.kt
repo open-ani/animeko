@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
+import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.datasources.mikan.MikanCNMediaSource
@@ -61,8 +62,11 @@ data class MediaSourceSaves(
                 config = MediaSourceConfig.Default,
             )
 
-            val enabledBtSources: List<String> =
+            val enabledBtSources: List<String> = if (currentAniBuildConfig.distroChannel == "web") {
+                listOf(MikanCNMediaSource.ID)
+            } else {
                 listOf(MikanCNMediaSource.ID, "dmhy")
+            }
             val disabledBtSources: List<String> = listOf()
 
             MediaSourceSaves(

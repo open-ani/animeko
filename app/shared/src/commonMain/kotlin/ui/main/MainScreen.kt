@@ -64,6 +64,7 @@ import me.him188.ani.app.navigation.SettingsTab
 import me.him188.ani.app.navigation.getIcon
 import me.him188.ani.app.navigation.getText
 import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuite
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteDefaults
 import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteLayout
@@ -153,12 +154,9 @@ private fun MainScreenContent(
     ),
 ) {
     val explorationPageViewModel = viewModel { ExplorationPageViewModel() }
-    val userCollectionsViewModel = viewModel<UserCollectionsViewModel> { UserCollectionsViewModel() }
-    val cacheManagementViewModel = viewModel { CacheManagementViewModel() }
     val scope = rememberCoroutineScope()
 
     var showAccountSettingsPopup: Boolean by remember { mutableStateOf(false) }
-    val profileViewModel = viewModel { ProfileViewModel() }
 
     val navigatorState = rememberUpdatedState(LocalNavigator.current)
     val navigator by navigatorState
@@ -216,11 +214,12 @@ private fun MainScreenContent(
                                             0,
                                         )
 
-                                    MainScreenPage.Collection ->
-                                        userCollectionsViewModel.state.scrollToTop()
+                                    MainScreenPage.Collection -> {
+                                        // Collection view model is created lazily in its tab content.
+                                    }
 
                                     MainScreenPage.CacheManagement -> {
-                                        // cacheManagementViewModel.lazyGridState.animateScrollToItem(0)
+                                        // Cache management view model is created lazily in its tab content.
                                     }
                                 }
                             }
@@ -267,28 +266,38 @@ private fun MainScreenContent(
                     }
 
                     MainScreenPage.Collection -> {
-                        CollectionPage(
-                            state = userCollectionsViewModel.state,
-                            selfInfo = selfInfo,
-                            fullSyncState = userCollectionsViewModel.fullSyncState.collectAsStateWithLifecycle().value,
-                            onClickSearch = onNavigateToSearch,
-                            onClickLogin = { showAccountSettingsPopup = true },
-                            onClickSettings = { navigator.navigateSettings() },
-                            onCollectionUpdate = { subjectId, episode ->
-                                coroutineScope.launch {
-                                    userCollectionsViewModel.toggleEpisodeCollection(
-                                        subjectId,
-                                        episode.episodeId,
-                                        episode.collectionType,
-                                    )?.let { toaster.showLoadError(it) }
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize(),
-                            enableAnimation = userCollectionsViewModel.myCollectionsSettings.enableListAnimation1,
-                        )
+                        if (selfInfo.isSessionValid == true) {
+                            val userCollectionsViewModel =
+                                viewModel<UserCollectionsViewModel> { UserCollectionsViewModel() }
+                            CollectionPage(
+                                state = userCollectionsViewModel.state,
+                                selfInfo = selfInfo,
+                                fullSyncState = userCollectionsViewModel.fullSyncState.collectAsStateWithLifecycle().value,
+                                onClickSearch = onNavigateToSearch,
+                                onClickLogin = { showAccountSettingsPopup = true },
+                                onClickSettings = { navigator.navigateSettings() },
+                                onCollectionUpdate = { subjectId, episode ->
+                                    coroutineScope.launch {
+                                        userCollectionsViewModel.toggleEpisodeCollection(
+                                            subjectId,
+                                            episode.episodeId,
+                                            episode.collectionType,
+                                        )?.let { toaster.showLoadError(it) }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxSize(),
+                                enableAnimation = userCollectionsViewModel.myCollectionsSettings.enableListAnimation1,
+                            )
+                        } else {
+                            CollectionSignInPage(
+                                loading = selfInfo.isSessionValid == null,
+                                onClickLogin = { showAccountSettingsPopup = true },
+                            )
+                        }
                     }
 
                     MainScreenPage.CacheManagement -> {
+                        val cacheManagementViewModel = viewModel { CacheManagementViewModel() }
                         CacheManagementScreen(
                             cacheManagementViewModel,
                             selfInfo = selfInfo,
@@ -305,6 +314,7 @@ private fun MainScreenContent(
     }
 
     if (showAccountSettingsPopup) {
+        val profileViewModel = viewModel { ProfileViewModel() }
         ProfilePopup(
             vm = profileViewModel,
             onDismissRequest = { showAccountSettingsPopup = false },
@@ -324,6 +334,26 @@ private fun MainScreenContent(
     }
 }
 
+
+@Composable
+private fun CollectionSignInPage(loading: Boolean, onClickLogin: () -> Unit) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                if (loading) "Loading account…" else "Sign in to sync and manage your collection",
+                style = MaterialTheme.typography.titleMedium,
+            )
+            if (!loading) {
+                OutlinedButton(onClickLogin) {
+                    Text("Sign In")
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun TabContent(
