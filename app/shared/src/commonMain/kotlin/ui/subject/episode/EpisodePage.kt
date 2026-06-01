@@ -100,6 +100,7 @@ import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.ImageViewer
 import me.him188.ani.app.ui.foundation.LocalImageViewerHandler
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
@@ -186,8 +187,13 @@ fun EpisodeScreen(
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
     val themeSettings = LocalThemeSettings.current
+    // 强制深色时在最外层 (而非播放器内容内) 包: 这层 Scaffold 是不透明容器, 会按深色方案派生
+    // LocalContentColor (偏白) 传给整个播放器子树 —— MaterialTheme 本身不提供内容色, 只在内层
+    // 换配色表的话, 透明背景上靠 LocalContentColor 兜底的文字仍是外层浅色主题的黑色 (表现为字的
+    // 颜色不一致); 组合在本层的评论编辑器/弹幕匹配弹窗也一并进入深色.
+    val forceDark = themeSettings.alwaysDarkInEpisodePage || LocalAniUiBehavior.current.forceDarkInPlayer
     AniTheme(
-        darkModeOverride = if (themeSettings.alwaysDarkInEpisodePage) DarkMode.DARK else null,
+        darkModeOverride = if (forceDark) DarkMode.DARK else null,
     ) {
         Column(modifier.fillMaxSize()) {
             Scaffold(
@@ -360,7 +366,19 @@ private fun EpisodeScreenContent(
                 }
 
                 CompositionLocalProvider(LocalImageViewerHandler provides imageViewer) {
+                    val screenVariant = LocalEpisodeScreenVariant.current
                     when {
+                        // 播放页变体 (如遥控器形态的全屏播放器: 统一按键路由/浮出面板/详情页覆盖层)
+                        screenVariant != null -> screenVariant.Content(
+                            vm,
+                            page,
+                            vm.danmakuHostState,
+                            danmakuEditorState,
+                            setShowEditCommentSheet = { showEditCommentSheet = it },
+                            pauseOnPlaying = pauseOnPlaying,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+
                         showExpandedUI ->
                             EpisodeScreenTabletVeryWide(
                                 vm,
@@ -1177,18 +1195,24 @@ private fun EpisodeCommentColumn(
 
 
 /**
- * 切后台自动暂停
+ * 切后台自动暂停 (以及切回前台自动恢复).
+ *
+ * "是否自动暂停过"的标志存在 [EpisodeViewModel.autoPausedOnLeave] 而不是组合里 ——
+ * 保留会话的形态下退出播放页会销毁组合但 VM 还活着, 原因见那个字段的文档.
+ * 离开播放页时的暂停另有一条不依赖生命周期事件的路径 ([RetainedPlaybackSessionHolder]),
+ * 两条都只在"正在播放"时动作, 重复触发无害.
  */
 @Composable
 private fun AutoPauseEffect(viewModel: EpisodeViewModel, enabled: Boolean) {
-    var pausedVideo by rememberSaveable { mutableStateOf(true) } // live after configuration change
     if (LocalIsPreviewing.current || !enabled) return
 
     val autoPauseTasker = rememberUiMonoTasker()
     OnLifecycleEvent {
         if (it == Lifecycle.Event.ON_STOP) {
+            // 用 playWhenReady 而非严格 isPlaying: 切后台那一刻正在缓冲也算"本来在播",
+            // 回前台应当恢复 (上游 mediamp 0.3.0 迁移时同样的取舍).
             if (viewModel.player.state.value.playWhenReady) {
-                pausedVideo = true
+                viewModel.autoPausedOnLeave = true
                 autoPauseTasker.launch {
                     // #160, 切换全屏时视频会暂停半秒
                     // > 这其实是之前写切后台自动暂停导致的，检测了 lifecycle 事件，切全屏和切后台是一样的事件。延迟一下就可以了
@@ -1196,13 +1220,13 @@ private fun AutoPauseEffect(viewModel: EpisodeViewModel, enabled: Boolean) {
                 }
             } else {
                 // 如果不是正在播放, 则不操作暂停, 当下次切回前台时, 也不要恢复播放
-                pausedVideo = false
+                viewModel.autoPausedOnLeave = false
             }
-        } else if (it == Lifecycle.Event.ON_START && pausedVideo) {
+        } else if (it == Lifecycle.Event.ON_START && viewModel.autoPausedOnLeave) {
             autoPauseTasker.launch {
                 viewModel.player.play() // 切回前台自动恢复, 当且仅当之前是自动暂停的
             }
-            pausedVideo = false
+            viewModel.autoPausedOnLeave = false
         }
     }
 }

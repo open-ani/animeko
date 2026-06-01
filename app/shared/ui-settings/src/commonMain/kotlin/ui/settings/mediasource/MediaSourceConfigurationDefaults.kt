@@ -39,6 +39,8 @@ import me.him188.ani.app.domain.mediasource.codec.serializeToString
 import me.him188.ani.app.ui.foundation.getClipEntryText
 import me.him188.ani.app.ui.foundation.isInDebugMode
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
+import me.him188.ani.app.ui.foundation.widgets.DismissDialogButton
+import me.him188.ani.app.ui.foundation.widgets.dismissDialogButton
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
@@ -202,10 +204,8 @@ fun <T : MediaSourceArguments> MediaSourceConfigurationDefaults.DropdownMenuImpo
                     Text(stringResource(Lang.settings_mediasource_override), color = MaterialTheme.colorScheme.error)
                 }
             },
-            dismissButton = {
-                TextButton({ state.cancelOverride() }) {
-                    Text(stringResource(Lang.settings_mediasource_cancel))
-                }
+            dismissButton = dismissDialogButton(stringResource(Lang.settings_mediasource_cancel)) {
+                state.cancelOverride()
             },
         )
     }
@@ -223,10 +223,9 @@ fun <T : MediaSourceArguments> MediaSourceConfigurationDefaults.DropdownMenuImpo
                     ParseResult.UnsupportedVersion -> Text(stringResource(Lang.settings_mediasource_unsupported_version))
                 }
             },
+            // 纯错误提示, 唯一的按钮就是"关闭"
             confirmButton = {
-                TextButton({ state.dismissError() }) {
-                    Text(stringResource(Lang.settings_mediasource_close))
-                }
+                DismissDialogButton(stringResource(Lang.settings_mediasource_close)) { state.dismissError() }
             },
         )
     }

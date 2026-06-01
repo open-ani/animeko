@@ -9,8 +9,14 @@
 
 package me.him188.ani.app.ui.subject.person
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -23,23 +29,37 @@ import androidx.compose.material.icons.rounded.OpenInFull
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
+import kotlinx.coroutines.launch
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.widgets.ModalSideSheet
 import me.him188.ani.app.ui.foundation.widgets.rememberModalSideSheetState
 import me.him188.ani.app.ui.lang.Lang
@@ -81,8 +101,21 @@ fun rememberPeopleClickHandler(): (PeoplePreviewTarget) -> Unit {
  * 并在有目标时渲染右侧 modal side sheet. 仅应在中大屏布局使用.
  */
 @Composable
-fun PeoplePreviewHost(content: @Composable () -> Unit) {
+fun PeoplePreviewHost(
+    /**
+     * 预览开合上报 (TV 播放器用于抑制控制层自动隐藏: 预览是独立窗口,
+     * 按键不经过播放器根路由, 不上报会在预览开着时被 5 秒计时收掉).
+     */
+    onPreviewOpenChanged: ((Boolean) -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
     var target by remember { mutableStateOf<PeoplePreviewTarget?>(null) }
+    if (target != null && onPreviewOpenChanged != null) {
+        DisposableEffect(Unit) {
+            onPreviewOpenChanged(true)
+            onDispose { onPreviewOpenChanged(false) }
+        }
+    }
     CompositionLocalProvider(LocalPeoplePreviewHandler provides { target = it }) {
         content()
     }
@@ -93,40 +126,86 @@ fun PeoplePreviewHost(content: @Composable () -> Unit) {
 
 /**
  * 右侧 modal side sheet, 内容复用单栏详情列; 头部提供「打开完整页面」与关闭.
+ *
+ * TV 上改为居中大弹窗 (侧贴形态在遥控器上像是页面的一部分, 且关闭按钮多余):
+ * 保留「打开完整页面」按钮 (兼作初始焦点), 不显示关闭按钮, 返回键关闭.
  */
 @Composable
 private fun PeoplePreviewSideSheet(
     target: PeoplePreviewTarget,
     onDismissRequest: () -> Unit,
 ) {
-    val navigator = LocalNavigator.current
-    val state = rememberModalSideSheetState()
-    ModalSideSheet(
-        onDismiss = onDismissRequest,
-        modifier = Modifier.width(412.dp),
-        state = state,
-        shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-    ) {
-        when (target) {
-            is PeoplePreviewTarget.Person -> PersonPreviewContent(
-                target.personId,
-                onOpenFullPage = {
-                    onDismissRequest()
-                    navigator.navigatePersonDetails(target.personId)
-                },
-                onDismissRequest = { state.close() },
-            )
-
-            is PeoplePreviewTarget.Character -> CharacterPreviewContent(
-                target.characterId,
-                onOpenFullPage = {
-                    onDismissRequest()
-                    navigator.navigateCharacterDetails(target.characterId)
-                },
-                onDismissRequest = { state.close() },
-            )
+    if (LocalAniUiBehavior.current.panelsAsCenteredDialogs) {
+        // TV: 居中大弹窗, 不走上游的 ModalSideSheet —— 侧贴形态在遥控器上像是页面的一部分,
+        // 滑入/退场动画对没有手势的遥控器也没有意义, 所以这里保留自绘的居中 Dialog.
+        Dialog(
+            onDismissRequest = onDismissRequest,
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Box(Modifier.fillMaxSize()) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.32f))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onDismissRequest,
+                        ),
+                )
+                Surface(
+                    Modifier.align(Alignment.Center)
+                        .fillMaxHeight(TV_PEOPLE_PREVIEW_HEIGHT_FRACTION)
+                        .width(TV_PEOPLE_PREVIEW_WIDTH),
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                ) {
+                    // 居中形态没有退场动画, 关闭就是直接清空目标
+                    PeoplePreviewBody(target, onClose = onDismissRequest, onDismissImmediately = onDismissRequest)
+                }
+            }
         }
+    } else {
+        val state = rememberModalSideSheetState()
+        ModalSideSheet(
+            onDismiss = onDismissRequest,
+            modifier = Modifier.width(412.dp),
+            state = state,
+            shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ) {
+            PeoplePreviewBody(target, onClose = { state.close() }, onDismissImmediately = onDismissRequest)
+        }
+    }
+}
+
+@Composable
+private fun PeoplePreviewBody(
+    target: PeoplePreviewTarget,
+    /** 头部关闭按钮: 侧边形态传 `state.close()` 以播退场动画, TV 居中形态不显示该按钮. */
+    onClose: () -> Unit,
+    /** 「打开完整页面」前立即关掉预览, 两种形态都不播退场动画 (下一帧就换页了). */
+    onDismissImmediately: () -> Unit,
+) {
+    val navigator = LocalNavigator.current
+    when (target) {
+        is PeoplePreviewTarget.Person -> PersonPreviewContent(
+            target.personId,
+            onOpenFullPage = {
+                onDismissImmediately()
+                navigator.navigatePersonDetails(target.personId)
+            },
+            onDismissRequest = onClose,
+        )
+
+        is PeoplePreviewTarget.Character -> CharacterPreviewContent(
+            target.characterId,
+            onOpenFullPage = {
+                onDismissImmediately()
+                navigator.navigateCharacterDetails(target.characterId)
+            },
+            onDismissRequest = onClose,
+        )
     }
 }
 
@@ -138,10 +217,20 @@ private fun PersonPreviewContent(
 ) {
     val vm = viewModel<PersonDetailsViewModel>(key = "person-preview-$personId") { PersonDetailsViewModel(personId) }
     val details by vm.details.collectAsState()
+    // 焦点驱动的滚动到不了不可聚焦的头图/名字: 顶部内容块 (头图+简介) 或头部
+    // 按钮获得焦点时整体滚回顶部, 露出完整头图.
+    // 指针设备不能这么做: 鼠标点简介展开也会给它焦点, 不应跟着跳回顶部
+    val focusDriven = LocalAniUiBehavior.current.focusDrivenNavigation
+    val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    val scrollToTop: () -> Unit = { scope.launch { scrollState.animateScrollTo(0) } }
     Column {
-        PreviewSheetHeader(details?.person?.displayName ?: "", onOpenFullPage, onDismissRequest)
+        PreviewSheetHeader(
+            details?.person?.displayName ?: "", onOpenFullPage, onDismissRequest,
+            onHeaderFocused = if (focusDriven) scrollToTop else ({}),
+        )
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+            Modifier.fillMaxWidth().verticalScroll(scrollState),
         ) {
             PersonDetailsContentColumn(
                 details = details,
@@ -151,6 +240,7 @@ private fun PersonPreviewContent(
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp),
                 // 预览内点击跳转前先关闭预览
                 navigation = rememberPeopleDetailsNavigation(onBeforeNavigate = onDismissRequest),
+                onTopContentFocused = if (focusDriven) scrollToTop else null,
             )
         }
     }
@@ -166,10 +256,18 @@ private fun CharacterPreviewContent(
         CharacterDetailsViewModel(characterId)
     }
     val details by vm.details.collectAsState()
+    // 焦点驱动的滚动归零, 同 PersonPreviewContent
+    val focusDriven = LocalAniUiBehavior.current.focusDrivenNavigation
+    val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    val scrollToTop: () -> Unit = { scope.launch { scrollState.animateScrollTo(0) } }
     Column {
-        PreviewSheetHeader(details?.character?.displayName ?: "", onOpenFullPage, onDismissRequest)
+        PreviewSheetHeader(
+            details?.character?.displayName ?: "", onOpenFullPage, onDismissRequest,
+            onHeaderFocused = if (focusDriven) scrollToTop else ({}),
+        )
         Column(
-            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+            Modifier.fillMaxWidth().verticalScroll(scrollState),
         ) {
             CharacterDetailsContentColumn(
                 details = details,
@@ -178,6 +276,7 @@ private fun CharacterPreviewContent(
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp),
                 // 预览内点击跳转前先关闭预览
                 navigation = rememberPeopleDetailsNavigation(onBeforeNavigate = onDismissRequest),
+                onTopContentFocused = if (focusDriven) scrollToTop else null,
             )
         }
     }
@@ -188,9 +287,22 @@ private fun PreviewSheetHeader(
     title: String,
     onOpenFullPage: () -> Unit,
     onDismissRequest: () -> Unit,
+    /** 头部 (按钮) 获得焦点时回调: TV 用它把内容滚回顶部 (头图完整露出). */
+    onHeaderFocused: () -> Unit = {},
 ) {
+    // 焦点驱动的界面: Dialog 打开时焦点不会自动进入, 会卡在弹窗外; 初始聚焦到
+    // 「打开完整页面」 (此时不显示关闭按钮 —— 返回键即关闭, 右上角 ✕ 是指针设备的产物)
+    val initialFocus = remember { FocusRequester() }
+    val focusDriven = LocalAniUiBehavior.current.focusDrivenNavigation
+    if (focusDriven) {
+        LaunchedEffect(Unit) {
+            withFrameNanos { }
+            runCatching { initialFocus.requestFocus() }
+        }
+    }
     Row(
-        Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp, top = 12.dp, bottom = 4.dp),
+        Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp, top = 12.dp, bottom = 4.dp)
+            .onFocusChanged { if (it.hasFocus) onHeaderFocused() },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -200,14 +312,20 @@ private fun PreviewSheetHeader(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        IconButton(onOpenFullPage) {
+        IconButton(onOpenFullPage, Modifier.ifThen(focusDriven) { focusRequester(initialFocus) }) {
             Icon(
                 Icons.Rounded.OpenInFull,
                 contentDescription = stringResource(Lang.person_details_open_full_page),
             )
         }
-        IconButton(onDismissRequest) {
-            Icon(Icons.Rounded.Close, contentDescription = null)
+        if (!focusDriven) {
+            IconButton(onDismissRequest) {
+                Icon(Icons.Rounded.Close, contentDescription = null)
+            }
         }
     }
 }
+
+/** TV 人物预览弹窗的宽度与高度占屏比例. */
+private val TV_PEOPLE_PREVIEW_WIDTH = 560.dp
+private const val TV_PEOPLE_PREVIEW_HEIGHT_FRACTION = 0.85f

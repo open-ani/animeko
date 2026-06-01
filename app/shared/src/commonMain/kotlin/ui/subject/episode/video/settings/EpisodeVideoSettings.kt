@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
@@ -123,6 +125,7 @@ fun EpisodeVideoSettings(
     vm: EpisodeVideoSettingsViewModel,
     onNavigateToFilterSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     return EpisodeVideoSettings(
         danmakuConfig = vm.danmakuConfig,
@@ -133,6 +136,7 @@ fun EpisodeVideoSettings(
         onManageRegexFilters = onNavigateToFilterSettings,
         enableRegexFilter = vm.danmakuFilterConfig.enableRegexFilter,
         switchDanmakuRegexFilterCompletely = vm::switchDanmakuRegexFilterCompletely,
+        firstItemFocusRequester = firstItemFocusRequester,
     )
 }
 
@@ -144,7 +148,8 @@ fun EpisodeVideoSettings(
     onManageRegexFilters: () -> Unit,
     switchDanmakuRegexFilterCompletely: () -> Unit,
     modifier: Modifier = Modifier,
-    useThinSlider: Boolean = true
+    useThinSlider: Boolean = true,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     val topText = stringResource(Lang.subject_episode_video_settings_top)
     val floatingText = stringResource(Lang.subject_episode_video_settings_floating)
@@ -187,6 +192,7 @@ fun EpisodeVideoSettings(
                             else Icon(Icons.Rounded.Close, contentDescription = null)
                         },
                         label = { Text(topText, maxLines = 1) },
+                        modifier = if (firstItemFocusRequester != null) Modifier.focusRequester(firstItemFocusRequester) else Modifier,
                     )
                     ElevatedFilterChip(
                         selected = danmakuConfig.enableFloating,

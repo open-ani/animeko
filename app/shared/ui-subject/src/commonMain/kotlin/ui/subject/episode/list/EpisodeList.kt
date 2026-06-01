@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.lists.ScrollStateVerticalScrollbar
 import me.him188.ani.app.ui.foundation.lists.hasScrollableContent
@@ -129,20 +130,27 @@ fun EpisodeListDialog(
                         )
                     }
 
-                    Row(Modifier.padding(top = 16.dp).align(Alignment.End)) {
-                        onSubjectDetailsClick?.let {
-                            TextButton(
-                                {
-                                    onDismissRequest()
-                                    it()
-                                },
-                            ) {
-                                Text(stringResource(Lang.subject_episode_details))
+                    // "关闭"只是关掉本弹窗, 遥控器上由返回键代替 (见 showDismissButtons);
+                    // 去掉之后若整行空了 (没有"详情"入口) 则连这行的上间距一起不渲染
+                    val showClose = LocalAniUiBehavior.current.showDismissButtons
+                    if (showClose || onSubjectDetailsClick != null) {
+                        Row(Modifier.padding(top = 16.dp).align(Alignment.End)) {
+                            onSubjectDetailsClick?.let {
+                                TextButton(
+                                    {
+                                        onDismissRequest()
+                                        it()
+                                    },
+                                ) {
+                                    Text(stringResource(Lang.subject_episode_details))
+                                }
                             }
-                        }
 
-                        TextButton(onDismissRequest, Modifier.padding(start = 8.dp)) {
-                            Text(stringResource(Lang.subject_episode_close))
+                            if (showClose) {
+                                TextButton(onDismissRequest, Modifier.padding(start = 8.dp)) {
+                                    Text(stringResource(Lang.subject_episode_close))
+                                }
+                            }
                         }
                     }
                 }

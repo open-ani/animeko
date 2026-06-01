@@ -387,6 +387,11 @@ object RichTextDefaults {
             onSuccess = {
                 if (state != 1) state = 1
             },
+            // 评论里的图片贴的是外部图床, 挂掉/被删是常态 (失败时占位骨架屏会一直闪, 看起来像永远在加载).
+            // 这里只收掉闪烁, 那个 80dp 的空框留着 —— 原帖确实有张图, 完全塌掉会让人以为解析漏了内容
+            onError = {
+                if (state != 2) state = 2
+            },
         )
     }
 

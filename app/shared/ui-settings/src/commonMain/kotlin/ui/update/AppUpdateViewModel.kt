@@ -314,12 +314,22 @@ class Changelog(
     val publishedAt: String,
     changes: String
 ) {
-    val changes = changes.lineSequence()
+    val changes = changes
+        // 本 fork 的 release body 前半是下载链接表 (见 ci-helper/release-template.md),
+        // 真正的更新内容从 "## 本次更新" 标题开始; 没有该标题 (上游格式) 则原样使用
+        .substringAfter("## 本次更新", changes)
+        .lineSequence()
         .filterNot {
             it.startsWith("**Full Changelog**: ", ignoreCase = true)
                     || it.startsWith("Full Changelog:", ignoreCase = true)
         }
+        // 丢掉小节标题 (### TV 播放器 等) 与引用块 (> 遥控器说明), 只留条目文本
+        .filterNot { line ->
+            line.trimStart().let { it.startsWith("#") || it.startsWith(">") }
+        }
         .joinToString("\n")
+        // 删标题后留下的连续空行折叠成一个空行
+        .replace(Regex("\n{3,}"), "\n\n")
         .trim()
 }
 

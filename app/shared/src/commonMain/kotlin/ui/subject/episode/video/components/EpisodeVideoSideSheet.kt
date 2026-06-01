@@ -22,12 +22,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import me.him188.ani.app.ui.foundation.FOCUS_REQ_DELAY_MILLIS
+import me.him188.ani.app.ui.foundation.widgets.AniBottomSheetDefaults
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.lang.Lang
@@ -117,6 +122,11 @@ object EpisodeVideoSideSheets {
         // 全屏：直接展示主设置 SideSheet
         if (expanded) {
             val viewModel = remember { EpisodeVideoSettingsViewModel() }
+            val firstItemFocusRequester = remember { FocusRequester() }
+            LaunchedEffect(Unit) {
+                kotlinx.coroutines.delay(FOCUS_REQ_DELAY_MILLIS)
+                firstItemFocusRequester.requestFocus()
+            }
             SideSheetLayout(
                 title = { Text(danmakuSettingsText) },
                 onDismissRequest = onDismissRequest,
@@ -127,7 +137,11 @@ object EpisodeVideoSideSheets {
                     }
                 },
             ) {
-                EpisodeVideoSettings(viewModel, onNavigateToFilterSettings)
+                EpisodeVideoSettings(
+                    viewModel,
+                    onNavigateToFilterSettings,
+                    firstItemFocusRequester = firstItemFocusRequester,
+                )
             }
             return
         }
@@ -137,6 +151,7 @@ object EpisodeVideoSideSheets {
         ModalBottomSheet(
             onDismissRequest = onDismissRequest,
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
+            sheetMaxWidth = AniBottomSheetDefaults.sheetMaxWidth(),
             modifier = Modifier
                 .desktopTitleBarPadding()
                 .statusBarsPadding(),

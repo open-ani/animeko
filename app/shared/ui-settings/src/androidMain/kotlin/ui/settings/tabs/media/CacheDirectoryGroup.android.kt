@@ -14,6 +14,7 @@ import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 
 @Composable
 actual fun SettingsScope.CacheDirectoryGroup(state: CacheDirectoryGroupState) {
-    // No storage settings on Android currently
+    // Android 无 BT 缓存目录设置 (走平台默认); 图片缓存占用/清理 + 弹幕缓存策略
+    ImageCacheSettings()
     DanmakuCacheSettings(state)
 }

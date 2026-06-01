@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import me.him188.ani.app.ui.foundation.widgets.dismissDialogButton
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_danmaku_cancel
 import me.him188.ani.app.ui.lang.settings_danmaku_confirm
@@ -156,10 +157,8 @@ fun <T> SettingsScope.SingleSelectionItem(
                     },
                 ) { Text(stringResource(Lang.settings_danmaku_confirm)) }
             },
-            dismissButton = {
-                TextButton({ showDialog = false }) {
-                    Text(stringResource(Lang.settings_danmaku_cancel))
-                }
+            dismissButton = dismissDialogButton(stringResource(Lang.settings_danmaku_cancel)) {
+                showDialog = false
             },
             text = {
                 Column {

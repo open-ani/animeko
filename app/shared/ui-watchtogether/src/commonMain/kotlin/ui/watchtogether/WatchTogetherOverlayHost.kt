@@ -42,11 +42,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.domain.watchtogether.SyncAction
 import me.him188.ani.app.domain.watchtogether.WatchTogetherEffect
 import me.him188.ani.app.domain.watchtogether.WatchTogetherRoomEndReason
@@ -70,11 +71,13 @@ import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.EpisodeNavigationGuardRegistry
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.findLast
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
+import me.him188.ani.app.ui.foundation.theme.AniTheme
+import me.him188.ani.app.ui.foundation.watchtogether.LocalWatchTogetherEntry
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.watch_together_following
-import me.him188.ani.app.ui.lang.watch_together_got_it
 import me.him188.ani.app.ui.lang.watch_together_guidance_playing
 import me.him188.ani.app.ui.lang.watch_together_navigation_blocked
 import me.him188.ani.app.ui.lang.watch_together_rejoin_failed
@@ -97,7 +100,7 @@ fun BoxScope.WatchTogetherOverlayHost(
 ) {
     val state by viewModel.uiStateFlow.collectAsStateWithLifecycle()
     val playerController = LocalWatchTogetherPlayerController.current
-    var dialogVisible by rememberSaveable { mutableStateOf(false) }
+    val entry = LocalWatchTogetherEntry.current
     val toastHostState = remember { SnackbarHostState() }
     val bubblePositionState = rememberDraggableBubblePositionState()
 
@@ -153,15 +156,12 @@ fun BoxScope.WatchTogetherOverlayHost(
                             WatchTogetherRoomEndReason.SESSION_REPLACED -> Lang.watch_together_session_replaced
                         },
                     )
-                    val gotIt = getString(Lang.watch_together_got_it)
                     launch {
+                        // 纯气泡, 不给"知道了": 房间没了是个通知而不是待办, 一颗只用来关掉自己的
+                        // 按钮既多余, 在遥控器上还是个飘在 NavHost 之外的可聚焦节点.
+                        // 时长也跟其余同步提示一致 (Long 会在画面上压十秒)
                         toastHostState.showSnackbar(
-                            WatchTogetherToastVisuals(
-                                message,
-                                Icons.Rounded.Groups,
-                                actionLabel = gotIt,
-                                duration = SnackbarDuration.Long,
-                            ),
+                            WatchTogetherToastVisuals(message, Icons.Rounded.Groups),
                         )
                     }
                 }
@@ -222,39 +222,52 @@ fun BoxScope.WatchTogetherOverlayHost(
         WatchTogetherToast(data)
     }
 
+    // 页面里的入口按钮 (TV 侧边栏最底 / 播放器胶囊行最右) 据此显隐: 功能没打开就整个不存在,
+    // 与原先"气泡不出现"完全一致
+    SideEffect { entry.enabled = state.featureEnabled }
     LaunchedEffect(state.featureEnabled) {
-        if (!state.featureEnabled) dialogVisible = false
+        if (!state.featureEnabled) entry.close()
     }
 
-    LaunchedEffect(viewModel) {
-        viewModel.dialogOpenRequests.collect {
-            dialogVisible = true
-        }
+    LaunchedEffect(viewModel, entry) {
+        // 播放器菜单里的那颗入口 (指针设备) 经 VM 转一手过来; 与页面里的入口最终都落到同一个把手上
+        viewModel.dialogOpenRequests.collect { entry.open() }
     }
 
     if (!state.featureEnabled) return
 
-    AniAnimatedVisibility(
-        visible = playerController.isDraggablePopupVisible,
-    ) {
-        DraggableWatchTogetherBubble(
-            state = state,
-            positionState = bubblePositionState,
-            onClick = { dialogVisible = true },
-            modifier = Modifier.fillMaxSize(),
-        )
+    // 悬浮气泡只留给指针设备. 遥控器上它是个飘在 NavHost 之外的可聚焦节点, 空间焦点搜索
+    // 跳进去就出不来 (它的父级没有任何 focusProperties), 而拖拽 (detectDragGestures) 也没有
+    // 触摸可用. 焦点设备的入口改由页面里的常驻图标承担, 见 [WatchTogetherEntryState].
+    if (!LocalAniUiBehavior.current.focusDrivenNavigation) {
+        AniAnimatedVisibility(
+            visible = playerController.isDraggablePopupVisible,
+        ) {
+            DraggableWatchTogetherBubble(
+                state = state,
+                positionState = bubblePositionState,
+                onClick = { entry.open() },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 
-    if (dialogVisible) {
-        WatchTogetherDialog(
-            state = state,
-            onIntent = viewModel::onIntent,
-            onLogin = {
-                dialogVisible = false
-                aniNavigator.navigateLogin()
-            },
-            onDismissRequest = { dialogVisible = false },
-        )
+    if (entry.dialogVisible) {
+        // 播放器整棵子树被强制深色包着 (见 EpisodePage), 而本宿主挂在它外面 —— 不跟着强制的话,
+        // 浅色主题下会在视频画面上弹出一块白面板
+        val forceDark = entry.dialogOverDarkBackground ||
+                (state.inPlayer && LocalAniUiBehavior.current.forceDarkInPlayer)
+        AniTheme(darkModeOverride = if (forceDark) DarkMode.DARK else null) {
+            WatchTogetherDialog(
+                state = state,
+                onIntent = viewModel::onIntent,
+                onLogin = {
+                    entry.close()
+                    aniNavigator.navigateLogin()
+                },
+                onDismissRequest = { entry.close() },
+            )
+        }
     }
 }
 

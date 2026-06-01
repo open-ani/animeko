@@ -13,6 +13,13 @@
     <string name="developer_list">Developers List</string>
     <string name="acknowledgements">Acknowledgements</string>
     <string name="settings">Settings</string>
+    <string name="playback_session_now_playing">Now Playing</string>
+    <string name="playback_session_close">Close</string>
+    <string name="playback_session_ready_toast">Source ready — resume from Now Playing</string>
+    <string name="playback_session_problem_toast">Background playback: %1$s. Return from Now Playing to fix it</string>
+    <string name="playback_session_cause_player_error">the player cannot play this source</string>
+    <string name="playback_session_cause_no_media">no playable result from any source</string>
+    <string name="playback_session_cause_manual_selection">a source has to be picked manually</string>
     <string name="playback_history_title">Playback History</string>
     <string name="playback_history_empty">No playback history</string>
     <string name="playback_history_unknown_subject">Unknown anime</string>
@@ -264,6 +271,15 @@
     <string name="settings_player_fullscreen_button_description">Always show the fullscreen toggle button in the lower-right corner of the player, for easy switching</string>
     <string name="settings_player_frame_preview">Show frame preview on the progress bar</string>
     <string name="settings_player_frame_preview_description">Show the video frame at the target position when hovering over or dragging the progress bar</string>
+    <string name="settings_player_notice_sound">Background ready notification sound</string>
+    <string name="settings_player_notice_sound_description">Played once when a session that kept loading in the background becomes ready, or runs into a problem. Uses the system UI sounds; selecting one plays a preview</string>
+    <string name="settings_player_notice_sound_none">No sound</string>
+    <string name="settings_player_notice_sound_confirm">Confirm</string>
+    <string name="settings_player_notice_sound_standard">Key press</string>
+    <string name="settings_player_notice_sound_alert">Alert</string>
+    <string name="settings_player_notice_sound_delete">Delete key</string>
+    <string name="settings_player_notice_sound_space">Space key</string>
+    <string name="settings_player_notice_sound_tick">Tick</string>
     <string name="settings_player_enable_regex_filter">Enable regex danmaku filter</string>
     <string name="settings_player_pause_on_edit_danmaku">Automatically pause playback when sending a danmaku</string>
     <string name="settings_player_auto_mark_done">Automatically mark as watched after 90% viewed</string>
@@ -272,7 +288,10 @@
     <string name="settings_player_auto_play_next">Auto-play next episode</string>
     <string name="settings_player_audio_time_stretch">High-quality audio time-stretch (WSOLA)</string>
     <string name="settings_player_audio_time_stretch_description">Better sound quality at non-1x speeds. Turn off if you hear crackling or corrupted audio</string>
-    <string name="settings_player_auto_skip_op_ed">Automatically skip OP and ED</string>
+    <string name="settings_player_auto_skip_op_ed">Skip OP and ED</string>
+    <string name="settings_player_skip_op_ed_auto">Skip automatically</string>
+    <string name="settings_player_skip_op_ed_manual">Show skip button</string>
+    <string name="settings_player_skip_op_ed_off">Never skip</string>
     <string name="settings_player_auto_skip_op_ed_description">Only works for some resources from BT data sources</string>
     <string name="settings_player_op_ed_skip_duration">OP/ED skip duration</string>
     <string name="settings_player_op_ed_skip_duration_seconds">%1$d seconds</string>
@@ -288,6 +307,9 @@
     <string name="settings_player_default_playback_speed">Default playback speed</string>
     <string name="settings_player_default_playback_speed_description">Speed to start at each time you open the player</string>
     <string name="settings_storage_title">Storage settings</string>
+    <string name="settings_storage_image_cache">Clear image cache</string>
+    <string name="settings_storage_image_cache_usage">Posters, stills and other images. Currently using %1$s; old entries are evicted automatically, so manual clearing is normally unnecessary</string>
+    <string name="settings_storage_image_cache_cleared">Image cache cleared</string>
     <string name="settings_storage_bt_cache_location">BT video cache location</string>
     <string name="settings_storage_bt_cache_location_description">Changing this won\'t automatically migrate data nor delete old data.\nIf you want to remove old data, please click &quot;Open BT cache directory&quot; before making changes and remove all files in that directory.\n\nRestart required to take effect.</string>
     <string name="settings_storage_choose_directory">Choose video save directory</string>
@@ -491,6 +513,34 @@
     <string name="exploration_schedule_next_weekday">Next %1$s</string>
     <string name="exploration_continue_watching">Continue Watching</string>
     <string name="exploration_recommendations">Recommendations</string>
+    <string name="exploration_tv_watch_now">Watch Now</string>
+    <string name="exploration_tv_more_details">More Details</string>
+    <string name="exploration_tv_air_date">%1$d-%2$d</string>
+    <string name="exploration_tv_next_episode">Up next: %1$s</string>
+    <string name="exploration_tv_minutes_left">%1$d min left</string>
+    <string name="exploration_tv_all_caught_up">All caught up</string>
+    <string name="exploration_tv_watched_latest">Watched the latest episode</string>
+    <string name="exploration_tv_schedule_today">Today</string>
+    <string name="exploration_tv_schedule_now">Now %1$s</string>
+    <string name="exploration_tv_schedule_total">%1$d titles</string>
+    <string name="exploration_tv_schedule_upcoming">%1$d upcoming</string>
+    <string name="exploration_tv_schedule_following">%1$d followed</string>
+    <string name="exploration_tv_schedule_empty">Nothing airing on this day</string>
+    <string name="collection_tv_rewatch">Rewatch</string>
+    <string name="collection_tv_empty">Nothing in this list yet</string>
+    <string name="tv_card_remote_hint">Play to resume · Hold select to edit collection</string>
+    <string name="tv_force_refresh_toast">Refreshing…</string>
+    <string name="search_tv_input_hint">Search anime</string>
+    <string name="search_tv_results_title">Results for “%1$s”</string>
+    <string name="search_tv_results_all">Search results</string>
+    <string name="search_tv_filter">Filter</string>
+    <string name="search_tv_filter_sort">Sort</string>
+    <string name="search_tv_filter_rating_min">Minimum rating</string>
+    <string name="search_tv_filter_any">Any</string>
+    <string name="search_tv_filter_confirm">Apply</string>
+    <string name="search_tv_filter_cancel">Cancel</string>
+    <string name="search_tv_empty">No matching anime found</string>
+    <string name="search_tv_remote_hint">Play to watch · Hold select to edit collection</string>
     <string name="exploration_horizontal_scroll_tip">Hold Shift + mouse wheel to scroll horizontally</string>
 
     <!-- MainScreenPage -->
@@ -512,6 +562,18 @@
     <string name="settings_theme_animated_gradient_subject_description">Generate animated gradient background based on cover image. Enabling this may increase device temperature and battery usage</string>
     <string name="settings_theme_frosted_glass">Frosted Glass Top and Navigation Bars</string>
     <string name="settings_theme_frosted_glass_description">Use a blurred translucent background for the top app bar and navigation bar</string>
+    <string name="settings_theme_tv_immersive_exploration">Immersive Exploration &amp; Collection (TV)</string>
+    <string name="settings_theme_tv_immersive_exploration_description">Use the immersive hero layout for the Exploration and Collection pages. Turn off to fall back to the classic layout, reducing rendering load on low-end devices</string>
+    <string name="settings_theme_tv_immersive_details">Immersive Detail Page (TV)</string>
+    <string name="settings_theme_tv_immersive_details_description">Use the immersive hero layout for item details. Turn off to fall back to the classic multi-column layout</string>
+    <string name="settings_theme_tv_immersive_schedule">Immersive Airing Schedule (TV)</string>
+    <string name="settings_theme_tv_immersive_schedule_description">Show the airing schedule as a date rail plus a poster grid. Turn off to fall back to the classic side-by-side day columns</string>
+    <string name="settings_theme_tv_ui_scale">Interface scale</string>
+    <string name="settings_theme_tv_ui_scale_description">Scale the whole interface up or down. Use this when your TV or box reports a wrong screen density and everything looks too large or too small. 100% follows the system. The interface reloads once when you leave settings so that dialogs and menus match</string>
+    <string name="settings_theme_tv_full_visual_effects">Full visual effects</string>
+    <string name="settings_theme_tv_full_visual_effects_description">Slide transitions between collection categories, animated loading placeholders, endless title marquee, and full-resolution hero stills. Off by default to keep low-end devices smooth; turn on if your device is powerful</string>
+    <string name="settings_theme_tv_retain_playback_session">Keep playback session after leaving</string>
+    <string name="settings_theme_tv_retain_playback_session_description">Leaving the player keeps the session alive (player, source search, loaded stream), so you can return instantly from "Now Playing" in the sidebar — focus it and press down for the Close button. A toast tells you when a slow source finishes loading in the background. Off: the session is discarded on exit and every visit searches again</string>
     <string name="settings_theme_palette">Color Palette</string>
     <string name="settings_theme_mode_light">Light</string>
     <string name="settings_theme_mode_dark">Dark</string>
@@ -575,6 +637,7 @@
     <string name="settings_network_proxy_service_danmaku">Danmaku service</string>
     <string name="settings_network_proxy_service_collection">Collection data service</string>
     <string name="settings_network_proxy_service_comment">Comment service</string>
+    <string name="settings_network_proxy_service_tmdb">Backdrop and still image service</string>
     <string name="settings_network_proxy_test_success">Connection successful</string>
     <string name="settings_network_proxy_test_failed">Connection failed</string>
     <string name="settings_network_proxy_current_disabled">Proxy disabled</string>
@@ -625,6 +688,7 @@
     <string name="onboarding_theme_color">Colors</string>
     <string name="onboarding_theme_dynamic_color">Dynamic Colors</string>
     <string name="onboarding_theme_dynamic_color_desc">Use system accent colors</string>
+    <string name="onboarding_theme_tv_layout">TV Layout</string>
     <string name="onboarding_bittorrent_play_while_downloading">Ani supports streaming BT resources while downloading. BT speed depends on your network quality.</string>
     <string name="onboarding_bittorrent_notification_permission_hint">Allow notification permission to view download progress while caching.</string>
     <string name="onboarding_bittorrent_enable">Enable BitTorrent features</string>
@@ -694,6 +758,8 @@
     <string name="video_player_auto">Auto</string>
     <string name="video_player_audio_track">Audio</string>
     <string name="video_player_off">Off</string>
+    <string name="video_player_tv_restart">Restart</string>
+    <string name="video_player_tv_collection">Collection</string>
     <string name="video_player_subtitle">Subtitle</string>
     <string name="video_player_disable_danmaku">Disable danmaku</string>
     <string name="video_player_enable_danmaku">Enable danmaku</string>
@@ -705,6 +771,8 @@
     <string name="video_player_speed">Speed</string>
     <string name="video_player_skip_op_ed">Skipping OP or ED soon</string>
     <string name="video_player_cancel">Cancel</string>
+    <string name="video_player_tv_cancel_skip_segment">Cancel skip %1$s</string>
+    <string name="video_player_tv_skip_segment">Skip %1$s</string>
     <string name="video_player_release_to_cancel">Release to cancel</string>
     <string name="video_player_stats_title">Playback Info</string>
     <string name="video_player_stats_title_show">Show Playback Info</string>
@@ -779,6 +847,7 @@
     <string name="subject_rendering_season_year_month">%1$s/%2$s</string>
 
     <!-- Subject Episode -->
+    <string name="subject_episode_duration_minutes">%1$d min</string>
     <string name="subject_episode_unwatch">Unmark Watched</string>
     <string name="subject_episode_watched">Watched</string>
     <string name="subject_episode_dropped">Dropped</string>
@@ -936,6 +1005,8 @@
     <string name="subject_details_view_all">View all</string>
     <string name="subject_details_episodes">Episodes</string>
     <string name="subject_details_manage_cache">Manage cache</string>
+    <string name="subject_details_nav_home">Home</string>
+    <string name="subject_details_no_summary">No information</string>
     <string name="subject_details_rating">Rating</string>
     <string name="subject_details_hot_reviews">Popular reviews</string>
     <string name="subject_details_info">Information</string>
@@ -1133,6 +1204,11 @@
     <string name="settings_log_share_file">Share log file</string>
     <string name="settings_log_copy_today_log_content">Copy today\'s log content (large)</string>
     <string name="settings_log_file_not_found">Log file not found</string>
+    <string name="settings_log_share_failed">Failed to share the log file. This device may not support sharing; try copying the log content instead</string>
+    <string name="settings_log_export_file">Export today\'s log file</string>
+    <string name="settings_log_export_succeed">Log exported to %1$s</string>
+    <string name="settings_log_exported">Log exported</string>
+    <string name="settings_log_export_failed">Failed to export the log file</string>
     <string name="rating_requires_collection">Follow this anime before rating</string>
     <string name="rating_discard_edit_title">Discard changes</string>
     <string name="rating_discard_edit_message">Your rating has not been saved. Discard it?</string>
@@ -1160,6 +1236,11 @@
     <string name="comment_send_comment">Write a comment</string>
     <string name="comment_rendering">Rendering...</string>
     <string name="comment_reply">Reply to comment</string>
+    <string name="comment_reply_to">Reply to %1$s</string>
+    <string name="comment_new_comment">New comment</string>
+    <string name="comment_view_comment">View comment</string>
+    <string name="comment_reply_unsupported">Replying is not available for this comment — view only</string>
+    <string name="comment_image_unavailable">Image no longer available</string>
     <string name="comment_view_more_replies">View %1$d more replies &gt;</string>
     <string name="comment_add_emoji">Add emoji</string>
     <string name="comment_bold">Bold</string>

@@ -35,6 +35,41 @@ class ChangelogTest {
     }
 
     @Test
+    fun `takes content after ben ci geng xin heading and drops subheadings`() {
+        assertEquals(
+            """
+                * 进入应用的新版本提示恢复为带按钮卡片
+                * 低端设备性能优化
+
+                * 全新沉浸式追番页
+            """.trimIndent(),
+            Changelog(
+                "", "",
+                """
+                [github-android]: https://example.com/a.apk
+
+                | 处理器架构 | 下载 |
+                |---|---|
+                | universal | [GitHub][github-android] |
+
+                ## 本次更新
+
+                ### 更新与通用
+
+                * 进入应用的新版本提示恢复为带按钮卡片
+                * 低端设备性能优化
+
+                ### TV 追番页
+
+                * 全新沉浸式追番页
+
+                > Android TV 遥控器使用说明请见 README。
+                """.trimIndent(),
+            ).changes,
+        )
+    }
+
+    @Test
     fun `removes Full Changelog no match`() {
         assertEquals(
             """

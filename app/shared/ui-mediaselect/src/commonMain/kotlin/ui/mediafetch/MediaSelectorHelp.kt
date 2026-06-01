@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.widgets.RichDialogLayout
 import me.him188.ani.app.ui.lang.Lang
@@ -52,10 +53,11 @@ fun MediaSelectorHelp(
     val webDescriptionText = stringResource(Lang.media_selector_help_web_description)
     RichDialogLayout(
         title = { Text(titleText) },
-        buttons = {
-            TextButton(onDismissRequest) {
-                Text(closeText)
-            }
+        // 帮助弹窗只有一个"关闭"按钮: 遥控器上返回键就能关, 整行连间距一起不渲染
+        buttons = if (LocalAniUiBehavior.current.showDismissButtons) {
+            { TextButton(onDismissRequest) { Text(closeText) } }
+        } else {
+            null
         },
         modifier,
     ) {

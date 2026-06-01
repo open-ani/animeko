@@ -13,6 +13,13 @@
     <string name="developer_list">开发者名单</string>
     <string name="acknowledgements">鸣谢</string>
     <string name="settings">设置</string>
+    <string name="playback_session_now_playing">正在播放</string>
+    <string name="playback_session_close">关闭</string>
+    <string name="playback_session_ready_toast">数据源已就绪，可从「正在播放」继续观看</string>
+    <string name="playback_session_problem_toast">后台播放遇到问题：%1$s，可从「正在播放」返回处理</string>
+    <string name="playback_session_cause_player_error">播放器无法播放该数据源</string>
+    <string name="playback_session_cause_no_media">所有数据源都没有可播放的结果</string>
+    <string name="playback_session_cause_manual_selection">需要手动选择数据源</string>
     <string name="playback_history_title">播放记录</string>
     <string name="playback_history_empty">暂无播放记录</string>
     <string name="playback_history_unknown_subject">未知番剧</string>
@@ -277,6 +284,15 @@
     <string name="settings_player_fullscreen_button_description">总是显示播放器右下角的切换全屏按钮，方便切换</string>
     <string name="settings_player_frame_preview">显示进度条画面预览</string>
     <string name="settings_player_frame_preview_description">悬停或拖动进度条时，显示目标位置的视频画面</string>
+    <string name="settings_player_notice_sound">后台就绪提示音</string>
+    <string name="settings_player_notice_sound_description">退出播放页后继续加载的会话，就绪或出问题时响一声。用的是系统界面音效，选中即试听</string>
+    <string name="settings_player_notice_sound_none">无声音</string>
+    <string name="settings_player_notice_sound_confirm">确认音</string>
+    <string name="settings_player_notice_sound_standard">按键音</string>
+    <string name="settings_player_notice_sound_alert">提醒音</string>
+    <string name="settings_player_notice_sound_delete">删除音</string>
+    <string name="settings_player_notice_sound_space">空格音</string>
+    <string name="settings_player_notice_sound_tick">轻点音</string>
     <string name="settings_player_enable_regex_filter">启用正则弹幕过滤器</string>
     <string name="settings_player_pause_on_edit_danmaku">发送弹幕时自动暂停播放</string>
     <string name="settings_player_auto_mark_done">观看 90% 后自动标记为看过</string>
@@ -285,7 +301,10 @@
     <string name="settings_player_auto_play_next">自动连播</string>
     <string name="settings_player_audio_time_stretch">高质量音频变速（WSOLA）</string>
     <string name="settings_player_audio_time_stretch_description">变速时提供更好的音质；如遇爆音或音频损坏可关闭</string>
-    <string name="settings_player_auto_skip_op_ed">自动跳过 OP 和 ED</string>
+    <string name="settings_player_auto_skip_op_ed">跳过 OP 和 ED</string>
+    <string name="settings_player_skip_op_ed_auto">自动跳过</string>
+    <string name="settings_player_skip_op_ed_manual">显示跳过按钮</string>
+    <string name="settings_player_skip_op_ed_off">不跳过</string>
     <string name="settings_player_auto_skip_op_ed_description">只对 BT 数据源的部分资源有效</string>
     <string name="settings_player_op_ed_skip_duration">OP/ED 跳过时长</string>
     <string name="settings_player_op_ed_skip_duration_seconds">%1$d 秒</string>
@@ -311,6 +330,9 @@
 
     <!-- Storage Settings -->
     <string name="settings_storage_title">存储设置</string>
+    <string name="settings_storage_image_cache">清理图片缓存</string>
+    <string name="settings_storage_image_cache_usage">海报、剧照等图片。当前占用 %1$s，超出上限自动淘汰旧图，一般无需手动清理</string>
+    <string name="settings_storage_image_cache_cleared">已清理图片缓存</string>
     <string name="settings_storage_bt_cache_location">BT 视频缓存位置</string>
     <string name="settings_storage_bt_cache_location_description">修改后不会自动迁移数据，也不会自动删除旧数据。\n如需删除旧数据，请在修改之前点击 "打开 BT 缓存目录" 并删除该目录下的所有文件。\n\n重启生效</string>
     <string name="settings_storage_choose_directory">选择视频保存目录</string>
@@ -531,6 +553,34 @@
     <string name="exploration_schedule_next_weekday">下周%1$s</string>
     <string name="exploration_continue_watching">继续观看</string>
     <string name="exploration_recommendations">推荐</string>
+    <string name="exploration_tv_watch_now">立即观看</string>
+    <string name="exploration_tv_more_details">更多详细内容</string>
+    <string name="exploration_tv_air_date">%1$d年%2$d月</string>
+    <string name="exploration_tv_next_episode">下一集: %1$s</string>
+    <string name="exploration_tv_minutes_left">剩余 %1$d 分钟</string>
+    <string name="exploration_tv_all_caught_up">已看完</string>
+    <string name="exploration_tv_watched_latest">已看完最新一集</string>
+    <string name="exploration_tv_schedule_today">今天</string>
+    <string name="exploration_tv_schedule_now">现在 %1$s</string>
+    <string name="exploration_tv_schedule_total">共 %1$d 部</string>
+    <string name="exploration_tv_schedule_upcoming">待播 %1$d 部</string>
+    <string name="exploration_tv_schedule_following">你追的 %1$d 部</string>
+    <string name="exploration_tv_schedule_empty">这一天没有新番</string>
+    <string name="collection_tv_rewatch">重温</string>
+    <string name="collection_tv_empty">这个分类下还没有条目</string>
+    <string name="tv_card_remote_hint">播放键继续播放 · 长按选择键编辑收藏</string>
+    <string name="tv_force_refresh_toast">正在刷新…</string>
+    <string name="search_tv_input_hint">搜索动画</string>
+    <string name="search_tv_results_title">“%1$s”的搜索结果</string>
+    <string name="search_tv_results_all">搜索结果</string>
+    <string name="search_tv_filter">筛选</string>
+    <string name="search_tv_filter_sort">排序</string>
+    <string name="search_tv_filter_rating_min">最低评分</string>
+    <string name="search_tv_filter_any">不限</string>
+    <string name="search_tv_filter_confirm">确认</string>
+    <string name="search_tv_filter_cancel">取消</string>
+    <string name="search_tv_empty">没有找到相关条目</string>
+    <string name="search_tv_remote_hint">播放键直接播放 · 长按选择键编辑收藏</string>
     <string name="exploration_horizontal_scroll_tip">按住 Shift + 鼠标滚轮 同样可以水平滚动</string>
 
     <!-- MainScreenPage -->
@@ -552,6 +602,18 @@
     <string name="settings_theme_animated_gradient_subject_description">根据封面生成动态渐变背景。开启后可能导致设备发热和耗电增加</string>
     <string name="settings_theme_frosted_glass">顶栏和导航栏毛玻璃效果</string>
     <string name="settings_theme_frosted_glass_description">为顶栏和导航栏使用模糊的半透明背景</string>
+    <string name="settings_theme_tv_immersive_exploration">沉浸式探索页 / 追番页</string>
+    <string name="settings_theme_tv_immersive_exploration_description">探索页与追番页使用沉浸布局。关闭则回退到原布局，降低低端设备的渲染负担</string>
+    <string name="settings_theme_tv_immersive_details">沉浸式详情页</string>
+    <string name="settings_theme_tv_immersive_details_description">条目详情使用沉浸式 Hero 布局。关闭则回退到通用多栏布局</string>
+    <string name="settings_theme_tv_immersive_schedule">沉浸式新番时间表</string>
+    <string name="settings_theme_tv_immersive_schedule_description">新番时间表使用日期胶囊 + 海报网格布局。关闭则回退到 15 天并排的纵向列表</string>
+    <string name="settings_theme_tv_ui_scale">界面缩放</string>
+    <string name="settings_theme_tv_ui_scale_description">整体放大或缩小界面。电视 / 盒子上报的屏幕密度不准、导致界面过大或过小时可用此项校正，100% 为跟随系统。离开设置页时界面会重载一次，使弹窗与菜单一并生效</string>
+    <string name="settings_theme_tv_full_visual_effects">完整视觉效果</string>
+    <string name="settings_theme_tv_full_visual_effects_description">切换追番分类时卡片滑动过渡、加载占位脉动、长标题持续滚动、背景剧照用原图。默认关闭以保证低端设备流畅，设备性能充裕可开启</string>
+    <string name="settings_theme_tv_retain_playback_session">退出播放页后保留播放状态</string>
+    <string name="settings_theme_tv_retain_playback_session_description">退出后播放器与数据源搜索都继续保留，可从侧边栏「正在播放」秒回原处（焦点落在该条目时下方浮出「关闭」按钮）；数据源在后台加载好会提示一声。关闭则退出即结束播放，每次进播放页都要重新搜索数据源</string>
     <string name="settings_theme_palette">调色板</string>
     <string name="settings_theme_mode_light">浅色</string>
     <string name="settings_theme_mode_dark">深色</string>
@@ -615,6 +677,7 @@
     <string name="settings_network_proxy_service_danmaku">弹幕服务</string>
     <string name="settings_network_proxy_service_collection">收藏数据服务</string>
     <string name="settings_network_proxy_service_comment">评论服务</string>
+    <string name="settings_network_proxy_service_tmdb">背景图与剧照服务</string>
     <string name="settings_network_proxy_test_success">连接成功</string>
     <string name="settings_network_proxy_test_failed">连接失败</string>
     <string name="settings_network_proxy_current_disabled">未启用代理</string>
@@ -665,6 +728,7 @@
     <string name="onboarding_theme_color">色彩</string>
     <string name="onboarding_theme_dynamic_color">动态色彩</string>
     <string name="onboarding_theme_dynamic_color_desc">使用系统强调色</string>
+    <string name="onboarding_theme_tv_layout">TV 布局</string>
     <string name="onboarding_bittorrent_play_while_downloading">Ani 支持边下边播 BT 资源，BT 下载速度取决于网络质量</string>
     <string name="onboarding_bittorrent_notification_permission_hint">允许通知权限，在缓存时查看下载进度</string>
     <string name="onboarding_bittorrent_enable">启用 BitTorrent 功能</string>
@@ -734,6 +798,8 @@
     <string name="video_player_auto">自动</string>
     <string name="video_player_audio_track">音轨</string>
     <string name="video_player_off">关闭</string>
+    <string name="video_player_tv_restart">从头开始</string>
+    <string name="video_player_tv_collection">收藏</string>
     <string name="video_player_subtitle">字幕</string>
     <string name="video_player_disable_danmaku">禁用弹幕</string>
     <string name="video_player_enable_danmaku">启用弹幕</string>
@@ -745,6 +811,8 @@
     <string name="video_player_speed">倍速</string>
     <string name="video_player_skip_op_ed">即将跳过 OP 或 ED</string>
     <string name="video_player_cancel">取消</string>
+    <string name="video_player_tv_cancel_skip_segment">取消跳过 %1$s</string>
+    <string name="video_player_tv_skip_segment">跳过 %1$s</string>
     <string name="video_player_release_to_cancel">松开手指取消</string>
     <string name="video_player_stats_title">播放信息</string>
     <string name="video_player_stats_title_show">显示播放信息</string>
@@ -819,6 +887,7 @@
     <string name="subject_rendering_season_year_month">%1$s 年 %2$s 月</string>
 
     <!-- Subject Episode -->
+    <string name="subject_episode_duration_minutes">%1$d 分钟</string>
     <string name="subject_episode_unwatch">取消看过</string>
     <string name="subject_episode_watched">已看过</string>
     <string name="subject_episode_dropped">已抛弃</string>
@@ -976,6 +1045,8 @@
     <string name="subject_details_view_all">查看全部</string>
     <string name="subject_details_episodes">选集</string>
     <string name="subject_details_manage_cache">缓存管理</string>
+    <string name="subject_details_nav_home">主页</string>
+    <string name="subject_details_no_summary">暂无信息</string>
     <string name="subject_details_rating">评分</string>
     <string name="subject_details_hot_reviews">热门评价</string>
     <string name="subject_details_info">作品信息</string>
@@ -1173,6 +1244,11 @@
     <string name="settings_log_share_file">分享日志文件</string>
     <string name="settings_log_copy_today_log_content">复制当日日志内容（很大）</string>
     <string name="settings_log_file_not_found">未找到日志文件</string>
+    <string name="settings_log_share_failed">分享日志文件失败，当前设备可能不支持分享，可改用复制日志内容</string>
+    <string name="settings_log_export_file">导出当日日志文件</string>
+    <string name="settings_log_export_succeed">日志已导出到 %1$s</string>
+    <string name="settings_log_exported">日志已导出</string>
+    <string name="settings_log_export_failed">导出日志文件失败</string>
     <string name="rating_requires_collection">请先收藏再评分</string>
     <string name="rating_discard_edit_title">舍弃编辑</string>
     <string name="rating_discard_edit_message">评价尚未保存，确定要舍弃吗？</string>
@@ -1200,6 +1276,11 @@
     <string name="comment_send_comment">发送评论</string>
     <string name="comment_rendering">渲染中...</string>
     <string name="comment_reply">回复评论</string>
+    <string name="comment_reply_to">回复 %1$s</string>
+    <string name="comment_new_comment">发表评论</string>
+    <string name="comment_view_comment">查看评论</string>
+    <string name="comment_reply_unsupported">该评论不支持回复，仅可查看</string>
+    <string name="comment_image_unavailable">图片已失效或无法访问</string>
     <string name="comment_view_more_replies">查看更多 %1$d 条回复&gt;</string>
     <string name="comment_add_emoji">添加表情</string>
     <string name="comment_bold">加粗</string>

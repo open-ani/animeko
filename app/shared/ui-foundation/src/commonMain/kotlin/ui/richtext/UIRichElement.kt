@@ -32,10 +32,21 @@ sealed interface UIRichElement {
             override val url: String? = null
         ) : Annotated
 
+        /**
+         * 一枚表情. [resource] 与 [imageUrl] 至少有一个非空, 都为空的代码应当在映射阶段
+         * 退化成 [Text] (原样显示 `(bgm999)`), 而不是渲染成一块看不见的空白.
+         */
         data class Sticker(
+            /**
+             * 完整的 BBCode 形态, 如 `"(bgm38)"` / `"(musume_06)"` / `"(=A=)"`.
+             * 同时是行内内容的 id 和 [StickerSizes] 的键.
+             */
             val id: String,
+            /** 随包的图. 只有最早那 125 张有 ([me.him188.ani.app.ui.comment.BangumiCommentSticker]). */
             val resource: DrawableResource?,
-            override val url: String? = null
+            /** 图片站上的地址, 随包没图时按它现拉, 见 [me.him188.ani.app.ui.comment.BangumiStickers]. */
+            val imageUrl: String? = null,
+            override val url: String? = null,
         ) : Annotated
     }
 

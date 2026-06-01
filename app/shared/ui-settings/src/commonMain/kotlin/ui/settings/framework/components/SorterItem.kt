@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.widgets.dismissDialogButton
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_danmaku_cancel
 import me.him188.ani.app.ui.lang.settings_media_source_save_button
@@ -163,10 +164,8 @@ fun <T> SettingsScope.SorterItem(
                             Text(stringResource(Lang.settings_media_source_save_button))
                         }
                     },
-                    dismissButton = {
-                        TextButton({ showDialog = false }) {
-                            Text(stringResource(Lang.settings_danmaku_cancel))
-                        }
+                    dismissButton = dismissDialogButton(stringResource(Lang.settings_danmaku_cancel)) {
+                        showDialog = false
                     },
                 )
             }

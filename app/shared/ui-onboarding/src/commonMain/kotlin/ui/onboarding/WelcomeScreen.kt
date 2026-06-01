@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2026 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -33,10 +33,15 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.WithContentEnterAnimation
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
@@ -76,9 +81,15 @@ internal fun WelcomeScene(
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        delay(500)
+        focusRequester.requestFocus()
+    }
+
     Box(
         modifier = modifier,
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.Center
     ) {
         WithContentEnterAnimation(Modifier.wrapContentSize()) {
             Column(
@@ -127,7 +138,7 @@ internal fun WelcomeScene(
                 ) {
                     Button(
                         onClick = onClickContinue,
-                        modifier = Modifier.widthIn(300.dp),
+                        modifier = Modifier.widthIn(300.dp).focusRequester(focusRequester),
                     ) {
                         Text(stringResource(Lang.onboarding_welcome_continue))
                     }

@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.ui.cache.subject
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
@@ -29,8 +32,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
@@ -68,8 +75,10 @@ import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.media.selector.MediaSelectorFactory
 import me.him188.ani.app.domain.media.selector.eventHandling
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.ui.cache.ForcedDarkTheme
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.foundation.PlayerFrameHolder
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.foundation.lists.ScrollStateVerticalScrollbar
@@ -104,12 +113,19 @@ interface SubjectCacheViewModel {
     val cacheListState: EpisodeCacheListState
 
     val mediaSourceInfoProvider: MediaSourceInfoProvider
+
+    /** TV: 播放器跳转来时的暂停帧 (页面背景); 其他入口为 null. 见 [PlayerFrameHolder]. */
+    val pausedFrame: ImageBitmap? get() = null
 }
 
 @Stable
 class SubjectCacheViewModelImpl(
     override val subjectId: Int,
 ) : AbstractViewModel(), KoinComponent, SubjectCacheViewModel {
+    // 在 VM (路由级生命周期) 而非组合里消费一次性的暂停帧: 页面从更深的返回栈页面
+    // (管理全部缓存) 回来时会整个重新组合, remember { take() } 会重跑而帧已被消费,
+    // 背景就丢了 (退回浅色白底). VM 存活于返回栈, 帧随路由退出一起销毁.
+    override val pausedFrame = PlayerFrameHolder.take()
     private val subjectCollectionRepository: SubjectCollectionRepository by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
     private val settingsRepository: SettingsRepository by inject()
@@ -331,6 +347,7 @@ fun SubjectCacheScreen(
         modifier,
         windowInsets = windowInsets,
         navigationIcon = navigationIcon,
+        pausedFrame = vm.pausedFrame,
     )
 }
 
@@ -349,12 +366,58 @@ fun SubjectCachePageScaffold(
     modifier: Modifier = Modifier,
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
     navigationIcon: @Composable () -> Unit = {},
+    /**
+     * TV: 播放器跳转来时的暂停帧, 加半透明遮罩作页面背景; null 走普通背景
+     * (TV 上是深色纯底, 见 [ForcedDarkTheme]).
+     * 由调用方从 VM 取 (路由级生命周期) —— 在组合里 take() 的话, 从更深页面返回时
+     * 重组重跑而帧已被消费, 背景会丢.
+     */
+    pausedFrame: ImageBitmap? = null,
 ) {
-    val appBarColors = AniThemeDefaults.topAppBarColors()
+    // TV 上整页无条件强制深色 (与管理全部缓存/缓存详情一致), 不依赖帧是否存在:
+    // 帧捕获可能失败 (surface 无效/PixelCopy 失败返回 null), 依赖帧判断会漏出浅色白底
+    ForcedDarkTheme {
+        Box(modifier) {
+            if (pausedFrame != null) {
+                Image(
+                    pausedFrame,
+                    contentDescription = null,
+                    Modifier.matchParentSize(),
+                    contentScale = ContentScale.Crop,
+                )
+                Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = TV_CACHE_FRAME_SCRIM_ALPHA)))
+            }
+            SubjectCachePageScaffoldImpl(
+                title = title,
+                autoCacheGroup = autoCacheGroup,
+                cacheListGroup = cacheListGroup,
+                transparentBackground = pausedFrame != null,
+                windowInsets = windowInsets,
+                navigationIcon = navigationIcon,
+            )
+        }
+    }
+}
+
+/** 暂停帧背景上的遮罩浓度 (内容可读性). */
+private const val TV_CACHE_FRAME_SCRIM_ALPHA = 0.75f
+
+@Composable
+private fun SubjectCachePageScaffoldImpl(
+    title: @Composable () -> Unit,
+    autoCacheGroup: @Composable SettingsScope.() -> Unit,
+    cacheListGroup: @Composable SettingsScope.() -> Unit,
+    transparentBackground: Boolean,
+    windowInsets: WindowInsets,
+    navigationIcon: @Composable () -> Unit,
+) {
+    val appBarColors = AniThemeDefaults.topAppBarColors().let {
+        if (transparentBackground) it.copy(containerColor = Color.Transparent) else it
+    }
     val scrollState = rememberScrollState()
     val scrollbarEndPadding = if (scrollState.hasScrollableContent()) 16.dp else 0.dp
     Scaffold(
-        modifier,
+        Modifier.fillMaxSize(),
         topBar = {
             WindowDragArea {
                 TopAppBar(
@@ -367,6 +430,11 @@ fun SubjectCachePageScaffold(
                 )
             }
         },
+        containerColor = if (transparentBackground) Color.Transparent else MaterialTheme.colorScheme.background,
+        // 透明容器推导不出内容色 (contentColorFor(Transparent) = Unspecified), 会沿用外层
+        // 的 LocalContentColor —— 暂停帧背景包了强制深色主题, 但外层是浅色时文字仍是黑的.
+        // 显式取当前主题的 onBackground (普通分支下与默认推导一致, 无行为变化)
+        contentColor = MaterialTheme.colorScheme.onBackground,
         contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal),
     ) { paddingValues ->
         Box(Modifier.padding(paddingValues).fillMaxSize()) {
