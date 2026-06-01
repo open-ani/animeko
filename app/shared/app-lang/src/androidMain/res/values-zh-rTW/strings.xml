@@ -13,6 +13,15 @@
     <string name="developer_list">開發者名單</string>
     <string name="acknowledgements">鳴謝</string>
     <string name="settings">設定</string>
+    <string name="playback_session_now_playing">正在播放</string>
+    <string name="playback_session_close">關閉</string>
+    <string name="playback_session_ready_toast">數據源已就緒，可從「正在播放」繼續觀看</string>
+    <string name="playback_session_problem_toast">後台播放遇到問題：%1$s，可從「正在播放」返回處理</string>
+    <string name="playback_session_cause_player_error">播放器無法播放該數據源</string>
+    <string name="playback_session_cause_no_media">所有數據源都沒有可播放的結果</string>
+    <string name="playback_session_cause_manual_selection">需要手動選擇數據源</string>
+    <string name="settings_theme_tv_retain_playback_session">退出播放頁後保留播放狀態</string>
+    <string name="settings_theme_tv_retain_playback_session_description">退出後播放器與數據源搜尋都繼續保留，可從側邊欄「正在播放」秒回原處（焦點落在該條目時下方浮出「關閉」按鈕）；數據源在後台載入好會提示一聲。關閉則退出即結束播放，每次進播放頁都要重新搜尋數據源</string>
     <string name="playback_history_title">播放記錄</string>
     <string name="playback_history_empty">暫無播放記錄</string>
     <string name="playback_history_unknown_subject">未知番劇</string>
@@ -260,6 +269,15 @@
     <string name="settings_player_fullscreen_button_description">總是顯示播放器右下角的切換全螢幕按鈕，方便切換</string>
     <string name="settings_player_frame_preview">顯示進度條畫面預覽</string>
     <string name="settings_player_frame_preview_description">懸停或拖動進度條時，顯示目標位置的影片畫面</string>
+    <string name="settings_player_notice_sound">背景就緒提示音</string>
+    <string name="settings_player_notice_sound_description">離開播放頁後繼續載入的工作階段，就緒或出問題時響一聲。使用系統介面音效，選取即試聽</string>
+    <string name="settings_player_notice_sound_none">無聲音</string>
+    <string name="settings_player_notice_sound_confirm">確認音</string>
+    <string name="settings_player_notice_sound_standard">按鍵音</string>
+    <string name="settings_player_notice_sound_alert">提醒音</string>
+    <string name="settings_player_notice_sound_delete">刪除音</string>
+    <string name="settings_player_notice_sound_space">空格音</string>
+    <string name="settings_player_notice_sound_tick">輕點音</string>
     <string name="settings_player_enable_regex_filter">啟用正則彈幕過濾器</string>
     <string name="settings_player_pause_on_edit_danmaku">發送彈幕時自動暫停播放</string>
     <string name="settings_player_auto_mark_done">觀看 90% 後自動標記為看過</string>
@@ -268,7 +286,11 @@
     <string name="settings_player_auto_play_next">自動連播</string>
     <string name="settings_player_audio_time_stretch">高品質音訊變速（WSOLA）</string>
     <string name="settings_player_audio_time_stretch_description">變速時提供更好的音質；如遇爆音或音訊損壞可關閉</string>
-    <string name="settings_player_auto_skip_op_ed">自動跳過 OP 和 ED</string>
+    <string name="settings_player_auto_skip_op_ed">跳過 OP 和 ED</string>
+    <string name="settings_player_skip_op_ed_auto">自動跳過</string>
+    <string name="settings_player_skip_op_ed_auto_then_manual">自動跳過，取消後保留跳過按鈕</string>
+    <string name="settings_player_skip_op_ed_manual">顯示跳過按鈕</string>
+    <string name="settings_player_skip_op_ed_off">不跳過</string>
     <string name="settings_player_auto_skip_op_ed_description">僅對 BT 資料源的部分資源有效</string>
     <string name="settings_player_op_ed_skip_duration">OP/ED 跳過時長</string>
     <string name="settings_player_op_ed_skip_duration_seconds">%1$d 秒</string>
@@ -580,6 +602,7 @@
     <string name="settings_network_proxy_service_danmaku">彈幕服務</string>
     <string name="settings_network_proxy_service_collection">收藏資料服務</string>
     <string name="settings_network_proxy_service_comment">評論服務</string>
+    <string name="settings_network_proxy_service_tmdb">背景圖與劇照服務</string>
     <string name="settings_network_proxy_test_success">連線成功</string>
     <string name="settings_network_proxy_test_failed">連線失敗</string>
     <string name="settings_network_proxy_current_disabled">未啟用代理</string>
@@ -707,6 +730,8 @@
     <string name="video_player_speed">倍速</string>
     <string name="video_player_skip_op_ed">即將跳過 OP 或 ED</string>
     <string name="video_player_cancel">取消</string>
+    <string name="video_player_tv_cancel_skip_segment">取消跳過 %1$s</string>
+    <string name="video_player_tv_skip_segment">跳過 %1$s</string>
     <string name="video_player_release_to_cancel">放開手指取消</string>
     <string name="video_player_stats_title">播放資訊</string>
     <string name="video_player_stats_title_show">顯示播放資訊</string>
@@ -781,6 +806,7 @@
     <string name="subject_rendering_season_year_month">%1$s 年 %2$s 月</string>
 
     <!-- Subject Episode -->
+    <string name="subject_episode_duration_minutes">%1$d 分鐘</string>
     <string name="subject_episode_unwatch">取消看過</string>
     <string name="subject_episode_watched">已看過</string>
     <string name="subject_episode_dropped">已拋棄</string>
@@ -939,6 +965,8 @@
     <string name="subject_details_view_all">查看全部</string>
     <string name="subject_details_episodes">選集</string>
     <string name="subject_details_manage_cache">緩存管理</string>
+    <string name="subject_details_nav_home">主頁</string>
+    <string name="subject_details_no_summary">暫無信息</string>
     <string name="subject_details_rating">評分</string>
     <string name="subject_details_hot_reviews">熱門評價</string>
     <string name="subject_details_info">作品資訊</string>
@@ -1136,6 +1164,11 @@
     <string name="settings_log_share_file">分享日誌檔案</string>
     <string name="settings_log_copy_today_log_content">複製當日日誌內容（很大）</string>
     <string name="settings_log_file_not_found">未找到日誌檔案</string>
+    <string name="settings_log_share_failed">分享日誌檔案失敗，目前裝置可能不支援分享，可改用複製日誌內容</string>
+    <string name="settings_log_export_file">匯出當日日誌檔案</string>
+    <string name="settings_log_export_succeed">日誌已匯出到 %1$s</string>
+    <string name="settings_log_exported">日誌已匯出</string>
+    <string name="settings_log_export_failed">匯出日誌檔案失敗</string>
     <string name="rating_requires_collection">請先收藏再評分</string>
     <string name="rating_discard_edit_title">捨棄編輯</string>
     <string name="rating_discard_edit_message">評價尚未保存，確定要捨棄嗎？</string>
@@ -1163,6 +1196,11 @@
     <string name="comment_send_comment">發送評論</string>
     <string name="comment_rendering">渲染中...</string>
     <string name="comment_reply">回覆評論</string>
+    <string name="comment_reply_to">回覆 %1$s</string>
+    <string name="comment_new_comment">發表評論</string>
+    <string name="comment_view_comment">查看評論</string>
+    <string name="comment_reply_unsupported">此評論不支援回覆，僅可查看</string>
+    <string name="comment_image_unavailable">圖片已失效或無法存取</string>
     <string name="comment_view_more_replies">查看更多 %1$d 則回覆&gt;</string>
     <string name="comment_add_emoji">添加表情</string>
     <string name="comment_bold">粗體</string>

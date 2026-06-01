@@ -34,6 +34,12 @@ class SubjectDetailsViewModel(
     val state get() = stateLoader.state
     val authState = SelfInfoStateProducer(koin = getKoin()).flow
 
+    /** 确保已加载: 已有存活的加载结果时是空操作 (页面重新进入组合时调用, 不打断现有状态). */
+    fun load() {
+        stateLoader.load(subjectId, placeholder)
+    }
+
+    /** 强制重新加载 (丢弃现有状态), 用于错误页重试. */
     fun reload() {
         stateLoader.reload(subjectId, placeholder)
     }

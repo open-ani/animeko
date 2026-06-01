@@ -10,6 +10,8 @@
 package me.him188.ani.app.ui.episode.danmaku
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -25,17 +27,19 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.widgets.dismissDialogButton
+import me.him188.ani.app.ui.foundation.widgets.focusHighlightedButtonColors
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.episode_danmaku_match_change
 import me.him188.ani.app.ui.lang.episode_danmaku_match_loading_danmaku
@@ -79,11 +83,7 @@ fun MatchingDanmakuDialog(
                 onComplete = onComplete,
             )
         },
-        dismissButton = {
-            TextButton(onDismissRequest) {
-                Text(cancelText)
-            }
-        },
+        dismissButton = dismissDialogButton(cancelText, onDismissRequest),
     )
 }
 
@@ -146,9 +146,13 @@ fun MatchingDanmakuScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         // Button to submit the query and fetch subject list
+        val searchInteractionSource = remember { MutableInteractionSource() }
+        val searchFocused by searchInteractionSource.collectIsFocusedAsState()
         Button(
             onClick = { onSubmitQuery(query) },
             enabled = query.isNotBlank() && !uiState.isLoadingSubjects,
+            colors = focusHighlightedButtonColors(searchFocused),
+            interactionSource = searchInteractionSource,
         ) {
             Text(searchText)
         }
@@ -234,9 +238,7 @@ fun SubjectPickerDialog(
         },
         confirmButton = {
         },
-        dismissButton = {
-            TextButton(onClick = onDismissRequest) { Text(cancelText) }
-        },
+        dismissButton = dismissDialogButton(cancelText, onDismissRequest),
     )
 }
 
@@ -266,9 +268,7 @@ fun EpisodePickerDialog(
         },
         confirmButton = {
         },
-        dismissButton = {
-            TextButton(onClick = onDismissRequest) { Text(cancelText) }
-        },
+        dismissButton = dismissDialogButton(cancelText, onDismissRequest),
     )
 }
 //

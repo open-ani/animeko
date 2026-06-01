@@ -50,6 +50,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.ui.foundation.BackgroundScope
+import me.him188.ani.app.ui.foundation.widgets.dismissDialogButton
 import me.him188.ani.app.ui.foundation.HasBackgroundScope
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_media_source_add_button
@@ -300,11 +301,7 @@ internal fun EditMediaSourceDialog(
                 ) { Text(stringResource(Lang.settings_media_source_save_button)) }
             }
         },
-        dismissButton = {
-            TextButton(onDismissRequest) {
-                Text(stringResource(Lang.settings_media_source_cancel))
-            }
-        },
+        dismissButton = dismissDialogButton(stringResource(Lang.settings_media_source_cancel), onDismissRequest),
         modifier = modifier,
     )
 }

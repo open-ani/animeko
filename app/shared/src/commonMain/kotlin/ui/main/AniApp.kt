@@ -19,11 +19,19 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.unit.Density
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.ImageLoader
@@ -48,20 +56,30 @@ import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
+import me.him188.ani.app.platform.LocalContext
+import me.him188.ani.app.platform.files
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.foundation.AniUiBehavior
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.LocalImageLoader
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalPlatformFontFamily
+import me.him188.ani.app.ui.foundation.LocalUiScaleApplier
+import me.him188.ani.app.ui.foundation.NoopUiScaleApplier
+import me.him188.ani.app.ui.foundation.UiScaleApplier
 import me.him188.ani.app.ui.foundation.createDefaultImageLoader
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.navigation.LocalBackDispatcher
 import me.him188.ani.app.ui.foundation.rememberPlatformFontFamily
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.lang.LocaleZhCN
+import me.him188.ani.utils.io.resolve
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.platform.Platform
+import okio.Path.Companion.toPath
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.isMobile
 import org.koin.core.component.KoinComponent
@@ -175,6 +193,16 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
 @Composable
 fun AniApp(
     modifier: Modifier = Modifier,
+    /**
+     * 当前设备的界面行为, 由应用入口决定 (见 [AniUiBehavior]). 共享界面代码只读
+     * [LocalAniUiBehavior], 不判断自己跑在什么设备上.
+     */
+    uiBehavior: AniUiBehavior = AniUiBehavior.Default,
+    /**
+     * 把界面缩放落到窗口层的平台能力, 由应用入口提供 (见 [UiScaleApplier]).
+     * 缺省实现不做任何事, 此时界面缩放只在 Compose 层生效.
+     */
+    uiScaleApplier: UiScaleApplier = NoopUiScaleApplier,
     content: @Composable () -> Unit,
 ) {
 //    val proxy by remember {
@@ -193,27 +221,73 @@ fun AniApp(
     // 主题读好再进入 APP, 防止黑白背景闪烁
     val appState = viewModel.appState.collectAsStateWithLifecycle(null).value ?: return
 
+    // 界面缩放: 补偿部分电视/盒子上报错误的 densityDpi.
+    //
+    // 窗口层 (Activity 的 densityDpi) 已经按 appliedScale 缩放过了 —— 这里读到的 systemDensity
+    // 就含着它, 弹窗等独立 window 也同此值. 所以只需补上「设置值与基线的差」, 直接乘 uiScale 会叠乘两次.
+    // 差值仅在用户调整设置、窗口层尚未对齐的那段时间里不为 1 (见 UiScaleSyncEffect).
+    //
+    // LocalDensity 是 static composition local, 每次提供新实例都会重组整棵树, 因此必须 remember,
+    // 且无需补偿时原样透传 (绝大多数情况走这条路, 完全没有额外开销).
+    val systemDensity = LocalDensity.current
+    val uiScale = appState.themeSettings.effectiveUiScale
+    val appliedUiScale = uiScaleApplier.appliedScale
+    val scaledDensity = remember(systemDensity, uiScale, appliedUiScale) {
+        if (uiScale == appliedUiScale) systemDensity
+        else Density(systemDensity.density / appliedUiScale * uiScale, systemDensity.fontScale)
+    }
+
     CompositionLocalProvider(
 //        LocalImageLoader provides imageLoader,
         LocalImageLoader provides rememberImageLoader(appState.imageLoaderClient),
         LocalTimeFormatter provides remember { TimeFormatter() },
         LocalThemeSettings provides appState.themeSettings,
         LocalPlatformFontFamily provides rememberPlatformFontFamily(appState.platformFont),
+        LocalAniUiBehavior provides uiBehavior,
+        LocalDensity provides scaledDensity,
+        LocalUiScaleApplier provides uiScaleApplier,
     ) {
         val focusManager by rememberUpdatedState(LocalFocusManager.current)
         val keyboard by rememberUpdatedState(LocalSoftwareKeyboardController.current)
 
+        val backDispatcher by rememberUpdatedState(LocalBackDispatcher.current)
+
         AniTheme {
             Box(
-                modifier = modifier.ifThen(LocalPlatform.current.isMobile()) {
-                    focusable(false).clickable(
-                        remember { MutableInteractionSource() },
-                        null,
-                    ) {
-                        keyboard?.hide()
-                        focusManager.clearFocus()
+                modifier = modifier
+                    .ifThen(uiBehavior.focusDrivenNavigation) {
+                        // 焦点导航下 Compose 框架会把未被任何组件消费的 BACK KeyDown 映射为 FocusDirection.Exit:
+                        // 焦点退到不可见的父容器并消费事件, Activity 收不到按键, 表现为 "焦点丢失但页面不变".
+                        // 在根部冒泡阶段兜底拦截: 页面内自己的 Back 处理 (如播放器) 和 Dialog (独立 window) 仍然优先.
+                        //
+                        // 模仿框架的 back-tracking 语义: 只有 KeyDown 也是这里消费的, KeyUp 才触发返回.
+                        // 子组件 (如评论列表把焦点还给 tab 按钮) 常常只消费 KeyDown, 随后的 KeyUp 会从新焦点
+                        // 冒泡到这里 —— 这种孤儿 KeyUp 必须忽略, 否则会额外触发一次真正的返回.
+                        val sawBackDown = remember { mutableStateOf(false) }
+                        onKeyEvent { event ->
+                            if (event.key == Key.Back) {
+                                when (event.type) {
+                                    KeyEventType.KeyDown -> sawBackDown.value = true
+                                    KeyEventType.KeyUp -> {
+                                        if (sawBackDown.value) backDispatcher.onBackPressed()
+                                        sawBackDown.value = false
+                                    }
+                                }
+                                true
+                            } else {
+                                false
+                            }
+                        }
                     }
-                },
+                    .ifThen(LocalPlatform.current.isMobile()) {
+                        focusable(false).clickable(
+                            remember { MutableInteractionSource() },
+                            null,
+                        ) {
+                            keyboard?.hide()
+                            focusManager.clearFocus()
+                        }
+                    },
             ) {
                 Box {
                     for (composable in appState.overlayComposables) {
@@ -232,9 +306,15 @@ fun AniApp(
 @Composable
 private fun rememberImageLoader(client: ScopedHttpClient): ImageLoader {
     val coilContext = LocalPlatformContext.current
-    return remember(coilContext, client) {
+    // 磁盘缓存显式放进 app 自己的缓存目录 (目录名沿用 Coil 默认, Android 上路径不变,
+    // 老缓存直接复用; 桌面端从系统 temp 挪进应用缓存目录)
+    val diskCacheDir = LocalContext.current.files.cacheDir.resolve("coil3_disk_cache")
+    return remember(coilContext, client, diskCacheDir) {
         derivedStateOf {
-            createDefaultImageLoader(coilContext, client)
+            createDefaultImageLoader(
+                coilContext, client,
+                diskCacheDirectory = diskCacheDir.toString().toPath(),
+            )
         }
     }.value
 }

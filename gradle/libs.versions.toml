@@ -262,6 +262,7 @@ androidx-browser = { module = "androidx.browser:browser", version = "1.8.0" }
 onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android", version.ref = "onnxruntime" }
 onnxruntime = { module = "com.microsoft.onnxruntime:onnxruntime", version.ref = "onnxruntime" }
 androidx-media = { module = "androidx.media:media", version = "1.7.0" }
+androidx-tvprovider = { module = "androidx.tvprovider:tvprovider", version = "1.0.0" }
 androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-service = { module = "androidx.lifecycle:lifecycle-service", version.ref = "androidx-lifecycle" }
 androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "androidx-lifecycle" }
@@ -279,6 +280,9 @@ androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "andr
 androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "androidx-media3" }
 androidx-media3-exoplayer-dash = { module = "androidx.media3:media3-exoplayer-dash", version.ref = "androidx-media3" }
 androidx-media3-exoplayer-hls = { module = "androidx.media3:media3-exoplayer-hls", version.ref = "androidx-media3" }
+# 取帧 (ExperimentalFrameExtractor): 内部起一个 ExoPlayer 把帧解到 GL 纹理再读回,
+# 因此支持 ExoPlayer 能播的一切 (含 HLS) —— 平台的 MediaMetadataRetriever 不支持 HLS
+androidx-media3-transformer = { module = "androidx.media3:media3-transformer", version.ref = "androidx-media3" }
 
 # mediamp
 mediamp-api = { module = "org.openani.mediamp:mediamp-api", version.ref = "mediamp" }

@@ -48,6 +48,7 @@ import me.him188.ani.app.domain.mediasource.test.RefreshResult
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.foundation.widgets.dismissDialogButton
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_mediasource_cancel
 import me.him188.ani.app.ui.lang.settings_mediasource_copied
@@ -197,10 +198,8 @@ object RefreshIndicationDefaults {
                         Text(stringResource(Lang.settings_mediasource_retry))
                     }
                 },
-                dismissButton = {
-                    TextButton({ showErrorDialog = false }) {
-                        Text(stringResource(Lang.settings_mediasource_cancel))
-                    }
+                dismissButton = dismissDialogButton(stringResource(Lang.settings_mediasource_cancel)) {
+                    showErrorDialog = false
                 },
             )
         }

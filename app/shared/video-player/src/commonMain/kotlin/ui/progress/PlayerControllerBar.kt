@@ -15,6 +15,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -79,11 +80,17 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
@@ -94,6 +101,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
@@ -102,6 +110,7 @@ import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.SteppedSlider
 import me.him188.ani.app.ui.lang.*
+import me.him188.ani.app.ui.foundation.FOCUS_REQ_DELAY_MILLIS
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
@@ -631,6 +640,7 @@ object PlayerControllerDefaults {
             modifier,
             properties = PlatformPopupProperties(
                 clippingEnabled = false,
+                focusable = true, // TV: 弹出层必须可聚焦, 否则遥控器无法进入下拉
             ),
             textButtonTestTag = TAG_VIDEO_ASPECT_RATIO_SELECTOR_TEXT_BUTTON,
             dropdownMenuTestTag = TAG_VIDEO_ASPECT_RATIO_SELECTOR_DROPDOWN_MENU,
@@ -677,10 +687,27 @@ object PlayerControllerDefaults {
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
                 properties = properties,
-                modifier = Modifier.testTag(dropdownMenuTestTag),
+                modifier = Modifier
+                    .testTag(dropdownMenuTestTag)
+                    // TV: 遥控器没有 dismiss 手势, 返回键关闭下拉
+                    .onPreviewKeyEvent { event ->
+                        if (event.key == Key.Back && event.type == KeyEventType.KeyDown) {
+                            expanded = false
+                            true
+                        } else {
+                            false
+                        }
+                    },
             ) {
                 val options = remember(optionsProvider) { optionsProvider() }
-                for (option in options) {
+                // TV: 打开后自动聚焦第一项 (等 popup 渲染完成再请求), 聚焦项画高亮背景示焦
+                val firstItemFocusRequester = remember { FocusRequester() }
+                LaunchedEffect(Unit) {
+                    delay(FOCUS_REQ_DELAY_MILLIS)
+                    runCatching { firstItemFocusRequester.requestFocus() }
+                }
+                options.forEachIndexed { index, option ->
+                    var itemFocused by remember { mutableStateOf(false) }
                     DropdownMenuItem(
                         text = {
                             val color = if (value == option) {
@@ -696,6 +723,16 @@ object PlayerControllerDefaults {
                             expanded = false
                             onValueChange(option)
                         },
+                        modifier = Modifier
+                            .then(
+                                if (index == 0) Modifier.focusRequester(firstItemFocusRequester)
+                                else Modifier,
+                            )
+                            .onFocusEvent { itemFocused = it.isFocused }
+                            .background(
+                                if (itemFocused) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                                else Color.Transparent,
+                            ),
                     )
                 }
             }

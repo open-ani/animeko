@@ -44,6 +44,7 @@ kotlin {
     }
     sourceSets.androidMain.dependencies {
         implementation(libs.androidx.appcompat)
+        implementation(libs.androidx.activity.compose) // 导出日志时拉起系统文件选择器 (SAF)
     }
     sourceSets.desktopMain.dependencies {
     }

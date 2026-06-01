@@ -19,21 +19,33 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalClipboard
+import coil3.annotation.ExperimentalCoilApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
 import me.him188.ani.app.platform.PermissionManager
+import me.him188.ani.app.ui.foundation.LocalImageLoader
 import me.him188.ani.app.ui.foundation.getClipEntryText
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.setClipEntryText
+import me.him188.ani.app.ui.foundation.widgets.dismissDialogButton
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_danmaku_cancel
 import me.him188.ani.app.ui.lang.settings_danmaku_confirm
 import me.him188.ani.app.ui.lang.settings_mediasource_rss_copied_to_clipboard
+import me.him188.ani.app.ui.lang.settings_storage_image_cache
+import me.him188.ani.app.ui.lang.settings_storage_image_cache_cleared
+import me.him188.ani.app.ui.lang.settings_storage_image_cache_usage
+import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.app.ui.lang.settings_storage_backup_op_backup_description
 import me.him188.ani.app.ui.lang.settings_storage_backup_op_backup_error
 import me.him188.ani.app.ui.lang.settings_storage_backup_op_backup_title
@@ -116,10 +128,8 @@ fun SettingsScope.BackupSettings(state: CacheDirectoryGroupState) {
                     Text(stringResource(Lang.settings_danmaku_confirm), color = MaterialTheme.colorScheme.error)
                 }
             },
-            dismissButton = {
-                TextButton({ showRestoreDialog = false }) {
-                    Text(stringResource(Lang.settings_danmaku_cancel))
-                }
+            dismissButton = dismissDialogButton(stringResource(Lang.settings_danmaku_cancel)) {
+                showRestoreDialog = false
             },
         )
     }
@@ -163,6 +173,42 @@ fun SettingsScope.DanmakuCacheSettings(state: CacheDirectoryGroupState) {
                     mediaCacheSettings.copy(danmakuCacheStrategy = newStrategy),
                 )
             }
+        },
+    )
+}
+
+/**
+ * 图片磁盘缓存 (Coil) 的占用展示 + 手动清理入口. 缓存本身是 LRU 定容
+ * (见 createDefaultImageLoader), 一般无需手动清理, 这里主要是给用户可见性.
+ */
+@OptIn(ExperimentalCoilApi::class)
+@Composable
+fun SettingsScope.ImageCacheSettings() {
+    val imageLoader = LocalImageLoader.current
+    val toaster = LocalToaster.current
+    val tasker = rememberAsyncHandler()
+    // 清理后自增, 触发占用量重新统计
+    var refreshKey by remember { mutableIntStateOf(0) }
+    val usageText by produceState<String?>(null, imageLoader, refreshKey) {
+        value = withContext(Dispatchers.IO) {
+            imageLoader.diskCache?.let { "${it.size.bytes} / ${it.maxSize.bytes}" }
+        }
+    }
+    val clearedText = stringResource(Lang.settings_storage_image_cache_cleared)
+    TextItem(
+        onClick = {
+            tasker.launch {
+                withContext(Dispatchers.IO) {
+                    imageLoader.diskCache?.clear()
+                    imageLoader.memoryCache?.clear()
+                }
+                refreshKey++
+                toaster.toast(clearedText)
+            }
+        },
+        title = { Text(stringResource(Lang.settings_storage_image_cache)) },
+        description = {
+            Text(stringResource(Lang.settings_storage_image_cache_usage, usageText ?: "…"))
         },
     )
 }

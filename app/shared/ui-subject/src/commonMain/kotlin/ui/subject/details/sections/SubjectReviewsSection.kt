@@ -40,15 +40,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.comment.UIRichText
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.app.ui.foundation.focus.restoreFocusAfter
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.layout.rememberConnectedScrollState
@@ -77,6 +81,16 @@ fun ReviewsPreviewSection(
     totalCount: Int?,
     onShowAll: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * 只作用在评论卡行 (标题行之下) 的 modifier: TV 内嵌介绍页把"卡片行按下键跳下一区块"
+     * 的拦截挂在这里 —— 挂整个区块会把标题行"查看全部"按钮的下键也吃掉 (导航不到卡片).
+     */
+    cardsModifier: Modifier = Modifier,
+    /**
+     * true 时评论卡改用半透明黑底 + 白字 (见 [ReviewPreviewCard]): TV 播放器内嵌介绍页整页浮在
+     * 视频画面上, 不透明的 `surfaceContainerLow` 会把画面整块盖掉, 观感是页底压了两块黑砖.
+     */
+    videoBackground: Boolean = false,
 ) {
     if (comments.itemCount == 0) return
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -85,18 +99,22 @@ fun ReviewsPreviewSection(
             actionLabel = reviewsCountLabel(totalCount),
             onAction = onShowAll,
         )
-        BoxWithConstraints {
+        BoxWithConstraints(cardsModifier) {
             val count = minOf(comments.itemCount, PREVIEW_COMMENT_COUNT)
             if (maxWidth < STACK_REVIEW_CARDS_BELOW_WIDTH) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     repeat(count) { i ->
-                        comments[i]?.let { ReviewPreviewCard(it, onClick = onShowAll, Modifier.fillMaxWidth()) }
+                        comments[i]?.let {
+                            ReviewPreviewCard(it, onShowAll, Modifier.fillMaxWidth(), videoBackground)
+                        }
                     }
                 }
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     repeat(count) { i ->
-                        comments[i]?.let { ReviewPreviewCard(it, onClick = onShowAll, Modifier.weight(1f)) }
+                        comments[i]?.let {
+                            ReviewPreviewCard(it, onShowAll, Modifier.weight(1f), videoBackground)
+                        }
                     }
                 }
             }
@@ -106,13 +124,34 @@ fun ReviewsPreviewSection(
 
 private val STACK_REVIEW_CARDS_BELOW_WIDTH = 480.dp
 
+/**
+ * 视频背景态下评论卡的墨色浓度: 只要把画面按下去到正文读得清, 不必压成实心.
+ *
+ * 页面本身已经压了一层基础遮罩 (TV 内嵌介绍页的 `TV_VIDEO_SCRIM_BASE_ALPHA`), 与它叠加后
+ * 卡片区约 0.6 —— 卡片边界看得出来, 画面也还透得出来. 用黑而不是 `glassContainerColor`
+ * (那套是提亮的墨色): 卡里是两行长文, 得靠压暗背景取对比.
+ */
+private const val REVIEW_CARD_VIDEO_SCRIM_ALPHA = 0.4f
+
 @Composable
-private fun ReviewPreviewCard(comment: UIComment, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun ReviewPreviewCard(
+    comment: UIComment,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    videoBackground: Boolean = false,
+) {
     Surface(
         onClick = onClick,
         modifier = modifier,
         shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = if (videoBackground) {
+            Color.Black.copy(alpha = REVIEW_CARD_VIDEO_SCRIM_ALPHA)
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerLow
+        },
+        // 半透明底色在配色表里查不到对应的 "on" 色, Surface 会退回 LocalContentColor,
+        // 而它的默认值是纯黑 (material3 的 compositionLocalOf { Color.Black }) —— 必须显式给白
+        contentColor = if (videoBackground) Color.White else MaterialTheme.colorScheme.onSurface,
     ) {
         ReviewPreviewItem(
             comment,
@@ -225,6 +264,9 @@ internal fun UIRichText.toPlainText(): String =
 /**
  * 完整评论流 sheet: 桌面 (双栏/三栏) 没有"评价" tab, 从评价预览/热门评价卡进入.
  * 复用手机"评价" tab 的 [SubjectCommentColumn], 头部提供"写评价"入口.
+ *
+ * TV 上改为大号居中弹窗 (可导航的纯文本评论卡片网格, 确认键展开全文, 返回键关闭);
+ * 保留"写评价"入口.
  */
 @Composable
 fun SubjectCommentsSheet(
@@ -234,7 +276,32 @@ fun SubjectCommentsSheet(
     onClickWriteReview: () -> Unit,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    /** 评分弹窗是否开着: 它盖在本 sheet 上面, 关掉后要把焦点还给"写评价"按钮 (仅遥控器形态). */
+    ratingDialogVisible: Boolean = false,
 ) {
+    if (LocalAniUiBehavior.current.panelsAsCenteredDialogs) {
+        val gridComments = state.list.collectAsLazyPagingItemsWithLifecycle()
+        CommentsGridDialog(
+            title = stringResource(Lang.subject_details_tab_comments) +
+                    (state.count?.takeIf { it > 0 }
+                        ?.let { " · " + remember(it) { groupThousands(it) } } ?: ""),
+            comments = gridComments,
+            onDismissRequest = onDismissRequest,
+            showRating = true,
+            headerAction = {
+                // 评分弹窗关掉之后焦点还回本按钮 (它自己是另一个弹窗窗口里的元素,
+                // 上面那层关掉时不保证把焦点还回来, 遥控器会当场失去焦点)
+                TextButton(onClickWriteReview, Modifier.restoreFocusAfter(ratingDialogVisible)) {
+                    Icon(Icons.Rounded.AddComment, contentDescription = null, Modifier.size(18.dp))
+                    Text(
+                        stringResource(Lang.subject_details_write_review),
+                        Modifier.padding(start = 8.dp),
+                    )
+                }
+            },
+        )
+        return
+    }
     ModalBottomSheet(
         onDismissRequest,
         modifier = modifier.desktopTitleBarPadding().statusBarsPadding(),

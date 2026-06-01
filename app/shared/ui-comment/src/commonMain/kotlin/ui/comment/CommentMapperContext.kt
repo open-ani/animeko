@@ -40,6 +40,12 @@ object CommentMapperContext {
 
     fun EpisodeComment.parseToUIComment(): UIComment {
         val comment = this
+        // 被回复者的昵称就在同一楼里, 建表本地解析, 不额外请求
+        val nicknamesByCommentId: Map<String, String> = buildMap {
+            comment.replies.forEach { reply ->
+                reply.author?.nickname?.takeIf { it.isNotBlank() }?.let { put(reply.sourceCommentId, it) }
+            }
+        }
         return UIComment(
             id = comment.stableId.toUiCommentId(),
             stableId = comment.stableId,
@@ -64,6 +70,11 @@ object CommentMapperContext {
                     },
                     sourceCommentId = reply.sourceCommentId,
                     canReply = reply.canReply,
+                    // 解析不到昵称 (被回复的那条不在本楼的 brief 列表里) 就退化成"只缩进",
+                    // 避免出现空名字
+                    replyTo = reply.replyToCommentId?.let { targetId ->
+                        nicknamesByCommentId[targetId]?.let { UICommentReplyTarget(targetId, it) }
+                    },
                 )
             },
             replyCount = comment.replies.size,

@@ -613,7 +613,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
     ///////////////////////////////////////////////////////////////////////////
 
     @Test
-    fun `loads saved history on first PLAYING`() = runTest {
+    fun `loads saved history once media is ready even while paused`() = runTest {
         val (testScope, _, _) = createCase()
         advanceUntilIdle()
         repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
@@ -624,11 +624,15 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         assertNotEquals(500, suite2.player.currentPositionMillis.value) // Not yet loaded
         suite2.player.loadMedia(durationMs = 100_000L, playWhenReady = false, uri = "file://test")
         advanceUntilIdle()
-        assertNotEquals(500, suite2.player.currentPositionMillis.value) // Not loaded while Ready (paused)
+        // 媒体打开 (时长已知) 就恢复, 不必等它真的播起来. 原先这里断言的是"暂停时不恢复", 那条契约
+        // 在电视的保留会话上直接不成立: 退出播放页会把播放器按成暂停, 后台永远到不了 PLAYING,
+        // 进度也就永远不恢复, 用户回到页面才 seek、才二次缓冲.
+        // 见 RememberPlayProgressExtension.restoreSavedPositionOnce 与 RetainedPlaybackSessionHolder.
+        assertEquals(500, suite2.player.currentPositionMillis.value)
 
         suite2.player.play()
         advanceUntilIdle()
-        assertEquals(500, suite2.player.currentPositionMillis.value) // Load when actually playing
+        assertEquals(500, suite2.player.currentPositionMillis.value) // 播起来之后不会再 seek 一次
 
         testScope2.cancel()
     }

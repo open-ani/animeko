@@ -105,6 +105,7 @@ includeProject(":app:shared:ui-exploration")
 includeProject(":app:shared:ui-comment")
 includeProject(":app:shared:ui-onboarding")
 includeProject(":app:shared:ui-mediaselect")
+includeProject(":app:shared:ui-tv") // Android TV (遥控器) 专属界面, 只含 android target
 includeProject(":app:shared:ui-episode")
 includeProject(":app:shared:ui-exprovider")
 includeProject(":app:shared:ui-watchtogether")

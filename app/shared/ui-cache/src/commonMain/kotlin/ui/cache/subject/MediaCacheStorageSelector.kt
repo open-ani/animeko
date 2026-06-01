@@ -20,11 +20,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
+import me.him188.ani.app.ui.foundation.widgets.DismissDialogButton
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.cache_subject_cancel
 import me.him188.ani.app.ui.lang.cache_subject_select_storage
@@ -41,11 +41,8 @@ fun SelectMediaStorageDialog(
         onDismissRequest = onDismissRequest,
         title = { Text(stringResource(Lang.cache_subject_select_storage)) },
         icon = { Icon(Icons.Rounded.Save, null) },
-        confirmButton = {
-            TextButton(onDismissRequest) {
-                Text(stringResource(Lang.cache_subject_cancel))
-            }
-        },
+        // 唯一的按钮就是"取消" (= 关掉本弹窗)
+        confirmButton = { DismissDialogButton(stringResource(Lang.cache_subject_cancel), onDismissRequest) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Spacer(Modifier)

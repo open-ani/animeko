@@ -9,20 +9,25 @@
 
 package me.him188.ani.app.ui.subject.details.components
 
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,7 +46,11 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.focus.FOCUS_BORDER_TEXT_INSET
+import me.him188.ani.app.ui.foundation.focus.TvAnchoredStrip
+import me.him188.ani.app.ui.foundation.focus.focusBorder
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_details_relation_derived
 import me.him188.ani.app.ui.lang.subject_details_relation_prequel
@@ -78,7 +87,10 @@ fun RelatedSubjectsGrid(
     }
 }
 
-/** 手机横滑变体, 见 [RelatedSubjectsGrid]. */
+/**
+ * 手机横滑变体, 见 [RelatedSubjectsGrid]. TV 也用它 (卡片区块) —— 那边是锚位条:
+ * 聚焦卡停在行首, 入场不横跳, 见 [TvAnchoredStrip].
+ */
 @Composable
 fun RelatedSubjectsLazyRow(
     items: LazyPagingItems<RelatedSubjectInfo>,
@@ -88,28 +100,41 @@ fun RelatedSubjectsLazyRow(
     spacing: Dp = 12.dp,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
-    LazyRow(
+    TvAnchoredStrip(
+        items.itemCount,
         modifier,
-        horizontalArrangement = Arrangement.spacedBy(spacing),
+        itemSpacing = spacing,
         contentPadding = contentPadding,
-    ) {
-        items(items.itemCount) { i ->
-            items[i]?.let { item ->
-                RelatedSubjectCard(item, onClick = { onClick(item) }, Modifier.width(itemWidth))
-            }
+    ) { i, itemModifier ->
+        items[i]?.let { item ->
+            RelatedSubjectCard(item, onClick = { onClick(item) }, Modifier.width(itemWidth).then(itemModifier))
         }
     }
 }
 
-/** 单张关联作品卡; 供横滑/网格与"查看全部" sheet 复用. */
+/** 单张关联作品卡; 供横滑/网格与"查看全部" sheet 复用. 聚焦 (遥控器/键盘) 时标题跑马灯. */
 @Composable
 fun RelatedSubjectCard(
     info: RelatedSubjectInfo,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
     Column(
-        modifier.clip(MaterialTheme.shapes.small).clickable(onClick = onClick),
+        modifier
+            // 示焦用主题色描边而不是涟漪的高亮状态层 (压在封面上分辨不出哪张有焦点)
+            .focusBorder(MaterialTheme.shapes.small)
+            .clip(MaterialTheme.shapes.small)
+            // 焦点驱动 (TV) 下不要涟漪的焦点状态层: 半透明高亮 + 描边 = 两层特效, 且高亮本身
+            // 在封面上分辨不出哪张有焦点 (与 FocusHighlightCard 的取舍一致). 触摸端保留涟漪.
+            .clickable(
+                interactionSource = interactionSource,
+                indication = if (LocalAniUiBehavior.current.focusDrivenNavigation) null else LocalIndication.current,
+                onClick = onClick,
+            )
+            // 末行文字贴着卡底, 给聚焦描边留出余地 (横向内缩在文字上, 封面仍满宽)
+            .padding(bottom = FOCUS_BORDER_TEXT_INSET),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Surface(
@@ -125,12 +150,13 @@ fun RelatedSubjectCard(
                 placeholder = if (currentAniBuildConfig.isDebug) remember { ColorPainter(Color.Gray) } else null,
             )
         }
-        Column {
+        Column(Modifier.padding(horizontal = FOCUS_BORDER_TEXT_INSET)) {
             Text(
                 info.displayName,
+                if (focused) Modifier.basicMarquee(iterations = Int.MAX_VALUE) else Modifier,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = if (focused) TextOverflow.Clip else TextOverflow.Ellipsis,
             )
             info.relation?.let { relation ->
                 Text(

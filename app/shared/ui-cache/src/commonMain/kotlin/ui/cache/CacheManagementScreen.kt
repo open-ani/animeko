@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.cache
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.combinedClickable
+import me.him188.ani.app.ui.foundation.aniCombinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -71,8 +72,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -88,6 +92,7 @@ import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.tools.getOrZero
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
+import me.him188.ani.app.ui.foundation.widgets.dismissDialogButton
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.adaptive.ListDetailLayoutParameters
@@ -102,6 +107,7 @@ import me.him188.ani.app.ui.cache.components.DownloadStateIcon
 import me.him188.ani.app.ui.cache.components.TestCacheGroupSates
 import me.him188.ani.app.ui.cache.components.createTestMediaStats
 import me.him188.ani.app.ui.cache.components.rememberCacheFilterAndSortState
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.cache.components.rememberCacheSelectionState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
@@ -180,19 +186,21 @@ fun CacheManagementScreen(
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
     val state by vm.stateFlow.collectAsStateWithLifecycle()
-    CacheManagementScreen(
-        state,
-        selfInfo,
-        onPlay,
-        onResume = { vm.resumeCache(it) },
-        onPause = { vm.pauseCache(it) },
-        onDelete = { vm.deleteCache(it) },
-        onViewDetail = { onNavigateCacheDetail(it.cacheId) },
-        onClickLogin = onClickLogin,
-        modifier = modifier,
-        navigationIcon = navigationIcon,
-        windowInsets = windowInsets,
-    )
+    ForcedDarkTheme {
+        CacheManagementScreen(
+            state,
+            selfInfo,
+            onPlay,
+            onResume = { vm.resumeCache(it) },
+            onPause = { vm.pauseCache(it) },
+            onDelete = { vm.deleteCache(it) },
+            onViewDetail = { onNavigateCacheDetail(it.cacheId) },
+            onClickLogin = onClickLogin,
+            modifier = modifier,
+            navigationIcon = navigationIcon,
+            windowInsets = windowInsets,
+        )
+    }
 }
 
 
@@ -210,13 +218,39 @@ fun CacheManagementScreen(
     navigationIcon: @Composable () -> Unit = {},
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
-    val appBarColors = AniThemeDefaults.topAppBarColors()
+    // appBarColors 派生出顶栏 / 总体统计块 / 筛选 stickyHeader 三处底色, 默认的
+    // surfaceContainerLowest 在浅色下是压在外壳背景上的白色矩形. 沉浸式外壳下统一改成外壳
+    // 背景色 (视觉上无边界); 不用透明 —— stickyHeader 需要不透明底盖住滚到其下的列表项.
+    val appBarColors = if (LocalAniUiBehavior.current.immersiveShell) {
+        val shellBackground = AniThemeDefaults.shellBackgroundColor
+        AniThemeDefaults.topAppBarColors().copy(
+            containerColor = shellBackground,
+            scrolledContainerColor = shellBackground,
+        )
+    } else {
+        AniThemeDefaults.topAppBarColors()
+    }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     val listState = rememberLazyListState()
     val detailListState = rememberLazyListState()
     val cacheFilterState = rememberCacheFilterAndSortState()
     val selectionState = rememberCacheSelectionState()
+
+    // TV: 删除某条目时, 聚焦的是该条目行, 行被移出列表 -> 焦点丢失. 删除后把焦点落到 top bar 右上角按钮
+    // (始终存在). 用 pending 标志 + 等 entries 真正更新后再请求, 避免在列表更新前请求(那时行还在).
+    val focusDriven = LocalAniUiBehavior.current.focusDrivenNavigation
+    val topBarActionFocusRequester = remember { FocusRequester() }
+    var pendingTopBarFocus by remember { mutableStateOf(false) }
+    LaunchedEffect(state.entries) {
+        if (pendingTopBarFocus) {
+            pendingTopBarFocus = false
+            if (focusDriven) {
+                withFrameNanos { }
+                runCatching { topBarActionFocusRequester.requestFocus() }
+            }
+        }
+    }
 
     val navigator = rememberListDetailPaneScaffoldNavigator<String>()
     val listDetailLayoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective)
@@ -303,6 +337,7 @@ fun CacheManagementScreen(
                 appBarColors = appBarColors,
                 windowInsets = AniWindowInsets.forTopAppBarWithoutDesktopTitle(),
                 scrollBehavior = scrollBehavior,
+                actionFocusRequester = topBarActionFocusRequester,
             )
         },
         bottomBar = {
@@ -342,7 +377,11 @@ fun CacheManagementScreen(
         onPlay = onPlay,
         onResume = onResume,
         onPause = onPause,
-        onDelete = onDelete,
+        // TV: 单条删除后该行被移除会丢焦点, 标记一下, 待 entries 更新后把焦点落到 top bar.
+        onDelete = { entry ->
+            onDelete(entry)
+            pendingTopBarFocus = true
+        },
         onViewDetail = onViewDetail,
         windowInsets = windowInsets,
         listDetailLayoutParameters = listDetailLayoutParameters,
@@ -384,11 +423,13 @@ private fun CacheManagementLayout(
 ) {
     val tasker = rememberAsyncHandler()
 
+    // 沉浸式外壳: 透明, 透出外壳统一的全屏背景 (见 MainScreen); 其它平台维持原页面背景色
+    val transparentBackground = LocalAniUiBehavior.current.immersiveShell
     Scaffold(
         modifier = modifier,
         topBar = topBar,
         bottomBar = bottomBar,
-        containerColor = AniThemeDefaults.pageContentBackgroundColor,
+        containerColor = if (transparentBackground) Color.Transparent else AniThemeDefaults.pageContentBackgroundColor,
         contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
     ) { paddingValues ->
         val layoutDirection = LocalLayoutDirection.current
@@ -595,7 +636,26 @@ private fun CacheManagementTopBar(
     appBarColors: TopAppBarColors,
     windowInsets: WindowInsets,
     scrollBehavior: TopAppBarScrollBehavior?,
+    /** TV: 绑到右上角 action 按钮的 FocusRequester. 由上层 hoist, 既用于切换选择模式后夺回焦点, 也用于
+     *  删除条目后把焦点落到这里(top bar 始终存在). */
+    actionFocusRequester: FocusRequester = remember { FocusRequester() },
 ) {
+    // TV: 切换选择模式会把整个 TopAppBar 换成另一套按钮(if/else 两个不同的 AniTopAppBar), 原来聚焦的
+    // 右上角按钮被销毁 -> 焦点丢失. FocusRequester hoist 在上层(不随 if/else 重建), 绑到两个分支右上角的
+    // action 按钮上; 模式切换后请求焦点回该按钮, 焦点就不会丢. 跳过首次组合, 避免进页面就抢焦点.
+    val focusDriven = LocalAniUiBehavior.current.focusDrivenNavigation
+    var selectionModeSeen by remember { mutableStateOf(false) }
+    LaunchedEffect(selectionMode) {
+        if (!focusDriven) return@LaunchedEffect
+        if (!selectionModeSeen) {
+            selectionModeSeen = true
+            return@LaunchedEffect
+        }
+        withFrameNanos { } // 等新分支布局完成再请求
+        runCatching { actionFocusRequester.requestFocus() }
+    }
+    val actionFocusModifier = if (focusDriven) Modifier.focusRequester(actionFocusRequester) else Modifier
+
     if (selectionMode) {
         val selectedCountText = stringResource(Lang.cache_management_selected_count, selectionCount)
         val exitSelectionText = stringResource(Lang.cache_management_exit_selection)
@@ -609,6 +669,7 @@ private fun CacheManagementTopBar(
                 IconButton(
                     onClick = onToggleSelectAll,
                     enabled = hasEntries,
+                    modifier = actionFocusModifier,
                 ) {
                     Icon(
                         if (allSelected) Icons.Default.Deselect else Icons.Default.SelectAll,
@@ -630,19 +691,25 @@ private fun CacheManagementTopBar(
                 IconButton(
                     onClick = onEnterSelection,
                     enabled = hasEntries,
+                    modifier = actionFocusModifier,
                 ) {
                     Icon(Icons.Default.Checklist, enterSelectionModeText)
                 }
             },
-            avatar = selfInfo?.let {
-                { recommendedSize ->
-                    SelfAvatar(
-                        state = it,
-                        onClick = onClickLogin,
-                        size = recommendedSize,
-                    )
-                }
-            } ?: { },
+            // TV: 头像由主页左侧边栏统一承载, 顶栏不再重复
+            avatar = if (focusDriven) {
+                { }
+            } else {
+                selfInfo?.let {
+                    { recommendedSize ->
+                        SelfAvatar(
+                            state = it,
+                            onClick = onClickLogin,
+                            size = recommendedSize,
+                        )
+                    }
+                } ?: { }
+            },
             colors = appBarColors,
             windowInsets = windowInsets,
             scrollBehavior = scrollBehavior,
@@ -695,9 +762,7 @@ internal fun DeleteActionDialog(
                 modifier = Modifier.testTag(CacheManagementTestTags.DELETE_CONFIRM_BUTTON),
             ) { Text(stringResource(Lang.cache_subject_delete), color = MaterialTheme.colorScheme.error) }
         },
-        dismissButton = {
-            TextButton(onDismiss) { Text(stringResource(Lang.cache_subject_cancel)) }
-        },
+        dismissButton = dismissDialogButton(stringResource(Lang.cache_subject_cancel), onDismiss),
     )
 }
 
@@ -716,7 +781,7 @@ private fun CacheSubjectListItem(
         modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.large)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            .aniCombinedClickable(onClick = onClick, onLongClick = onLongClick),
         shape = MaterialTheme.shapes.large,
         tonalElevation = if (selected) 6.dp else 1.dp,
         color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
@@ -817,7 +882,7 @@ private fun CacheListItem(
         modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.large)
-            .combinedClickable(
+            .aniCombinedClickable(
                 onClick = {
                     if (selectionMode) {
                         onToggleSelected()

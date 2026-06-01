@@ -12,10 +12,13 @@ package me.him188.ani.app.ui.subject.details.sections
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -28,12 +31,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -46,7 +53,9 @@ import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionStats
 import me.him188.ani.app.data.models.subject.nameCn
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.app.ui.foundation.focus.TvAnchoredStrip
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_details_characters
@@ -101,7 +110,7 @@ private fun StatCell(count: Int, label: String, modifier: Modifier = Modifier) {
 }
 
 /** `39983 -> "39,983"`. 详情页多处数字 (收藏统计/评分人数/评论数) 按定稿千分组显示. */
-internal fun groupThousands(n: Int): String {
+fun groupThousands(n: Int): String {
     val s = n.toString()
     val neg = s.startsWith("-")
     val digits = if (neg) s.substring(1) else s
@@ -174,27 +183,75 @@ fun CharactersSection(
     itemWidth: Dp = 76.dp,
     avatarSize: Dp = 76.dp,
     itemSpacing: Dp = 12.dp,
+    /** TV: 卡片下键的显式落点 (下一区块入口; 跨区块空间焦点搜索不可靠). null 交给空间搜索. */
+    downFocus: FocusRequester? = null,
 ) {
     if (exposedCharacters.itemCount == 0) return
     var showAll by rememberSaveable { mutableStateOf(false) }
+    // TV: "查看全部" 在标题行右上角, 与头像条不同行, 空间焦点搜索向右够不到;
+    // 把最右一个头像的右键显式指到该按钮 (同选集轮播的网格入口处理)
+    val viewAllFocus = remember { FocusRequester() }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionHeader(
             stringResource(Lang.subject_details_characters),
             actionLabel = stringResource(Lang.subject_details_view_all),
             onAction = { showAll = true },
             modifier = Modifier.padding(contentPadding),
+            actionModifier = Modifier.focusRequester(viewAllFocus),
         )
         val onClickCharacter = rememberPeopleClickHandler()
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(itemSpacing),
-            contentPadding = contentPadding,
-        ) {
-            items(exposedCharacters.itemCount) { i ->
-                val item = exposedCharacters[i] ?: return@items
-                CharacterAvatarCell(
-                    item, itemWidth, avatarSize,
-                    onClick = { onClickCharacter(PeoplePreviewTarget.Character(item.character.id)) },
-                )
+        if (LocalAniUiBehavior.current.focusDrivenNavigation) {
+            // 焦点驱动形态: 卡片形态 (与"查看全部"弹窗同款 PersonCard + 聚焦高亮容器), 锚位横滑条
+            // (聚焦卡停在行首, 整行滑动; 入场不动 —— 见 TvAnchoredStrip 的 KDoc).
+            // 卡宽按**留白内**的视口均分, 一行正好放下 CHARACTER_CARDS_PER_ROW 张完整卡: 减掉
+            // contentPadding 才是可见宽度, 否则内容恒比视口宽出那点留白, 首尾卡永远差一截
+            val layoutDirection = LocalLayoutDirection.current
+            BoxWithConstraints {
+                val cardWidth = (
+                        maxWidth - contentPadding.calculateStartPadding(layoutDirection) -
+                                contentPadding.calculateEndPadding(layoutDirection) -
+                                itemSpacing * (CHARACTER_CARDS_PER_ROW - 1)
+                        ) / CHARACTER_CARDS_PER_ROW
+                TvAnchoredStrip(
+                    itemCount = exposedCharacters.itemCount,
+                    itemSpacing = itemSpacing,
+                    contentPadding = contentPadding,
+                ) { i, itemModifier ->
+                    val item = exposedCharacters[i] ?: return@TvAnchoredStrip
+                    FocusHighlightCard(
+                        Modifier
+                            .width(cardWidth)
+                            .then(itemModifier)
+                            // 最右一张卡的右键显式指到标题行"查看全部" (空间搜索够不到)
+                            .ifThen(i == exposedCharacters.itemCount - 1) {
+                                focusProperties { right = viewAllFocus }
+                            }
+                            .ifThen(downFocus != null) {
+                                focusProperties { down = downFocus!! }
+                            },
+                        // 点击与焦点都在卡容器上 (不在内部的 PersonCard 上): 锚位滚动按焦点目标
+                        // 矩形算, 见 FocusHighlightCard 的 KDoc
+                        onClick = { onClickCharacter(PeoplePreviewTarget.Character(item.character.id)) },
+                    ) {
+                        PersonCard(item, Modifier.fillMaxWidth())
+                    }
+                }
+            }
+        } else {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(itemSpacing),
+                contentPadding = contentPadding,
+            ) {
+                items(exposedCharacters.itemCount) { i ->
+                    val item = exposedCharacters[i] ?: return@items
+                    CharacterAvatarCell(
+                        item, itemWidth, avatarSize,
+                        onClick = { onClickCharacter(PeoplePreviewTarget.Character(item.character.id)) },
+                        modifier = if (i == exposedCharacters.itemCount - 1) {
+                            Modifier.focusProperties { right = viewAllFocus }
+                        } else Modifier,
+                    )
+                }
             }
         }
     }
@@ -205,6 +262,7 @@ fun CharactersSection(
                 ?: stringResource(Lang.subject_details_characters),
             items = allCharacters,
             onDismissRequest = { showAll = false },
+            gridColumns = VIEW_ALL_GRID_COLUMNS,
         ) {
             PersonCard(
                 it,
@@ -225,10 +283,11 @@ private fun CharacterAvatarCell(
     itemWidth: Dp,
     avatarSize: Dp,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val cv = remember(info) { info.character.actors.firstOrNull()?.displayName }
     Column(
-        Modifier
+        modifier
             .width(itemWidth)
             .clip(MaterialTheme.shapes.small)
             .clickable(onClick = onClick),
@@ -278,23 +337,70 @@ fun StaffSection(
     modifier: Modifier = Modifier,
     gridColumns: Int? = null,
     maxItems: Int = if (gridColumns != null) 6 else 10,
+    /** TV: 末行卡片下键的显式落点 (下一区块入口; 跨区块空间焦点搜索不可靠). null 交给空间搜索. */
+    downFocus: FocusRequester? = null,
 ) {
     if (exposedStaff.itemCount == 0) return
     var showAll by rememberSaveable { mutableStateOf(false) }
     val onClickPerson = rememberPeopleClickHandler()
+    // 焦点驱动形态: 最右一张卡的右键显式指到标题行"查看全部" (空间搜索够不到)
+    val viewAllFocus = remember { FocusRequester() }
+    val focusDriven = LocalAniUiBehavior.current.focusDrivenNavigation
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionHeader(
             stringResource(Lang.subject_details_staff),
             actionLabel = stringResource(Lang.subject_details_view_all),
             onAction = { showAll = true },
+            actionModifier = if (focusDriven) Modifier.focusRequester(viewAllFocus) else Modifier,
         )
-        if (gridColumns != null) {
-            StaffGrid(
+        when {
+            // 焦点驱动形态: 卡片形态 (与"查看全部"弹窗同款 PersonCard + 聚焦高亮容器),
+            // 固定 2 行 x 3 列网格 (最多 6 人, 更多的看"查看全部"弹窗)
+            focusDriven -> FlowRow(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                maxItemsInEachRow = STAFF_GRID_COLUMNS,
+            ) {
+                val count = minOf(exposedStaff.itemCount, STAFF_GRID_COLUMNS * STAFF_GRID_ROWS)
+                for (i in 0 until count) {
+                    val item = exposedStaff[i] ?: continue
+                    FocusHighlightCard(
+                        Modifier
+                            .weight(1f)
+                            // 每行最右一张卡的右键显式指到标题行"查看全部" (空间搜索够不到)
+                            .ifThen(i % STAFF_GRID_COLUMNS == STAFF_GRID_COLUMNS - 1 || i == count - 1) {
+                                focusProperties { right = viewAllFocus }
+                            }
+                            // 正下方没有其他卡的 (末行 + 末行缺口上方) 下键送下一区块
+                            .ifThen(downFocus != null && i + STAFF_GRID_COLUMNS >= count) {
+                                focusProperties { down = downFocus!! }
+                            },
+                    ) {
+                        PersonCard(
+                            item,
+                            Modifier
+                                .fillMaxWidth()
+                                .clip(MaterialTheme.shapes.small)
+                                .clickable {
+                                    onClickPerson(PeoplePreviewTarget.Person(item.personInfo.id))
+                                },
+                        )
+                    }
+                }
+                // 补齐末行空位, 保持列宽一致
+                val remainder = count % STAFF_GRID_COLUMNS
+                if (remainder != 0) {
+                    repeat(STAFF_GRID_COLUMNS - remainder) { Box(Modifier.weight(1f)) }
+                }
+            }
+
+            gridColumns != null -> StaffGrid(
                 exposedStaff, columns = gridColumns, maxItems = maxItems,
                 onClick = { onClickPerson(PeoplePreviewTarget.Person(it.personInfo.id)) },
             )
-        } else {
-            StaffKeyValueList(
+
+            else -> StaffKeyValueList(
                 exposedStaff, maxItems = maxItems,
                 onClick = { onClickPerson(PeoplePreviewTarget.Person(it.personInfo.id)) },
             )
@@ -306,6 +412,7 @@ fun StaffSection(
                 ?: stringResource(Lang.subject_details_staff),
             items = allStaff,
             onDismissRequest = { showAll = false },
+            gridColumns = VIEW_ALL_GRID_COLUMNS,
         ) {
             PersonCard(
                 it,
@@ -405,3 +512,15 @@ private fun StaffKeyValueList(
         }
     }
 }
+
+/** TV 角色卡片行: 一行完整放下的卡片数 (卡宽 = 视口均分). */
+private const val CHARACTER_CARDS_PER_ROW = 4
+
+/** TV 角色/制作人员"查看全部"弹窗的固定列数. */
+private const val VIEW_ALL_GRID_COLUMNS = 3
+
+/** TV 制作人员网格列数. */
+private const val STAFF_GRID_COLUMNS = 3
+
+/** TV 制作人员网格行数 (显示 列x行 个, 更多的看"查看全部"弹窗). */
+private const val STAFF_GRID_ROWS = 2

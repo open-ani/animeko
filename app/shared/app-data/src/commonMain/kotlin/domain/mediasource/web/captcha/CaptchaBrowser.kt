@@ -94,9 +94,18 @@ interface CaptchaBrowser : AutoCloseable {
 
     /**
      * 浏览器视图 (desktop `SwingPanel` / android `AndroidView`).
+     *
+     * TV (fork): Android 实现会在视图上叠一层遥控器虚拟光标 (方向键移动 / 确认键点击 /
+     * 长按确认键完成 / 返回键退出), 通过下面两个回调把"退出/完成"通知给宿主对话框
+     * (返回键会被 WebView 抢去做历史后退, 系统返回分发不到 Dialog, 只能在此层拦截).
+     * 其余平台忽略这两个回调.
      */
     @Composable
-    fun View(modifier: Modifier)
+    fun View(
+        modifier: Modifier,
+        onExitRequest: (() -> Unit)? = null,
+        onConfirmRequest: (() -> Unit)? = null,
+    )
 }
 
 interface CaptchaBrowserFactory {

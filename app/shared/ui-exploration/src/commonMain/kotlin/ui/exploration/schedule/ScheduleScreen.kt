@@ -67,6 +67,7 @@ import kotlinx.datetime.number
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.HorizontalScrollControlScaffoldOnDesktop
 import me.him188.ani.app.ui.foundation.HorizontalScrollControlState
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
@@ -75,6 +76,7 @@ import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.rememberHorizontalScrollControlState
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.exploration_schedule
@@ -149,15 +151,24 @@ fun ScheduleScreen(
     state: ScheduleScreenState = remember { ScheduleScreenState { presentation.days } },
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
+    // 变体布局 (遥控器形态): 15 天并排的纵向列表在电视上没法用, TV 换成日期胶囊 + 海报网格.
+    // 可在设置里关掉回退上游原布局 (同探索页/详情页那两个开关)
+    LocalSchedulePageVariant.current?.takeIf { LocalThemeSettings.current.tvImmersiveSchedule }?.let { variant ->
+        variant.Page(presentation, onRetry, modifier.fillMaxSize())
+        return
+    }
     Scaffold(
         modifier,
         topBar = {
-            AniTopAppBar(
-                title = { Text(stringResource(Lang.exploration_schedule)) },
-                Modifier.fillMaxWidth(),
-                navigationIcon = navigationIcon,
-                windowInsets = windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-            )
+            // 返回按钮隐藏时, 顶栏只剩标题占位, 整条不渲染
+            if (LocalAniUiBehavior.current.showNavigationTopAppBar) {
+                AniTopAppBar(
+                    title = { Text(stringResource(Lang.exploration_schedule)) },
+                    Modifier.fillMaxWidth(),
+                    navigationIcon = navigationIcon,
+                    windowInsets = windowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+                )
+            }
         },
         containerColor = AniThemeDefaults.pageContentBackgroundColor,
         contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal),

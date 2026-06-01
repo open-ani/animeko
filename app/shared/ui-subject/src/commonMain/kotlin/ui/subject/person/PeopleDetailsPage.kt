@@ -41,9 +41,12 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -64,6 +67,8 @@ import me.him188.ani.app.data.models.subject.nameCn
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
@@ -212,6 +217,8 @@ private fun PeopleDetailsScaffold(
         val frostedGlassActive = isAppChromeFrostedGlassActive()
         Scaffold(
             topBar = {
+                // 返回按钮隐藏时, 顶栏只剩占位 (正文自带大标题块), 整块不渲染
+                if (LocalAniUiBehavior.current.showNavigationTopAppBar) {
                 Box {
                     // 透明背景的, 总是显示
                     TopAppBar(
@@ -220,7 +227,7 @@ private fun PeopleDetailsScaffold(
                         colors = AniThemeDefaults.topAppBarColors().copy(containerColor = Color.Transparent),
                         windowInsets = topAppBarWindowInsets,
                     )
-                    // 有背景和标题的, 仅在页内标题滚出后显示
+                    // 有背景和标题的, 仅在页内标题滚出后显示.
                     AniAnimatedVisibility(stickyTopBarVisible && topBarTitle.isNotBlank()) {
                         TopAppBar(
                             title = {
@@ -239,6 +246,7 @@ private fun PeopleDetailsScaffold(
                             windowInsets = topAppBarWindowInsets,
                         )
                     }
+                }
                 }
             },
             containerColor = backgroundColor,
@@ -326,9 +334,23 @@ private fun PeopleDetailsScaffold(
                         Modifier.weight(1f).widthIn(max = 840.dp),
                         verticalArrangement = Arrangement.spacedBy(layoutParams.sectionSpacing),
                     ) {
-                        titleBlock(isPlaceholder)
-                        if (summary.isNotBlank()) {
-                            SubjectSummarySection(summary)
+                        // 焦点驱动形态: 顶部内容块 (标题/简介) 获得焦点时滚动归零, 露出左栏大图与
+                        // 标题顶部 (滚动纯靠焦点驱动, 到不了不可聚焦的图片/标题; 同人物预览弹窗的处理).
+                        // 指针设备不能这么做: 鼠标点简介展开也会给它焦点, 不应跟着跳回顶部
+                        val focusDriven = LocalAniUiBehavior.current.focusDrivenNavigation
+                        val scope = rememberCoroutineScope()
+                        Column(
+                            Modifier.ifThen(focusDriven) {
+                                onFocusChanged {
+                                    if (it.hasFocus) scope.launch { scrollState.animateScrollTo(0) }
+                                }
+                            },
+                            verticalArrangement = Arrangement.spacedBy(layoutParams.sectionSpacing),
+                        ) {
+                            titleBlock(isPlaceholder)
+                            if (summary.isNotBlank()) {
+                                SubjectSummarySection(summary)
+                            }
                         }
                         centerStrips()
                         if (!layoutParams.showRail) {
@@ -381,20 +403,31 @@ internal fun PersonDetailsContentColumn(
     commentState: CommentState,
     modifier: Modifier = Modifier,
     navigation: PeopleDetailsNavigation = rememberPeopleDetailsNavigation(),
+    /**
+     * 顶部内容块 (头图行 + 简介) 获得焦点时回调. TV 预览弹窗用它把滚动归零:
+     * 头图/名字不可聚焦, 焦点驱动的滚动到不了它们, 上移聚焦到简介时若不整体滚回
+     * 顶部, 头图只露出一截 (与详情页"焦点回 Hero 滚回顶部"同一处理).
+     */
+    onTopContentFocused: (() -> Unit)? = null,
 ) {
     var showAllComments by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        PeopleHeaderRow(
-            imageUrl = details?.person?.imageLarge,
-            displayName = details?.person?.displayName ?: "",
-            originalName = details?.person?.name,
-            metaLine = peopleMetaLine(personKindLabel(details?.career.orEmpty()), details?.collects ?: 0),
-            isPlaceholder = details == null,
-        )
-        details?.person?.summary?.takeIf { it.isNotBlank() }?.let { summaryText ->
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                SectionHeader(stringResource(Lang.subject_details_summary))
-                SubjectSummarySection(summaryText)
+        Column(
+            Modifier.onFocusChanged { if (it.hasFocus) onTopContentFocused?.invoke() },
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            PeopleHeaderRow(
+                imageUrl = details?.person?.imageLarge,
+                displayName = details?.person?.displayName ?: "",
+                originalName = details?.person?.name,
+                metaLine = peopleMetaLine(personKindLabel(details?.career.orEmpty()), details?.collects ?: 0),
+                isPlaceholder = details == null,
+            )
+            details?.person?.summary?.takeIf { it.isNotBlank() }?.let { summaryText ->
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SectionHeader(stringResource(Lang.subject_details_summary))
+                    SubjectSummarySection(summaryText)
+                }
             }
         }
         details?.infobox?.takeIf { it.isNotEmpty() }?.let { rows ->
@@ -425,23 +458,25 @@ private fun PersonStrips(
         stringResource(Lang.person_details_casts),
         casts,
         onViewAll = { showAllCasts = true },
-    ) { cast ->
+    ) { cast, itemModifier ->
         PeoplePortraitCard(
             imageUrl = cast.character.imageMedium,
             name = cast.character.displayName,
             caption = cast.subject.displayName,
             onClick = { navigation.onClickCharacter(cast.character.id) },
+            modifier = itemModifier,
         )
     }
     PeopleStripSection(
         stringResource(Lang.person_details_works),
         works,
         onViewAll = { showAllWorks = true },
-    ) { work ->
+    ) { work, itemModifier ->
         PeopleSubjectCard(
             subject = work.subject,
             caption = work.positions.firstNotNullOfOrNull { it.nameCn },
             onClick = { navigation.onClickSubject(work.subject) },
+            modifier = itemModifier,
         )
     }
 
@@ -489,20 +524,27 @@ internal fun CharacterDetailsContentColumn(
     commentState: CommentState,
     modifier: Modifier = Modifier,
     navigation: PeopleDetailsNavigation = rememberPeopleDetailsNavigation(),
+    /** 顶部内容块获得焦点时回调, 语义见 [PersonDetailsContentColumn]. */
+    onTopContentFocused: (() -> Unit)? = null,
 ) {
     var showAllComments by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-        PeopleHeaderRow(
-            imageUrl = details?.character?.imageLarge,
-            displayName = details?.character?.displayName ?: "",
-            originalName = details?.character?.name,
-            metaLine = peopleMetaLine(characterRoleLabel(details?.role ?: 1), details?.collects ?: 0),
-            isPlaceholder = details == null,
-        )
-        details?.summary?.takeIf { it.isNotBlank() }?.let { summaryText ->
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                SectionHeader(stringResource(Lang.subject_details_summary))
-                SubjectSummarySection(summaryText)
+        Column(
+            Modifier.onFocusChanged { if (it.hasFocus) onTopContentFocused?.invoke() },
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            PeopleHeaderRow(
+                imageUrl = details?.character?.imageLarge,
+                displayName = details?.character?.displayName ?: "",
+                originalName = details?.character?.name,
+                metaLine = peopleMetaLine(characterRoleLabel(details?.role ?: 1), details?.collects ?: 0),
+                isPlaceholder = details == null,
+            )
+            details?.summary?.takeIf { it.isNotBlank() }?.let { summaryText ->
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SectionHeader(stringResource(Lang.subject_details_summary))
+                    SubjectSummarySection(summaryText)
+                }
             }
         }
         details?.infobox?.takeIf { it.isNotEmpty() }?.let { rows ->
@@ -550,11 +592,12 @@ private fun CharacterStrips(
         stringResource(Lang.person_details_character_subjects),
         subjects,
         onViewAll = { showAllSubjects = true },
-    ) { item ->
+    ) { item, itemModifier ->
         PeopleSubjectCard(
             subject = item.subject,
             caption = item.role.nameCn,
             onClick = { navigation.onClickSubject(item.subject) },
+            modifier = itemModifier,
         )
     }
 

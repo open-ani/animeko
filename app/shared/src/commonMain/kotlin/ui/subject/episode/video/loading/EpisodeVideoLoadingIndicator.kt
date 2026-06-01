@@ -110,14 +110,7 @@ fun EpisodeVideoLoadingIndicator(
         stringResource(Lang.subject_episode_video_loading_buffering_bt_no_speed_try_switch)
     val bufferingTooLongText = stringResource(Lang.subject_episode_video_loading_buffering_too_long)
     val failedPrefix = stringResource(Lang.subject_episode_video_loading_failed_prefix)
-    val causeLabels = VideoLoadingCauseLabels(
-        resolutionTimedOut = stringResource(Lang.subject_episode_video_loading_cause_resolution_timed_out),
-        unknownError = stringResource(Lang.subject_episode_video_loading_cause_unknown_error),
-        unsupportedMedia = stringResource(Lang.subject_episode_video_loading_cause_unsupported_media),
-        noMatchingFile = stringResource(Lang.subject_episode_video_loading_cause_no_matching_file),
-        cancelled = stringResource(Lang.subject_episode_video_loading_cause_cancelled),
-        networkError = stringResource(Lang.subject_episode_video_loading_cause_network_error),
-    )
+    val causeLabels = videoLoadingCauseLabels()
     VideoLoadingIndicator(
         showProgress = state is VideoLoadingState.Progressing,
         text = {
@@ -200,16 +193,42 @@ fun EpisodeVideoLoadingIndicator(
     )
 }
 
-private data class VideoLoadingCauseLabels(
+/**
+ * 每种失败原因的一句话说明.
+ *
+ * 抽出来是因为不止画面上要说: 后台会话的提示 (`RetainedPlaybackNoticeTexts`) 说的是同一批原因,
+ * 两处各写一遍必然写岔.
+ */
+internal data class VideoLoadingCauseLabels(
     val resolutionTimedOut: String,
     val unknownError: String,
     val unsupportedMedia: String,
     val noMatchingFile: String,
     val cancelled: String,
     val networkError: String,
+) {
+    /** 把每句原因再包一层 (例如套进"后台播放遇到问题: ……"的模板). */
+    inline fun map(transform: (String) -> String) = VideoLoadingCauseLabels(
+        resolutionTimedOut = transform(resolutionTimedOut),
+        unknownError = transform(unknownError),
+        unsupportedMedia = transform(unsupportedMedia),
+        noMatchingFile = transform(noMatchingFile),
+        cancelled = transform(cancelled),
+        networkError = transform(networkError),
+    )
+}
+
+@Composable
+internal fun videoLoadingCauseLabels(): VideoLoadingCauseLabels = VideoLoadingCauseLabels(
+    resolutionTimedOut = stringResource(Lang.subject_episode_video_loading_cause_resolution_timed_out),
+    unknownError = stringResource(Lang.subject_episode_video_loading_cause_unknown_error),
+    unsupportedMedia = stringResource(Lang.subject_episode_video_loading_cause_unsupported_media),
+    noMatchingFile = stringResource(Lang.subject_episode_video_loading_cause_no_matching_file),
+    cancelled = stringResource(Lang.subject_episode_video_loading_cause_cancelled),
+    networkError = stringResource(Lang.subject_episode_video_loading_cause_network_error),
 )
 
-private fun renderCause(cause: VideoLoadingState.Failed, labels: VideoLoadingCauseLabels): String = when (cause) {
+internal fun renderCause(cause: VideoLoadingState.Failed, labels: VideoLoadingCauseLabels): String = when (cause) {
     is VideoLoadingState.ResolutionTimedOut -> labels.resolutionTimedOut
     is VideoLoadingState.UnknownError -> labels.unknownError
     is VideoLoadingState.UnsupportedMedia -> labels.unsupportedMedia

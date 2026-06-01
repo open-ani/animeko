@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.settings.tabs.theme
 
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
@@ -22,6 +23,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.ThemeSettings
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.isPlatformSupportDynamicTheme
@@ -40,6 +42,14 @@ import me.him188.ani.app.ui.lang.settings_theme_high_contrast
 import me.him188.ani.app.ui.lang.settings_theme_high_contrast_description
 import me.him188.ani.app.ui.lang.settings_theme_palette
 import me.him188.ani.app.ui.lang.settings_theme_title
+import me.him188.ani.app.ui.lang.settings_theme_tv_full_visual_effects
+import me.him188.ani.app.ui.lang.settings_theme_tv_full_visual_effects_description
+import me.him188.ani.app.ui.lang.settings_theme_tv_immersive_details
+import me.him188.ani.app.ui.lang.settings_theme_tv_immersive_details_description
+import me.him188.ani.app.ui.lang.settings_theme_tv_immersive_exploration
+import me.him188.ani.app.ui.lang.settings_theme_tv_immersive_exploration_description
+import me.him188.ani.app.ui.lang.settings_theme_tv_immersive_schedule
+import me.him188.ani.app.ui.lang.settings_theme_tv_immersive_schedule_description
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
@@ -82,14 +92,18 @@ fun SettingsScope.ThemeGroup(
             description = { Text(stringResource(Lang.settings_theme_high_contrast_description)) },
         )
 
-        SwitchItem(
-            checked = themeSettings.alwaysDarkInEpisodePage,
-            onCheckedChange = { checked ->
-                state.update(themeSettings.copy(alwaysDarkInEpisodePage = checked))
-            },
-            title = { Text(stringResource(Lang.settings_theme_always_dark_episode)) },
-            description = { Text(stringResource(Lang.settings_theme_always_dark_episode_description)) },
-        )
+        // 播放页本来就恒为深色的形态 (遥控器) 上这条开关按下去什么都不会变, 见 EpisodePage 里
+        // `alwaysDarkInEpisodePage || forceDarkInPlayer`
+        if (!LocalAniUiBehavior.current.forceDarkInPlayer) {
+            SwitchItem(
+                checked = themeSettings.alwaysDarkInEpisodePage,
+                onCheckedChange = { checked ->
+                    state.update(themeSettings.copy(alwaysDarkInEpisodePage = checked))
+                },
+                title = { Text(stringResource(Lang.settings_theme_always_dark_episode)) },
+                description = { Text(stringResource(Lang.settings_theme_always_dark_episode_description)) },
+            )
+        }
 
         SwitchItem(
             checked = themeSettings.useDynamicSubjectPageTheme,
@@ -109,7 +123,9 @@ fun SettingsScope.ThemeGroup(
             description = { Text(stringResource(Lang.settings_theme_animated_gradient_subject_description)) },
         )
 
-        if (LocalPlatform.current.isMobile()) {
+        // isMobile() 在 Android TV 上也是真, 但沉浸式外壳既没有顶栏也没有导航栏, 这条毛玻璃
+        // 开关在那儿是纯摆设 (见 AppChromeFrostedGlass 的调用点)
+        if (LocalPlatform.current.isMobile() && !LocalAniUiBehavior.current.immersiveShell) {
             SwitchItem(
                 checked = themeSettings.enableFrostedGlassEffect,
                 onCheckedChange = { checked ->
@@ -119,6 +135,47 @@ fun SettingsScope.ThemeGroup(
                 description = { Text(stringResource(Lang.settings_theme_frosted_glass_description)) },
             )
         }
+
+        // 沉浸式外壳专属: 沉浸式布局开关 (关闭可回退默认布局, 降低低端设备渲染开销)
+        if (LocalAniUiBehavior.current.immersiveShell) {
+            SwitchItem(
+                checked = themeSettings.tvImmersiveExploration,
+                onCheckedChange = { checked ->
+                    state.update(themeSettings.copy(tvImmersiveExploration = checked))
+                },
+                title = { Text(stringResource(Lang.settings_theme_tv_immersive_exploration)) },
+                description = { Text(stringResource(Lang.settings_theme_tv_immersive_exploration_description)) },
+            )
+
+            SwitchItem(
+                checked = themeSettings.tvImmersiveDetails,
+                onCheckedChange = { checked ->
+                    state.update(themeSettings.copy(tvImmersiveDetails = checked))
+                },
+                title = { Text(stringResource(Lang.settings_theme_tv_immersive_details)) },
+                description = { Text(stringResource(Lang.settings_theme_tv_immersive_details_description)) },
+            )
+
+            SwitchItem(
+                checked = themeSettings.tvImmersiveSchedule,
+                onCheckedChange = { checked ->
+                    state.update(themeSettings.copy(tvImmersiveSchedule = checked))
+                },
+                title = { Text(stringResource(Lang.settings_theme_tv_immersive_schedule)) },
+                description = { Text(stringResource(Lang.settings_theme_tv_immersive_schedule_description)) },
+            )
+
+            SwitchItem(
+                checked = themeSettings.tvFullVisualEffects,
+                onCheckedChange = { checked ->
+                    state.update(themeSettings.copy(tvFullVisualEffects = checked))
+                },
+                title = { Text(stringResource(Lang.settings_theme_tv_full_visual_effects)) },
+                description = { Text(stringResource(Lang.settings_theme_tv_full_visual_effects_description)) },
+            )
+        }
+        // 「退出播放页后保留播放状态」在播放器那一类里 (见 PlayerGroup), 「界面缩放」在界面那一类里
+        // (见 AppearanceGroup) —— 都存在 ThemeSettings 里只是存储位置, 不代表要摆在主题这一页.
     }
 
     Box(
@@ -126,7 +183,10 @@ fun SettingsScope.ThemeGroup(
     ) {
         Group(title = { Text(stringResource(Lang.settings_theme_palette)) }) {
             FlowRow(
-                modifier = Modifier.fillMaxWidth(),
+                // focusGroup: 色块只在组内横向移动. 不包组时色块是详情滚动 scope 里的散装
+                // 候选, 且位于内容左缘 —— 其他行按左键会被它捕获 (2D 搜索在最内层 scope 内
+                // 命中即止, 到不了左侧导航); 包组后组矩形全宽, 不满足横向候选条件.
+                modifier = Modifier.fillMaxWidth().focusGroup(),
                 horizontalArrangement = Arrangement.Center,
             ) {
                 AniThemeDefaults.themeColorOptions.forEach { color ->

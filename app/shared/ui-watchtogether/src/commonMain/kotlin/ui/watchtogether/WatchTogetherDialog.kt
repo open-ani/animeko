@@ -11,6 +11,8 @@ package me.him188.ani.app.ui.watchtogether
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +50,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -55,6 +58,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,10 +68,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -77,7 +85,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import me.him188.ani.app.data.network.WatchTogetherJoinFailure
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.app.ui.foundation.focus.resolveFocusRepeatedly
+import me.him188.ani.app.ui.foundation.widgets.AniCenteredPanelDialog
+import me.him188.ani.app.ui.foundation.widgets.DismissDialogButton
+import me.him188.ani.app.ui.foundation.widgets.dismissDialogButton
+import me.him188.ani.app.ui.foundation.widgets.focusHighlightedButtonColors
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.watch_together_cancel
 import me.him188.ani.app.ui.lang.watch_together_chip_following
@@ -144,6 +158,19 @@ internal const val WATCH_TOGETHER_FOLLOW_TEST_TAG = "watch_together_follow"
 internal const val WATCH_TOGETHER_OPTIONS_TEST_TAG = "watch_together_options"
 internal const val WATCH_TOGETHER_DISABLE_TEST_TAG = "watch_together_disable"
 
+/**
+ * 居中大面板形态的尺寸: 内容有天然宽度 (两个输入框 / 一列成员), 光按屏比会越宽越松,
+ * 所以给上限; 高度仍按屏比 —— 成员多时靠内部滚动, 不会像原来那个 720dp 固定高度那样
+ * 在电视上直接顶出屏幕.
+ */
+private const val WATCH_TOGETHER_PANEL_HEIGHT_FRACTION = 0.8f
+private val WATCH_TOGETHER_PANEL_MAX_WIDTH = 560.dp
+
+/** 正文的三副面孔; 换一副就要重新解析焦点落点 (见 WatchTogetherDialogBody). */
+private const val FOCUS_EPOCH_LOGIN = 0
+private const val FOCUS_EPOCH_ROOM = 1
+private const val FOCUS_EPOCH_JOIN_FORM = 2
+
 @Composable
 internal fun WatchTogetherDialog(
     state: WatchTogetherUiState,
@@ -151,6 +178,25 @@ internal fun WatchTogetherDialog(
     onLogin: () -> Unit,
     onDismissRequest: () -> Unit,
 ) {
+    if (LocalAniUiBehavior.current.panelsAsCenteredDialogs) {
+        // 大屏/遥控器: 与评分、选集、"查看全部"等同一款居中大面板. 原来那个
+        // `heightIn(max = 720.dp)` 的固定尺寸在电视上会直接超出屏幕
+        // (4K + density 640 = 540dp 高), 底部的离开/收起按钮被裁在屏幕外.
+        AniCenteredPanelDialog(
+            onDismissRequest = onDismissRequest,
+            heightFraction = WATCH_TOGETHER_PANEL_HEIGHT_FRACTION,
+            maxWidth = WATCH_TOGETHER_PANEL_MAX_WIDTH,
+        ) {
+            Column(
+                Modifier
+                    .verticalScroll(rememberScrollState())
+                    .testTag(WATCH_TOGETHER_DIALOG_TEST_TAG),
+            ) {
+                WatchTogetherDialogBody(state, onIntent, onLogin, onDismissRequest)
+            }
+        }
+        return
+    }
     Dialog(onDismissRequest = onDismissRequest) {
         WatchTogetherDialogContent(state, onIntent, onLogin, onDismissRequest)
     }
@@ -165,12 +211,6 @@ internal fun WatchTogetherDialogContent(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var roomName by rememberSaveable { mutableStateOf(state.joinForm.lastRoomName) }
-    var password by rememberSaveable { mutableStateOf("") }
-    var passwordVisible by rememberSaveable { mutableStateOf(false) }
-    var confirmDisband by remember { mutableStateOf(false) }
-    var confirmDisable by remember { mutableStateOf(false) }
-
     Box(modifier) {
         Surface(
             modifier = Modifier
@@ -186,39 +226,96 @@ internal fun WatchTogetherDialogContent(
                     .verticalScroll(rememberScrollState())
                     .padding(24.dp),
             ) {
-                when {
-                    state.requiresLogin -> LoginRequiredContent(onLogin, onDismissRequest)
-                    state.phase == WatchTogetherPhase.IN_ROOM && state.room != null -> RoomContent(
-                        state = state,
-                        onFollowingChange = {
-                            onIntent(WatchTogetherIntent.SetFollowing(it))
-                        },
-                        onLeave = {
-                            if (state.isSelfHost) confirmDisband = true
-                            else onIntent(WatchTogetherIntent.LeaveRoom)
-                        },
-                        onDisable = { confirmDisable = true },
-                        onCollapse = onDismissRequest,
-                    )
-
-                    else -> JoinRoomContent(
-                        roomName = roomName,
-                        onRoomNameChange = { roomName = it },
-                        password = password,
-                        onPasswordChange = { password = it },
-                        passwordVisible = passwordVisible,
-                        onTogglePasswordVisibility = { passwordVisible = !passwordVisible },
-                        joining = state.phase == WatchTogetherPhase.JOINING,
-                        errorMessage = state.joinForm.errorMessage,
-                        onJoin = {
-                            onIntent(WatchTogetherIntent.JoinRoom(roomName, password))
-                        },
-                        onDisable = { confirmDisable = true },
-                        onDismiss = onDismissRequest,
-                    )
-                }
+                WatchTogetherDialogBody(state, onIntent, onLogin, onDismissRequest)
             }
         }
+    }
+}
+
+/**
+ * 弹窗正文 (登录提示 / 加入表单 / 房间面板 三选一 + 两个二次确认框), 与外壳无关 ——
+ * 手机是自绘的圆角 Surface, 大屏是 [AniCenteredPanelDialog], 内容完全共用.
+ *
+ * 打开时把焦点显式送进正文: 遥控器上没有任何东西持焦 = 方向键全失效
+ * (弹窗是独立窗口, 自成焦点域, 主窗口那套全局兜底管不到这里).
+ */
+@Composable
+private fun WatchTogetherDialogBody(
+    state: WatchTogetherUiState,
+    onIntent: (WatchTogetherIntent) -> Unit,
+    onLogin: () -> Unit,
+    onDismissRequest: () -> Unit,
+) {
+    var roomName by rememberSaveable { mutableStateOf(state.joinForm.lastRoomName) }
+    var password by rememberSaveable { mutableStateOf("") }
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    var confirmDisband by remember { mutableStateOf(false) }
+    var confirmDisable by remember { mutableStateOf(false) }
+
+    val inRoom = state.phase == WatchTogetherPhase.IN_ROOM && state.room != null
+    val joining = state.phase == WatchTogetherPhase.JOINING
+
+    // 到位判据用"目标真的拿到焦点", 不能只看 requestFocus 有没有抛 —— 被焦点系统
+    // 拒绝时它是静默失败的 (见 ViewAllGridDialog 里同样的处理)
+    val initialFocusRequester = remember { FocusRequester() }
+    var initialFocusArrived by remember { mutableStateOf(false) }
+    val initialFocus = Modifier
+        .focusRequester(initialFocusRequester)
+        .onFocusChanged { if (it.hasFocus) initialFocusArrived = true }
+    val keyboard = LocalSoftwareKeyboardController.current
+    if (LocalAniUiBehavior.current.focusDrivenNavigation) {
+        // 每次正文换一副面孔都要重新解析, 不是只在打开时解析一次: 加入成功后表单整块换成
+        // 房间面板, 当前持焦的节点被移除, 而 Compose 移除聚焦节点时是把焦点**清掉**,
+        // 不交给祖先 —— 不重解析就是一屏没有焦点, 方向键全死.
+        // (加入中不在此列: 加入按钮刻意不置灰, 见下面, 焦点一直在它身上.)
+        val focusEpoch = when {
+            state.requiresLogin -> FOCUS_EPOCH_LOGIN
+            inRoom -> FOCUS_EPOCH_ROOM
+            else -> FOCUS_EPOCH_JOIN_FORM
+        }
+        LaunchedEffect(focusEpoch) {
+            initialFocusArrived = false
+            val arrived = resolveFocusRepeatedly(attempts = 20, arrived = { initialFocusArrived }) {
+                runCatching { initialFocusRequester.requestFocus() }
+            }
+            // 落点是房间名输入框时顺手把软键盘唤出来 (与 TV 搜索页同套路: 光聚焦不一定弹).
+            // 此时用户唯一能做的就是打字, 不弹反而要再按一次确认键
+            if (arrived && focusEpoch == FOCUS_EPOCH_JOIN_FORM) keyboard?.show()
+        }
+    }
+
+    when {
+        state.requiresLogin -> LoginRequiredContent(onLogin, onDismissRequest, initialFocus)
+        inRoom -> RoomContent(
+            state = state,
+            onFollowingChange = {
+                onIntent(WatchTogetherIntent.SetFollowing(it))
+            },
+            onLeave = {
+                if (state.isSelfHost) confirmDisband = true
+                else onIntent(WatchTogetherIntent.LeaveRoom)
+            },
+            onDisable = { confirmDisable = true },
+            onCollapse = onDismissRequest,
+            initialFocus = initialFocus,
+        )
+
+        else -> JoinRoomContent(
+            roomName = roomName,
+            onRoomNameChange = { roomName = it },
+            password = password,
+            onPasswordChange = { password = it },
+            passwordVisible = passwordVisible,
+            onTogglePasswordVisibility = { passwordVisible = !passwordVisible },
+            joining = joining,
+            errorMessage = state.joinForm.errorMessage,
+            onJoin = {
+                onIntent(WatchTogetherIntent.JoinRoom(roomName, password))
+            },
+            onDisable = { confirmDisable = true },
+            onDismiss = onDismissRequest,
+            initialFocus = initialFocus,
+        )
     }
 
     if (confirmDisband) {
@@ -238,10 +335,8 @@ internal fun WatchTogetherDialogContent(
                     )
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { confirmDisband = false }) {
-                    Text(stringResource(Lang.watch_together_cancel))
-                }
+            dismissButton = dismissDialogButton(stringResource(Lang.watch_together_cancel)) {
+                confirmDisband = false
             },
         )
     }
@@ -264,10 +359,8 @@ internal fun WatchTogetherDialogContent(
                     )
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { confirmDisable = false }) {
-                    Text(stringResource(Lang.watch_together_cancel))
-                }
+            dismissButton = dismissDialogButton(stringResource(Lang.watch_together_cancel)) {
+                confirmDisable = false
             },
         )
     }
@@ -279,12 +372,16 @@ internal fun WatchTogetherDialogContent(
  * given the friction (menu + consequence hint) a destructive feature toggle deserves.
  */
 @Composable
-private fun WatchTogetherOptionsButton(onDisable: () -> Unit, modifier: Modifier = Modifier) {
+private fun WatchTogetherOptionsButton(
+    onDisable: () -> Unit,
+    modifier: Modifier = Modifier,
+    buttonModifier: Modifier = Modifier,
+) {
     var expanded by remember { mutableStateOf(false) }
     Box(modifier) {
         IconButton(
             onClick = { expanded = true },
-            modifier = Modifier.testTag(WATCH_TOGETHER_OPTIONS_TEST_TAG),
+            modifier = buttonModifier.testTag(WATCH_TOGETHER_OPTIONS_TEST_TAG),
         ) {
             Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(Lang.watch_together_more_options))
         }
@@ -321,7 +418,7 @@ private fun WatchTogetherOptionsButton(onDisable: () -> Unit, modifier: Modifier
 }
 
 @Composable
-private fun LoginRequiredContent(onLogin: () -> Unit, onDismiss: () -> Unit) {
+private fun LoginRequiredContent(onLogin: () -> Unit, onDismiss: () -> Unit, initialFocus: Modifier) {
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Icon(
             Icons.Rounded.Groups,
@@ -342,11 +439,18 @@ private fun LoginRequiredContent(onLogin: () -> Unit, onDismiss: () -> Unit) {
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 4.dp, bottom = 20.dp),
         )
-        Button(onClick = onLogin, modifier = Modifier.fillMaxWidth()) {
+        val loginInteractionSource = remember { MutableInteractionSource() }
+        val loginFocused by loginInteractionSource.collectIsFocusedAsState()
+        Button(
+            onClick = onLogin,
+            colors = focusHighlightedButtonColors(loginFocused),
+            interactionSource = loginInteractionSource,
+            modifier = Modifier.fillMaxWidth().then(initialFocus),
+        ) {
             Text(stringResource(Lang.watch_together_login))
         }
-        TextButton(onClick = onDismiss, modifier = Modifier.padding(top = 6.dp)) {
-            Text(stringResource(Lang.watch_together_cancel))
+        Box(Modifier.padding(top = 6.dp)) {
+            DismissDialogButton(stringResource(Lang.watch_together_cancel), onDismiss)
         }
     }
 }
@@ -364,6 +468,7 @@ private fun JoinRoomContent(
     onJoin: () -> Unit,
     onDisable: () -> Unit,
     onDismiss: () -> Unit,
+    initialFocus: Modifier,
 ) {
     Box(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -398,7 +503,7 @@ private fun JoinRoomContent(
         label = { Text(stringResource(Lang.watch_together_room_name)) },
         singleLine = true,
         enabled = !joining,
-        modifier = Modifier.fillMaxWidth().testTag(WATCH_TOGETHER_ROOM_NAME_TEST_TAG),
+        modifier = Modifier.fillMaxWidth().then(initialFocus).testTag(WATCH_TOGETHER_ROOM_NAME_TEST_TAG),
     )
     OutlinedTextField(
         value = password,
@@ -445,15 +550,21 @@ private fun JoinRoomContent(
             modifier = Modifier.padding(top = 8.dp, start = 14.dp),
         )
     }
+    val joinInteractionSource = remember { MutableInteractionSource() }
+    val joinFocused by joinInteractionSource.collectIsFocusedAsState()
     Button(
-        onClick = onJoin,
-        enabled = !joining && roomName.isNotBlank() && password.isNotBlank(),
+        // 加入中不置灰: 禁用的按钮不可聚焦, 焦点会当场丢在弹窗里 (方向键全失效).
+        // 重复点击由 onClick 自己挡, 进行中的反馈是按钮里的转圈
+        onClick = { if (!joining) onJoin() },
+        enabled = roomName.isNotBlank() && password.isNotBlank(),
+        colors = focusHighlightedButtonColors(joinFocused),
+        interactionSource = joinInteractionSource,
         modifier = Modifier.fillMaxWidth().padding(top = 18.dp).testTag(WATCH_TOGETHER_JOIN_TEST_TAG),
     ) {
         if (joining) {
             CircularProgressIndicator(
                 modifier = Modifier.size(18.dp),
-                color = MaterialTheme.colorScheme.onPrimary,
+                color = LocalContentColor.current,
                 strokeWidth = 2.dp,
             )
             Spacer(Modifier.size(8.dp))
@@ -468,9 +579,8 @@ private fun JoinRoomContent(
         modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
         horizontalArrangement = Arrangement.End,
     ) {
-        TextButton(onClick = onDismiss) {
-            Text(stringResource(Lang.watch_together_minimize))
-        }
+        // 遥控器上不渲染: 返回键就是最小化
+        DismissDialogButton(stringResource(Lang.watch_together_minimize), onDismiss)
     }
 }
 
@@ -481,6 +591,7 @@ private fun RoomContent(
     onLeave: () -> Unit,
     onDisable: () -> Unit,
     onCollapse: () -> Unit,
+    initialFocus: Modifier,
 ) {
     val room = checkNotNull(state.room)
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -511,7 +622,13 @@ private fun RoomContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        WatchTogetherOptionsButton(onDisable = onDisable, modifier = Modifier.padding(start = 2.dp))
+        WatchTogetherOptionsButton(
+            onDisable = onDisable,
+            modifier = Modifier.padding(start = 2.dp),
+            // 房主态下没有"跟随房主"开关, 正文里第一个非破坏性的可聚焦项就是它
+            // (离开/解散不能拿初始焦点 —— 打开面板顺手一按就散房了)
+            buttonModifier = if (state.isSelfHost) initialFocus else Modifier,
+        )
     }
 
     if (room.playback != null) {
@@ -556,6 +673,7 @@ private fun RoomContent(
             following = state.following,
             onFollowingChange = onFollowingChange,
             modifier = Modifier.padding(top = 12.dp),
+            switchModifier = initialFocus,
         )
     }
 
@@ -572,9 +690,8 @@ private fun RoomContent(
                 color = MaterialTheme.colorScheme.error,
             )
         }
-        TextButton(onClick = onCollapse) {
-            Text(stringResource(Lang.watch_together_collapse))
-        }
+        // 遥控器上不渲染: 返回键就是收起
+        DismissDialogButton(stringResource(Lang.watch_together_collapse), onCollapse)
     }
 }
 
@@ -856,6 +973,7 @@ private fun FollowSwitchRow(
     following: Boolean,
     onFollowingChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    switchModifier: Modifier = Modifier,
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
@@ -883,7 +1001,7 @@ private fun FollowSwitchRow(
             Switch(
                 checked = following,
                 onCheckedChange = onFollowingChange,
-                modifier = Modifier.testTag(WATCH_TOGETHER_FOLLOW_TEST_TAG),
+                modifier = switchModifier.testTag(WATCH_TOGETHER_FOLLOW_TEST_TAG),
             )
         }
     }
