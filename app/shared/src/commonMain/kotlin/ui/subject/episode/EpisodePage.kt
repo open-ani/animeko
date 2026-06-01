@@ -100,6 +100,7 @@ import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.ImageViewer
 import me.him188.ani.app.ui.foundation.LocalImageViewerHandler
 import me.him188.ani.app.ui.foundation.LocalIsPreviewing
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
@@ -187,8 +188,13 @@ fun EpisodeScreen(
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
     val themeSettings = LocalThemeSettings.current
+    // 强制深色时在最外层 (而非播放器内容内) 包: 这层 Scaffold 是不透明容器, 会按深色方案派生
+    // LocalContentColor (偏白) 传给整个播放器子树 —— MaterialTheme 本身不提供内容色, 只在内层
+    // 换配色表的话, 透明背景上靠 LocalContentColor 兜底的文字仍是外层浅色主题的黑色 (表现为字的
+    // 颜色不一致); 组合在本层的评论编辑器/弹幕匹配弹窗也一并进入深色.
+    val forceDark = themeSettings.alwaysDarkInEpisodePage || LocalAniUiBehavior.current.forceDarkInPlayer
     AniTheme(
-        darkModeOverride = if (themeSettings.alwaysDarkInEpisodePage) DarkMode.DARK else null,
+        darkModeOverride = if (forceDark) DarkMode.DARK else null,
     ) {
         Column(modifier.fillMaxSize()) {
             Scaffold(
@@ -361,7 +367,19 @@ private fun EpisodeScreenContent(
                 }
 
                 CompositionLocalProvider(LocalImageViewerHandler provides imageViewer) {
+                    val screenVariant = LocalEpisodeScreenVariant.current
                     when {
+                        // 播放页变体 (如遥控器形态的全屏播放器: 统一按键路由/浮出面板/详情页覆盖层)
+                        screenVariant != null -> screenVariant.Content(
+                            vm,
+                            page,
+                            vm.danmakuHostState,
+                            danmakuEditorState,
+                            setShowEditCommentSheet = { showEditCommentSheet = it },
+                            pauseOnPlaying = pauseOnPlaying,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+
                         showExpandedUI ->
                             EpisodeScreenTabletVeryWide(
                                 vm,

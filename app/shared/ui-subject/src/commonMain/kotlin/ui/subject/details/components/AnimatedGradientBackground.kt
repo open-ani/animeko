@@ -15,7 +15,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -31,26 +33,46 @@ import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.sin
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlin.math.PI
 
 @Composable
-internal fun AnimatedGradientBackground(
+fun AnimatedGradientBackground(
     colors: ImmutableList<Color>,
     modifier: Modifier = Modifier,
     speed: Double = 0.25,
     blurRadius: Dp = 60.dp,
+    /**
+     * 返回 true 时暂停光斑运动: 画面停在当前帧, 不再逐帧重绘 + 重算 blur —— 静止的 layer
+     * 会被渲染管线缓存, 常驻开销归零. 供"被不透明内容完全盖住"时传入 (如详情页 backdrop
+     * 图加载成功后); 全屏 RenderEffect 模糊是低端设备上最贵的常驻 GPU 操作之一.
+     * 恢复播放从暂停时的相位继续 (按累计已播时长计时), 不会跳变.
+     */
+    paused: () -> Boolean = { false },
 ) {
     var time by remember { mutableFloatStateOf(0f) }
     // Inspection / preview environments don't tick frames; leave `time` at
     // zero so screenshot tests get a deterministic still frame.
     val animate = !LocalInspectionMode.current
+    val pausedState = rememberUpdatedState(paused)
     LaunchedEffect(speed, animate) {
         if (!animate) return@LaunchedEffect
-        val startNanos = withFrameNanos { it }
+        var playedSeconds = 0.0
         while (isActive) {
-            val nowNanos = withFrameNanos { it }
-            time = ((nowNanos - startNanos) / NANOS_PER_SECOND * speed).toFloat()
+            // 暂停期间整个协程挂起在快照观察上, 零帧驱动 (paused 里的状态读不订阅组合)
+            snapshotFlow { pausedState.value.invoke() }.first { !it }
+            var prevNanos = withFrameNanos { it }
+            while (isActive && !pausedState.value.invoke()) {
+                val nowNanos = withFrameNanos { it }
+                playedSeconds += (nowNanos - prevNanos) / NANOS_PER_SECOND
+                prevNanos = nowNanos
+                time = (playedSeconds * speed).toFloat()
+                // 节流到 ~10fps: 每次 time 更新都触发全屏重绘 + blur 重算, 60fps 跑一个
+                // 慢速模糊光斑纯属浪费 (低端 TV 盒/4K 可感); 该速率下视觉无差.
+                delay(FRAME_INTERVAL_MS)
+            }
         }
     }
 
@@ -96,6 +118,9 @@ private const val RADIUS_BASE: Float = 0.85f
 private const val RADIUS_SWING: Float = 0.15f
 private const val BASE_RADIUS_FACTOR: Float = 0.55f
 private const val NANOS_PER_SECOND: Double = 1_000_000_000.0
+
+/** 动画更新间隔 (节流): 调小更顺滑但更耗 GPU (全屏重绘 + blur), 调大更省电. */
+private const val FRAME_INTERVAL_MS: Long = 100
 
 // Lower fraction of the glow band that fades into the page background.
 private const val FADE_FRACTION: Float = 0.5f

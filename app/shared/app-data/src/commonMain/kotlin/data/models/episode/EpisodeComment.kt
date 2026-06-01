@@ -33,6 +33,13 @@ data class EpisodeComment(
     val reactions: List<EpisodeCommentReaction> = emptyList(),
     val replies: List<EpisodeComment> = listOf(),
     val canReply: Boolean = false,
+
+    /**
+     * 被回复的那一条同层回复的 [sourceCommentId]. 直接回复主楼, 或数据源不提供时为 `null`.
+     *
+     * Bangumi 对应 `relatedID`. Ani 源不返回, 恒为 `null`.
+     */
+    val replyToCommentId: String? = null,
 )
 
 data class EpisodeCommentReaction(
@@ -92,6 +99,10 @@ fun BangumiNextGetEpisodeComments200ResponseInner.toEpisodeComment(
                 )
             },
             canReply = false,
+            // relatedID 指向主楼 (或自身/缺失) 时不算跨层回复关系, 只是普通的楼内回复
+            replyToCommentId = r.relatedID
+                .takeIf { it != 0 && it != r.mainID && it != id && it != r.id }
+                ?.toString(),
         )
     },
     canReply = false,

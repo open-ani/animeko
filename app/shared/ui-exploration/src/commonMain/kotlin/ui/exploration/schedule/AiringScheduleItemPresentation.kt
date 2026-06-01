@@ -30,6 +30,11 @@ import me.him188.ani.utils.platform.collections.ImmutableEnumMap
 data class AiringScheduleItemPresentation(
     val subjectId: Int,
     val subjectTitle: String,
+    /**
+     * 条目原名 (通常是日文). 展示一律用 [subjectTitle]; 本字段供按原名检索外部服务用
+     * (TMDB 的搜索对原名命中率远高于中文译名, 见 TV 时间表的 backdrop 取图).
+     */
+    val subjectName: String,
     val imageUrl: String,
     val episodeId: Int,
     val episodeSort: EpisodeSort,
@@ -99,6 +104,7 @@ val TestAiringScheduleItemPresentations
                     AiringScheduleItemPresentation(
                         subjectId = ++id,
                         subjectTitle = "Subject $id",
+                        subjectName = "Subject $id",
                         imageUrl = "https://example.com/image.jpg",
                         episodeId = id,
                         episodeSort = EpisodeSort(if (i % 3 == 0) 13 else 1),
@@ -153,6 +159,7 @@ fun EpisodeWithAiringTime.toPresentation(timeZone: TimeZone): AiringScheduleItem
     return AiringScheduleItemPresentation(
         subjectId = subject.subjectId,
         subjectTitle = subject.displayName,
+        subjectName = subject.name,
         imageUrl = subject.imageLarge,
         episodeId = episode.episodeId,
         episodeSort = episode.sort,

@@ -32,6 +32,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.Dp
@@ -59,6 +62,10 @@ fun TrendingSubjectsCarousel(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     itemSpacing: Dp = 8.dp,
     modifier: Modifier = Modifier,
+    /** 非 null 时挂到第一张卡片上 (TV: 进入主页时把焦点落到最高热点的第一个项目). */
+    firstItemFocusRequester: FocusRequester? = null,
+    /** 第一张卡片聚焦状态变化回调 (供调用方重试请求焦点直到成功为止). */
+    onFirstItemFocusChanged: ((Boolean) -> Unit)? = null,
     carouselState: CarouselState = rememberCarouselState(initialItem = 0) {
         items.itemCount
     }
@@ -74,7 +81,16 @@ fun TrendingSubjectsCarousel(
                 Modifier.placeholder(item == null, shape = rememberMaskShape(CarouselItemDefaults.shape)),
             ) {
                 if (item != null) {
-                    Surface({ onClick(item) }) {
+                    Surface(
+                        { onClick(item) },
+                        modifier = if (index == 0 && firstItemFocusRequester != null) {
+                            Modifier
+                                .focusRequester(firstItemFocusRequester)
+                                .onFocusChanged { onFirstItemFocusChanged?.invoke(it.isFocused) }
+                        } else {
+                            Modifier
+                        },
+                    ) {
                         AsyncImage(
                             item.imageLarge,
                             modifier = Modifier.height(size.imageHeight),

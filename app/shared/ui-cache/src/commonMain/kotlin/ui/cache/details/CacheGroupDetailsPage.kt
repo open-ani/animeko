@@ -38,7 +38,9 @@ import kotlinx.coroutines.flow.map
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
+import me.him188.ani.app.ui.cache.ForcedDarkTheme
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
@@ -104,12 +106,14 @@ fun MediaCacheDetailsScreen(
     windowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
 ) {
     val screenState by vm.screenStateFlow.collectAsStateWithLifecycle()
-    MediaCacheDetailsScreen(
-        state = screenState,
-        navigationIcon = navigationIcon,
-        modifier = modifier,
-        windowInsets = windowInsets,
-    )
+    ForcedDarkTheme {
+        MediaCacheDetailsScreen(
+            state = screenState,
+            navigationIcon = navigationIcon,
+            modifier = modifier,
+            windowInsets = windowInsets,
+        )
+    }
 }
 
 private val logger = logger<MediaCacheDetailsPageViewModel>()
@@ -124,13 +128,16 @@ fun MediaCacheDetailsScreen(
     Scaffold(
         modifier = modifier,
         topBar = {
-            WindowDragArea {
-                TopAppBar(
-                    title = { Text(stringResource(Lang.cache_details_title)) },
-                    navigationIcon = navigationIcon,
-                    colors = AniThemeDefaults.topAppBarColors(),
-                    windowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
-                )
+            // 返回按钮隐藏时, 顶栏只剩标题占位, 整条不渲染
+            if (LocalAniUiBehavior.current.showNavigationTopAppBar) {
+                WindowDragArea {
+                    TopAppBar(
+                        title = { Text(stringResource(Lang.cache_details_title)) },
+                        navigationIcon = navigationIcon,
+                        colors = AniThemeDefaults.topAppBarColors(),
+                        windowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
+                    )
+                }
             }
         },
         contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),

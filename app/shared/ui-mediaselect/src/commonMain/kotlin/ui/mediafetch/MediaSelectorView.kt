@@ -56,6 +56,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
@@ -78,11 +80,13 @@ import me.him188.ani.app.domain.media.selector.MediaSelectorContext
 import me.him188.ani.app.domain.media.selector.TestMatchMetadata
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
 import me.him188.ani.app.platform.currentAniBuildConfig
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.icons.EditSquare
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.FOCUS_REQ_DELAY_MILLIS
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.media_selector_view_detailed_mode
 import me.him188.ani.app.ui.lang.media_selector_view_filtered_count
@@ -127,6 +131,9 @@ fun MediaSelectorView(
     val presentation by state.presentationFlow.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
+    // TV: 聚焦滚动统一为"吸顶" (焦点元素吸附容器顶/行左缘), 见 SnapToStartScrollProvider;
+    // 非 TV 原样组合
+    SnapToStartScrollProvider {
     Column(modifier) {
         val lazyListState = rememberLazyListState()
         var showExcluded by rememberSaveable { mutableStateOf(false) }
@@ -212,6 +219,7 @@ fun MediaSelectorView(
             }
         }
     }
+    }
 
     LaunchedEffect(Unit) {
         // 当选择一个资源时 (例如自动选择)，自动滚动到该资源 #667
@@ -233,6 +241,18 @@ private fun ViewKindAndMoreRow(
 ) {
     val simpleModeText = stringResource(Lang.media_selector_view_simple_mode)
     val detailedModeText = stringResource(Lang.media_selector_view_detailed_mode)
+    val firstButtonFocusRequester = remember { FocusRequester() }
+
+    val focusDriven = LocalAniUiBehavior.current.focusDrivenNavigation
+
+    // Auto-request focus on the first button when the row appears (TV only)
+    if (focusDriven) {
+        LaunchedEffect(Unit) {
+            kotlinx.coroutines.delay(FOCUS_REQ_DELAY_MILLIS) // Wait for layout to complete
+            firstButtonFocusRequester.requestFocus()
+        }
+    }
+
     Row(
         modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -244,6 +264,7 @@ private fun ViewKindAndMoreRow(
                 shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                 onClick = { onViewKindChange(ViewKind.WEB) },
                 selected = viewKind == ViewKind.WEB,
+                modifier = Modifier.focusRequester(firstButtonFocusRequester),
             ) {
                 Text(simpleModeText, softWrap = false)
             }
@@ -251,15 +272,18 @@ private fun ViewKindAndMoreRow(
                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                 onClick = { onViewKindChange(ViewKind.BT) },
                 selected = viewKind == ViewKind.BT,
+                modifier = Modifier,
             ) {
                 Text(detailedModeText, softWrap = false)
             }
         }
 
-        Box {
-            IconButton(onRequestFetchRequestEdit) {
-                Icon(Icons.Rounded.EditSquare, contentDescription = stringResource(Lang.settings_media_source_more))
-            }
+        IconButton(
+            onRequestFetchRequestEdit,
+            modifier = Modifier,
+        ) {
+            Icon(Icons.Rounded.EditSquare, contentDescription = stringResource(Lang.settings_media_source_more))
+        }
 //            DropdownMenu(showDropdown, { showDropdown = false }) {
 //                DropdownMenuItem(
 //                    text = { Text("编辑查询请求") },
@@ -271,7 +295,6 @@ private fun ViewKindAndMoreRow(
 //            }
 
             // 编辑请求
-        }
     }
 }
 
@@ -295,6 +318,37 @@ private fun LegacyBTSourceColumn(
         presentation.preferredCandidates.size,
         presentation.filteredCandidates.size,
     )
+    val focusDriven = LocalAniUiBehavior.current.focusDrivenNavigation
+    val filtersHeader: @Composable () -> Unit = {
+        Column(
+            Modifier.background(stickyHeaderBackgroundColor).padding(bottom = 12.dp)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                filteredCountText,
+                style = MaterialTheme.typography.titleMedium,
+            )
+
+            MediaSelectorFilters(
+                resolution = state.resolution,
+                subtitleLanguageId = state.subtitleLanguageId,
+                alliance = state.alliance,
+                singleLine = singleLineFilter,
+                // TV: "显示已被排除"作为筛选行末尾的开关胶囊 (移动端的 文字+Switch 行
+                // 在列表末尾, 遥控器要翻完全部资源才够得到)
+                trailingContent = if (focusDriven && presentation.groupedMediaListExcluded.isNotEmpty()) {
+                    {
+                        FocusShowExcludedChip(
+                            checked = showExcluded,
+                            count = presentation.groupedMediaListExcluded.size,
+                            onToggle = onShowExcludedChange,
+                        )
+                    }
+                } else null,
+            )
+        }
+    }
     LazyColumn(
         modifier,
         lazyListState,
@@ -320,29 +374,19 @@ private fun LegacyBTSourceColumn(
             }
         }
 
-        stickyHeader {
+        if (focusDriven) {
+            // TV: 筛选行作普通条目随页滚动, 不做 stickyHeader —— 悬浮层会盖住
+            // 吸顶到容器顶部的焦点卡片 (TV 聚焦滚动为吸顶, 见 SnapToStartScrollProvider)
+            item(key = "filters") {
+                filtersHeader()
+            }
+        } else stickyHeader {
             val isStuck by remember(lazyListState) {
                 derivedStateOf {
                     lazyListState.firstVisibleItemIndex == 1
                 }
             }
-            Column(
-                Modifier.background(stickyHeaderBackgroundColor).padding(bottom = 12.dp)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    filteredCountText,
-                    style = MaterialTheme.typography.titleMedium,
-                )
-
-                MediaSelectorFilters(
-                    resolution = state.resolution,
-                    subtitleLanguageId = state.subtitleLanguageId,
-                    alliance = state.alliance,
-                    singleLine = singleLineFilter,
-                )
-            }
+            filtersHeader()
             if (isStuck) {
                 HorizontalDivider(Modifier.fillMaxWidth(), thickness = 2.dp)
             }
@@ -352,7 +396,8 @@ private fun LegacyBTSourceColumn(
             MediaItemGroup(group, bringIntoViewRequesters, state, presentation, onClickItem)
         }
 
-        if (presentation.groupedMediaListExcluded.isNotEmpty()) {
+        // TV 的开关胶囊在筛选行尾部 (见上), 不再放列表底部的 Switch 行
+        if (!focusDriven && presentation.groupedMediaListExcluded.isNotEmpty()) {
             item {
                 val showExcludedText = stringResource(
                     Lang.media_selector_view_show_excluded,
@@ -409,7 +454,22 @@ private fun LazyItemScope.MediaItemGroup(
             }
         }
         val scope = rememberCoroutineScope()
-        MediaSelectorItem(
+        if (LocalAniUiBehavior.current.focusDrivenNavigation) {
+            // 焦点驱动形态: 整卡单焦点卡片 (卡内 chips/下拉在方向键导航下会卡内乱跳, 偏好由筛选行承担)
+            FocusMediaSelectorItem(
+                group,
+                groupState = state.getGroupState(group.groupId),
+                state.mediaSourceInfoProvider,
+                selected = group.list.any { it.original === presentation.selected },
+                onSelect = {
+                    onClickItem(state.getGroupState(group.groupId).selectedItem ?: it)
+                },
+                Modifier
+                    .animateItem()
+                    .fillMaxWidth()
+                    .bringIntoViewRequester(requester),
+            )
+        } else MediaSelectorItem(
             group,
             groupState = state.getGroupState(group.groupId),
             state.mediaSourceInfoProvider,

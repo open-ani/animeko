@@ -61,6 +61,11 @@ class SubjectPreviewItemInfo(
      * 隐藏此条目. 用于 workaround bangumi 搜出来不满足条件的条目
      */
     val hide: Boolean = false,
+    /**
+     * 原名 (日文). 用于 TMDB 等外部源按名字匹配 ([title] 通常是中文译名, 匹配成功率低,
+     * 且失败结果会被写成持久负缓存); 展示一律用 [title].
+     */
+    val originalName: String = "",
 ) {
     companion object {
         /**
@@ -152,6 +157,7 @@ class SubjectPreviewItemInfo(
                 nsfw = subjectInfo.nsfw,
                 nsfwMode = if (subjectInfo.nsfw) nsfwModeSettings else NsfwMode.DISPLAY,
                 hide = hide,
+                originalName = subjectInfo.name,
             )
         }
 

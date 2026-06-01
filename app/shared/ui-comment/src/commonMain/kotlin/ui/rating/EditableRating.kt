@@ -11,7 +11,6 @@ package me.him188.ani.app.ui.rating
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
@@ -29,6 +28,7 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.TestSelfRatingInfo
 import me.him188.ani.app.data.models.subject.TestSubjectInfo
 import me.him188.ani.app.tools.MonoTasker
+import me.him188.ani.app.ui.foundation.widgets.DismissDialogButton
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.rating_requires_collection
 import me.him188.ani.app.ui.lang.settings_mediasource_close
@@ -62,8 +62,25 @@ class EditableRatingState(
     var showRatingDialog by mutableStateOf(false)
         private set
 
-    fun requestEdit() {
+    /**
+     * 本次评分弹窗是**哪个入口**打开的 (调用方给的任意标记对象); 见 [isEditingFrom].
+     *
+     * 同一个 state 会同时挂在好几个入口上 (详情页的评分组件、「查看全部」评论里的写评价…),
+     * 它们都活着且都在观察 [showRatingDialog]. 不分辨来源的话, 弹窗关闭时每个入口都会去抢焦点.
+     */
+    var editRequestSource: Any? by mutableStateOf(null)
+        private set
+
+    /**
+     * 评分弹窗当前是否由 [source] 这个入口打开的.
+     *
+     * 用于 `Modifier.restoreFocusAfter`: 只有打开它的那个入口才该在关闭后把焦点收回来.
+     */
+    fun isEditingFrom(source: Any?): Boolean = showRatingDialog && editRequestSource === source
+
+    fun requestEdit(source: Any? = null) {
         if (isCollected()) {
+            editRequestSource = source
             showRatingDialog = true
             val hasExistingScore = selfRatingInfo.score > 0
             Analytics.recordEvent(RatingEnter) {
@@ -132,9 +149,10 @@ fun EditableRatingDialogsHost(state: EditableRatingState) {
         AlertDialog(
             { state.dismissRatingRequiresCollectionDialog() },
             text = { Text(stringResource(Lang.rating_requires_collection)) },
+            // 纯提示, 唯一的按钮就是"关闭"
             confirmButton = {
-                TextButton({ state.dismissRatingRequiresCollectionDialog() }) {
-                    Text(stringResource(Lang.settings_mediasource_close))
+                DismissDialogButton(stringResource(Lang.settings_mediasource_close)) {
+                    state.dismissRatingRequiresCollectionDialog()
                 }
             },
         )

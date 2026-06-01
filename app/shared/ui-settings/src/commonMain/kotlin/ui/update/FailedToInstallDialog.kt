@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.foundation.widgets.dismissDialogButton
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_update_manual_install_cancel
 import me.him188.ani.app.ui.lang.settings_update_manual_install_open_failed
@@ -65,9 +66,10 @@ fun FailedToInstallDialog(
                 },
             ) { Text(stringResource(Lang.settings_update_manual_install_view_package)) }
         },
-        dismissButton = {
-            TextButton(onDismissRequest) { Text(stringResource(Lang.settings_update_manual_install_cancel)) }
-        },
+        dismissButton = dismissDialogButton(
+            stringResource(Lang.settings_update_manual_install_cancel),
+            onDismissRequest,
+        ),
         title = { Text(stringResource(Lang.settings_update_manual_install_title)) },
         text = { Text(message) },
     )

@@ -25,6 +25,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.view.WindowCompat
 import me.him188.ani.android.BuildConfig
+import me.him188.ani.android.InstallFormFactorUi
+import me.him188.ani.android.formFactorUiBehavior
+import me.him188.ani.android.onFormFactorActivityCreated
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -77,6 +80,9 @@ class MainActivity : AniComponentActivity() {
         super.onCreate(savedInstanceState)
         handleStartIntent(intent)
 
+        // 本形态 (phone / tv) 的附加初始化, 见各 flavor 下的 FormFactorSetup.kt
+        onFormFactorActivityCreated(this)
+
         enableEdgeToEdge(
             // 透明状态栏
             statusBarStyle = SystemBarStyle.auto(
@@ -102,7 +108,8 @@ class MainActivity : AniComponentActivity() {
         val externalContentProvider = externalContentProviderFactory.create(this, lifecycleScope)
 
         setContent {
-            AniApp {
+            // 界面行为由本形态决定, 共享界面代码不判断设备 (见 AniUiBehavior)
+            AniApp(uiBehavior = formFactorUiBehavior) {
                 val externalComponentProviderUpdated by rememberUpdatedState(externalContentProvider)
 
                 SystemBarColorEffect()
@@ -121,7 +128,10 @@ class MainActivity : AniComponentActivity() {
                         Modifier
                     }
                     Box(rootModifier) {
-                        AniAppContent(aniNavigator)
+                        // 本形态特有的页面变体装配 (见各 Local*Variant 插槽)
+                        InstallFormFactorUi {
+                            AniAppContent(aniNavigator)
+                        }
                     }
                 }
             }

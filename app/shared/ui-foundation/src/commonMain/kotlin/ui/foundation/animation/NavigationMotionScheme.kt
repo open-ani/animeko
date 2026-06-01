@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.foundation.animation
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -46,6 +47,24 @@ data class NavigationMotionScheme(
         // https://developer.android.com/develop/ui/compose/animation/shared-elements
         private val enterEasing = EmphasizedDecelerateEasing
         private val exitEasing = EmphasizedAccelerateEasing
+
+        /**
+         * 全屏页面间的同步 crossfade (dissolve, 无位移): 上一页变浅的同时下一页变深,
+         * 同时长同步进行, 中途不经过空白底色 (fade-through 的"先全白再显示"在全屏
+         * 海报页之间观感突兀). 线性缓动保证从第一帧就开始渐变.
+         */
+        fun calculateCrossfade(): NavigationMotionScheme {
+            val exit = fadeOut(tween(CROSSFADE_DURATION, easing = LinearEasing))
+            val enter = fadeIn(tween(CROSSFADE_DURATION, easing = LinearEasing))
+            return NavigationMotionScheme(
+                enterTransition = enter,
+                exitTransition = exit,
+                popEnterTransition = enter,
+                popExitTransition = exit,
+            )
+        }
+
+        private const val CROSSFADE_DURATION = 1000
 
         fun calculate(useSlide: Boolean): NavigationMotionScheme {
             val slideInMargin = 1f / 16

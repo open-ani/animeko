@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -78,6 +79,8 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
+import me.him188.ani.utils.logging.info
+import me.him188.ani.utils.logging.logger
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.domain.media.player.ChunkState
@@ -100,6 +103,9 @@ const val TAG_PROGRESS_SLIDER_PREVIEW_FRAME = "ProgressSliderPreviewFrame"
 const val TAG_PROGRESS_SLIDER_CENTERED_PREVIEW_FRAME = "ProgressSliderCenteredPreviewFrame"
 const val TAG_PROGRESS_SLIDER = "ProgressSlider"
 
+/** 进度条预览帧的日志 (与 [MediaProgressFramePreviewState] 同一个 tag, 一条链路一处看). */
+private val framePreviewLogger = logger<MediaProgressFramePreviewState>()
+
 /**
  * 播放器进度滑块的状态.
  *
@@ -121,6 +127,10 @@ class PlayerProgressSliderState(
      * 当用户松开进度条时触发. 此时播放器应当要跳转到该位置.
      */
     private val onPreviewFinished: (positionMillis: Long) -> Unit,
+    /**
+     * 预览时已播放轨道 (高亮段) 是否跟着圆点走. 见 [trackPositionRatio].
+     */
+    private val trackFollowsPreview: Boolean = true,
 ) {
     val currentPositionMillis: Long by derivedStateOf(currentPositionMillis)
     val totalDurationMillis: Long by derivedStateOf(totalDurationMillis)
@@ -155,6 +165,25 @@ class PlayerProgressSliderState(
             return@derivedStateOf 0f
         }
         this.currentPositionMillis.toFloat() / total
+    }
+
+    /**
+     * 已播放轨道 (高亮段) 的比例.
+     *
+     * 默认与 [displayPositionRatio] 相同 —— 鼠标/触摸拖动时手指按住的就是圆点, 高亮段跟着走
+     * 才是"拖动进度"的观感.
+     *
+     * [trackFollowsPreview] = false 时把它钉在播放位置 (TV 遥控器的拖拽预览): 圆点是"要去哪",
+     * 高亮段是"已经播到哪" —— 一格一格挪圆点时这两件事本来就该分开显示, 否则松手前用户看不出
+     * 自己相对原位置走了多远, 而按返回取消后高亮段还得倒回去, 像出了 bug.
+     */
+    val trackPositionRatio: Float by derivedStateOf {
+        if (trackFollowsPreview) {
+            displayPositionRatio
+        } else {
+            val total = this.totalDurationMillis
+            if (total == 0L) 0f else this.currentPositionMillis.toFloat() / total
+        }
     }
 
     fun finishPreview() {
@@ -193,6 +222,7 @@ fun rememberMediaProgressSliderState(
     chaptersFlow: Flow<List<Chapter>> = player.chapters ?: flowOf(emptyList()),
     onPreview: (positionMillis: Long) -> Unit,
     onPreviewFinished: (positionMillis: Long) -> Unit,
+    trackFollowsPreview: Boolean = true,
 ): PlayerProgressSliderState { // TODO: 2025/1/3  refactor rememberMediaProgressSliderState
 
     val flow = remember(player, chaptersFlow) {
@@ -221,6 +251,7 @@ fun rememberMediaProgressSliderState(
             { data.chapters },
             onPreviewUpdated,
             onPreviewFinishedUpdated,
+            trackFollowsPreview,
         )
     }
 }
@@ -334,6 +365,27 @@ class TouchSeekState(
 }
 
 /**
+ * 预览浮窗的样式.
+ */
+enum class ProgressSliderPreviewStyle {
+    /**
+     * 卡片: 预览帧外围一圈底色, 时间文字在帧的**下方**另占一行.
+     *
+     * 鼠标/触摸场景的默认样式 —— 手指或指针就压在进度条上, 浮窗不能太贴边, 一圈底色也帮助
+     * 它从画面里跳出来.
+     */
+    Card,
+
+    /**
+     * 只有预览帧本身, 时间文字**叠在帧的底部居中** (Prime Video 风格).
+     *
+     * 遥控器场景用这个: 沙发距离下卡片那一圈底色和帧下方的文字行加起来比画面本身还显眼,
+     * 观感是一大块黑边糊在画面上.
+     */
+    FrameOnly,
+}
+
+/**
  * 视频播放器的进度条, 支持拖动调整播放位置, 支持显示缓冲进度.
  */
 @Composable
@@ -345,6 +397,7 @@ fun MediaProgressSlider(
     showPreviewTimeTextOnThumb: Boolean = true,
     framePreview: MediaProgressFramePreviewState? = null,
     showFramePreviewInPopup: Boolean = true,
+    previewStyle: ProgressSliderPreviewStyle = ProgressSliderPreviewStyle.Card,
     touchSeekState: TouchSeekState? = null,
 //    drawThumb: @Composable DrawScope.() -> Unit = {
 //        drawCircle(
@@ -405,7 +458,7 @@ fun MediaProgressSlider(
 
             Canvas(Modifier.matchParentSize()) {
                 // draw play progress
-                val xPlay = size.width * state.displayPositionRatio
+                val xPlay = size.width * state.trackPositionRatio
 
                 drawRect(
                     colors.trackProgressColor,
@@ -545,7 +598,14 @@ fun MediaProgressSlider(
                         val total = state.totalDurationMillis
                         if (total <= 0) return@collectLatest
                         // BT 源只预览已下载完成的区域, 避免抢占播放位置的下载优先级.
+                        //
+                        // 副作用: 往前拖恰好就是"还没下载到"的方向, 于是 BT 源上往前拖基本
+                        // 拿不到缩略图, 且帧不会被清空 —— 浮窗里留着上一个位置的旧帧
+                        // (或首次的黑色占位). 留一行日志把这种"没请求"和"请求了但解不出"分开
                         if (!cacheProgressInfoFlow().isPositionCached(positionMillis.toFloat() / total)) {
+                            framePreviewLogger.info {
+                                "Skipping frame preview at $positionMillis ms: position not fully cached"
+                            }
                             return@collectLatest
                         }
                         framePreview.requestFrame(positionMillis)
@@ -553,17 +613,20 @@ fun MediaProgressSlider(
             }
         }
         if (showPreviewTime) {
-            val showFrame = showFramePreviewInPopup && framePreview != null
+            val showFrame = showFramePreviewInPopup && framePreview?.framesAvailable == true
+            val frameOnly = showFrame && previewStyle == ProgressSliderPreviewStyle.FrameOnly
             ProgressSliderPreviewPopup(
                 offsetX = { mousePosX.roundToInt() },
-                previewTimeBackgroundColor = colors.previewTimeBackgroundColor,
+                previewTimeBackgroundColor = popupBackgroundColor(frameOnly, colors),
                 shape = previewPopupShape(showFrame),
+                contentPadding = popupContentPadding(frameOnly),
             ) {
                 ProgressSliderPreviewContent(
                     frame = framePreview?.frame,
                     text = previewTimeText,
                     previewTimeTextColor = colors.previewTimeTextColor,
                     showFrame = showFrame,
+                    frameOnly = frameOnly,
                 )
             }
         }
@@ -603,17 +666,22 @@ fun MediaProgressSlider(
 
                 // 仅在 detached slider 上显示
                 if (state.isPreviewing && showPreviewTimeTextOnThumb) {
-                    val showFrame = showFramePreviewInPopup && framePreview != null
+                    // framesAvailable: 取不到帧的媒体 (最常见是 HLS 在线源) 不给帧留位置,
+                    // 否则浮窗里是一块永远不会变的占位黑底. 见 MediaProgressFramePreviewState
+                    val showFrame = showFramePreviewInPopup && framePreview?.framesAvailable == true
+                    val frameOnly = showFrame && previewStyle == ProgressSliderPreviewStyle.FrameOnly
                     ProgressSliderPreviewPopup(
                         offsetX = { thumbWidth / 2 },
-                        previewTimeBackgroundColor = colors.previewTimeBackgroundColor,
+                        previewTimeBackgroundColor = popupBackgroundColor(frameOnly, colors),
                         shape = previewPopupShape(showFrame),
+                        contentPadding = popupContentPadding(frameOnly),
                     ) {
                         ProgressSliderPreviewContent(
                             frame = framePreview?.frame,
                             text = previewTimeOnThumb,
                             previewTimeTextColor = colors.previewTimeTextColor,
                             showFrame = showFrame,
+                            frameOnly = frameOnly,
                         )
                     }
                 }
@@ -684,16 +752,76 @@ private fun ProgressSliderPreviewContent(
     text: String,
     previewTimeTextColor: Color,
     showFrame: Boolean,
+    frameOnly: Boolean = false,
 ) {
-    if (showFrame) {
-        PreviewFrameAndTimeText(
+    when {
+        frameOnly -> PreviewFrameWithOverlaidTime(frame = frame, text = text)
+        showFrame -> PreviewFrameAndTimeText(
             frame = frame,
             text = text,
             previewTimeTextColor = previewTimeTextColor,
             showFrameArea = true,
         )
-    } else {
-        PreviewTimeText(text, previewTimeTextColor)
+
+        else -> PreviewTimeText(text, previewTimeTextColor)
+    }
+}
+
+/** [ProgressSliderPreviewStyle.FrameOnly] 下浮窗容器不要底色 (画面自己就是底). */
+@Composable
+private fun popupBackgroundColor(frameOnly: Boolean, colors: MediaProgressSliderColors): Color =
+    if (frameOnly) Color.Transparent else colors.previewTimeBackgroundColor
+
+/** [ProgressSliderPreviewStyle.FrameOnly] 下浮窗容器不留内边距 (那一圈就是"黑边"的主要来源). */
+private fun popupContentPadding(frameOnly: Boolean): PaddingValues =
+    if (frameOnly) PaddingValues(0.dp) else PaddingValues(horizontal = 16.dp, vertical = 12.dp)
+
+/**
+ * 预览帧 + 叠在其底部居中的时间 ([ProgressSliderPreviewStyle.FrameOnly]).
+ *
+ * 帧还没解出来时保留这块半透明底: 它同时是"正在取帧"的占位 (解一帧要一秒以上), 也让叠在
+ * 上面的时间有个可读的背景. 彻底取不到帧的媒体不会走到这里 —— 那种情况 `showFrame` 就是
+ * false, 浮窗退化成纯时间胶囊 (见 [MediaProgressFramePreviewState.framesAvailable]).
+ */
+@Composable
+private fun PreviewFrameWithOverlaidTime(
+    frame: ImageBitmap?,
+    text: String,
+) {
+    Box(
+        Modifier
+            .size(width = 160.dp, height = 90.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.Black.copy(alpha = 0.5f)),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        if (frame != null) {
+            Image(
+                frame,
+                contentDescription = null,
+                Modifier
+                    .matchParentSize()
+                    .testTag(TAG_PROGRESS_SLIDER_PREVIEW_FRAME),
+                contentScale = ContentScale.Fit,
+            )
+        }
+        // 文字自带一小块暗底: 亮画面 (雪景/白墙) 上白字会糊掉.
+        // 圆角 6dp: 这块底约 18dp 高 (labelMedium + 上下 1dp), 全圆是 9dp, 取到 6 已经明显圆
+        // 而又没变成胶囊
+        Box(
+            Modifier
+                .padding(bottom = 6.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color.Black.copy(alpha = 0.6f))
+                .padding(horizontal = 6.dp, vertical = 1.dp),
+        ) {
+            Text(
+                text = text,
+                color = Color.White,
+                style = MaterialTheme.typography.labelMedium,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 
@@ -710,6 +838,7 @@ fun ProgressSliderPreviewPopup(
     previewTimeBackgroundColor: Color,
     modifier: Modifier = Modifier,
     shape: Shape = CircleShape,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -759,7 +888,7 @@ fun ProgressSliderPreviewPopup(
                 .animateContentSize(),
         ) {
             Box(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier.padding(contentPadding),
                 contentAlignment = Alignment.Center,
             ) {
                 content()

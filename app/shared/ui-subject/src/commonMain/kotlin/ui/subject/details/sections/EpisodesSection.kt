@@ -10,8 +10,10 @@
 package me.him188.ani.app.ui.subject.details.sections
 
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -38,9 +40,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -58,6 +68,7 @@ import me.him188.ani.app.ui.lang.subject_episode_unwatch
 import me.him188.ani.app.ui.subject.details.components.EpisodePaging
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import org.jetbrains.compose.resources.stringResource
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 
 /**
  * 单个剧集网格单元 (对应 Figma `EpisodeGridItem`).
@@ -77,7 +88,6 @@ fun EpisodeGridCell(
     height: Dp = 72.dp,
 ) {
     val isWatched = item.isDoneOrDropped
-    val interactionSource = remember { MutableInteractionSource() }
     val containerColor = when {
         isPlaying -> MaterialTheme.colorScheme.primaryContainer
         isWatched -> MaterialTheme.colorScheme.surfaceContainerLow
@@ -94,6 +104,10 @@ fun EpisodeGridCell(
         if (isWatched) Lang.subject_episode_unwatch else Lang.subject_episode_mark_watched,
     )
 
+    // 聚焦 (遥控器/键盘) 时集名跑马灯滚动展示全文, 未聚焦时保持省略号
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+
     Surface(
         modifier = modifier
             .height(height)
@@ -105,7 +119,7 @@ fun EpisodeGridCell(
                 onLongClickLabel = longClickLabel,
                 onLongClick = onLongClick,
             ),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(EPISODE_CARD_CORNER),
         color = containerColor,
     ) {
         Box {
@@ -137,10 +151,11 @@ fun EpisodeGridCell(
                 }
                 Text(
                     item.nameCn.ifBlank { item.name },
+                    if (focused) Modifier.basicMarquee(iterations = Int.MAX_VALUE) else Modifier,
                     color = nameColor,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    overflow = if (focused) TextOverflow.Clip else TextOverflow.Ellipsis,
                 )
             }
         }
@@ -178,6 +193,24 @@ fun PagedEpisodesGrid(
         var page by remember(paging, currentIndex) { mutableStateOf(paging.initialPage(currentIndex)) }
         val range = paging.itemRange(page)
 
+        // 焦点驱动的界面: 翻页会把整页格子销毁重建, 持有焦点的格子消失后焦点会被重置到页面左上角 (翻到边界页时
+        // 翻页按钮变 disabled 也会丢焦点). 这里实现遥控器的自然翻页:
+        //  - 网格最后一行按"下" -> 下一页并聚焦新页第一格; 第一行按"上" -> 上一页并聚焦末格;
+        //  - 用翻页按钮翻到边界页 (按钮即将 disabled) 时, 把焦点移到格子上, 避免焦点悬空.
+        val focusDriven = LocalAniUiBehavior.current.focusDrivenNavigation
+        val firstCellFocus = remember { FocusRequester() }
+        val lastCellFocus = remember { FocusRequester() }
+        // 0 = 不移动焦点; 1 = 翻页后聚焦第一格; 2 = 翻页后聚焦最后一格
+        var pendingFocus by remember { mutableStateOf(0) }
+        LaunchedEffect(page, pendingFocus) {
+            if (pendingFocus == 0) return@LaunchedEffect
+            withFrameNanos { } // 等新页格子布局完成
+            runCatching {
+                (if (pendingFocus == 1) firstCellFocus else lastCellFocus).requestFocus()
+            }
+            pendingFocus = 0
+        }
+
         Column(verticalArrangement = Arrangement.spacedBy(cellSpacing)) {
             header(
                 if (paging.isPaged) {
@@ -187,8 +220,19 @@ fun PagedEpisodesGrid(
                             pageCount = paging.pageCount,
                             range = range.first + 1..range.last + 1,
                             total = episodes.size,
-                            onPrev = { if (page > 0) page-- },
-                            onNext = { if (page < paging.pageCount - 1) page++ },
+                            onPrev = {
+                                if (page > 0) {
+                                    // 翻到第一页后按钮将变 disabled, 焦点会悬空, 移到格子上
+                                    if (focusDriven && page - 1 == 0) pendingFocus = 1
+                                    page--
+                                }
+                            },
+                            onNext = {
+                                if (page < paging.pageCount - 1) {
+                                    if (focusDriven && page + 1 == paging.pageCount - 1) pendingFocus = 1
+                                    page++
+                                }
+                            },
                         )
                     }
                 } else {
@@ -197,18 +241,46 @@ fun PagedEpisodesGrid(
             )
             val pageItems = episodes.subList(range.first.coerceIn(0, episodes.size), (range.last + 1).coerceIn(0, episodes.size))
             // 竖向按行排布, 每行 columns 个
-            for (row in pageItems.chunked(columns)) {
+            val rows = pageItems.chunked(columns)
+            for ((rowIndex, row) in rows.withIndex()) {
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(cellSpacing),
                 ) {
-                    for (item in row) {
+                    for ((colIndex, item) in row.withIndex()) {
+                        val isFirstCell = rowIndex == 0 && colIndex == 0
+                        val isLastCell = rowIndex == rows.lastIndex && colIndex == row.lastIndex
                         EpisodeGridCell(
                             item,
                             isPlaying = item.episodeId == currentEpisodeId,
                             onClick = { onEpisodeClick(item) },
                             onLongClick = { onEpisodeLongClick(item) },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f)
+                                .then(if (isFirstCell) Modifier.focusRequester(firstCellFocus) else Modifier)
+                                .then(if (isLastCell) Modifier.focusRequester(lastCellFocus) else Modifier)
+                                .then(
+                                    if (!focusDriven || !paging.isPaged) Modifier
+                                    else Modifier.onPreviewKeyEvent { event ->
+                                        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                                        when {
+                                            event.key == Key.DirectionDown &&
+                                                    rowIndex == rows.lastIndex && page < paging.pageCount - 1 -> {
+                                                pendingFocus = 1
+                                                page++
+                                                true
+                                            }
+
+                                            event.key == Key.DirectionUp &&
+                                                    rowIndex == 0 && page > 0 -> {
+                                                pendingFocus = 2
+                                                page--
+                                                true
+                                            }
+
+                                            else -> false
+                                        }
+                                    },
+                                ),
                         )
                     }
                     // 补齐末行空位, 保持等宽

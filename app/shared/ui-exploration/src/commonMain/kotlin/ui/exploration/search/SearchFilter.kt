@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2026 OpenAni and contributors.
+ * Copyright (C) 2024-2025 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -37,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.subject.CanonicalTagKind
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -55,6 +54,7 @@ import me.him188.ani.app.ui.lang.exploration_search_filter_setting
 import me.him188.ani.app.ui.lang.exploration_search_filter_source
 import me.him188.ani.app.ui.lang.exploration_search_filter_technology
 import me.him188.ani.utils.platform.annotations.TestOnly
+import androidx.compose.ui.tooling.preview.Preview
 import org.jetbrains.compose.resources.stringResource
 import kotlin.random.Random
 
@@ -97,13 +97,15 @@ fun SearchFilterChipsRow(
     onClickItemText: (SearchFilterChipState, value: String) -> Unit,
     onCheckedChange: (SearchFilterChipState, value: String) -> Unit,
     modifier: Modifier = Modifier,
+    firstItemModifier: Modifier = Modifier,
 ) {
     FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (chipState in state.chips) {
+        state.chips.forEachIndexed { index, chipState ->
             SearchFilterChip(
                 chipState,
                 { onClickItemText(chipState, it) },
                 { onCheckedChange(chipState, it) },
+                if (index == 0) firstItemModifier else Modifier
             )
         }
     }
@@ -131,7 +133,7 @@ fun SearchFilterChip(
             ).size.width.toDp()
         }
     }
-    Box(modifier) {
+    Box {
         InputChip(
             state.hasSelection,
             onClick = { showDropdown = true },

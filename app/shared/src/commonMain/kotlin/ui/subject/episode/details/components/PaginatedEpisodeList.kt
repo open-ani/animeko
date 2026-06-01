@@ -14,6 +14,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import me.him188.ani.app.ui.foundation.aniCombinedClickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
@@ -137,7 +138,7 @@ private fun EpisodeDetailsListItem(
             .fillMaxWidth()
             .clip(shape)
             .background(containerColor)
-            .combinedClickable(
+            .aniCombinedClickable(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,
                 onClick = onClick,

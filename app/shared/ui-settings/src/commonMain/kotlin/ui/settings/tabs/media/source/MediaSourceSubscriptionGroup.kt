@@ -59,6 +59,7 @@ import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.getClipEntryText
 import me.him188.ani.app.ui.foundation.setClipEntryText
+import me.him188.ani.app.ui.foundation.widgets.dismissDialogButton
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_media_source_cancel
@@ -220,11 +221,9 @@ internal fun SettingsScope.MediaSourceSubscriptionGroup(
                         }
                     }
                 },
-                dismissButton = {
-                    TextButton({ showAddDialog = false }) {
-                        Text(stringResource(Lang.settings_media_source_subscription_cancel))
-                    }
-                },
+                dismissButton = dismissDialogButton(
+                    stringResource(Lang.settings_media_source_subscription_cancel),
+                ) { showAddDialog = false },
                 title = {
                     Text(stringResource(Lang.settings_media_source_subscription_add_dialog))
                 },
@@ -365,13 +364,9 @@ private fun SettingsScope.SubscriptionItem(
                     )
                 }
             },
-            dismissButton = {
-                TextButton(
-                    {
-                        showConfirmDelete = false
-                    },
-                ) { Text(stringResource(Lang.settings_media_source_cancel)) }
-            },
+            dismissButton = dismissDialogButton(
+                stringResource(Lang.settings_media_source_cancel),
+            ) { showConfirmDelete = false },
         )
 
     }

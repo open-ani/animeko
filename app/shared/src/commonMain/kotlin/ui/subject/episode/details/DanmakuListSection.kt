@@ -250,7 +250,7 @@ fun DanmakuListContent(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DanmakuSourceChips(
+fun DanmakuSourceChips( // public: 播放页变体 (遥控器形态) 的弹幕列表面板复用
     sourceItems: List<DanmakuSourceItem>,
     onToggleSource: (DanmakuServiceId, Boolean) -> Unit,
     onManualMatch: (DanmakuServiceId) -> Unit,

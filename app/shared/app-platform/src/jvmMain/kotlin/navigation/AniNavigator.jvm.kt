@@ -14,6 +14,8 @@ import androidx.navigation.NavHostController
 actual fun NavHostController.popBackOrNavigateToMain(mainSceneInitialPage: MainScreenPage) {
     val firstMain = findFirst<NavRoutes.Main>()
     if (firstMain != null) {
+        // 弹回不会重建 Main, initialPage 不会重新生效; 经 SavedStateHandle 通知主页切 tab
+        requestMainPage(mainSceneInitialPage)
         popBackStack(firstMain, inclusive = false)
         return
     }
