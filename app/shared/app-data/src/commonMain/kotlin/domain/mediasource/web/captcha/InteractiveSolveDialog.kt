@@ -124,7 +124,13 @@ fun InteractiveSolveDialog(ui: InteractiveSolveUi) {
                         .fillMaxWidth()
                         .weight(1f),
                 ) {
-                    ui.browser.View(Modifier.fillMaxSize())
+                    // TV (fork): Android 实现在视图上叠遥控器虚拟光标, 返回键/长按确认键
+                    // 经这两个回调转成关闭/手动确认 (见 CaptchaBrowser.View 注释)
+                    ui.browser.View(
+                        Modifier.fillMaxSize(),
+                        onExitRequest = ui.onDismiss,
+                        onConfirmRequest = ui.onConfirm,
+                    )
                 }
             }
         }

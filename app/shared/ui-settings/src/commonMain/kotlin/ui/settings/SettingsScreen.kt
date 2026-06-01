@@ -97,6 +97,7 @@ import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.adaptive.ListDetailLayoutParameters
 import me.him188.ani.app.ui.adaptive.PaneScope
 import me.him188.ani.app.ui.adaptive.TopAppBarSize
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
@@ -183,6 +184,9 @@ fun SettingsScreen(
     windowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
     navigationIcon: @Composable () -> Unit = {},
 ) {
+    // 界面缩放改动后, 离开设置页时把窗口层 (弹窗/菜单) 一并对齐
+    UiScaleSyncEffect()
+
     val navigator: ThreePaneScaffoldNavigator<Nothing?> = rememberListDetailPaneScaffoldNavigator(
         initialDestinationHistory = buildList {
             add(ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.List))
@@ -398,7 +402,9 @@ fun SettingsScreen(
             }
         },
         detailPaneBottomBar = { currentTab, bottomBarInsets ->
-            if (currentTab == SettingsTab.MEDIA_SOURCE) {
+            // 浮动工具栏只给指针设备: 遥控器上够到屏幕底部这条要穿过整页设置项,
+            // 改成长按选中项出下拉菜单 (见 MediaSourceGroup)
+            if (currentTab == SettingsTab.MEDIA_SOURCE && !LocalAniUiBehavior.current.focusDrivenNavigation) {
                 AniAnimatedVisibility(
                     visible = mediaSourceSelectionState.inSelection,
                     modifier = Modifier.align(Alignment.BottomCenter),
@@ -452,13 +458,15 @@ internal fun SettingsPageLayout(
     // 毛玻璃模式下顶栏覆盖在内容上方并保持常驻, 以便展示模糊效果.
     val frostedGlassActive = isAppChromeFrostedGlassActive()
 
-    val listPaneTopAppBarScrollBehavior = if (LocalPlatform.current.hasScrollingBug()) {
+    val uiBehavior = LocalAniUiBehavior.current
+    val usePinnedTopAppBar = LocalPlatform.current.hasScrollingBug() || uiBehavior.pinTopAppBar
+    val listPaneTopAppBarScrollBehavior = if (usePinnedTopAppBar) {
         TopAppBarDefaults.pinnedScrollBehavior()
     } else {
         TopAppBarDefaults.enterAlwaysScrollBehavior()
     }
 
-    val detailPaneTopAppBarScrollBehavior = if (LocalPlatform.current.hasScrollingBug()) {
+    val detailPaneTopAppBarScrollBehavior = if (usePinnedTopAppBar) {
         TopAppBarDefaults.pinnedScrollBehavior()
     } else {
         TopAppBarDefaults.enterAlwaysScrollBehavior()
@@ -505,10 +513,12 @@ internal fun SettingsPageLayout(
             size = topAppBarSize,
         )
     }
+    // 返回按钮隐藏时, 列表侧顶栏只剩"设置"标题占位, 整条不渲染
+    val hideNavigationTopAppBar = !uiBehavior.showNavigationTopAppBar
     AniListDetailPaneScaffold(
         navigator,
         // 毛玻璃模式下顶栏由 listPaneContent 内部覆盖绘制.
-        listPaneTopAppBar = if (frostedGlassActive) null else listPaneTopAppBar,
+        listPaneTopAppBar = if (frostedGlassActive || hideNavigationTopAppBar) null else listPaneTopAppBar,
         listPaneContent = paneScope@{
             var listTopAppBarHeight by remember { mutableStateOf(0) }
             val drawerSheet: @Composable PaneScope.() -> Unit = {
@@ -562,8 +572,10 @@ internal fun SettingsPageLayout(
                     ) {
                         drawerSheet()
                     }
-                    Box(Modifier.onSizeChanged { listTopAppBarHeight = it.height }) {
-                        listPaneTopAppBar()
+                    if (!hideNavigationTopAppBar) {
+                        Box(Modifier.onSizeChanged { listTopAppBarHeight = it.height }) {
+                            listPaneTopAppBar()
+                        }
                     }
                 }
             } else {
@@ -776,6 +788,10 @@ private fun PaneScope.DetailPaneRoute(
     floatingContent: @Composable BoxScope.() -> Unit = {},
     tabContent: @Composable (PaneScope.() -> Unit),
 ) {
+    // 返回按钮隐藏时, 详情侧顶栏只剩标题占位, 整条不渲染 (当前分类由左侧导航项高亮承担)
+    @Suppress("NAME_SHADOWING")
+    val topAppBar: @Composable () -> Unit =
+        if (LocalAniUiBehavior.current.showNavigationTopAppBar) topAppBar else ({})
     if (isAppChromeFrostedGlassActive()) {
         // 毛玻璃: 顶栏覆盖在内容上方, 内容从顶栏下方滚过并被模糊.
         // 内容通过 LocalSettingsTopAppBarUnderlapHeight 在滚动内容顶部留出顶栏的空间.

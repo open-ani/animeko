@@ -21,6 +21,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import me.him188.ani.utils.logging.info
+import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.FramePreview
 import org.openani.mediamp.features.PreviewFrame
@@ -58,6 +61,23 @@ class MediaProgressFramePreviewState(
     var frame: ImageBitmap? by mutableStateOf(null)
         private set
 
+    /**
+     * 本媒体能否取到帧. 取帧失败置 false, 成功置 true, 换媒体时复位.
+     *
+     * 取帧能力是**整个媒体**的属性而不是某个位置的: 平台取帧器要么能解析这个容器, 要么完全不能
+     * (最典型的是 HLS/m3u8 —— Android 的 MediaMetadataRetriever 走平台 extractor, 没有 HLS
+     * 解复用器, 而在线源基本都是 m3u8). 唯一按位置失败的情况是 BT 源未下载区域, 那种情况
+     * 调用方根本不会发起请求 (见 [MediaProgressSlider] 里的 `isPositionCached` 判断).
+     *
+     * 消费方据此决定**要不要给帧留位置**: 不看这个标志的话, 取不到帧的媒体上浮窗里会一直是
+     * 一块 160x90 的占位黑底 (那正是"缩略图永远是黑的"的由来), 而正确的降级是只显示时间.
+     *
+     * 起播时的 [prewarm] 顺带就是一次能力探测: 用户第一次唤出进度条之前这个值就已经定下来了,
+     * 所以不会出现"先给一块黑底, 过一会儿才发现取不到"的闪动.
+     */
+    var framesAvailable: Boolean by mutableStateOf(true)
+        private set
+
     private var frameGridKey = Long.MIN_VALUE
     private val cache = androidx.collection.LruCache<Long, ImageBitmap>(cacheSize)
 
@@ -77,10 +97,18 @@ class MediaProgressFramePreviewState(
             return
         }
         delay(debounceMillis) // debounce: 快速滑动时, 更新的位置会取消本次请求
-        val newFrame = fetchFrame(alignToGrid(key, positionMillis)) ?: return
+        val newFrame = fetchFrame(alignToGrid(key, positionMillis))
+        if (newFrame == null) {
+            // 底层实现把所有异常都吞了 (见 mediamp 的 ExoFramePreview), 这里至少留一行,
+            // 否则"取不到帧"在日志里完全没有痕迹
+            logger.warn { "Frame preview unavailable at $positionMillis ms (decoder returned null)" }
+            framesAvailable = false
+            return
+        }
         cache.put(key, newFrame)
         frame = newFrame
         frameGridKey = key
+        framesAvailable = true
     }
 
     /**
@@ -90,8 +118,16 @@ class MediaProgressFramePreviewState(
     suspend fun prewarm(positionMillis: Long) {
         val key = gridKeyOf(positionMillis)
         if (cache[key] != null) return
-        val newFrame = fetchFrame(alignToGrid(key, positionMillis)) ?: return
+        val newFrame = fetchFrame(alignToGrid(key, positionMillis))
+        if (newFrame == null) {
+            // 预热位置一定是当前播放点 (数据必然可用), 这里失败就是取帧器打不开这个媒体
+            logger.warn { "Frame preview prewarm failed at $positionMillis ms; frame preview disabled for this media" }
+            framesAvailable = false
+            return
+        }
+        logger.info { "Frame preview prewarmed at $positionMillis ms" }
         cache.put(key, newFrame)
+        framesAvailable = true
     }
 
     private fun alignToGrid(key: Long, positionMillis: Long): Long =
@@ -112,6 +148,7 @@ class MediaProgressFramePreviewState(
         cache.evictAll()
         frame = null
         frameGridKey = Long.MIN_VALUE
+        framesAvailable = true // 新媒体重新探测, 上一个不能取帧不代表这个也不能
     }
 }
 
@@ -154,3 +191,5 @@ fun rememberMediaProgressFramePreviewState(
  * 将 [PreviewFrame] 的 ARGB 像素转换为 [ImageBitmap].
  */
 internal expect fun PreviewFrame.toImageBitmap(): ImageBitmap
+
+private val logger = logger<MediaProgressFramePreviewState>()

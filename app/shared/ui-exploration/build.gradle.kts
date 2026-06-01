@@ -28,6 +28,8 @@ kotlin {
         api(projects.app.shared.uiAdaptive)
         implementation(libs.compose.components.resources)
         implementation(projects.app.shared.placeholder)
+        // 探索页卡片长按弹出的收藏下拉菜单复用详情页的 EditCollectionTypeDropDown
+        implementation(projects.app.shared.uiSubject)
     }
     sourceSets.commonTest.dependencies {
     }

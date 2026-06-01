@@ -9,6 +9,7 @@
 
 package me.him188.ani.android.activity
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -25,13 +26,21 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.view.WindowCompat
 import me.him188.ani.android.BuildConfig
+import me.him188.ani.android.InstallFormFactorUi
+import me.him188.ani.android.formFactorUiBehavior
+import me.him188.ani.android.onFormFactorActivityCreated
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.platform.rememberPlatformWindow
 import me.him188.ani.app.ui.exprovider.ExternalContentProviderFactory
 import me.him188.ani.app.ui.exprovider.LocalExternalContentProvider
+import me.him188.ani.app.ui.foundation.UiScaleApplier
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.theme.SystemBarColorEffect
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
@@ -47,6 +56,43 @@ class MainActivity : AniComponentActivity() {
     private val aniNavigator = AniNavigator()
 
     private val externalContentProviderFactory: ExternalContentProviderFactory by inject()
+    private val settingsRepository: SettingsRepository by inject()
+
+    /**
+     * 本次 Activity 创建时落到窗口层的界面缩放, 由 [attachBaseContext] 定下, 之后不再变 ——
+     * 主窗口与所有弹窗都按它渲染. 见 [UiScaleApplier].
+     */
+    private var appliedUiScale: Float = 1f
+
+    /**
+     * 已经请求过重建. `recreate()` 自己会销毁 Compose 树, 从而**再次**触发那个「离开设置页就对齐」的
+     * onDispose —— 那时读到的仍是本 Activity 的旧 [appliedUiScale], 会对着一个正在销毁的 Activity
+     * 再调一次 `recreate()`. 这个标志让重建请求只发一次.
+     */
+    private var uiScaleRestartRequested = false
+
+    private val uiScaleApplier = object : UiScaleApplier {
+        override val appliedScale: Float get() = appliedUiScale
+
+        override fun apply(scale: Float) {
+            if (scale == appliedUiScale || uiScaleRestartRequested) return
+            if (isFinishing || isDestroyed) return
+            uiScaleRestartRequested = true
+            // 重建后的 attachBaseContext 会重新读镜像, 所以必须先落盘再 recreate
+            UiScaleMirror.write(this@MainActivity, scale)
+            recreate()
+        }
+    }
+
+    /**
+     * 界面缩放要改的是 Activity 的 `densityDpi` —— 只有这样弹窗 (各自独立 window) 才会跟着变.
+     * 这是唯一能在 Activity 创建前介入的时机.
+     */
+    override fun attachBaseContext(newBase: Context) {
+        val scale = UiScaleMirror.read(newBase)
+        appliedUiScale = scale
+        super.attachBaseContext(newBase.withUiScale(scale))
+    }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -77,6 +123,9 @@ class MainActivity : AniComponentActivity() {
         super.onCreate(savedInstanceState)
         handleStartIntent(intent)
 
+        // 本形态 (phone / tv) 的附加初始化, 见各 flavor 下的 FormFactorSetup.kt
+        onFormFactorActivityCreated(this)
+
         enableEdgeToEdge(
             // 透明状态栏
             statusBarStyle = SystemBarStyle.auto(
@@ -101,8 +150,18 @@ class MainActivity : AniComponentActivity() {
 
         val externalContentProvider = externalContentProviderFactory.create(this, lifecycleScope)
 
+        // 把界面缩放抄进 SharedPreferences: attachBaseContext 拿不到 DataStore (还没有协程可用).
+        // 挪到 IO: write 是同步落盘 (commit), 拖滑块每过一格都会触发一次, 放主线程会加剧拖动时的卡顿
+        lifecycleScope.launch(Dispatchers.IO) {
+            settingsRepository.themeSettings.flow
+                .map { it.effectiveUiScale }
+                .distinctUntilChanged()
+                .collect { UiScaleMirror.write(this@MainActivity, it) }
+        }
+
         setContent {
-            AniApp {
+            // 界面行为由本形态决定, 共享界面代码不判断设备 (见 AniUiBehavior)
+            AniApp(uiBehavior = formFactorUiBehavior, uiScaleApplier = uiScaleApplier) {
                 val externalComponentProviderUpdated by rememberUpdatedState(externalContentProvider)
 
                 SystemBarColorEffect()
@@ -121,7 +180,10 @@ class MainActivity : AniComponentActivity() {
                         Modifier
                     }
                     Box(rootModifier) {
-                        AniAppContent(aniNavigator)
+                        // 本形态特有的页面变体装配 (见各 Local*Variant 插槽)
+                        InstallFormFactorUi {
+                            AniAppContent(aniNavigator)
+                        }
                     }
                 }
             }

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright (C) 2024-2026 OpenAni and contributors.
+  ~
+  ~ 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+  ~ Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+  ~
+  ~ https://github.com/open-ani/ani/blob/main/LICENSE
+  -->
+
+<!--
+  Android TV 主屏横幅 (banner). 必须是 16:9, 这里用 320x180 的固定 viewport 保证
+  启动器等比缩放、不会被拉伸变形.
+  Logo 复用 ic_launcher_foreground 的 "あ" 路径及其居中变换 (内层 group), 外层 group
+  以圆心 (160,90) 为中心整体放大, 使其在白色圆内有合适的占比.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+        android:width="320dp"
+        android:height="180dp"
+        android:viewportWidth="320"
+        android:viewportHeight="180">
+
+    <!-- 背景 -->
+    <path
+            android:fillColor="#2F3943"
+            android:pathData="M0,0h320v180h-320z" />
+
+    <!-- 外圈蓝色实心圆 (半径 60) -->
+    <path
+            android:fillColor="#7EBBED"
+            android:pathData="M160,90 m-60,0 a60,60 0 1,0 120,0 a60,60 0 1,0 -120,0" />
+
+    <!-- 内部白色实心圆 (半径 48, 形成 12 的蓝色圆环) -->
+    <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M160,90 m-48,0 a48,48 0 1,0 96,0 a48,48 0 1,0 -96,0" />
+
+    <!-- Logo: 外层以 (54,54) 为轴放大并平移到圆心, 内层为 foreground 原始居中变换 -->
+    <group
+            android:pivotX="54"
+            android:pivotY="54"
+            android:scaleX="2.7"
+            android:scaleY="2.7"
+            android:translateX="106"
+            android:translateY="36">
+        <group
+                android:scaleX="0.6"
+                android:scaleY="0.6"
+                android:translateX="21.6"
+                android:translateY="21.6">
+            <path
+                    android:fillColor="#000000"
+                    android:pathData="m53.8,34.6 l-0.3,1.2 -0.3,1.1A82.8,82.8 0,0 0,52 59.2a44.3,44.3 0,0 0,2.4 10l-5,1.5a49.7,49.7 0,0 1,-2.7 -17,73.4 73.4,0 0,1 0.5,-8.8 136.2,136.2 0,0 1,0.9 -9.1v-1.4l5.7,0.2ZM46,39.5a163.3,163.3 0,0 0,15 -0.8c2.2,-0.3 4.5,-0.7 6.7,-1.3v5.1a114.3,114.3 0,0 1,-24.5 1.7l-2.8,-0.1L38,44l-0.1,-5.2a327.6,327.6 0,0 1,5.1 0.6h3Zm19,6.4a33.7,33.7 0,0 1,-1 2.5l-0.3,1.2a39.8,39.8 0,0 1,-7 13,27.2 27.2,0 0 1,-9.2 6.8,14 14,0 0 1,-5.6 1.2c-1,0 -2,-0.2 -2.9,-0.6 -1,-0.5 -1.6,-1.2 -2.2,-2.1 -0.5,-1 -0.8,-2.2 -0.8,-3.7s0.3,-3.1 1,-4.6A19.9,19.9 0,0 1,48.6 49a29.7,29.7 0,0 1,9.8 -1.7c2.7,0 5.2,0.5 7.3,1.4 2.2,1 3.9,2.4 5.1,4.1 1.2,1.8 1.9,3.8 1.9,6.1 0,1.6 -0.3,3 -0.8,4.6a10,10 0,0 1,-2.5 4,14.2 14.2,0 0 1,-4.4 3.3c-1.8,1 -4.1,1.6 -6.8,2l-3,-4.6c2.9,-0.3 5.2,-1 7,-1.9 1.7,-1 3,-2.1 3.8,-3.5a8,8 0,0 0,1.2 -4.2,6 6,0 0,0 -1,-3.4 7,7 0,0 0,-3.1 -2.5c-1.4,-0.6 -3,-1 -5,-1a20,20 0,0 0,-13.3 4.8,13 13,0 0,0 -2.6,3.3c-0.7,1.2 -1,2.3 -1,3.3 0,0.7 0.2,1.2 0.5,1.6 0.3,0.4 0.8,0.5 1.5,0.5 1,0 2.3,-0.3 3.7,-1 1.4,-0.7 2.7,-1.7 4,-3a27.3,27.3 0,0 0,8.6 -16.7L65,46Z" />
+        </group>
+    </group>
+
+</vector>

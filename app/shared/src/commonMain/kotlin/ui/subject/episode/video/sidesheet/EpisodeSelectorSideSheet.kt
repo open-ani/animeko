@@ -108,6 +108,11 @@ class EpisodeSelectorState(
                 && items[currentIndex + 1].isKnownBroadcast // 仅限下一集开播了
     }
 
+    val hasPrevEpisode by derivedStateOf {
+        val currentIndex = currentIndex
+        currentIndex > 0
+    }
+
     fun select(item: Item) {
         onSelect(item)
     }
@@ -125,6 +130,13 @@ class EpisodeSelectorState(
         val currentIndex = currentIndex
         if (currentIndex != -1 && currentIndex < items.lastIndex) {
             onSelect(items[currentIndex + 1])
+        }
+    }
+
+    fun selectPrev() {
+        val currentIndex = currentIndex
+        if (currentIndex > 0) {
+            onSelect(items[currentIndex - 1])
         }
     }
 }

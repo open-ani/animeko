@@ -11,6 +11,8 @@ package me.him188.ani.app.domain.mediasource.web.captcha
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
+import android.os.SystemClock
+import android.view.MotionEvent
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
@@ -18,8 +20,28 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.Dispatchers
@@ -110,15 +132,138 @@ class WebViewCaptchaBrowser private constructor(
     }
 
     @Composable
-    override fun View(modifier: Modifier) {
-        AndroidView(
-            factory = {
-                webView.also { view ->
-                    (view.parent as? ViewGroup)?.removeView(view)
+    override fun View(
+        modifier: Modifier,
+        onExitRequest: (() -> Unit)?,
+        onConfirmRequest: (() -> Unit)?,
+    ) {
+        // 这里不读 LocalAniUiBehavior.focusDrivenNavigation: 对话框宿主挂在 AniApp 的 overlay
+        // 槽位, 不在 AniAppContent 内容树里, 拿不到那个 CompositionLocal; 直接问系统 UiModeManager.
+        val context = LocalContext.current
+        val isTv = remember(context) {
+            val uiModeManager = context.getSystemService(android.content.Context.UI_MODE_SERVICE)
+                    as android.app.UiModeManager
+            uiModeManager.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+        }
+        // TV 遥控器虚拟光标: WebView 自身无法用方向键操作验证码, 用光标 + 注入触摸事件代替.
+        var cursorX by remember { mutableFloatStateOf(-1f) }
+        var cursorY by remember { mutableFloatStateOf(-1f) }
+        val density = LocalDensity.current
+        Box(
+            modifier
+                .onSizeChanged { size ->
+                    // 首次布局把光标放到视图中央 (仅 TV)
+                    if (isTv && cursorX < 0f && size.width > 0) {
+                        cursorX = size.width / 2f
+                        cursorY = size.height / 2f
+                    }
                 }
-            },
-            modifier = modifier,
-        )
+                .then(
+                    if (isTv) {
+                        Modifier.onPreviewKeyEvent { keyEvent ->
+                            tvCursorKeyEvent(
+                                keyEvent = keyEvent,
+                                cursorX = cursorX,
+                                cursorY = cursorY,
+                                onCursorMove = { x, y ->
+                                    cursorX = x
+                                    cursorY = y
+                                },
+                                density = density,
+                                onExitRequest = onExitRequest,
+                                onConfirmRequest = onConfirmRequest,
+                            )
+                        }
+                    } else {
+                        Modifier
+                    },
+                ),
+        ) {
+            AndroidView(
+                factory = {
+                    webView.also { view ->
+                        (view.parent as? ViewGroup)?.removeView(view)
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
+            if (isTv && cursorX >= 0f) {
+                TvCursorCanvas(cursorX, cursorY)
+            }
+        }
+    }
+
+    /**
+     * 处理 TV 遥控器按键 (Compose tunnel 阶段, 在内嵌 WebView 收到按键之前; 返回 true 即消费).
+     *
+     * 返回键: WebView 会抢去做浏览历史后退, 系统返回分发不到 Dialog, 在此拦截转 [onExitRequest].
+     * 方向键: 移动光标 (长按连发加速). 确认键: 首按在光标处注入一次触摸点击;
+     * 按住 ~500ms (首个连发) 转 [onConfirmRequest] (手动确认已解决).
+     */
+    private fun tvCursorKeyEvent(
+        keyEvent: androidx.compose.ui.input.key.KeyEvent,
+        cursorX: Float,
+        cursorY: Float,
+        onCursorMove: (x: Float, y: Float) -> Unit,
+        density: Density,
+        onExitRequest: (() -> Unit)?,
+        onConfirmRequest: (() -> Unit)?,
+    ): Boolean {
+        if (keyEvent.key == Key.Back && keyEvent.type == KeyEventType.KeyUp) {
+            onExitRequest?.invoke()
+            return true
+        }
+        if (keyEvent.type != KeyEventType.KeyDown) return false
+
+        val repeatCount = (keyEvent.nativeKeyEvent as? android.view.KeyEvent)?.repeatCount ?: 0
+        val baseStep = with(density) { 20.dp.toPx() }
+        val step = baseStep * (1f + repeatCount / 12f).coerceAtMost(5f)
+        return when (keyEvent.key) {
+            Key.DirectionUp -> {
+                onCursorMove(cursorX, (cursorY - step).coerceAtLeast(0f))
+                true
+            }
+
+            Key.DirectionDown -> {
+                onCursorMove(cursorX, cursorY + step)
+                true
+            }
+
+            Key.DirectionLeft -> {
+                onCursorMove((cursorX - step).coerceAtLeast(0f), cursorY)
+                true
+            }
+
+            Key.DirectionRight -> {
+                onCursorMove(cursorX + step, cursorY)
+                true
+            }
+
+            Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                when (repeatCount) {
+                    // 首按: 在光标处注入一次触摸点击
+                    0 -> {
+                        val downTime = SystemClock.uptimeMillis()
+                        val down = MotionEvent.obtain(
+                            downTime, downTime, MotionEvent.ACTION_DOWN, cursorX, cursorY, 0,
+                        )
+                        val up = MotionEvent.obtain(
+                            downTime, downTime + 50L, MotionEvent.ACTION_UP, cursorX, cursorY, 0,
+                        )
+                        webView.dispatchTouchEvent(down)
+                        webView.dispatchTouchEvent(up)
+                        down.recycle()
+                        up.recycle()
+                    }
+                    // 按住 ~500ms (首个连发): 手动确认已解决
+                    1 -> onConfirmRequest?.invoke()
+                    // 后续连发: 已确认, 不再动作
+                }
+                true
+            }
+
+            else -> false
+        }
     }
 
     override fun close() {
@@ -169,6 +314,17 @@ class WebViewCaptchaBrowser private constructor(
                 interceptor.value?.invoke(url)
                 super.onLoadResource(view, url)
             }
+        }
+    }
+
+    /** TV 虚拟光标圆点 (白底黑描边, 叠在 WebView 之上). */
+    @Composable
+    private fun TvCursorCanvas(cursorX: Float, cursorY: Float) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val radius = 9.dp.toPx()
+            val center = Offset(cursorX, cursorY)
+            drawCircle(color = Color.White, radius = radius, center = center)
+            drawCircle(color = Color.Black, radius = radius, center = center, style = Stroke(width = 2.5f))
         }
     }
 

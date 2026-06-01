@@ -218,6 +218,21 @@ class UIComment(
     val source: UICommentSource = UICommentSource.BANGUMI,
     val sourceCommentId: String = stableId,
     val canReply: Boolean = false,
+
+    /**
+     * 本条回复所针对的同层回复. 非空表示"回复某条回复", 需要在 UI 上指明回复关系;
+     * 直接回复主楼 (紧邻主楼下方, 缩进已足够表达) 或数据源不提供时为 `null`.
+     */
+    val replyTo: UICommentReplyTarget? = null,
+)
+
+/**
+ * 被回复的那一条回复. [authorName] 已在映射时解析好, UI 层不再查表.
+ */
+@Immutable
+class UICommentReplyTarget(
+    val commentId: String,
+    val authorName: String,
 )
 
 @Immutable
@@ -241,6 +256,7 @@ private fun UIComment.copyWithReactions(reactions: List<UICommentReaction>): UIC
         source = source,
         sourceCommentId = sourceCommentId,
         canReply = canReply,
+        replyTo = replyTo,
     )
 }
 

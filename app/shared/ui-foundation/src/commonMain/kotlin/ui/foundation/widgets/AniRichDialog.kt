@@ -16,12 +16,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * @param buttons aligned to the end
+ * @param buttons aligned to the end; `null` 时整行 (含它的上间距) 不渲染 —— 按钮全部由返回键
+ * 代替的形态 (遥控器) 下留着会在底部空出一块
  */
 @Composable
 fun RichDialogLayout(
     title: @Composable RowScope.() -> Unit,
-    buttons: @Composable RowScope.() -> Unit,
+    buttons: (@Composable RowScope.() -> Unit)?,
     modifier: Modifier = Modifier,
     subtitle: @Composable (RowScope.() -> Unit)? = null,
     description: @Composable (RowScope.() -> Unit)? = null,
@@ -63,12 +64,14 @@ fun RichDialogLayout(
                     content()
                 }
 
-                Row(
-                    Modifier.padding(top = 16.dp).align(Alignment.End),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    buttons()
+                buttons?.let {
+                    Row(
+                        Modifier.padding(top = 16.dp).align(Alignment.End),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        it()
+                    }
                 }
             }
 

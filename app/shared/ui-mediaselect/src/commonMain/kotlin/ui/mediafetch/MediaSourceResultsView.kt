@@ -62,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.materialkolor.ktx.blend
 import kotlinx.coroutines.launch
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.lang.Lang
@@ -143,15 +144,14 @@ fun MediaSourceResultsView(
     Column(modifier) {
         var isShowDetails by rememberSaveable { mutableStateOf(false) }
         Row(
-            Modifier.clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-            ) { isShowDetails = !isShowDetails },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 dataSourcesCountText,
-                Modifier.weight(1f),
+                Modifier.weight(1f).clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) { isShowDetails = !isShowDetails },
                 style = MaterialTheme.typography.titleMedium,
             )
 
@@ -260,7 +260,25 @@ private fun MediaSourceResultsRow(
             }
         }
 
-        if (expanded) {
+        if (LocalAniUiBehavior.current.focusDrivenNavigation) {
+            // 焦点驱动形态: 胶囊按钮 (图标+名称+状态, 聚焦描边), InputChip 的聚焦指示看不清;
+            // 不展开成卡片网格 (展开态为触屏浏览设计)
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = modifier,
+            ) {
+                items(list, key = { "MediaSourceResultsRow-${it.instanceId}" }) { item ->
+                    FocusMediaSourceResultChip(
+                        sourceSelected(item.mediaSourceId),
+                        { onClick(item) },
+                        item,
+                        Modifier.ifThen(item.isDisabled) {
+                            alpha(1 - 0.618f)
+                        },
+                    )
+                }
+            }
+        } else if (expanded) {
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),

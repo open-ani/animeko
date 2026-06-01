@@ -58,6 +58,8 @@ fun NewVersionPopupCard(
     onAutoUpdateClick: () -> Unit,
     onDismissRequest: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    /** "自动更新"按钮的附加 modifier (TV 上挂初始焦点请求器). */
+    autoUpdateButtonModifier: Modifier = Modifier,
 ) {
     BasicNotificationPopupCard(
         title = { Text(stringResource(Lang.settings_update_popup_new_version)) },
@@ -83,7 +85,7 @@ fun NewVersionPopupCard(
             Spacer(Modifier.width(16.dp))
             Button(
                 onClick = onAutoUpdateClick,
-                modifier = Modifier,
+                modifier = autoUpdateButtonModifier,
             ) {
                 Text(stringResource(Lang.settings_update_popup_auto_update))
             }

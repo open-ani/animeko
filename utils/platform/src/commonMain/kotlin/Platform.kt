@@ -28,6 +28,15 @@ sealed class Platform {
 
     data class Android(
         override val arch: Arch,
+        /**
+         * 设备支持的全部 ABI, 按设备自己的偏好排序 (`Build.SUPPORTED_ABIS`).
+         *
+         * 必须与 [arch] 并存而不能只留 [arch]: [arch] 只记首选 ABI, 且被收敛到 [Arch] 的那几个值
+         * (不认识的一律记成 [Arch.ARMV8A]). 判断"哪个安装包装得上"必须看完整列表 —— 例如 x86 的
+         * 电视模拟器首选 ABI 是 `x86` (本项目不出这个包), 但它靠转译支持 `armeabi-v7a`, 该装 v7 包;
+         * 只看 [arch] 会把它当成 arm64 设备, 装 arm64 包必然失败.
+         */
+        val supportedAbis: List<String> = listOf(arch.displayName),
     ) : Mobile() {
         override val name: String get() = "Android"
     }

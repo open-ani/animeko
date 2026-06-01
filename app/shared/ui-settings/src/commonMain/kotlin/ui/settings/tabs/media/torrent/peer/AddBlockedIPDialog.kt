@@ -50,6 +50,7 @@ import me.him188.ani.app.ui.comment.CommentEditorTextState
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
+import me.him188.ani.app.ui.foundation.widgets.dismissDialogButton
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_danmaku_cancel
 import me.him188.ani.app.ui.lang.settings_media_source_subscription_add_confirm
@@ -164,10 +165,6 @@ fun AddBlockedIPDialog(
                 Text(stringResource(Lang.settings_media_source_subscription_add_confirm))
             }
         },
-        dismissButton = {
-            TextButton(dismiss) {
-                Text(stringResource(Lang.settings_danmaku_cancel))
-            }
-        },
+        dismissButton = dismissDialogButton(stringResource(Lang.settings_danmaku_cancel), dismiss),
     )
 }

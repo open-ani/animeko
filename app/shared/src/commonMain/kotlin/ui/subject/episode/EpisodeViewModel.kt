@@ -28,6 +28,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
@@ -142,6 +143,7 @@ import me.him188.ani.app.ui.subject.episode.details.DanmakuListState
 import me.him188.ani.app.ui.subject.episode.details.DanmakuListStateProducer
 import me.him188.ani.app.ui.subject.episode.details.EpisodeCarouselState
 import me.him188.ani.app.ui.subject.episode.details.EpisodeDetailsState
+import me.him188.ani.app.ui.subject.episode.list.EpisodeListUiState
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatisticsCollector
@@ -182,6 +184,7 @@ import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.features.chapters
 import org.openani.mediamp.metadata.Chapter
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -470,6 +473,27 @@ class EpisodeViewModel(
             subjectDetailsStateLoader = SubjectDetailsStateLoader(subjectDetailsStateFactory, backgroundScope),
         )
     }
+
+    /**
+     * 分集列表 (TV 播放器的选集条用). `null` 表示还没到.
+     *
+     * 与详情页那份 [EpisodeListUiState] 用的是同一个算法, 区别只在数据来源: 这里走播放器自己的
+     * 数据路径 (播放会话的 info bundle), 那是起播的必经之路 —— 没有它连播哪一集都不知道,
+     * 因此它必然比 [EpisodeDetailsState.subjectDetailsStateLoader] 那套完整详情状态先到.
+     *
+     * 选集条原先直接读详情状态里的分集列表, 于是"能不能选集"被绑在了整套详情状态的组装上;
+     * 而那套东西在起播这一刻要跟种子引擎/解码器抢 CPU, 实测首次 Ok 的耗时波动在 88ms ~ 2.7 秒
+     * (与条目是否新鲜无关, 纯粹是 Dispatchers.Default 排队), 表现为按下键后选集条迟迟不出来.
+     * 详情状态仍然负责 TMDB 剧照/时长/简介那些增量信息 —— 它们没到只是卡片暂时无图, 不该
+     * 反过来卡住整条选集条的可用性.
+     *
+     * 不带详情页那份 minuteTicker: 少数"播放期间正好有新集开播"的情况下 `isBroadcast` 会偏旧,
+     * 代价只是那一张卡的未开播标记, 不值得为它每分钟重算一遍整个列表.
+     */
+    @OptIn(UnsafeEpisodeSessionApi::class)
+    val episodeListUiStateFlow: StateFlow<EpisodeListUiState?> = subjectCollectionFlow
+        .map { EpisodeListUiState.from(it, Clock.System.now()) }
+        .stateIn(backgroundScope, SharingStarted.Eagerly, null)
 
     /**
      * 剧集列表分页分组
