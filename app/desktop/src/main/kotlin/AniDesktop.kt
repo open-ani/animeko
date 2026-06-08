@@ -443,6 +443,7 @@ object AniDesktop {
             val exitApplicationSavingWindowState = remember(saveCurrentWindowState) {
                 {
                     saveCurrentWindowState()
+                    AniCefApp.disposeBlocking()
                     exitApplication()
                 }
             }
@@ -454,7 +455,7 @@ object AniDesktop {
             }
             MacOSQuitHandler(
                 saveCurrentWindowState = saveCurrentWindowState,
-                exitApplication = ::exitApplication,
+                exitApplication = exitApplicationSavingWindowState,
             )
 
             val uiSettings by settingsRepository.uiSettings.flow.collectAsState(UISettings.Default)

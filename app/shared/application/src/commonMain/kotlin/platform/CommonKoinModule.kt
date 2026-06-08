@@ -480,7 +480,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<MeteredNetworkDetector> { createMeteredNetworkDetector(getContext()) }
     single<SubjectDetailsStateFactory> { DefaultSubjectDetailsStateFactory() }
 
-    single<TurnstileState> {
+    factory<TurnstileState> {
         CreateTurnstileState(
             buildString {
                 append(get<BangumiClient>().turnstileBaseUrl)

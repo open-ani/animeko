@@ -91,6 +91,7 @@ class DesktopWebCaptchaCoordinator(
     private val solvedResults = linkedMapOf<String, WebCaptchaSolveResult.Solved>()
     private val sessions = linkedMapOf<String, DesktopCaptchaSession>()
     private val solvedByMediaSource = linkedMapOf<String, SolvedSessionEntry>()
+    private val sessionLock = Any()
 
     override fun getSolvedCookies(
         mediaSourceId: String,
@@ -105,11 +106,14 @@ class DesktopWebCaptchaCoordinator(
         timeoutMillis: Long,
         resourceMatcher: (String) -> WebViewVideoExtractor.Instruction,
     ): WebResource? {
-        val selectedKey = findSolvedSessionKey(mediaSourceId, pageUrl) ?: return null
-        sessions[selectedKey]?.let { session ->
+        val selected = synchronized(sessionLock) {
+            val selectedKey = findSolvedSessionKeyLocked(mediaSourceId, pageUrl) ?: return null
+            sessions[selectedKey] to solvedResults.containsKey(selectedKey)
+        }
+        selected.first?.let { session ->
             return session.extractVideoResource(pageUrl, timeoutMillis, resourceMatcher)
         }
-        solvedResults[selectedKey] ?: return null
+        if (!selected.second) return null
         return withTemporarySession { session ->
             session.extractVideoResource(pageUrl, timeoutMillis, resourceMatcher)
         }
@@ -119,18 +123,21 @@ class DesktopWebCaptchaCoordinator(
         mediaSourceId: String,
         pageUrl: String,
     ): WebCaptchaLoadedPage? {
-        val selectedKey = findSolvedSessionKey(mediaSourceId, pageUrl) ?: return null
-        sessions[selectedKey]?.let { session ->
+        val selected = synchronized(sessionLock) {
+            val selectedKey = findSolvedSessionKeyLocked(mediaSourceId, pageUrl) ?: return null
+            sessions[selectedKey] to solvedResults.containsKey(selectedKey)
+        }
+        selected.first?.let { session ->
             return session.loadPage(pageUrl)
         }
-        solvedResults[selectedKey] ?: return null
+        if (!selected.second) return null
         return withTemporarySession { session ->
             session.loadPage(pageUrl)
         }
     }
 
     override suspend fun tryAutoSolve(request: WebCaptchaRequest): WebCaptchaSolveResult {
-        solvedResults[request.storageKey()]?.let {
+        synchronized(sessionLock) { solvedResults[request.storageKey()] }?.let {
             return it
         }
 
@@ -146,7 +153,7 @@ class DesktopWebCaptchaCoordinator(
     }
 
     override suspend fun solveInteractively(request: WebCaptchaRequest): WebCaptchaSolveResult {
-        solvedResults[request.storageKey()]?.let {
+        synchronized(sessionLock) { solvedResults[request.storageKey()] }?.let {
             return it
         }
 
@@ -201,29 +208,36 @@ class DesktopWebCaptchaCoordinator(
 
     override fun resetSolvedSession(mediaSourceId: String) {
         interactiveSolveState = interactiveSolveState?.takeUnless { it.request.mediaSourceId == mediaSourceId }
-        solvedByMediaSource.remove(mediaSourceId)
-        solvedResults.keys
-            .filter { it.startsWith("$mediaSourceId@") }
-            .toList()
-            .forEach { key ->
-                solvedResults.remove(key)
-                sessions.remove(key)?.cancel()
-            }
+        val sessionsToCancel = synchronized(sessionLock) {
+            solvedByMediaSource.remove(mediaSourceId)
+            solvedResults.keys
+                .filter { it.startsWith("$mediaSourceId@") }
+                .toList()
+                .mapNotNull { key ->
+                    solvedResults.remove(key)
+                    sessions.remove(key)
+                }
+        }
+        sessionsToCancel.forEach { it.cancel() }
     }
 
     override fun cancelAutoResolutionRequests() {
         val interactiveSession = interactiveSolveState?.session
-        val autoSessionKeys = sessions
-            .filterValues { it !== interactiveSession }
-            .keys
-            .toList()
-        autoSessionKeys.forEach { key ->
-            sessions.remove(key)?.cancel()
-            solvedResults.remove(key)
+        val sessionsToCancel = synchronized(sessionLock) {
+            val autoSessionKeys = sessions
+                .filterValues { it !== interactiveSession }
+                .keys
+                .toList()
+            val removedSessions = autoSessionKeys.mapNotNull { key ->
+                solvedResults.remove(key)
+                sessions.remove(key)
+            }
+            solvedByMediaSource.entries.removeAll { (_, entry) ->
+                entry.key in autoSessionKeys
+            }
+            removedSessions
         }
-        solvedByMediaSource.entries.removeAll { (_, entry) ->
-            entry.key in autoSessionKeys
-        }
+        sessionsToCancel.forEach { it.cancel() }
     }
 
     @Composable
@@ -312,9 +326,26 @@ class DesktopWebCaptchaCoordinator(
         return WebCaptchaSolveResult.StillBlocked(lastKind ?: request.kind)
     }
 
-    private fun getOrCreateSession(request: WebCaptchaRequest): DesktopCaptchaSession {
+    private suspend fun getOrCreateSession(request: WebCaptchaRequest): DesktopCaptchaSession {
         val key = request.storageKey()
-        return sessions.getOrPut(key) { createSession() }
+        synchronized(sessionLock) {
+            sessions[key]?.let { return it }
+        }
+
+        val newSession = createSession()
+        var duplicateSession: DesktopCaptchaSession? = null
+        val result = synchronized(sessionLock) {
+            val existing = sessions[key]
+            if (existing != null) {
+                duplicateSession = newSession
+                existing
+            } else {
+                sessions[key] = newSession
+                newSession
+            }
+        }
+        duplicateSession?.cancel()
+        return result
     }
 
     private fun rememberSolved(
@@ -324,9 +355,11 @@ class DesktopWebCaptchaCoordinator(
     ) {
         if (result is WebCaptchaSolveResult.Solved) {
             val key = request.storageKey()
-            sessions[key] = session
-            solvedResults[key] = result
-            solvedByMediaSource[request.mediaSourceId] = SolvedSessionEntry(key)
+            synchronized(sessionLock) {
+                sessions[key] = session
+                solvedResults[key] = result
+                solvedByMediaSource[request.mediaSourceId] = SolvedSessionEntry(key)
+            }
         }
     }
 
@@ -334,13 +367,16 @@ class DesktopWebCaptchaCoordinator(
         key: String,
         session: DesktopCaptchaSession,
     ) {
-        if (interactiveSolveState?.session === session) {
-            return
+        val shouldCancel = synchronized(sessionLock) {
+            if (interactiveSolveState?.session === session) {
+                return
+            }
+            if (sessions[key] === session) {
+                sessions.remove(key)
+            }
+            sessions.none { it.value === session }
         }
-        if (sessions[key] === session) {
-            sessions.remove(key)
-        }
-        if (sessions.none { it.value === session }) {
+        if (shouldCancel) {
             session.cancel()
         }
     }
@@ -360,11 +396,13 @@ class DesktopWebCaptchaCoordinator(
         mediaSourceId: String,
         pageUrl: String,
     ): WebCaptchaSolveResult.Solved? {
-        val selectedKey = findSolvedSessionKey(mediaSourceId, pageUrl) ?: return null
-        return solvedResults[selectedKey]
+        return synchronized(sessionLock) {
+            val selectedKey = findSolvedSessionKeyLocked(mediaSourceId, pageUrl) ?: return@synchronized null
+            solvedResults[selectedKey]
+        }
     }
 
-    private fun findSolvedSessionKey(
+    private fun findSolvedSessionKeyLocked(
         mediaSourceId: String,
         pageUrl: String,
     ): String? {
@@ -418,14 +456,27 @@ class DesktopWebCaptchaCoordinator(
         ).storageKey()
     }
 
-    private fun createSession(): DesktopCaptchaSession {
-        return runBlocking {
-            AniCefApp.suspendCoroutineOnCefContext {
-                val client = AniCefApp.createClient()
-                    ?: return@suspendCoroutineOnCefContext DesktopCaptchaSession(EmptyComponent)
+    private suspend fun createSession(): DesktopCaptchaSession {
+        var permit: AniCefApp.BrowserLifecyclePermit? = AniCefApp.acquireBrowserLifecyclePermit()
+        var client: CefClient? = null
+        var browser: CefBrowser? = null
+        var session: DesktopCaptchaSession? = null
+        try {
+            return AniCefApp.suspendCoroutineOnCefContext {
+                val createdClient = AniCefApp.createClient()
+                    ?: return@suspendCoroutineOnCefContext DesktopCaptchaSession(EmptyComponent).also {
+                        permit?.release()
+                        permit = null
+                    }
+                client = createdClient
 
-                val session = DesktopCaptchaSession(EmptyComponent)
-                client.addLoadHandler(
+                val createdSession = DesktopCaptchaSession(
+                    component = EmptyComponent,
+                    browserPermit = permit,
+                )
+                session = createdSession
+                permit = null
+                createdClient.addLoadHandler(
                     object : CefLoadHandlerAdapter() {
                         override fun onLoadingStateChange(
                             browser: CefBrowser?,
@@ -434,7 +485,7 @@ class DesktopWebCaptchaCoordinator(
                             canGoForward: Boolean,
                         ) {
                             if (browser == null) return
-                            session.updateLoadingState(isLoading)
+                            createdSession.updateLoadingState(isLoading)
                         }
 
                         override fun onLoadEnd(
@@ -443,11 +494,11 @@ class DesktopWebCaptchaCoordinator(
                             httpStatusCode: Int,
                         ) {
                             if (browser == null || frame?.isMain != true) return
-                            session.dispatchLoadedPage(browser)
+                            createdSession.dispatchLoadedPage(browser)
                         }
                     },
                 )
-                client.addRequestHandler(
+                createdClient.addRequestHandler(
                     object : CefRequestHandlerAdapter() {
                         override fun getResourceRequestHandler(
                             browser: CefBrowser?,
@@ -464,7 +515,7 @@ class DesktopWebCaptchaCoordinator(
                                     frame: CefFrame?,
                                     request: CefRequest?,
                                 ): Boolean {
-                                    if (browser != null && request != null && session.handleVideoRequest(
+                                    if (browser != null && request != null && createdSession.handleVideoRequest(
                                             browser,
                                             request,
                                         )
@@ -478,22 +529,28 @@ class DesktopWebCaptchaCoordinator(
                     },
                 )
 
-                val browser = client.createBrowser(
+                val createdBrowser = createdClient.createBrowser(
                     "about:blank",
                     CefRendering.DEFAULT,
                     true,
                     CefRequestContext.getGlobalContext(),
                 )
-                browser.setCloseAllowed()
-                browser.createImmediately()
-                session.attach(client, browser)
-                session
+                browser = createdBrowser
+                createdBrowser.setCloseAllowed()
+                createdBrowser.createImmediately()
+                createdSession.attach(createdClient, createdBrowser)
+                createdSession
             }
+        } catch (e: Throwable) {
+            AniCefApp.closeBrowserAndDisposeClientBlocking(browser, client)
+            session?.dispose() ?: permit?.release()
+            throw e
         }
     }
 
     private class DesktopCaptchaSession(
         var component: Component,
+        private var browserPermit: AniCefApp.BrowserLifecyclePermit? = null,
     ) {
         private data class VideoExtractionState(
             val deferred: CompletableDeferred<WebResource>,
@@ -772,9 +829,17 @@ class DesktopWebCaptchaCoordinator(
         }
 
         fun dispose() {
-            AniCefApp.runOnCefContext {
-                browser?.close(true)
-                client?.dispose()
+            val currentBrowser = browser
+            val currentClient = client
+            val currentBrowserPermit = browserPermit
+            browser = null
+            client = null
+            browserPermit = null
+            component = EmptyComponent
+            try {
+                AniCefApp.closeBrowserAndDisposeClientBlocking(currentBrowser, currentClient)
+            } finally {
+                currentBrowserPermit?.release()
             }
         }
 

@@ -13,7 +13,9 @@ import com.jetbrains.cef.JCefAppConfig
 import io.ktor.http.Url
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.utils.io.readLastNLines
 import me.him188.ani.utils.logging.error
@@ -37,7 +39,10 @@ import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.text.SimpleDateFormat
+import java.util.Collections
 import java.util.Date
+import java.util.IdentityHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.swing.SwingUtilities
 import kotlin.concurrent.thread
 import kotlin.coroutines.resume
@@ -55,6 +60,8 @@ object AniCefApp {
         private set
 
     private val lock = Mutex()
+    private val browserLifecycleSemaphore = Semaphore(2)
+    private val disposedApps = Collections.newSetFromMap(IdentityHashMap<CefApp, Boolean>())
 
     private var proxyServer: Url? = null
     private var proxyAuthUsername: String? = null
@@ -208,7 +215,7 @@ object AniCefApp {
 
             Runtime.getRuntime().addShutdownHook(
                 thread(start = false) {
-                    runOnCefContext { newApp.dispose() }
+                    disposeAppBlocking(newApp)
                 },
             )
 
@@ -220,7 +227,7 @@ object AniCefApp {
             logger.info { "Awaiting JCEF initialization." }
             suspendCancellableCoroutine<Unit> { cont ->
                 cefApp.onInitialization { state ->
-                    if (state == CefApp.CefAppState.INITIALIZED) {
+                    if (state == CefApp.CefAppState.INITIALIZED && cont.isActive) {
                         logger.info { "JCEF is initialized." }
                         cont.resume(Unit)
                     }
@@ -229,6 +236,8 @@ object AniCefApp {
         }.also { result ->
             if (result == null) {
                 // 长时间没加载好 JCEF, 可能是 CEF 内部出错了, 直接抛出异常并附带最新的 CEF 日志.
+                app = null
+                disposeAppBlocking(cefApp)
                 throw JCEFInitializationException(
                     "Failed to initialize JCEF, state: ${CefApp.getState()}, " +
                             "last cef logs: \n${getLatestCefLog().joinToString("\n")}",
@@ -280,6 +289,84 @@ object AniCefApp {
     fun createClient(): CefClient? {
         return app?.createClient()
             ?.apply { addRequestHandler(proxiedRequestHandler) }
+    }
+
+    suspend fun <T> withBrowserCreationPermit(block: suspend () -> T): T {
+        return browserLifecycleSemaphore.withPermit {
+            block()
+        }
+    }
+
+    suspend fun acquireBrowserLifecyclePermit(): BrowserLifecyclePermit {
+        browserLifecycleSemaphore.acquire()
+        return BrowserLifecyclePermit(browserLifecycleSemaphore)
+    }
+
+    class BrowserLifecyclePermit internal constructor(
+        private val semaphore: Semaphore,
+    ) {
+        private val released = AtomicBoolean(false)
+
+        fun release() {
+            if (released.compareAndSet(false, true)) {
+                semaphore.release()
+            }
+        }
+    }
+
+    suspend fun closeBrowserAndDisposeClient(
+        browser: CefBrowser?,
+        client: CefClient?,
+    ) {
+        suspendCoroutineOnCefContext {
+            closeBrowserAndDisposeClientNow(browser, client)
+        }
+    }
+
+    fun closeBrowserAndDisposeClientBlocking(
+        browser: CefBrowser?,
+        client: CefClient?,
+    ) {
+        blockOnCefContext {
+            closeBrowserAndDisposeClientNow(browser, client)
+        }
+    }
+
+    fun disposeBlocking() {
+        val currentApp = app ?: return
+        app = null
+        disposeAppBlocking(currentApp)
+    }
+
+    private fun disposeAppBlocking(target: CefApp) {
+        val shouldDispose = synchronized(disposedApps) {
+            disposedApps.add(target)
+        }
+        if (!shouldDispose) return
+
+        runCatching {
+            blockOnCefContext {
+                target.dispose()
+            }
+        }.onFailure {
+            logger.warn(it) { "Failed to dispose JCEF." }
+        }
+    }
+
+    private fun closeBrowserAndDisposeClientNow(
+        browser: CefBrowser?,
+        client: CefClient?,
+    ) {
+        runCatching {
+            browser?.close(true)
+        }.onFailure {
+            logger.warn(it) { "Failed to close CEF browser." }
+        }
+        runCatching {
+            client?.dispose()
+        }.onFailure {
+            logger.warn(it) { "Failed to dispose CEF client." }
+        }
     }
 
     /**

@@ -13,6 +13,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.graphics.Color
@@ -38,6 +39,7 @@ class DesktopTurnstileState(
 ) : TurnstileState {
     private var client: CefClient? = null
     private var browser: CefBrowser? = null
+    private var browserPermit: AniCefApp.BrowserLifecyclePermit? = null
 
     var isDarkTheme: Boolean = false
 
@@ -49,12 +51,24 @@ class DesktopTurnstileState(
     }
 
     fun initializeBrowser(): Component = runBlocking {
-        AniCefApp.suspendCoroutineOnCefContext {
-            val newClient = AniCefApp.createClient()
-                ?: throw IllegalStateException("AniCefApp should be initialized.")
+        browser?.uiComponent?.let { return@runBlocking it }
 
-            client = newClient.apply { 
-                addLoadHandler(object : CefLoadHandlerAdapter() {
+        var createdPermit: AniCefApp.BrowserLifecyclePermit? = AniCefApp.acquireBrowserLifecyclePermit()
+        var createdClient: CefClient? = null
+        var createdBrowser: CefBrowser? = null
+        try {
+            AniCefApp.suspendCoroutineOnCefContext {
+                browser?.uiComponent?.let {
+                    createdPermit?.release()
+                    createdPermit = null
+                    return@suspendCoroutineOnCefContext it
+                }
+
+                val newClient = AniCefApp.createClient()
+                    ?: throw IllegalStateException("AniCefApp should be initialized.")
+                createdClient = newClient
+
+                newClient.addLoadHandler(object : CefLoadHandlerAdapter() {
                     override fun onLoadError(
                         browser: CefBrowser?,
                         frame: CefFrame?,
@@ -65,7 +79,7 @@ class DesktopTurnstileState(
                         if (frame?.isMain != true || errorCode == null) {
                             return super.onLoadError(browser, frame, errorCode, errorText, failedUrl)
                         }
-                        
+
                         if (errorCode in networkErrors) {
                             webErrorFlow.tryEmit(TurnstileState.Error.Network(errorCode.code))
                         } else {
@@ -74,43 +88,53 @@ class DesktopTurnstileState(
                         return super.onLoadError(browser, frame, errorCode, errorText, failedUrl)
                     }
                 })
-            }
 
-            val newBrowser = newClient.createBrowser(
-                concatUrl(),
-                CefRendering.DEFAULT,
-                true,
-                CefRequestContext.createContext { _, _, _, _, _, _, _ ->
-                    object : CefResourceRequestHandlerAdapter() {
-                        override fun onBeforeResourceLoad(
-                            browser: CefBrowser?,
-                            frame: CefFrame?,
-                            request: CefRequest?,
-                        ): Boolean {
-                            val requestUrl = request?.url
-                            if (requestUrl != null &&
-                                requestUrl.startsWith(TurnstileState.CALLBACK_INTERCEPTION_PREFIX)
-                            ) {
-                                val responseToken = TurnstileState.CALLBACK_REGEX
-                                    .matchEntire(requestUrl)?.groupValues?.getOrNull(1)
-                                if (responseToken != null) {
-                                    tokenFlow.tryEmit(
-                                        requestUrl.substringAfter(
-                                            TurnstileState.CALLBACK_INTERCEPTION_PREFIX,
-                                        ),
-                                    )
-                                    return true
+                val newBrowser = newClient.createBrowser(
+                    concatUrl(),
+                    CefRendering.DEFAULT,
+                    true,
+                    CefRequestContext.createContext { _, _, _, _, _, _, _ ->
+                        object : CefResourceRequestHandlerAdapter() {
+                            override fun onBeforeResourceLoad(
+                                browser: CefBrowser?,
+                                frame: CefFrame?,
+                                request: CefRequest?,
+                            ): Boolean {
+                                val requestUrl = request?.url
+                                if (requestUrl != null &&
+                                    requestUrl.startsWith(TurnstileState.CALLBACK_INTERCEPTION_PREFIX)
+                                ) {
+                                    val responseToken = TurnstileState.CALLBACK_REGEX
+                                        .matchEntire(requestUrl)?.groupValues?.getOrNull(1)
+                                    if (responseToken != null) {
+                                        tokenFlow.tryEmit(
+                                            requestUrl.substringAfter(
+                                                TurnstileState.CALLBACK_INTERCEPTION_PREFIX,
+                                            ),
+                                        )
+                                        return true
+                                    }
                                 }
+                                return super.onBeforeResourceLoad(browser, frame, request)
                             }
-                            return super.onBeforeResourceLoad(browser, frame, request)
                         }
-                    }
-                },
-            )
+                    },
+                )
 
-            browser = newBrowser
-            newBrowser.setCloseAllowed()
-            newBrowser.uiComponent.apply { }
+                createdBrowser = newBrowser
+                newBrowser.setCloseAllowed()
+                val component = newBrowser.uiComponent
+                client = newClient
+                browser = newBrowser
+                browserPermit = createdPermit
+                createdPermit = null
+                component
+            }
+        } catch (e: Throwable) {
+            AniCefApp.closeBrowserAndDisposeClientBlocking(createdBrowser, createdClient)
+            throw e
+        } finally {
+            createdPermit?.release()
         }
     }
 
@@ -121,11 +145,16 @@ class DesktopTurnstileState(
     }
 
     override fun cancel() {
-        AniCefApp.blockOnCefContext {
-            browser?.close(true)
-            client?.dispose()
-            client = null
-            browser = null
+        val currentBrowser = browser
+        val currentClient = client
+        val currentBrowserPermit = browserPermit
+        browser = null
+        client = null
+        browserPermit = null
+        try {
+            AniCefApp.closeBrowserAndDisposeClientBlocking(currentBrowser, currentClient)
+        } finally {
+            currentBrowserPermit?.release()
         }
     }
     
@@ -154,6 +183,12 @@ actual fun ActualTurnstile(
 ) {
     check(state is DesktopTurnstileState)
     val isDark = isSystemInDarkTheme()
+
+    DisposableEffect(state) {
+        onDispose {
+            state.cancel()
+        }
+    }
 
     SwingPanel(
         background = Color.Transparent,
