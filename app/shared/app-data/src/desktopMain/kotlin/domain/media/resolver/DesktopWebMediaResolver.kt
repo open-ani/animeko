@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -20,6 +20,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
@@ -109,19 +110,19 @@ class DesktopWebMediaResolver(
             }
 
             val webVideo = (
-                webCaptchaCoordinator.extractVideoResourceInSolvedSession(
-                    mediaSourceId = media.mediaSourceId,
-                    pageUrl = media.download.uri,
-                    timeoutMillis = resolverSettings.effectiveResourceExtractionTimeoutMillis,
-                    resourceMatcher = resourceMatcher,
-                ) ?: CefVideoExtractor(proxyProvider.proxy.first(), resolverSettings)
-                    .getVideoResourceUrl(
-                        this@DesktopWebMediaResolver.context,
-                        media.download.uri,
-                        webViewConfig,
+                    webCaptchaCoordinator.extractVideoResourceInSolvedSession(
+                        mediaSourceId = media.mediaSourceId,
+                        pageUrl = media.download.uri,
+                        timeoutMillis = resolverSettings.effectiveResourceExtractionTimeoutMillis,
                         resourceMatcher = resourceMatcher,
-                    )
-                )?.let {
+                    ) ?: CefVideoExtractor(proxyProvider.proxy.first(), resolverSettings)
+                        .getVideoResourceUrl(
+                            this@DesktopWebMediaResolver.context,
+                            media.download.uri,
+                            webViewConfig,
+                            resourceMatcher = resourceMatcher,
+                        )
+                    )?.let {
                     (match(it.url) as? WebVideoMatcher.MatchResult.Matched)?.video
                 } ?: throw MediaResolutionException(ResolutionFailures.NO_MATCHING_RESOURCE)
             return@withContext HttpStreamingMediaDataProvider(
@@ -208,7 +209,7 @@ class CefVideoExtractor(
                                             if (browser.url == url || lastUrl.value == url) return false // don't recurse
                                             logger.info { "CEF loading nested page: $url, lastUrl=${lastUrl.value}" }
                                             lastUrl.value = url
-                                            val escapedUrl = json.encodeToString(kotlinx.serialization.builtins.serializer<String>(), url)
+                                            val escapedUrl = json.encodeToString(String.serializer(), url)
                                             AniCefApp.runOnCefContext {
                                                 browser.executeJavaScript("window.location.href=$escapedUrl;", "", 1)
                                             }
