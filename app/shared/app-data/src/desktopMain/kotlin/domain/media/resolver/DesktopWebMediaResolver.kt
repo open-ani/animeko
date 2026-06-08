@@ -208,8 +208,9 @@ class CefVideoExtractor(
                                             if (browser.url == url || lastUrl.value == url) return false // don't recurse
                                             logger.info { "CEF loading nested page: $url, lastUrl=${lastUrl.value}" }
                                             lastUrl.value = url
+                                            val escapedUrl = json.encodeToString(kotlinx.serialization.builtins.serializer<String>(), url)
                                             AniCefApp.runOnCefContext {
-                                                browser.executeJavaScript("window.location.href='$url';", "", 1)
+                                                browser.executeJavaScript("window.location.href=$escapedUrl;", "", 1)
                                             }
                                             return true
                                         }
