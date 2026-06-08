@@ -107,11 +107,7 @@ class DesktopTurnstileState(
                                     val responseToken = TurnstileState.CALLBACK_REGEX
                                         .matchEntire(requestUrl)?.groupValues?.getOrNull(1)
                                     if (responseToken != null) {
-                                        tokenFlow.tryEmit(
-                                            requestUrl.substringAfter(
-                                                TurnstileState.CALLBACK_INTERCEPTION_PREFIX,
-                                            ),
-                                        )
+                                        tokenFlow.tryEmit(responseToken)
                                         return true
                                     }
                                 }
