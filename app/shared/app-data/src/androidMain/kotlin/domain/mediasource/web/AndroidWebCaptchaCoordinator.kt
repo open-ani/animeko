@@ -10,6 +10,7 @@
 package me.him188.ani.app.domain.mediasource.web
 
 import android.annotation.SuppressLint
+import android.graphics.Bitmap
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebResourceError
@@ -385,12 +386,26 @@ class AndroidWebCaptchaCoordinator(
 
         private var pendingLoad by mutableStateOf<CompletableDeferred<WebCaptchaLoadedPage>?>(null)
         private val pageObservers = linkedMapOf<Int, (WebCaptchaLoadedPage) -> Unit>()
+        @Volatile
         private var videoExtractionState: VideoExtractionState? = null
+
+        @Volatile
+        private var currentPageUrl: String? = null
 
         init {
             configure(webView)
             webView.webViewClient = object : WebViewClient() {
+                override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
+                    if (!url.isNullOrEmpty()) {
+                        currentPageUrl = url
+                    }
+                    super.onPageStarted(view, url, favicon)
+                }
+
                 override fun onPageFinished(view: WebView, url: String?) {
+                    if (!url.isNullOrEmpty()) {
+                        currentPageUrl = url
+                    }
                     dispatchCurrentPage(view)
                 }
 
@@ -402,7 +417,7 @@ class AndroidWebCaptchaCoordinator(
                     if (request?.isForMainFrame == true && pendingLoad?.isActive == true) {
                         pendingLoad?.complete(
                             WebCaptchaLoadedPage(
-                                finalUrl = view?.url ?: request.url.toString(),
+                                finalUrl = currentPageUrl ?: request.url.toString(),
                                 html = "",
                             ),
                         )
@@ -414,7 +429,7 @@ class AndroidWebCaptchaCoordinator(
                     request: WebResourceRequest,
                 ): WebResourceResponse? {
                     val url = request.url?.toString() ?: return super.shouldInterceptRequest(view, request)
-                    if (handleVideoResource(view, url)) {
+                    if (handleVideoResource(url)) {
                         return WebResourceResponse(
                             "text/plain",
                             "UTF-8",
@@ -428,7 +443,7 @@ class AndroidWebCaptchaCoordinator(
                 }
 
                 override fun onLoadResource(view: WebView, url: String) {
-                    handleVideoResource(view, url)
+                    handleVideoResource(url)
                     super.onLoadResource(view, url)
                 }
             }
@@ -451,6 +466,7 @@ class AndroidWebCaptchaCoordinator(
             val initialPage = withContext(Dispatchers.Main) {
                 val deferred = CompletableDeferred<WebCaptchaLoadedPage>()
                 pendingLoad = deferred
+                currentPageUrl = pageUrl
                 webView.loadUrl(pageUrl)
                 try {
                     withTimeoutOrNull(timeoutMillis.coerceAtMost(5_000)) {
@@ -466,11 +482,13 @@ class AndroidWebCaptchaCoordinator(
         }
 
         suspend fun loadUrl(pageUrl: String) = withContext(Dispatchers.Main) {
+            currentPageUrl = pageUrl
             webView.loadUrl(pageUrl)
         }
 
         suspend fun snapshotCurrentPage(): WebCaptchaLoadedPage? = withContext(Dispatchers.Main) {
             val currentUrl = webView.url ?: return@withContext null
+            currentPageUrl = currentUrl
             val deferred = CompletableDeferred<WebCaptchaLoadedPage>()
             webView.evaluateJavascript(
                 "(function(){var d=document.documentElement; return d ? d.outerHTML : '';})()",
@@ -500,6 +518,7 @@ class AndroidWebCaptchaCoordinator(
             )
             videoExtractionState = state
             try {
+                currentPageUrl = pageUrl
                 webView.loadUrl(pageUrl)
                 withTimeoutOrNull(timeoutMillis) {
                     deferred.await()
@@ -544,12 +563,13 @@ class AndroidWebCaptchaCoordinator(
         }
 
         private fun dispatchCurrentPage(webView: WebView) {
-            if (webView.url.isNullOrEmpty()) return
+            val currentUrl = webView.url?.takeIf { it.isNotEmpty() } ?: return
+            currentPageUrl = currentUrl
             webView.evaluateJavascript(
                 "(function(){var d=document.documentElement; return d ? d.outerHTML : '';})()",
             ) { rawHtml ->
                 val page = WebCaptchaLoadedPage(
-                    finalUrl = webView.url.orEmpty(),
+                    finalUrl = currentUrl,
                     html = decodeJavascriptString(rawHtml),
                 )
                 pendingLoad?.takeIf { it.isActive }?.complete(page)
@@ -565,7 +585,6 @@ class AndroidWebCaptchaCoordinator(
         }
 
         private fun handleVideoResource(
-            webView: WebView,
             url: String,
         ): Boolean {
             val state = videoExtractionState ?: return false
@@ -577,14 +596,15 @@ class AndroidWebCaptchaCoordinator(
                 }
 
                 WebViewVideoExtractor.Instruction.LoadPage -> {
-                    if (webView.url == url) {
+                    if (currentPageUrl == url) {
                         return false
                     }
                     if (!state.loadedNestedUrls.add(url)) {
                         return false
                     }
                     webView.post {
-                        if (state.deferred.isActive) {
+                        if (state.deferred.isActive && currentPageUrl != url) {
+                            currentPageUrl = url
                             webView.loadUrl(url)
                         }
                     }
