@@ -186,6 +186,10 @@ internal class LocalCaptchaSite(
 
     fun subjectUrl(): String = "$baseUrl/subject/1"
 
+    fun embedUrl(): String = "$baseUrl/embed/1"
+
+    fun embedTriggerUrl(): String = "$baseUrl/embed-trigger"
+
     override fun close() {
         running.set(false)
         runCatching { serverSocket.close() }
@@ -253,6 +257,10 @@ internal class LocalCaptchaSite(
             path == "/embed/1" -> {
                 embedRequests += SiteRequest(path, hasClearanceCookie)
                 respond(socket, okEmbedPage())
+            }
+
+            path == "/embed-trigger" -> {
+                respond(socket, okEmbedTriggerPage())
             }
 
             path == "/stream/1.m3u8" -> {
@@ -409,6 +417,18 @@ internal class LocalCaptchaSite(
             <html>
               <body>
                 <div class="missing-gate">$reason</div>
+              </body>
+            </html>
+        """.trimIndent()
+    }
+
+    private fun okEmbedTriggerPage(): String {
+        return """
+            <html>
+              <body>
+                <script>
+                  fetch("$baseUrl/embed/1").catch(function(){});
+                </script>
               </body>
             </html>
         """.trimIndent()

@@ -341,4 +341,36 @@ class AndroidWebCaptchaSessionReuseE2eTest {
             assertTrue(site.streamRequests.isNotEmpty())
         }
     }
+
+    @Test
+    fun `video extraction can load nested page from intercepted subresource`() = runBlocking {
+        LocalCaptchaSite().use { site ->
+            val mediaSourceId = "e2e-loadpage-subresource"
+            val coordinator = AndroidWebCaptchaCoordinator(context)
+            val solved = coordinator.tryAutoSolve(
+                WebCaptchaRequest(
+                    mediaSourceId = mediaSourceId,
+                    pageUrl = site.searchUrl("Test Subject"),
+                    kind = WebCaptchaKind.Cloudflare,
+                ),
+            )
+            assertIs<WebCaptchaSolveResult.Solved>(solved)
+
+            val extracted = coordinator.extractVideoResourceInSolvedSession(
+                mediaSourceId = mediaSourceId,
+                pageUrl = site.embedTriggerUrl(),
+                timeoutMillis = 5_000,
+            ) { url ->
+                when {
+                    url == site.embedUrl() -> WebViewVideoExtractor.Instruction.LoadPage
+                    url.endsWith("/stream/1.m3u8") -> WebViewVideoExtractor.Instruction.FoundResource
+                    else -> WebViewVideoExtractor.Instruction.Continue
+                }
+            }
+
+            assertEquals("${site.baseUrl}/stream/1.m3u8", extracted?.url)
+            assertTrue(site.embedRequests.isNotEmpty())
+            assertTrue(site.streamRequests.isNotEmpty())
+        }
+    }
 }
