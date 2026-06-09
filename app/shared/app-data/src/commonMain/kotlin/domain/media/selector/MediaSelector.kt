@@ -210,7 +210,7 @@ interface MediaSelector {
      * 注意, 调用此方法时将从 [preferredCandidates] 和 [filteredCandidates] 当前的 snapshot 中选择,
      * 如果在选的过程中这些 flow 有更新, 则不会影响此次选择. 所以这个函数会很快返回结果.
      * 
-     * 如果希望始终从最新的数据中选择, 使用 [selectFromMediaSources].
+     * 如果希望始终从最新的数据中选择, 使用 [awaitSelectFromMediaSources].
      *
      * @param candidateSources 候选数据源, 只会从这些里选.
      * @param overrideUserSelection 是否覆盖用户选择.
@@ -234,7 +234,7 @@ interface MediaSelector {
      * 
      * @see trySelectFromMediaSources
      */
-    suspend fun selectFromMediaSources(
+    suspend fun awaitSelectFromMediaSources(
         candidateSources: List<String>,
         overrideUserSelection: Boolean = false,
         blacklistMediaIds: Set<String> = emptySet(),
@@ -489,8 +489,19 @@ class DefaultMediaSelector(
         selected.value = null
     }
 
-    private fun selectDefault(candidate: Media): Media? {
+    private suspend fun selectDefault(candidate: Media): Media? {
+        if (selected.value != null) return null
+
+        val event = SelectEvent(
+            media = candidate,
+            subtitleLanguageId = null,
+            previousMedia = null,
+        )
+        events.onBeforeSelect.emit(event)
+
         if (!selected.compareAndSet(null, candidate)) return null
+        events.onSelect.emit(event)
+
         // 自动选择时不更新 preference
         return candidate
     }
@@ -757,7 +768,7 @@ class DefaultMediaSelector(
         }
     }
 
-    override suspend fun selectFromMediaSources(
+    override suspend fun awaitSelectFromMediaSources(
         candidateSources: List<String>,
         overrideUserSelection: Boolean,
         blacklistMediaIds: Set<String>,

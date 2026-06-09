@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.media.selector
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
@@ -59,33 +60,30 @@ class MediaSelectorAutoSelectUseCaseImpl(
                 }
             }
 
-            /**
-             * 为什么可以让 fast select 和 preferred select 一起跑?
-             * 
-             * 如果是热门资源, 通常不需要用户自己设置 web source preference, fast select 很快立刻就可以选好.
-             * 对于冷门资源, fast select 很大概率在 tolerance 时间内也选不到合适的, 但这时 preferred select 可能在这之内选好.
-             * 
-             * 所以一起跑, 不是 fast select 先选好, 就是 preferred 先选好, 总之能尽快选出一个合适的.
-             * 无论是 preferred select 或者 fast select 的结果, 对于用户来说都是比较优质的.
-             * 
-             * 如果 preferred 刚好也是 fast select 的一个结果也无所谓, 哪个 clause 快跑那个, 结果都是一样的.
-             */
             cancellableCoroutineScope {
                 fun <T> SelectBuilder<T>.resulting(block: suspend CoroutineScope.() -> T) {
                     this@cancellableCoroutineScope.async { block() }.onAwait { it }
                 }
 
                 select {
-                    // 选择用户偏好的源
+                    val selectPreferredFailed = CompletableDeferred<Unit>()
+
+                    // 这个 clause 和下面 选缓存 与 兜底 一起竞争
+                    // 快速选择不和这些竞争, 快速选择在这个 clause 完成之后再启动
                     resulting {
                         // subjectId 无效就等别的 clause.
                         val subjectId = session.request.first().subjectId.toIntOrNull() ?: awaitCancellation()
-                        val result = autoSelector.selectPreferredWebSource(
+                        val result = autoSelector.trySelectPreferredWebSource(
                             session, getPreferredWebMediaSource(subjectId).first(),
                         )
 
                         logger.info { "selectPreferredWebSource result: $result" }
-                        result ?: awaitCancellation()
+
+                        if (result == null) {
+                            selectPreferredFailed.complete(Unit)
+                            awaitCancellation()
+                        }
+                        result
                     }
 
                     // 快速自动选择数据源: 当按规则快速选择相应 Tier 的数据源. 仅在偏好 Web 时并且启用了快速选择时才执行.
@@ -95,6 +93,9 @@ class MediaSelectorAutoSelectUseCaseImpl(
                             // 没开启 fast select 就等别的 clause.
                             awaitCancellation()
                         }
+
+                        // 上面选完并且没结果再开始这个 clause
+                        selectPreferredFailed.await()
 
                         val result = autoSelector.fastSelectWebSources(
                             session,

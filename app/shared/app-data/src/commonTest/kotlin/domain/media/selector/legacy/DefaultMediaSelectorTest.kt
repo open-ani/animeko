@@ -1464,7 +1464,72 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
         }
     }
 
+    @Test
+    fun `event trySelectDefault`() = runTest {
+        savedUserPreference.value = MediaPreference.Companion.Empty
+        savedDefaultPreference.value = MediaPreference.Companion.Empty
+        val target = media(alliance = "字幕组", subtitleLanguages = listOf("CHS"))
+        addMedia(target)
+
+        runCollectEvents {
+            assertEquals(target, selector.trySelectDefault())
+        }.run {
+            val expectedEvent = SelectEvent(
+                media = target,
+                subtitleLanguageId = null,
+                previousMedia = null,
+            )
+
+            assertEquals(listOf(expectedEvent), onBeforeSelect)
+            assertEquals(listOf(expectedEvent), onSelect)
+            assertEquals(0, onChangePreference.size)
+        }
+    }
+
+    @Test
+    fun `event trySelectCached`() = runTest {
+        savedUserPreference.value = MediaPreference.Companion.Empty
+        savedDefaultPreference.value = MediaPreference.Companion.Empty
+        val target = media(
+            alliance = "字幕组",
+            subtitleLanguages = listOf("CHS"),
+            kind = MediaSourceKind.LocalCache,
+        )
+        addMedia(target)
+
+        runCollectEvents {
+            assertEquals(target, selector.trySelectCached())
+        }.run {
+            val expectedEvent = SelectEvent(
+                media = target,
+                subtitleLanguageId = null,
+                previousMedia = null,
+            )
+
+            assertEquals(listOf(expectedEvent), onBeforeSelect)
+            assertEquals(listOf(expectedEvent), onSelect)
+            assertEquals(0, onChangePreference.size)
+        }
+    }
+
+    @Test
+    fun `event trySelectDefault does not emit when already selected`() = runTest {
+        val current = media(alliance = "字幕组1", subtitleLanguages = listOf("CHS"))
+        val target = media(alliance = "字幕组2", subtitleLanguages = listOf("CHT"))
+        addMedia(current, target)
+        selector.select(current)
+
+        runCollectEvents {
+            assertEquals(null, selector.trySelectDefault())
+        }.run {
+            assertEquals(0, onBeforeSelect.size)
+            assertEquals(0, onSelect.size)
+            assertEquals(0, onChangePreference.size)
+        }
+    }
+
     class CollectedEvents(
+        val onBeforeSelect: MutableList<SelectEvent> = mutableListOf(),
         val onSelect: MutableList<SelectEvent> = mutableListOf(),
         val onChangePreference: MutableList<MediaPreference> = mutableListOf(),
     )
@@ -1472,6 +1537,11 @@ class DefaultMediaSelectorTest : AbstractDefaultMediaSelectorTest() {
     private suspend fun runCollectEvents(block: suspend () -> Unit): CollectedEvents {
         return CollectedEvents().apply {
             cancellableCoroutineScope {
+                launch(start = CoroutineStart.UNDISPATCHED) {
+                    selector.events.onBeforeSelect.collect {
+                        onBeforeSelect.add(it)
+                    }
+                }
                 launch(start = CoroutineStart.UNDISPATCHED) {
                     selector.events.onSelect.collect {
                         onSelect.add(it)

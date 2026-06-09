@@ -137,7 +137,7 @@ class MediaSelectorAutoSelect(
                     // 例如: 第一个源查询好了, 但是两条结果都被排除了, 这里就会挂起.
                     // 第二个查询好了, 有满足条件的结果, 那第一次选择就被取消, 第二次就会成功.
                     // 成功后结果给 select builder, select 就会返回, 这个就是最终结果.
-                    mediaSelector.selectFromMediaSources(
+                    mediaSelector.awaitSelectFromMediaSources(
                         candidateResults.map { it.mediaSourceId },
                         overrideUserSelection = overrideUserSelection,
                         blacklistMediaIds = blacklistMediaIds,
@@ -171,9 +171,9 @@ class MediaSelectorAutoSelect(
     }
 
     /**
-     * 快速选择之前用户手选的源, 没选到就一直挂起
+     * 从用户偏好的 web 数据源快速选择媒体, 如果没有则返回 null
      */
-    suspend fun selectPreferredWebSource(
+    suspend fun trySelectPreferredWebSource(
         mediaFetchSession: MediaFetchSession,
         preferredWebMediaSourceId: String?,
     ): Media? {
@@ -184,12 +184,11 @@ class MediaSelectorAutoSelect(
             .firstOrNull { it.mediaSourceId == preferredWebMediaSourceId && it.kind == MediaSourceKind.WEB }
             ?.awaitCompletion()
 
-        // 尝试选择, 没有就一直挂起
-        return mediaSelector.selectFromMediaSources(
+        return mediaSelector.trySelectFromMediaSources(
             listOf(preferredWebMediaSourceId),
             overrideUserSelection = false,
             blacklistMediaIds = emptySet(),
-            allowNonPreferred = true,
+            allowNonPreferred = false, // 只从这一个源里选
         )
     }
 

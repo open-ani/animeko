@@ -120,7 +120,7 @@ open class TestMediaSelector(
         throw UnsupportedOperationException()
     }
 
-    override suspend fun selectFromMediaSources(
+    override suspend fun awaitSelectFromMediaSources(
         candidateSources: List<String>,
         overrideUserSelection: Boolean,
         blacklistMediaIds: Set<String>,
