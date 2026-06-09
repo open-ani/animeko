@@ -72,7 +72,12 @@ class MediaSelectorAutoSelectUseCaseImpl(
                     // 快速选择不和这些竞争, 快速选择在这个 clause 完成之后再启动
                     resulting {
                         // subjectId 无效就等别的 clause.
-                        val subjectId = session.request.first().subjectId.toIntOrNull() ?: awaitCancellation()
+                        val subjectId = session.request.first().subjectId.toIntOrNull()
+                        if (subjectId == null) {
+                            selectPreferredFailed.complete(Unit)
+                            awaitCancellation()
+                        }
+
                         val result = autoSelector.trySelectPreferredWebSource(
                             session, getPreferredWebMediaSource(subjectId).first(),
                         )
