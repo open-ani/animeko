@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -32,6 +32,7 @@ import me.him188.ani.app.data.repository.danmaku.SearchDanmakuRequest
 import me.him188.ani.danmaku.api.DanmakuCollection
 import me.him188.ani.danmaku.api.provider.DanmakuFetchRequest
 import me.him188.ani.danmaku.api.provider.DanmakuFetchResult
+import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
 import me.him188.ani.utils.platform.collections.tupleOf
@@ -45,12 +46,29 @@ sealed interface DanmakuLoader {
     val fetchResultFlow: Flow<List<DanmakuFetchResult>?>
 }
 
-class DanmakuLoaderImpl(
+class DanmakuLoaderImpl internal constructor(
     requestFlow: Flow<SearchDanmakuRequest?>,
     flowScope: CoroutineScope,
-    danmakuRepository: DanmakuRepository,
+    private val fetchFromLocal: (DanmakuFetchRequest) -> Flow<List<DanmakuFetchResult>>,
+    private val fetchFromAllRemotes: (DanmakuFetchRequest) -> Flow<List<DanmakuFetchResult>>,
+    private val cacheDanmakuIfNeeded: (Int, Int, List<DanmakuFetchResult>) -> Unit,
     sharingStarted: SharingStarted = SharingStarted.WhileSubscribed()
 ) : DanmakuLoader {
+    constructor(
+        requestFlow: Flow<SearchDanmakuRequest?>,
+        flowScope: CoroutineScope,
+        danmakuRepository: DanmakuRepository,
+        sharingStarted: SharingStarted = SharingStarted.WhileSubscribed()
+    ) : this(
+        requestFlow,
+        flowScope,
+        danmakuRepository::fetchFromLocal,
+        danmakuRepository::fetchFromAllRemotes,
+        { subjectId, episodeId, results ->
+            danmakuRepository.cacheDanmakuIfNeeded(subjectId, episodeId, results)
+        },
+        sharingStarted,
+    )
 
     private val saveDanmakuTasker = SingleTaskExecutor(flowScope.coroutineContext)
 
@@ -69,19 +87,24 @@ class DanmakuLoaderImpl(
         danmakuLoadingStateFlow.value = DanmakuLoadingState.Loading
         try {
             coroutineScope {
-                var remoteFetched = false
+                val fetchRequest = request.toFetchRequest()
+                var localResult: List<DanmakuFetchResult>? = null
+                var remoteCanReplaceLocal = false
                 launch(start = CoroutineStart.ATOMIC) {
-                    val result = danmakuRepository.fetchFromLocal(request.toFetchRequest()).first()
-                    if (!remoteFetched && result.isNotEmpty()) {
+                    val result = fetchFromLocal(fetchRequest).first()
+                    localResult = result
+                    if (!remoteCanReplaceLocal && result.hasDisplayableDanmakus()) {
                         emit(result)
                         danmakuLoadingStateFlow.value = DanmakuLoadingState.Success
                     }
                 }
                 launch {
-                    val result = danmakuRepository.fetchFromAllRemotes(request.toFetchRequest()).first()
+                    val result = fetchFromAllRemotes(fetchRequest).first()
                     danmakuLoadingStateFlow.value = DanmakuLoadingState.Success
-                    remoteFetched = true
-                    emit(result)
+                    remoteCanReplaceLocal = result.canReplaceLocalCache()
+                    if (remoteCanReplaceLocal || !localResult.hasDisplayableDanmakus()) {
+                        emit(result)
+                    }
                 }
             }
         } catch (e: CancellationException) {
@@ -109,7 +132,7 @@ class DanmakuLoaderImpl(
                         flowScope.launch {
                             saveDanmakuTasker.invoke {
                                 delay(3.seconds)
-                                danmakuRepository.cacheDanmakuIfNeeded(subjectId, episodeId, accumulatedResults)
+                                cacheDanmakuIfNeeded(subjectId, episodeId, accumulatedResults)
                             }
                         }
                     }
@@ -140,6 +163,16 @@ class DanmakuLoaderImpl(
     fun overrideResults(provider: DanmakuProviderId, result: List<DanmakuFetchResult>) {
         overrideResultsFlow.update {
             it + (provider to result)
+        }
+    }
+
+    private fun List<DanmakuFetchResult>?.hasDisplayableDanmakus(): Boolean {
+        return this?.any { it.list.isNotEmpty() } == true
+    }
+
+    private fun List<DanmakuFetchResult>.canReplaceLocalCache(): Boolean {
+        return any { result ->
+            result.list.isNotEmpty() || result.matchInfo.method !is DanmakuMatchMethod.NoMatch
         }
     }
 
