@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -84,6 +84,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectWithLifecycle
 import kotlinx.coroutines.CoroutineScope
@@ -108,13 +109,26 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
-import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.foundation.session.SelfAvatar
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.NsfwMask
 import me.him188.ani.app.ui.foundation.widgets.PullToRefreshBox
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.exploration_search
+import me.him188.ani.app.ui.lang.login_sign_in
+import me.him188.ani.app.ui.lang.settings
+import me.him188.ani.app.ui.lang.subject_collection_doing
+import me.him188.ani.app.ui.lang.subject_collection_done
+import me.him188.ani.app.ui.lang.subject_collection_dropped
+import me.him188.ani.app.ui.lang.subject_collection_guest_mode_tip
+import me.him188.ani.app.ui.lang.subject_collection_move_to_watched
+import me.him188.ani.app.ui.lang.subject_collection_on_hold
+import me.him188.ani.app.ui.lang.subject_collection_page_title
+import me.him188.ani.app.ui.lang.subject_collection_syncing
+import me.him188.ani.app.ui.lang.subject_collection_uncollected
+import me.him188.ani.app.ui.lang.subject_collection_wish
 import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeState
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
@@ -131,8 +145,8 @@ import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.platform.hasScrollingBug
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
+import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Clock
-import org.jetbrains.compose.resources.*
 
 
 // 有顺序, https://github.com/Him188/ani/issues/73
@@ -193,6 +207,7 @@ class UserCollectionsState(
                     // 不再发射初始加载状态，直接发射真实数据
                     emitAll(startSearch(query))
                 }
+                .cachedIn(backgroundScope)
 
             LazyPagingItems(pagingFlow)
         }
