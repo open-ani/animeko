@@ -226,6 +226,14 @@ class SessionManager(
         backgroundJob // lazy init
     }
 
+    suspend fun clearSessionIfAccessTokenExpired() {
+        val session = tokenRepository.session.first()
+        if (session is AccessTokenSession && session.tokens.isExpired(clock)) {
+            logger.info { "SessionManager: saved access token is expired on startup, clearing session" }
+            clearSession()
+        }
+    }
+
     /**
      * 登录成功后调用, 设置一个会话. 这也会导致 [stateProvider] [SessionStateProvider.stateFlow] 更新.
      */

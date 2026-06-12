@@ -500,6 +500,7 @@ fun KoinApplication.startCommonKoinModule(
 ): KoinApplication {
     // Start the proxy provider very soon (before initialization of any other components)
     runBlocking {
+        koin.get<SessionManager>().clearSessionIfAccessTokenExpired()
         // We have to block here to read the saved proxy settings
         when (val proxyProvider = koin.get<HttpClientProvider>()) {
             // compile-safe type cast
