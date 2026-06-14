@@ -1721,7 +1721,7 @@ class WithMatrix(
 
         uploadComposeLogs()
 
-        return PackageDesktopAndUploadOutputs().apply {
+        return PackageDesktopAndUploadOutputs().also {
             if (matrix.isMacOS && matrix.isAArch64) {
                 usesWithAttempts(
                     name = "Upload macOS AArch64 dmg",
