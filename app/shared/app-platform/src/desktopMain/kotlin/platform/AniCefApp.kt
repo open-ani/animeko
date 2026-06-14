@@ -60,8 +60,8 @@ object AniCefApp {
         private set
 
     private val lock = Mutex()
-    private const val DEFAULT_BROWSER_LIFECYCLE_LIMIT = 8
-    private val browserLifecycleGate = BrowserLifecycleGate(DEFAULT_BROWSER_LIFECYCLE_LIMIT)
+    private const val DEFAULT_DATA_SOURCE_BROWSER_LIMIT = 8
+    private val dataSourceBrowserGate = DataSourceBrowserGate(DEFAULT_DATA_SOURCE_BROWSER_LIMIT)
     private val disposedApps = Collections.newSetFromMap(IdentityHashMap<CefApp, Boolean>())
 
     private var proxyServer: Url? = null
@@ -292,21 +292,12 @@ object AniCefApp {
             ?.apply { addRequestHandler(proxiedRequestHandler) }
     }
 
-    fun configureBrowserLifecycleLimit(limit: Int) {
-        browserLifecycleGate.configureLimit(limit)
+    fun configureDataSourceBrowserLimit(limit: Int) {
+        dataSourceBrowserGate.configureLimit(limit)
     }
 
-    suspend fun <T> withBrowserCreationPermit(block: suspend () -> T): T {
-        val permit = acquireBrowserLifecyclePermit()
-        return try {
-            block()
-        } finally {
-            permit.release()
-        }
-    }
-
-    suspend fun acquireBrowserLifecyclePermit(): BrowserLifecyclePermit {
-        return browserLifecycleGate.acquire()
+    suspend fun acquireDataSourceBrowserPermit(): BrowserLifecyclePermit {
+        return dataSourceBrowserGate.acquire()
     }
 
     class BrowserLifecyclePermit internal constructor(
@@ -418,7 +409,7 @@ object AniCefApp {
 private class JCEFInitializationException(message: String, cause: Throwable? = null) :
     RuntimeException(message, cause)
 
-private class BrowserLifecycleGate(initialLimit: Int) {
+private class DataSourceBrowserGate(initialLimit: Int) {
     private val lock = ReentrantLock()
     private val waiters = ArrayDeque<CompletableDeferred<Unit>>()
     private var limit = initialLimit.coerceAtLeast(1)

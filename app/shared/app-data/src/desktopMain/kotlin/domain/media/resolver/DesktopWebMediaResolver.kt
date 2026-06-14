@@ -150,126 +150,124 @@ class CefVideoExtractor(
         config: WebViewConfig,
         resourceMatcher: (String) -> Instruction
     ): WebResource? = withContext(Dispatchers.IO) {
-        AniCefApp.withBrowserCreationPermit {
-            var client: org.cef.CefClient? = null
-            var browser: CefBrowser? = null
-            val deferred = CompletableDeferred<WebResource>()
+        var client: org.cef.CefClient? = null
+        var browser: CefBrowser? = null
+        val deferred = CompletableDeferred<WebResource>()
 
-            try {
-                val createdClient = AniCefApp.suspendCoroutineOnCefContext {
-                    AniCefApp.createClient()
-                } ?: kotlin.run {
-                    logger.warn { "AniCefApp isn't initialized yet." }
-                    return@withBrowserCreationPermit null
-                }
-                client = createdClient
-
-                val createdBrowser = AniCefApp.suspendCoroutineOnCefContext {
-                    val lastUrl = object {
-                        // browser.url is not updated immediately, so we need to keep track of the current url.
-                        var value: String? by atomic(null)
-                    }
-                    createdClient.createBrowser(
-                        pageUrl,
-                        CefRendering.DEFAULT,
-                        true,
-                        CefRequestContext.createContext { _, _, _, _, _, _, _ ->
-                            object : CefResourceRequestHandlerAdapter() {
-                                override fun onBeforeResourceLoad(
-                                    browser: CefBrowser?,
-                                    frame: CefFrame?,
-                                    request: CefRequest?
-                                ): Boolean {
-                                    if (request != null && browser != null) {
-                                        if (handleUrl(request, browser)) {
-                                            return true
-                                        }
-                                    }
-                                    return super.onBeforeResourceLoad(browser, frame, request)
-                                }
-
-                                /**
-                                 * @return `true` to intercept
-                                 */
-                                private fun handleUrl(
-                                    request: CefRequest,
-                                    browser: CefBrowser
-                                ): Boolean = synchronized(this) {
-                                    val url = request.url
-                                    val matched = resourceMatcher(url)
-                                    when (matched) {
-                                        Instruction.Continue -> return false
-                                        Instruction.FoundResource -> {
-                                            deferred.complete(WebResource(url))
-                                            logger.info { "Found video stream resource: $url" }
-                                            return true
-                                        }
-
-                                        Instruction.LoadPage -> {
-                                            if (browser.url == url || lastUrl.value == url) return false // don't recurse
-                                            logger.info { "CEF loading nested page: $url, lastUrl=${lastUrl.value}" }
-                                            lastUrl.value = url
-                                            val escapedUrl = json.encodeToString(String.serializer(), url)
-                                            AniCefApp.runOnCefContext {
-                                                browser.executeJavaScript("window.location.href=$escapedUrl;", "", 1)
-                                            }
-                                            return true
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                    )
-                }
-                browser = createdBrowser
-
-                AniCefApp.suspendCoroutineOnCefContext {
-                    createdBrowser.setCloseAllowed()
-                    createdClient.addDisplayHandler(
-                        object : CefDisplayHandlerAdapter() {
-                            override fun onConsoleMessage(
-                                browser: CefBrowser?,
-                                level: CefSettings.LogSeverity?,
-                                message: String?,
-                                source: String?,
-                                line: Int
-                            ): Boolean {
-                                logger.info { "CEF client console: ${message?.replace("\n", "\\n")} ($source:$line)" }
-                                return super.onConsoleMessage(browser, level, message, source, line)
-                            }
-                        },
-                    )
-
-                    // set cookie
-                    val cookieManager = CefCookieManager.getGlobalManager()
-                    val url = Url(pageUrl)
-                    for (cookie in config.cookies) {
-                        val ktorCookie = parseServerSetCookieHeader(cookie)
-                        cookieManager.setCookie(url.host, ktorCookie.toCefCookie())
-                    }
-
-                    logger.info { "Fetching $pageUrl" }
-                    // start browser immediately
-                    createdBrowser.createImmediately()
-                }
-
-                withTimeoutOrNull(videoResolverSettings.effectiveResourceExtractionTimeoutMillis) {
-                    deferred.await()
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Throwable) {
-                logger.error(e) { "Failed to get video url." }
-                if (deferred.isActive) {
-                    deferred.cancel()
-                }
-                null
-            } finally {
-                withContext(NonCancellable) {
-                    AniCefApp.closeBrowserAndDisposeClient(browser, client)
-                }
-                logger.info { "CEF client is disposed." }
+        try {
+            val createdClient = AniCefApp.suspendCoroutineOnCefContext {
+                AniCefApp.createClient()
+            } ?: kotlin.run {
+                logger.warn { "AniCefApp isn't initialized yet." }
+                return@withContext null
             }
+            client = createdClient
+
+            val createdBrowser = AniCefApp.suspendCoroutineOnCefContext {
+                val lastUrl = object {
+                    // browser.url is not updated immediately, so we need to keep track of the current url.
+                    var value: String? by atomic(null)
+                }
+                createdClient.createBrowser(
+                    pageUrl,
+                    CefRendering.DEFAULT,
+                    true,
+                    CefRequestContext.createContext { _, _, _, _, _, _, _ ->
+                        object : CefResourceRequestHandlerAdapter() {
+                            override fun onBeforeResourceLoad(
+                                browser: CefBrowser?,
+                                frame: CefFrame?,
+                                request: CefRequest?
+                            ): Boolean {
+                                if (request != null && browser != null) {
+                                    if (handleUrl(request, browser)) {
+                                        return true
+                                    }
+                                }
+                                return super.onBeforeResourceLoad(browser, frame, request)
+                            }
+
+                            /**
+                             * @return `true` to intercept
+                             */
+                            private fun handleUrl(
+                                request: CefRequest,
+                                browser: CefBrowser
+                            ): Boolean = synchronized(this) {
+                                val url = request.url
+                                val matched = resourceMatcher(url)
+                                when (matched) {
+                                    Instruction.Continue -> return false
+                                    Instruction.FoundResource -> {
+                                        deferred.complete(WebResource(url))
+                                        logger.info { "Found video stream resource: $url" }
+                                        return true
+                                    }
+
+                                    Instruction.LoadPage -> {
+                                        if (browser.url == url || lastUrl.value == url) return false // don't recurse
+                                        logger.info { "CEF loading nested page: $url, lastUrl=${lastUrl.value}" }
+                                        lastUrl.value = url
+                                        val escapedUrl = json.encodeToString(String.serializer(), url)
+                                        AniCefApp.runOnCefContext {
+                                            browser.executeJavaScript("window.location.href=$escapedUrl;", "", 1)
+                                        }
+                                        return true
+                                    }
+                                }
+                            }
+                        }
+                    },
+                )
+            }
+            browser = createdBrowser
+
+            AniCefApp.suspendCoroutineOnCefContext {
+                createdBrowser.setCloseAllowed()
+                createdClient.addDisplayHandler(
+                    object : CefDisplayHandlerAdapter() {
+                        override fun onConsoleMessage(
+                            browser: CefBrowser?,
+                            level: CefSettings.LogSeverity?,
+                            message: String?,
+                            source: String?,
+                            line: Int
+                        ): Boolean {
+                            logger.info { "CEF client console: ${message?.replace("\n", "\\n")} ($source:$line)" }
+                            return super.onConsoleMessage(browser, level, message, source, line)
+                        }
+                    },
+                )
+
+                // set cookie
+                val cookieManager = CefCookieManager.getGlobalManager()
+                val url = Url(pageUrl)
+                for (cookie in config.cookies) {
+                    val ktorCookie = parseServerSetCookieHeader(cookie)
+                    cookieManager.setCookie(url.host, ktorCookie.toCefCookie())
+                }
+
+                logger.info { "Fetching $pageUrl" }
+                // start browser immediately
+                createdBrowser.createImmediately()
+            }
+
+            withTimeoutOrNull(videoResolverSettings.effectiveResourceExtractionTimeoutMillis) {
+                deferred.await()
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            logger.error(e) { "Failed to get video url." }
+            if (deferred.isActive) {
+                deferred.cancel()
+            }
+            null
+        } finally {
+            withContext(NonCancellable) {
+                AniCefApp.closeBrowserAndDisposeClient(browser, client)
+            }
+            logger.info { "CEF client is disposed." }
         }
     }
 }

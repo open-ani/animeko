@@ -457,7 +457,7 @@ class DesktopWebCaptchaCoordinator(
     }
 
     private suspend fun createSession(): DesktopCaptchaSession {
-        var permit: AniCefApp.BrowserLifecyclePermit? = AniCefApp.acquireBrowserLifecyclePermit()
+        var permit: AniCefApp.BrowserLifecyclePermit? = AniCefApp.acquireDataSourceBrowserPermit()
         var client: CefClient? = null
         var browser: CefBrowser? = null
         var session: DesktopCaptchaSession? = null
