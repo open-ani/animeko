@@ -43,8 +43,11 @@ import com.sun.jna.platform.win32.Advapi32Util
 import com.sun.jna.platform.win32.WinReg
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -263,6 +266,13 @@ object AniDesktop {
         }
         val settingsRepository = koin.koin.get<SettingsRepository>()
         val userRepository = koin.koin.get<UserRepository>()
+
+        coroutineScope.launch {
+            settingsRepository.videoResolverSettings.flow
+                .map { it.effectiveBrowserConcurrency }
+                .distinctUntilChanged()
+                .collect { AniCefApp.configureBrowserLifecycleLimit(it) }
+        }
 
         val setLocaleJob = coroutineScope.launch {
             settingsRepository.uiSettings.flow.first().appLanguage?.platformLocale?.let {

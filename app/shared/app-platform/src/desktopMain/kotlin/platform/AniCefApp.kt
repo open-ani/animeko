@@ -11,11 +11,10 @@ package me.him188.ani.app.platform
 
 import com.jetbrains.cef.JCefAppConfig
 import io.ktor.http.Url
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.utils.io.readLastNLines
 import me.him188.ani.utils.logging.error
@@ -43,6 +42,7 @@ import java.util.Collections
 import java.util.Date
 import java.util.IdentityHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.locks.ReentrantLock
 import javax.swing.SwingUtilities
 import kotlin.concurrent.thread
 import kotlin.coroutines.resume
@@ -60,7 +60,8 @@ object AniCefApp {
         private set
 
     private val lock = Mutex()
-    private val browserLifecycleSemaphore = Semaphore(2)
+    private const val DEFAULT_BROWSER_LIFECYCLE_LIMIT = 8
+    private val browserLifecycleGate = BrowserLifecycleGate(DEFAULT_BROWSER_LIFECYCLE_LIMIT)
     private val disposedApps = Collections.newSetFromMap(IdentityHashMap<CefApp, Boolean>())
 
     private var proxyServer: Url? = null
@@ -291,25 +292,31 @@ object AniCefApp {
             ?.apply { addRequestHandler(proxiedRequestHandler) }
     }
 
+    fun configureBrowserLifecycleLimit(limit: Int) {
+        browserLifecycleGate.configureLimit(limit)
+    }
+
     suspend fun <T> withBrowserCreationPermit(block: suspend () -> T): T {
-        return browserLifecycleSemaphore.withPermit {
+        val permit = acquireBrowserLifecyclePermit()
+        return try {
             block()
+        } finally {
+            permit.release()
         }
     }
 
     suspend fun acquireBrowserLifecyclePermit(): BrowserLifecyclePermit {
-        browserLifecycleSemaphore.acquire()
-        return BrowserLifecyclePermit(browserLifecycleSemaphore)
+        return browserLifecycleGate.acquire()
     }
 
     class BrowserLifecyclePermit internal constructor(
-        private val semaphore: Semaphore,
+        private val releasePermit: () -> Unit,
     ) {
         private val released = AtomicBoolean(false)
 
         fun release() {
             if (released.compareAndSet(false, true)) {
-                semaphore.release()
+                releasePermit()
             }
         }
     }
@@ -410,3 +417,94 @@ object AniCefApp {
 
 private class JCEFInitializationException(message: String, cause: Throwable? = null) :
     RuntimeException(message, cause)
+
+private class BrowserLifecycleGate(initialLimit: Int) {
+    private val lock = ReentrantLock()
+    private val waiters = ArrayDeque<CompletableDeferred<Unit>>()
+    private var limit = initialLimit.coerceAtLeast(1)
+    private var acquired = 0
+
+    suspend fun acquire(): AniCefApp.BrowserLifecyclePermit {
+        while (true) {
+            val waiter = lockAndGetWaiter()
+            if (waiter == null) {
+                return AniCefApp.BrowserLifecyclePermit(::release)
+            }
+
+            try {
+                waiter.await()
+                return AniCefApp.BrowserLifecyclePermit(::release)
+            } catch (e: Throwable) {
+                val wakeups = cancelWaiter(waiter)
+                wakeups.forEach { it.complete(Unit) }
+                throw e
+            }
+        }
+    }
+
+    fun configureLimit(newLimit: Int) {
+        val wakeups = lockAndConfigureLimit(newLimit.coerceAtLeast(1))
+        wakeups.forEach { it.complete(Unit) }
+    }
+
+    private fun release() {
+        val wakeups = lockAndRelease()
+        wakeups.forEach { it.complete(Unit) }
+    }
+
+    private fun lockAndGetWaiter(): CompletableDeferred<Unit>? {
+        lock.lock()
+        try {
+            if (acquired < limit) {
+                acquired++
+                return null
+            }
+            return CompletableDeferred<Unit>().also(waiters::addLast)
+        } finally {
+            lock.unlock()
+        }
+    }
+
+    private fun cancelWaiter(waiter: CompletableDeferred<Unit>): List<CompletableDeferred<Unit>> {
+        lock.lock()
+        try {
+            if (waiters.remove(waiter)) {
+                return emptyList()
+            }
+            acquired--
+            return collectWakeupsLocked()
+        } finally {
+            lock.unlock()
+        }
+    }
+
+    private fun lockAndConfigureLimit(newLimit: Int): List<CompletableDeferred<Unit>> {
+        lock.lock()
+        try {
+            limit = newLimit
+            return collectWakeupsLocked()
+        } finally {
+            lock.unlock()
+        }
+    }
+
+    private fun lockAndRelease(): List<CompletableDeferred<Unit>> {
+        lock.lock()
+        try {
+            check(acquired > 0) { "Browser lifecycle permit released without being acquired" }
+            acquired--
+            return collectWakeupsLocked()
+        } finally {
+            lock.unlock()
+        }
+    }
+
+    private fun collectWakeupsLocked(): List<CompletableDeferred<Unit>> {
+        val wakeups = mutableListOf<CompletableDeferred<Unit>>()
+        while (acquired < limit && waiters.isNotEmpty()) {
+            acquired++
+            wakeups += waiters.removeFirst()
+        }
+        return wakeups
+    }
+}
