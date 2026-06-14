@@ -39,7 +39,6 @@ class DesktopTurnstileState(
 ) : TurnstileState {
     private var client: CefClient? = null
     private var browser: CefBrowser? = null
-    private var browserPermit: AniCefApp.BrowserLifecyclePermit? = null
 
     var isDarkTheme: Boolean = false
 
@@ -53,16 +52,11 @@ class DesktopTurnstileState(
     fun initializeBrowser(): Component = runBlocking {
         browser?.uiComponent?.let { return@runBlocking it }
 
-        var createdPermit: AniCefApp.BrowserLifecyclePermit? = AniCefApp.acquireBrowserLifecyclePermit()
         var createdClient: CefClient? = null
         var createdBrowser: CefBrowser? = null
         try {
             AniCefApp.suspendCoroutineOnCefContext {
-                browser?.uiComponent?.let {
-                    createdPermit?.release()
-                    createdPermit = null
-                    return@suspendCoroutineOnCefContext it
-                }
+                browser?.uiComponent?.let { return@suspendCoroutineOnCefContext it }
 
                 val newClient = AniCefApp.createClient()
                     ?: throw IllegalStateException("AniCefApp should be initialized.")
@@ -122,15 +116,11 @@ class DesktopTurnstileState(
                 val component = newBrowser.uiComponent
                 client = newClient
                 browser = newBrowser
-                browserPermit = createdPermit
-                createdPermit = null
                 component
             }
         } catch (e: Throwable) {
             AniCefApp.closeBrowserAndDisposeClientBlocking(createdBrowser, createdClient)
             throw e
-        } finally {
-            createdPermit?.release()
         }
     }
 
@@ -143,15 +133,9 @@ class DesktopTurnstileState(
     override fun cancel() {
         val currentBrowser = browser
         val currentClient = client
-        val currentBrowserPermit = browserPermit
         browser = null
         client = null
-        browserPermit = null
-        try {
-            AniCefApp.closeBrowserAndDisposeClientBlocking(currentBrowser, currentClient)
-        } finally {
-            currentBrowserPermit?.release()
-        }
+        AniCefApp.closeBrowserAndDisposeClientBlocking(currentBrowser, currentClient)
     }
     
     private companion object {

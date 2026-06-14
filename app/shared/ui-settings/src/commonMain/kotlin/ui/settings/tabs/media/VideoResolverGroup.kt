@@ -53,18 +53,18 @@ internal fun SettingsScope.VideoResolverGroup(
             description = { Text("播放部分视频源时需要使用无头浏览器引擎，请在电脑上安装 Chrome 或 Edge 浏览器，Safari 不支持") },
         )
         DropdownItem(
-            selected = { config.effectiveBrowserConcurrency },
-            values = { VideoResolverSettings.BrowserConcurrencyOptions },
+            selected = { config.effectiveDataSourceBrowserConcurrency },
+            values = { VideoResolverSettings.DataSourceBrowserConcurrencyOptions },
             itemText = { Text("$it 个") },
             onSelect = {
                 videoResolverSettingsState.update(
                     config.copy(
-                        browserConcurrency = it,
+                        dataSourceBrowserConcurrency = it,
                     ),
                 )
             },
-            title = { Text("同时打开浏览器数") },
-            description = { Text("限制视频解析、验证码和评论验证可同时使用的浏览器数量") },
+            title = { Text("数据源查询浏览器数") },
+            description = { Text("限制数据源查询阶段可同时使用的浏览器数量，例如验证码处理") },
         )
     }
 }

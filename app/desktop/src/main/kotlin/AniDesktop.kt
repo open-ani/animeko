@@ -269,9 +269,9 @@ object AniDesktop {
 
         coroutineScope.launch {
             settingsRepository.videoResolverSettings.flow
-                .map { it.effectiveBrowserConcurrency }
+                .map { it.effectiveDataSourceBrowserConcurrency }
                 .distinctUntilChanged()
-                .collect { AniCefApp.configureBrowserLifecycleLimit(it) }
+                .collect { AniCefApp.configureDataSourceBrowserLimit(it) }
         }
 
         val setLocaleJob = coroutineScope.launch {
