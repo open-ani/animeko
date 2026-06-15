@@ -16,14 +16,14 @@
 
 package me.him188.ani.client.apis
 
-import me.him188.ani.client.models.AniAuthenticationResponse
 import me.him188.ani.client.models.AniEditEmailRequest
-import me.him188.ani.client.models.AniLoginResponse
 import me.him188.ani.client.models.AniRefreshTokenRequest
 import me.him188.ani.client.models.AniRegisterOrLoginByEmailOtpRequest
 import me.him188.ani.client.models.AniSendEmailOtpRequest
-import me.him188.ani.client.models.AniSendOptResponse
 import me.him188.ani.client.models.AniSetPasswordRequest
+import me.him188.ani.client.models.AniUserAuthRoutingAuthenticationResponse
+import me.him188.ani.client.models.AniUserAuthRoutingLoginResponse
+import me.him188.ani.client.models.AniUserAuthRoutingSendOptResponse
 
 import me.him188.ani.client.infrastructure.*
 import io.ktor.client.HttpClient
@@ -54,10 +54,10 @@ open class UserAuthenticationAniApi : ApiClient {
      * 绑定或换绑邮箱
      * 绑定或换绑邮箱
      * @param aniEditEmailRequest
-     * @return AniAuthenticationResponse
+     * @return AniUserAuthRoutingAuthenticationResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun editEmail(aniEditEmailRequest: AniEditEmailRequest): HttpResponse<AniAuthenticationResponse> {
+    open suspend fun editEmail(aniEditEmailRequest: AniEditEmailRequest): HttpResponse<AniUserAuthRoutingAuthenticationResponse> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -87,10 +87,10 @@ open class UserAuthenticationAniApi : ApiClient {
      * 刷新会话 token
      * 刷新会话 token
      * @param aniRefreshTokenRequest
-     * @return AniLoginResponse
+     * @return AniUserAuthRoutingLoginResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun refreshToken(aniRefreshTokenRequest: AniRefreshTokenRequest): HttpResponse<AniLoginResponse> {
+    open suspend fun refreshToken(aniRefreshTokenRequest: AniRefreshTokenRequest): HttpResponse<AniUserAuthRoutingLoginResponse> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -120,10 +120,10 @@ open class UserAuthenticationAniApi : ApiClient {
      * 使用邮箱验证码登录或注册
      * 使用邮箱验证码登录或注册
      * @param aniRegisterOrLoginByEmailOtpRequest
-     * @return AniAuthenticationResponse
+     * @return AniUserAuthRoutingAuthenticationResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun registerOrLoginByEmailOtp(aniRegisterOrLoginByEmailOtpRequest: AniRegisterOrLoginByEmailOtpRequest): HttpResponse<AniAuthenticationResponse> {
+    open suspend fun registerOrLoginByEmailOtp(aniRegisterOrLoginByEmailOtpRequest: AniRegisterOrLoginByEmailOtpRequest): HttpResponse<AniUserAuthRoutingAuthenticationResponse> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -153,10 +153,10 @@ open class UserAuthenticationAniApi : ApiClient {
      * 发送邮箱验证码
      * 发送邮箱验证码
      * @param aniSendEmailOtpRequest
-     * @return AniSendOptResponse
+     * @return AniUserAuthRoutingSendOptResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun sendEmailOtp(aniSendEmailOtpRequest: AniSendEmailOtpRequest): HttpResponse<AniSendOptResponse> {
+    open suspend fun sendEmailOtp(aniSendEmailOtpRequest: AniSendEmailOtpRequest): HttpResponse<AniUserAuthRoutingSendOptResponse> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -186,10 +186,10 @@ open class UserAuthenticationAniApi : ApiClient {
      * 老用户设置密码. 只能设置一次, 之后要使用邮箱修改密码.
      * 老用户设置密码. 只能设置一次, 之后要使用邮箱修改密码.
      * @param aniSetPasswordRequest
-     * @return AniAuthenticationResponse
+     * @return AniUserAuthRoutingAuthenticationResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun setPassword(aniSetPasswordRequest: AniSetPasswordRequest): HttpResponse<AniAuthenticationResponse> {
+    open suspend fun setPassword(aniSetPasswordRequest: AniSetPasswordRequest): HttpResponse<AniUserAuthRoutingAuthenticationResponse> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 

@@ -94,6 +94,9 @@ kotlin {
         api(libs.androidx.lifecycle.process)
         api(projects.app.shared.appDataAidl)
     }
+    sourceSets.getByName("androidDeviceTest").dependencies {
+        implementation(libs.androidx.test.monitor)
+    }
     sourceSets.nativeMain.dependencies {
         implementation(libs.stately.common) // fixes koin bug
         implementation(libs.kotlinx.io.okio)

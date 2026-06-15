@@ -31,6 +31,9 @@ import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionDao
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCollectionEntity
 import me.him188.ani.app.data.persistent.database.dao.EpisodeCommentDao
 import me.him188.ani.app.data.persistent.database.dao.HttpCacheDownloadStateDao
+import me.him188.ani.app.data.persistent.database.dao.PlaybackHistoryDao
+import me.him188.ani.app.data.persistent.database.dao.PlaybackHistoryPendingOpEntity
+import me.him188.ani.app.data.persistent.database.dao.PlaybackHistoryRecordEntity
 import me.him188.ani.app.data.persistent.database.dao.PreferredWebMediaSource
 import me.him188.ani.app.data.persistent.database.dao.PreferredWebMediaSourceDao
 import me.him188.ani.app.data.persistent.database.dao.SearchHistoryDao
@@ -81,8 +84,10 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         DanmakuEntity::class,
 
         PreferredWebMediaSource::class,
+        PlaybackHistoryRecordEntity::class,
+        PlaybackHistoryPendingOpEntity::class,
     ],
-    version = 20,
+    version = 21,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.Migration_1_2::class),
         AutoMigration(from = 2, to = 3, spec = Migrations.Migration_2_3::class),
@@ -102,6 +107,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         AutoMigration(from = 16, to = 17, spec = Migrations.Migration_16_17::class),
         AutoMigration(from = 17, to = 18, spec = Migrations.Migration_17_18::class),
         AutoMigration(from = 18, to = 19, spec = Migrations.Migration_18_19::class),
+        AutoMigration(from = 20, to = 21, spec = Migrations.Migration_20_21::class),
     ],
     exportSchema = true,
 )
@@ -151,6 +157,7 @@ abstract class AniDatabase : RoomDatabase() {
      */
     abstract fun danmakuDao(): DanmakuDao
     abstract fun preferredWebMediaSourceDao(): PreferredWebMediaSourceDao
+    abstract fun playbackHistoryDao(): PlaybackHistoryDao
 }
 
 expect object AniDatabaseConstructor : RoomDatabaseConstructor<AniDatabase> {
@@ -367,6 +374,16 @@ internal object Migrations {
      * @since 5.3.0
      */
     class Migration_18_19 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+        }
+    }
+
+    /**
+     * 增加了播放记录和待同步操作表.
+     *
+     * @since 5.3.0
+     */
+    class Migration_20_21 : AutoMigrationSpec {
         override fun onPostMigrate(connection: SQLiteConnection) {
         }
     }

@@ -23,10 +23,10 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * 
  *
- * @param total 
- * @param items 
+ *
+ * @param total
+ * @param items
  */
 @Serializable
 

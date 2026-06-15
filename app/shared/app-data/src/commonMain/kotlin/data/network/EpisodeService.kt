@@ -22,7 +22,7 @@ import me.him188.ani.app.domain.session.canAccessAniApiNow
 import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.client.models.AniBatchUpdateEpisodeCollectionsRequest
 import me.him188.ani.client.models.AniEpisodeCollectionType
-import me.him188.ani.client.models.AniEpisodeCollectionTypeUpdate
+import me.him188.ani.client.models.AniSubjectRoutingEpisodeCollectionTypeUpdate
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.EpisodeType.*
@@ -256,13 +256,13 @@ fun UnifiedCollectionType.toAniEpisodeCollectionType(): AniEpisodeCollectionType
     }
 }
 
-fun UnifiedCollectionType.toAniEpisodeCollectionTypeUpdate(): AniEpisodeCollectionTypeUpdate {
+fun UnifiedCollectionType.toAniEpisodeCollectionTypeUpdate(): AniSubjectRoutingEpisodeCollectionTypeUpdate {
     return when (this) {
-        UnifiedCollectionType.NOT_COLLECTED -> AniEpisodeCollectionTypeUpdate.NOT_COLLECTED
-        UnifiedCollectionType.WISH -> AniEpisodeCollectionTypeUpdate.NOT_COLLECTED
-        UnifiedCollectionType.DOING -> AniEpisodeCollectionTypeUpdate.NOT_COLLECTED
-        UnifiedCollectionType.DONE -> AniEpisodeCollectionTypeUpdate.DONE
-        UnifiedCollectionType.ON_HOLD -> AniEpisodeCollectionTypeUpdate.NOT_COLLECTED
-        UnifiedCollectionType.DROPPED -> AniEpisodeCollectionTypeUpdate.NOT_COLLECTED
+        UnifiedCollectionType.NOT_COLLECTED -> AniSubjectRoutingEpisodeCollectionTypeUpdate.NOT_COLLECTED
+        UnifiedCollectionType.WISH -> AniSubjectRoutingEpisodeCollectionTypeUpdate.NOT_COLLECTED
+        UnifiedCollectionType.DOING -> AniSubjectRoutingEpisodeCollectionTypeUpdate.NOT_COLLECTED
+        UnifiedCollectionType.DONE -> AniSubjectRoutingEpisodeCollectionTypeUpdate.DONE
+        UnifiedCollectionType.ON_HOLD -> AniSubjectRoutingEpisodeCollectionTypeUpdate.NOT_COLLECTED
+        UnifiedCollectionType.DROPPED -> AniSubjectRoutingEpisodeCollectionTypeUpdate.NOT_COLLECTED
     }
 }

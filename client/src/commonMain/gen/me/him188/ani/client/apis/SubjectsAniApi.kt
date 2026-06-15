@@ -21,8 +21,8 @@ import me.him188.ani.client.models.AniBatchUpdateEpisodeCollectionsRequest
 import me.him188.ani.client.models.AniCollectionType
 import me.him188.ani.client.models.AniEpisodeCollection
 import me.him188.ani.client.models.AniNsfwFilter
-import me.him188.ani.client.models.AniPaginatedResponse
-import me.him188.ani.client.models.AniPaginatedResponse2
+import me.him188.ani.client.models.AniPaginatedResponse2SubjectSearch
+import me.him188.ani.client.models.AniPaginatedResponseSubjectCollection
 import me.him188.ani.client.models.AniRelatedCharacter
 import me.him188.ani.client.models.AniRelatedPerson
 import me.him188.ani.client.models.AniRelatedSubject
@@ -382,10 +382,10 @@ open class SubjectsAniApi : ApiClient {
      * @param offset  (optional)
      * @param limit  (optional)
      * @param type  (optional)
-     * @return AniPaginatedResponse
+     * @return AniPaginatedResponseSubjectCollection
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getSubjectCollections(offset: kotlin.Int? = null, limit: kotlin.Int? = null, type: AniCollectionType? = null): HttpResponse<AniPaginatedResponse> {
+    open suspend fun getSubjectCollections(offset: kotlin.Int? = null, limit: kotlin.Int? = null, type: AniCollectionType? = null): HttpResponse<AniPaginatedResponseSubjectCollection> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -552,10 +552,10 @@ open class SubjectsAniApi : ApiClient {
      * @param includeNsfw  (optional)
      * @param sortBy  (optional)
      * @param fields  (optional)
-     * @return AniPaginatedResponse2
+     * @return AniPaginatedResponse2SubjectSearch
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun searchSubjects(q: kotlin.String, offset: kotlin.Int? = null, limit: kotlin.Int? = null, tags: kotlin.collections.List<kotlin.String>? = null, airDates: kotlin.collections.List<kotlin.String>? = null, ratings: kotlin.collections.List<kotlin.String>? = null, ranks: kotlin.collections.List<kotlin.String>? = null, includeNsfw: AniNsfwFilter? = null, sortBy: AniSubjectSearchSortBy? = null, fields: kotlin.collections.List<AniSubjectSearchField>? = null): HttpResponse<AniPaginatedResponse2> {
+    open suspend fun searchSubjects(q: kotlin.String, offset: kotlin.Int? = null, limit: kotlin.Int? = null, tags: kotlin.collections.List<kotlin.String>? = null, airDates: kotlin.collections.List<kotlin.String>? = null, ratings: kotlin.collections.List<kotlin.String>? = null, ranks: kotlin.collections.List<kotlin.String>? = null, includeNsfw: AniNsfwFilter? = null, sortBy: AniSubjectSearchSortBy? = null, fields: kotlin.collections.List<AniSubjectSearchField>? = null): HttpResponse<AniPaginatedResponse2SubjectSearch> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 

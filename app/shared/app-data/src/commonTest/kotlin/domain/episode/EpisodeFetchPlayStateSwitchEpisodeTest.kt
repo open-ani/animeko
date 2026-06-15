@@ -21,6 +21,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.persistent.MemoryDataStore
+import me.him188.ani.app.data.persistent.database.dao.createMemoryPlaybackHistoryDao
 import me.him188.ani.app.data.repository.player.EpisodeHistories
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepositoryImpl
@@ -40,7 +41,11 @@ import kotlin.test.assertEquals
  * 测试多个扩展之间的在 [EpisodeFetchSelectPlayState.switchEpisode] 的兼容性.
  */
 class EpisodeFetchPlayStateSwitchEpisodeTest : AbstractPlayerExtensionTest() {
-    private val playHistory = EpisodePlayHistoryRepositoryImpl(MemoryDataStore(EpisodeHistories.Empty))
+    private val playHistory = EpisodePlayHistoryRepositoryImpl(
+        MemoryDataStore(EpisodeHistories.Empty),
+        createMemoryPlaybackHistoryDao(),
+        nowMillis = { 0 },
+    )
     private val newEpisodeId = 1000
 
     private fun TestScope.createCase(): Triple<CoroutineScope, EpisodePlayerTestSuite, EpisodeFetchSelectPlayState> {

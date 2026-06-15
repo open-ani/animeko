@@ -16,12 +16,12 @@
 
 package me.him188.ani.client.apis
 
-import me.him188.ani.client.models.AniAuthenticationResponse
 import me.him188.ani.client.models.AniListSyncCommandsSortBy
-import me.him188.ani.client.models.AniLoginResponse
 import me.him188.ani.client.models.AniLoginWithRefreshTokenRequest
 import me.him188.ani.client.models.AniOAuthRedirectResponse
-import me.him188.ani.client.models.AniPaginatedResponse1
+import me.him188.ani.client.models.AniPaginatedResponse1BangumiSyncCommandEntity
+import me.him188.ani.client.models.AniUserAuthRoutingAuthenticationResponse
+import me.him188.ani.client.models.AniUserAuthRoutingLoginResponse
 
 import me.him188.ani.client.infrastructure.*
 import io.ktor.client.HttpClient
@@ -122,10 +122,10 @@ open class BangumiAniApi : ApiClient {
      * 获取登录结果
      * 获取登录结果
      * @param requestId
-     * @return AniLoginResponse
+     * @return AniUserAuthRoutingLoginResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getToken(requestId: kotlin.String): HttpResponse<AniLoginResponse> {
+    open suspend fun getToken(requestId: kotlin.String): HttpResponse<AniUserAuthRoutingLoginResponse> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -158,10 +158,10 @@ open class BangumiAniApi : ApiClient {
      * @param offset  (optional)
      * @param limit  (optional)
      * @param sortBy  (optional)
-     * @return AniPaginatedResponse1
+     * @return AniPaginatedResponse1BangumiSyncCommandEntity
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listSyncCommands(offset: kotlin.Int? = null, limit: kotlin.Int? = null, sortBy: AniListSyncCommandsSortBy? = null): HttpResponse<AniPaginatedResponse1> {
+    open suspend fun listSyncCommands(offset: kotlin.Int? = null, limit: kotlin.Int? = null, sortBy: AniListSyncCommandsSortBy? = null): HttpResponse<AniPaginatedResponse1BangumiSyncCommandEntity> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -194,10 +194,10 @@ open class BangumiAniApi : ApiClient {
      * 使用已有的 Bangumi refresh token 绑定账号
      * 使用已有的 Bangumi refresh token 绑定账号
      * @param aniLoginWithRefreshTokenRequest
-     * @return AniAuthenticationResponse
+     * @return AniUserAuthRoutingAuthenticationResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun loginWithRefreshToken(aniLoginWithRefreshTokenRequest: AniLoginWithRefreshTokenRequest): HttpResponse<AniAuthenticationResponse> {
+    open suspend fun loginWithRefreshToken(aniLoginWithRefreshTokenRequest: AniLoginWithRefreshTokenRequest): HttpResponse<AniUserAuthRoutingAuthenticationResponse> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -299,10 +299,10 @@ open class BangumiAniApi : ApiClient {
     /**
      * 解绑 Bangumi 账号
      * 解绑 Bangumi 账号
-     * @return AniAuthenticationResponse
+     * @return AniUserAuthRoutingAuthenticationResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun unbind(): HttpResponse<AniAuthenticationResponse> {
+    open suspend fun unbind(): HttpResponse<AniUserAuthRoutingAuthenticationResponse> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 

@@ -16,6 +16,7 @@ import me.him188.ani.app.domain.session.AccessTokenPair
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.client.apis.BangumiAniApi
 import me.him188.ani.client.models.AniLoginResponse
+import me.him188.ani.client.models.AniUserAuthRoutingLoginResponse
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
@@ -57,6 +58,18 @@ data class OAuthResult(
 )
 
 fun AniLoginResponse.toOAuthResult(): OAuthResult {
+    return OAuthResult(
+        tokens = AccessTokenPair(
+            aniAccessToken = this.tokens.accessToken,
+            expiresAtMillis = this.tokens.expiresAtMillis,
+            bangumiAccessToken = this.tokens.bangumiAccessToken,
+        ),
+        expiresInSeconds = this.tokens.expiresAtMillis.milliseconds.inWholeSeconds,
+        refreshToken = this.tokens.refreshToken,
+    )
+}
+
+fun AniUserAuthRoutingLoginResponse.toOAuthResult(): OAuthResult {
     return OAuthResult(
         tokens = AccessTokenPair(
             aniAccessToken = this.tokens.accessToken,

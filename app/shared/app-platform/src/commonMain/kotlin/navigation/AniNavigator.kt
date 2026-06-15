@@ -160,6 +160,10 @@ interface AniNavigator {
         currentNavigator.navigate(NavRoutes.BangumiAuthorize)
     }
 
+    fun navigatePlaybackHistorySyncStatus() {
+        currentNavigator.navigate(NavRoutes.PlaybackHistorySyncStatus)
+    }
+
     fun navigateSettings(tab: SettingsTab? = null) {
         currentNavigator.navigate(NavRoutes.Settings(tab))
     }
@@ -195,6 +199,10 @@ interface AniNavigator {
 
     fun navigateSchedule() {
         currentNavigator.navigate(NavRoutes.Schedule)
+    }
+
+    fun navigatePlaybackHistory() {
+        currentNavigator.navigate(NavRoutes.PlaybackHistory)
     }
 }
 

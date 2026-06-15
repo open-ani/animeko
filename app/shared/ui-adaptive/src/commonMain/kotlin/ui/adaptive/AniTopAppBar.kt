@@ -91,7 +91,8 @@ import me.him188.ani.utils.platform.isDesktop
  * 默认颜色为 [AniThemeDefaults.topAppBarColors]
  *
  * @param title use [AniTopAppBarDefaults.Title]
- * @param avatar 头像. 应当为一个圆形的头像, 且使用 `Modifier.size(recommendedSize)`.
+ * @param avatar 头像. 应当为一个圆形的头像, 且使用 `Modifier.size(recommendedSize)`. `null` means no avatar
+ * slot will be reserved.
  *
  * @see TopAppBar
  */
@@ -101,7 +102,7 @@ fun AniTopAppBar(
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
-    avatar: @Composable (recommendedSize: DpSize) -> Unit = {},
+    avatar: (@Composable (recommendedSize: DpSize) -> Unit)? = null,
     searchIconButton: @Composable (() -> Unit)? = null,
     searchBar: @Composable (() -> Unit)? = null,
     expandedHeight: Dp = TopAppBarDefaults.TopAppBarExpandedHeight,
@@ -153,30 +154,32 @@ fun AniTopAppBar(
                 actions()
             }
 
-            Box(
-                Modifier
-                    .minimumInteractiveComponentSize()
-                    .padding(end = additionalPadding)
-                    .paddingIfNotEmpty(
-                        start = horizontalPadding,
-                        end = (horizontalPadding - 4.dp - additionalPadding).coerceAtLeast(0.dp), // `actions` 自带 4
-                    ),
-            ) {
-                val minSize =
-                    if (windowSizeClass.isWidthAtLeastMedium
-                        && windowSizeClass.isHeightAtLeastMedium
-                    ) {
-                        48.dp
-                    } else {
-                        36.dp
-                    }
+            if (avatar != null) {
                 Box(
-                    Modifier.sizeIn(
-                        minWidth = minSize, maxWidth = 128.dp,
-                        minHeight = minSize, maxHeight = minSize,
-                    ),
+                    Modifier
+                        .minimumInteractiveComponentSize()
+                        .padding(end = additionalPadding)
+                        .paddingIfNotEmpty(
+                            start = horizontalPadding,
+                            end = (horizontalPadding - 4.dp - additionalPadding).coerceAtLeast(0.dp), // `actions` 自带 4
+                        ),
                 ) {
-                    avatar(DpSize(minSize, minSize))
+                    val minSize =
+                        if (windowSizeClass.isWidthAtLeastMedium
+                            && windowSizeClass.isHeightAtLeastMedium
+                        ) {
+                            48.dp
+                        } else {
+                            36.dp
+                        }
+                    Box(
+                        Modifier.sizeIn(
+                            minWidth = minSize, maxWidth = 128.dp,
+                            minHeight = minSize, maxHeight = minSize,
+                        ),
+                    ) {
+                        avatar(DpSize(minSize, minSize))
+                    }
                 }
             }
         }

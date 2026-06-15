@@ -22,7 +22,7 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * 系列信息
+ *
  *
  * @param subjectId
  * @param seriesMainSubjectIds

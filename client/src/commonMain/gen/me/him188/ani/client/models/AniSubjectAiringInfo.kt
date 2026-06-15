@@ -23,7 +23,7 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * 新番连载信息, 如果是完结番则为 null
+ *
  *
  * @param begin
  * @param recurrence

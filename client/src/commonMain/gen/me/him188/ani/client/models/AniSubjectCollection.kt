@@ -45,9 +45,9 @@ import kotlinx.serialization.encoding.*
  * @param tags
  * @param metaTags
  * @param scoreDetails
- * @param selfRating
+ * @param selfRating 用户对条目的评分信息. 如果没有评分, 各字段为默认值
  * @param episodes 条目对应的剧集的收藏状态
- * @param relations
+ * @param relations 系列信息
  * @param infobox
  * @param platform
  * @param score 如果不为空, 则必定为浮点
@@ -84,11 +84,13 @@ data class AniSubjectCollection (
 
     @SerialName(value = "scoreDetails") @Required val scoreDetails: kotlin.collections.Map<kotlin.String, kotlin.Int>,
 
+    /* 用户对条目的评分信息. 如果没有评分, 各字段为默认值 */
     @SerialName(value = "selfRating") @Required val selfRating: AniSelfRatingInfo,
 
     /* 条目对应的剧集的收藏状态 */
     @SerialName(value = "episodes") @Required val episodes: kotlin.collections.List<AniEpisodeCollection>,
 
+    /* 系列信息 */
     @SerialName(value = "relations") @Required val relations: AniSubjectRelations,
 
     @SerialName(value = "infobox") val infobox: AniInfobox? = null,
