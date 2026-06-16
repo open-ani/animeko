@@ -36,10 +36,11 @@ data class AniDELETE (
 
     @SerialName(value = "deletedAt") @Required val deletedAt: kotlin.String
 
-) : AniPlaybackHistoryRoutingPlaybackHistoryOp {
+) : AniPlaybackHistoryOp {
 
 
 }
 
 
 // @formatter:on
+

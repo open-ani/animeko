@@ -42,3 +42,4 @@ data class AniInfoboxValue (
 
 
 // @formatter:on
+

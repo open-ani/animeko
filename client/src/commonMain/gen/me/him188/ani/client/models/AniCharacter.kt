@@ -55,3 +55,4 @@ data class AniCharacter (
 
 
 // @formatter:on
+

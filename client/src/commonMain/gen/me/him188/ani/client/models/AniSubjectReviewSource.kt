@@ -62,3 +62,4 @@ enum class AniSubjectReviewSource(val value: kotlin.String) {
 
 
 // @formatter:on
+

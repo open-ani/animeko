@@ -218,3 +218,4 @@ open class UserAuthenticationAniApi : ApiClient {
 }
 
 // @formatter:on
+

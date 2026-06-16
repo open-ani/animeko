@@ -40,3 +40,4 @@ data class AniAnimeSeasonIdList (
 
 
 // @formatter:on
+

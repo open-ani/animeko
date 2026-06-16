@@ -16,7 +16,7 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniPlaybackHistoryRoutingPlaybackHistoryOp
+import me.him188.ani.client.models.AniPlaybackHistoryOp
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -32,7 +32,7 @@ import kotlinx.serialization.encoding.*
 
 data class AniSyncRequest (
 
-    @SerialName(value = "ops") val ops: kotlin.collections.List<AniPlaybackHistoryRoutingPlaybackHistoryOp>? = null,
+    @SerialName(value = "ops") val ops: kotlin.collections.List<AniPlaybackHistoryOp>? = null,
 
     @SerialName(value = "lastSyncAt") val lastSyncAt: kotlin.String? = null
 
@@ -43,3 +43,4 @@ data class AniSyncRequest (
 
 
 // @formatter:on
+

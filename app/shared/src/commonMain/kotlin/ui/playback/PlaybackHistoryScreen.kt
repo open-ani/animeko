@@ -41,6 +41,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -74,6 +75,7 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.player.EpisodeHistory
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.player.PlaybackHistoryPendingOp
+import me.him188.ani.app.data.repository.player.PlaybackHistorySyncer
 import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
@@ -82,8 +84,10 @@ import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
+import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.rememberCurrentTopAppBarContainerColor
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.widgets.PullToRefreshBox
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.cache_subject_cancel
 import me.him188.ani.app.ui.lang.cache_subject_delete
@@ -142,6 +146,7 @@ data class PlaybackHistorySyncStatusUiItem(
 @Stable
 class PlaybackHistoryViewModel : AbstractViewModel(), KoinComponent {
     private val repository: EpisodePlayHistoryRepository by inject()
+    private val syncer: PlaybackHistorySyncer by inject()
 
     val stateFlow = repository.flow
         .stateInBackground(emptyList())
@@ -161,6 +166,10 @@ class PlaybackHistoryViewModel : AbstractViewModel(), KoinComponent {
             repository.deletePendingOps(ids)
         }
     }
+
+    suspend fun syncOnce() {
+        syncer.syncOnce()
+    }
 }
 
 @Composable
@@ -173,8 +182,20 @@ fun PlaybackHistoryScreen(
     navigationIcon: @Composable () -> Unit = {},
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
 ) {
+    val asyncHandler = rememberAsyncHandler()
     val histories by vm.stateFlow.collectAsStateWithLifecycle()
     val pendingOps by vm.pendingOpsFlow.collectAsStateWithLifecycle()
+    fun requestSync() {
+        if (asyncHandler.isWorking) return
+        asyncHandler.launch {
+            vm.syncOnce()
+        }
+    }
+
+    LaunchedEffect(vm) {
+        requestSync()
+    }
+
     PlaybackHistoryScreen(
         histories = histories.toUiItems(),
         pendingOpCount = pendingOps.size,
@@ -182,13 +203,15 @@ fun PlaybackHistoryScreen(
         onOpenHistory = onOpenHistory,
         onOpenSyncStatus = onOpenSyncStatus,
         onDelete = vm::delete,
+        isRefreshing = asyncHandler.isWorking,
+        onRefresh = ::requestSync,
         modifier = modifier,
         navigationIcon = navigationIcon,
         windowInsets = windowInsets,
     )
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun PlaybackHistoryScreen(
     histories: List<PlaybackHistoryUiItem>,
@@ -197,6 +220,8 @@ fun PlaybackHistoryScreen(
     onOpenHistory: (PlaybackHistoryUiItem) -> Unit,
     onOpenSyncStatus: () -> Unit = {},
     onDelete: (Collection<Int>) -> Unit,
+    isRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
@@ -268,43 +293,47 @@ fun PlaybackHistoryScreen(
         containerColor = AniThemeDefaults.pageContentBackgroundColor,
         contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
     ) { padding ->
-        if (histories.isEmpty()) {
-            EmptyPlaybackHistory(
-                Modifier
-                    .padding(padding)
-                    .fillMaxSize(),
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .padding(padding)
-                    .nestedScroll(scrollBehavior.nestedScrollConnection)
-                    .fillMaxSize()
-                    .testTag(PlaybackHistoryTestTags.LIST),
-                state = listState,
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(histories, key = { it.episodeId }) { history ->
-                    val selected = history.episodeId in selectedEpisodeIds
-                    PlaybackHistoryListItem(
-                        item = history,
-                        selected = selected,
-                        selectionMode = inSelection,
-                        topAppBarContainerColor = topAppBarContainerColor,
-                        onClick = {
-                            if (inSelection) {
-                                selectedEpisodeIds = selectedEpisodeIds.toggle(history.episodeId)
-                            } else {
-                                onOpenHistory(history)
-                            }
-                        },
-                        onLongClick = {
-                            selectionMode = true
-                            selectedEpisodeIds = selectedEpisodeIds + history.episodeId
-                        },
-                        modifier = Modifier.widthIn(max = 960.dp).fillMaxWidth(),
-                    )
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
+            modifier = Modifier
+                .padding(padding)
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .fillMaxSize(),
+            enabled = !inSelection,
+        ) {
+            if (histories.isEmpty()) {
+                EmptyPlaybackHistory(Modifier.fillMaxSize())
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .testTag(PlaybackHistoryTestTags.LIST),
+                    state = listState,
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(histories, key = { it.episodeId }) { history ->
+                        val selected = history.episodeId in selectedEpisodeIds
+                        PlaybackHistoryListItem(
+                            item = history,
+                            selected = selected,
+                            selectionMode = inSelection,
+                            topAppBarContainerColor = topAppBarContainerColor,
+                            onClick = {
+                                if (inSelection) {
+                                    selectedEpisodeIds = selectedEpisodeIds.toggle(history.episodeId)
+                                } else {
+                                    onOpenHistory(history)
+                                }
+                            },
+                            onLongClick = {
+                                selectionMode = true
+                                selectedEpisodeIds = selectedEpisodeIds + history.episodeId
+                            },
+                            modifier = Modifier.widthIn(max = 960.dp).fillMaxWidth(),
+                        )
+                    }
                 }
             }
         }

@@ -42,3 +42,4 @@ data class AniAnimeRecurrence (
 
 
 // @formatter:on
+

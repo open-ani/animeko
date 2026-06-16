@@ -62,3 +62,4 @@ enum class AniEpisodeCollectionTypeUpdate(val value: kotlin.String) {
 
 
 // @formatter:on
+

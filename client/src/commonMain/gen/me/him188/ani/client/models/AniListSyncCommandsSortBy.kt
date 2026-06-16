@@ -62,3 +62,4 @@ enum class AniListSyncCommandsSortBy(val value: kotlin.String) {
 
 
 // @formatter:on
+

@@ -162,3 +162,4 @@ open class UpdatesAniApi : ApiClient {
 }
 
 // @formatter:on
+

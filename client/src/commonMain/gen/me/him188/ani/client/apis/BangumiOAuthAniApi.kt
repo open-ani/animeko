@@ -218,3 +218,4 @@ open class BangumiOAuthAniApi : ApiClient {
 }
 
 // @formatter:on
+

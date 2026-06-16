@@ -40,3 +40,4 @@ data class AniLatestAiringSchedule (
 
 
 // @formatter:on
+

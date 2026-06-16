@@ -16,3 +16,4 @@ class HttpBasicAuth : Authentication {
 }
 
 // @formatter:on
+

@@ -14,6 +14,6 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 
 @Serializable
 @JsonClassDiscriminator("opType")
-sealed interface AniPlaybackHistoryRoutingPlaybackHistoryOp
+sealed interface AniPlaybackHistoryOp
 
 // @formatter:on

@@ -77,3 +77,4 @@ enum class AniEpisodeType(val value: kotlin.String) {
 
 
 // @formatter:on
+

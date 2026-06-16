@@ -57,10 +57,11 @@ data class AniUPSERT (
 
     @SerialName(value = "episodeName") val episodeName: kotlin.String? = null
 
-) : AniPlaybackHistoryRoutingPlaybackHistoryOp {
+) : AniPlaybackHistoryOp {
 
 
 }
 
 
 // @formatter:on
+

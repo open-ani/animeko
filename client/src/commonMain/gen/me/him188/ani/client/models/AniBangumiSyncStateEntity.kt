@@ -47,3 +47,4 @@ data class AniBangumiSyncStateEntity (
 
 
 // @formatter:on
+

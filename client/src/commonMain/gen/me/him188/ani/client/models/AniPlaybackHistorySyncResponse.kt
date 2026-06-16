@@ -16,8 +16,8 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniPlaybackHistoryRoutingPlaybackHistoryDeleteRecord
-import me.him188.ani.client.models.AniPlaybackHistoryRoutingPlaybackHistoryUpsertRecord
+import me.him188.ani.client.models.AniPlaybackHistoryDeleteRecord
+import me.him188.ani.client.models.AniPlaybackHistoryUpsertRecord
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -33,11 +33,11 @@ import kotlinx.serialization.encoding.*
  */
 @Serializable
 
-data class AniPlaybackHistoryRoutingPlaybackHistorySyncResponse (
+data class AniPlaybackHistorySyncResponse (
 
-    @SerialName(value = "upserts") @Required val upserts: kotlin.collections.List<AniPlaybackHistoryRoutingPlaybackHistoryUpsertRecord>,
+    @SerialName(value = "upserts") @Required val upserts: kotlin.collections.List<AniPlaybackHistoryUpsertRecord>,
 
-    @SerialName(value = "deletes") @Required val deletes: kotlin.collections.List<AniPlaybackHistoryRoutingPlaybackHistoryDeleteRecord>,
+    @SerialName(value = "deletes") @Required val deletes: kotlin.collections.List<AniPlaybackHistoryDeleteRecord>,
 
     @SerialName(value = "serverTime") @Required val serverTime: kotlin.String,
 
@@ -50,3 +50,4 @@ data class AniPlaybackHistoryRoutingPlaybackHistorySyncResponse (
 
 
 // @formatter:on
+

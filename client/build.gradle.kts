@@ -76,9 +76,14 @@ val downloadSpec = tasks.register<Download>("downloadSpec") {
     header("Authorization", "Bearer ${getPropertyOrNull("ani.api.token") ?: ""}")
 }
 
+val cleanGeneratedOpenApiBuild = tasks.register<Delete>("cleanGeneratedOpenApiBuild") {
+    delete(layout.buildDirectory.dir(generatedRoot))
+}
+
 // https://github.com/OpenAPITools/openapi-generator/blob/master/modules/openapi-generator-gradle-plugin/README.adoc
 val generateApi = tasks.register("generateApiV0", GenerateTask::class) {
     dependsOn(downloadSpec)
+    dependsOn(cleanGeneratedOpenApiBuild)
     generatorName.set("kotlin")
     inputSpec.set(downloadSpec.map { it.dest.absolutePath })
     outputDir.set(layout.buildDirectory.file(generatedRoot).map { it.asFile.absolutePath })
@@ -147,7 +152,7 @@ val fixGeneratedOpenApi = tasks.register("fixGeneratedOpenApi") {
             }
 
             when (it.name) {
-                "AniPlaybackHistoryRoutingPlaybackHistoryOp.kt" -> {
+                "AniPlaybackHistoryOp.kt" -> {
                     text = """
                         // @formatter:off
                         /**
@@ -165,7 +170,7 @@ val fixGeneratedOpenApi = tasks.register("fixGeneratedOpenApi") {
 
                         @Serializable
                         @JsonClassDiscriminator("opType")
-                        sealed interface AniPlaybackHistoryRoutingPlaybackHistoryOp
+                        sealed interface AniPlaybackHistoryOp
 
                         // @formatter:on
                     """.trimIndent()
@@ -190,7 +195,7 @@ val fixGeneratedOpenApi = tasks.register("fixGeneratedOpenApi") {
                                 ) {
                             """.trimIndent(),
                             """
-                                ) : AniPlaybackHistoryRoutingPlaybackHistoryOp {
+                                ) : AniPlaybackHistoryOp {
                             """.trimIndent(),
                         )
                     }
@@ -215,7 +220,7 @@ val fixGeneratedOpenApi = tasks.register("fixGeneratedOpenApi") {
                                 ) {
                             """.trimIndent(),
                             """
-                                ) : AniPlaybackHistoryRoutingPlaybackHistoryOp {
+                                ) : AniPlaybackHistoryOp {
                             """.trimIndent(),
                         )
                     }
@@ -235,8 +240,13 @@ val fixGeneratedOpenApi = tasks.register("fixGeneratedOpenApi") {
     }
 }
 
+val cleanGeneratedOpenApiSrc = tasks.register<Delete>("cleanGeneratedOpenApiSrc") {
+    delete(layout.projectDirectory.dir("src/commonMain/gen"))
+}
+
 val copyGeneratedToSrc = tasks.register("copyGeneratedToSrc", Copy::class) {
     dependsOn(fixGeneratedOpenApi)
+    dependsOn(cleanGeneratedOpenApiSrc)
     from(layout.buildDirectory.file("$generatedRoot/src/commonMain/kotlin"))
     into("src/commonMain/gen")
 }

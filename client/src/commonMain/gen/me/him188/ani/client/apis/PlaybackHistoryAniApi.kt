@@ -16,7 +16,7 @@
 
 package me.him188.ani.client.apis
 
-import me.him188.ani.client.models.AniPlaybackHistoryRoutingPlaybackHistorySyncResponse
+import me.him188.ani.client.models.AniPlaybackHistorySyncResponse
 import me.him188.ani.client.models.AniSyncRequest
 
 import me.him188.ani.client.infrastructure.*
@@ -48,10 +48,10 @@ open class PlaybackHistoryAniApi : ApiClient {
      * Sync playback histories
      * Sync playback histories
      * @param aniSyncRequest  (optional)
-     * @return AniPlaybackHistoryRoutingPlaybackHistorySyncResponse
+     * @return AniPlaybackHistorySyncResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun sync(aniSyncRequest: AniSyncRequest? = null): HttpResponse<AniPlaybackHistoryRoutingPlaybackHistorySyncResponse> {
+    open suspend fun sync(aniSyncRequest: AniSyncRequest? = null): HttpResponse<AniPlaybackHistorySyncResponse> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -80,3 +80,4 @@ open class PlaybackHistoryAniApi : ApiClient {
 }
 
 // @formatter:on
+

@@ -663,3 +663,4 @@ open class SubjectsAniApi : ApiClient {
 }
 
 // @formatter:on
+

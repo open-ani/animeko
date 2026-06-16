@@ -36,7 +36,7 @@ import kotlinx.serialization.encoding.*
  */
 @Serializable
 
-data class AniPlaybackHistoryRoutingPlaybackHistoryUpsertRecord (
+data class AniPlaybackHistoryUpsertRecord (
 
     @SerialName(value = "episodeId") @Required val episodeId: kotlin.Long,
 
@@ -63,3 +63,4 @@ data class AniPlaybackHistoryRoutingPlaybackHistoryUpsertRecord (
 
 
 // @formatter:on
+

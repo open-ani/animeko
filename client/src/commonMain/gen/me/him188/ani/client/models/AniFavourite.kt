@@ -51,3 +51,4 @@ data class AniFavourite (
 
 
 // @formatter:on
+

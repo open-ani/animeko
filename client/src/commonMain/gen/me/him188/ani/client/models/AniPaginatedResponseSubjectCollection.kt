@@ -43,3 +43,4 @@ data class AniPaginatedResponseSubjectCollection (
 
 
 // @formatter:on
+

@@ -16,7 +16,7 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniSubjectRoutingEpisodeCollectionTypeUpdate
+import me.him188.ani.client.models.AniEpisodeCollectionTypeUpdate
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -31,7 +31,7 @@ import kotlinx.serialization.encoding.*
 
 data class AniUpdateEpisodeCollectionRequest (
 
-    @SerialName(value = "episodeCollectionType") @Required val episodeCollectionType: AniSubjectRoutingEpisodeCollectionTypeUpdate
+    @SerialName(value = "episodeCollectionType") @Required val episodeCollectionType: AniEpisodeCollectionTypeUpdate
 
 ) {
 
@@ -40,3 +40,4 @@ data class AniUpdateEpisodeCollectionRequest (
 
 
 // @formatter:on
+

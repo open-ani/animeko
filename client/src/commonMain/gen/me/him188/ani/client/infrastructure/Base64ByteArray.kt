@@ -30,3 +30,4 @@ class Base64ByteArray(val value: ByteArray) {
 }
 
 // @formatter:on
+

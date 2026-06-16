@@ -44,3 +44,4 @@ data class AniAnimeSchedule (
 
 
 // @formatter:on
+

@@ -48,3 +48,4 @@ data class AniBangumiLoginRequest (
 
 
 // @formatter:on
+

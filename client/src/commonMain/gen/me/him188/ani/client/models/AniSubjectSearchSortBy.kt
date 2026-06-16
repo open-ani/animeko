@@ -80,3 +80,4 @@ enum class AniSubjectSearchSortBy(val value: kotlin.String) {
 
 
 // @formatter:on
+

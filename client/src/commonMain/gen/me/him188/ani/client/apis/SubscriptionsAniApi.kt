@@ -79,3 +79,4 @@ open class SubscriptionsAniApi : ApiClient {
 }
 
 // @formatter:on
+

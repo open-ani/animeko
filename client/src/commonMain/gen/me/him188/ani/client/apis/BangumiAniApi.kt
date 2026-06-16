@@ -331,3 +331,4 @@ open class BangumiAniApi : ApiClient {
 }
 
 // @formatter:on
+

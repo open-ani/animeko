@@ -68,3 +68,4 @@ enum class AniAnimeSeason(val value: kotlin.String) {
 
 
 // @formatter:on
+

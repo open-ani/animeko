@@ -24,16 +24,16 @@ import kotlinx.serialization.encoding.*
 /**
  *
  *
- * @param otpId
- * @param hasExistingUser
+ * @param episodeId
+ * @param deletedAt
  */
 @Serializable
 
-data class AniSendOptResponse (
+data class AniPlaybackHistoryDeleteRecord (
 
-    @SerialName(value = "otpId") @Required val otpId: kotlin.String,
+    @SerialName(value = "episodeId") @Required val episodeId: kotlin.Long,
 
-    @SerialName(value = "hasExistingUser") @Required val hasExistingUser: kotlin.Boolean
+    @SerialName(value = "deletedAt") @Required val deletedAt: kotlin.String
 
 ) {
 
@@ -42,3 +42,4 @@ data class AniSendOptResponse (
 
 
 // @formatter:on
+

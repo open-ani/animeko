@@ -26,9 +26,9 @@ import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.client.apis.PlaybackHistoryAniApi
 import me.him188.ani.client.models.AniDELETE
-import me.him188.ani.client.models.AniPlaybackHistoryRoutingPlaybackHistoryDeleteRecord
-import me.him188.ani.client.models.AniPlaybackHistoryRoutingPlaybackHistoryOp
-import me.him188.ani.client.models.AniPlaybackHistoryRoutingPlaybackHistoryUpsertRecord
+import me.him188.ani.client.models.AniPlaybackHistoryDeleteRecord
+import me.him188.ani.client.models.AniPlaybackHistoryOp
+import me.him188.ani.client.models.AniPlaybackHistoryUpsertRecord
 import me.him188.ani.client.models.AniSyncRequest
 import me.him188.ani.client.models.AniUPSERT
 import me.him188.ani.utils.coroutines.IO_
@@ -102,7 +102,7 @@ class PlaybackHistorySyncer(
         }
     }
 
-    private fun PlaybackHistoryPendingOp.toApiOp(): AniPlaybackHistoryRoutingPlaybackHistoryOp {
+    private fun PlaybackHistoryPendingOp.toApiOp(): AniPlaybackHistoryOp {
         return when (this) {
             is PlaybackHistoryPendingOp.Delete -> toApiDelete()
             is PlaybackHistoryPendingOp.Upsert -> toApiUpsert()
@@ -130,7 +130,7 @@ class PlaybackHistorySyncer(
         )
     }
 
-    private fun AniPlaybackHistoryRoutingPlaybackHistoryUpsertRecord.toEpisodeHistory(): EpisodeHistory {
+    private fun AniPlaybackHistoryUpsertRecord.toEpisodeHistory(): EpisodeHistory {
         return EpisodeHistory(
             episodeId = episodeId.toInt(),
             positionMillis = positionMillis,
@@ -146,7 +146,7 @@ class PlaybackHistorySyncer(
         )
     }
 
-    private fun AniPlaybackHistoryRoutingPlaybackHistoryDeleteRecord.toEpisodeHistory(): EpisodeHistory {
+    private fun AniPlaybackHistoryDeleteRecord.toEpisodeHistory(): EpisodeHistory {
         return EpisodeHistory(
             episodeId = episodeId.toInt(),
             positionMillis = 0,

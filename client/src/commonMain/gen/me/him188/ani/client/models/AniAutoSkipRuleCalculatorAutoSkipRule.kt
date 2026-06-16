@@ -39,3 +39,4 @@ data class AniAutoSkipRuleCalculatorAutoSkipRule (
 
 
 // @formatter:on
+
