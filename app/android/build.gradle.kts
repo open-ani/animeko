@@ -21,6 +21,7 @@ import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesS
 plugins {
     alias(libs.plugins.jetbrains.compose)
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.plugin.compose)
     alias(libs.plugins.kotlinx.atomicfu)
     id("kotlin-parcelize")

@@ -15,7 +15,7 @@ import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.domain.session.AccessTokenPair
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.client.apis.BangumiAniApi
-import me.him188.ani.client.models.AniLoginResponse
+import me.him188.ani.client.models.AniUserAuthRoutingLoginResponse
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
@@ -56,7 +56,7 @@ data class OAuthResult(
     val refreshToken: String,
 )
 
-fun AniLoginResponse.toOAuthResult(): OAuthResult {
+fun AniUserAuthRoutingLoginResponse.toOAuthResult(): OAuthResult {
     return OAuthResult(
         tokens = AccessTokenPair(
             aniAccessToken = this.tokens.accessToken,

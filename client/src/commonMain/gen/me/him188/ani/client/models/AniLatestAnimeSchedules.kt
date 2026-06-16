@@ -40,3 +40,4 @@ data class AniLatestAnimeSchedules (
 
 
 // @formatter:on
+

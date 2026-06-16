@@ -40,3 +40,4 @@ data class AniUpdateEpisodeCollectionRequest (
 
 
 // @formatter:on
+

@@ -85,6 +85,9 @@ import me.him188.ani.app.ui.onboarding.OnboardingCompleteViewModel
 import me.him188.ani.app.ui.onboarding.OnboardingScreen
 import me.him188.ani.app.ui.onboarding.OnboardingViewModel
 import me.him188.ani.app.ui.onboarding.WelcomeScreen
+import me.him188.ani.app.ui.playback.PlaybackHistoryScreen
+import me.him188.ani.app.ui.playback.PlaybackHistorySyncStatusScreen
+import me.him188.ani.app.ui.playback.PlaybackHistoryViewModel
 import me.him188.ani.app.ui.profile.auth.AniContactList
 import me.him188.ani.app.ui.search.SearchScreen
 import me.him188.ani.app.ui.settings.SettingsScreen
@@ -470,6 +473,57 @@ private fun AniAppContentImpl(
                             },
                         )
                     },
+                )
+            }
+            composable<NavRoutes.PlaybackHistory>(
+                enterTransition = enterTransition,
+                exitTransition = exitTransition,
+                popEnterTransition = popEnterTransition,
+                popExitTransition = popExitTransition,
+            ) { backStackEntry ->
+                val route = backStackEntry.toRoute<NavRoutes.PlaybackHistory>()
+                PlaybackHistoryScreen(
+                    vm = viewModel { PlaybackHistoryViewModel() },
+                    onNavigateBack = { aniNavigator.popBackStack(route, inclusive = true) },
+                    onOpenHistory = { history ->
+                        val subjectId = history.subjectId
+                        if (subjectId != null) {
+                            aniNavigator.navigateEpisodeDetails(subjectId, history.episodeId)
+                        }
+                    },
+                    onOpenSyncStatus = {
+                        aniNavigator.navigatePlaybackHistorySyncStatus()
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                    navigationIcon = {
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popBackStack(route, inclusive = true)
+                            },
+                        )
+                    },
+                    windowInsets = windowInsetsWithoutTitleBar,
+                )
+            }
+            composable<NavRoutes.PlaybackHistorySyncStatus>(
+                enterTransition = enterTransition,
+                exitTransition = exitTransition,
+                popEnterTransition = popEnterTransition,
+                popExitTransition = popExitTransition,
+            ) { backStackEntry ->
+                val route = backStackEntry.toRoute<NavRoutes.PlaybackHistorySyncStatus>()
+                PlaybackHistorySyncStatusScreen(
+                    vm = viewModel { PlaybackHistoryViewModel() },
+                    onNavigateBack = { aniNavigator.popBackStack(route, inclusive = true) },
+                    modifier = Modifier.fillMaxSize(),
+                    navigationIcon = {
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popBackStack(route, inclusive = true)
+                            },
+                        )
+                    },
+                    windowInsets = windowInsetsWithoutTitleBar,
                 )
             }
             composable<NavRoutes.Caches>(

@@ -48,3 +48,4 @@ data class AniLatestVersionInfo (
 
 
 // @formatter:on
+

@@ -24,3 +24,4 @@ fun <T : Any?> toMultiValue(items: Iterable<T>, collectionFormat: String, map: (
 }
 
 // @formatter:on
+

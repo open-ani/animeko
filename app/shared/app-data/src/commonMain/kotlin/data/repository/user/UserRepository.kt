@@ -40,11 +40,11 @@ import me.him188.ani.client.apis.UserAniApi
 import me.him188.ani.client.apis.UserAuthenticationAniApi
 import me.him188.ani.client.apis.UserProfileAniApi
 import me.him188.ani.client.models.AniAniSelfUser
-import me.him188.ani.client.models.AniAuthenticationResponse
 import me.him188.ani.client.models.AniEditEmailRequest
 import me.him188.ani.client.models.AniRegisterOrLoginByEmailOtpRequest
 import me.him188.ani.client.models.AniSendEmailOtpRequest
 import me.him188.ani.client.models.AniUpdateProfileRequest
+import me.him188.ani.client.models.AniUserAuthRoutingAuthenticationResponse
 import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.catching
 import me.him188.ani.utils.coroutines.flows.restartable
@@ -154,7 +154,7 @@ class UserRepository(
         }
     }
 
-    private suspend fun requestEmailOtpAuth(block: suspend UserAuthenticationAniApi.() -> AniAuthenticationResponse): SendOtpResult {
+    private suspend fun requestEmailOtpAuth(block: suspend UserAuthenticationAniApi.() -> AniUserAuthRoutingAuthenticationResponse): SendOtpResult {
         return authApi.invoke {
             try {
                 val data = block()

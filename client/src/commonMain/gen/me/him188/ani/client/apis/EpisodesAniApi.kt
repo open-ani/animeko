@@ -16,7 +16,7 @@
 
 package me.him188.ani.client.apis
 
-import me.him188.ani.client.models.AniAutoSkipRules
+import me.him188.ani.client.models.AniAutoSkipRuleCalculatorAutoSkipRules
 import me.him188.ani.client.models.AniCreateEpisodeCommentRequest
 import me.him188.ani.client.models.AniCreateEpisodeReplyRequest
 import me.him188.ani.client.models.AniEpisodeCommentsResponse
@@ -155,10 +155,10 @@ open class EpisodesAniApi : ApiClient {
      * Get computed Auto-Skip rules for episode
      * Get computed Auto-Skip rules for episode
      * @param episodeId
-     * @return AniAutoSkipRules
+     * @return AniAutoSkipRuleCalculatorAutoSkipRules
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getAutoSkipRules(episodeId: kotlin.Long): HttpResponse<AniAutoSkipRules> {
+    open suspend fun getAutoSkipRules(episodeId: kotlin.Long): HttpResponse<AniAutoSkipRuleCalculatorAutoSkipRules> {
 
         val localVariableAuthNames = listOf<String>("auth-jwt")
 
@@ -293,3 +293,4 @@ open class EpisodesAniApi : ApiClient {
 }
 
 // @formatter:on
+

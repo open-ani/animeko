@@ -16,7 +16,7 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniAutoSkipRule
+import me.him188.ani.client.models.AniAutoSkipRuleCalculatorAutoSkipRule
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -29,9 +29,9 @@ import kotlinx.serialization.encoding.*
  */
 @Serializable
 
-data class AniAutoSkipRules (
+data class AniAutoSkipRuleCalculatorAutoSkipRules (
 
-    @SerialName(value = "rules") @Required val rules: kotlin.collections.List<AniAutoSkipRule>
+    @SerialName(value = "rules") @Required val rules: kotlin.collections.List<AniAutoSkipRuleCalculatorAutoSkipRule>
 
 ) {
 
@@ -40,3 +40,4 @@ data class AniAutoSkipRules (
 
 
 // @formatter:on
+

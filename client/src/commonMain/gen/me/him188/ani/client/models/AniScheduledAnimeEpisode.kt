@@ -47,3 +47,4 @@ data class AniScheduledAnimeEpisode (
 
 
 // @formatter:on
+

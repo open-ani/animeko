@@ -17,5 +17,18 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class EpisodeHistory(
     val episodeId: Int,
-    val positionMillis: Long
-)
+    val positionMillis: Long,
+    val subjectId: Int? = null,
+    val episodeSort: Float? = null,
+    val subjectName: String? = null,
+    val subjectImageUrl: String? = null,
+    val episodeName: String? = null,
+    val durationMillis: Long? = null,
+    val updatedAtMillis: Long = 0,
+    val deletedAtMillis: Long? = null,
+    val isDirty: Boolean = true,
+) {
+    val isDeleted: Boolean get() = deletedAtMillis != null
+
+    val versionMillis: Long get() = maxOf(updatedAtMillis, deletedAtMillis ?: 0L)
+}

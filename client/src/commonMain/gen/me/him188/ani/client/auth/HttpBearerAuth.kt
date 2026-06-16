@@ -15,3 +15,4 @@ class HttpBearerAuth(private val scheme: String?) : Authentication {
 }
 
 // @formatter:on
+

@@ -52,3 +52,4 @@ fun <T : Any, V : Any> HttpResponse<T>.map(block: T.() -> V): HttpResponse<V> =
         HttpResponse(response, MappedBodyProvider(provider, block))
 
 // @formatter:on
+

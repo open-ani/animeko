@@ -78,3 +78,4 @@ open class UserAniApi : ApiClient {
 }
 
 // @formatter:on
+

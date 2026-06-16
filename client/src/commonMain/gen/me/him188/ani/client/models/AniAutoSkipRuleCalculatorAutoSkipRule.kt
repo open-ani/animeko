@@ -16,7 +16,6 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniSubjectCollection
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -25,16 +24,13 @@ import kotlinx.serialization.encoding.*
 /**
  *
  *
- * @param total
- * @param items
+ * @param timeMs
  */
 @Serializable
 
-data class AniPaginatedResponse (
+data class AniAutoSkipRuleCalculatorAutoSkipRule (
 
-    @SerialName(value = "total") @Required val total: kotlin.Long,
-
-    @SerialName(value = "items") @Required val items: kotlin.collections.List<AniSubjectCollection>
+    @SerialName(value = "timeMs") @Required val timeMs: kotlin.Long
 
 ) {
 
@@ -43,3 +39,4 @@ data class AniPaginatedResponse (
 
 
 // @formatter:on
+

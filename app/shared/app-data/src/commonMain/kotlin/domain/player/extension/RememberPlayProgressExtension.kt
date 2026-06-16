@@ -14,11 +14,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodeSession
+import me.him188.ani.app.domain.episode.SubjectEpisodeInfoBundle
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -38,6 +43,8 @@ class RememberPlayProgressExtension(
     koin: Koin,
 ) : PlayerExtension(name = "SaveProgressExtension") {
     private val playProgressRepository: EpisodePlayHistoryRepository by koin.inject()
+    private val latestInfoBundleMutex = Mutex()
+    private val latestInfoBundles = mutableMapOf<Int, SubjectEpisodeInfoBundle>()
 
     override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
         val mediaLoaded = CompletableDeferred<Unit>()
@@ -49,6 +56,14 @@ class RememberPlayProgressExtension(
             }
         }
 
+        backgroundTaskScope.launch("InfoBundleCache") {
+            episodeSession.infoBundleFlow.filterNotNull().collect { info ->
+                latestInfoBundleMutex.withLock {
+                    latestInfoBundles[info.episodeId] = info
+                }
+            }
+        }
+
         backgroundTaskScope.launch("MediaSelectorListener") {
             mediaLoaded.await() // 播放器开始播放了再跑这个 extension
             episodeSession.fetchSelectFlow.collectLatest inner@{ fetchSelect ->
@@ -56,7 +71,7 @@ class RememberPlayProgressExtension(
 
                 fetchSelect.mediaSelector.events.onBeforeSelect.collect {
                     // 切换 数据源 前保存播放进度
-                    savePlayProgressOrRemove(episodeSession.episodeId)
+                    savePlayProgressOrRemove(episodeSession)
                 }
             }
         }
@@ -83,12 +98,12 @@ class RememberPlayProgressExtension(
 
                     PlaybackState.PAUSED -> {
                         mediaLoaded.await() // 播放器开始播放了一次之后再保存状态
-                        savePlayProgressOrRemove(episodeSession.episodeId)
+                        savePlayProgressOrRemove(episodeSession)
                     }
 
                     PlaybackState.FINISHED -> {
                         mediaLoaded.await() // 播放器开始播放了一次之后再保存状态
-                        savePlayProgressOrRemove(episodeSession.episodeId)
+                        savePlayProgressOrRemove(episodeSession)
                     }
 
                     else -> Unit
@@ -109,7 +124,20 @@ class RememberPlayProgressExtension(
     }
 
     private suspend fun savePlayProgressOrRemove(
+        episodeSession: EpisodeSession,
+    ) {
+        savePlayProgressOrRemove(episodeSession.episodeId, episodeSession)
+    }
+
+    private suspend fun savePlayProgressOrRemove(
         episodeId: Int
+    ) {
+        savePlayProgressOrRemove(episodeId, null)
+    }
+
+    private suspend fun savePlayProgressOrRemove(
+        episodeId: Int,
+        episodeSession: EpisodeSession?,
     ) {
         val player = context.player
         val playbackState = player.playbackState.value
@@ -146,10 +174,31 @@ class RememberPlayProgressExtension(
                 if (videoDurationMillis - currentPositionMillis < 5000 || currentPositionMillis > videoDurationMillis) {
                     playProgressRepository.remove(episodeId)
                 } else {
-                    playProgressRepository.saveOrUpdate(episodeId, currentPositionMillis)
+                    val info = latestInfoBundle(episodeId, episodeSession)
+                    playProgressRepository.saveOrUpdate(
+                        episodeId = episodeId,
+                        positionMillis = currentPositionMillis,
+                        subjectId = info?.subjectId,
+                        episodeSort = info?.episodeInfo?.sort?.number,
+                        subjectName = info?.subjectInfo?.displayName,
+                        subjectImageUrl = info?.subjectInfo?.imageLarge,
+                        episodeName = info?.episodeInfo?.displayName,
+                        durationMillis = videoDurationMillis,
+                    )
                 }
                 return
             }
+        }
+    }
+
+    private suspend fun latestInfoBundle(
+        episodeId: Int,
+        episodeSession: EpisodeSession?,
+    ): SubjectEpisodeInfoBundle? {
+        episodeSession?.infoBundleFlow?.replayCache?.lastOrNull()?.let { return it }
+
+        return latestInfoBundleMutex.withLock {
+            latestInfoBundles[episodeId]
         }
     }
 

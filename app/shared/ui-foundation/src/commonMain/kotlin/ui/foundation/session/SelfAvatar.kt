@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -43,6 +44,7 @@ import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.login_sign_in
+import me.him188.ani.app.ui.lang.playback_history_title
 import me.him188.ani.app.ui.lang.settings_account_confirm_logout
 import me.him188.ani.app.ui.lang.settings_account_logout
 import me.him188.ani.app.ui.lang.settings_account_settings
@@ -98,6 +100,7 @@ fun SelfAvatar(
 
 @Stable
 interface SelfAvatarActionHandler {
+    fun onClickPlaybackHistory()
     fun onClickSettings()
     suspend fun onLogout()
 }
@@ -107,6 +110,10 @@ private class DefaultSelfAvatarActionHandler(
     private val dispatcher: CoroutineContext = Dispatchers.Default,
 ) : SelfAvatarActionHandler, KoinComponent {
     private val userRepo: UserRepository by inject()
+    override fun onClickPlaybackHistory() {
+        navigator.navigatePlaybackHistory()
+    }
+
     override fun onClickSettings() {
         navigator.navigateSettings()
     }
@@ -129,10 +136,20 @@ private fun SelfAvatarMenus(
     handler: SelfAvatarActionHandler,
     onClickAny: () -> Unit,
 ) {
+    val playbackHistoryText = stringResource(Lang.playback_history_title)
     val settingsText = stringResource(Lang.settings_account_settings)
     val logoutText = stringResource(Lang.settings_account_logout)
     val confirmLogoutText = stringResource(Lang.settings_account_confirm_logout)
     val cancelText = stringResource(Lang.subject_collection_cancel)
+
+    DropdownMenuItem(
+        text = { Text(playbackHistoryText) },
+        onClick = {
+            handler.onClickPlaybackHistory()
+            onClickAny()
+        },
+        leadingIcon = { Icon(Icons.Rounded.History, null) },
+    )
 
     DropdownMenuItem(
         text = { Text(settingsText) },

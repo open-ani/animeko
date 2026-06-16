@@ -17,3 +17,4 @@ class ApiKeyAuth(private val location: String, val paramName: String) : Authenti
 }
 
 // @formatter:on
+

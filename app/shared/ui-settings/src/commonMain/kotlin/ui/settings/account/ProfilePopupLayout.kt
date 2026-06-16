@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.DrawerDefaults
 import androidx.compose.material3.Icon
@@ -52,6 +53,7 @@ import me.him188.ani.app.ui.foundation.interaction.hoverable
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.widgets.HeroIcon
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.playback_history_title
 import me.him188.ani.app.ui.lang.settings
 import me.him188.ani.app.ui.lang.settings_account_popup_edit_profile
 import me.him188.ani.app.ui.lang.settings_account_popup_login_register
@@ -68,6 +70,7 @@ internal fun ProfilePopupLayout(
     onClickLogin: () -> Unit,
     onClickEditAvatar: () -> Unit,
     onClickEditProfile: () -> Unit,
+    onClickPlaybackHistory: () -> Unit,
     onClickSettings: () -> Unit,
     onClickLogout: () -> Unit,
     modifier: Modifier = Modifier,
@@ -76,6 +79,7 @@ internal fun ProfilePopupLayout(
     val notLoggedInText = stringResource(Lang.settings_account_popup_not_logged_in)
     val editProfileText = stringResource(Lang.settings_account_popup_edit_profile)
     val loginRegisterText = stringResource(Lang.settings_account_popup_login_register)
+    val playbackHistoryText = stringResource(Lang.playback_history_title)
     val settingsText = stringResource(Lang.settings)
     val logoutText = stringResource(Lang.settings_account_popup_logout)
     Column(modifier) {
@@ -149,6 +153,13 @@ internal fun ProfilePopupLayout(
                     ) {
                         Text(loginRegisterText)
                     }
+                }
+
+                TextItem(
+                    icon = { Icon(Icons.Outlined.History, contentDescription = playbackHistoryText) },
+                    onClick = onClickPlaybackHistory,
+                ) {
+                    Text(playbackHistoryText)
                 }
 
                 TextItem(
@@ -238,6 +249,7 @@ private fun PreviewAccountSettingsPopupLayout() {
         Surface {
             ProfilePopupLayout(
                 TestAccountSettingsState,
+                { },
                 { },
                 { },
                 { },

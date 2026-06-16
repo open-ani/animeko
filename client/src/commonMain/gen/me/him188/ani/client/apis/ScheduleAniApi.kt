@@ -217,3 +217,4 @@ open class ScheduleAniApi : ApiClient {
 }
 
 // @formatter:on
+

@@ -16,6 +16,7 @@
 
 package me.him188.ani.client.models
 
+import me.him188.ani.client.models.AniPlaybackHistoryOp
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -24,16 +25,16 @@ import kotlinx.serialization.encoding.*
 /**
  *
  *
- * @param otpId
- * @param hasExistingUser
+ * @param ops
+ * @param lastSyncAt
  */
 @Serializable
 
-data class AniSendOptResponse (
+data class AniSyncRequest (
 
-    @SerialName(value = "otpId") @Required val otpId: kotlin.String,
+    @SerialName(value = "ops") val ops: kotlin.collections.List<AniPlaybackHistoryOp>? = null,
 
-    @SerialName(value = "hasExistingUser") @Required val hasExistingUser: kotlin.Boolean
+    @SerialName(value = "lastSyncAt") val lastSyncAt: kotlin.String? = null
 
 ) {
 
@@ -42,3 +43,4 @@ data class AniSendOptResponse (
 
 
 // @formatter:on
+

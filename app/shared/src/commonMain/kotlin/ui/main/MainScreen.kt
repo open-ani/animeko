@@ -316,6 +316,10 @@ private fun MainScreenContent(
                 showAccountSettingsPopup = false
                 onNavigateToSettings(SettingsTab.PROFILE)
             },
+            onNavigateToPlaybackHistory = {
+                showAccountSettingsPopup = false
+                navigator.navigatePlaybackHistory()
+            },
             onNavigateToLogin = {
                 showAccountSettingsPopup = false
                 navigator.navigateEmailLoginStart()

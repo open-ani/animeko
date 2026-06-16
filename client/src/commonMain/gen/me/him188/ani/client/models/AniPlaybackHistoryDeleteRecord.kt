@@ -16,8 +16,6 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniAniSelfUser
-import me.him188.ani.client.models.AniAniTokens
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -26,19 +24,16 @@ import kotlinx.serialization.encoding.*
 /**
  *
  *
- * @param userId
- * @param tokens
- * @param user
+ * @param episodeId
+ * @param deletedAt
  */
 @Serializable
 
-data class AniLoginResponse (
+data class AniPlaybackHistoryDeleteRecord (
 
-    @SerialName(value = "userId") @Required val userId: kotlin.String,
+    @SerialName(value = "episodeId") @Required val episodeId: kotlin.Long,
 
-    @SerialName(value = "tokens") @Required val tokens: AniAniTokens,
-
-    @SerialName(value = "user") @Required val user: AniAniSelfUser
+    @SerialName(value = "deletedAt") @Required val deletedAt: kotlin.String
 
 ) {
 
@@ -47,3 +42,4 @@ data class AniLoginResponse (
 
 
 // @formatter:on
+

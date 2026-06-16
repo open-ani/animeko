@@ -92,3 +92,4 @@ enum class AniSubjectSearchField(val value: kotlin.String) {
 
 
 // @formatter:on
+

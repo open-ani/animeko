@@ -20,6 +20,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.data.models.player.EpisodeHistory
 import me.him188.ani.app.data.persistent.MemoryDataStore
+import me.him188.ani.app.data.persistent.database.dao.createMemoryPlaybackHistoryDao
 import me.him188.ani.app.data.repository.player.EpisodeHistories
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepositoryImpl
@@ -41,7 +42,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 
 class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
-    private val repository = EpisodePlayHistoryRepositoryImpl(MemoryDataStore(EpisodeHistories.Empty))
+    private val repository = EpisodePlayHistoryRepositoryImpl(
+        MemoryDataStore(EpisodeHistories.Empty),
+        createMemoryPlaybackHistoryDao(),
+        nowMillis = { 0 },
+    )
 
     @OptIn(UnsafeEpisodeSessionApi::class)
     private suspend fun TestScope.loadSelectedMedia(
@@ -75,6 +80,24 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         Triple(testScope, suite, state)
     }
 
+    private suspend fun assertSavedHistory(
+        positionMillis: Long,
+        episodeId: Int = initialEpisodeId,
+    ): EpisodeHistory {
+        val history = repository.flow.first().single()
+        assertEquals(episodeId, history.episodeId)
+        assertEquals(positionMillis, history.positionMillis)
+        return history
+    }
+
+    private suspend fun assertSingleSavedHistoryList(
+        positionMillis: Long,
+        episodeId: Int = initialEpisodeId,
+    ) {
+        assertSavedHistory(positionMillis, episodeId)
+        assertEquals(1, repository.flow.first().size)
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // Normal save cases
     ///////////////////////////////////////////////////////////////////////////
@@ -101,7 +124,13 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         suite.player.playbackState.value = PlaybackState.PAUSED
         advanceUntilIdle()
 
-        assertEquals(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000), repository.flow.first()[0])
+        val history = assertSavedHistory(1000)
+        assertEquals(1, history.subjectId)
+        assertEquals(1f, history.episodeSort)
+        assertEquals("中文条目名称", history.subjectName)
+        assertEquals("", history.subjectImageUrl)
+        assertEquals("Nita O'Donnell", history.episodeName)
+        assertEquals(100_000, history.durationMillis)
 
         testScope.cancel()
     }
@@ -118,10 +147,14 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         state.onClose()
         advanceUntilIdle()
 
-        assertEquals(
-            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
-            repository.flow.first(),
-        )
+        val history = assertSavedHistory(1000)
+        assertEquals(1, history.subjectId)
+        assertEquals(1f, history.episodeSort)
+        assertEquals("中文条目名称", history.subjectName)
+        assertEquals("", history.subjectImageUrl)
+        assertEquals("Nita O'Donnell", history.episodeName)
+        assertEquals(100_000, history.durationMillis)
+        assertEquals(1, repository.flow.first().size)
 
         testScope.cancel()
     }
@@ -176,10 +209,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         suite.player.currentPositionMillis.value = -1
         advanceUntilIdle()
 
-        assertEquals(
-            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
-            repository.flow.first(),
-        )
+        assertSingleSavedHistoryList(1000)
 
         testScope.cancel()
     }
@@ -196,10 +226,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         suite.player.currentPositionMillis.value = 0
         advanceUntilIdle()
 
-        assertEquals(
-            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
-            repository.flow.first(),
-        )
+        assertSingleSavedHistoryList(1000)
 
         testScope.cancel()
     }
@@ -218,10 +245,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         suite.player.playbackState.value = PlaybackState.FINISHED
         advanceUntilIdle()
 
-        assertEquals(
-            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
-            repository.flow.first(),
-        )
+        assertSingleSavedHistoryList(1000)
 
         testScope.cancel()
     }
@@ -263,10 +287,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         state.player.stopPlayback()
         advanceUntilIdle()
 
-        assertEquals(
-            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
-            repository.flow.first(),
-        )
+        assertSingleSavedHistoryList(1000)
 
         testScope.cancel()
     }
@@ -329,8 +350,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         suite.player.playbackState.value = PlaybackState.PAUSED
         advanceUntilIdle()
 
-        assertEquals(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000), repository.flow.first()[0])
-        assertEquals(1, repository.flow.first().size)
+        assertSingleSavedHistoryList(1000)
 
         testScope.cancel()
     }
@@ -355,8 +375,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         suite.player.playbackState.value = PlaybackState.PAUSED
         advanceUntilIdle()
 
-        assertEquals(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1001), repository.flow.first()[0])
-        assertEquals(1, repository.flow.first().size)
+        assertSingleSavedHistoryList(1001)
 
         testScope.cancel()
     }
@@ -373,17 +392,11 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
         suite.player.playbackState.value = PlaybackState.PAUSED
         advanceUntilIdle()
-        assertEquals(
-            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
-            repository.flow.first(),
-        )
+        assertSingleSavedHistoryList(1000)
 
         state.onClose()
         advanceUntilIdle()
-        assertEquals(
-            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
-            repository.flow.first(),
-        )
+        assertSingleSavedHistoryList(1000)
 
         testScope.cancel()
     }
@@ -400,10 +413,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
         suite.player.playbackState.value = PlaybackState.PAUSED
         advanceUntilIdle()
-        assertEquals(
-            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
-            repository.flow.first(),
-        )
+        assertSingleSavedHistoryList(1000)
 
         suite.player.playbackState.value = PlaybackState.PLAYING
         advanceUntilIdle()
@@ -433,20 +443,14 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
         suite.player.playbackState.value = PlaybackState.PAUSED
         advanceUntilIdle()
-        assertEquals(
-            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
-            repository.flow.first(),
-        )
+        assertSingleSavedHistoryList(1000)
 
         // Did not return to PLAYING state. 
 
         suite.player.seekTo(100_000 - 1)
         advanceUntilIdle()
-        assertEquals(
-            // current algorithm does not remove the history in this case
-            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
-            repository.flow.first(),
-        )
+        // current algorithm does not remove the history in this case
+        assertSingleSavedHistoryList(1000)
 
         testScope.cancel()
     }
@@ -467,7 +471,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
         suite.player.playbackState.value = PlaybackState.PAUSED
         advanceUntilIdle()
-        assertEquals(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000), repository.flow.first()[0])
+        assertSavedHistory(1000)
 
         assertEquals(
             100_000,
@@ -475,10 +479,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         )
         suite.player.playbackState.value = PlaybackState.ERROR
         advanceUntilIdle()
-        assertEquals(
-            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
-            repository.flow.first(),
-        )
+        assertSingleSavedHistoryList(1000)
 
         testScope.cancel()
     }
@@ -495,15 +496,12 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
         suite.player.playbackState.value = PlaybackState.PAUSED
         advanceUntilIdle()
-        assertEquals(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000), repository.flow.first()[0])
+        assertSavedHistory(1000)
 
         suite.setMediaDuration(0)
         suite.player.playbackState.value = PlaybackState.FINISHED
         advanceUntilIdle()
-        assertEquals(
-            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
-            repository.flow.first(),
-        )
+        assertSingleSavedHistoryList(1000)
 
         testScope.cancel()
     }
@@ -520,15 +518,12 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
         suite.player.playbackState.value = PlaybackState.PAUSED
         advanceUntilIdle()
-        assertEquals(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000), repository.flow.first()[0])
+        assertSavedHistory(1000)
 
         suite.setMediaDuration(-1)
         suite.player.playbackState.value = PlaybackState.FINISHED
         advanceUntilIdle()
-        assertEquals(
-            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 1000)),
-            repository.flow.first(),
-        )
+        assertSingleSavedHistoryList(1000)
 
         testScope.cancel()
     }
@@ -641,10 +636,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
 
         // Should not save for new episode 1000
 
-        assertEquals(
-            listOf(EpisodeHistory(episodeId = initialEpisodeId, positionMillis = 3000)),
-            repository.flow.first(),
-        )
+        assertSingleSavedHistoryList(3000)
 
         testScope.cancel()
     }

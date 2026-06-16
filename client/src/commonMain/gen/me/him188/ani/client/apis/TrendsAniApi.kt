@@ -78,3 +78,4 @@ open class TrendsAniApi : ApiClient {
 }
 
 // @formatter:on
+

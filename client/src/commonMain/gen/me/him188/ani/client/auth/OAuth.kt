@@ -11,3 +11,4 @@ class OAuth : Authentication {
 }
 
 // @formatter:on
+

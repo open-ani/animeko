@@ -16,8 +16,6 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniAniSelfUser
-import me.him188.ani.client.models.AniAniTokens
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -26,19 +24,16 @@ import kotlinx.serialization.encoding.*
 /**
  *
  *
- * @param userId
- * @param tokens
- * @param user
+ * @param otpId
+ * @param hasExistingUser
  */
 @Serializable
 
-data class AniAuthenticationResponse (
+data class AniUserAuthRoutingSendOptResponse (
 
-    @SerialName(value = "userId") @Required val userId: kotlin.String,
+    @SerialName(value = "otpId") @Required val otpId: kotlin.String,
 
-    @SerialName(value = "tokens") @Required val tokens: AniAniTokens,
-
-    @SerialName(value = "user") @Required val user: AniAniSelfUser
+    @SerialName(value = "hasExistingUser") @Required val hasExistingUser: kotlin.Boolean
 
 ) {
 
@@ -47,3 +42,4 @@ data class AniAuthenticationResponse (
 
 
 // @formatter:on
+

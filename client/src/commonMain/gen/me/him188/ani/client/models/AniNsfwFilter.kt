@@ -65,3 +65,4 @@ enum class AniNsfwFilter(val value: kotlin.String) {
 
 
 // @formatter:on
+

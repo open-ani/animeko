@@ -112,3 +112,4 @@ open class UserProfileAniApi : ApiClient {
 }
 
 // @formatter:on
+

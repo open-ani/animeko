@@ -79,3 +79,4 @@ open class SubjectRelationsAniApi : ApiClient {
 }
 
 // @formatter:on
+

@@ -64,6 +64,7 @@ fun ProfilePopup(
     onNavigateToLogin: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToAccountSettings: () -> Unit,
+    onNavigateToPlaybackHistory: () -> Unit,
     windowSizeClass: WindowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass,
 ) {
     val state by vm.stateFlow.collectAsStateWithLifecycle()
@@ -75,6 +76,7 @@ fun ProfilePopup(
             onClickLogin = onNavigateToLogin,
             onClickEditAvatar = onNavigateToAccountSettings,
             onClickEditProfile = onNavigateToAccountSettings,
+            onClickPlaybackHistory = onNavigateToPlaybackHistory,
             onClickSettings = onNavigateToSettings,
             { showLogoutDialog = true },
             Modifier.padding(vertical = 16.dp, horizontal = 8.dp)

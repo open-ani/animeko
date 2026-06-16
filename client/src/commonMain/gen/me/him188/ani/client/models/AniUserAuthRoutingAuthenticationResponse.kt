@@ -16,7 +16,8 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniBangumiSyncCommandEntity
+import me.him188.ani.client.models.AniAniSelfUser
+import me.him188.ani.client.models.AniAniTokens
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -25,16 +26,19 @@ import kotlinx.serialization.encoding.*
 /**
  *
  *
- * @param total
- * @param items
+ * @param userId
+ * @param tokens
+ * @param user
  */
 @Serializable
 
-data class AniPaginatedResponse1 (
+data class AniUserAuthRoutingAuthenticationResponse (
 
-    @SerialName(value = "total") @Required val total: kotlin.Long,
+    @SerialName(value = "userId") @Required val userId: kotlin.String,
 
-    @SerialName(value = "items") @Required val items: kotlin.collections.List<AniBangumiSyncCommandEntity>
+    @SerialName(value = "tokens") @Required val tokens: AniAniTokens,
+
+    @SerialName(value = "user") @Required val user: AniAniSelfUser
 
 ) {
 
@@ -43,3 +47,4 @@ data class AniPaginatedResponse1 (
 
 
 // @formatter:on
+

@@ -44,3 +44,4 @@ data class AniUpdateSubjectCollectionRequest (
 
 
 // @formatter:on
+

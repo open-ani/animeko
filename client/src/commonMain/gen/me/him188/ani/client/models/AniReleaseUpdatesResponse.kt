@@ -39,3 +39,4 @@ data class AniReleaseUpdatesResponse (
 
 
 // @formatter:on
+

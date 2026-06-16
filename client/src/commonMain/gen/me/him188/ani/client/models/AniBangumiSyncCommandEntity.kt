@@ -46,3 +46,4 @@ data class AniBangumiSyncCommandEntity (
 
 
 // @formatter:on
+

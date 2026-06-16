@@ -48,3 +48,4 @@ data class AniScheduledAnimeSubject (
 
 
 // @formatter:on
+

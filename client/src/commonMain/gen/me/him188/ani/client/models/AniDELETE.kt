@@ -16,7 +16,6 @@
 
 package me.him188.ani.client.models
 
-import me.him188.ani.client.models.AniSubjectSearch
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -25,18 +24,23 @@ import kotlinx.serialization.encoding.*
 /**
  *
  *
- * @param items
+ * @param episodeId
+ * @param deletedAt
  */
 @Serializable
+@SerialName(value = "DELETE")
 
-data class AniPaginatedResponse2 (
+data class AniDELETE (
 
-    @SerialName(value = "items") @Required val items: kotlin.collections.List<AniSubjectSearch>
+    @SerialName(value = "episodeId") @Required val episodeId: kotlin.Long,
 
-) {
+    @SerialName(value = "deletedAt") @Required val deletedAt: kotlin.String
+
+) : AniPlaybackHistoryOp {
 
 
 }
 
 
 // @formatter:on
+

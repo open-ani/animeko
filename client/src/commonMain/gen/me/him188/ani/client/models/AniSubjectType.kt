@@ -59,3 +59,4 @@ enum class AniSubjectType(val value: kotlin.String) {
 
 
 // @formatter:on
+

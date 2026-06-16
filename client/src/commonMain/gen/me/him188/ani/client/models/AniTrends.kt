@@ -40,3 +40,4 @@ data class AniTrends (
 
 
 // @formatter:on
+

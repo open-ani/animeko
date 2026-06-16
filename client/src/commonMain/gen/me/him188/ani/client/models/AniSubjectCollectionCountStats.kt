@@ -51,3 +51,4 @@ data class AniSubjectCollectionCountStats (
 
 
 // @formatter:on
+

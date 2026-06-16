@@ -16,6 +16,7 @@
 
 package me.him188.ani.client.models
 
+import me.him188.ani.client.models.AniSubjectSearch
 
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
@@ -24,13 +25,13 @@ import kotlinx.serialization.encoding.*
 /**
  *
  *
- * @param timeMs
+ * @param items
  */
 @Serializable
 
-data class AniAutoSkipRule (
+data class AniPaginatedResponse2SubjectSearch (
 
-    @SerialName(value = "timeMs") @Required val timeMs: kotlin.Long
+    @SerialName(value = "items") @Required val items: kotlin.collections.List<AniSubjectSearch>
 
 ) {
 
@@ -39,3 +40,4 @@ data class AniAutoSkipRule (
 
 
 // @formatter:on
+

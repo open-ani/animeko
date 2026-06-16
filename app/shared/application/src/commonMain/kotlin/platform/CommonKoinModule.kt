@@ -62,6 +62,7 @@ import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepositoryImpl
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepositoryImpl
 import me.him188.ani.app.data.repository.player.EpisodeScreenshotRepository
+import me.him188.ani.app.data.repository.player.PlaybackHistorySyncer
 import me.him188.ani.app.data.repository.player.WhatslinkEpisodeScreenshotRepository
 import me.him188.ani.app.data.repository.repositoryModules
 import me.him188.ani.app.data.repository.subject.DefaultSubjectRelationsRepository
@@ -323,7 +324,19 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         MediaSourceSubscriptionRepository(getContext().dataStores.mediaSourceSubscriptionStore)
     }
     single<EpisodePlayHistoryRepository> {
-        EpisodePlayHistoryRepositoryImpl(getContext().dataStores.episodeHistoryStore)
+        EpisodePlayHistoryRepositoryImpl(
+            dataStore = getContext().dataStores.episodeHistoryStore,
+            playbackHistoryDao = database.playbackHistoryDao(),
+            onDirtyChanged = { get<PlaybackHistorySyncer>().requestSync() },
+        )
+    }
+    single(createdAtStart = true) {
+        PlaybackHistorySyncer(
+            repository = get(),
+            api = aniApiProvider.playbackHistoryApi,
+            sessionStateProvider = get(),
+            scope = coroutineScope,
+        ).also { it.start() }
     }
     single<AniSubjectRelationIndexService> {
         val provider = get<AniApiProvider>()
