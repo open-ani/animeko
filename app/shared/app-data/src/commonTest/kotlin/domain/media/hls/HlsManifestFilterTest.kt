@@ -210,13 +210,12 @@ class HlsManifestFilterTest {
             appendLine("#EXTM3U")
             appendLine("#EXT-X-VERSION:4")
             appendLine("#EXT-X-TARGETDURATION:10")
-            appendLine("#EXT-X-BYTERANGE:3000@0")
+            appendLine("#EXT-X-BYTERANGE:3000")
             mediaPlaylistBody(
                 group(30, duration = 3.0, uriPrefix = "main/seg0"),
                 group(3, duration = 6.0, uriPrefix = "ads/ad", startNumber = 900),
                 group(30, duration = 3.0, uriPrefix = "main/seg1"),
             )
-            appendLine("#EXT-X-BYTERANGE:3000")
             append("#EXT-X-ENDLIST")
         }
 

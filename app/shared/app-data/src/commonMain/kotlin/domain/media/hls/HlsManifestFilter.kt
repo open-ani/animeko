@@ -9,23 +9,34 @@
 
 package me.him188.ani.app.domain.media.hls
 
+import me.him188.ani.utils.httpdownloader.m3u.DefaultM3u8Parser
+import me.him188.ani.utils.httpdownloader.m3u.M3u8Playlist
+
 object HlsManifestFilter {
-    fun filter(content: String): HlsManifestFilterResult {
+    fun filter(content: String, baseUrl: String = "http://127.0.0.1/playlist.m3u8"): HlsManifestFilterResult {
         val lines = content.lines()
-        if (lines.firstOrNull()?.trimStart()?.startsWith("#EXTM3U") != true) {
+        val playlist = try {
+            DefaultM3u8Parser.parse(content, baseUrl)
+        } catch (_: Exception) {
             return HlsManifestFilterResult.unsupported(content, "invalid_playlist")
         }
-        if (lines.any { it.trim().startsWith("#EXT-X-STREAM-INF") }) {
-            return HlsManifestFilterResult.unsupported(content, "master_playlist")
-        }
-        if (lines.none { it.trim().startsWith("#EXT-X-ENDLIST") }) {
-            return HlsManifestFilterResult.unsupported(content, "live_or_incomplete_playlist")
-        }
-        if (lines.none { it.isDiscontinuityTag() }) {
-            return HlsManifestFilterResult.unchanged(content, "no_discontinuity")
+
+        when (playlist) {
+            is M3u8Playlist.MasterPlaylist -> {
+                return HlsManifestFilterResult.unsupported(content, "master_playlist")
+            }
+
+            is M3u8Playlist.MediaPlaylist -> {
+                if (!playlist.isEndlist) {
+                    return HlsManifestFilterResult.unsupported(content, "live_or_incomplete_playlist")
+                }
+                if (playlist.segments.none { it.isDiscontinuity }) {
+                    return HlsManifestFilterResult.unchanged(content, "no_discontinuity")
+                }
+            }
         }
 
-        val groups = parseGroups(lines)
+        val groups = parseGroups(playlist)
         if (groups.isEmpty()) {
             return HlsManifestFilterResult.unchanged(content, "no_segments")
         }
@@ -34,10 +45,10 @@ object HlsManifestFilter {
         if (candidates.isEmpty()) {
             return HlsManifestFilterResult.unchanged(content, "no_candidate")
         }
-        if (hasAes128KeyWithoutExplicitIv(lines)) {
+        if (hasAes128KeyWithoutExplicitIv(playlist)) {
             return HlsManifestFilterResult.unchanged(content, "encrypted_implicit_iv")
         }
-        if (hasByteRangeWithoutExplicitOffset(lines)) {
+        if (hasByteRangeWithoutExplicitOffset(playlist)) {
             return HlsManifestFilterResult.unchanged(content, "byterange_implicit_offset")
         }
 
@@ -75,13 +86,10 @@ object HlsManifestFilter {
         )
     }
 
-    private fun parseGroups(lines: List<String>): List<ManifestGroup> {
+    private fun parseGroups(playlist: M3u8Playlist.MediaPlaylist): List<ManifestGroup> {
         val groups = mutableListOf<ManifestGroup>()
         val allSegments = mutableListOf<ManifestSegment>()
         var builder = ManifestGroupBuilder(index = 0)
-        var pendingDuration: Double? = null
-        var pendingExtInfLine: Int? = null
-        var pendingDiscontinuityLine: Int? = null
 
         fun close() {
             val group = builder.build() ?: return
@@ -89,36 +97,21 @@ object HlsManifestFilter {
             builder = ManifestGroupBuilder(index = group.index + 1)
         }
 
-        for ((zeroIndex, rawLine) in lines.withIndex()) {
-            val lineNo = zeroIndex + 1
-            val line = rawLine.trim()
-            when {
-                line.isDiscontinuityTag() -> {
-                    close()
-                    pendingDiscontinuityLine = lineNo
-                }
-
-                line.startsWith("#EXTINF:") -> {
-                    pendingDuration = line.substringAfter(":").substringBefore(",").toDoubleOrNull()
-                    pendingExtInfLine = lineNo
-                }
-
-                line.isNotBlank() && !line.startsWith("#") && pendingDuration != null -> {
-                    val segment = ManifestSegment(
-                        index = allSegments.size,
-                        duration = pendingDuration,
-                        uri = line,
-                        fileName = segmentFileName(line),
-                        extInfLine = pendingExtInfLine ?: lineNo,
-                        uriLine = lineNo,
-                    )
-                    allSegments += segment
-                    builder.add(segment, pendingDiscontinuityLine)
-                    pendingDuration = null
-                    pendingExtInfLine = null
-                    pendingDiscontinuityLine = null
-                }
+        for (parsedSegment in playlist.segments) {
+            if (parsedSegment.isDiscontinuity) {
+                close()
             }
+            val sourceRange = parsedSegment.sourceRange ?: return emptyList()
+            val segment = ManifestSegment(
+                index = allSegments.size,
+                duration = parsedSegment.duration.toDouble(),
+                uri = parsedSegment.uri,
+                fileName = segmentFileName(parsedSegment.uri),
+                lineStart = sourceRange.startLine,
+                lineEnd = sourceRange.endLine,
+            )
+            allSegments += segment
+            builder.add(segment)
         }
         close()
 
@@ -260,8 +253,8 @@ private data class ManifestSegment(
     val duration: Double,
     val uri: String,
     val fileName: String,
-    val extInfLine: Int,
-    val uriLine: Int,
+    val lineStart: Int,
+    val lineEnd: Int,
 )
 
 private data class ManifestGroup(
@@ -282,9 +275,9 @@ private class ManifestGroupBuilder(
     private val segments = mutableListOf<ManifestSegment>()
     private var lineStart: Int? = null
 
-    fun add(segment: ManifestSegment, discontinuityLine: Int?) {
+    fun add(segment: ManifestSegment) {
         if (segments.isEmpty()) {
-            lineStart = discontinuityLine ?: segment.extInfLine
+            lineStart = segment.lineStart
         }
         segments += segment
     }
@@ -293,8 +286,8 @@ private class ManifestGroupBuilder(
         if (segments.isEmpty()) return null
         return ManifestGroup(
             index = index,
-            lineStart = lineStart ?: segments.first().extInfLine,
-            lineEnd = segments.last().uriLine,
+            lineStart = lineStart ?: segments.first().lineStart,
+            lineEnd = segments.last().lineEnd,
             startSegmentIndex = segments.first().index,
             endSegmentIndex = segments.last().index,
             duration = segments.sumOf { it.duration },
@@ -350,23 +343,17 @@ private fun segmentPath(uri: String): String {
     return if (path.startsWith('/')) path else "/$path"
 }
 
-private fun String.isDiscontinuityTag(): Boolean {
-    return trim() == "#EXT-X-DISCONTINUITY"
-}
-
-private fun hasAes128KeyWithoutExplicitIv(lines: List<String>): Boolean {
-    return lines.any { rawLine ->
-        val line = rawLine.trim()
-        line.startsWith("#EXT-X-KEY") &&
-            line.contains("METHOD=AES-128") &&
-            !line.contains("IV=")
+private fun hasAes128KeyWithoutExplicitIv(playlist: M3u8Playlist.MediaPlaylist): Boolean {
+    return playlist.segments.any { segment ->
+        segment.encryption?.let { encryption ->
+            encryption.method.equals("AES-128", ignoreCase = true) && encryption.iv == null
+        } == true
     }
 }
 
-private fun hasByteRangeWithoutExplicitOffset(lines: List<String>): Boolean {
-    return lines.any { rawLine ->
-        val line = rawLine.trim()
-        line.startsWith("#EXT-X-BYTERANGE:") && "@" !in line.substringAfter(":")
+private fun hasByteRangeWithoutExplicitOffset(playlist: M3u8Playlist.MediaPlaylist): Boolean {
+    return playlist.segments.any { segment ->
+        segment.byteRange?.offset == null && segment.byteRange != null
     }
 }
 

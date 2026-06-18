@@ -160,6 +160,47 @@ class DefaultM3u8ParserTest {
     }
 
     @Test
+    fun `parse - discontinuity sequence is not segment discontinuity`() {
+        val content = """
+            #EXTM3U
+            #EXT-X-VERSION:4
+            #EXT-X-DISCONTINUITY-SEQUENCE:7
+            #EXT-X-TARGETDURATION:10
+            #EXTINF:10.0,
+            segment0.ts
+            #EXT-X-ENDLIST
+        """.trimIndent()
+
+        val playlist = parser.parse(content, "http://example.com")
+
+        assertTrue(playlist is M3u8Playlist.MediaPlaylist)
+        assertEquals(1, playlist.segments.size)
+        assertFalse(playlist.segments.single().isDiscontinuity)
+    }
+
+    @Test
+    fun `parse - media segment source range`() {
+        val content = """
+            #EXTM3U
+            #EXT-X-VERSION:4
+            #EXT-X-TARGETDURATION:10
+            #EXTINF:10.0,
+            segment0.ts
+            #EXT-X-DISCONTINUITY
+            #EXTINF:10.0,
+            #EXT-X-BYTERANGE:75232@0
+            segment1.ts
+            #EXT-X-ENDLIST
+        """.trimIndent()
+
+        val playlist = parser.parse(content, "http://example.com")
+
+        assertTrue(playlist is M3u8Playlist.MediaPlaylist)
+        assertEquals(M3u8SourceRange(startLine = 4, endLine = 5), playlist.segments[0].sourceRange)
+        assertEquals(M3u8SourceRange(startLine = 6, endLine = 9), playlist.segments[1].sourceRange)
+    }
+
+    @Test
     fun `parse - media playlist with encryption key`() {
         val content = """
             #EXTM3U

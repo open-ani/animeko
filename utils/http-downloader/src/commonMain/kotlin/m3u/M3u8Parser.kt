@@ -139,6 +139,7 @@ data class MediaSegment(
     val byteRange: ByteRange? = null,
     val encryption: MediaSegmentEncryption? = null,
     val tags: Map<String, String> = emptyMap(),
+    val sourceRange: M3u8SourceRange? = null,
 )
 
 data class MediaSegmentEncryption(
@@ -147,6 +148,11 @@ data class MediaSegmentEncryption(
     val iv: String? = null,
     val keyFormat: String? = null,
     val keyFormatVersions: String? = null,
+)
+
+data class M3u8SourceRange(
+    val startLine: Int,
+    val endLine: Int,
 )
 
 /**
@@ -174,8 +180,10 @@ data class VariantStream(
  */
 object DefaultM3u8Parser : M3u8Parser {
     override fun parse(content: String, baseUrl: String): M3u8Playlist {
-        val lines = content.lines().filter { it.isNotBlank() }
-        if (lines.isEmpty() || !lines[0].trimStart().startsWith("#EXTM3U")) {
+        val lines = content.lines()
+            .mapIndexed { index, text -> M3u8SourceLine(index + 1, text) }
+            .filter { it.text.isNotBlank() }
+        if (lines.isEmpty() || !lines[0].text.trimStart().startsWith("#EXTM3U")) {
             throw M3uFormatException("Invalid M3U8 format, must start with #EXTM3U")
         }
 
@@ -196,12 +204,14 @@ object DefaultM3u8Parser : M3u8Parser {
         var currentSegmentByteRange: ByteRange? = null
         val currentSegmentTags = mutableMapOf<String, String>()
         var currentSegmentEncryption: MediaSegmentEncryption? = null
+        var currentSegmentSourceStartLine: Int? = null
 
         // For current variant being built
         var currentVariantAttributes = mutableMapOf<String, String>()
 
         while (i < lines.size) {
-            val line = lines[i++].trim()
+            val sourceLine = lines[i++]
+            val line = sourceLine.text.trim()
 
             if (line.startsWith("#")) {
                 // This is a tag
@@ -226,17 +236,20 @@ object DefaultM3u8Parser : M3u8Parser {
                         // Format: #EXTINF:duration[,title]
                         val valueStr = line.substringAfter(":")
                         currentSegmentDuration = valueStr.substringBefore(",").toFloat()
+                        currentSegmentSourceStartLine = currentSegmentSourceStartLine ?: sourceLine.number
                         if (valueStr.contains(",")) {
                             currentSegmentTitle = valueStr.substringAfter(",").trim()
                         }
                     }
 
-                    line.startsWith("#EXT-X-DISCONTINUITY") -> {
+                    line == "#EXT-X-DISCONTINUITY" -> {
                         currentSegmentDiscontinuity = true
+                        currentSegmentSourceStartLine = currentSegmentSourceStartLine ?: sourceLine.number
                     }
 
                     line.startsWith("#EXT-X-BYTERANGE:") -> {
                         currentSegmentByteRange = parseByteRange(line.substringAfter(":").trim())
+                        currentSegmentSourceStartLine = currentSegmentSourceStartLine ?: sourceLine.number
                     }
 
                     line.startsWith("#EXT-X-KEY:") -> {
@@ -272,6 +285,7 @@ object DefaultM3u8Parser : M3u8Parser {
                             if (currentSegmentDuration != null) {
                                 // Tag belongs to the current segment
                                 currentSegmentTags[tagName] = tagValue
+                                currentSegmentSourceStartLine = currentSegmentSourceStartLine ?: sourceLine.number
                             } else {
                                 // Tag belongs to the playlist
                                 tags[tagName] = tagValue
@@ -279,6 +293,7 @@ object DefaultM3u8Parser : M3u8Parser {
                         } else {
                             if (currentSegmentDuration != null) {
                                 currentSegmentTags[line] = ""
+                                currentSegmentSourceStartLine = currentSegmentSourceStartLine ?: sourceLine.number
                             } else {
                                 tags[line] = ""
                             }
@@ -321,6 +336,10 @@ object DefaultM3u8Parser : M3u8Parser {
                             byteRange = currentSegmentByteRange,
                             encryption = currentSegmentEncryption,
                             tags = currentSegmentTags.toMap(),
+                            sourceRange = M3u8SourceRange(
+                                startLine = currentSegmentSourceStartLine ?: sourceLine.number,
+                                endLine = sourceLine.number,
+                            ),
                         ),
                     )
 
@@ -330,6 +349,7 @@ object DefaultM3u8Parser : M3u8Parser {
                     currentSegmentDiscontinuity = false
                     currentSegmentByteRange = null
                     currentSegmentTags.clear()
+                    currentSegmentSourceStartLine = null
                 }
             }
         }
@@ -420,6 +440,11 @@ object DefaultM3u8Parser : M3u8Parser {
         return ByteRange(length, offset)
     }
 }
+
+private data class M3u8SourceLine(
+    val number: Int,
+    val text: String,
+)
 
 private fun rewriteKeyLine(
     line: String,
