@@ -12,10 +12,14 @@ package me.him188.ani.app.domain.episode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
+import me.him188.ani.app.domain.media.hls.HlsPlaybackProxySession
+import me.him188.ani.app.domain.media.hls.NoopHlsPlaybackPreparer
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.MediaResolutionException
@@ -27,6 +31,7 @@ import me.him188.ani.app.domain.media.resolver.TorrentBackedMediaDataProvider
 import me.him188.ani.app.domain.media.resolver.UnsupportedMediaException
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.player.VideoLoadingState
+import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.logging.error
@@ -35,6 +40,8 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.koin.core.Koin
 import org.openani.mediamp.MediampPlayer
+import org.openani.mediamp.source.MediaData
+import org.openani.mediamp.source.UriMediaData
 import kotlin.coroutines.CoroutineContext
 
 class MediaFetchSelectBundle(
@@ -54,6 +61,12 @@ class PlayerSession(
     private val mainDispatcher: CoroutineContext = Dispatchers.Main.immediate,
 ) {
     val mediaResolver: MediaResolver by koin.inject()
+    private val hlsPlaybackPreparer: HlsPlaybackPreparer =
+        runCatching { koin.get<HlsPlaybackPreparer>() }.getOrDefault(NoopHlsPlaybackPreparer)
+    private val getVideoScaffoldConfigUseCase: GetVideoScaffoldConfigUseCase? =
+        runCatching { koin.get<GetVideoScaffoldConfigUseCase>() }.getOrNull()
+
+    private var hlsPlaybackProxySession: HlsPlaybackProxySession? = null
 
     private val _videoLoadingStateFlow: MutableStateFlow<VideoLoadingState> =
         MutableStateFlow(VideoLoadingState.Initial)
@@ -70,10 +83,12 @@ class PlayerSession(
         val backgroundScope = this
         _videoLoadingStateFlow.value = VideoLoadingState.Initial // 避免一直显示已取消 (.Cancelled)
         stopPlayer()
+        closeHlsPlaybackProxySession()
         if (media == null) {
             return@coroutineScope
         }
 
+        var preparedHlsPlaybackProxySession: HlsPlaybackProxySession? = null
         try {
             _videoLoadingStateFlow.value = VideoLoadingState.ResolvingSource
             val source = mediaResolver.resolve(
@@ -86,9 +101,14 @@ class PlayerSession(
             )
 
             val data = source.open(scopeForCleanup = backgroundScope) // may throw MediaSourceOpenException
+            val preparedData = prepareHlsPlaybackIfEnabled(data).also {
+                preparedHlsPlaybackProxySession = it.session
+            }.data
 
-            logger.info { "Set media data to player: $data" }
-            player.setMediaData(data)
+            logger.info { "Set media data to player: $preparedData" }
+            player.setMediaData(preparedData)
+            hlsPlaybackProxySession = preparedHlsPlaybackProxySession
+            preparedHlsPlaybackProxySession = null
 
             _videoLoadingStateFlow.value = VideoLoadingState.Succeed(isBt = source is TorrentBackedMediaDataProvider)
             withContext(mainDispatcher) {
@@ -133,10 +153,13 @@ class PlayerSession(
             logger.error { IllegalStateException("Failed to resolve video source with unknown error", e) }
             _videoLoadingStateFlow.value = VideoLoadingState.UnknownError(e)
             stopPlayer()
+        } finally {
+            preparedHlsPlaybackProxySession?.close()
         }
     }
 
     fun close() {
+        closeHlsPlaybackProxySession()
         player.close()
     }
 
@@ -146,9 +169,35 @@ class PlayerSession(
         }
     }
 
+    private suspend fun prepareHlsPlaybackIfEnabled(data: MediaData): PreparedMediaData {
+        if (data !is UriMediaData) {
+            return PreparedMediaData(data)
+        }
+        val enabled = getVideoScaffoldConfigUseCase
+            ?.invoke()
+            ?.first()
+            ?.enableExperimentalHlsSegmentFiltering
+            ?: false
+        if (!enabled) {
+            return PreparedMediaData(data)
+        }
+        val result = hlsPlaybackPreparer.prepare(data)
+        return PreparedMediaData(result.data, result.session)
+    }
+
+    private fun closeHlsPlaybackProxySession() {
+        hlsPlaybackProxySession?.close()
+        hlsPlaybackProxySession = null
+    }
+
     companion object {
         private val logger = logger<PlayerSession>()
     }
+
+    private data class PreparedMediaData(
+        val data: MediaData,
+        val session: HlsPlaybackProxySession? = null,
+    )
 }
 
 

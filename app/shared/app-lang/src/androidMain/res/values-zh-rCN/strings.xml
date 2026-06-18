@@ -280,6 +280,8 @@
     <string name="settings_player_auto_skip_op_ed">自动跳过 OP 和 ED</string>
     <string name="settings_player_auto_skip_op_ed_description">只对 BT 数据源的部分资源有效</string>
     <string name="settings_player_auto_switch_media_on_error">播放失败时自动切换资源</string>
+    <string name="settings_player_experimental_hls_segment_filter">插播片段过滤（实验性）</string>
+    <string name="settings_player_experimental_hls_segment_filter_description">尝试过滤在线播放列表中的插播片段。可能不适用于所有视频源，识别错误时可能跳过正常内容。</string>
     <string name="settings_player_long_press_fast_forward_speed">长按快进速度</string>
     <string name="settings_player_long_press_fast_forward_speed_description">长按快进时的速度倍率</string>
 

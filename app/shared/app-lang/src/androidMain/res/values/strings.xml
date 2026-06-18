@@ -267,6 +267,8 @@
     <string name="settings_player_auto_skip_op_ed">Automatically skip OP and ED</string>
     <string name="settings_player_auto_skip_op_ed_description">Only works for some resources from BT data sources</string>
     <string name="settings_player_auto_switch_media_on_error">Automatically switch resources on playback failure</string>
+    <string name="settings_player_experimental_hls_segment_filter">Inserted segment filtering (experimental)</string>
+    <string name="settings_player_experimental_hls_segment_filter_description">Attempts to filter inserted segments in online HLS playlists. It may not work for all sources and incorrect detection may skip normal content.</string>
     <string name="settings_player_long_press_fast_forward_speed">Long-press fast-forward speed</string>
     <string name="settings_player_long_press_fast_forward_speed_description">Speed when long-pressing to fast-forward</string>
     <string name="settings_storage_title">Storage settings</string>
