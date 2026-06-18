@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
 import me.him188.ani.app.domain.media.hls.HlsPlaybackProxySession
-import me.him188.ani.app.domain.media.hls.NoopHlsPlaybackPreparer
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.MediaResolutionException
@@ -61,10 +60,8 @@ class PlayerSession(
     private val mainDispatcher: CoroutineContext = Dispatchers.Main.immediate,
 ) {
     val mediaResolver: MediaResolver by koin.inject()
-    private val hlsPlaybackPreparer: HlsPlaybackPreparer =
-        runCatching { koin.get<HlsPlaybackPreparer>() }.getOrDefault(NoopHlsPlaybackPreparer)
-    private val getVideoScaffoldConfigUseCase: GetVideoScaffoldConfigUseCase? =
-        runCatching { koin.get<GetVideoScaffoldConfigUseCase>() }.getOrNull()
+    private val hlsPlaybackPreparer: HlsPlaybackPreparer by koin.inject()
+    private val getVideoScaffoldConfigUseCase: GetVideoScaffoldConfigUseCase by koin.inject()
 
     private var hlsPlaybackProxySession: HlsPlaybackProxySession? = null
 
@@ -178,10 +175,9 @@ class PlayerSession(
             return PreparedMediaData(data)
         }
         val enabled = getVideoScaffoldConfigUseCase
-            ?.invoke()
-            ?.first()
-            ?.enableExperimentalHlsSegmentFiltering
-            ?: false
+            .invoke()
+            .first()
+            .enableExperimentalHlsSegmentFiltering
         if (!enabled) {
             return PreparedMediaData(data)
         }
