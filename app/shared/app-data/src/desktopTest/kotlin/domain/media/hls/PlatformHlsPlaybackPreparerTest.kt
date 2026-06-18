@@ -88,8 +88,56 @@ class PlatformHlsPlaybackPreparerTest {
         }
     }
 
+    @Test
+    fun `proxies master playlist and filters variant media playlist`() = runTest {
+        val server = StaticManifestServer(
+            content = "",
+            contentByPath = mapOf(
+                "/master/index.m3u8" to masterManifest,
+                "/master/media/low.m3u8" to manifest,
+            ),
+        )
+        val provider = DefaultHttpClientProvider(NoProxyProvider, backgroundScope)
+        val preparer = PlatformHlsPlaybackPreparer(provider)
+
+        val result = preparer.prepare(
+            UriMediaData(
+                uri = "${server.baseUrl}/master/index.m3u8",
+                headers = mapOf("Referer" to "https://media.example.com/watch/master"),
+            ),
+        )
+
+        try {
+            assertIs<HlsPlaybackProxySession>(result.session)
+            assertNotEquals("${server.baseUrl}/master/index.m3u8", result.data.uri)
+
+            val localMaster = URI(result.data.uri).toURL().readText()
+            val localVariantUri = localMaster.lineSequence()
+                .first { it.isNotBlank() && !it.startsWith("#") }
+            assertContains(localVariantUri, "http://127.0.0.1:")
+            assertContains(localMaster, "#EXT-X-SESSION-KEY:METHOD=AES-128,URI=\"${server.baseUrl}/master/keys/session.key\"")
+            assertEquals(false, "media/low.m3u8" in localMaster)
+            assertEquals(false, "URI=\"keys/session.key\"" in localMaster)
+
+            val localVariant = URI(localVariantUri).toURL().readText()
+            assertContains(localVariant, "${server.baseUrl}/master/media/main000.ts")
+            assertContains(localVariant, "${server.baseUrl}/master/media/main004.ts")
+            assertEquals(false, "ad001.ts" in localVariant)
+            assertEquals(false, "ad002.ts" in localVariant)
+            assertEquals(
+                listOf("https://media.example.com/watch/master", "https://media.example.com/watch/master"),
+                server.referers,
+            )
+        } finally {
+            result.session?.close()
+            provider.forceReleaseAll()
+            server.close()
+        }
+    }
+
     private class StaticManifestServer(
         content: String,
+        private val contentByPath: Map<String, String> = emptyMap(),
         private val redirectFrom: String? = null,
         private val redirectTo: String? = null,
     ) : AutoCloseable {
@@ -129,8 +177,11 @@ class PlatformHlsPlaybackPreparerTest {
                             if (requestPath == redirectFrom && redirectTo != null) {
                                 output.write(redirectHeader("$baseUrl$redirectTo").toByteArray(StandardCharsets.US_ASCII))
                             } else {
-                                output.write(responseHeader(bytes.size).toByteArray(StandardCharsets.US_ASCII))
-                                output.write(bytes)
+                                val responseBytes = contentByPath[requestPath]
+                                    ?.toByteArray(StandardCharsets.UTF_8)
+                                    ?: bytes
+                                output.write(responseHeader(responseBytes.size).toByteArray(StandardCharsets.US_ASCII))
+                                output.write(responseBytes)
                             }
                             output.flush()
                         }
@@ -183,6 +234,13 @@ class PlatformHlsPlaybackPreparerTest {
         appendAdGroup()
         appendMainGroup(start = 60)
         append("#EXT-X-ENDLIST")
+    }
+
+    private val masterManifest = buildString {
+        appendLine("#EXTM3U")
+        appendLine("#EXT-X-SESSION-KEY:METHOD=AES-128,URI=\"keys/session.key\"")
+        appendLine("#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=800000,RESOLUTION=1080x608")
+        appendLine("media/low.m3u8")
     }
 
     private fun StringBuilder.appendMainGroup(start: Int, absoluteIndex: Int? = null) {

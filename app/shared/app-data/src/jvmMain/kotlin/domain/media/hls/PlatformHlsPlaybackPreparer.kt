@@ -12,6 +12,7 @@ package me.him188.ani.app.domain.media.hls
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
+import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
@@ -25,7 +26,9 @@ import java.net.ServerSocket
 import java.net.SocketException
 import java.net.URI
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -54,12 +57,24 @@ class PlatformHlsPlaybackPreparer(
         }
 
         val filterResult = HlsManifestFilter.filter(manifest)
-        if (filterResult.status != HlsManifestFilterStatus.Filtered) {
-            return HlsPlaybackPreparerResult(data)
+        val session = when {
+            filterResult.status == HlsManifestFilterStatus.Filtered -> {
+                LocalHlsPlaylistSession.static(filterResult.content.rewriteMediaPlaylistUris(baseUri))
+            }
+
+            filterResult.status == HlsManifestFilterStatus.Unsupported &&
+                filterResult.reason == "master_playlist" -> {
+                LocalHlsPlaylistSession.master(
+                    content = manifest,
+                    baseUri = baseUri,
+                    headers = data.headers,
+                    httpClientProvider = httpClientProvider,
+                )
+            }
+
+            else -> return HlsPlaybackPreparerResult(data)
         }
 
-        val rewrittenManifest = filterResult.content.rewriteRelativeUris(baseUri)
-        val session = LocalHlsPlaylistSession(rewrittenManifest)
         return HlsPlaybackPreparerResult(
             data = UriMediaData(session.playlistUri, data.headers, data.extraFiles),
             session = session,
@@ -68,11 +83,15 @@ class PlatformHlsPlaybackPreparer(
 }
 
 private class LocalHlsPlaylistSession(
-    content: String,
+    initialPlaylistContent: LocalPlaylistContent,
+    private val headers: Map<String, String>,
+    private val httpClientProvider: HttpClientProvider?,
 ) : HlsPlaybackProxySession {
     private val closed = AtomicBoolean(false)
-    private val bytes = content.toByteArray(StandardCharsets.UTF_8)
     private val serverSocket = ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))
+    private val nextRouteId = AtomicInteger(1)
+    private val remoteRoutes = ConcurrentHashMap<String, URI>()
+    private val initialContent = initialPlaylistContent.rewriteMasterPlaylistUrisIfNeeded()
 
     val playlistUri: String = "http://127.0.0.1:${serverSocket.localPort}/playlist.m3u8"
 
@@ -85,13 +104,31 @@ private class LocalHlsPlaylistSession(
             try {
                 serverSocket.accept().use { socket ->
                     val reader = BufferedReader(InputStreamReader(socket.getInputStream(), StandardCharsets.US_ASCII))
+                    val requestLine = reader.readLine()
                     while (true) {
                         val line = reader.readLine() ?: break
                         if (line.isEmpty()) break
                     }
+                    val path = requestLine
+                        ?.substringAfter(" ", missingDelimiterValue = "")
+                        ?.substringBefore(" ", missingDelimiterValue = "")
+                        ?.substringBefore("?")
+
+                    val content = runCatching {
+                        contentFor(path ?: "/playlist.m3u8")
+                    }.getOrElse { e ->
+                        logger.warn(e) { "Failed to prepare HLS playlist proxy response" }
+                        null
+                    }
+
                     socket.getOutputStream().use { output ->
-                        output.write(responseHeader(bytes.size).toByteArray(StandardCharsets.US_ASCII))
-                        output.write(bytes)
+                        if (content == null) {
+                            output.write(errorResponseHeader().toByteArray(StandardCharsets.US_ASCII))
+                        } else {
+                            val bytes = content.toByteArray(StandardCharsets.UTF_8)
+                            output.write(responseHeader(bytes.size).toByteArray(StandardCharsets.US_ASCII))
+                            output.write(bytes)
+                        }
                         output.flush()
                     }
                 }
@@ -114,6 +151,76 @@ private class LocalHlsPlaylistSession(
     @Suppress("unused")
     private fun keepThreadReachable(): Thread = thread
 
+    private fun contentFor(path: String): String? {
+        if (path == "/playlist.m3u8") {
+            return initialContent.content
+        }
+        val remoteUri = remoteRoutes[path] ?: return null
+        val remoteContent = fetchRemote(remoteUri) ?: return null
+        return remoteContent.rewriteMasterPlaylistUrisIfNeeded().content
+    }
+
+    private fun fetchRemote(uri: URI): LocalPlaylistContent? {
+        val provider = httpClientProvider ?: return null
+        return runBlocking {
+            provider.get(ScopedHttpClientUserAgent.BROWSER).use {
+                val response = get(uri.toString()) {
+                    this@LocalHlsPlaylistSession.headers.forEach { (name, value) -> header(name, value) }
+                }
+                val finalUri = runCatching { URI(response.call.request.url.toString()) }.getOrDefault(uri)
+                LocalPlaylistContent(response.bodyAsText(), finalUri)
+            }
+        }
+    }
+
+    private fun LocalPlaylistContent.rewriteMasterPlaylistUrisIfNeeded(): LocalPlaylistContent {
+        val filterResult = HlsManifestFilter.filter(content)
+        val rewrittenContent = when {
+            filterResult.status == HlsManifestFilterStatus.Filtered -> {
+                filterResult.content.rewriteMediaPlaylistUris(baseUri)
+            }
+
+            filterResult.status == HlsManifestFilterStatus.Unsupported &&
+                filterResult.reason == "master_playlist" -> {
+                content.rewriteMasterPlaylistUris(baseUri)
+            }
+
+            else -> {
+                content.rewriteMediaPlaylistUris(baseUri)
+            }
+        }
+        return copy(content = rewrittenContent)
+    }
+
+    private fun String.rewriteMasterPlaylistUris(baseUri: URI): String {
+        return lineSequence().joinToString("\n") { line ->
+            when {
+                line.startsWith("#EXT-X-MEDIA") || line.startsWith("#EXT-X-I-FRAME-STREAM-INF") -> {
+                    line.replace(URI_ATTRIBUTE_REGEX) { match ->
+                        val uri = baseUri.resolveIfRelative(match.groupValues[2])
+                        match.groupValues[1] + localPlaylistUri(uri) + match.groupValues[3]
+                    }
+                }
+
+                line.startsWith("#") -> {
+                    line.replace(URI_ATTRIBUTE_REGEX) { match ->
+                        val uri = baseUri.resolveIfRelative(match.groupValues[2])
+                        match.groupValues[1] + uri + match.groupValues[3]
+                    }
+                }
+
+                line.isBlank() -> line
+                else -> localPlaylistUri(baseUri.resolveIfRelative(line))
+            }
+        } + if (endsWith('\n')) "\n" else ""
+    }
+
+    private fun localPlaylistUri(remoteUri: String): String {
+        val route = "/playlist/${nextRouteId.getAndIncrement()}.m3u8"
+        remoteRoutes[route] = URI(remoteUri)
+        return "http://127.0.0.1:${serverSocket.localPort}$route"
+    }
+
     private fun responseHeader(contentLength: Int): String {
         return buildString {
             append("HTTP/1.1 200 OK\r\n")
@@ -124,9 +231,47 @@ private class LocalHlsPlaylistSession(
             append("\r\n")
         }
     }
+
+    private fun errorResponseHeader(): String {
+        return buildString {
+            append("HTTP/1.1 502 Bad Gateway\r\n")
+            append("Content-Length: 0\r\n")
+            append("Cache-Control: no-store\r\n")
+            append("Connection: close\r\n")
+            append("\r\n")
+        }
+    }
+
+    companion object {
+        fun static(content: String): LocalHlsPlaylistSession {
+            return LocalHlsPlaylistSession(
+                initialPlaylistContent = LocalPlaylistContent(content, URI("http://127.0.0.1/")),
+                headers = emptyMap(),
+                httpClientProvider = null,
+            )
+        }
+
+        fun master(
+            content: String,
+            baseUri: URI,
+            headers: Map<String, String>,
+            httpClientProvider: HttpClientProvider,
+        ): LocalHlsPlaylistSession {
+            return LocalHlsPlaylistSession(
+                initialPlaylistContent = LocalPlaylistContent(content, baseUri),
+                headers = headers,
+                httpClientProvider = httpClientProvider,
+            )
+        }
+    }
 }
 
 private val logger = me.him188.ani.utils.logging.logger<PlatformHlsPlaybackPreparer>()
+
+private data class LocalPlaylistContent(
+    val content: String,
+    val baseUri: URI,
+)
 
 private fun String.isCandidateHlsUri(): Boolean {
     val uri = runCatching { URI(this) }.getOrNull() ?: return false
@@ -134,7 +279,7 @@ private fun String.isCandidateHlsUri(): Boolean {
     return (scheme == "http" || scheme == "https") && lowercase().contains(".m3u8")
 }
 
-private fun String.rewriteRelativeUris(baseUri: URI): String {
+private fun String.rewriteMediaPlaylistUris(baseUri: URI): String {
     return lineSequence().joinToString("\n") { line ->
         when {
             line.isBlank() -> line
