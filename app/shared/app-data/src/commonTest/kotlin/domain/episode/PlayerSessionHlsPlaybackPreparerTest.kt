@@ -94,6 +94,22 @@ class PlayerSessionHlsPlaybackPreparerTest {
         assertTrue(secondSession.closed)
     }
 
+    @Test
+    fun `closes prepared proxy session on stop playback`() = runTest {
+        val preparer = RecordingHlsPlaybackPreparer()
+        val playerSession = createPlayerSession(
+            hlsEnabled = true,
+            preparer = preparer,
+        )
+
+        playerSession.loadMedia(TestMediaList.first(), episode)
+        val session = preparer.sessions.single()
+
+        playerSession.stopPlayback()
+
+        assertTrue(session.closed)
+    }
+
     private fun TestScope.createPlayerSession(
         hlsEnabled: Boolean,
         preparer: HlsPlaybackPreparer,

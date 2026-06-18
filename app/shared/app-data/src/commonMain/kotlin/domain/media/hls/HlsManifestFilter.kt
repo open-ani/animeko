@@ -21,7 +21,7 @@ object HlsManifestFilter {
         if (lines.none { it.trim().startsWith("#EXT-X-ENDLIST") }) {
             return HlsManifestFilterResult.unsupported(content, "live_or_incomplete_playlist")
         }
-        if (lines.none { it.trim().startsWith("#EXT-X-DISCONTINUITY") }) {
+        if (lines.none { it.isDiscontinuityTag() }) {
             return HlsManifestFilterResult.unchanged(content, "no_discontinuity")
         }
 
@@ -93,7 +93,7 @@ object HlsManifestFilter {
             val lineNo = zeroIndex + 1
             val line = rawLine.trim()
             when {
-                line.startsWith("#EXT-X-DISCONTINUITY") -> {
+                line.isDiscontinuityTag() -> {
                     close()
                     pendingDiscontinuityLine = lineNo
                 }
@@ -348,6 +348,10 @@ private fun segmentPath(uri: String): String {
     }
     if (path.isEmpty()) return ""
     return if (path.startsWith('/')) path else "/$path"
+}
+
+private fun String.isDiscontinuityTag(): Boolean {
+    return trim() == "#EXT-X-DISCONTINUITY"
 }
 
 private fun hasAes128KeyWithoutExplicitIv(lines: List<String>): Boolean {

@@ -176,9 +176,7 @@ class EpisodeFetchSelectPlayState(
 
                     // 4. 停止播放器, 清空播放器状态.
                     logger.info { "SwitchEpisode($episodeId): Stopping player" }
-                    withContext(mainDispatcher) {
-                        player.stopPlayback()
-                    }
+                    playerSession.stopPlayback()
 
                     // 5. 创建新的 fetchSelectSession
                     logger.info { "SwitchEpisode($episodeId): Propagate newEpisodeSession" }
@@ -225,6 +223,7 @@ class EpisodeFetchSelectPlayState(
      */
     suspend fun onClose() {
         extensionManager.call { it.onClose() }
+        playerSession.stopPlayback()
     }
 
     /**

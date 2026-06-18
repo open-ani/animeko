@@ -265,8 +265,8 @@
     <string name="settings_player_auto_skip_op_ed">自動跳過 OP 和 ED</string>
     <string name="settings_player_auto_skip_op_ed_description">只對 BT 數據源的部分資源有效</string>
     <string name="settings_player_auto_switch_media_on_error">播放失敗時自動切換資源</string>
-    <string name="settings_player_experimental_hls_segment_filter">插播片段過濾（實驗性）</string>
-    <string name="settings_player_experimental_hls_segment_filter_description">嘗試過濾線上播放列表中的插播片段。可能不適用於所有影片源，識別錯誤時可能跳過正常內容。</string>
+    <string name="settings_player_experimental_hls_segment_filter">過濾貼片廣告（實驗性）</string>
+    <string name="settings_player_experimental_hls_segment_filter_description">嘗試過濾部分線上來源插入的貼片廣告。只對以獨立片段插入的廣告有效，識別錯誤時可能跳過正常內容。</string>
     <string name="settings_player_long_press_fast_forward_speed">長按快進速度</string>
     <string name="settings_player_long_press_fast_forward_speed_description">長按快進時的速度倍率</string>
 

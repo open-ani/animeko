@@ -300,6 +300,9 @@ fun getIosModules(
     single<MediampPlayerFactory<*>> {
         AVKitMediampPlayerFactory()
     }
+    // TODO(#3039): Add an iOS HLS playback preparer after the AVKit/localhost proxy path
+    // can be tested on macOS or iOS hardware. The JVM preparer uses java.net and is only
+    // registered by Android/Desktop modules, so iOS intentionally falls back to no-op for now.
     single<MediaSaveDirProvider> {
         object : MediaSaveDirProvider {
             override val saveDir: String

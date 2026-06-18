@@ -54,6 +54,27 @@ class HlsManifestFilterTest {
     }
 
     @Test
+    fun `does not treat discontinuity sequence as segment boundary`() {
+        val content = buildString {
+            appendLine("#EXTM3U")
+            appendLine("#EXT-X-VERSION:3")
+            appendLine("#EXT-X-DISCONTINUITY-SEQUENCE:7")
+            appendLine("#EXT-X-TARGETDURATION:10")
+            mediaPlaylistBody(
+                group(2, duration = 6.0, uriPrefix = "ads/ad", startNumber = 900),
+                group(30, duration = 3.0, uriPrefix = "main/seg0"),
+            )
+            append("#EXT-X-ENDLIST")
+        }
+
+        val result = HlsManifestFilter.filter(content)
+
+        assertEquals(HlsManifestFilterStatus.Filtered, result.status)
+        assertTrue("#EXT-X-DISCONTINUITY-SEQUENCE:7" in result.content)
+        assertFalse("ads/ad900.ts" in result.content)
+    }
+
+    @Test
     fun `does not filter dense short groups without structural signals`() {
         val groups = List(21) { index ->
             group(4, duration = 10.0, uriPrefix = "https://cdn.example/main/g$index-", startNumber = index * 10)

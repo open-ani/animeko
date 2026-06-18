@@ -135,6 +135,68 @@ class PlatformHlsPlaybackPreparerTest {
         }
     }
 
+    @Test
+    fun `rewrites media playlist uri attributes when proxying master variant`() = runTest {
+        val server = StaticManifestServer(
+            content = "",
+            contentByPath = mapOf(
+                "/partial/master.m3u8" to partialMasterManifest,
+                "/partial/low/index.m3u8" to partialMediaManifest,
+            ),
+        )
+        val provider = DefaultHttpClientProvider(NoProxyProvider, backgroundScope)
+        val preparer = PlatformHlsPlaybackPreparer(provider)
+
+        val result = preparer.prepare(UriMediaData("${server.baseUrl}/partial/master.m3u8"))
+
+        try {
+            assertIs<HlsPlaybackProxySession>(result.session)
+
+            val localMaster = URI(result.data.uri).toURL().readText()
+            val localVariantUri = localMaster.lineSequence()
+                .first { it.isNotBlank() && !it.startsWith("#") }
+            val localVariant = URI(localVariantUri).toURL().readText()
+
+            assertContains(localVariant, "#EXT-X-PART:DURATION=1.0,URI=\"${server.baseUrl}/partial/low/part0.m4s\"")
+            assertContains(
+                localVariant,
+                "#EXT-X-PRELOAD-HINT:TYPE=PART,URI=\"${server.baseUrl}/partial/low/next.m4s\"",
+            )
+            assertContains(localVariant, "${server.baseUrl}/partial/low/seg0.ts")
+        } finally {
+            result.session?.close()
+            provider.forceReleaseAll()
+            server.close()
+        }
+    }
+
+    @Test
+    fun `does not filter direct media playlist twice`() = runTest {
+        val firstPass = HlsManifestFilter.filter(doubleFilterRegressionManifest)
+        assertEquals(HlsManifestFilterStatus.Filtered, firstPass.status)
+        assertEquals(1, firstPass.removedGroups.size)
+        assertContains(firstPass.content, "short-normal000.ts")
+
+        val server = StaticManifestServer(doubleFilterRegressionManifest)
+        val provider = DefaultHttpClientProvider(NoProxyProvider, backgroundScope)
+        val preparer = PlatformHlsPlaybackPreparer(provider)
+
+        val result = preparer.prepare(UriMediaData("${server.baseUrl}/dense/index.m3u8"))
+
+        try {
+            assertIs<HlsPlaybackProxySession>(result.session)
+
+            val localManifest = URI(result.data.uri).toURL().readText()
+            assertContains(localManifest, "${server.baseUrl}/dense/short-normal000.ts")
+            assertContains(localManifest, "${server.baseUrl}/dense/short-normal003.ts")
+            assertEquals(false, "ad-double000.ts" in localManifest)
+        } finally {
+            result.session?.close()
+            provider.forceReleaseAll()
+            server.close()
+        }
+    }
+
     private class StaticManifestServer(
         content: String,
         private val contentByPath: Map<String, String> = emptyMap(),
@@ -243,6 +305,36 @@ class PlatformHlsPlaybackPreparerTest {
         appendLine("media/low.m3u8")
     }
 
+    private val partialMasterManifest = buildString {
+        appendLine("#EXTM3U")
+        appendLine("#EXT-X-STREAM-INF:BANDWIDTH=800000")
+        appendLine("low/index.m3u8")
+    }
+
+    private val partialMediaManifest = buildString {
+        appendLine("#EXTM3U")
+        appendLine("#EXT-X-VERSION:9")
+        appendLine("#EXT-X-TARGETDURATION:4")
+        appendLine("#EXT-X-PART-INF:PART-TARGET=1.0")
+        appendLine("#EXT-X-PART:DURATION=1.0,URI=\"part0.m4s\"")
+        appendLine("#EXTINF:4,")
+        appendLine("seg0.ts")
+        append("#EXT-X-PRELOAD-HINT:TYPE=PART,URI=\"next.m4s\"")
+    }
+
+    private val doubleFilterRegressionManifest = buildString {
+        appendLine("#EXTM3U")
+        appendLine("#EXT-X-VERSION:3")
+        appendLine("#EXT-X-TARGETDURATION:10")
+        appendMainGroup(start = 0)
+        appendAdGroup(uriPrefix = "/ads/ad-double")
+        appendShortNormalGroup()
+        repeat(17) { index ->
+            appendMainGroup(start = 30 + index * 30)
+        }
+        append("#EXT-X-ENDLIST")
+    }
+
     private fun StringBuilder.appendMainGroup(start: Int, absoluteIndex: Int? = null) {
         if (start != 0) appendLine("#EXT-X-DISCONTINUITY")
         repeat(30) { offset ->
@@ -256,11 +348,19 @@ class PlatformHlsPlaybackPreparerTest {
         }
     }
 
-    private fun StringBuilder.appendAdGroup() {
+    private fun StringBuilder.appendAdGroup(uriPrefix: String = "/ads/ad") {
         appendLine("#EXT-X-DISCONTINUITY")
         appendLine("#EXTINF:6,")
-        appendLine("/ads/ad001.ts")
+        appendLine("${uriPrefix}001.ts")
         appendLine("#EXTINF:6,")
-        appendLine("/ads/ad002.ts")
+        appendLine("${uriPrefix}002.ts")
+    }
+
+    private fun StringBuilder.appendShortNormalGroup() {
+        appendLine("#EXT-X-DISCONTINUITY")
+        repeat(4) { index ->
+            appendLine("#EXTINF:4,")
+            appendLine("short-normal${index.toString().padStart(3, '0')}.ts")
+        }
     }
 }

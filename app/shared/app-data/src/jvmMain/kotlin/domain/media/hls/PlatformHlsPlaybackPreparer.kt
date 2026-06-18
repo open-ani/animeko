@@ -84,6 +84,7 @@ class PlatformHlsPlaybackPreparer(
 
 private class LocalHlsPlaylistSession(
     initialPlaylistContent: LocalPlaylistContent,
+    rewriteInitialPlaylist: Boolean,
     private val headers: Map<String, String>,
     private val httpClientProvider: HttpClientProvider?,
 ) : HlsPlaybackProxySession {
@@ -91,7 +92,11 @@ private class LocalHlsPlaylistSession(
     private val serverSocket = ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))
     private val nextRouteId = AtomicInteger(1)
     private val remoteRoutes = ConcurrentHashMap<String, URI>()
-    private val initialContent = initialPlaylistContent.rewriteMasterPlaylistUrisIfNeeded()
+    private val initialContent = if (rewriteInitialPlaylist) {
+        initialPlaylistContent.rewriteMasterPlaylistUrisIfNeeded()
+    } else {
+        initialPlaylistContent
+    }
 
     val playlistUri: String = "http://127.0.0.1:${serverSocket.localPort}/playlist.m3u8"
 
@@ -246,6 +251,7 @@ private class LocalHlsPlaylistSession(
         fun static(content: String): LocalHlsPlaylistSession {
             return LocalHlsPlaylistSession(
                 initialPlaylistContent = LocalPlaylistContent(content, URI("http://127.0.0.1/")),
+                rewriteInitialPlaylist = false,
                 headers = emptyMap(),
                 httpClientProvider = null,
             )
@@ -259,6 +265,7 @@ private class LocalHlsPlaylistSession(
         ): LocalHlsPlaylistSession {
             return LocalHlsPlaylistSession(
                 initialPlaylistContent = LocalPlaylistContent(content, baseUri),
+                rewriteInitialPlaylist = true,
                 headers = headers,
                 httpClientProvider = httpClientProvider,
             )
@@ -283,13 +290,12 @@ private fun String.rewriteMediaPlaylistUris(baseUri: URI): String {
     return lineSequence().joinToString("\n") { line ->
         when {
             line.isBlank() -> line
-            line.startsWith("#EXT-X-KEY") || line.startsWith("#EXT-X-MAP") -> {
+            line.startsWith("#") -> {
                 line.replace(URI_ATTRIBUTE_REGEX) { match ->
                     val uri = match.groupValues[2]
                     match.groupValues[1] + baseUri.resolveIfRelative(uri) + match.groupValues[3]
                 }
             }
-            line.startsWith("#") -> line
             else -> baseUri.resolveIfRelative(line)
         }
     } + if (endsWith('\n')) "\n" else ""

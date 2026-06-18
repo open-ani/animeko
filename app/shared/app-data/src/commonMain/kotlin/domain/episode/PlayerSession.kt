@@ -82,8 +82,7 @@ class PlayerSession(
     suspend fun loadMedia(media: Media?, episodeInfo: EpisodeMetadata) = coroutineScope {
         val backgroundScope = this
         _videoLoadingStateFlow.value = VideoLoadingState.Initial // 避免一直显示已取消 (.Cancelled)
-        stopPlayer()
-        closeHlsPlaybackProxySession()
+        stopPlayback()
         if (media == null) {
             return@coroutineScope
         }
@@ -118,7 +117,7 @@ class PlayerSession(
         } catch (e: UnsupportedMediaException) {
             logger.warn { IllegalStateException("Failed to resolve video source, unsupported media", e) }
             _videoLoadingStateFlow.value = VideoLoadingState.UnsupportedMedia
-            stopPlayer()
+            stopPlayback()
         } catch (e: MediaSourceOpenException) { // during playerState.setVideoSource
             logger.warn {
                 IllegalStateException(
@@ -131,7 +130,7 @@ class PlayerSession(
                 OpenFailures.UNSUPPORTED_VIDEO_SOURCE -> VideoLoadingState.UnsupportedMedia
                 OpenFailures.ENGINE_DISABLED -> VideoLoadingState.UnsupportedMedia
             }
-            stopPlayer()
+            stopPlayback()
         } catch (e: MediaResolutionException) { // during MediaResolver.resolve
             logger.warn {
                 IllegalStateException(
@@ -145,17 +144,22 @@ class PlayerSession(
                 ResolutionFailures.NETWORK_ERROR -> VideoLoadingState.NetworkError
                 ResolutionFailures.NO_MATCHING_RESOURCE -> VideoLoadingState.NoMatchingFile
             }
-            stopPlayer()
+            stopPlayback()
         } catch (e: CancellationException) { // 切换数据源
             _videoLoadingStateFlow.value = VideoLoadingState.Cancelled
             throw e
         } catch (e: Throwable) {
             logger.error { IllegalStateException("Failed to resolve video source with unknown error", e) }
             _videoLoadingStateFlow.value = VideoLoadingState.UnknownError(e)
-            stopPlayer()
+            stopPlayback()
         } finally {
             preparedHlsPlaybackProxySession?.close()
         }
+    }
+
+    suspend fun stopPlayback() {
+        stopPlayer()
+        closeHlsPlaybackProxySession()
     }
 
     fun close() {
