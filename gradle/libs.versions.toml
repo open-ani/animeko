@@ -1,6 +1,6 @@
 [versions]
 kotlin = "2.3.10"
-android-gradle-plugin = "8.13.2"
+android-gradle-plugin = "9.0.1"
 
 ### KOTLINX ###
 kotlinx-coroutines = "1.10.2" # https://github.com/Kotlin/kotlinx.coroutines/releases
@@ -94,7 +94,6 @@ compose-native-tray = "1.3.0"
 # Plugins for projects.
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm" }
-kotlin-android = { id = "org.jetbrains.kotlin.android" }
 android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library" }
 android-application = { id = "com.android.application" }
 android-library = { id = "com.android.library" }
@@ -258,7 +257,6 @@ androidx-lifecycle-runtime-testing = { module = "androidx.lifecycle:lifecycle-ru
 androidx-collection = { module = "androidx.collection:collection", version = "1.4.5" }
 # Used dynamically, don't remove.
 androidx-test-runner = { module = "androidx.test:runner", version = "1.5.0" }
-androidx-test-monitor = { module = "androidx.test:monitor", version = "1.5.0" }
 
 # Android unit test
 mockito = { module = "org.mockito:mockito-core", version.ref = "mockito" }

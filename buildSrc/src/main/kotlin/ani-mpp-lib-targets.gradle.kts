@@ -113,9 +113,6 @@ configure<KotlinMultiplatformExtension> {
                 }
             }
         }
-        sourceSets {
-            getByName("androidMain").dependsOn(getByName("jvmMain"))
-        }
 
         // This won't work (KT 2.1.0)
 //        sourceSets {

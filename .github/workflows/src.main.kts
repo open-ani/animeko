@@ -1093,7 +1093,6 @@ class WithMatrix(
         timeoutMinutes: Int = 180,
         gradleArgs: String = matrix.gradleArgs,
         maxWorkers: Int? = null,
-        disableConfigurationCache: Boolean = false,
     ) = runWithAttempts(
         name = name,
         `if` = `if`,
@@ -1102,9 +1101,6 @@ class WithMatrix(
             append("./gradlew ")
             tasks.joinTo(this, " ")
             append(' ')
-            if (disableConfigurationCache) {
-                append("\"--no-configuration-cache\" ")
-            }
             append(gradleArgs)
             if (maxWorkers != null) {
                 append(' ')
@@ -1470,11 +1466,12 @@ class WithMatrix(
             name = "Compile Kotlin",
             tasks = arrayOf(
                 "compileKotlin",
+                "compileCommonMainKotlinMetadata",
+                "compileJvmMainKotlinMetadata",
                 "compileKotlinDesktop",
                 "compileKotlinMetadata",
             ),
             maxAttempts = 2,
-            disableConfigurationCache = true,
         )
         // Run separately to avoid OOM
         if (matrix.uploadApk || matrix.runTests || matrix.runAndroidInstrumentedTests) {

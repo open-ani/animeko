@@ -533,7 +533,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
     ///////////////////////////////////////////////////////////////////////////
 
     @Test
-    fun `loads saved history on READY`() = runTest {
+    fun `loads saved history on first PLAYING`() = runTest {
         val (testScope, _, _) = createCase()
         advanceUntilIdle()
         repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
@@ -547,12 +547,35 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         }
         advanceUntilIdle()
         assertNotEquals(500, suite2.player.currentPositionMillis.value) // Not yet loaded
-// .
         suite2.player.setMediaData(UriMediaData("file://test"))
         advanceUntilIdle()
-        assertEquals(500, suite2.player.currentPositionMillis.value) // Load when READY
+        assertNotEquals(500, suite2.player.currentPositionMillis.value) // Not loaded when READY
+
+        suite2.player.playbackState.value = PlaybackState.PLAYING
+        advanceUntilIdle()
+        assertEquals(500, suite2.player.currentPositionMillis.value) // Load when PLAYING
 
         testScope2.cancel()
+    }
+
+    @Test
+    fun `loads saved history when READY is immediately followed by PLAYING`() = runTest {
+        val (testScope, suite, _) = createCase()
+        advanceUntilIdle()
+        repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
+        suite.apply {
+            player.mediaProperties.value = player.mediaProperties.value?.copy(durationMillis = 100_000L)
+                ?: MediaProperties.Empty.copy(durationMillis = 100_000L)
+        }
+        advanceUntilIdle()
+
+        assertNotEquals(500, suite.player.currentPositionMillis.value)
+        suite.player.setMediaData(UriMediaData("file://test"))
+        suite.player.playbackState.value = PlaybackState.PLAYING
+        advanceUntilIdle()
+
+        assertEquals(500, suite.player.currentPositionMillis.value)
+        testScope.cancel()
     }
 
     @Test
@@ -572,7 +595,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
 
         // Simulate a new video loaded
         loadSelectedMedia(suite, state, mediaIndex = 1)
-        assertEquals(500, suite.player.currentPositionMillis.value) // Load when READY
+        assertEquals(500, suite.player.currentPositionMillis.value) // Load when playback resumes
 
         testScope.cancel()
     }

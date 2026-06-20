@@ -9,7 +9,6 @@
 
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
 }
 
 // TODO AGP Migration: Test new build config behavior
