@@ -15,7 +15,6 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -76,26 +75,34 @@ class RememberPlayProgressExtension(
             }
         }
 
+        backgroundTaskScope.launch("PlayProgressLoader") {
+            val player = context.player
+            var haveResumedOnce = false
+
+            player.playbackState
+                .filter { it == PlaybackState.PLAYING }
+                .collect {
+                    if (haveResumedOnce) return@collect
+
+                    val positionMillis = playProgressRepository.getPositionMillisByEpisodeId(episodeSession.episodeId)
+                    if (positionMillis == null) {
+                        logger.info { "Did not find saved position" }
+                        return@collect
+                    }
+
+                    logger.info { "Loaded saved position: $positionMillis, seeking to $positionMillis" }
+                    withContext(Dispatchers.Main + NonCancellable) { // android must call in main thread
+                        player.seekTo(positionMillis)
+                    }
+
+                    haveResumedOnce = true
+                }
+        }
+
         backgroundTaskScope.launch("PlaybackStateListener") {
             val player = context.player
             player.playbackState.collectLatest { playbackState ->
                 when (playbackState) {
-                    // 加载播放进度
-                    PlaybackState.READY -> {
-                        val positionMillis =
-                            playProgressRepository.getPositionMillisByEpisodeId(episodeSession.episodeId)
-                        if (positionMillis == null) {
-                            logger.info { "Did not find saved position" }
-                        } else {
-                            logger.info { "Loaded saved position: $positionMillis, waiting for video properties" }
-                            player.mediaProperties.filter { it != null && it.durationMillis > 0L }.firstOrNull()
-                            logger.info { "Loaded saved position: $positionMillis, video properties ready, seeking" }
-                            withContext(Dispatchers.Main + NonCancellable) { // android must call in main thread
-                                player.seekTo(positionMillis)
-                            }
-                        }
-                    }
-
                     PlaybackState.PAUSED -> {
                         mediaLoaded.await() // 播放器开始播放了一次之后再保存状态
                         savePlayProgressOrRemove(episodeSession)
