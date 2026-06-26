@@ -158,7 +158,14 @@ internal fun SearchResultColumn(
 
         items(
             count = items.itemCount,
-            key = items.itemKey { it.subjectId },
+            key = { index ->
+                val item = items.peek(index)
+                if (item == null) {
+                    "search-result-placeholder-$index"
+                } else {
+                    "search-result-$index-${item.subjectId}"
+                }
+            },
             contentType = items.itemContentType { 1 },
         ) { index ->
             val info = items[index]
