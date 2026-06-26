@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemContentType
-import androidx.paging.compose.itemKey
 import me.him188.ani.app.data.models.recommend.RecommendedItemInfo
 import me.him188.ani.app.data.models.recommend.RecommendedSubjectInfo
 import me.him188.ani.app.data.models.recommend.TestRecommendedItemInfos
@@ -61,7 +60,14 @@ fun LazyGridScope.recommendationItems(
     }
     items(
         data.itemCount,
-        key = data.itemKey { "recommendation-" + it.id },
+        key = { index ->
+            val item = data.peek(index)
+            if (item == null) {
+                "recommendation-placeholder-$index"
+            } else {
+                "recommendation-$index-${item.id}"
+            }
+        },
         contentType = data.itemContentType { it.type },
     ) { index ->
         val aniMotionScheme = LocalAniMotionScheme.current
