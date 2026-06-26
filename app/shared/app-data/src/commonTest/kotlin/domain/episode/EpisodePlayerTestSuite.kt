@@ -18,8 +18,12 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.subject.SubjectSeriesInfo
 import me.him188.ani.app.data.models.subject.TestSubjectCollections
+import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
+import me.him188.ani.app.domain.media.hls.NoopHlsPlaybackPreparer
+import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import org.koin.core.Koin
 import org.koin.dsl.module
 import org.openani.mediamp.test.TestMediampPlayer
@@ -71,6 +75,14 @@ class EpisodePlayerTestSuite(
                                 ),
                             )
                         }
+                    }
+                    single<GetVideoScaffoldConfigUseCase> {
+                        GetVideoScaffoldConfigUseCase {
+                            flowOf(VideoScaffoldConfig.AllDisabled)
+                        }
+                    }
+                    single<HlsPlaybackPreparer> {
+                        NoopHlsPlaybackPreparer
                     }
                 },
             ),

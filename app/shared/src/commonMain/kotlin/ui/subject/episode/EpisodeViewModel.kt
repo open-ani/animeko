@@ -1011,9 +1011,6 @@ class EpisodeViewModel(
         webCaptchaCoordinator.cancelAutoResolutionRequests()
         backgroundScope.launch(NonCancellable + CoroutineName("EpisodeViewModel#onCleared")) {
             fetchPlayState.onClose()
-            withContext(Dispatchers.Main) {
-                player.stopPlayback()
-            }
         }
     }
 

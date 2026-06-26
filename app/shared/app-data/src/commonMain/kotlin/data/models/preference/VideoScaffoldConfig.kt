@@ -72,6 +72,12 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      */
     val autoSwitchMediaOnPlayerError: Boolean = true,
     /**
+     * 过滤 HLS 播放列表中的插播片段.
+     *
+     * @since 5.7
+     */
+    val enableExperimentalHlsSegmentFiltering: Boolean = false,
+    /**
      * 用于在安卓上设置屏幕刷新率, 解决某些设备会自动限制刷新率的问题 (三星).
      *
      * 0 为不设置 (使用系统默认).
@@ -111,6 +117,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
             autoPlayNext = false,
             autoSkipOpEd = false,
             autoSwitchMediaOnPlayerError = false,
+            enableExperimentalHlsSegmentFiltering = false,
         )
     }
 

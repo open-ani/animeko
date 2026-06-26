@@ -70,6 +70,8 @@ import me.him188.ani.app.ui.lang.settings_player_auto_play_next
 import me.him188.ani.app.ui.lang.settings_player_auto_skip_op_ed
 import me.him188.ani.app.ui.lang.settings_player_auto_skip_op_ed_description
 import me.him188.ani.app.ui.lang.settings_player_auto_switch_media_on_error
+import me.him188.ani.app.ui.lang.settings_player_experimental_hls_segment_filter
+import me.him188.ani.app.ui.lang.settings_player_experimental_hls_segment_filter_description
 import me.him188.ani.app.ui.lang.settings_player_enable_regex_filter
 import me.him188.ani.app.ui.lang.settings_player_fullscreen_always_show
 import me.him188.ani.app.ui.lang.settings_player_fullscreen_auto_hide
@@ -506,6 +508,17 @@ fun SettingsScope.PlayerGroup(
             title = { Text(stringResource(Lang.settings_player_auto_switch_media_on_error)) },
         )
         HorizontalDividerItem()
+        if (!LocalPlatform.current.isIos()) {
+            SwitchItem(
+                checked = config.enableExperimentalHlsSegmentFiltering,
+                onCheckedChange = {
+                    videoScaffoldConfig.update(config.copy(enableExperimentalHlsSegmentFiltering = it))
+                },
+                title = { Text(stringResource(Lang.settings_player_experimental_hls_segment_filter)) },
+                description = { Text(stringResource(Lang.settings_player_experimental_hls_segment_filter_description)) },
+            )
+            HorizontalDividerItem()
+        }
         DropdownItem(
             selected = { config.fastForwardSpeed },
             values = { listOf(1.5f, 2f, 2.5f, 3f) },

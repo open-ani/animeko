@@ -32,6 +32,8 @@ import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
+import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
+import me.him188.ani.app.domain.media.hls.PlatformHlsPlaybackPreparer
 import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
@@ -96,6 +98,7 @@ fun getAndroidModules(
     }
     single<BrowserNavigator> { AndroidBrowserNavigator() }
     single<WebCaptchaCoordinator> { AndroidWebCaptchaCoordinator(androidContext()) }
+    single<HlsPlaybackPreparer> { PlatformHlsPlaybackPreparer(get()) }
 
     single<TorrentEngineAccess> { serviceConnectionManager }
     single<TorrentServiceConnection<IRemoteAniTorrentEngine>> { serviceConnectionManager.connection }

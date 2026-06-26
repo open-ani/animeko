@@ -29,6 +29,8 @@ import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
+import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
+import me.him188.ani.app.domain.media.hls.PlatformHlsPlaybackPreparer
 import me.him188.ani.app.domain.media.resolver.DesktopWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
@@ -133,6 +135,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
     }
     single<BrowserNavigator> { DesktopBrowserNavigator() }
     single<WebCaptchaCoordinator> { DesktopWebCaptchaCoordinator(AniDesktopCaptchaTopBar) }
+    single<HlsPlaybackPreparer> { PlatformHlsPlaybackPreparer(get()) }
     single<OfflineDownloadEngine> {
         val settings = get<SettingsRepository>()
         val configState = settings.pikpakConfig.flow
