@@ -188,7 +188,7 @@ class MediaSelectorAutoSelect(
             listOf(preferredWebMediaSourceId),
             overrideUserSelection = false,
             blacklistMediaIds = emptySet(),
-            allowNonPreferred = false, // 只从这一个源里选
+            allowNonPreferred = true, // 只从这一个源里选
         )
     }
 
