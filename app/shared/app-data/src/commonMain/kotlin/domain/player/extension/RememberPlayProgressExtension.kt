@@ -80,8 +80,13 @@ class RememberPlayProgressExtension(
             var haveResumedOnce = false
 
             player.playbackState
-                .filter { it == PlaybackState.PLAYING }
+                .filter { it == PlaybackState.PLAYING || it == PlaybackState.READY }
                 .collect {
+                    if (it == PlaybackState.READY) {
+                        haveResumedOnce = false
+                        return@collect
+                    }
+
                     if (haveResumedOnce) return@collect
 
                     val positionMillis = playProgressRepository.getPositionMillisByEpisodeId(episodeSession.episodeId)
