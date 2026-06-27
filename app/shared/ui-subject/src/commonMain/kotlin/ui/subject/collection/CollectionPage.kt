@@ -42,8 +42,11 @@ import androidx.compose.material.icons.rounded.HowToReg
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Sort
+import androidx.compose.material.icons.rounded.SortByAlpha
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Badge
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -244,8 +247,9 @@ fun CollectionPage(
     actions: @Composable RowScope.() -> Unit = {},
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
     enableAnimation: Boolean = true,
-
-    ) {
+    sortByName: Boolean = false,
+    onToggleSortByName: () -> Unit = {},
+) {
     val scope = rememberCoroutineScope()
     var hideBangumiSync by rememberSaveable { mutableStateOf(false) }
     val isBangumiSyncing = fullSyncState != null && !fullSyncState.finished
@@ -281,6 +285,13 @@ fun CollectionPage(
                         modifier = Modifier.rotate(angle),
                     )
                 }
+            }
+            IconButton(onClick = onToggleSortByName) {
+                Icon(
+                    imageVector = if (sortByName) Icons.Rounded.SortByAlpha else Icons.Rounded.Sort,
+                    contentDescription = if (sortByName) "取消按名称排序" else "按名称排序",
+                    tint = if (sortByName) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+                )
             }
             actions()
         },
@@ -372,6 +383,7 @@ fun CollectionPage(
                     modifier = Modifier.fillMaxSize(),
                     enableAnimation = enableAnimation,
                     gridState = remember(pageIndex) { state.getGridState(pageIndex) },
+                    sortByName = sortByName,
                 )
             }
         }

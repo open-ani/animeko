@@ -57,8 +57,6 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
-import androidx.paging.compose.itemContentType
-import androidx.paging.compose.itemKey
 import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.subject.TestSubjectCollections
@@ -99,10 +97,25 @@ fun SubjectCollectionsColumn(
     modifier: Modifier = Modifier,
     gridState: LazyGridState = rememberLazyGridState(),
     enableAnimation: Boolean = true,
+    sortByName: Boolean = false,
 ) {
     val isCompact = currentWindowAdaptiveInfo1().windowSizeClass.isWidthCompact
     val spacedBy = if (isCompact) 16.dp else 24.dp
     val aniMotionScheme = LocalAniMotionScheme.current
+
+    val orderedIndices: List<Int> = remember(sortByName, items.itemSnapshotList) {
+        if (!sortByName) {
+            (0 until items.itemCount).toList()
+        } else {
+            val snapshot = items.itemSnapshotList
+            val withKey = (0 until snapshot.size).mapNotNull { i ->
+                val info = snapshot[i]?.subjectInfo ?: return@mapNotNull null
+                val key = info.nameCn.ifEmpty { info.name }.lowercase()
+                i to key
+            }
+            withKey.sortedWith(compareBy({ it.second }, { it.first })).map { it.first }
+        }
+    }
 
     LazyVerticalGrid(
         GridCells.Adaptive(360.dp),
@@ -124,11 +137,20 @@ fun SubjectCollectionsColumn(
         }
 
         items(
-            items.itemCount,
-            items.itemKey { "SubjectCollectionsColumn-" + it.subjectId },
-            contentType = items.itemContentType { it.progressInfo.nextEpisodeIdToPlay != null },
-        ) { index ->
-            items[index]?.let {
+            orderedIndices.size,
+            key = { renderedIdx ->
+                val realIdx = orderedIndices[renderedIdx]
+                val info = items.peek(realIdx)
+                if (info != null) "SubjectCollectionsColumn-" + info.subjectId
+                else "SubjectCollectionsColumn-placeholder-$realIdx"
+            },
+            contentType = { renderedIdx ->
+                val realIdx = orderedIndices[renderedIdx]
+                items.peek(realIdx)?.progressInfo?.nextEpisodeIdToPlay != null
+            },
+        ) { renderedIdx ->
+            val realIdx = orderedIndices[renderedIdx]
+            items[realIdx]?.let {
                 Box(
                     Modifier
                         .padding(all = spacedBy / 2)
