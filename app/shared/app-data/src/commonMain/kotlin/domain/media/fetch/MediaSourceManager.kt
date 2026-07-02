@@ -66,6 +66,8 @@ import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.coroutines.CoroutineContext
 
 interface MediaSourceManager { // available by inject
@@ -371,4 +373,5 @@ fun ProxyConfig.toClientProxyConfig() = ClientProxyConfig(
     authorization = authorization?.toHeader(),
 )
 
-fun ProxyAuthorization.toHeader(): String = "Basic ${"$username:$password"}"
+@OptIn(ExperimentalEncodingApi::class)
+fun ProxyAuthorization.toHeader(): String = "Basic ${Base64.encode("$username:$password".encodeToByteArray())}"
