@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+TARGET="$SCRIPT_DIR/build/install/datasource-test-mcp/bin/datasource-test-mcp"
+
+if [ ! -x "$TARGET" ]; then
+  echo "Built launcher not found: $TARGET" >&2
+  echo "Run ./gradlew :tools:datasource-test-mcp:installDist first." >&2
+  exit 1
+fi
+
+exec "$TARGET" "$@"

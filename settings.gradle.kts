@@ -158,6 +158,7 @@ includeProject(
 
 // ci
 includeProject(":ci-helper", "ci-helper") // 
+includeProject(":tools:datasource-test-mcp", "tools/datasource-test-mcp")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
