@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.tools.datasourcetestmcp
+package me.him188.ani.tools.datasourcetestmcp.video
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine

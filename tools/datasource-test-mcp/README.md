@@ -1,23 +1,67 @@
 # datasource-test-mcp
 
-An stdio MCP server for validating Animeko media sources end to end.
+An stdio MCP server for developing and validating Animeko media sources.
 
-## What It Tests
+The stdio transport follows the MCP spec (newline-delimited JSON-RPC). Legacy `Content-Length` framed
+clients are auto-detected and answered in the same framing.
 
-The MCP exposes three tools:
+## Capabilities
 
-- `test_subject_episode_source`
-  Pulls subject and episode metadata, fetches media candidates from a media source, resolves a final video URL with the real webview-based resolver engine, then probes the resolved video URL.
-- `test_resource_page_url`
-  Resolves a page URL with the real webview-based resolver engine, then probes the resolved video URL.
-- `probe_video_url`
-  Probes a final video URL such as `m3u8` or `mp4`.
+### 信息能力 (Ani API)
 
-The runtime resolver path is webview-based only. It does not use a static HTML parser.
+- `search_subjects` — 用名字搜索番剧, 返回 subjectId/名称/放送日期, 可选返回剧集列表.
+- `get_subject_episodes` — 按 subjectId 获取完整剧集列表 (episodeId, sort, 名称).
+- `get_trends` — 获取当前热门番剧排行, 适合挑选知名条目来测试数据源.
+
+### 数据源能力 (Selector / CSS-selector 数据源)
+
+- `validate_selector_config` — 离线校验 selector 配置 JSON: 必填字段, CSS selector/JsonPath/正则语法,
+  命名分组等. 接受 App 导出格式 / 裸 arguments / 裸 searchConfig / 订阅列表四种形态.
+- `selector_resolve_episode` — 提供 subjectId+episodeId+配置, 自动跑 `SelectorMediaSourceEngine`
+  全流程 (searchSubjects → selectSubjects → searchEpisodes → selectEpisodes → selectMedia,
+  可选 WebView 视频解析与播放探测), 返回每个步骤的 trace 便于定位问题.
+- `selector_run_step` — 单步执行任意引擎步骤: 支持离线传 HTML 调试 selector, 离线测 matchVideo 正则,
+  以及真实 WebView 拦截视频 URL.
+- `get_selector_engine_docs` — 返回引擎步骤文档 (源文件: [selector-engine-docs.md](src/main/resources/selector-engine-docs.md)).
+
+### 视频能力
+
+- `probe_video` — 探测最终视频 URL: HTTP 可达性 + ffprobe 真实媒体信息 (容器格式/码率/分辨率/时长)
+  + ffmpeg 实际解码测试 (与播放器相同的 demux+decode 路径).
+  ffprobe/ffmpeg 从工具参数、`ANI_MCP_FFPROBE`/`ANI_MCP_FFMPEG` 环境变量或 PATH 查找;
+  找不到时自动降级为仅 HTTP 探测.
+
+### 兼容保留
+
+- `test_subject_episode_source` — 任意数据源工厂 (dmhy/mikan/selector/...) 的端到端测试.
+- `test_resource_page_url` — 任意播放页的 WebView 视频解析 + 探测.
+
+`probe_video_url` 已被 `probe_video` 取代 (输入兼容, 输出更丰富).
+
+## Code layout
+
+按能力分包 (`src/main/kotlin/.../datasourcetestmcp/`):
+
+- `mcp/` — stdio MCP server (帧格式/JSON-RPC) 与工具注册表
+- `info/` — 信息能力: Ani API 番剧/剧集查询
+- `selector/` — 数据源能力: 配置解析校验 + 引擎全流程/单步执行
+- `resolver/` — WebView 视频解析管线 (播放页 → 视频 URL) 与逐线路测试
+- `video/` — 视频能力: HTTP 探测 + ffprobe/ffmpeg 分析
+- `source/` — 通用数据源端到端测试 (dmhy/mikan/... 工厂注册, 域名诊断)
+- 根包 — 入口 `Main.kt` 与共享模型 (`StageResult` 等)
+
+## Typical debugging flow
+
+1. `validate_selector_config` 排除配置语法错误;
+2. `search_subjects` / `get_subject_episodes` 找到目标 episodeId;
+3. `selector_resolve_episode` 跑全流程, 看哪一步的 trace 先失败;
+4. `selector_run_step` 单独重跑该步骤 (支持直接传 HTML 离线迭代 selector);
+5. `probe_video` 验证解析出的视频 URL 真实可播放.
 
 ## Handshake Failure Hints
 
-When datasource fetch fails with an SSL/TLS handshake-style error, the MCP now does one extra diagnostic step:
+When datasource fetch fails with an SSL/TLS handshake-style error, `test_subject_episode_source` does one
+extra diagnostic step:
 
 1. Extract the current search host from the datasource config
 2. Query Bing RSS with the datasource name and host token
@@ -27,8 +71,8 @@ This is a hint path only. It does not rewrite the datasource config automaticall
 
 ## Metadata Lookup
 
-`test_subject_episode_source` fetches subject and episode metadata from the Ani API, then builds the local
-`MediaFetchRequest` from that response. Ani API is the metadata source of truth.
+`search_subjects` / `get_subject_episodes` / `selector_resolve_episode` / `test_subject_episode_source`
+fetch subject and episode metadata from the Ani API. Ani API is the metadata source of truth.
 
 ## Playback Header Path
 
@@ -45,36 +89,13 @@ This matches the app's current playback model:
 - Desktop VLC uses `User-Agent` and `Referer`.
 - iOS AVKit passes the header map through `AVURLAssetHTTPHeaderFieldsKey`.
 
-## E-ACG Validation Notes
-
-Validated against the `E-ACG` source from:
-
-- `https://sub.creamycake.org/v1/css1.json`
-
-For `间谍过家家` season 1 episode 1:
-
-- metadata lookup works
-- media fetch works
-- real webview resolution works
-- final probe currently fails with downstream `403 The region has been denied.`
-
-This is not currently explained by missing `Referer` handling in the client playback path. The app already supports playback headers. The remaining gap is more likely downstream geo restriction or, for some sites, missing browser session cookies.
-
 ## Multi-Channel Behavior
 
-`test_subject_episode_source` now tests candidates channel by channel by default.
+`test_subject_episode_source` and `selector_resolve_episode` test candidates channel by channel:
 
-The default mode is `all_channels`:
-
-- it sorts all web candidates
-- it resolves each candidate in order
-- it probes every candidate that resolves to a final video URL
-- it returns per-channel results in `channelResults`
-
-An optional `candidateTestMode` input is available:
-
-- `all_channels`: test every candidate channel
+- `all_channels`: test every candidate channel (default for `test_subject_episode_source`)
 - `first_success`: stop after the first channel that passes both resolve and playback probe
+  (default for `selector_resolve_episode`)
 
 Top-level `ok` means at least one tested channel passed playback probing.
 
@@ -82,10 +103,10 @@ Top-level `ok` means at least one tested channel passed playback probing.
 
 ```bash
 ./gradlew :tools:datasource-test-mcp:installDist
-./tools/datasource-test-mcp/launcher
+./tools/datasource-test-mcp/build/install/datasource-test-mcp/bin/datasource-test-mcp
 ```
 
-Use [launcher](/Users/him188/Projects/animeko/ani/tools/datasource-test-mcp/launcher) as the MCP command so Codex starts the built launcher directly instead of invoking Gradle on every MCP startup.
+Point your MCP client at the installed launcher script so it does not invoke Gradle on every startup.
 
 ## Test
 

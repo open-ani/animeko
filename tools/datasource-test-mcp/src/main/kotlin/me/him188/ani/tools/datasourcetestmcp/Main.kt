@@ -19,6 +19,17 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+import me.him188.ani.app.domain.mediasource.web.DefaultSelectorMediaSourceEngine
+import me.him188.ani.tools.datasourcetestmcp.info.AniInfoService
+import me.him188.ani.tools.datasourcetestmcp.mcp.StdioMcpServer
+import me.him188.ani.tools.datasourcetestmcp.mcp.buildToolRegistrations
+import me.him188.ani.tools.datasourcetestmcp.resolver.WebViewVideoResolverEngine
+import me.him188.ani.tools.datasourcetestmcp.selector.SelectorEngineService
+import me.him188.ani.tools.datasourcetestmcp.source.DataSourceRegistry
+import me.him188.ani.tools.datasourcetestmcp.source.SourceTestService
+import me.him188.ani.tools.datasourcetestmcp.video.FfmpegVideoAnalyzer
+import me.him188.ani.tools.datasourcetestmcp.video.VideoProbe
+import me.him188.ani.tools.datasourcetestmcp.video.VideoService
 import me.him188.ani.utils.ktor.asScopedHttpClient
 import java.io.FileDescriptor
 import java.io.FileOutputStream
@@ -48,7 +59,8 @@ fun main() {
         install(HttpTimeout) {
             requestTimeoutMillis = 300.seconds.inWholeMilliseconds
             connectTimeoutMillis = 30.seconds.inWholeMilliseconds
-            socketTimeoutMillis = 30.seconds.inWholeMilliseconds
+            // Ani API 搜索接口冷启动可能需要 40s+
+            socketTimeoutMillis = 90.seconds.inWholeMilliseconds
         }
         BrowserUserAgent()
         followRedirects = true
@@ -59,15 +71,40 @@ fun main() {
         expectSuccess = true
     }
     try {
-        val service = SourceTestService(
-            httpClient = client,
-            registry = DataSourceRegistry(client.asScopedHttpClient()),
+        val scopedClient = client.asScopedHttpClient()
+        val resolver = WebViewVideoResolverEngine()
+        val probe = VideoProbe(client)
+
+        val aniInfoService = AniInfoService(client)
+        val selectorEngineService = SelectorEngineService(
+            engine = DefaultSelectorMediaSourceEngine(scopedClient),
+            aniInfoService = aniInfoService,
             json = json,
+            resolver = resolver,
+            probe = probe,
         )
+        val videoService = VideoService(
+            probe = probe,
+            analyzer = FfmpegVideoAnalyzer(json),
+        )
+        val sourceTestService = SourceTestService(
+            httpClient = client,
+            registry = DataSourceRegistry(scopedClient),
+            json = json,
+            resolver = resolver,
+            probe = probe,
+        )
+
         StdioMcpServer(
             input = System.`in`,
             output = protocolOutput,
-            service = service,
+            registrations = buildToolRegistrations(
+                json = json,
+                aniInfoService = aniInfoService,
+                selectorEngineService = selectorEngineService,
+                videoService = videoService,
+                sourceTestService = sourceTestService,
+            ),
             json = json,
         ).run()
     } finally {

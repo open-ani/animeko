@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.tools.datasourcetestmcp
+package me.him188.ani.tools.datasourcetestmcp.resolver
 
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.buildJsonObject
@@ -31,6 +31,9 @@ import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.ResourceLocation
+import me.him188.ani.tools.datasourcetestmcp.source.TestSubjectEpisodeSourceInput
+import me.him188.ani.tools.datasourcetestmcp.video.VideoProbeResult
+import me.him188.ani.tools.datasourcetestmcp.video.VideoUrlProbeEngine
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -68,9 +71,10 @@ class ChannelTestExecutorTest {
             ),
         )
 
+        val source = FakeWebSource("source")
         val results = ChannelTestExecutor(resolver, probe).execute(
             playableCandidates = listOf(candidate("c1"), candidate("c2"), candidate("c3")),
-            sourceById = mapOf("source" to FakeWebSource("source")),
+            matchersFor = { listOf(source.matcher) },
             probeTimeoutMillis = 5_000,
             candidateTestMode = CandidateTestMode.ALL_CHANNELS,
         )
@@ -117,9 +121,10 @@ class ChannelTestExecutorTest {
             ),
         )
 
+        val source = FakeWebSource("source")
         val results = ChannelTestExecutor(resolver, probe).execute(
             playableCandidates = listOf(candidate("c1"), candidate("c2"), candidate("c3")),
-            sourceById = mapOf("source" to FakeWebSource("source")),
+            matchersFor = { listOf(source.matcher) },
             probeTimeoutMillis = 5_000,
             candidateTestMode = CandidateTestMode.FIRST_SUCCESS,
         )

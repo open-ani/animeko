@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.tools.datasourcetestmcp
+package me.him188.ani.tools.datasourcetestmcp.source
 
 import me.him188.ani.app.data.persistent.database.dao.WebSearchEpisodeInfoDao
 import me.him188.ani.app.data.persistent.database.dao.WebSearchEpisodeInfoEntity

@@ -9,10 +9,20 @@
 
 package me.him188.ani.tools.datasourcetestmcp
 
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
-data class ResolveResult(
-    val resolvedVideo: ResolvedVideoResult? = null,
-    val diagnostics: JsonElement? = null,
+const val DEFAULT_ANI_API_BASE_URL = "https://api.animeko.org"
+
+/**
+ * 一个执行阶段/引擎步骤的记录, 用于 trace 输出.
+ */
+@Serializable
+data class StageResult(
+    val name: String,
+    val status: String,
+    val summary: String,
+    val details: JsonElement? = null,
     val errors: List<String> = emptyList(),
+    val durationMillis: Long? = null,
 )

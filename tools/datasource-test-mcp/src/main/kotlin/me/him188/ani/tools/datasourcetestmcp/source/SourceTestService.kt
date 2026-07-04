@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.tools.datasourcetestmcp
+package me.him188.ani.tools.datasourcetestmcp.source
 
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.flow.take
@@ -33,6 +33,15 @@ import me.him188.ani.datasources.api.source.MediaSource
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.ResourceLocation
+import me.him188.ani.tools.datasourcetestmcp.StageResult
+import me.him188.ani.tools.datasourcetestmcp.resolver.CandidateTestMode
+import me.him188.ani.tools.datasourcetestmcp.resolver.CandidateVideoResolver
+import me.him188.ani.tools.datasourcetestmcp.resolver.ChannelTestExecutor
+import me.him188.ani.tools.datasourcetestmcp.resolver.WebViewVideoResolverEngine
+import me.him188.ani.tools.datasourcetestmcp.resolver.toCandidateResult
+import me.him188.ani.tools.datasourcetestmcp.video.VideoProbe
+import me.him188.ani.tools.datasourcetestmcp.video.VideoProbeResult
+import me.him188.ani.tools.datasourcetestmcp.video.VideoUrlProbeEngine
 
 class SourceTestService(
     private val httpClient: HttpClient,
@@ -219,33 +228,6 @@ class SourceTestService(
         }
     }
 
-    suspend fun probeVideoUrl(input: ProbeVideoUrlInput): SourceTestResult {
-        val probeResult = withTimeout(input.probeTimeoutMillis) {
-            probe.probe(input.videoUrl, input.headers)
-        }
-        return SourceTestResult(
-            ok = probeResult.ok,
-            summary = probeResult.summary,
-            input = encodeInput(input),
-            stages = listOf(
-                StageResult(
-                    name = "video_probe",
-                    status = if (probeResult.ok) "success" else "failed",
-                    summary = probeResult.summary,
-                    details = probeDetails(probeResult),
-                    errors = probeResult.errors,
-                ),
-            ),
-            resolvedVideo = ResolvedVideoResult(
-                url = input.videoUrl,
-                headers = input.headers,
-                strategy = "manual-video-url",
-            ),
-            probe = probeResult,
-            errors = probeResult.errors,
-        )
-    }
-
     private suspend fun fetchAniMetadata(input: TestSubjectEpisodeSourceInput): AniMetadataResult {
         val api = SubjectsAniApi(input.aniApiBaseUrl, httpClient).apply {
             input.aniBearerToken?.takeIf { it.isNotBlank() }?.let(::setBearerToken)
@@ -317,7 +299,11 @@ class SourceTestService(
 
         val channelResults = channelTestExecutor.execute(
             playableCandidates = playableCandidates,
-            sourceById = sourceById,
+            matchersFor = { match ->
+                (sourceById[match.media.mediaSourceId] as? WebVideoMatcherProvider)
+                    ?.let { listOf(it.matcher) }
+                    .orEmpty()
+            },
             probeTimeoutMillis = probeTimeoutMillis,
             candidateTestMode = candidateTestMode,
         )
@@ -423,9 +409,6 @@ class SourceTestService(
 
     private fun encodeInput(input: TestResourcePageUrlInput): JsonElement =
         json.encodeToJsonElement(TestResourcePageUrlInput.serializer(), input)
-
-    private fun encodeInput(input: ProbeVideoUrlInput): JsonElement =
-        json.encodeToJsonElement(ProbeVideoUrlInput.serializer(), input)
 
     private suspend fun <T> useSources(sources: List<MediaSource>, block: suspend (List<MediaSource>) -> T): T {
         return try {

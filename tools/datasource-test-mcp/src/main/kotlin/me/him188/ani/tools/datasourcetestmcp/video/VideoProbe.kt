@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.tools.datasourcetestmcp
+package me.him188.ani.tools.datasourcetestmcp.video
 
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -19,6 +19,10 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import me.him188.ani.utils.ktor.UrlHelpers
+
+interface VideoUrlProbeEngine {
+    suspend fun probe(url: String, headers: Map<String, String>): VideoProbeResult
+}
 
 class VideoProbe(
     private val httpClient: HttpClient,

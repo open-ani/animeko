@@ -7,22 +7,17 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.tools.datasourcetestmcp
+package me.him188.ani.tools.datasourcetestmcp.resolver
 
 import kotlinx.coroutines.withTimeout
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.matcher.WebVideoMatcher
-import me.him188.ani.datasources.api.matcher.WebVideoMatcherProvider
 import me.him188.ani.datasources.api.source.MediaMatch
-import me.him188.ani.datasources.api.source.MediaSource
+import me.him188.ani.tools.datasourcetestmcp.video.VideoUrlProbeEngine
 
 interface CandidateVideoResolver {
     suspend fun resolve(media: Media, matchers: List<WebVideoMatcher>): ResolveResult
     suspend fun resolvePage(media: Media, pageUrl: String, matchers: List<WebVideoMatcher>): ResolveResult
-}
-
-interface VideoUrlProbeEngine {
-    suspend fun probe(url: String, headers: Map<String, String>): VideoProbeResult
 }
 
 internal class ChannelTestExecutor(
@@ -31,20 +26,20 @@ internal class ChannelTestExecutor(
 ) {
     suspend fun execute(
         playableCandidates: List<MediaMatch>,
-        sourceById: Map<String, MediaSource>,
+        matchersFor: (MediaMatch) -> List<WebVideoMatcher>,
         probeTimeoutMillis: Long,
         candidateTestMode: CandidateTestMode,
+        probeEnabled: Boolean = true,
     ): List<ChannelTestResult> {
         val results = mutableListOf<ChannelTestResult>()
         playableCandidates.forEachIndexed { index, match ->
-            val source = sourceById[match.media.mediaSourceId]
-            val provider = source as? WebVideoMatcherProvider
             val result = runCatching {
                 testCandidate(
                     order = index + 1,
                     match = match,
-                    matchers = provider?.let { listOf(it.matcher) }.orEmpty(),
+                    matchers = matchersFor(match),
                     probeTimeoutMillis = probeTimeoutMillis,
+                    probeEnabled = probeEnabled,
                 )
             }.getOrElse { exception ->
                 ChannelTestResult(
@@ -70,6 +65,7 @@ internal class ChannelTestExecutor(
         match: MediaMatch,
         matchers: List<WebVideoMatcher>,
         probeTimeoutMillis: Long,
+        probeEnabled: Boolean,
     ): ChannelTestResult {
         val candidate = match.toCandidateResult()
         val resolveResult = resolver.resolve(match.media, matchers)
@@ -83,6 +79,20 @@ internal class ChannelTestExecutor(
             resolveDiagnostics = resolveResult.diagnostics,
             errors = resolveResult.errors,
         )
+
+        if (!probeEnabled) {
+            return ChannelTestResult(
+                order = order,
+                candidate = candidate,
+                resolveStatus = "success",
+                probeStatus = "not_run",
+                ok = true,
+                summary = "Resolved final video URL (probe skipped)",
+                resolvedVideo = resolvedVideo,
+                resolveDiagnostics = resolveResult.diagnostics,
+                errors = resolveResult.errors,
+            )
+        }
 
         val probeResult = withTimeout(probeTimeoutMillis) {
             probe.probe(resolvedVideo.url, resolvedVideo.headers)

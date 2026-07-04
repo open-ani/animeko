@@ -29,6 +29,8 @@ dependencies {
     implementation(projects.utils.ktorClient)
     implementation(projects.utils.logging)
     implementation(projects.utils.serialization)
+    implementation(projects.utils.xml)
+    implementation(projects.utils.jsonpath)
 
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
