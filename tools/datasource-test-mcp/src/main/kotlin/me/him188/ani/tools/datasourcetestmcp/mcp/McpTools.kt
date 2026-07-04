@@ -267,11 +267,11 @@ fun buildToolRegistrations(
     McpToolRegistration(
         McpTool(
             name = "probe_video",
-            description = "Test whether a final video URL (m3u8/mp4/mkv...) is actually playable and report its real media info. " +
-                    "Runs an HTTP reachability probe, then ffprobe for container format, bitrate, resolution and duration, " +
-                    "and an ffmpeg decode test (same demux+decode path as a player). " +
-                    "ffprobe/ffmpeg are looked up from the tool args, ANI_MCP_FFPROBE/ANI_MCP_FFMPEG env vars, then PATH; " +
-                    "without them only the HTTP probe runs.",
+            description = "Test whether a final video URL (m3u8/mp4/mkv...) is actually playable in Animeko and report its real media info. " +
+                    "Runs an HTTP reachability probe, then plays the URL for a few seconds with Animeko's own desktop player " +
+                    "(mediamp-vlc, the same VLC pipeline the app uses), reporting resolution, duration, codecs, frame rate and bitrate. " +
+                    "By default a Compose test window pops up showing the actual playback. " +
+                    "Requires VLC 3.0.18 installed on the system; without it only the HTTP probe runs.",
             inputSchema = objectSchema(required = listOf("videoUrl")) {
                 put("videoUrl", stringSchema("Final video URL"))
                 put(
@@ -282,12 +282,10 @@ fun buildToolRegistrations(
                     },
                 )
                 put("probeTimeoutMillis", integerSchema("HTTP probe timeout in milliseconds, default 15000"))
-                put("analyze", booleanSchema("Run ffprobe media analysis, default true"))
-                put("decodeTest", booleanSchema("Run ffmpeg decode test, default true"))
-                put("decodeDurationSeconds", integerSchema("Seconds of media to decode in the test, default 5"))
-                put("analyzeTimeoutMillis", integerSchema("ffprobe/ffmpeg timeout in milliseconds, default 60000"))
-                put("ffprobePath", stringSchema("Explicit path to the ffprobe executable"))
-                put("ffmpegPath", stringSchema("Explicit path to the ffmpeg executable"))
+                put("analyze", booleanSchema("Run the real-player playback test, default true"))
+                put("playSeconds", integerSchema("Seconds to actually play for the playability test, default 5"))
+                put("playTimeoutMillis", integerSchema("Timeout for entering/finishing playback in milliseconds, default 60000"))
+                put("showWindow", booleanSchema("Show a Compose window with the live playback, default true"))
             },
         ),
     ) { args ->

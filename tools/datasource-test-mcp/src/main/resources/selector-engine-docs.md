@@ -111,7 +111,7 @@ MCP 工具:
 
 - `selector_run_step(step=matchWebVideo, config, url)` — 离线测试某个 URL 会被判为「视频 / 嵌套页 / 忽略」,调 `matchVideoUrl` 正则用;
 - `selector_run_step(step=extractVideo, url, config?)` — 真实启动 WebView 加载播放页并拦截视频 URL;
-- `probe_video(videoUrl, headers)` — 对最终视频 URL 做 HTTP 探测 + ffprobe/ffmpeg 实际解码,报告容器格式、码率、分辨率、时长。
+- `probe_video(videoUrl, headers)` — 对最终视频 URL 做 HTTP 探测,并用 Animeko 桌面端同款播放器 (VLC) 真实播放几秒,报告分辨率、时长、编码、帧率、码率。
 
 ## 配置 JSON 形态
 

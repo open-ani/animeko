@@ -12,11 +12,11 @@ package me.him188.ani.tools.datasourcetestmcp.video
 import kotlinx.coroutines.withTimeout
 
 /**
- * 视频能力: HTTP 可达性探测 + ffprobe/ffmpeg 真实解码分析.
+ * 视频能力: HTTP 可达性探测 + Animeko 播放器 (VLC) 真实播放测试.
  */
 class VideoService(
     private val probe: VideoUrlProbeEngine,
-    private val analyzer: FfmpegVideoAnalyzer,
+    private val analyzer: VlcVideoAnalyzer,
 ) {
     suspend fun probeVideo(input: ProbeVideoInput): ProbeVideoResult {
         val httpProbe = runCatching {
@@ -35,10 +35,9 @@ class VideoService(
 
         val analysis = if (input.analyze) analyzer.analyze(input) else null
 
-        // 解码测试是最接近真实播放的验证; 其次是 ffprobe 能识别出视频流; 都没有时退回 HTTP 探测结论
+        // 真实播放测试是最权威的结论; 播放器不可用时退回 HTTP 探测结论
         val ok = when {
-            analysis?.decodeTest?.ran == true -> analysis.decodeTest.ok
-            analysis?.available == true && analysis.video != null -> true
+            analysis?.playback?.ran == true -> analysis.playback.ok
             else -> httpProbe.ok
         }
 
@@ -47,43 +46,48 @@ class VideoService(
             summary = buildSummary(ok, httpProbe, analysis),
             httpProbe = httpProbe,
             mediaAnalysis = analysis,
-            errors = httpProbe.errors + analysis?.errors.orEmpty() + analysis?.decodeTest?.errors.orEmpty(),
+            errors = httpProbe.errors + analysis?.errors.orEmpty() + analysis?.playback?.errors.orEmpty(),
         )
     }
 
     private fun buildSummary(ok: Boolean, httpProbe: VideoProbeResult, analysis: MediaAnalysisResult?): String {
-        if (analysis == null || !analysis.available) {
-            val suffix = if (analysis != null) " (未找到 ffprobe, 仅 HTTP 探测)" else ""
-            return httpProbe.summary + suffix
+        if (analysis == null) {
+            return httpProbe.summary
         }
-        if (analysis.video == null && analysis.errors.isNotEmpty()) {
-            // ffprobe 失败但 HTTP 可达: 常见于分片用伪装扩展名 (如 .jpeg 防盗链), 播放器通常仍可播.
-            // 不能笼统说"分析失败", 否则会与 fallback 得到的 ok=true 矛盾.
-            return if (httpProbe.ok) {
-                "HTTP 可达 (${httpProbe.kind}), 但 ffprobe 无法分析: ${analysis.errors.first()}"
-            } else {
-                "不可播放, 媒体分析失败: ${analysis.errors.first()}"
-            }
+        if (!analysis.available) {
+            return httpProbe.summary + " (VLC 不可用, 仅 HTTP 探测)"
+        }
+        if (analysis.video == null && analysis.playback?.ok != true) {
+            val reason = analysis.playback?.errors?.firstOrNull()
+                ?: analysis.errors.firstOrNull()
+                ?: "未知原因"
+            return "播放器无法播放: $reason"
         }
         return buildString {
-            append(if (ok) "可播放" else "不可播放")
-            analysis.containerFormat?.let { append(": ").append(it) }
+            append(if (ok) "可播放 (Animeko 播放器实测)" else "不可播放")
+            append(": ").append(httpProbe.kind)
             analysis.video?.let { video ->
                 append(", ").append(video.codec ?: "?")
                 if (video.width != null && video.height != null) {
                     append(" ${video.width}x${video.height}")
                 }
+                video.frameRate?.let { append(" @${it}fps") }
             }
             analysis.durationSeconds?.let { seconds ->
                 append(", ").append(formatDuration(seconds))
             }
-            // HLS playlist 的 format.bit_rate 是播放列表文件自身的码率, 无意义; 优先用视频流码率并过滤噪声值
             val bitrate = analysis.video?.bitrate ?: analysis.overallBitrate
             bitrate?.takeIf { it >= 10_000 }?.let {
                 append(", ").append(formatBitrate(it))
             }
-            analysis.decodeTest?.takeIf { it.ran }?.let { test ->
-                append(if (test.ok) ", 解码测试通过" else ", 解码测试失败")
+            analysis.playback?.takeIf { it.ran }?.let { test ->
+                append(
+                    if (test.ok) {
+                        ", 已实际播放 ${test.requestedSeconds}s"
+                    } else {
+                        ", 播放测试失败 (state=${test.finalState})"
+                    },
+                )
             }
         }
     }

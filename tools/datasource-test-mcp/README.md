@@ -26,10 +26,10 @@ clients are auto-detected and answered in the same framing.
 
 ### 视频能力
 
-- `probe_video` — 探测最终视频 URL: HTTP 可达性 + ffprobe 真实媒体信息 (容器格式/码率/分辨率/时长)
-  + ffmpeg 实际解码测试 (与播放器相同的 demux+decode 路径).
-  ffprobe/ffmpeg 从工具参数、`ANI_MCP_FFPROBE`/`ANI_MCP_FFMPEG` 环境变量或 PATH 查找;
-  找不到时自动降级为仅 HTTP 探测.
+- `probe_video` — 探测最终视频 URL: HTTP 可达性 + **用 Animeko 桌面端同款播放器 (mediamp-vlc) 真实播放**.
+  默认弹出 Compose 测试窗口实时显示画面 (`showWindow=false` 可关), 实际播放几秒验证可播放性,
+  并从 VLC 读取真实媒体信息 (分辨率/时长/编码/帧率/码率).
+  需要系统安装 VLC 3.0.18 (macOS: `/Applications/VLC.app`); 未安装时降级为仅 HTTP 探测.
 
 ### 兼容保留
 

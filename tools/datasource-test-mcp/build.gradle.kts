@@ -10,6 +10,8 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.plugin.serialization)
+    alias(libs.plugins.kotlin.plugin.compose)
+    alias(libs.plugins.jetbrains.compose)
     application
 }
 
@@ -38,6 +40,12 @@ dependencies {
     implementation(libs.ktor.client.okhttp)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
+
+    // probe_video: 用与桌面 App 相同的 VLC 播放器真实播放视频
+    implementation(libs.mediamp.api)
+    implementation(libs.mediamp.vlc)
+    implementation(libs.vlcj)
+    implementation(compose.desktop.currentOs)
 
     runtimeOnly(libs.slf4j.simple)
 

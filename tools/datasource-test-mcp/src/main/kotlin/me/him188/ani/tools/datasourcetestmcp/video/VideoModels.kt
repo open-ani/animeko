@@ -34,20 +34,21 @@ data class ProbeVideoInput(
     val headers: Map<String, String> = emptyMap(),
     val probeTimeoutMillis: Long = 15_000,
     /**
-     * 是否用 ffprobe 分析容器格式/码率/分辨率/时长
+     * 是否用 Animeko 播放器 (VLC) 真实播放并读取媒体信息
      */
     val analyze: Boolean = true,
     /**
-     * 是否用 ffmpeg 实际解码几秒以验证可播放性
+     * 真实播放多少秒来验证可播放性
      */
-    val decodeTest: Boolean = true,
-    val decodeDurationSeconds: Int = 5,
-    val analyzeTimeoutMillis: Long = 60_000,
+    val playSeconds: Int = 5,
     /**
-     * ffprobe 可执行文件路径. 默认从 ANI_MCP_FFPROBE 环境变量或 PATH 查找.
+     * 等待进入播放状态 / 播放完成的超时
      */
-    val ffprobePath: String? = null,
-    val ffmpegPath: String? = null,
+    val playTimeoutMillis: Long = 60_000,
+    /**
+     * 是否弹出 Compose 测试窗口实时显示播放画面
+     */
+    val showWindow: Boolean = true,
 )
 
 @Serializable
@@ -62,19 +63,21 @@ data class ProbeVideoResult(
 @Serializable
 data class MediaAnalysisResult(
     /**
-     * ffprobe / ffmpeg 是否可用. 不可用时其余字段为空, 只有 HTTP 探测结果.
+     * 播放器 (VLC 原生库) 是否可用. 不可用时其余字段为空, 只有 HTTP 探测结果.
      */
     val available: Boolean,
     val tool: String? = null,
-    val containerFormat: String? = null,
     val durationSeconds: Double? = null,
     /**
-     * 整体码率, bits per second
+     * 整体码率, bits per second (来自 VLC demux 统计)
      */
     val overallBitrate: Long? = null,
     val video: VideoStreamInfo? = null,
     val audio: AudioStreamInfo? = null,
-    val decodeTest: DecodeTestResult? = null,
+    /**
+     * 真实播放测试: 是否成功进入播放状态并播完目标秒数
+     */
+    val playback: PlaybackTestResult? = null,
     val errors: List<String> = emptyList(),
 )
 
@@ -96,9 +99,17 @@ data class AudioStreamInfo(
 )
 
 @Serializable
-data class DecodeTestResult(
+data class PlaybackTestResult(
     val ran: Boolean,
     val ok: Boolean,
     val requestedSeconds: Int? = null,
+    /**
+     * 实际播放到的位置 (毫秒)
+     */
+    val playedPositionMillis: Long? = null,
+    /**
+     * 结束时的播放器状态, 例如 PLAYING / ERROR
+     */
+    val finalState: String? = null,
     val errors: List<String> = emptyList(),
 )
