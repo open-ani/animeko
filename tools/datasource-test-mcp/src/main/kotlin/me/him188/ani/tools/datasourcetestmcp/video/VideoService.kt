@@ -57,7 +57,13 @@ class VideoService(
             return httpProbe.summary + suffix
         }
         if (analysis.video == null && analysis.errors.isNotEmpty()) {
-            return "媒体分析失败: ${analysis.errors.first()}"
+            // ffprobe 失败但 HTTP 可达: 常见于分片用伪装扩展名 (如 .jpeg 防盗链), 播放器通常仍可播.
+            // 不能笼统说"分析失败", 否则会与 fallback 得到的 ok=true 矛盾.
+            return if (httpProbe.ok) {
+                "HTTP 可达 (${httpProbe.kind}), 但 ffprobe 无法分析: ${analysis.errors.first()}"
+            } else {
+                "不可播放, 媒体分析失败: ${analysis.errors.first()}"
+            }
         }
         return buildString {
             append(if (ok) "可播放" else "不可播放")
