@@ -92,6 +92,7 @@ data class SelectorResolveEpisodeResult(
     val medias: List<WebMediaCandidate> = emptyList(),
     val extractResults: List<ChannelTestResult> = emptyList(),
     val errors: List<String> = emptyList(),
+    val totalDurationMillis: Long? = null,
 )
 
 @Serializable

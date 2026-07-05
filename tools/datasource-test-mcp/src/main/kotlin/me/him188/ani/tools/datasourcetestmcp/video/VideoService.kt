@@ -17,8 +17,11 @@ import kotlinx.coroutines.withTimeout
 class VideoService(
     private val probe: VideoUrlProbeEngine,
     private val analyzer: VlcVideoAnalyzer,
+    private val adAnalyzer: M3u8AdAnalyzer,
 ) {
     suspend fun probeVideo(input: ProbeVideoInput): ProbeVideoResult {
+        val totalStart = System.currentTimeMillis()
+        val httpProbeStart = System.currentTimeMillis()
         val httpProbe = runCatching {
             withTimeout(input.probeTimeoutMillis) {
                 probe.probe(input.videoUrl, input.headers)
@@ -31,9 +34,16 @@ class VideoService(
                 summary = "HTTP probe failed",
                 errors = listOf("${exception::class.simpleName}: ${exception.message.orEmpty()}"),
             )
+        }.copy(durationMillis = System.currentTimeMillis() - httpProbeStart)
+
+        val adAnalysis = if (input.detectAds) {
+            runCatching { adAnalyzer.analyze(input.videoUrl, input.headers) }.getOrNull()
+        } else {
+            null
         }
 
-        val analysis = if (input.analyze) analyzer.analyze(input) else null
+        val output = if (input.analyze) analyzer.analyze(input) else null
+        val analysis = output?.analysis
 
         // 真实播放测试是最权威的结论; 播放器不可用时退回 HTTP 探测结论
         val ok = when {
@@ -43,14 +53,32 @@ class VideoService(
 
         return ProbeVideoResult(
             ok = ok,
-            summary = buildSummary(ok, httpProbe, analysis),
+            summary = buildSummary(ok, httpProbe, analysis, adAnalysis),
             httpProbe = httpProbe,
             mediaAnalysis = analysis,
+            adAnalysis = adAnalysis,
+            capturedFrames = output?.frames.orEmpty(),
             errors = httpProbe.errors + analysis?.errors.orEmpty() + analysis?.playback?.errors.orEmpty(),
+            totalDurationMillis = System.currentTimeMillis() - totalStart,
         )
     }
 
-    private fun buildSummary(ok: Boolean, httpProbe: VideoProbeResult, analysis: MediaAnalysisResult?): String {
+    private fun buildSummary(
+        ok: Boolean,
+        httpProbe: VideoProbeResult,
+        analysis: MediaAnalysisResult?,
+        adAnalysis: AdAnalysisResult?,
+    ): String {
+        val adSuffix = when (adAnalysis?.suspicion) {
+            "suspected_high" -> ", 疑似含广告(高)"
+            "suspected_medium" -> ", 疑似含广告(中)"
+            "suspected_low" -> ", 疑似含广告(低)"
+            else -> ""
+        }
+        return baseSummary(ok, httpProbe, analysis) + adSuffix
+    }
+
+    private fun baseSummary(ok: Boolean, httpProbe: VideoProbeResult, analysis: MediaAnalysisResult?): String {
         if (analysis == null) {
             return httpProbe.summary
         }
@@ -88,6 +116,10 @@ class VideoService(
                         ", 播放测试失败 (state=${test.finalState})"
                     },
                 )
+                test.timeToPlayingMillis?.let { append(", 起播 ${it}ms") }
+                if (test.bufferingCount > 0) {
+                    append(", 卡顿 ${test.bufferingCount} 次共 ${test.bufferingTotalMillis}ms")
+                }
             }
         }
     }

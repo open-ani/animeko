@@ -60,4 +60,5 @@ data class SourceTestResult(
     val resolvedVideo: ResolvedVideoResult? = null,
     val probe: VideoProbeResult? = null,
     val errors: List<String> = emptyList(),
+    val totalDurationMillis: Long? = null,
 )

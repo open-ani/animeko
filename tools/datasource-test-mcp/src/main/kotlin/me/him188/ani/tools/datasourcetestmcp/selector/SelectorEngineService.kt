@@ -70,6 +70,11 @@ class SelectorEngineService(
     // region 全流程
 
     suspend fun resolveEpisode(input: SelectorResolveEpisodeInput): SelectorResolveEpisodeResult {
+        val start = System.currentTimeMillis()
+        return resolveEpisodeImpl(input).copy(totalDurationMillis = System.currentTimeMillis() - start)
+    }
+
+    private suspend fun resolveEpisodeImpl(input: SelectorResolveEpisodeInput): SelectorResolveEpisodeResult {
         val steps = mutableListOf<StageResult>()
         val errors = mutableListOf<String>()
 
@@ -268,6 +273,7 @@ class SelectorEngineService(
         }
 
         val matcher = SelectorWebVideoMatcher(engine, config.matchVideo)
+        val extractStart = System.currentTimeMillis()
         val extractResults = channelTestExecutor.execute(
             playableCandidates = distinctMedias
                 .take(input.maxCandidatesToExtract.coerceAtLeast(1))
@@ -290,6 +296,7 @@ class SelectorEngineService(
                 "视频解析: ${resolved.size}/${extractResults.size} 个候选解析出视频 URL (未探测)"
             },
             errors = extractResults.filter { it.resolveStatus == "failed" }.flatMap { it.errors },
+            durationMillis = System.currentTimeMillis() - extractStart,
         )
 
         return SelectorResolveEpisodeResult(

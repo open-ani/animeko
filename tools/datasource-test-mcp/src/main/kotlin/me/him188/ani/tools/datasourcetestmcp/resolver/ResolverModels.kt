@@ -48,6 +48,14 @@ data class ChannelTestResult(
     val probe: VideoProbeResult? = null,
     val resolveDiagnostics: JsonElement? = null,
     val errors: List<String> = emptyList(),
+    /**
+     * WebView 解析播放页到视频 URL 的耗时
+     */
+    val resolveDurationMillis: Long? = null,
+    /**
+     * HTTP 播放探测耗时
+     */
+    val probeDurationMillis: Long? = null,
 )
 
 @Serializable

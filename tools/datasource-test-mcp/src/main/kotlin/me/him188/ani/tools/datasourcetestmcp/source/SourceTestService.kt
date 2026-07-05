@@ -54,9 +54,16 @@ class SourceTestService(
     private val channelTestExecutor = ChannelTestExecutor(resolver, probe)
 
     suspend fun testSubjectEpisodeSource(input: TestSubjectEpisodeSourceInput): SourceTestResult {
+        val start = System.currentTimeMillis()
+        return testSubjectEpisodeSourceImpl(input)
+            .let { it.copy(totalDurationMillis = System.currentTimeMillis() - start) }
+    }
+
+    private suspend fun testSubjectEpisodeSourceImpl(input: TestSubjectEpisodeSourceInput): SourceTestResult {
         val stages = mutableListOf<StageResult>()
         val errors = mutableListOf<String>()
 
+        val metadataStart = System.currentTimeMillis()
         val metadata = runCatching {
             fetchAniMetadata(input)
         }.onSuccess { result ->
@@ -72,6 +79,7 @@ class SourceTestService(
                     put("episodeSort", result.episodeSort)
                     put("episodeEp", result.episodeEp ?: "")
                 },
+                durationMillis = System.currentTimeMillis() - metadataStart,
             )
         }.onFailure { exception ->
             errors += "Ani metadata lookup failed: ${exception.message.orEmpty()}"
@@ -80,6 +88,7 @@ class SourceTestService(
                 status = "failed",
                 summary = "Failed to fetch metadata from Ani API",
                 errors = listOf("${exception::class.simpleName}: ${exception.message.orEmpty()}"),
+                durationMillis = System.currentTimeMillis() - metadataStart,
             )
         }.getOrNull() ?: return SourceTestResult(
             ok = false,
@@ -93,10 +102,12 @@ class SourceTestService(
         return useSources(sources) { createdSources ->
             val sourceById = createdSources.associateBy { it.mediaSourceId }
             val allMatches = mutableListOf<MediaMatch>()
+            val fetchStart = System.currentTimeMillis()
             val perSourceJson = buildJsonArray {
                 createdSources.forEach { source ->
                     val sourceSpec = input.mediaSource
                         ?.takeIf { createdSources.size == 1 || it.mediaSourceId == source.mediaSourceId }
+                    val sourceFetchStart = System.currentTimeMillis()
                     val sourceResult = runCatching {
                         val connection = source.checkConnection()
                         val matches = withTimeout(input.fetchTimeoutMillis) {
@@ -107,6 +118,7 @@ class SourceTestService(
                         }
                         connection to matches
                     }
+                    val sourceFetchDuration = System.currentTimeMillis() - sourceFetchStart
 
                     sourceResult.onSuccess { (connection, matches) ->
                         allMatches += matches
@@ -116,6 +128,7 @@ class SourceTestService(
                                 put("factoryDisplayName", source.info.displayName)
                                 put("connectionStatus", connection.toString())
                                 put("matchCount", matches.size)
+                                put("durationMillis", sourceFetchDuration)
                             },
                         )
                     }.onFailure { exception ->
@@ -133,6 +146,7 @@ class SourceTestService(
                                 put("mediaSourceId", source.mediaSourceId)
                                 put("factoryDisplayName", source.info.displayName)
                                 put("error", "${exception::class.simpleName}: ${exception.message.orEmpty()}")
+                                put("durationMillis", sourceFetchDuration)
                                 handshakeHint?.let {
                                     put(
                                         "handshakeFailureDomainHint",
@@ -157,6 +171,7 @@ class SourceTestService(
                     put("sources", perSourceJson)
                 },
                 errors = errors.toList(),
+                durationMillis = System.currentTimeMillis() - fetchStart,
             )
 
             finishWithCandidates(
@@ -173,6 +188,12 @@ class SourceTestService(
     }
 
     suspend fun testResourcePageUrl(input: TestResourcePageUrlInput): SourceTestResult {
+        val start = System.currentTimeMillis()
+        return testResourcePageUrlImpl(input)
+            .let { it.copy(totalDurationMillis = System.currentTimeMillis() - start) }
+    }
+
+    private suspend fun testResourcePageUrlImpl(input: TestResourcePageUrlInput): SourceTestResult {
         val stages = mutableListOf<StageResult>()
         val errors = mutableListOf<String>()
         val source = input.mediaSource?.let { registry.createSource(it) }
@@ -183,6 +204,7 @@ class SourceTestService(
                 pageUrl = input.pageUrl,
                 mediaSourceId = createdSources.firstOrNull()?.mediaSourceId ?: "manual",
             )
+            val resolveStart = System.currentTimeMillis()
             val resolveResult = resolver.resolvePage(
                 media = manualMedia,
                 pageUrl = input.pageUrl,
@@ -194,6 +216,7 @@ class SourceTestService(
                 summary = if (resolveResult.resolvedVideo != null) "Resolved final video URL" else "Failed to resolve final video URL",
                 details = resolveResult.diagnostics,
                 errors = resolveResult.errors,
+                durationMillis = System.currentTimeMillis() - resolveStart,
             )
             errors += resolveResult.errors
 
@@ -205,6 +228,7 @@ class SourceTestService(
                 errors = errors,
             )
 
+            val probeStart = System.currentTimeMillis()
             val probeResult = withTimeout(input.probeTimeoutMillis) {
                 probe.probe(resolved.url, resolved.headers)
             }
@@ -214,6 +238,7 @@ class SourceTestService(
                 summary = probeResult.summary,
                 details = probeDetails(probeResult),
                 errors = probeResult.errors,
+                durationMillis = System.currentTimeMillis() - probeStart,
             )
 
             SourceTestResult(
@@ -328,6 +353,7 @@ class SourceTestService(
                 })
             },
             errors = channelResults.filter { it.resolveStatus == "failed" }.flatMap { it.errors },
+            durationMillis = channelResults.mapNotNull { it.resolveDurationMillis }.sum(),
         )
 
         if (resolvedChannels.isEmpty()) {
@@ -368,6 +394,7 @@ class SourceTestService(
                 })
             },
             errors = channelResults.filter { it.probeStatus == "failed" }.flatMap { it.errors },
+            durationMillis = channelResults.mapNotNull { it.probeDurationMillis }.sum(),
         )
 
         val representativeResult = successfulChannels.firstOrNull()

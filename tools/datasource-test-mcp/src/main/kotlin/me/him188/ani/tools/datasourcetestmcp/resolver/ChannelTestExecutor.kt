@@ -68,7 +68,9 @@ internal class ChannelTestExecutor(
         probeEnabled: Boolean,
     ): ChannelTestResult {
         val candidate = match.toCandidateResult()
+        val resolveStart = System.currentTimeMillis()
         val resolveResult = resolver.resolve(match.media, matchers)
+        val resolveDuration = System.currentTimeMillis() - resolveStart
         val resolvedVideo = resolveResult.resolvedVideo ?: return ChannelTestResult(
             order = order,
             candidate = candidate,
@@ -78,6 +80,7 @@ internal class ChannelTestExecutor(
             summary = "Failed to resolve final video URL",
             resolveDiagnostics = resolveResult.diagnostics,
             errors = resolveResult.errors,
+            resolveDurationMillis = resolveDuration,
         )
 
         if (!probeEnabled) {
@@ -91,12 +94,15 @@ internal class ChannelTestExecutor(
                 resolvedVideo = resolvedVideo,
                 resolveDiagnostics = resolveResult.diagnostics,
                 errors = resolveResult.errors,
+                resolveDurationMillis = resolveDuration,
             )
         }
 
+        val probeStart = System.currentTimeMillis()
         val probeResult = withTimeout(probeTimeoutMillis) {
             probe.probe(resolvedVideo.url, resolvedVideo.headers)
         }
+        val probeDuration = System.currentTimeMillis() - probeStart
         return ChannelTestResult(
             order = order,
             candidate = candidate,
@@ -108,6 +114,8 @@ internal class ChannelTestExecutor(
             probe = probeResult,
             resolveDiagnostics = resolveResult.diagnostics,
             errors = resolveResult.errors + probeResult.errors,
+            resolveDurationMillis = resolveDuration,
+            probeDurationMillis = probeDuration,
         )
     }
 }

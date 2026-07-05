@@ -27,6 +27,7 @@ import me.him188.ani.tools.datasourcetestmcp.resolver.WebViewVideoResolverEngine
 import me.him188.ani.tools.datasourcetestmcp.selector.SelectorEngineService
 import me.him188.ani.tools.datasourcetestmcp.source.DataSourceRegistry
 import me.him188.ani.tools.datasourcetestmcp.source.SourceTestService
+import me.him188.ani.tools.datasourcetestmcp.video.M3u8AdAnalyzer
 import me.him188.ani.tools.datasourcetestmcp.video.VideoProbe
 import me.him188.ani.tools.datasourcetestmcp.video.VideoService
 import me.him188.ani.tools.datasourcetestmcp.video.VlcVideoAnalyzer
@@ -86,6 +87,7 @@ fun main() {
         val videoService = VideoService(
             probe = probe,
             analyzer = VlcVideoAnalyzer(),
+            adAnalyzer = M3u8AdAnalyzer(client),
         )
         val sourceTestService = SourceTestService(
             httpClient = client,

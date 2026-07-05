@@ -286,6 +286,16 @@ fun buildToolRegistrations(
                 put("playSeconds", integerSchema("Seconds to actually play for the playability test, default 5"))
                 put("playTimeoutMillis", integerSchema("Timeout for entering/finishing playback in milliseconds, default 60000"))
                 put("showWindow", booleanSchema("Show a Compose window with the live playback, default true"))
+                put("detectAds", booleanSchema("Analyze the HLS playlist for ad splicing (discontinuities/foreign hosts), default true"))
+                put("captureFramesDir", stringSchema("If set, save first-frame and mid PNG screenshots into this dir for visual ad inspection"))
+                put(
+                    "captureAtSeconds",
+                    buildJsonObject {
+                        put("type", "array")
+                        put("items", integerSchema("Playback position in seconds"))
+                        put("description", JsonPrimitive("Also capture a frame at each of these playback positions (frame_XXs.png); playSeconds must cover the max"))
+                    },
+                )
             },
         ),
     ) { args ->
