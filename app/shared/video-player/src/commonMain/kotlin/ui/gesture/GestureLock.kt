@@ -148,6 +148,7 @@ fun LockableVideoGestureHost(
     onToggleFullscreen: () -> Unit = {},
     onExitFullscreen: () -> Unit = {},
     onToggleDanmaku: () -> Unit = {},
+    onTogglePlayerStats: () -> Unit = {},
     family: GestureFamily = LocalPlatform.current.mouseFamily,
     gestureIndicatorState: GestureIndicatorState = rememberGestureIndicatorState(),
     fastForwardSpeed: Float = 3f,
@@ -182,6 +183,7 @@ fun LockableVideoGestureHost(
             onToggleFullscreen = onToggleFullscreen,
             onExitFullscreen = onExitFullscreen,
             onToggleDanmaku = onToggleDanmaku,
+            onTogglePlayerStats = onTogglePlayerStats,
             family = family,
         )
     }

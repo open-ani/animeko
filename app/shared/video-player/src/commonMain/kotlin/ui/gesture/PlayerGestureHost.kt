@@ -428,6 +428,7 @@ fun PlayerGestureHost(
     onToggleFullscreen: () -> Unit = {},
     onExitFullscreen: () -> Unit = {},
     onToggleDanmaku: () -> Unit = {},
+    onTogglePlayerStats: () -> Unit = {},
 ) {
     val onTogglePauseResumeState by rememberUpdatedState(onTogglePauseResume)
 
@@ -497,6 +498,7 @@ fun PlayerGestureHost(
                 onToggleFullscreen = onToggleFullscreen,
                 onExitFullscreen = onExitFullscreen,
                 onToggleDanmaku = onToggleDanmaku,
+                onTogglePlayerStats = onTogglePlayerStats,
             )
             .playerFocusHost(playerFocusState, systemFullscreen)
 

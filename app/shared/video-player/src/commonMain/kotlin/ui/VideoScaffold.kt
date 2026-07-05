@@ -97,6 +97,7 @@ fun VideoScaffold(
     rhsSheet: @Composable () -> Unit = {},
     leftBottomTips: @Composable () -> Unit = {},
     centerOverlay: @Composable BoxScope.() -> Unit = {},
+    playerStatsOverlay: @Composable BoxScope.() -> Unit = {},
 ) {
     val controllerVisibility = controllerState.visibility
         .withGestureLocked(gestureLocked)
@@ -143,6 +144,15 @@ fun VideoScaffold(
             // 控制手势
             BoxWithConstraints(Modifier.matchParentSize(), contentAlignment = Alignment.Center) {
                 gestureHost()
+            }
+
+            Box(
+                Modifier.matchParentSize()
+                    .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top))
+                    .padding(12.dp),
+                contentAlignment = Alignment.TopStart,
+            ) {
+                playerStatsOverlay()
             }
 
             Box(Modifier) {
