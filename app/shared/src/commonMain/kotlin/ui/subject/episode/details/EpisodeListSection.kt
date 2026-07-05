@@ -12,7 +12,10 @@ package me.him188.ani.app.ui.subject.episode.details
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,6 +77,7 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
+import me.him188.ani.app.ui.foundation.LongClickProgressFill
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.icons.PlayingIcon
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -422,6 +426,7 @@ private fun EpisodeCard(
     modifier: Modifier = Modifier,
 ) {
     val isWatched = episode.collectionType.isDoneOrDropped()
+    val interactionSource = remember { MutableInteractionSource() }
 
     Card(
         colors = CardDefaults.cardColors(
@@ -437,47 +442,56 @@ private fun EpisodeCard(
             .height(64.dp)
             .aspectRatio(16f / 10)
             .combinedClickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
                 onClick = onClick,
                 onLongClick = onLongClick,
             ),
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp),
-        ) {
-            Column(
-                modifier = Modifier.align(Alignment.CenterStart),
+        Box(Modifier.fillMaxSize()) {
+            LongClickProgressFill(
+                interactionSource = interactionSource,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                modifier = Modifier.matchParentSize(),
+            )
+            Box(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp),
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                Column(
+                    modifier = Modifier.align(Alignment.CenterStart),
                 ) {
-                    if (isPlaying) {
-                        PlayingIcon(width = 20.dp, height = 12.dp)
-                        Spacer(Modifier.width(4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (isPlaying) {
+                            PlayingIcon(width = 20.dp, height = 12.dp)
+                            Spacer(Modifier.width(4.dp))
+                        }
+                        Text(
+                            episode.episodeInfo.sort.toString(),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (isPlaying) {
+                                MaterialTheme.colorScheme.primary
+                            } else if (isWatched) {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            } else {
+                                LocalContentColor.current
+                            },
+                        )
                     }
+                    Spacer(Modifier.height(4.dp))
                     Text(
-                        episode.episodeInfo.sort.toString(),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (isPlaying) {
-                            MaterialTheme.colorScheme.primary
-                        } else if (isWatched) {
+                        episode.episodeInfo.displayName,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = if (isWatched) {
                             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         } else {
-                            LocalContentColor.current
+                            MaterialTheme.colorScheme.onSurfaceVariant
                         },
                     )
                 }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    episode.episodeInfo.displayName,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = if (isWatched) {
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
             }
         }
     }
@@ -495,39 +509,53 @@ private fun EpisodeListSectionItem(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ListItem(
-        colors = ListItemDefaults.colors(
-            containerColor = when {
-                isPlaying -> MaterialTheme.colorScheme.primaryContainer
-                isWatched -> MaterialTheme.colorScheme.surfaceContainer
-                else -> MaterialTheme.colorScheme.surfaceContainer
-            },
-        ),
-        headlineContent = {
-            Text(
-                text = "${episode.episodeInfo.sort}  ${episode.episodeInfo.displayName}",
-                color = when {
-                    isPlaying -> MaterialTheme.colorScheme.primary
-                    isWatched -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    else -> LocalContentColor.current
-                },
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        trailingContent = {
-            if (isPlaying) {
-                PlayingIcon()
-            }
-        },
+    val interactionSource = remember { MutableInteractionSource() }
+    val shape = MaterialTheme.shapes.small
+    val containerColor = when {
+        isPlaying -> MaterialTheme.colorScheme.primaryContainer
+        isWatched -> MaterialTheme.colorScheme.surfaceContainer
+        else -> MaterialTheme.colorScheme.surfaceContainer
+    }
+
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.small)
+            .clip(shape)
+            .background(containerColor)
             .combinedClickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
                 onClick = onClick,
                 onLongClick = onLongClick,
             ),
-    )
+    ) {
+        LongClickProgressFill(
+            interactionSource = interactionSource,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+            modifier = Modifier.matchParentSize(),
+        )
+        ListItem(
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            headlineContent = {
+                Text(
+                    text = "${episode.episodeInfo.sort}  ${episode.episodeInfo.displayName}",
+                    color = when {
+                        isPlaying -> MaterialTheme.colorScheme.primary
+                        isWatched -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        else -> LocalContentColor.current
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            },
+            trailingContent = {
+                if (isPlaying) {
+                    PlayingIcon()
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 /**
