@@ -56,24 +56,31 @@ class PlatformHlsPlaybackPreparer(
             return HlsPlaybackPreparerResult(data)
         }
 
-        val filterResult = HlsManifestFilter.filter(manifest, baseUri.toString())
-        val session = when {
-            filterResult.status == HlsManifestFilterStatus.Filtered -> {
-                LocalHlsPlaylistSession.static(filterResult.content.rewriteMediaPlaylistUris(baseUri))
-            }
+        val session = try {
+            val filterResult = HlsManifestFilter.filter(manifest, baseUri.toString())
+            when {
+                filterResult.status == HlsManifestFilterStatus.Filtered -> {
+                    LocalHlsPlaylistSession.static(filterResult.content.rewriteMediaPlaylistUris(baseUri))
+                }
 
-            filterResult.status == HlsManifestFilterStatus.Unsupported &&
-                filterResult.reason == "master_playlist" -> {
-                LocalHlsPlaylistSession.master(
-                    content = manifest,
-                    baseUri = baseUri,
-                    headers = data.headers,
-                    httpClientProvider = httpClientProvider,
-                )
-            }
+                filterResult.status == HlsManifestFilterStatus.Unsupported &&
+                    filterResult.reason == "master_playlist" -> {
+                    LocalHlsPlaylistSession.master(
+                        content = manifest,
+                        baseUri = baseUri,
+                        headers = data.headers,
+                        httpClientProvider = httpClientProvider,
+                    )
+                }
 
-            else -> return HlsPlaybackPreparerResult(data)
-        }
+                else -> null
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            logger.warn(e) { "Failed to prepare HLS playback proxy; falling back to original media data" }
+            null
+        } ?: return HlsPlaybackPreparerResult(data)
 
         return HlsPlaybackPreparerResult(
             data = UriMediaData(session.playlistUri, data.headers, data.extraFiles),
