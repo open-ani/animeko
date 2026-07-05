@@ -15,10 +15,16 @@ import android.widget.Toast
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.view.WindowCompat
+import me.him188.ani.android.BuildConfig
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -106,7 +112,17 @@ class MainActivity : AniComponentActivity() {
                     LocalPlatformWindow provides rememberPlatformWindow(this),
                     LocalExternalContentProvider provides externalComponentProviderUpdated,
                 ) {
-                    AniAppContent(aniNavigator)
+                    // Expose Modifier.testTag as resource-id in accessibility/uiautomator dumps,
+                    // so UI-automation agents can locate elements by stable ids (debug only).
+                    @OptIn(ExperimentalComposeUiApi::class)
+                    val rootModifier = if (BuildConfig.DEBUG) {
+                        Modifier.semantics { testTagsAsResourceId = true }
+                    } else {
+                        Modifier
+                    }
+                    Box(rootModifier) {
+                        AniAppContent(aniNavigator)
+                    }
                 }
             }
         }

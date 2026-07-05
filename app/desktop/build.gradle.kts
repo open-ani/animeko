@@ -255,30 +255,34 @@ afterEvaluate {
         }
 
         Os.MacOS -> {
-            tasks.named("createReleaseDistributable", AbstractJPackageTask::class) {
-                val dirsNames = listOf(
-                    // From your (JBR's) Java Home to Packed Java Home 
-                    "../Frameworks" to "Contents/runtime/Contents",
-                )
+            // JCEF needs the JBR's Contents/Frameworks (CEF framework + helpers) next to the packed
+            // runtime's Home; jpackage only copies Home, so the app crashes at JCEF init without this.
+            listOf("createDistributable", "createReleaseDistributable").forEach { taskName ->
+                tasks.named(taskName, AbstractJPackageTask::class) {
+                    val dirsNames = listOf(
+                        // From your (JBR's) Java Home to Packed Java Home
+                        "../Frameworks" to "Contents/runtime/Contents",
+                    )
 
-                dirsNames.forEach { (sourcePath, destPath) ->
-                    val source = File(javaHome.get()).resolve(sourcePath).normalize()
-                    inputs.dir(source)
-                    doLast("copy $sourcePath") {
-                        val appBundle =
-                            destinationDir.get().asFile.walk().find { it.name.endsWith(".app") && it.isDirectory }
-                        var dest = appBundle?.resolve(destPath)?.normalize()
-                            ?: throw GradleException("Cannot find .app bundle in $appBundle")
-                        ProcessBuilder().run {
-                            command("cp", "-r", source.absolutePath, dest.absolutePath)
-                            inheritIO()
-                            start()
-                        }.waitFor().let {
-                            if (it != 0) {
-                                throw GradleException("Failed to copy $sourcePath")
+                    dirsNames.forEach { (sourcePath, destPath) ->
+                        val source = File(javaHome.get()).resolve(sourcePath).normalize()
+                        inputs.dir(source)
+                        doLast("copy $sourcePath") {
+                            val appBundle =
+                                destinationDir.get().asFile.walk().find { it.name.endsWith(".app") && it.isDirectory }
+                            var dest = appBundle?.resolve(destPath)?.normalize()
+                                ?: throw GradleException("Cannot find .app bundle in $appBundle")
+                            ProcessBuilder().run {
+                                command("cp", "-r", source.absolutePath, dest.absolutePath)
+                                inheritIO()
+                                start()
+                            }.waitFor().let {
+                                if (it != 0) {
+                                    throw GradleException("Failed to copy $sourcePath")
+                                }
                             }
+                            logger.info("Copied $source to $dest")
                         }
-                        logger.info("Copied $source to $dest")
                     }
                 }
             }
