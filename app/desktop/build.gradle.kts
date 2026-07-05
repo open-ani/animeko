@@ -385,7 +385,10 @@ afterEvaluate {
 }
 
 fun JavaExec.configureDevProperties() {
-    mainClass.set("me.him188.ani.app.desktop.AniDesktop")
+    // Override to run scratch mains (e.g. FullscreenTest): ./gradlew :app:desktop:run -Pani.desktop.mainClass=...
+    mainClass.set(
+        providers.gradleProperty("ani.desktop.mainClass").getOrElse("me.him188.ani.app.desktop.AniDesktop"),
+    )
     this.jvmArgs(
 //        "-XX:+UseZGC", // this may crash the VM
         "-Xmx512m",
