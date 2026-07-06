@@ -23,10 +23,7 @@ import io.ktor.http.URLParserException
 import io.ktor.http.URLProtocol
 import io.ktor.http.Url
 import io.ktor.http.takeFrom
-import io.ktor.utils.io.core.toByteArray
 import kotlinx.serialization.Serializable
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
 
 @Serializable
 data class ClientProxyConfig(
@@ -40,7 +37,7 @@ data class ClientProxyConfig(
     /**
      * ProxyAuthorization header
      *
-     * "Basic username:password"
+     * "Basic <base64(username:password)>"
      */
     val authorization: String? = null
 )
@@ -78,7 +75,6 @@ fun HttpClientConfig<*>.userAgent(
     }
 }
 
-@OptIn(ExperimentalEncodingApi::class)
 fun HttpClientConfig<*>.proxy(
     config: ClientProxyConfig?,
 ) {
@@ -86,9 +82,10 @@ fun HttpClientConfig<*>.proxy(
         this.setProxy(config)
     }
 
-    defaultRequest {
-        val credentials = Base64.encode("jetbrains:foobar".toByteArray())
-        header(HttpHeaders.ProxyAuthorization, "Basic $credentials")
+    config?.authorization?.let { authorization ->
+        defaultRequest {
+            header(HttpHeaders.ProxyAuthorization, authorization)
+        }
     }
 }
 

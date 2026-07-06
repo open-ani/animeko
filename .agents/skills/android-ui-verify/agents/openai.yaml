@@ -1,0 +1,4 @@
+interface:
+  display_name: "Animeko Android UI Verify"
+  short_description: "Drive the Animeko app on an Android emulator: install, tap, swipe, screenshot"
+  default_prompt: "Use $android-ui-verify to verify this Animeko change on an Android emulator by installing the app, interacting like a real user, and capturing screenshot evidence."

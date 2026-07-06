@@ -1,0 +1,4 @@
+interface:
+  display_name: "Animeko Desktop UI Verify"
+  short_description: "Build, launch, and screenshot the Animeko desktop executable"
+  default_prompt: "Use $desktop-ui-verify to validate this Animeko desktop change by building the distributable, launching it, and capturing macOS window screenshot evidence."

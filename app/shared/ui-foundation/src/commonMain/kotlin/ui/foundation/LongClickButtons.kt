@@ -1,14 +1,28 @@
+/*
+ * Copyright (C) 2024-2026 OpenAni and contributors.
+ *
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+ *
+ * https://github.com/open-ani/ani/blob/main/LICENSE
+ */
+
 @file:Suppress("ERROR_SUPPRESSION")
 
 package me.him188.ani.app.ui.foundation
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Indication
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.Interaction
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -28,14 +42,23 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.collectLatest
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 
 /**
@@ -86,7 +109,7 @@ import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 fun FilledTonalCombinedClickButton(
     onClick: () -> Unit,
     onClickLabel: String? = null,
-    onLongClick: (() -> Unit)? = {},
+    onLongClick: (() -> Unit)? = null,
     onLongClickLabel: String? = null,
     onDoubleClick: (() -> Unit)? = null,
     indication: Indication = LocalIndication.current,
@@ -169,7 +192,7 @@ fun FilledTonalCombinedClickButton(
 fun CombinedClickButton(
     onClick: () -> Unit,
     onClickLabel: String? = null,
-    onLongClick: (() -> Unit)? = {},
+    onLongClick: (() -> Unit)? = null,
     onLongClickLabel: String? = null,
     onDoubleClick: (() -> Unit)? = null,
     indication: Indication = LocalIndication.current,
@@ -210,16 +233,89 @@ fun CombinedClickButton(
             MaterialTheme.typography.labelLarge,
             contentColor,
         ) {
-            Row(
-                Modifier.defaultMinSize(
-                    minWidth = ButtonDefaults.MinWidth,
-                    minHeight = ButtonDefaults.MinHeight,
+            Box {
+                LongClickProgressFill(
+                    interactionSource = interactionSource,
+                    enabled = enabled && onLongClick != null,
+                    color = contentColor.copy(alpha = 0.12f),
+                    modifier = Modifier.matchParentSize(),
                 )
-                    .padding(contentPadding),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-                content = content,
-            )
+                Row(
+                    Modifier.defaultMinSize(
+                        minWidth = ButtonDefaults.MinWidth,
+                        minHeight = ButtonDefaults.MinHeight,
+                    )
+                        .padding(contentPadding),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                    content = content,
+                )
+            }
         }
     }
+}
+
+@Composable
+fun LongClickProgressFill(
+    interactionSource: MutableInteractionSource,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    color: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+) {
+    val progress by animateLongClickProgressAsState(interactionSource, enabled)
+    Box(
+        modifier.drawBehind {
+            if (progress > 0f) {
+                drawRect(
+                    color = color,
+                    size = Size(width = size.width * progress, height = size.height),
+                )
+            }
+        },
+    )
+}
+
+@Composable
+private fun animateLongClickProgressAsState(
+    interactionSource: MutableInteractionSource,
+    enabled: Boolean,
+): State<Float> {
+    val longPressTimeoutMillis = LocalViewConfiguration.current.longPressTimeoutMillis.toInt()
+    val progress = remember { Animatable(0f) }
+    val progressState = remember { mutableStateOf(0f) }
+
+    suspend fun animatePressProgress() {
+        progress.snapTo(0f)
+        progressState.value = 0f
+
+        progress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = longPressTimeoutMillis, easing = LinearEasing),
+        ) {
+            progressState.value = value
+        }
+        progressState.value = progress.value
+    }
+
+    suspend fun resetProgress() {
+        progress.snapTo(0f)
+        progressState.value = 0f
+    }
+
+    LaunchedEffect(interactionSource, enabled, longPressTimeoutMillis) {
+        if (!enabled) {
+            resetProgress()
+            return@LaunchedEffect
+        }
+
+        interactionSource.interactions.collectLatest { interaction ->
+            when (interaction) {
+                is PressInteraction.Press -> animatePressProgress()
+                is PressInteraction.Release -> resetProgress()
+                is PressInteraction.Cancel -> resetProgress()
+            }
+        }
+    }
+
+    return progressState
 }

@@ -130,7 +130,7 @@ class BangumiClientImpl(
             return null
         }
         if (!HttpTokenChecker.isValidToken(accessToken)) {
-            logger.error { "Invalid access token: $accessToken" }
+            logger.error { "Invalid access token" }
             return null
         }
         try {
