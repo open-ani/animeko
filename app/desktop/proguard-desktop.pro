@@ -61,6 +61,9 @@
 -keep class com.sun.jna.** { *; } # native binding
 -keep class ** implements com.sun.jna.Callback { *; } # JNA callbacks are invoked via native reflection; ProGuard optimization must not remove or inline them
 
+-keepclasseswithmembernames,includedescriptorclasses class * { native <methods>; } # JNI binds native methods by name; shrink/optimize must not remove or alter them
+-keep class org.openani.mediamp.mpv.** { *; } # libmediampv calls back into Java via FindClass/GetMethodID by name
+
 -keep class ** extends me.him188.ani.datasources.api.subject.SubjectProvider { *; }
 -keep class ** extends me.him188.ani.datasources.api.source.MediaSource { *; }
 -keep class ** extends me.him188.ani.datasources.api.source.MediaSourceFactory { *; }

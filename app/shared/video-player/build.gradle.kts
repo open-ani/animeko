@@ -49,7 +49,7 @@ kotlin {
         }
 
         api(libs.kotlinx.coroutines.swing)
-        api("org.openani.mediamp:mediamp-mpv:0.0.30")
+        api(libs.mediamp.mpv)
     }
     sourceSets.appleMain.dependencies {
         api(libs.mediamp.avkit)

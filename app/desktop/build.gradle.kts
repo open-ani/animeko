@@ -43,6 +43,19 @@ dependencies {
         "macos-arm64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.macos.arm64)
         else -> throw UnsupportedOperationException("Unknown os: $triple")
     }
+    // 过渡期: mediamp-mpv-runtime-* 尚未发 Maven Central, 从 mavenLocal 解析 (见 settings.gradle.kts).
+    // mediamp 正式发版后去掉 if 条件, 与上方 ffmpeg 一致.
+    if (getLocalProperty("ani.build.mediamp.path") != null ||
+        getLocalProperty("ani.mediamp.mavenlocal") == "true"
+    ) {
+        when (val triple = getOsTriple()) {
+            "windows-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.windows.x64)
+            "linux-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.linux.x64)
+            "macos-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.macos.x64)
+            "macos-arm64" -> runtimeOnly(libs.mediamp.mpv.runtime.macos.arm64)
+            else -> throw UnsupportedOperationException("Unknown os: $triple")
+        }
+    }
 }
 
 // workaround for compose limitation
@@ -391,13 +404,18 @@ fun JavaExec.configureDevProperties() {
     systemProperty("org.slf4j.simpleLogger.defaultLogLevel", "TRACE")
     systemProperty("kotlinx.coroutines.debug", "on")
     systemProperty("ani.debug", "true")
-    // Composite dev build (ani.build.mediamp.path in local.properties): load the mpv JNI
-    // wrapper from mediamp's dev-native output (built by :mediamp-mpv:compileJniDevMacos)
-    // instead of extracting the bundled runtime.
+    // Composite dev build (ani.build.mediamp.path in local.properties): build the mpv JNI
+    // wrapper via mediamp's :mediamp-mpv:compileJniDevMacos (macOS only, links Homebrew libmpv)
+    // and load it from dev-native instead of extracting the bundled runtime.
     getLocalProperty("ani.build.mediamp.path")?.let { mediampPath ->
-        val devNative = File(mediampPath, "mediamp-mpv/build/dev-native")
-        if (devNative.exists()) {
-            systemProperty("ani.mpv.native.dir", devNative.absolutePath)
+        val mediampDir = File(mediampPath).canonicalFile
+        val includedMediamp = gradle.includedBuilds.firstOrNull { it.projectDir.canonicalFile == mediampDir }
+        if (includedMediamp != null && getOs() == Os.MacOS) {
+            dependsOn(includedMediamp.task(":mediamp-mpv:compileJniDevMacos"))
+            systemProperty(
+                "ani.mpv.native.dir",
+                mediampDir.resolve("mediamp-mpv/build/dev-native").absolutePath,
+            )
         }
     }
     workingDir(file("test-sandbox"))

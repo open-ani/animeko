@@ -87,7 +87,8 @@ google-firebase = "22.0.1"
 posthog-android = "3.11.3"
 posthog-java = "1.2.0"
 openapi-generator = "7.13.0"
-mediamp = "0.1.12"
+mediamp = "0.1.13-local-2" # 过渡期: mavenLocal 的 worktree 版本 (高于已发布的 0.1.12, 避免撞 Central 历史版本); mediamp 正式发版后改回正式号
+mediampMpv = "0.1.13-local-2" # mpv 后端与主线版本独立发布; 驼峰命名避免在 libs.versions.mediamp 下生成嵌套访问器
 compose-native-tray = "1.3.0"
 
 [plugins]
@@ -280,6 +281,11 @@ mediamp-ffmpeg-runtime-macos-x64 = { module = "org.openani.mediamp:mediamp-ffmpe
 mediamp-ffmpeg-runtime-macos-arm64 = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-macos-arm64", version.ref = "mediamp" }
 mediamp-ffmpeg-runtime-ios-xcframework = { module = "org.openani.mediamp:mediamp-ffmpeg-runtime-ios-xcframework", version.ref = "mediamp" }
 # Apple runtime is published as a @zip XCFramework and is resolved explicitly where needed.
+mediamp-mpv = { module = "org.openani.mediamp:mediamp-mpv", version.ref = "mediampMpv" }
+mediamp-mpv-runtime-windows-x64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-windows-x64", version.ref = "mediampMpv" }
+mediamp-mpv-runtime-linux-x64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-linux-x64", version.ref = "mediampMpv" }
+mediamp-mpv-runtime-macos-x64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-macos-x64", version.ref = "mediampMpv" }
+mediamp-mpv-runtime-macos-arm64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-macos-arm64", version.ref = "mediampMpv" }
 mediamp-source-ktxio = { module = "org.openani.mediamp:mediamp-source-ktxio", version.ref = "mediamp" }
 mediamp-test = { module = "org.openani.mediamp:mediamp-test", version.ref = "mediamp" }
 mediamp-vlc = { module = "org.openani.mediamp:mediamp-vlc", version.ref = "mediamp" }

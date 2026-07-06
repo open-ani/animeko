@@ -33,6 +33,15 @@ dependencyResolutionManagement {
     @Suppress("UnstableApiUsage")
     repositories {
         mavenCentral()
+        // 过渡期: mediamp 未正式发版, 工件从 mavenLocal 解析 (mediamp 侧 publishToMavenLocal).
+        // ani.build.mediamp.path = composite 构建 (源码替换 + runtime 走 mavenLocal);
+        // ani.mediamp.mavenlocal = 模拟真实发版, 全部 mediamp 模块走 mavenLocal 工件.
+        // mediamp 正式发版后移除.
+        if (findLocalProperty("ani.build.mediamp.path") != null ||
+            findLocalProperty("ani.mediamp.mavenlocal") == "true"
+        ) {
+            mavenLocal()
+        }
     }
     versionCatalogs {
         create("anitorrentLibs") {
