@@ -32,7 +32,6 @@ dependencies {
     implementation(libs.compose.components.resources)
     implementation(libs.compose.native.tray)
     implementation(libs.log4j.core)
-    implementation(libs.vlcj)
     implementation(libs.jsystemthemedetector)
     implementation(libs.bytebuddy.agent)
     implementation(libs.bytebuddy)
@@ -365,11 +364,6 @@ tasks.withType(AbstractJPackageTask::class) {
 
 idea {
     module {
-        excludeDirs.add(file("appResources/macos-x64/lib"))
-        excludeDirs.add(file("appResources/macos-x64/plugins"))
-        excludeDirs.add(file("appResources/macos-arm64/lib"))
-        excludeDirs.add(file("appResources/macos-arm64/plugins"))
-        excludeDirs.add(file("appResources/windows-x64/lib"))
         excludeDirs.add(file("test-sandbox"))
     }
 }
@@ -397,5 +391,14 @@ fun JavaExec.configureDevProperties() {
     systemProperty("org.slf4j.simpleLogger.defaultLogLevel", "TRACE")
     systemProperty("kotlinx.coroutines.debug", "on")
     systemProperty("ani.debug", "true")
+    // Composite dev build (ani.build.mediamp.path in local.properties): load the mpv JNI
+    // wrapper from mediamp's dev-native output (built by :mediamp-mpv:compileJniDevMacos)
+    // instead of extracting the bundled runtime.
+    getLocalProperty("ani.build.mediamp.path")?.let { mediampPath ->
+        val devNative = File(mediampPath, "mediamp-mpv/build/dev-native")
+        if (devNative.exists()) {
+            systemProperty("ani.mpv.native.dir", devNative.absolutePath)
+        }
+    }
     workingDir(file("test-sandbox"))
 }

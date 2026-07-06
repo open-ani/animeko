@@ -121,7 +121,6 @@ import me.him188.ani.utils.platform.isWindows
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.openani.mediamp.ffmpeg.FFmpegKit
-import org.openani.mediamp.vlc.VlcMediampPlayer
 import java.awt.Desktop
 import java.awt.Frame
 import java.io.File
@@ -370,16 +369,25 @@ object AniDesktop {
 
             logger.info { "[JCEF init] Initialize done, now prepare FFmpeg libraries" }
 
-            // 预先加载 VLC, https://github.com/open-ani/ani/issues/618
+            // 预先加载 mpv 运行时. dev 构建时 Gradle 会根据 local.properties 的
+            // ani.build.mediamp.path 注入 -Dani.mpv.native.dir 指向 mediamp 的 dev-native 产物.
             kotlin.runCatching {
                 withContext(Dispatchers.IO) {
-                    VlcMediampPlayer.prepareLibraries()
+                    val devNativeDir = System.getProperty("ani.mpv.native.dir")
+                    if (devNativeDir != null) {
+                        org.openani.mediamp.mpv.MpvMediampPlayer.prepareLibraries(
+                            devNativeDir,
+                            extractRuntimeLibrary = false,
+                        )
+                    } else {
+                        org.openani.mediamp.mpv.MpvMediampPlayer.prepareLibraries()
+                    }
                 }
             }.onFailure {
-                logger.error(it) { "Failed to prepare VLC" }
+                logger.error(it) { "Failed to prepare mpv" }
             }
 
-            logger.info { "[JCEF init] VLC libraries prepared." }
+            logger.info { "[JCEF init] mpv libraries prepared." }
         }
 
         coroutineScope.launch {

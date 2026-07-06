@@ -64,8 +64,8 @@ import org.koin.dsl.module
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.MediampPlayerFactoryLoader
 import org.openani.mediamp.compose.MediampPlayerSurfaceProviderLoader
-import org.openani.mediamp.vlc.VlcMediampPlayerFactory
-import org.openani.mediamp.vlc.compose.VlcMediampPlayerSurfaceProvider
+import org.openani.mediamp.mpv.MpvMediampPlayerFactory
+import org.openani.mediamp.mpv.compose.MpvMediampPlayerSurfaceProvider
 import java.io.File
 import kotlin.io.path.Path
 
@@ -127,8 +127,8 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
     }
 
     single<MediampPlayerFactory<*>> {
-        MediampPlayerFactoryLoader.register(VlcMediampPlayerFactory())
-        MediampPlayerSurfaceProviderLoader.register(VlcMediampPlayerSurfaceProvider())
+        MediampPlayerFactoryLoader.register(MpvMediampPlayerFactory())
+        MediampPlayerSurfaceProviderLoader.register(MpvMediampPlayerSurfaceProvider())
         MediampPlayerFactoryLoader.first()
     }
     single<BrowserNavigator> { DesktopBrowserNavigator() }

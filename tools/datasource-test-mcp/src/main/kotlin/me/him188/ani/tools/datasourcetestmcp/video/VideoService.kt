@@ -16,7 +16,7 @@ import kotlinx.coroutines.withTimeout
  */
 class VideoService(
     private val probe: VideoUrlProbeEngine,
-    private val analyzer: VlcVideoAnalyzer,
+    private val analyzer: MpvVideoAnalyzer,
     private val adAnalyzer: M3u8AdAnalyzer,
 ) {
     suspend fun probeVideo(input: ProbeVideoInput): ProbeVideoResult {
