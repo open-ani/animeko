@@ -322,7 +322,7 @@ class BangumiClientImpl(
 
     companion object {
         fun getSubjectImageUrl(id: Int, size: BangumiSubjectImageSize): String {
-            return "$BANGUMI_API_HOST/v0/subjects/${id}/image?type=${size.id.lowercase()}"
+            return "https://static.myani.org/bangumi/subjects/$id/${size.id.lowercase()}"
         }
     }
 }
