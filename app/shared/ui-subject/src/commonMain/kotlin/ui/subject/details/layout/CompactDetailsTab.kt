@@ -96,9 +96,11 @@ internal fun CompactDetailsTabContent(
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        // 选集 (横滑, 不分页); header 链接 "全 N 话 · 已完结 ›" 打开完整选集列表 (定稿 1610:1003)
-        if (episodes.isNotEmpty()) {
-            item("episodes") {
+        // 选集 (横滑, 不分页); header 链接 "全 N 话 · 已完结 ›" 打开完整选集列表 (定稿 1610:1003).
+        // item 恒定存在 (剧集异步加载时为空): 若按条件插入, 加载完成后该 item 会出现在
+        // LazyColumn 锚点 ("summary") 上方, 列表无法滚回顶部看到它 (真机复现).
+        item("episodes") {
+            if (episodes.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     SectionHeader(
                         stringResource(Lang.subject_details_episodes),
