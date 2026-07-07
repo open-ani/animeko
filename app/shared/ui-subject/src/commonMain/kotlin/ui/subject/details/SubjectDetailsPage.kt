@@ -366,7 +366,6 @@ private fun SubjectDetailsPage(
                 onPlay = onPlay,
                 onClickTag = onClickTag,
                 onClickLogin = onClickLogin,
-                onShowEpisodeList = { showSelectEpisode = true },
                 onShowComments = { showComments = true },
                 modifier = modifier,
                 showTopBar = showTopBar,

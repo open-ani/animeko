@@ -81,10 +81,9 @@ import me.him188.ani.app.ui.rating.EditableRatingState
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeButton
 import me.him188.ani.app.ui.subject.details.components.COVER_WIDTH_TO_HEIGHT_RATIO
+import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
 import me.him188.ani.app.ui.subject.details.components.RatingHistogram
 import me.him188.ani.app.ui.subject.details.components.RelatedSubjectsGrid
-import me.him188.ani.app.ui.subject.details.components.SelectEpisodeButtons
-import me.him188.ani.app.ui.subject.details.components.SubjectDetailsDefaults
 import me.him188.ani.app.ui.subject.details.components.rememberNavigateToRelatedSubject
 import me.him188.ani.app.ui.subject.details.sections.CharactersSection
 import me.him188.ani.app.ui.subject.details.sections.HotReviewsCardContent
@@ -116,7 +115,6 @@ internal fun SubjectDetailsMultiColumnPage(
     onPlay: (episodeId: Int) -> Unit,
     onClickTag: (Tag) -> Unit,
     onClickLogin: () -> Unit,
-    onShowEpisodeList: () -> Unit,
     onShowComments: () -> Unit,
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
@@ -157,7 +155,6 @@ internal fun SubjectDetailsMultiColumnPage(
             selfInfo = selfInfo,
             mainEpisodeCount = episodes.size,
             onPlay = onPlay,
-            onShowEpisodeList = onShowEpisodeList,
             onClickTag = onClickTag,
             onClickLogin = onClickLogin,
             itemSpacing = layoutParams.sidebarItemSpacing,
@@ -425,7 +422,6 @@ private fun SubjectSidebar(
     selfInfo: SelfInfoUiState,
     mainEpisodeCount: Int,
     onPlay: (episodeId: Int) -> Unit,
-    onShowEpisodeList: () -> Unit,
     onClickTag: (Tag) -> Unit,
     onClickLogin: () -> Unit,
     itemSpacing: Dp,
@@ -444,21 +440,22 @@ private fun SubjectSidebar(
             contentScale = ContentScale.Crop,
             onSuccess = onCoverImageSuccess,
         )
-        // 播放/选集
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
-            SubjectDetailsDefaults.SelectEpisodeButtons(
-                state.subjectProgressState,
-                onShowEpisodeList = onShowEpisodeList,
-                onPlay = onPlay,
-            )
-        }
-        // 收藏
+        // 播放按钮 (定稿: 全宽 Filled; 无选集列表小按钮, 选集操作走中栏网格)
+        SubjectProgressButton(
+            state.subjectProgressState,
+            onPlay = { state.subjectProgressState.episodeIdToPlay?.let(onPlay) },
+            Modifier.fillMaxWidth(),
+        )
+        // 收藏 (定稿: 全宽 Tonal)
         if (selfInfo.isSessionValid == false) {
             OutlinedButton(onClickLogin, Modifier.fillMaxWidth()) {
                 Text(stringResource(Lang.subject_details_login_to_collect))
             }
         } else {
-            EditableSubjectCollectionTypeButton(state.editableSubjectCollectionTypeState)
+            EditableSubjectCollectionTypeButton(
+                state.editableSubjectCollectionTypeState,
+                Modifier.fillMaxWidth(),
+            )
         }
         // 收藏统计三格 (收藏 / 在看 / 想看)
         SubjectCollectionStatsRow(info.collectionStats)
