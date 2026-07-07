@@ -89,6 +89,16 @@ sealed class NavRoutes {
     ) : NavRoutes()
 
     @Serializable
+    data class PersonDetail(
+        val personId: Int,
+    ) : NavRoutes()
+
+    @Serializable
+    data class CharacterDetail(
+        val characterId: Int,
+    ) : NavRoutes()
+
+    @Serializable
     data class SubjectCaches(
         val subjectId: Int,
     ) : NavRoutes()

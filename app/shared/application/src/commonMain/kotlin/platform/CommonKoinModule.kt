@@ -64,6 +64,7 @@ import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepositoryImpl
 import me.him188.ani.app.data.repository.player.EpisodeScreenshotRepository
 import me.him188.ani.app.data.repository.player.PlaybackHistorySyncer
 import me.him188.ani.app.data.repository.player.WhatslinkEpisodeScreenshotRepository
+import me.him188.ani.app.data.repository.person.PersonDetailsRepository
 import me.him188.ani.app.data.repository.repositoryModules
 import me.him188.ani.app.data.repository.subject.DefaultSubjectRelationsRepository
 import me.him188.ani.app.data.repository.subject.FollowedSubjectsRepository
@@ -284,6 +285,12 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<EpisodeService> { EpisodeServiceImpl(aniApiProvider.subjectApi) }
 
     single<BangumiRelatedPeopleService> { BangumiRelatedPeopleService(get<AniApiProvider>().subjectApi) }
+    single<PersonDetailsRepository> {
+        PersonDetailsRepository(
+            personsApi = aniApiProvider.personsApi,
+            charactersApi = aniApiProvider.charactersApi,
+        )
+    }
     single<AnimeScheduleRepository> { AnimeScheduleRepository(get()) }
     single<BangumiCommentRepository> {
         BangumiCommentRepository(

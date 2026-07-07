@@ -1227,6 +1227,30 @@
     <string name="subject_episode_video_settings_enable_regex_filter">Enable regex danmaku filters</string>
     <string name="subject_episode_video_settings_manage_regex_filter">Manage regex danmaku filters</string>
     <string name="subject_episode_video_settings_debug_mode">Danmaku debug mode</string>
+
+    <!-- Person / character details pages -->
+    <string name="person_details_basic_info">Basic info</string>
+    <string name="person_details_voice_actors">Voice actors</string>
+    <string name="person_details_casts">Characters</string>
+    <string name="person_details_works">Works</string>
+    <string name="person_details_character_subjects">Appears in</string>
+    <string name="person_details_comments">Comments</string>
+    <string name="person_details_comments_count">%1$s comments</string>
+    <string name="person_details_meta">%1$s · collected by %2$s</string>
+    <string name="person_details_open_full_page">Open full page</string>
+    <string name="person_details_no_comments">No comments yet</string>
+    <string name="person_details_person">Person</string>
+    <string name="person_details_role_character">Character</string>
+    <string name="person_details_role_mecha">Mecha</string>
+    <string name="person_details_role_ship">Ship</string>
+    <string name="person_details_role_organization">Organization</string>
+    <string name="person_details_career_seiyu">Voice actor</string>
+    <string name="person_details_career_producer">Staff</string>
+    <string name="person_details_career_mangaka">Manga artist</string>
+    <string name="person_details_career_artist">Artist</string>
+    <string name="person_details_career_writer">Writer</string>
+    <string name="person_details_career_illustrator">Illustrator</string>
+    <string name="person_details_career_actor">Actor</string>
 </resources>
 
 <!--@formatter:on-->

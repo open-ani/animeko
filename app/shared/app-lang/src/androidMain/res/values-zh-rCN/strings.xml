@@ -1267,6 +1267,30 @@
     <string name="subject_episode_video_settings_enable_regex_filter">启用正则弹幕过滤器</string>
     <string name="subject_episode_video_settings_manage_regex_filter">管理正则弹幕过滤器</string>
     <string name="subject_episode_video_settings_debug_mode">弹幕调试模式</string>
+
+    <!-- 人物/角色详情页 -->
+    <string name="person_details_basic_info">基本信息</string>
+    <string name="person_details_voice_actors">声优</string>
+    <string name="person_details_casts">出演角色</string>
+    <string name="person_details_works">参与作品</string>
+    <string name="person_details_character_subjects">出演作品</string>
+    <string name="person_details_comments">评论</string>
+    <string name="person_details_comments_count">%1$s 条</string>
+    <string name="person_details_meta">%1$s · %2$s 人收藏</string>
+    <string name="person_details_open_full_page">打开完整页面</string>
+    <string name="person_details_no_comments">还没有评论</string>
+    <string name="person_details_person">人物</string>
+    <string name="person_details_role_character">角色</string>
+    <string name="person_details_role_mecha">机体</string>
+    <string name="person_details_role_ship">舰船</string>
+    <string name="person_details_role_organization">组织</string>
+    <string name="person_details_career_seiyu">声优</string>
+    <string name="person_details_career_producer">制作人员</string>
+    <string name="person_details_career_mangaka">漫画家</string>
+    <string name="person_details_career_artist">艺术家</string>
+    <string name="person_details_career_writer">作家</string>
+    <string name="person_details_career_illustrator">绘师</string>
+    <string name="person_details_career_actor">演员</string>
 </resources>
 
 <!--@formatter:on-->

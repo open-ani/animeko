@@ -81,6 +81,14 @@ interface AniNavigator {
         currentNavigator.navigate(NavRoutes.SubjectCaches(subjectId))
     }
 
+    fun navigatePersonDetails(personId: Int) {
+        currentNavigator.navigate(NavRoutes.PersonDetail(personId))
+    }
+
+    fun navigateCharacterDetails(characterId: Int) {
+        currentNavigator.navigate(NavRoutes.CharacterDetail(characterId))
+    }
+
     fun navigateEpisodeDetails(subjectId: Int, episodeId: Int, fullscreen: Boolean = false) {
         currentNavigator.popBackStack(NavRoutes.EpisodeDetail(subjectId, episodeId), inclusive = true)
         currentNavigator.navigate(NavRoutes.EpisodeDetail(subjectId, episodeId))

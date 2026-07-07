@@ -99,6 +99,10 @@ import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourc
 import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsScreen
 import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsViewModel
 import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
+import me.him188.ani.app.ui.subject.person.CharacterDetailsScreen
+import me.him188.ani.app.ui.subject.person.CharacterDetailsViewModel
+import me.him188.ani.app.ui.subject.person.PersonDetailsScreen
+import me.him188.ani.app.ui.subject.person.PersonDetailsViewModel
 import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
 import me.him188.ani.app.ui.subject.episode.EpisodeScreen
 import me.him188.ani.app.ui.subject.episode.EpisodeViewModel
@@ -570,6 +574,44 @@ private fun AniAppContentImpl(
                     },
                     Modifier.fillMaxSize(),
                     windowInsets = windowInsets,
+                )
+            }
+            composable<NavRoutes.PersonDetail>(
+                enterTransition = enterTransition,
+                exitTransition = exitTransition,
+                popEnterTransition = popEnterTransition,
+                popExitTransition = popExitTransition,
+            ) { backStackEntry ->
+                val route = backStackEntry.toRoute<NavRoutes.PersonDetail>()
+                val vm = viewModel<PersonDetailsViewModel>(key = "person-${route.personId}") {
+                    PersonDetailsViewModel(route.personId)
+                }
+                PersonDetailsScreen(
+                    vm,
+                    Modifier.fillMaxSize(),
+                    windowInsets = windowInsets,
+                    navigationIcon = {
+                        BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
+                    },
+                )
+            }
+            composable<NavRoutes.CharacterDetail>(
+                enterTransition = enterTransition,
+                exitTransition = exitTransition,
+                popEnterTransition = popEnterTransition,
+                popExitTransition = popExitTransition,
+            ) { backStackEntry ->
+                val route = backStackEntry.toRoute<NavRoutes.CharacterDetail>()
+                val vm = viewModel<CharacterDetailsViewModel>(key = "character-${route.characterId}") {
+                    CharacterDetailsViewModel(route.characterId)
+                }
+                CharacterDetailsScreen(
+                    vm,
+                    Modifier.fillMaxSize(),
+                    windowInsets = windowInsets,
+                    navigationIcon = {
+                        BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
+                    },
                 )
             }
             composable<NavRoutes.SubjectCaches>(

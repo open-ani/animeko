@@ -150,6 +150,7 @@ import me.him188.ani.app.ui.subject.details.components.SubjectDetailsHeader
 import me.him188.ani.app.ui.subject.details.layout.CompactDetailsTabContent
 import me.him188.ani.app.ui.subject.details.layout.SubjectDetailsLayoutParams
 import me.him188.ani.app.ui.subject.details.layout.SubjectDetailsMultiColumnPage
+import me.him188.ani.app.ui.subject.person.PeoplePreviewHost
 import me.him188.ani.app.ui.subject.details.layout.SubjectDetailsMultiColumnPlaceholder
 import me.him188.ani.app.ui.subject.details.sections.SubjectCommentsSheet
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
@@ -368,22 +369,25 @@ private fun SubjectDetailsPage(
                     onDismissRequest = { showComments = false },
                 )
             }
-            SubjectDetailsMultiColumnPage(
-                state = state,
-                selfInfo = selfInfo,
-                layoutParams = layoutParams,
-                onPlay = onPlay,
-                onClickTag = onClickTag,
-                onClickLogin = onClickLogin,
-                onShowComments = { showComments = true },
-                modifier = modifier,
-                showTopBar = showTopBar,
-                windowInsets = windowInsets,
-                backgroundPalette = if (themeSettings.enableAnimatedGradientSubjectPage) paletteState.palette else null,
-                navigationIcon = navigationIcon,
-                onClickOpenExternal = onClickOpenExternal,
-                onCoverImageSuccess = onCoverImageSuccess,
-            )
+            // 中大屏点击人物/角色先打开右侧预览 (方案C), 手机上则直接导航到全页
+            PeoplePreviewHost {
+                SubjectDetailsMultiColumnPage(
+                    state = state,
+                    selfInfo = selfInfo,
+                    layoutParams = layoutParams,
+                    onPlay = onPlay,
+                    onClickTag = onClickTag,
+                    onClickLogin = onClickLogin,
+                    onShowComments = { showComments = true },
+                    modifier = modifier,
+                    showTopBar = showTopBar,
+                    windowInsets = windowInsets,
+                    backgroundPalette = if (themeSettings.enableAnimatedGradientSubjectPage) paletteState.palette else null,
+                    navigationIcon = navigationIcon,
+                    onClickOpenExternal = onClickOpenExternal,
+                    onCoverImageSuccess = onCoverImageSuccess,
+                )
+            }
             return@MaterialThemeFromPaletteAndImage
         }
 
