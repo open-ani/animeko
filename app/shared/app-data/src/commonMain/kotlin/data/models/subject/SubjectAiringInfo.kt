@@ -18,9 +18,6 @@ import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.EpisodeType
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.ifInvalid
-import me.him188.ani.datasources.api.minus
-import kotlin.time.Duration.Companion.days
-import kotlin.time.times
 
 /**
  * 一个条目自身连载进度, 与用户是否观看无关
@@ -127,11 +124,10 @@ data class SubjectAiringInfo(
                 mainStoryEpisodes.all { it.isKnownCompleted(recurrence) } -> SubjectAiringKind.COMPLETED
                 mainStoryEpisodes.all { it.isKnownOnAir(recurrence) } -> SubjectAiringKind.UPCOMING
                 mainStoryEpisodes.any { it.isKnownCompleted(recurrence) } -> SubjectAiringKind.ON_AIR
-                airDate.isValid -> when {
-                    airDate <= PackedDate.now() -> SubjectAiringKind.COMPLETED
-                    PackedDate.now() - airDate > 10 * 30 * 365.days -> SubjectAiringKind.COMPLETED // 播出 10 年后判定为完结, 一些老番缺失信息
-                    else -> SubjectAiringKind.UPCOMING
-                }
+                // airDate 有效且不晚于当前时间 => 已完结; 否则即将开播.
+                // (原先此处还有一条"播出 10 年后判完结"的分支, 但 `airDate <= now()` 已覆盖所有过去日期,
+                //  且其 `10 * 30 * 365.days` ≈ 300 年与注释不符, 属不可达死代码, 已删除.)
+                airDate.isValid && airDate <= PackedDate.now() -> SubjectAiringKind.COMPLETED
 
                 else -> SubjectAiringKind.UPCOMING
             }
@@ -209,25 +205,11 @@ object TestSubjectAiringInfos {
     )
 }
 
-// Mainly for SubjectAiringLabel
-@Stable
-fun SubjectAiringInfo.computeTotalEpisodeText(): String? {
-    return if (kind == SubjectAiringKind.UPCOMING && mainEpisodeCount == 0) {
-        // 剧集还未知
-        null
-    } else {
-        when (kind) {
-            SubjectAiringKind.COMPLETED -> "全 $mainEpisodeCount 话"
-
-            SubjectAiringKind.ON_AIR,
-            SubjectAiringKind.UPCOMING,
-                -> "预定全 $mainEpisodeCount 话"
-        }
-    }
-}
+// 注意: 总集数文案 ("全 xx 话" / "预定全 xx 话") 由 UI 层的 SubjectStatusStrings 负责,
+// 以支持本地化. 数据层不再硬编码中文文案 (原 computeTotalEpisodeText 无调用方, 已删除).
 
 /**
- * 正在播出 (第一集还未开播, 将在未来开播)
+ * 正在播出 (已经播出了第一集, 但还未播出最后一集)
  */
 @Stable
 val SubjectAiringInfo.isOnAir: Boolean
@@ -238,7 +220,7 @@ val SubjectAiringInfo.hasStarted: Boolean
     get() = isOnAir || isCompleted
 
 /**
- * 即将开播 (已经播出了第一集, 但还未播出最后一集)
+ * 即将开播 (第一集还未开播, 将在未来开播)
  */
 @Stable
 val SubjectAiringInfo.isUpcoming: Boolean
@@ -254,12 +236,12 @@ val SubjectAiringInfo.isCompleted: Boolean
 @Immutable
 enum class SubjectAiringKind {
     /**
-     * 即将开播 (已经播出了第一集, 但还未播出最后一集)
+     * 即将开播 (第一集还未开播, 将在未来开播)
      */
     UPCOMING,
 
     /**
-     * 正在播出 (第一集还未开播, 将在未来开播)
+     * 正在播出 (已经播出了第一集, 但还未播出最后一集)
      */
     ON_AIR,
 

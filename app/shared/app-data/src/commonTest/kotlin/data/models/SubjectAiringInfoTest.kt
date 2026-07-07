@@ -118,7 +118,9 @@ class SubjectAiringInfoTest {
     }
 
     @Test
-    fun `one episode but has invalid date - when subject is known broadcast for 10 more years`() {
+    fun `one episode but has invalid date - long-past air date is completed`() {
+        // 回归固化: 任何有效且已过的 airDate 都判 COMPLETED (走 `airDate <= now()` 分支).
+        // 原先另有一条"播出 10 年后判完结"的死分支, 已删除; 该行为完全由本分支覆盖.
         val eps = listOf(
             ep(1, PackedDate.Invalid),
         )
@@ -129,6 +131,17 @@ class SubjectAiringInfoTest {
         assertEquals(EpisodeSort(1), info.firstSort)
         assertEquals(null, info.latestSort)
         assertEquals(null, info.upcomingSort)
+    }
+
+    @Test
+    fun `one episode but has invalid date - recently-past air date is completed`() {
+        // 边界: 距今仅一年多的 airDate 也应判 COMPLETED, 证明不存在"必须过 N 年"的隐藏阈值.
+        val eps = listOf(
+            ep(1, PackedDate.Invalid),
+        )
+        val recentlyPast = PackedDate(2024, 1, 1)
+        val info = SubjectAiringInfo.computeFromEpisodeList(eps, recentlyPast, null)
+        assertEquals(SubjectAiringKind.COMPLETED, info.kind)
     }
 
     @Test
