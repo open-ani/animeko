@@ -153,15 +153,13 @@ internal fun CompactDetailsTabContent(
             }
         }
 
-        // 角色 (横向头像条, 边到边滚动; 手机为 Small 卡: 头像 56, 间距 0)
+        // 角色 (横向立绘卡条, 边到边滚动)
         item("characters") {
             CharactersSection(
                 exposedCharacters,
                 allCharacters,
                 totalCharactersCount,
                 contentPadding = horizontalPaddingValues,
-                avatarSize = 56.dp,
-                itemSpacing = 0.dp,
             )
         }
 

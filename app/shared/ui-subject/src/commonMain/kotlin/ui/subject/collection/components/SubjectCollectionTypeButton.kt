@@ -66,7 +66,8 @@ fun SubjectCollectionTypeButton(
     val action = remember(type) {
         SubjectCollectionActionsForCollect.find { it.type == type }
     }
-    Box(modifier) {
+    // propagateMinConstraints: 让 fillMaxWidth 等宽度约束传递到内部按钮 (详情页侧栏按钮要求 fill width)
+    Box(modifier, propagateMinConstraints = true) {
         var showDropdown by rememberSaveable { mutableStateOf(false) }
         val onClick = remember {
             {
