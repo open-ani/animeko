@@ -48,6 +48,14 @@ inline val WindowAdaptiveInfo.isWidthAtLeastMedium: Boolean
 inline val WindowAdaptiveInfo.isWidthAtLeastExpanded: Boolean
     get() = windowSizeClass.isWidthAtLeastExpanded
 
+/**
+ * 宽度至少达到 [WindowSizeClass.WIDTH_DP_EXTRA_LARGE_LOWER_BOUND] (1600dp, Material Design extraLarge).
+ * 条目详情页三栏布局的启用断点.
+ */
+@Stable
+inline val WindowAdaptiveInfo.isWidthAtLeastExtraLarge: Boolean
+    get() = windowSizeClass.isWidthAtLeastExtraLarge
+
 @Stable
 inline val WindowAdaptiveInfo.isHeightCompact: Boolean
     get() = windowSizeClass.isHeightCompact
@@ -68,6 +76,14 @@ inline val WindowSizeClass.isWidthAtLeastMedium: Boolean
 @Stable
 inline val WindowSizeClass.isWidthAtLeastExpanded: Boolean
     get() = isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
+
+/**
+ * 宽度至少达到 [WindowSizeClass.WIDTH_DP_EXTRA_LARGE_LOWER_BOUND] (1600dp, Material Design extraLarge).
+ * 条目详情页三栏布局的启用断点.
+ */
+@Stable
+inline val WindowSizeClass.isWidthAtLeastExtraLarge: Boolean
+    get() = isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXTRA_LARGE_LOWER_BOUND)
 
 @Stable
 inline val WindowSizeClass.isHeightCompact: Boolean
