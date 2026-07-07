@@ -571,7 +571,7 @@ private fun SubjectCollectionEntity.toSubjectInfo(): SubjectInfo {
         nameCn = nameCn,
         summary = summary,
         nsfw = nsfw,
-        imageLarge = staticSubjectImageLargeUrl(subjectId),
+        imageLarge = imageLarge,
         totalEpisodes = totalEpisodes,
         airDate = airDate,
         tags = tags,
