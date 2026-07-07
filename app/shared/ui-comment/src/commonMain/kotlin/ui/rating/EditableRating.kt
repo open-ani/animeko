@@ -109,6 +109,25 @@ fun EditableRating(
     state: EditableRatingState,
     modifier: Modifier = Modifier,
 ) {
+    EditableRatingDialogsHost(state)
+    val isUpdatingRating = state.isUpdatingRating.collectAsStateWithLifecycle()
+    Rating(
+        rating = state.ratingInfo,
+        selfRatingScore = state.selfRatingInfo.score,
+        onClick = { state.requestEdit() },
+        clickEnabled = state.enableEdit && !isUpdatingRating.value,
+        modifier = modifier,
+    )
+}
+
+/**
+ * 仅承载 [EditableRatingState] 的对话框 ([RatingEditorDialog] 与"需要收藏"提示), 不显示评分本身.
+ *
+ * 用于不展示 [Rating] 组件但需要 [EditableRatingState.requestEdit] 入口的布局
+ * (如桌面条目详情多栏页的"写评价").
+ */
+@Composable
+fun EditableRatingDialogsHost(state: EditableRatingState) {
     if (state.showRatingRequiresCollectionDialog) {
         AlertDialog(
             { state.dismissRatingRequiresCollectionDialog() },
@@ -139,13 +158,6 @@ fun EditableRating(
             isLoading = isUpdatingRating.value,
         )
     }
-    Rating(
-        rating = state.ratingInfo,
-        selfRatingScore = state.selfRatingInfo.score,
-        onClick = { state.requestEdit() },
-        clickEnabled = state.enableEdit && !isUpdatingRating.value,
-        modifier = modifier,
-    )
 }
 
 @Composable

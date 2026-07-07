@@ -312,7 +312,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             exposedStaffPager = relatedPersonsFlow
                 .filterNotNull()
                 .map { list ->
-                    list.take(6)
+                    list.take(EXPOSED_STAFF_COUNT)
                 }
                 .map { PagingData.from(it) }
                 .cachedIn(this),
@@ -431,17 +431,18 @@ class TestSubjectDetailsStateFactory : SubjectDetailsStateFactory {
 
 }
 
+/** 角色区块露出数 (Figma 定稿 1515:336: 8 个). */
+private const val EXPOSED_CHARACTERS_COUNT = 8
+
+/** 制作人员露出数 (Figma 定稿三栏右栏卡: 10 个职位; 双栏/手机由 UI 层截取前 6). */
+private const val EXPOSED_STAFF_COUNT = 10
+
 private fun List<RelatedCharacterInfo>.computeExposed(): List<RelatedCharacterInfo> {
-    val list = this
-    // 显示前六个主角, 否则显示前六个
-    return if (list.any { it.isMainCharacter() }) {
-        val res = list.asSequence().filter { it.isMainCharacter() }.take(6).toList()
-        if (res.size >= 4 || list.size < 4) {
-            res // 有至少四个主角
-        } else {
-            list.take(4) // 主角不足四个, 就显示前四个包含非主角的
-        }
+    // 主角优先; 主角不足 4 个时按原始顺序补足 (含配角).
+    val mains = filter { it.isMainCharacter() }
+    return if (mains.size >= 4) {
+        mains.take(EXPOSED_CHARACTERS_COUNT)
     } else {
-        list.take(6) // 没有主角
+        take(EXPOSED_CHARACTERS_COUNT)
     }
 }
