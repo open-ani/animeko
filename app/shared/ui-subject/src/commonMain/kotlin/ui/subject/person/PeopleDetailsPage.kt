@@ -315,9 +315,10 @@ private fun PeopleDetailsScaffold(
                             PersonCommentsSection(
                                 commentState,
                                 onShowAll = { showAllComments = true },
-                                // 标题行自带 ~17dp 顶空 (TextButton min 40dp 居中 + 行框留白,
-                                // 截图实测), 故顶部 padding 为 0, 字形距卡顶即 ~16dp, 与左右一致.
-                                Modifier.padding(start = 16.dp, top = 0.dp, end = 16.dp, bottom = 16.dp),
+                                // 对齐修正后的设计稿 rail 卡 (视觉: 标题字形距顶 ~21, 距侧 20):
+                                // 标题行自带 ~17dp 顶空 (TextButton min 40dp 居中 + 行框留白, 截图实测),
+                                // 故 top=4; 左右 20 / 下 18 与设计稿一致.
+                                Modifier.padding(start = 20.dp, top = 4.dp, end = 20.dp, bottom = 18.dp),
                             )
                         }
                     }
