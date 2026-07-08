@@ -29,7 +29,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +52,7 @@ import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.external.placeholder.placeholder
+import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ImageViewer
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.layout.rememberConnectedScrollState
@@ -157,8 +161,11 @@ internal fun characterRoleLabel(role: Int): String = stringResource(
 internal fun peopleMetaLine(kindLabel: String, collects: Int): String =
     stringResource(Lang.person_details_meta, kindLabel, remember(collects) { groupThousands(collects) })
 
+/** 头部图片加载完成前的默认纵横比 (人物照片常见 ~3:4). */
+private const val DEFAULT_HEADER_IMAGE_ASPECT = 110f / 147f
+
 /**
- * 头部行: 竖版立绘/照片 (110x147, 圆角) + 名字/原名/meta 行. 用于单栏与侧边预览.
+ * 头部行: 竖版立绘/照片 (高 147, 宽按原图比例, 圆角) + 名字/原名/meta 行. 用于单栏与侧边预览.
  */
 @Composable
 internal fun PeopleHeaderRow(
@@ -169,19 +176,28 @@ internal fun PeopleHeaderRow(
     modifier: Modifier = Modifier,
     isPlaceholder: Boolean = false,
 ) {
+    // 立绘/照片完整展示 (原比例, Fit 不裁切): 容器高固定 147, 宽按图片实际比例自适应,
+    // 避免窄长立绘在固定宽度槽位里留出大空隙 (图片"太靠左"而文字很远).
+    var imageAspect by remember(imageUrl) { mutableStateOf(DEFAULT_HEADER_IMAGE_ASPECT) }
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        // 立绘/照片完整展示 (原比例, Fit 不裁切); 靠左对齐避免窄图与文字间出现大空隙
         Box(
             Modifier
-                .size(110.dp, 147.dp)
+                .height(147.dp)
+                .width(147.dp * imageAspect.coerceIn(0.4f, 1f))
                 .clip(MaterialTheme.shapes.medium)
                 .placeholder(isPlaceholder),
         ) {
-            AvatarImage(
-                imageUrl,
-                Modifier.matchParentSize(),
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                modifier = Modifier.matchParentSize(),
                 contentScale = ContentScale.Fit,
-                alignment = Alignment.CenterStart,
+                onSuccess = { state ->
+                    val size = state.painter.intrinsicSize
+                    if (size.width > 0f && size.height > 0f) {
+                        imageAspect = size.width / size.height
+                    }
+                },
             )
         }
         Column(
