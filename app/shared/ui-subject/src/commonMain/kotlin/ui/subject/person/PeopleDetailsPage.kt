@@ -34,13 +34,18 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -53,7 +58,9 @@ import me.him188.ani.app.data.models.person.PersonDetailsInfo
 import me.him188.ani.app.data.models.person.PersonWorkInfo
 import me.him188.ani.app.data.models.subject.nameCn
 import me.him188.ani.app.ui.external.placeholder.placeholder
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.person_details_basic_info
 import me.him188.ani.app.ui.lang.person_details_casts
@@ -84,6 +91,7 @@ fun PersonDetailsScreen(
     val comments = vm.commentsPager.collectAsLazyPagingItems()
 
     PeopleDetailsScaffold(
+        topBarTitle = details?.person?.displayName ?: "",
         navigationIcon = navigationIcon,
         windowInsets = windowInsets,
         isPlaceholder = details == null,
@@ -123,6 +131,7 @@ fun CharacterDetailsScreen(
     val comments = vm.commentsPager.collectAsLazyPagingItems()
 
     PeopleDetailsScaffold(
+        topBarTitle = details?.character?.displayName ?: "",
         navigationIcon = navigationIcon,
         windowInsets = windowInsets,
         isPlaceholder = details == null,
@@ -157,6 +166,7 @@ fun CharacterDetailsScreen(
  */
 @Composable
 private fun PeopleDetailsScaffold(
+    topBarTitle: String,
     navigationIcon: @Composable () -> Unit,
     windowInsets: WindowInsets,
     isPlaceholder: Boolean,
@@ -172,26 +182,56 @@ private fun PeopleDetailsScaffold(
 ) {
     var showAllComments by rememberSaveable { mutableStateOf(false) }
 
-    Scaffold(
-        modifier,
-        topBar = {
-            TopAppBar(
-                title = {},
-                navigationIcon = navigationIcon,
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
-                windowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.surface,
-    ) { padding ->
-        BoxWithConstraints(Modifier.fillMaxSize()) {
-            val layoutParams = SubjectDetailsLayoutParams.calculate(maxWidth)
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val layoutParams = SubjectDetailsLayoutParams.calculate(maxWidth)
+        val scrollState = rememberScrollState()
+        val density = LocalDensity.current
+        // 页内标题滚出可视区后切换到粘性标题栏 (M3), 与条目详情多栏一致.
+        // 单栏的名字在头部行 (110x147 图片右侧垂直居中), 多栏在中栏标题块首行.
+        val titleScrollOutHeight =
+            if (layoutParams.isMultiColumn) MULTI_COLUMN_TITLE_HEIGHT else COMPACT_HEADER_TITLE_HEIGHT
+        val stickyTopBarVisible by remember(scrollState, density, layoutParams) {
+            derivedStateOf {
+                scrollState.value >
+                        with(density) { (layoutParams.contentTopPadding + titleScrollOutHeight).toPx() }
+            }
+        }
+        val topAppBarWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
+
+        Scaffold(
+            topBar = {
+                Box {
+                    // 透明背景的, 总是显示
+                    TopAppBar(
+                        title = {},
+                        navigationIcon = navigationIcon,
+                        colors = AniThemeDefaults.topAppBarColors().copy(containerColor = Color.Transparent),
+                        windowInsets = topAppBarWindowInsets,
+                    )
+                    // 有背景和标题的, 仅在页内标题滚出后显示
+                    AniAnimatedVisibility(stickyTopBarVisible && topBarTitle.isNotBlank()) {
+                        TopAppBar(
+                            title = {
+                                Text(topBarTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            },
+                            navigationIcon = navigationIcon,
+                            colors = AniThemeDefaults.topAppBarColors(
+                                containerColor = AniThemeDefaults.navigationContainerColor,
+                            ),
+                            windowInsets = topAppBarWindowInsets,
+                        )
+                    }
+                }
+            },
+            containerColor = AniThemeDefaults.pageContentBackgroundColor,
+            contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+        ) { padding ->
             if (!layoutParams.isMultiColumn) {
                 Column(
                     Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
                         .padding(padding)
+                        .verticalScroll(scrollState)
                         .padding(horizontal = layoutParams.contentHorizontalPadding)
                         .padding(
                             top = layoutParams.contentTopPadding,
@@ -204,8 +244,8 @@ private fun PeopleDetailsScaffold(
                 Row(
                     Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
                         .padding(padding)
+                        .verticalScroll(scrollState)
                         .padding(
                             start = layoutParams.contentHorizontalPadding,
                             end = layoutParams.contentHorizontalPadding,
@@ -283,6 +323,12 @@ private fun PeopleDetailsScaffold(
         PersonCommentsSheet(comments, commentCount, onDismissRequest = { showAllComments = false })
     }
 }
+
+/** 单栏头部行里名字的大致底部位置 (110x147 图片右侧垂直居中), 用于估算标题滚出的时机. */
+private val COMPACT_HEADER_TITLE_HEIGHT = 96.dp
+
+/** 多栏中栏标题块首行 (headlineMedium) 约一行的高度. */
+private val MULTI_COLUMN_TITLE_HEIGHT = 40.dp
 
 /**
  * 人物详情单栏内容列 (Compact 页与侧边预览共用). 不含滚动.
