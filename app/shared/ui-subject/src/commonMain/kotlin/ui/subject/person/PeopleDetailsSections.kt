@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
@@ -39,16 +38,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import me.him188.ani.app.data.models.person.InfoboxRowInfo
-import me.him188.ani.app.data.models.person.PersonCommentInfo
 import me.him188.ani.app.data.models.person.PersonSubjectSummary
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.tools.formatDateTime
+import me.him188.ani.app.ui.comment.CommentState
+import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.external.placeholder.placeholder
+import me.him188.ani.app.ui.foundation.ImageViewer
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.app.ui.foundation.layout.rememberConnectedScrollState
+import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.richtext.RichTextDefaults
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.foundation_richtext_external_app_link_warning_prefix
+import me.him188.ani.app.ui.lang.foundation_richtext_open_failed_prefix
 import me.him188.ani.app.ui.lang.person_details_career_actor
 import me.him188.ani.app.ui.lang.person_details_career_artist
 import me.him188.ani.app.ui.lang.person_details_career_illustrator
@@ -67,8 +76,11 @@ import me.him188.ani.app.ui.lang.person_details_role_organization
 import me.him188.ani.app.ui.lang.person_details_role_ship
 import me.him188.ani.app.ui.lang.subject_details_view_all
 import me.him188.ani.app.ui.subject.details.components.COVER_WIDTH_TO_HEIGHT_RATIO
+import me.him188.ani.app.ui.subject.details.components.SubjectCommentColumn
+import me.him188.ani.app.ui.subject.details.components.SubjectDetailsDefaults
 import me.him188.ani.app.ui.subject.details.sections.SectionHeader
 import me.him188.ani.app.ui.subject.details.sections.groupThousands
+import me.him188.ani.app.ui.subject.details.sections.toPlainText
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -158,13 +170,19 @@ internal fun PeopleHeaderRow(
     isPlaceholder: Boolean = false,
 ) {
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        // 立绘/照片完整展示 (原比例, Fit 不裁切); 靠左对齐避免窄图与文字间出现大空隙
         Box(
             Modifier
                 .size(110.dp, 147.dp)
                 .clip(MaterialTheme.shapes.medium)
                 .placeholder(isPlaceholder),
         ) {
-            AvatarImage(imageUrl, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
+            AvatarImage(
+                imageUrl,
+                Modifier.matchParentSize(),
+                contentScale = ContentScale.Fit,
+                alignment = Alignment.CenterStart,
+            )
         }
         Column(
             Modifier.weight(1f).height(147.dp),
@@ -377,20 +395,20 @@ internal fun <T : Any> PeopleStripSection(
 }
 
 /**
- * 评论区块: 标题 (+`N 条` 入口) + 前几条预览. 无评分.
+ * 评论区块: 标题 (+`N 条` 入口) + 前几条预览 (纯文本, 同条目评价预览). 无评分.
  */
 @Composable
 internal fun PersonCommentsSection(
-    comments: LazyPagingItems<PersonCommentInfo>,
-    commentCount: Int?,
+    state: CommentState,
     onShowAll: () -> Unit,
     modifier: Modifier = Modifier,
     maxPreviewItems: Int = 3,
 ) {
+    val comments = state.list.collectAsLazyPagingItemsWithLifecycle()
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionHeader(
             stringResource(Lang.person_details_comments),
-            actionLabel = commentCount?.takeIf { it > 0 }
+            actionLabel = state.count?.takeIf { it > 0 }
                 ?.let { stringResource(Lang.person_details_comments_count, remember(it) { groupThousands(it) }) }
                 ?: stringResource(Lang.subject_details_view_all),
             onAction = onShowAll,
@@ -406,21 +424,20 @@ internal fun PersonCommentsSection(
         for (i in 0 until previewCount) {
             val comment = comments[i] ?: continue
             if (i > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            PersonCommentItem(
+            PersonCommentPreviewItem(
                 comment,
                 Modifier.clip(MaterialTheme.shapes.small).clickable(onClick = onShowAll),
-                maxTextLines = 3,
             )
         }
     }
 }
 
-/** 单条评论: `头像 名字 时间` + 正文 (可截断). */
+/** 单条评论预览: `头像 名字 时间` + 纯文本摘要 (截断). */
 @Composable
-internal fun PersonCommentItem(
-    comment: PersonCommentInfo,
+private fun PersonCommentPreviewItem(
+    comment: UIComment,
     modifier: Modifier = Modifier,
-    maxTextLines: Int = Int.MAX_VALUE,
+    maxTextLines: Int = 3,
 ) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(
@@ -428,11 +445,11 @@ internal fun PersonCommentItem(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             AvatarImage(
-                comment.authorAvatarUrl,
+                comment.author?.avatarUrl,
                 Modifier.size(24.dp).clip(CircleShape),
             )
             Text(
-                comment.authorNickname ?: "",
+                comment.author?.nickname ?: "",
                 Modifier.weight(1f, fill = false),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Medium,
@@ -440,14 +457,14 @@ internal fun PersonCommentItem(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                formatDateTime(comment.createdAt.toEpochMilliseconds(), showTime = false),
+                formatDateTime(comment.createdAt, showTime = false),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
             )
         }
         Text(
-            comment.content,
+            remember(comment) { comment.content.toPlainText() },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = maxTextLines,
@@ -456,38 +473,51 @@ internal fun PersonCommentItem(
     }
 }
 
-/** 全量评论列表 sheet, 结构同条目详情的评论 sheet (无评分). */
+/**
+ * 全量评论 sheet: 复用剧集/条目评论列 ([SubjectCommentColumn]), 支持 BBCode 表情/图片/链接.
+ * 与条目评论 sheet 的差别: 人物评论无评分, 也没有 "写评价" 入口.
+ */
 @Composable
 internal fun PersonCommentsSheet(
-    comments: LazyPagingItems<PersonCommentInfo>,
-    commentCount: Int?,
+    state: CommentState,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val browserNavigator = LocalUriHandler.current
+    val toaster = LocalToaster.current
+    val externalAppLinkWarningPrefix = stringResource(Lang.foundation_richtext_external_app_link_warning_prefix)
+    val openLinkFailedPrefix = stringResource(Lang.foundation_richtext_open_failed_prefix)
+    val imageViewer = rememberImageViewerHandler()
+
     ModalBottomSheet(
         onDismissRequest,
         modifier = modifier,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
-        Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.fillMaxWidth()) {
             Text(
-                commentCount?.takeIf { it > 0 }?.let {
+                state.count?.takeIf { it > 0 }?.let {
                     stringResource(Lang.person_details_comments) + " · " + remember(it) { groupThousands(it) }
                 } ?: stringResource(Lang.person_details_comments),
+                Modifier.padding(horizontal = 16.dp),
                 style = MaterialTheme.typography.titleLarge,
             )
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 16.dp),
-            ) {
-                items(comments.itemCount) { i ->
-                    val comment = comments[i] ?: return@items
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        if (i > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        PersonCommentItem(comment)
-                    }
-                }
-            }
+            SubjectDetailsDefaults.SubjectCommentColumn(
+                state = state,
+                onClickUrl = { url ->
+                    RichTextDefaults.checkSanityAndOpen(
+                        url,
+                        browserNavigator,
+                        toaster,
+                        externalAppLinkWarningPrefix,
+                        openLinkFailedPrefix,
+                    )
+                },
+                onClickImage = { imageViewer.viewImage(it) },
+                connectedScrollState = rememberConnectedScrollState(),
+                modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+            )
         }
     }
+    ImageViewer(imageViewer) { imageViewer.clear() }
 }

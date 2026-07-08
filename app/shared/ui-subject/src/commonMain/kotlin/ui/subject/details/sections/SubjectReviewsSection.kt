@@ -214,7 +214,7 @@ private fun ReviewPreviewItem(
 }
 
 /** 提取富文本中的纯文本用于单行/两行预览; 图片/贴纸/引用跳过. */
-private fun UIRichText.toPlainText(): String =
+internal fun UIRichText.toPlainText(): String =
     elements.asSequence()
         .filterIsInstance<UIRichElement.AnnotatedText>()
         .flatMap { it.slice }

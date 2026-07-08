@@ -96,6 +96,8 @@ data class CharacterSubjectInfo(
 @Immutable
 data class PersonCommentInfo(
     val id: Long,
+    /** Bangumi 用户 id. */
+    val authorId: String?,
     val authorNickname: String?,
     val authorAvatarUrl: String?,
     val content: String,

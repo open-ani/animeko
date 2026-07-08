@@ -236,6 +236,7 @@ private fun AniInfobox?.toRows(): List<InfoboxRowInfo> {
 private fun AniPersonComment.toInfo(): PersonCommentInfo {
     return PersonCommentInfo(
         id = id,
+        authorId = author?.id,
         authorNickname = author?.nickname,
         authorAvatarUrl = author?.avatarUrl,
         content = content,

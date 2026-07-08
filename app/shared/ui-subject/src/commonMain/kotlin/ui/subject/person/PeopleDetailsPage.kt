@@ -53,10 +53,10 @@ import me.him188.ani.app.data.models.person.CharacterDetailsInfo
 import me.him188.ani.app.data.models.person.CharacterSubjectInfo
 import me.him188.ani.app.data.models.person.InfoboxRowInfo
 import me.him188.ani.app.data.models.person.PersonCastInfo
-import me.him188.ani.app.data.models.person.PersonCommentInfo
 import me.him188.ani.app.data.models.person.PersonDetailsInfo
 import me.him188.ani.app.data.models.person.PersonWorkInfo
 import me.him188.ani.app.data.models.subject.nameCn
+import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
@@ -88,7 +88,6 @@ fun PersonDetailsScreen(
     val details by vm.details.collectAsState()
     val casts = vm.castsPager.collectAsLazyPagingItems()
     val works = vm.worksPager.collectAsLazyPagingItems()
-    val comments = vm.commentsPager.collectAsLazyPagingItems()
 
     PeopleDetailsScaffold(
         topBarTitle = details?.person?.displayName ?: "",
@@ -107,10 +106,9 @@ fun PersonDetailsScreen(
         },
         summary = details?.person?.summary.orEmpty(),
         centerStrips = { PersonStrips(casts, works) },
-        comments = comments,
-        commentCount = details?.commentCount,
+        commentState = vm.commentState,
         compactContent = {
-            PersonDetailsContentColumn(details, casts, works, comments)
+            PersonDetailsContentColumn(details, casts, works, vm.commentState)
         },
         modifier = modifier,
     )
@@ -128,7 +126,6 @@ fun CharacterDetailsScreen(
 ) {
     val details by vm.details.collectAsState()
     val subjects = vm.subjectsPager.collectAsLazyPagingItems()
-    val comments = vm.commentsPager.collectAsLazyPagingItems()
 
     PeopleDetailsScaffold(
         topBarTitle = details?.character?.displayName ?: "",
@@ -147,10 +144,9 @@ fun CharacterDetailsScreen(
         },
         summary = details?.summary.orEmpty(),
         centerStrips = { CharacterStrips(details, subjects) },
-        comments = comments,
-        commentCount = details?.commentCount,
+        commentState = vm.commentState,
         compactContent = {
-            CharacterDetailsContentColumn(details, subjects, comments)
+            CharacterDetailsContentColumn(details, subjects, vm.commentState)
         },
         modifier = modifier,
     )
@@ -175,8 +171,7 @@ private fun PeopleDetailsScaffold(
     titleBlock: @Composable (isPlaceholder: Boolean) -> Unit,
     summary: String,
     centerStrips: @Composable () -> Unit,
-    comments: LazyPagingItems<PersonCommentInfo>,
-    commentCount: Int?,
+    commentState: CommentState,
     compactContent: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -295,7 +290,7 @@ private fun PeopleDetailsScaffold(
                         }
                         centerStrips()
                         if (!layoutParams.showRail) {
-                            PersonCommentsSection(comments, commentCount, onShowAll = { showAllComments = true })
+                            PersonCommentsSection(commentState, onShowAll = { showAllComments = true })
                         }
                     }
 
@@ -307,8 +302,7 @@ private fun PeopleDetailsScaffold(
                             color = MaterialTheme.colorScheme.surfaceContainerLow,
                         ) {
                             PersonCommentsSection(
-                                comments,
-                                commentCount,
+                                commentState,
                                 onShowAll = { showAllComments = true },
                                 Modifier.padding(20.dp),
                             )
@@ -320,7 +314,7 @@ private fun PeopleDetailsScaffold(
     }
 
     if (showAllComments) {
-        PersonCommentsSheet(comments, commentCount, onDismissRequest = { showAllComments = false })
+        PersonCommentsSheet(commentState, onDismissRequest = { showAllComments = false })
     }
 }
 
@@ -338,7 +332,7 @@ internal fun PersonDetailsContentColumn(
     details: PersonDetailsInfo?,
     casts: LazyPagingItems<PersonCastInfo>,
     works: LazyPagingItems<PersonWorkInfo>,
-    comments: LazyPagingItems<PersonCommentInfo>,
+    commentState: CommentState,
     modifier: Modifier = Modifier,
     navigation: PeopleDetailsNavigation = rememberPeopleDetailsNavigation(),
 ) {
@@ -364,10 +358,10 @@ internal fun PersonDetailsContentColumn(
             }
         }
         PersonStrips(casts, works, navigation)
-        PersonCommentsSection(comments, details?.commentCount, onShowAll = { showAllComments = true })
+        PersonCommentsSection(commentState, onShowAll = { showAllComments = true })
     }
     if (showAllComments) {
-        PersonCommentsSheet(comments, details?.commentCount, onDismissRequest = { showAllComments = false })
+        PersonCommentsSheet(commentState, onDismissRequest = { showAllComments = false })
     }
 }
 
@@ -446,7 +440,7 @@ private fun PersonStrips(
 internal fun CharacterDetailsContentColumn(
     details: CharacterDetailsInfo?,
     subjects: LazyPagingItems<CharacterSubjectInfo>,
-    comments: LazyPagingItems<PersonCommentInfo>,
+    commentState: CommentState,
     modifier: Modifier = Modifier,
     navigation: PeopleDetailsNavigation = rememberPeopleDetailsNavigation(),
 ) {
@@ -472,10 +466,10 @@ internal fun CharacterDetailsContentColumn(
             }
         }
         CharacterStrips(details, subjects, navigation)
-        PersonCommentsSection(comments, details?.commentCount, onShowAll = { showAllComments = true })
+        PersonCommentsSection(commentState, onShowAll = { showAllComments = true })
     }
     if (showAllComments) {
-        PersonCommentsSheet(comments, details?.commentCount, onDismissRequest = { showAllComments = false })
+        PersonCommentsSheet(commentState, onDismissRequest = { showAllComments = false })
     }
 }
 
