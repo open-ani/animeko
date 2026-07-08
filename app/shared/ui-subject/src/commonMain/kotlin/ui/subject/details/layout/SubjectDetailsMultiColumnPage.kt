@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -61,9 +62,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import coil3.compose.AsyncImagePainter
+import com.kmpalette.color
+import com.kmpalette.palette.graphics.Palette
+import kotlinx.collections.immutable.toImmutableList
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
+import me.him188.ani.app.tools.ColorUtils
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
@@ -81,6 +86,7 @@ import me.him188.ani.app.ui.rating.EditableRatingState
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeButton
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
+import me.him188.ani.app.ui.subject.details.components.AnimatedGradientBackground
 import me.him188.ani.app.ui.subject.details.components.COVER_WIDTH_TO_HEIGHT_RATIO
 import me.him188.ani.app.ui.subject.details.components.RatingHistogram
 import me.him188.ani.app.ui.subject.details.components.RelatedSubjectsGrid
@@ -119,6 +125,7 @@ internal fun SubjectDetailsMultiColumnPage(
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
+    backgroundPalette: Palette? = null,
     navigationIcon: @Composable () -> Unit = {},
     onClickOpenExternal: () -> Unit = {},
     onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit = {},
@@ -147,6 +154,22 @@ internal fun SubjectDetailsMultiColumnPage(
         navigationIcon,
         onClickOpenExternal,
         topBarTitle = info.displayName,
+        backgroundOverlay = {
+            val surfaceColor = MaterialTheme.colorScheme.surface
+            val colors = remember(backgroundPalette) {
+                backgroundPalette?.swatches
+                    ?.map { ColorUtils.blendColor(it.color, surfaceColor, 0.85f) }
+                    ?.toImmutableList()
+            }
+            if (colors != null) {
+                AnimatedGradientBackground(
+                    colors,
+                    speed = 0.05,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+        },
     ) {
         // 左侧信息栏
         SubjectSidebar(
@@ -258,6 +281,7 @@ private fun MultiColumnScaffold(
     onClickOpenExternal: () -> Unit = {},
     topBarTitle: String? = null,
     scrollState: ScrollState = rememberScrollState(),
+    backgroundOverlay: @Composable (PaddingValues) -> Unit = {},
     content: @Composable RowScope.() -> Unit,
 ) {
     val density = LocalDensity.current
@@ -308,6 +332,7 @@ private fun MultiColumnScaffold(
         containerColor = AniThemeDefaults.pageContentBackgroundColor,
         contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
     ) { scaffoldPadding ->
+        backgroundOverlay(scaffoldPadding)
         Column(
             Modifier
                 .fillMaxSize()

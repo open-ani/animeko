@@ -78,8 +78,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import coil3.compose.AsyncImagePainter
+import com.kmpalette.rememberPaletteState
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.models.subject.RatingInfo
@@ -117,7 +117,7 @@ import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
-import me.him188.ani.app.ui.foundation.theme.MaterialThemeFromImage
+import me.him188.ani.app.ui.foundation.theme.MaterialThemeFromPaletteAndImage
 import me.him188.ani.app.ui.foundation.toComposeImageBitmap
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
@@ -322,11 +322,20 @@ private fun SubjectDetailsPage(
     val themeSettings = LocalThemeSettings.current
     var bitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     val onCoverImageSuccess = { success: AsyncImagePainter.State.Success ->
-        if (themeSettings.useDynamicSubjectPageTheme) {
-            bitmap = success.result.image.toComposeImageBitmap()
+        bitmap = success.result.image.toComposeImageBitmap()
+    }
+    val paletteState = rememberPaletteState()
+    LaunchedEffect(themeSettings, bitmap) {
+        val bitmap = bitmap ?: return@LaunchedEffect
+        if (themeSettings.useDynamicSubjectPageTheme || themeSettings.enableAnimatedGradientSubjectPage) {
+            paletteState.generate(bitmap)
         }
     }
-    MaterialThemeFromImage(bitmap) {
+
+    MaterialThemeFromPaletteAndImage(
+        if (themeSettings.useDynamicSubjectPageTheme) paletteState.palette else null,
+        if (themeSettings.useDynamicSubjectPageTheme) bitmap else null,
+    ) {
         if (showSelectEpisode) {
             EpisodeListDialog(
                 presentation.episodeListUiState,
@@ -370,11 +379,12 @@ private fun SubjectDetailsPage(
                 modifier = modifier,
                 showTopBar = showTopBar,
                 windowInsets = windowInsets,
+                backgroundPalette = if (themeSettings.enableAnimatedGradientSubjectPage) paletteState.palette else null,
                 navigationIcon = navigationIcon,
                 onClickOpenExternal = onClickOpenExternal,
                 onCoverImageSuccess = onCoverImageSuccess,
             )
-            return@MaterialThemeFromImage
+            return@MaterialThemeFromPaletteAndImage
         }
 
         SubjectDetailsLayout(

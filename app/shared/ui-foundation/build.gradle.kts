@@ -56,6 +56,7 @@ kotlin {
         api(libs.atomicfu)
 
         api(libs.materialkolor)
+        api(libs.kmpalette.core)
     }
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)

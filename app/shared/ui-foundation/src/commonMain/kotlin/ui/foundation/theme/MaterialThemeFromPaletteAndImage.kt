@@ -18,7 +18,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import com.kmpalette.color
+import com.kmpalette.palette.graphics.Palette
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamicColorScheme
 import kotlinx.coroutines.Dispatchers
@@ -28,14 +31,15 @@ import me.him188.ani.app.ui.foundation.resize
 import me.him188.ani.app.ui.foundation.themeColor
 
 /**
- * Generate a [MaterialTheme] from a [ImageBitmap].
+ * Generate a [MaterialTheme] from a [Palette].
  *
- * @receiver The [ImageBitmap] to generate from.
+ * @receiver The [Palette] to generate from.
  * @return Generated [MaterialTheme]
  */
 @Composable
-fun MaterialThemeFromImage(
-    bitmap: ImageBitmap?,
+fun MaterialThemeFromPaletteAndImage(
+    palette: Palette?,
+    image: ImageBitmap? = null,
     content: @Composable () -> Unit
 ) {
     val themeSettings = LocalThemeSettings.current
@@ -45,29 +49,27 @@ fun MaterialThemeFromImage(
         DarkMode.AUTO -> isSystemInDarkTheme()
     }
     val useBlackBackground = themeSettings.useBlackBackground
+
     var colorScheme by remember { mutableStateOf<ColorScheme?>(null) }
 
-    LaunchedEffect(bitmap) {
-        if (bitmap == null) return@LaunchedEffect
+    LaunchedEffect(palette, image) {
+        val primaryColor = palette?.vibrantSwatch?.color
+            ?: image?.let { withContext(Dispatchers.Default) { it.resize(64, 64).themeColor() } }
+            ?: return@LaunchedEffect
 
-        val computedColorScheme = withContext(Dispatchers.Default) {
-            val resizedBitmap = bitmap.resize(64, 64)
-            val seedColor = resizedBitmap.themeColor()
-            dynamicColorScheme(
-                primary = seedColor,
-                isDark = isDark,
-                isAmoled = useBlackBackground,
-                style = PaletteStyle.TonalSpot,
-                modifyColorScheme = { colorScheme ->
-                    modifyColorSchemeForBlackBackground(
-                        colorScheme,
-                        isDark,
-                        useBlackBackground,
-                    )
-                },
-            )
-        }
-        colorScheme = computedColorScheme
+        colorScheme = dynamicColorScheme(
+            primary = primaryColor,
+            isDark = isDark,
+            isAmoled = useBlackBackground,
+            style = PaletteStyle.TonalSpot,
+            modifyColorScheme = { colorScheme ->
+                modifyColorSchemeForBlackBackground(
+                    colorScheme,
+                    isDark,
+                    useBlackBackground,
+                )
+            },
+        )
     }
 
     MaterialTheme(
