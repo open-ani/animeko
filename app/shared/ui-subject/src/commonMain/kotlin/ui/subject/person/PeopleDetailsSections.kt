@@ -165,7 +165,7 @@ internal fun peopleMetaLine(kindLabel: String, collects: Int): String =
 private const val DEFAULT_HEADER_IMAGE_ASPECT = 110f / 147f
 
 /**
- * 头部行: 竖版立绘/照片 (高 147, 宽按原图比例, 圆角) + 名字/原名/meta 行. 用于单栏与侧边预览.
+ * 头部行: 竖版立绘/照片 (宽 110, 高按原图比例, 圆角) + 名字/原名/meta 行. 用于单栏与侧边预览.
  */
 @Composable
 internal fun PeopleHeaderRow(
@@ -176,14 +176,17 @@ internal fun PeopleHeaderRow(
     modifier: Modifier = Modifier,
     isPlaceholder: Boolean = false,
 ) {
-    // 立绘/照片完整展示 (原比例, Fit 不裁切): 容器高固定 147, 宽按图片实际比例自适应,
-    // 避免窄长立绘在固定宽度槽位里留出大空隙 (图片"太靠左"而文字很远).
+    // 立绘/照片完整展示 (原比例, Fit 不裁切): 容器宽固定 110, 高按图片实际比例自适应, 图片居中.
     var imageAspect by remember(imageUrl) { mutableStateOf(DEFAULT_HEADER_IMAGE_ASPECT) }
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+    Row(
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Box(
             Modifier
-                .height(147.dp)
-                .width(147.dp * imageAspect.coerceIn(0.4f, 1f))
+                .width(110.dp)
+                .height(110.dp / imageAspect.coerceIn(0.5f, 1.2f))
                 .clip(MaterialTheme.shapes.medium)
                 .placeholder(isPlaceholder),
         ) {
@@ -192,6 +195,7 @@ internal fun PeopleHeaderRow(
                 contentDescription = null,
                 modifier = Modifier.matchParentSize(),
                 contentScale = ContentScale.Fit,
+                alignment = Alignment.Center,
                 onSuccess = { state ->
                     val size = state.painter.intrinsicSize
                     if (size.width > 0f && size.height > 0f) {
@@ -200,10 +204,7 @@ internal fun PeopleHeaderRow(
                 },
             )
         }
-        Column(
-            Modifier.weight(1f).height(147.dp),
-            verticalArrangement = Arrangement.Center,
-        ) {
+        Column(Modifier.weight(1f)) {
             Text(
                 displayName,
                 Modifier.placeholder(isPlaceholder),
