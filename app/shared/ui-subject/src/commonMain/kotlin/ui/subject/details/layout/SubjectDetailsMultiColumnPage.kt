@@ -600,7 +600,9 @@ private fun RailCard(content: @Composable () -> Unit) {
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
-        Column(Modifier.padding(16.dp)) {
+        // 对齐设计稿 rail 卡 (视觉: 标题字形距顶 ~21, 距侧 20): 卡内首行 SectionHeader
+        // 的 TextButton (min 40dp) 居中 + 行框留白自带 ~17dp 顶空 (截图实测), 故 top=4.
+        Column(Modifier.padding(start = 20.dp, top = 4.dp, end = 20.dp, bottom = 18.dp)) {
             content()
         }
     }
