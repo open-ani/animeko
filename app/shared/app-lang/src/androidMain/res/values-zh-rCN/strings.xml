@@ -517,6 +517,8 @@
     <string name="settings_theme_always_dark_episode_description">提供更加沉浸的播放体验</string>
     <string name="settings_theme_dynamic_subject">条目详情页使用动态主题</string>
     <string name="settings_theme_dynamic_subject_description">根据封面生成动态主题</string>
+    <string name="settings_theme_animated_gradient_subject">条目详情页动态渐变背景</string>
+    <string name="settings_theme_animated_gradient_subject_description">根据封面生成动态渐变背景</string>
     <string name="settings_theme_palette">调色板</string>
     <string name="settings_theme_mode_light">浅色</string>
     <string name="settings_theme_mode_dark">深色</string>

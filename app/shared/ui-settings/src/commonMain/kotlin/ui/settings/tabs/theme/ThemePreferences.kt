@@ -27,6 +27,8 @@ import me.him188.ani.app.ui.foundation.theme.isPlatformSupportDynamicTheme
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_theme_always_dark_episode
 import me.him188.ani.app.ui.lang.settings_theme_always_dark_episode_description
+import me.him188.ani.app.ui.lang.settings_theme_animated_gradient_subject
+import me.him188.ani.app.ui.lang.settings_theme_animated_gradient_subject_description
 import me.him188.ani.app.ui.lang.settings_theme_dynamic_colors
 import me.him188.ani.app.ui.lang.settings_theme_dynamic_colors_description
 import me.him188.ani.app.ui.lang.settings_theme_dynamic_subject
@@ -92,6 +94,15 @@ fun SettingsScope.ThemeGroup(
             },
             title = { Text(stringResource(Lang.settings_theme_dynamic_subject)) },
             description = { Text(stringResource(Lang.settings_theme_dynamic_subject_description)) },
+        )
+
+        SwitchItem(
+            checked = themeSettings.enableAnimatedGradientSubjectPage,
+            onCheckedChange = { checked ->
+                state.update(themeSettings.copy(enableAnimatedGradientSubjectPage = checked))
+            },
+            title = { Text(stringResource(Lang.settings_theme_animated_gradient_subject)) },
+            description = { Text(stringResource(Lang.settings_theme_animated_gradient_subject_description)) },
         )
     }
 

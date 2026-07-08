@@ -477,6 +477,8 @@
     <string name="settings_theme_always_dark_episode_description">Provides a more immersive playback experience</string>
     <string name="settings_theme_dynamic_subject">Use Dynamic Theme in Item Detail Page</string>
     <string name="settings_theme_dynamic_subject_description">Generate dynamic theme based on cover image</string>
+    <string name="settings_theme_animated_gradient_subject">Animated Gradient Background in Item Detail Page</string>
+    <string name="settings_theme_animated_gradient_subject_description">Generate animated gradient background based on cover image</string>
     <string name="settings_theme_palette">Color Palette</string>
     <string name="settings_theme_mode_light">Light</string>
     <string name="settings_theme_mode_dark">Dark</string>
