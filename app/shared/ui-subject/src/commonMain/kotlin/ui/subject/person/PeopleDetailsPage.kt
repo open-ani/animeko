@@ -186,10 +186,12 @@ private fun PeopleDetailsScaffold(
         // 单栏的名字在头部行 (110x147 图片右侧垂直居中), 多栏在中栏标题块首行.
         val titleScrollOutHeight =
             if (layoutParams.isMultiColumn) MULTI_COLUMN_TITLE_HEIGHT else COMPACT_HEADER_TITLE_HEIGHT
+        // 单栏: 透明 top bar 已占据顶部空间, 内容直接贴其下方 (与条目详情单栏一致); 不再额外加顶距.
+        val contentTopPadding = if (layoutParams.isMultiColumn) layoutParams.contentTopPadding else 0.dp
         val stickyTopBarVisible by remember(scrollState, density, layoutParams) {
             derivedStateOf {
                 scrollState.value >
-                        with(density) { (layoutParams.contentTopPadding + titleScrollOutHeight).toPx() }
+                        with(density) { (contentTopPadding + titleScrollOutHeight).toPx() }
             }
         }
         val topAppBarWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
@@ -230,7 +232,7 @@ private fun PeopleDetailsScaffold(
                         .verticalScroll(scrollState)
                         .padding(horizontal = layoutParams.contentHorizontalPadding)
                         .padding(
-                            top = layoutParams.contentTopPadding,
+                            top = contentTopPadding,
                             bottom = layoutParams.contentBottomPadding,
                         ),
                 ) {
@@ -245,7 +247,7 @@ private fun PeopleDetailsScaffold(
                         .padding(
                             start = layoutParams.contentHorizontalPadding,
                             end = layoutParams.contentHorizontalPadding,
-                            top = layoutParams.contentTopPadding,
+                            top = contentTopPadding,
                             bottom = layoutParams.contentBottomPadding,
                         ),
                     horizontalArrangement = Arrangement.spacedBy(layoutParams.columnSpacing),
