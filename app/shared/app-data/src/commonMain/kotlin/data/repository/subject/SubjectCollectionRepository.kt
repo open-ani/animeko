@@ -676,7 +676,7 @@ fun AniSubjectCollection.toEntity(
         nameCn = nameCn,
         summary = summary,
         nsfw = nsfw,
-        imageLarge = "https://api.bgm.tv/v0/subjects/${id}/image?type=large",
+        imageLarge = staticSubjectImageLargeUrl(id.toInt()),
         totalEpisodes = episodes.size,
         airDate = PackedDate.parseFromDate(airDate),
         aliases = aliases,
@@ -710,6 +710,9 @@ fun AniSubjectCollection.toEntity(
         cachedCharactersUpdated = 0,
     )
 }
+
+private fun staticSubjectImageLargeUrl(subjectId: Int): String =
+    "https://static.myani.org/bangumi/subjects/$subjectId/large"
 
 fun AniSubjectRelations.toSubjectRelationsEntity(): SubjectRelations {
     return SubjectRelations(
