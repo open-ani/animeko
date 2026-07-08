@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.subject.details.layout
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,12 +25,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.rounded.StarOutline
@@ -58,8 +58,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
 import coil3.compose.AsyncImagePainter
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
@@ -70,8 +70,8 @@ import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.subject_details_episodes
 import me.him188.ani.app.ui.lang.rating_self_score
+import me.him188.ani.app.ui.lang.subject_details_episodes
 import me.him188.ani.app.ui.lang.subject_details_info
 import me.him188.ani.app.ui.lang.subject_details_login_to_collect
 import me.him188.ani.app.ui.lang.subject_details_rate
@@ -80,8 +80,8 @@ import me.him188.ani.app.ui.lang.subject_details_related_subjects
 import me.him188.ani.app.ui.rating.EditableRatingState
 import me.him188.ani.app.ui.subject.AiringLabel
 import me.him188.ani.app.ui.subject.collection.components.EditableSubjectCollectionTypeButton
-import me.him188.ani.app.ui.subject.details.components.COVER_WIDTH_TO_HEIGHT_RATIO
 import me.him188.ani.app.ui.subject.collection.progress.SubjectProgressButton
+import me.him188.ani.app.ui.subject.details.components.COVER_WIDTH_TO_HEIGHT_RATIO
 import me.him188.ani.app.ui.subject.details.components.RatingHistogram
 import me.him188.ani.app.ui.subject.details.components.RelatedSubjectsGrid
 import me.him188.ani.app.ui.subject.details.components.rememberNavigateToRelatedSubject
@@ -169,7 +169,9 @@ internal fun SubjectDetailsMultiColumnPage(
             verticalArrangement = Arrangement.spacedBy(layoutParams.sectionSpacing),
         ) {
             SubjectTitleBlock(info, state)
-            SubjectRatingRow(state, showHistogram = layoutParams.showInlineRatingHistogram)
+            if (layoutParams.kind != SubjectDetailsPaneKind.EXPANDED) {
+                SubjectRatingRow(state, showHistogram = layoutParams.showInlineRatingHistogram)
+            }
             if (info.summary.isNotBlank()) {
                 SubjectSummarySection(info.summary)
             }
