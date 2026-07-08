@@ -348,7 +348,12 @@ internal fun PeoplePortraitCard(
     ) {
         if (circleCrop) {
             Box(Modifier.size(width).clip(CircleShape)) {
-                AvatarImage(imageUrl, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
+                AvatarImage(
+                    imageUrl,
+                    Modifier.matchParentSize(),
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.TopCenter,
+                )
             }
         } else {
             Box(Modifier.size(width, width * 4 / 3).clip(MaterialTheme.shapes.small)) {
