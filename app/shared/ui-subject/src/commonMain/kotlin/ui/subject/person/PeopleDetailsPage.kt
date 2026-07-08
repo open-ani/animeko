@@ -315,9 +315,9 @@ private fun PeopleDetailsScaffold(
                             PersonCommentsSection(
                                 commentState,
                                 onShowAll = { showAllComments = true },
-                                // 16dp 与条目详情 RailCard 一致; 顶部再减去标题行 TextButton
-                                // (min 40dp) 居中留出的 ~8dp, 视觉上下左右一致.
-                                Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp),
+                                // 标题行自带 ~17dp 顶空 (TextButton min 40dp 居中 + 行框留白,
+                                // 截图实测), 故顶部 padding 为 0, 字形距卡顶即 ~16dp, 与左右一致.
+                                Modifier.padding(start = 16.dp, top = 0.dp, end = 16.dp, bottom = 16.dp),
                             )
                         }
                     }
