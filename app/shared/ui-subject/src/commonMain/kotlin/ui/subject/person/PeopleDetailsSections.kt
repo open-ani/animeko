@@ -29,10 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,7 +49,6 @@ import me.him188.ani.app.tools.formatDateTime
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.external.placeholder.placeholder
-import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ImageViewer
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.layout.rememberConnectedScrollState
@@ -161,11 +157,8 @@ internal fun characterRoleLabel(role: Int): String = stringResource(
 internal fun peopleMetaLine(kindLabel: String, collects: Int): String =
     stringResource(Lang.person_details_meta, kindLabel, remember(collects) { groupThousands(collects) })
 
-/** 头部图片加载完成前的默认纵横比 (人物照片常见 ~3:4). */
-private const val DEFAULT_HEADER_IMAGE_ASPECT = 110f / 147f
-
 /**
- * 头部行: 竖版立绘/照片 (宽 110, 高按原图比例, 圆角) + 名字/原名/meta 行. 用于单栏与侧边预览.
+ * 头部行: 竖版立绘/照片 (固定 110x147, crop 顶部对齐) + 名字/原名/meta 行. 用于单栏与侧边预览.
  */
 @Composable
 internal fun PeopleHeaderRow(
@@ -176,8 +169,6 @@ internal fun PeopleHeaderRow(
     modifier: Modifier = Modifier,
     isPlaceholder: Boolean = false,
 ) {
-    // 立绘/照片完整展示 (原比例, Fit 不裁切): 容器宽固定 110, 高按图片实际比例自适应, 图片居中.
-    var imageAspect by remember(imageUrl) { mutableStateOf(DEFAULT_HEADER_IMAGE_ASPECT) }
     Row(
         modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -185,23 +176,15 @@ internal fun PeopleHeaderRow(
     ) {
         Box(
             Modifier
-                .width(110.dp)
-                .height(110.dp / imageAspect.coerceIn(0.5f, 1.2f))
+                .size(110.dp, 147.dp)
                 .clip(MaterialTheme.shapes.medium)
                 .placeholder(isPlaceholder),
         ) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = null,
-                modifier = Modifier.matchParentSize(),
-                contentScale = ContentScale.Fit,
-                alignment = Alignment.Center,
-                onSuccess = { state ->
-                    val size = state.painter.intrinsicSize
-                    if (size.width > 0f && size.height > 0f) {
-                        imageAspect = size.width / size.height
-                    }
-                },
+            AvatarImage(
+                imageUrl,
+                Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.TopCenter,
             )
         }
         Column(Modifier.weight(1f)) {
@@ -338,7 +321,13 @@ internal fun PeopleSubjectCard(
     }
 }
 
-/** 横向人物卡: 2:3 立绘 (Fit, 不裁切) + 名字 + 说明. 与条目详情角色条一致. */
+/** Figma 组件 `PersonCastCard` 的头像宽度; 头像高按 3:4 (96x128). */
+internal val PersonCastCardWidth = 96.dp
+
+/**
+ * 人物卡, 对应 Figma 组件 `PersonCastCard`: 头像固定 96x128 (crop, 顶部对齐) + 角色名 + 作品名 (左对齐).
+ * [circleCrop] 用于真人照片 (声优条): 圆形头像 + 居中文本.
+ */
 @Composable
 internal fun PeoplePortraitCard(
     imageUrl: String?,
@@ -346,7 +335,7 @@ internal fun PeoplePortraitCard(
     caption: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    width: Dp = 76.dp,
+    width: Dp = PersonCastCardWidth,
     circleCrop: Boolean = false,
 ) {
     Column(
@@ -354,7 +343,7 @@ internal fun PeoplePortraitCard(
             .width(width)
             .clip(MaterialTheme.shapes.small)
             .clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
+        horizontalAlignment = if (circleCrop) Alignment.CenterHorizontally else Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (circleCrop) {
@@ -362,8 +351,13 @@ internal fun PeoplePortraitCard(
                 AvatarImage(imageUrl, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
             }
         } else {
-            Box(Modifier.size(width, width * 3 / 2).clip(MaterialTheme.shapes.small)) {
-                AvatarImage(imageUrl, Modifier.matchParentSize(), contentScale = ContentScale.Fit)
+            Box(Modifier.size(width, width * 4 / 3).clip(MaterialTheme.shapes.small)) {
+                AvatarImage(
+                    imageUrl,
+                    Modifier.matchParentSize(),
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.TopCenter,
+                )
             }
         }
         Text(

@@ -58,6 +58,7 @@ import me.him188.ani.app.data.models.person.PersonWorkInfo
 import me.him188.ani.app.data.models.subject.nameCn
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.external.placeholder.placeholder
+import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
@@ -254,18 +255,26 @@ private fun PeopleDetailsScaffold(
                         Modifier.width(layoutParams.sidebarWidth),
                         verticalArrangement = Arrangement.spacedBy(layoutParams.sidebarItemSpacing),
                     ) {
+                        // 定稿: 固定宽度, 高按原图比例自适应 (加载前用 340:482 占位)
+                        var coverAspect by remember(sidebarImageUrl) { mutableStateOf(340f / 482f) }
                         Box(
                             Modifier
                                 .fillMaxWidth()
-                                // Figma Cover 340x482; Fit 完整显示立绘/照片
-                                .aspectRatio(340f / 482f)
+                                .aspectRatio(coverAspect.coerceIn(0.4f, 1.6f))
                                 .clip(MaterialTheme.shapes.medium)
                                 .placeholder(isPlaceholder),
                         ) {
-                            AvatarImage(
-                                sidebarImageUrl,
-                                Modifier.matchParentSize(),
+                            AsyncImage(
+                                model = sidebarImageUrl,
+                                contentDescription = null,
+                                modifier = Modifier.matchParentSize(),
                                 contentScale = ContentScale.Fit,
+                                onSuccess = { state ->
+                                    val size = state.painter.intrinsicSize
+                                    if (size.width > 0f && size.height > 0f) {
+                                        coverAspect = size.width / size.height
+                                    }
+                                },
                             )
                         }
                         if (sidebarInfo.isNotEmpty()) {
@@ -493,6 +502,7 @@ private fun CharacterStrips(
                         name = actor.displayName,
                         caption = null,
                         onClick = { navigation.onClickPerson(actor.id) },
+                        width = 76.dp,
                         circleCrop = true,
                     )
                 }
