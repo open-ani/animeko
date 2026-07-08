@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -156,11 +157,12 @@ fun SubjectRatingSummary(
 }
 
 /**
- * 角色区块: 标题行 (+"查看全部" -> 全量列表 sheet) + 横向卡片条 (2:3 立绘卡 + 角色名 + CV).
+ * 角色区块: 标题行 (+"查看全部" -> 全量列表 sheet) + 横向头像条 (固定圆形头像 + 角色名 + CV).
  *
- * 角色图多为窄长全身立绘 (纵横比可低至 ~1:2), 用 [ContentScale.Fit] 完整显示, 不得裁切人物.
+ * 头像为固定大小圆形, 图片 crop 顶部对齐 (角色图多为全身立绘, 顶部对齐保证露脸).
+ * 尺寸对齐 Figma `CharacterCard`: 桌面 Large (头像 76, 间距 12), 手机 Small (头像 56, 间距 0).
  *
- * @param contentPadding 卡片条与标题的水平内边距; 手机端传水平 16dp 可让卡片条边到边滚动.
+ * @param contentPadding 头像条与标题的水平内边距; 手机端传水平 16dp 可让头像条边到边滚动.
  */
 @Composable
 fun CharactersSection(
@@ -170,6 +172,7 @@ fun CharactersSection(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     itemWidth: Dp = 76.dp,
+    avatarSize: Dp = 76.dp,
     itemSpacing: Dp = 12.dp,
 ) {
     if (exposedCharacters.itemCount == 0) return
@@ -189,7 +192,7 @@ fun CharactersSection(
             items(exposedCharacters.itemCount) { i ->
                 val item = exposedCharacters[i] ?: return@items
                 CharacterAvatarCell(
-                    item, itemWidth,
+                    item, itemWidth, avatarSize,
                     onClick = { onClickCharacter(PeoplePreviewTarget.Character(item.character.id)) },
                 )
             }
@@ -217,7 +220,12 @@ fun CharactersSection(
 }
 
 @Composable
-private fun CharacterAvatarCell(info: RelatedCharacterInfo, itemWidth: Dp, onClick: () -> Unit) {
+private fun CharacterAvatarCell(
+    info: RelatedCharacterInfo,
+    itemWidth: Dp,
+    avatarSize: Dp,
+    onClick: () -> Unit,
+) {
     val cv = remember(info) { info.character.actors.firstOrNull()?.displayName }
     Column(
         Modifier
@@ -227,11 +235,13 @@ private fun CharacterAvatarCell(info: RelatedCharacterInfo, itemWidth: Dp, onCli
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Box(Modifier.size(itemWidth, itemWidth * 3 / 2).clip(MaterialTheme.shapes.small)) {
+        // 固定圆形, crop, 顶部对齐 (立绘顶部为脸部)
+        Box(Modifier.size(avatarSize).clip(CircleShape)) {
             AvatarImage(
                 info.character.imageMedium,
                 Modifier.matchParentSize(),
-                contentScale = ContentScale.Fit,
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.TopCenter,
             )
         }
         Text(
