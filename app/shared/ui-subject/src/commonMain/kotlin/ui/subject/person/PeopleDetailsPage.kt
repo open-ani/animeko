@@ -315,9 +315,9 @@ private fun PeopleDetailsScaffold(
                             PersonCommentsSection(
                                 commentState,
                                 onShowAll = { showAllComments = true },
-                                // 顶部少给一点: 标题行右侧 "N 条 ›" 是 TextButton (min 40dp),
-                                // 把居中的标题文字往下推了约 8dp, 补偿后视觉上下左右一致.
-                                Modifier.padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 20.dp),
+                                // 16dp 与条目详情 RailCard 一致; 顶部再减去标题行 TextButton
+                                // (min 40dp) 居中留出的 ~8dp, 视觉上下左右一致.
+                                Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp),
                             )
                         }
                     }
