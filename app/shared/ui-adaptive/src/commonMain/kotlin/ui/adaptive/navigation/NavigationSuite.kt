@@ -36,12 +36,15 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
+import me.him188.ani.app.ui.foundation.theme.appChromeFrostedGlass
+import me.him188.ani.app.ui.foundation.theme.isAppChromeFrostedGlassActive
 import me.him188.ani.utils.platform.currentTimeMillis
 
 /**
@@ -67,6 +70,7 @@ fun AniNavigationSuite(
     val defaultItemColors by rememberUpdatedState(NavigationSuiteDefaults.itemColors())
 
     val viewConfiguration = LocalViewConfiguration.current
+    val frostedGlassActive = isAppChromeFrostedGlassActive()
 
     @Composable
     fun withDoubleClick(
@@ -93,8 +97,11 @@ fun AniNavigationSuite(
     when (layoutType) {
         NavigationSuiteType.NavigationBar -> {
             NavigationBar(
-                modifier = modifier,
-                containerColor = colors.navigationBarContainerColor,
+                modifier = modifier.appChromeFrostedGlass(
+                    enabled = frostedGlassActive,
+                    containerColor = colors.navigationBarContainerColor,
+                ),
+                containerColor = if (frostedGlassActive) Color.Transparent else colors.navigationBarContainerColor,
                 contentColor = colors.navigationBarContentColor,
                 windowInsets = AniWindowInsets.forNavigationBar(), // Ani added
             ) {
@@ -117,8 +124,11 @@ fun AniNavigationSuite(
 
         NavigationSuiteType.NavigationRail -> {
             NavigationRail(
-                modifier = modifier,
-                containerColor = colors.navigationRailContainerColor,
+                modifier = modifier.appChromeFrostedGlass(
+                    enabled = frostedGlassActive,
+                    containerColor = colors.navigationRailContainerColor,
+                ),
+                containerColor = if (frostedGlassActive) Color.Transparent else colors.navigationRailContainerColor,
                 contentColor = colors.navigationRailContentColor,
                 windowInsets = AniWindowInsets.forNavigationRail(), // Ani added
                 header = {
@@ -164,8 +174,11 @@ fun AniNavigationSuite(
 
         NavigationSuiteType.NavigationDrawer -> {
             PermanentDrawerSheet(
-                modifier = modifier,
-                drawerContainerColor = colors.navigationDrawerContainerColor,
+                modifier = modifier.appChromeFrostedGlass(
+                    enabled = frostedGlassActive,
+                    containerColor = colors.navigationDrawerContainerColor,
+                ),
+                drawerContainerColor = if (frostedGlassActive) Color.Transparent else colors.navigationDrawerContainerColor,
                 drawerContentColor = colors.navigationDrawerContentColor,
                 windowInsets = AniWindowInsets.forNavigationDrawer(), // Ani added
             ) {

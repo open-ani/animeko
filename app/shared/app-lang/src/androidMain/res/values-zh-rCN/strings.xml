@@ -521,6 +521,8 @@
     <string name="settings_theme_dynamic_subject_description">根据封面生成动态主题</string>
     <string name="settings_theme_animated_gradient_subject">条目详情页动态渐变背景</string>
     <string name="settings_theme_animated_gradient_subject_description">根据封面生成动态渐变背景。开启后可能导致设备发热和耗电增加</string>
+    <string name="settings_theme_frosted_glass">顶栏和导航栏毛玻璃效果</string>
+    <string name="settings_theme_frosted_glass_description">为顶栏和导航栏使用模糊的半透明背景</string>
     <string name="settings_theme_palette">调色板</string>
     <string name="settings_theme_mode_light">浅色</string>
     <string name="settings_theme_mode_dark">深色</string>

@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -57,6 +58,7 @@ import me.him188.ani.app.ui.foundation.createDefaultImageLoader
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.rememberPlatformFontFamily
 import me.him188.ani.app.ui.foundation.theme.AniTheme
+import me.him188.ani.app.ui.foundation.theme.LocalAppChromeHazeState
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.lang.LocaleZhCN
 import me.him188.ani.utils.ktor.ScopedHttpClient
@@ -191,12 +193,14 @@ fun AniApp(
     val viewModel = viewModel { AniAppViewModel() }
     // 主题读好再进入 APP, 防止黑白背景闪烁
     val appState = viewModel.appState.collectAsStateWithLifecycle(null).value ?: return
+    val appChromeHazeState = rememberHazeState()
 
     CompositionLocalProvider(
 //        LocalImageLoader provides imageLoader,
         LocalImageLoader provides rememberImageLoader(appState.imageLoaderClient),
         LocalTimeFormatter provides remember { TimeFormatter() },
         LocalThemeSettings provides appState.themeSettings,
+        LocalAppChromeHazeState provides appChromeHazeState,
         LocalPlatformFontFamily provides rememberPlatformFontFamily(appState.platformFont),
     ) {
         val focusManager by rememberUpdatedState(LocalFocusManager.current)

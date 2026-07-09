@@ -481,6 +481,8 @@
     <string name="settings_theme_dynamic_subject_description">Generate dynamic theme based on cover image</string>
     <string name="settings_theme_animated_gradient_subject">Animated Gradient Background in Item Detail Page</string>
     <string name="settings_theme_animated_gradient_subject_description">Generate animated gradient background based on cover image. Enabling this may increase device temperature and battery usage</string>
+    <string name="settings_theme_frosted_glass">Frosted Glass Top and Navigation Bars</string>
+    <string name="settings_theme_frosted_glass_description">Use a blurred translucent background for the top app bar and navigation bar</string>
     <string name="settings_theme_palette">Color Palette</string>
     <string name="settings_theme_mode_light">Light</string>
     <string name="settings_theme_mode_dark">Dark</string>

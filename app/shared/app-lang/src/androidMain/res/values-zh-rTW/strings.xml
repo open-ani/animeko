@@ -488,6 +488,8 @@
     <string name="settings_theme_dynamic_subject_description">根據封面生成動態主題</string>
     <string name="settings_theme_animated_gradient_subject">條目詳情頁動態漸層背景</string>
     <string name="settings_theme_animated_gradient_subject_description">根據封面生成動態漸層背景。開啟後可能導致裝置發熱和耗電增加</string>
+    <string name="settings_theme_frosted_glass">頂欄和導覽列毛玻璃效果</string>
+    <string name="settings_theme_frosted_glass_description">為頂欄和導覽列使用模糊的半透明背景</string>
     <string name="settings_theme_palette">調色板</string>
     <string name="settings_theme_mode_light">淺色</string>
     <string name="settings_theme_mode_dark">深色</string>

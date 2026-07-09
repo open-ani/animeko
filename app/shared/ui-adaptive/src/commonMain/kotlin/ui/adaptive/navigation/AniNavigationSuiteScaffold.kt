@@ -32,6 +32,7 @@ import me.him188.ani.app.ui.foundation.layout.isHeightCompact
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastExpanded
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.theme.appChromeHazeSource
 
 /**
  * @param navigationSuite use [AniNavigationSuite]
@@ -60,20 +61,22 @@ fun AniNavigationSuiteLayout(
             layoutType = layoutType,
             content = {
                 Box(
-                    Modifier.consumeWindowInsets(
-                        when (layoutType) {
-                            NavigationSuiteType.NavigationBar ->
-                                AniWindowInsets.forNavigationBar().only(WindowInsetsSides.Bottom)
+                    Modifier
+                        .appChromeHazeSource()
+                        .consumeWindowInsets(
+                            when (layoutType) {
+                                NavigationSuiteType.NavigationBar ->
+                                    AniWindowInsets.forNavigationBar().only(WindowInsetsSides.Bottom)
 
-                            NavigationSuiteType.NavigationRail ->
-                                AniWindowInsets.forNavigationRail().only(WindowInsetsSides.Start)
+                                NavigationSuiteType.NavigationRail ->
+                                    AniWindowInsets.forNavigationRail().only(WindowInsetsSides.Start)
 
-                            NavigationSuiteType.NavigationDrawer ->
-                                AniWindowInsets.forNavigationDrawer().only(WindowInsetsSides.Start)
+                                NavigationSuiteType.NavigationDrawer ->
+                                    AniWindowInsets.forNavigationDrawer().only(WindowInsetsSides.Start)
 
-                            else -> WindowInsets.Zero
-                        },
-                    ),
+                                else -> WindowInsets.Zero
+                            },
+                        ),
                 ) {
                     content()
                 }
@@ -108,4 +111,3 @@ object AniNavigationSuiteDefaults {
         }
     }
 }
-

@@ -57,6 +57,7 @@ kotlin {
 
         api(libs.materialkolor)
         api(libs.kmpalette.core)
+        api(libs.haze)
     }
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)

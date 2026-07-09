@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.ThemeSettings
+import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.isPlatformSupportDynamicTheme
 import me.him188.ani.app.ui.lang.Lang
@@ -33,6 +34,8 @@ import me.him188.ani.app.ui.lang.settings_theme_dynamic_colors
 import me.him188.ani.app.ui.lang.settings_theme_dynamic_colors_description
 import me.him188.ani.app.ui.lang.settings_theme_dynamic_subject
 import me.him188.ani.app.ui.lang.settings_theme_dynamic_subject_description
+import me.him188.ani.app.ui.lang.settings_theme_frosted_glass
+import me.him188.ani.app.ui.lang.settings_theme_frosted_glass_description
 import me.him188.ani.app.ui.lang.settings_theme_high_contrast
 import me.him188.ani.app.ui.lang.settings_theme_high_contrast_description
 import me.him188.ani.app.ui.lang.settings_theme_palette
@@ -41,6 +44,7 @@ import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.theme.themeColorOptions
+import me.him188.ani.utils.platform.isAndroid
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -104,6 +108,17 @@ fun SettingsScope.ThemeGroup(
             title = { Text(stringResource(Lang.settings_theme_animated_gradient_subject)) },
             description = { Text(stringResource(Lang.settings_theme_animated_gradient_subject_description)) },
         )
+
+        if (LocalPlatform.current.isAndroid()) {
+            SwitchItem(
+                checked = themeSettings.enableFrostedGlassEffect,
+                onCheckedChange = { checked ->
+                    state.update(themeSettings.copy(enableFrostedGlassEffect = checked))
+                },
+                title = { Text(stringResource(Lang.settings_theme_frosted_glass)) },
+                description = { Text(stringResource(Lang.settings_theme_frosted_glass_description)) },
+            )
+        }
     }
 
     Box(
