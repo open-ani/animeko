@@ -24,6 +24,7 @@ import me.him188.ani.app.data.models.danmaku.DanmakuConfigSerializer
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
 import me.him188.ani.app.data.models.preference.AnalyticsSettings
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
+import me.him188.ani.app.data.models.preference.BangumiSettings
 import me.him188.ani.app.data.models.preference.DanmakuSettings
 import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.MediaCacheSettings
@@ -80,6 +81,8 @@ interface SettingsRepository {
     val torrentPeerConfig: Settings<TorrentPeerConfig>
 
     val oneshotActionConfig: Settings<OneshotActionConfig>
+
+    val bangumiSettings: Settings<BangumiSettings>
 
     val analyticsSettings: Settings<AnalyticsSettings>
     val debugSettings: Settings<DebugSettings>
@@ -242,6 +245,12 @@ class PreferencesRepositoryImpl(
         "oneshotActionConfig",
         OneshotActionConfig.serializer(),
         default = { OneshotActionConfig.Default },
+    )
+
+    override val bangumiSettings: Settings<BangumiSettings> = SerializablePreference(
+        "bangumiSettings",
+        BangumiSettings.serializer(),
+        default = { BangumiSettings.Default },
     )
 
     override val analyticsSettings: Settings<AnalyticsSettings> = SerializablePreference(

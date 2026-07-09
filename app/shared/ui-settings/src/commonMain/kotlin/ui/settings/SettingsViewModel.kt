@@ -26,6 +26,7 @@ import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
 import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.data.models.preference.AnalyticsSettings
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
+import me.him188.ani.app.data.models.preference.BangumiSettings
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.DanmakuSettings
 import me.him188.ani.app.data.models.preference.DebugSettings
@@ -382,6 +383,7 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
             anitorrentConfig = settingsRepository.anitorrentConfig.flow.first(),
             torrentPeerConfig = settingsRepository.torrentPeerConfig.flow.first(),
             oneshotActionConfig = settingsRepository.oneshotActionConfig.flow.first(),
+            bangumiSettings = settingsRepository.bangumiSettings.flow.first(),
             analyticsSettings = settingsRepository.analyticsSettings.flow.first(),
             debugSettings = settingsRepository.debugSettings.flow.first(),
             // Account credentials must not leak into exported settings; keep
@@ -417,6 +419,7 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
         backup.anitorrentConfig?.let { settingsRepository.anitorrentConfig.set(it) }
         backup.torrentPeerConfig?.let { settingsRepository.torrentPeerConfig.set(it) }
         backup.oneshotActionConfig?.let { settingsRepository.oneshotActionConfig.set(it) }
+        backup.bangumiSettings?.let { settingsRepository.bangumiSettings.set(it) }
         backup.analyticsSettings?.let { settingsRepository.analyticsSettings.set(it) }
         backup.debugSettings?.let { settingsRepository.debugSettings.set(it) }
         // pikpakConfig deliberately not restored: see serializeSettingsBackup.
@@ -470,6 +473,7 @@ private data class SettingsBackup(
     val anitorrentConfig: AnitorrentConfig?,
     val torrentPeerConfig: TorrentPeerConfig?,
     val oneshotActionConfig: OneshotActionConfig?,
+    val bangumiSettings: BangumiSettings? = null,
     val analyticsSettings: AnalyticsSettings?,
     val debugSettings: DebugSettings?,
     val pikpakConfig: PikPakConfig? = null,

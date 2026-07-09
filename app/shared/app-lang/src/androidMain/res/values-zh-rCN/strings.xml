@@ -678,6 +678,8 @@
     <string name="oauth_bangumi_waiting_result">正在等待结果</string>
     <string name="oauth_bangumi_authorized">已授权</string>
     <string name="oauth_bangumi_cancel">取消</string>
+    <string name="oauth_bangumi_web_base_url">Bangumi 网页域名</string>
+    <string name="oauth_bangumi_web_base_url_description">仅用于打开 Bangumi 授权页面。除非信任替代域名，否则请使用官方域名。</string>
     <string name="oauth_bangumi_help_title">帮助</string>
     <string name="oauth_bangumi_help_bangumi_desc">Bangumi 是什么</string>
     <string name="oauth_bangumi_help_website_blocked">浏览器提示网站被屏蔽或禁止访问</string>
@@ -687,7 +689,7 @@
     <string name="oauth_bangumi_help_activation_failed">注册时一直激活失败</string>
     <string name="oauth_bangumi_help_others">其他问题</string>
     <string name="oauth_bangumi_help_bangumi_desc_content">Bangumi 番组计划是一个中文互联网的 ACGN 内容分享与交流网站，致力于提供一个轻松便捷独特的交流与沟通环境。\nBangumi 提供了番剧索引、番剧收藏、追番进度等功能，Ani 可以将你的观看记录同步至 Bangumi。</string>
-    <string name="oauth_bangumi_help_website_blocked_content">请在系统设置中更换默认浏览器，推荐使用 Google Chrome、Microsoft Edge 或 Mozilla Firefox。</string>
+    <string name="oauth_bangumi_help_website_blocked_content">请在系统设置中更换默认浏览器，推荐使用 Google Chrome、Microsoft Edge 或 Mozilla Firefox。如果需要使用其他可信域名，也可以编辑上方的 Bangumi 网页域名。</string>
     <string name="oauth_bangumi_help_register_choose_content">选择“管理 ACG 收藏与收视进度，分享交流”这一项。</string>
     <string name="oauth_bangumi_help_wrong_captcha_content">如果没有验证码输入框，可以尝试多点几次密码输入框；如果输错了验证码，需要刷新页面后再重新登录。</string>
     <string name="oauth_bangumi_help_cant_receive_email_content">请检查垃圾箱，并尽可能使用常见邮箱注册，例如 QQ 邮箱、网易邮箱或 Outlook。</string>

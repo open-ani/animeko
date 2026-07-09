@@ -638,6 +638,8 @@
     <string name="oauth_bangumi_waiting_result">Waiting for result</string>
     <string name="oauth_bangumi_authorized">Authorized</string>
     <string name="oauth_bangumi_cancel">Cancel</string>
+    <string name="oauth_bangumi_web_base_url">Bangumi Website</string>
+    <string name="oauth_bangumi_web_base_url_description">Used only when opening the Bangumi authorization page. Use the official domain unless you trust the replacement.</string>
     <string name="oauth_bangumi_help_title">Help</string>
     <string name="oauth_bangumi_help_bangumi_desc">What is Bangumi?</string>
     <string name="oauth_bangumi_help_website_blocked">The browser says the website is blocked or inaccessible</string>
@@ -647,7 +649,7 @@
     <string name="oauth_bangumi_help_activation_failed">Account activation keeps failing during registration</string>
     <string name="oauth_bangumi_help_others">Other issues</string>
     <string name="oauth_bangumi_help_bangumi_desc_content">Bangumi is a Chinese ACGN community website for sharing and discussion.\nBangumi provides anime indexes, collections, and watch progress tracking. Ani can sync your watch history to Bangumi.</string>
-    <string name="oauth_bangumi_help_website_blocked_content">Change your default browser in system settings. Google Chrome, Microsoft Edge, and Mozilla Firefox are recommended.</string>
+    <string name="oauth_bangumi_help_website_blocked_content">Change your default browser in system settings. Google Chrome, Microsoft Edge, and Mozilla Firefox are recommended. You can also edit the Bangumi Website field above if you need to use another trusted domain.</string>
     <string name="oauth_bangumi_help_register_choose_content">Choose the option for managing ACG collections and watch progress, then sharing and discussing them.</string>
     <string name="oauth_bangumi_help_wrong_captcha_content">If there is no captcha input box, try clicking the password box a few more times. If you entered the captcha incorrectly, refresh the page before signing in again.</string>
     <string name="oauth_bangumi_help_cant_receive_email_content">Check your spam folder and try registering with a common email provider such as QQ Mail, NetEase Mail, or Outlook.</string>

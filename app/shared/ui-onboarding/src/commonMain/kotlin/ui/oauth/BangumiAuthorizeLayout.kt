@@ -50,10 +50,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.preference.BangumiSettings
+import me.him188.ani.app.data.models.preference.DEFAULT_BANGUMI_WEB_BASE_URL
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.domain.session.auth.normalizeBangumiWebBaseUrl
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.AniMotionScheme
 import me.him188.ani.app.ui.foundation.animation.AnimatedVisibilityMotionScheme
@@ -65,6 +69,7 @@ import me.him188.ani.app.ui.foundation.widgets.HeroIcon
 import me.him188.ani.app.ui.search.renderLoadErrorMessage
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
+import me.him188.ani.app.ui.settings.framework.components.TextFieldItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
 import org.jetbrains.compose.resources.*
 
@@ -87,6 +92,8 @@ fun BangumiAuthorizeLayout(
     contactActions: @Composable () -> Unit,
     onClickAuthorize: () -> Unit,
     onCancelAuthorize: () -> Unit,
+    bangumiSettings: BangumiSettings,
+    onBangumiWebBaseUrlChange: (String) -> Unit,
     scrollState: ScrollState,
     modifier: Modifier = Modifier,
 ) {
@@ -132,6 +139,10 @@ fun BangumiAuthorizeLayout(
                         modifier = Modifier.padding(vertical = 8.dp),
                         animatedVisibilityMotionScheme = motionScheme.animatedVisibility,
                     )
+                    BangumiWebBaseUrlItem(
+                        webBaseUrl = bangumiSettings.webBaseUrl,
+                        onWebBaseUrlChange = onBangumiWebBaseUrlChange,
+                    )
                 }
             }
             AuthorizeHelpQA(
@@ -141,6 +152,35 @@ fun BangumiAuthorizeLayout(
             )
         }
     }
+}
+
+@Composable
+private fun SettingsScope.BangumiWebBaseUrlItem(
+    webBaseUrl: String,
+    onWebBaseUrlChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TextFieldItem(
+        value = webBaseUrl,
+        title = { Text(stringResource(Lang.oauth_bangumi_web_base_url)) },
+        description = { Text(stringResource(Lang.oauth_bangumi_web_base_url_description)) },
+        placeholder = { Text(DEFAULT_BANGUMI_WEB_BASE_URL) },
+        exposedItem = {
+            Text(
+                it.ifBlank { DEFAULT_BANGUMI_WEB_BASE_URL },
+                maxLines = 1,
+                overflow = TextOverflow.MiddleEllipsis,
+            )
+        },
+        onValueChangeCompleted = {
+            normalizeBangumiWebBaseUrl(it)?.let(onWebBaseUrlChange)
+        },
+        isErrorProvider = {
+            normalizeBangumiWebBaseUrl(it) == null
+        },
+        sanitizeValue = { it.trim() },
+        modifier = modifier.fillMaxWidth(),
+    )
 }
 
 

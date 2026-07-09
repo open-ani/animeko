@@ -9,16 +9,22 @@
 
 package me.him188.ani.app.ui.oauth
 
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.preference.BangumiSettings
 import me.him188.ani.app.data.network.AniApiProvider
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.domain.session.auth.BangumiOAuthClient
 import me.him188.ani.app.domain.session.auth.OAuthConfigurator
+import me.him188.ani.app.domain.session.auth.normalizeBangumiWebBaseUrl
 import me.him188.ani.app.domain.session.canAccessAniApiNow
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.utils.coroutines.SingleTaskExecutor
@@ -29,8 +35,10 @@ class BangumiAuthorizeViewModel : AbstractViewModel(), KoinComponent {
     private val aniApiProvider: AniApiProvider by inject()
     private val sessionManager: SessionManager by inject()
     private val sessionStateProvider: SessionStateProvider by inject()
+    private val settingsRepository: SettingsRepository by inject()
 
     private val tasker = SingleTaskExecutor(backgroundScope.coroutineContext)
+    private val localBangumiSettings = MutableStateFlow<BangumiSettings?>(null)
 
     private val configurator = OAuthConfigurator(
         client = BangumiOAuthClient(aniApiProvider.bangumiApi, sessionStateProvider),
@@ -64,6 +72,26 @@ class BangumiAuthorizeViewModel : AbstractViewModel(), KoinComponent {
                 }
             }
         }
+
+    val bangumiSettings = combine(
+        settingsRepository.bangumiSettings.flow,
+        localBangumiSettings,
+    ) { persisted, local ->
+        local ?: persisted
+    }.stateInBackground(BangumiSettings.Default)
+
+    fun updateBangumiWebBaseUrl(value: String) {
+        val normalized = normalizeBangumiWebBaseUrl(value) ?: return
+        localBangumiSettings.value = bangumiSettings.value.copy(webBaseUrl = normalized)
+        backgroundScope.launch {
+            val current = settingsRepository.bangumiSettings.flow.first()
+            if (current.webBaseUrl != normalized) {
+                settingsRepository.bangumiSettings.set(current.copy(webBaseUrl = normalized))
+                settingsRepository.bangumiSettings.flow.first { it.webBaseUrl == normalized }
+            }
+            localBangumiSettings.value = null
+        }
+    }
 
     suspend fun doOAuth(isRegister: Boolean, onOpenUrl: suspend (String) -> Unit): Boolean {
         val res = tasker.invoke {

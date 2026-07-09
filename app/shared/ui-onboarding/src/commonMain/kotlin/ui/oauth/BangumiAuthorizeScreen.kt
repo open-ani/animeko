@@ -16,8 +16,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.preference.BangumiSettings
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.navigation.rememberAsyncBrowserNavigator
+import me.him188.ani.app.domain.session.auth.rewriteBangumiOAuthUrl
 import me.him188.ani.app.ui.login.EmailLoginScreenLayout
 import me.him188.ani.app.ui.lang.*
 import org.jetbrains.compose.resources.*
@@ -31,6 +33,7 @@ fun BangumiAuthorizeScreen(
     contactActions: @Composable () -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle(AuthState.NoAniAccount)
+    val bangumiSettings by vm.bangumiSettings.collectAsStateWithLifecycle(BangumiSettings.Default)
     val scope = rememberCoroutineScope()
     val browserNavigator = rememberAsyncBrowserNavigator()
     val context = LocalContext.current
@@ -51,11 +54,16 @@ fun BangumiAuthorizeScreen(
                 vm.doOAuth(
                     state is AuthState.NoAniAccount || (currentState is AuthState.Failed && !currentState.loggedIn),
                 ) {
-                    browserNavigator.openBrowser(context, it)
+                    browserNavigator.openBrowser(
+                        context,
+                        rewriteBangumiOAuthUrl(it, bangumiSettings.webBaseUrl),
+                    )
                 }
             }
         },
         onCancelAuthorize = { vm.cancelCurrentOAuth() },
+        bangumiSettings = bangumiSettings,
+        onBangumiWebBaseUrlChange = vm::updateBangumiWebBaseUrl,
         onNavigateSettings = onNavigateSettings,
         onNavigateBack = onNavigateBack,
         contactActions = contactActions,
@@ -67,6 +75,8 @@ internal fun BangumiAuthorizeScreen(
     state: AuthState,
     onClickAuthorize: () -> Unit,
     onCancelAuthorize: () -> Unit,
+    bangumiSettings: BangumiSettings,
+    onBangumiWebBaseUrlChange: (String) -> Unit,
     onNavigateSettings: () -> Unit,
     onNavigateBack: () -> Unit,
     contactActions: @Composable () -> Unit,
@@ -83,6 +93,8 @@ internal fun BangumiAuthorizeScreen(
             contactActions = contactActions,
             onClickAuthorize = onClickAuthorize,
             onCancelAuthorize = onCancelAuthorize,
+            bangumiSettings = bangumiSettings,
+            onBangumiWebBaseUrlChange = onBangumiWebBaseUrlChange,
             scrollState = scrollState,
         )
     }

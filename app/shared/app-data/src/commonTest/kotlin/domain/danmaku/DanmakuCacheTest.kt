@@ -20,6 +20,7 @@ import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
 import me.him188.ani.app.data.models.preference.AnalyticsSettings
 import me.him188.ani.app.data.models.preference.AnitorrentConfig
+import me.him188.ani.app.data.models.preference.BangumiSettings
 import me.him188.ani.app.data.models.preference.DanmakuCacheStrategy
 import me.him188.ani.app.data.models.preference.DanmakuSettings
 import me.him188.ani.app.data.models.preference.DebugSettings
@@ -263,6 +264,7 @@ class DanmakuCacheTest {
         override val pikpakConfig: Settings<PikPakConfig> by lazy { error("no implemented") }
         override val torrentPeerConfig: Settings<TorrentPeerConfig> by lazy { error("no implemented") }
         override val oneshotActionConfig: Settings<OneshotActionConfig> by lazy { error("no implemented") }
+        override val bangumiSettings: Settings<BangumiSettings> by lazy { error("no implemented") }
         override val analyticsSettings: Settings<AnalyticsSettings> by lazy { error("no implemented") }
         override val debugSettings: Settings<DebugSettings> by lazy { error("no implemented") }
     }
