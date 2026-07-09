@@ -1,0 +1,311 @@
+# Codex agent — issue → PR, and PR review/comment → iterate.
+#
+# Runs the locally-logged-in Codex CLI on the self-hosted Mac mini (label: self-hosted/macOS/ARM64).
+# Runner prereqs (already set up on the machine):
+#   - codex logged in at ~/.codex/auth.json (ChatGPT subscription); binary at ~/.local/bin/codex.
+#   - gh installed at /opt/homebrew/bin/gh.
+#   - SSH push identity for the `openanibot` GitHub account:
+#       key  ~/.ssh/id_ed25519_codex   +  ssh config alias `github.com-codex`.
+#     The agent pushes via `git@github.com-codex:...`, so its pushes trigger CI and never
+#     touch the default github.com config used by build.yml's submodule checkout.
+#
+# Triggers:
+#   1. Add the `ready-for-dev` label to an issue  -> the agent implements it and opens a PR.
+#   2. A maintainer submits a review on a codex PR -> the agent addresses it and updates the PR.
+#   3. A maintainer comments `@codex ...` on a PR  -> the agent follows it and updates the PR.
+#
+# The agent does its own git + gh work (branch/commit/push/PR). The workflow only sets up the
+# environment, gates access, reacts 👀 to the trigger, hands the agent the URLs, and remembers
+# the Codex session so each iteration continues the SAME conversation.
+#
+# Conversation memory: the implement run's Codex session id is saved on the runner
+# (~/.codex-agent/sessions/<branch>.session); iterations do `codex exec resume <id>`.
+#
+# UI verification: Codex auto-discovers the repo skills in .agents/skills
+# (android-ui-verify / desktop-ui-verify); the prompts tell it to actually run them.
+#
+# Security: only write/maintain/admin members can trigger (authorize job). The agent runs with
+# full system access (needed for MCP + emulator), so the runner is trusted infra and the
+# `ready-for-dev` label is the human gate. No untrusted free-text is interpolated into shell.
+
+name: Codex Agent
+
+on:
+  issues:
+    types: [labeled]
+  pull_request_review:
+    types: [submitted]
+  issue_comment:
+    types: [created]
+
+permissions: {}
+
+env:
+  # Keep in sync with the literals in the job `if:` conditions below.
+  READY_LABEL: ready-for-dev
+  TRIGGER_PHRASE: '@codex'
+  BASE_BRANCH: main
+  ORIGIN_SSH: git@github.com-codex:open-ani/animeko.git
+  GIT_NAME: openanibot
+  GIT_EMAIL: openanibot@users.noreply.github.com
+  CODEX_MODEL: ''   # optional model pin; empty = ~/.codex/config.toml default
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Cheap access gate on GitHub-hosted. Only candidate events from a non-bot
+  # actor with write access pass through.
+  # ---------------------------------------------------------------------------
+  authorize:
+    if: >-
+      ${{ github.event.sender.type != 'Bot' && (
+            (github.event_name == 'issues' && github.event.action == 'labeled' && github.event.label.name == 'ready-for-dev') ||
+            (github.event_name == 'pull_request_review' && (github.event.review.state == 'changes_requested' || github.event.review.state == 'commented')) ||
+            (github.event_name == 'issue_comment' && github.event.issue.pull_request != null && contains(github.event.comment.body, '@codex'))
+          ) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      authorized: ${{ steps.check.outputs.authorized }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN || github.token }}
+          ACTOR: ${{ github.event.sender.login }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          PERM=$(gh api "repos/$REPO/collaborators/$ACTOR/permission" --jq '.permission' 2>/dev/null || echo none)
+          echo "actor=$ACTOR permission=$PERM"
+          case "$PERM" in
+            admin|maintain|write) echo "authorized=true"  >> "$GITHUB_OUTPUT" ;;
+            *)                     echo "authorized=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+  # ---------------------------------------------------------------------------
+  # Issue labeled `ready-for-dev`  ->  agent implements & opens a PR.
+  # ---------------------------------------------------------------------------
+  implement:
+    needs: authorize
+    if: >-
+      ${{ needs.authorize.outputs.authorized == 'true'
+          && github.event_name == 'issues'
+          && github.event.action == 'labeled'
+          && github.event.label.name == 'ready-for-dev' }}
+    runs-on: [self-hosted, macOS, ARM64]
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    concurrency:            # one codex job at a time on the single machine
+      group: codex-agent
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN || github.token }}
+      REPO: ${{ github.repository }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      ISSUE_URL: ${{ github.event.issue.html_url }}
+    steps:
+      - name: Set up tool PATH
+        run: |
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"   # codex
+          echo "/opt/homebrew/bin" >> "$GITHUB_PATH"  # gh, node
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Configure git remote & identity
+        run: |
+          set -euo pipefail
+          git config user.name  "$GIT_NAME"
+          git config user.email "$GIT_EMAIL"
+          git remote set-url origin "$ORIGIN_SSH"
+
+      - name: Preflight
+        run: |
+          set -euo pipefail
+          command -v codex >/dev/null || { echo "::error::codex not on PATH"; exit 1; }
+          command -v gh    >/dev/null || { echo "::error::gh not on PATH"; exit 1; }
+          test -f "${CODEX_HOME:-$HOME/.codex}/auth.json" || { echo "::error::codex not logged in"; exit 1; }
+          echo "codex $(codex --version) | $(gh --version | head -1)"
+
+      - name: React 👀 to the issue
+        run: |
+          gh api -X POST "repos/$REPO/issues/$ISSUE_NUMBER/reactions" -f content=eyes >/dev/null || true
+
+      - name: Build prompt
+        run: |
+          set -euo pipefail
+          {
+            echo "You are an autonomous coding agent in the Animeko repo (Kotlin Multiplatform / Compose Multiplatform)."
+            echo "Follow AGENTS.md. Implement this GitHub issue:"
+            echo "  $ISSUE_URL"
+            echo "Read the issue yourself with: gh issue view $ISSUE_NUMBER --comments"
+            echo
+            echo "Steps:"
+            echo "1. Make the code changes on a new branch: codex/issue-$ISSUE_NUMBER (branch off $BASE_BRANCH)."
+            echo "2. Verify UI-facing changes at runtime with the repo skills (auto-loaded from .agents/skills):"
+            echo "     android-ui-verify  -> Android emulator (build, install, screenshot, tap/swipe/type)"
+            echo "     desktop-ui-verify  -> Compose Desktop executable"
+            echo "   Actually run the relevant skill and confirm from a screenshot; never claim UI works without evidence."
+            echo "3. Commit with a concise message, then: git push -u origin codex/issue-$ISSUE_NUMBER"
+            echo "   (origin already points at the SSH push remote; identity is preconfigured.)"
+            echo "4. Open a PR: gh pr create --base $BASE_BRANCH --head codex/issue-$ISSUE_NUMBER"
+            echo "   Title = concise summary. Body must start with 'Closes #$ISSUE_NUMBER' and summarize the change + how you verified it."
+            echo "5. If no code change is warranted, do NOT open a PR — instead comment your reasoning on the issue with: gh issue comment $ISSUE_NUMBER --body ..."
+            echo "Finish by printing a short summary (mention which verification skill you used)."
+          } > "$RUNNER_TEMP/prompt.txt"
+
+      - name: Run Codex (new session) & remember it
+        run: |
+          set -uo pipefail
+          SDIR="${CODEX_HOME:-$HOME/.codex}/sessions"
+          STORE="$HOME/.codex-agent/sessions"; mkdir -p "$STORE"
+          KEY=$(echo "codex/issue-$ISSUE_NUMBER" | tr '/' '_')
+          STAMP="$RUNNER_TEMP/stamp"; : > "$STAMP"
+          set +e
+          # No sandbox + no approvals: required for non-interactive MCP + driving the emulator.
+          codex exec \
+            --dangerously-bypass-approvals-and-sandbox \
+            ${CODEX_MODEL:+--model "$CODEX_MODEL"} \
+            "$(cat "$RUNNER_TEMP/prompt.txt")"
+          CODEX_EXIT=$?
+          set -e
+          SESS=$(find "$SDIR" -name 'rollout-*.jsonl' -newer "$STAMP" 2>/dev/null | head -1)
+          SID=$(basename "${SESS:-none}" .jsonl | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1 || true)
+          if [ -n "${SID:-}" ]; then
+            echo "$SID" > "$STORE/$KEY.session"
+            echo "remembered codex session $SID for codex/issue-$ISSUE_NUMBER"
+          else
+            echo "::warning::could not capture codex session id — iterations will start fresh"
+          fi
+          exit "$CODEX_EXIT"
+
+  # ---------------------------------------------------------------------------
+  # Review submitted OR `@codex` comment on a PR  ->  agent updates the PR.
+  # ---------------------------------------------------------------------------
+  iterate:
+    needs: authorize
+    if: >-
+      ${{ needs.authorize.outputs.authorized == 'true'
+          && ( github.event_name == 'pull_request_review'
+               || (github.event_name == 'issue_comment' && github.event.issue.pull_request != null) ) }}
+    runs-on: [self-hosted, macOS, ARM64]
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: codex-agent
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN || github.token }}
+      REPO: ${{ github.repository }}
+      EVENT: ${{ github.event_name }}
+      PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+      COMMENT_ID: ${{ github.event.comment.id }}
+      PR_URL: ${{ github.event.pull_request.html_url || github.event.issue.html_url }}
+      TRIGGER_URL: ${{ github.event.comment.html_url || github.event.review.html_url }}
+    steps:
+      - name: Set up tool PATH
+        run: |
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "/opt/homebrew/bin" >> "$GITHUB_PATH"
+
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Configure git remote & identity
+        run: |
+          set -euo pipefail
+          git config user.name  "$GIT_NAME"
+          git config user.email "$GIT_EMAIL"
+          git remote set-url origin "$ORIGIN_SSH"
+
+      - name: Preflight
+        run: |
+          set -euo pipefail
+          command -v codex >/dev/null || { echo "::error::codex not on PATH"; exit 1; }
+          command -v gh    >/dev/null || { echo "::error::gh not on PATH"; exit 1; }
+          test -f "${CODEX_HOME:-$HOME/.codex}/auth.json" || { echo "::error::codex not logged in"; exit 1; }
+
+      - name: Resolve & check out PR branch
+        id: pr
+        run: |
+          set -euo pipefail
+          HEAD_REF=$(gh pr view "$PR_NUMBER" --json headRefName --jq .headRefName)
+          CROSS=$(gh pr view "$PR_NUMBER" --json isCrossRepository --jq .isCrossRepository)
+          if [ "$CROSS" = "true" ]; then
+            gh pr comment "$PR_NUMBER" --body "🤖 Codex can only iterate on same-repo (non-fork) PRs."
+            echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          git fetch origin "$HEAD_REF"
+          git checkout -B "$HEAD_REF" "origin/$HEAD_REF"
+          echo "head_ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
+
+      - name: React 👀 to the trigger
+        if: ${{ steps.pr.outputs.skip != 'true' }}
+        run: |
+          if [ "$EVENT" = "issue_comment" ]; then
+            gh api -X POST "repos/$REPO/issues/comments/$COMMENT_ID/reactions" -f content=eyes >/dev/null || true
+          else
+            gh api -X POST "repos/$REPO/issues/$PR_NUMBER/reactions" -f content=eyes >/dev/null || true
+          fi
+
+      - name: Build prompt
+        if: ${{ steps.pr.outputs.skip != 'true' }}
+        run: |
+          set -euo pipefail
+          {
+            echo "You previously worked on this pull request (Animeko, Kotlin Multiplatform / Compose Multiplatform)."
+            echo "The PR branch with your prior work is already checked out. Address the maintainer's latest feedback."
+            echo "  PR:       $PR_URL"
+            echo "  Feedback: $TRIGGER_URL"
+            echo "Read the full context yourself with: gh pr view $PR_NUMBER --comments   (and gh api for review threads)."
+            echo
+            echo "Follow AGENTS.md. If you change UI, re-verify with the repo skills (auto-loaded from .agents/skills):"
+            echo "  android-ui-verify (emulator) or desktop-ui-verify (Compose Desktop); confirm from a screenshot."
+            echo
+            echo "You have full access to git and gh — respond to the feedback however you judge best. Options include:"
+            echo "  - adjust the code and update the PR:  git push origin HEAD:${{ steps.pr.outputs.head_ref }}"
+            echo "  - reply in the specific review thread, resolve that thread, or leave a PR comment (gh / gh api)"
+            echo "Do only what the feedback actually calls for — don't over-respond — but make sure you respond in some form."
+            echo "Finish by printing a short summary."
+          } > "$RUNNER_TEMP/prompt.txt"
+
+      - name: Run Codex (resume the PR's conversation)
+        if: ${{ steps.pr.outputs.skip != 'true' }}
+        run: |
+          set -uo pipefail
+          HEAD_REF="${{ steps.pr.outputs.head_ref }}"
+          SDIR="${CODEX_HOME:-$HOME/.codex}/sessions"
+          STORE="$HOME/.codex-agent/sessions"; mkdir -p "$STORE"
+          KEY=$(echo "$HEAD_REF" | tr '/' '_')
+          SID=""; [ -f "$STORE/$KEY.session" ] && SID=$(cat "$STORE/$KEY.session")
+          STAMP="$RUNNER_TEMP/stamp"; : > "$STAMP"
+          set +e
+          if [ -n "$SID" ]; then
+            echo "resuming codex session $SID for $HEAD_REF"
+            codex exec resume "$SID" \
+              --dangerously-bypass-approvals-and-sandbox \
+              ${CODEX_MODEL:+--model "$CODEX_MODEL"} \
+              "$(cat "$RUNNER_TEMP/prompt.txt")"
+          else
+            echo "::warning::no remembered session for $HEAD_REF — starting fresh"
+            codex exec \
+              --dangerously-bypass-approvals-and-sandbox \
+              ${CODEX_MODEL:+--model "$CODEX_MODEL"} \
+              "$(cat "$RUNNER_TEMP/prompt.txt")"
+          fi
+          CODEX_EXIT=$?
+          set -e
+          SESS=$(find "$SDIR" -name 'rollout-*.jsonl' -newer "$STAMP" 2>/dev/null | head -1)
+          NSID=$(basename "${SESS:-none}" .jsonl | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1 || true)
+          [ -n "${NSID:-}" ] && echo "$NSID" > "$STORE/$KEY.session"
+          exit "$CODEX_EXIT"
