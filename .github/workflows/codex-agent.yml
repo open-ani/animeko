@@ -165,16 +165,22 @@ jobs:
           set -uo pipefail
           SDIR="${CODEX_HOME:-$HOME/.codex}/sessions"
           STORE="$HOME/.codex-agent/sessions"; mkdir -p "$STORE"
+          LOGDIR="$HOME/.codex-agent/logs"; mkdir -p "$LOGDIR"
           KEY=$(echo "codex/issue-$ISSUE_NUMBER" | tr '/' '_')
+          LOG="$LOGDIR/${KEY}-${GITHUB_RUN_ID:-0}-${GITHUB_RUN_ATTEMPT:-1}.log"
           STAMP="$RUNNER_TEMP/stamp"; : > "$STAMP"
           set +e
-          # No sandbox + no approvals: required for non-interactive MCP + driving the emulator.
+          # Codex output goes to a runner-local file, NOT the public Actions log, to avoid
+          # leaking conversation content (issue text, code, MCP/tool output). Full transcript is
+          # also in ~/.codex/sessions/. No sandbox/approvals: required for MCP + driving the emulator.
           codex exec \
             --dangerously-bypass-approvals-and-sandbox \
             ${CODEX_MODEL:+--model "$CODEX_MODEL"} \
-            "$(cat "$RUNNER_TEMP/prompt.txt")"
+            "$(cat "$RUNNER_TEMP/prompt.txt")" \
+            > "$LOG" 2>&1
           CODEX_EXIT=$?
           set -e
+          echo "codex finished (exit $CODEX_EXIT); output kept on the runner at $LOG"
           SESS=$(find "$SDIR" -name 'rollout-*.jsonl' -newer "$STAMP" 2>/dev/null | head -1)
           SID=$(basename "${SESS:-none}" .jsonl | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1 || true)
           if [ -n "${SID:-}" ]; then
@@ -286,25 +292,30 @@ jobs:
           HEAD_REF="${{ steps.pr.outputs.head_ref }}"
           SDIR="${CODEX_HOME:-$HOME/.codex}/sessions"
           STORE="$HOME/.codex-agent/sessions"; mkdir -p "$STORE"
+          LOGDIR="$HOME/.codex-agent/logs"; mkdir -p "$LOGDIR"
           KEY=$(echo "$HEAD_REF" | tr '/' '_')
+          LOG="$LOGDIR/${KEY}-${GITHUB_RUN_ID:-0}-${GITHUB_RUN_ATTEMPT:-1}.log"
           SID=""; [ -f "$STORE/$KEY.session" ] && SID=$(cat "$STORE/$KEY.session")
           STAMP="$RUNNER_TEMP/stamp"; : > "$STAMP"
           set +e
+          # Codex output -> runner-local file, NOT the public Actions log (see implement job).
           if [ -n "$SID" ]; then
-            echo "resuming codex session $SID for $HEAD_REF"
             codex exec resume "$SID" \
               --dangerously-bypass-approvals-and-sandbox \
               ${CODEX_MODEL:+--model "$CODEX_MODEL"} \
-              "$(cat "$RUNNER_TEMP/prompt.txt")"
+              "$(cat "$RUNNER_TEMP/prompt.txt")" \
+              > "$LOG" 2>&1
           else
             echo "::warning::no remembered session for $HEAD_REF — starting fresh"
             codex exec \
               --dangerously-bypass-approvals-and-sandbox \
               ${CODEX_MODEL:+--model "$CODEX_MODEL"} \
-              "$(cat "$RUNNER_TEMP/prompt.txt")"
+              "$(cat "$RUNNER_TEMP/prompt.txt")" \
+              > "$LOG" 2>&1
           fi
           CODEX_EXIT=$?
           set -e
+          echo "codex finished (exit $CODEX_EXIT); output kept on the runner at $LOG"
           SESS=$(find "$SDIR" -name 'rollout-*.jsonl' -newer "$STAMP" 2>/dev/null | head -1)
           NSID=$(basename "${SESS:-none}" .jsonl | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1 || true)
           [ -n "${NSID:-}" ] && echo "$NSID" > "$STORE/$KEY.session"
