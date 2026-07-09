@@ -43,10 +43,14 @@ dependencies {
         "macos-arm64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.macos.arm64)
         else -> throw UnsupportedOperationException("Unknown os: $triple")
     }
-    when (getOsTriple()) {
-        "linux-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.linux.x64)
-        "macos-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.macos.x64)
-        else -> implementation(libs.vlcj)
+    // mpv 后端只分发给 Windows x64 与 macOS arm64; Linux x64 与 macOS x64 仍用 VLC.
+    // 与 me.him188.ani.app.desktop.usesMpv() 保持一致.
+    when (val triple = getOsTriple()) {
+        "windows-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.windows.x64)
+        "macos-arm64" -> runtimeOnly(libs.mediamp.mpv.runtime.macos.arm64)
+        "linux-x64" -> implementation(libs.vlcj)
+        "macos-x64" -> implementation(libs.vlcj)
+        else -> throw UnsupportedOperationException("Unknown os: $triple")
     }
 }
 

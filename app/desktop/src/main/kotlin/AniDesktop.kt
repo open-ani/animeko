@@ -114,8 +114,6 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.trace
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.currentPlatformDesktop
-import me.him188.ani.utils.platform.is64bit
-import me.him188.ani.utils.platform.isAArch
 import me.him188.ani.utils.platform.isMacOS
 import me.him188.ani.utils.platform.isWindows
 import org.jetbrains.compose.resources.painterResource
@@ -344,7 +342,7 @@ object AniDesktop {
                 logger.error(e) { "Failed to load FFmpeg component of mediamp." }
             }
 
-            if (currentPlatformDesktop().run { (isWindows() && is64bit()) || (isMacOS() && isAArch()) }) {
+            if (currentPlatformDesktop().usesMpv()) {
                 try {
                     if (currentProcessName()?.contains("java") == true) {
                         MPVHandle.useDefaultRuntimeLibraryDirectory()

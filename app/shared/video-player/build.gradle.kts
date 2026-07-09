@@ -49,7 +49,11 @@ kotlin {
         }
 
         api(libs.kotlinx.coroutines.swing)
+        // desktopMain 是所有桌面平台共用的 source set, 需同时引入两种后端的 API,
+        // 运行时按平台加载对应 native library (见 app/desktop). mpv: Windows x64 / macOS arm64,
+        // VLC: Linux x64 / macOS x64.
         api(libs.mediamp.mpv)
+        api(libs.mediamp.vlc)
     }
     sourceSets.appleMain.dependencies {
         api(libs.mediamp.avkit)

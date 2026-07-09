@@ -62,12 +62,15 @@ import me.him188.ani.utils.io.inSystem
 import me.him188.ani.utils.io.toKtPath
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.platform.currentPlatformDesktop
 import org.koin.dsl.module
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.MediampPlayerFactoryLoader
 import org.openani.mediamp.compose.MediampPlayerSurfaceProviderLoader
 import org.openani.mediamp.mpv.MpvMediampPlayerFactory
 import org.openani.mediamp.mpv.compose.MpvMediampPlayerSurfaceProvider
+import org.openani.mediamp.vlc.VlcMediampPlayerFactory
+import org.openani.mediamp.vlc.compose.VlcMediampPlayerSurfaceProvider
 import java.io.File
 import kotlin.io.path.Path
 
@@ -129,10 +132,14 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
     }
 
     single<MediampPlayerFactory<*>> {
-        MediampPlayerFactoryLoader.register(MpvMediampPlayerFactory())
-        MediampPlayerFactoryLoader.register(VlcMediampPlayerFactory())
-        MediampPlayerSurfaceProviderLoader.register(VlcMediampPlayerSurfaceProvider())
-        MediampPlayerSurfaceProviderLoader.register(MpvMediampPlayerSurfaceProvider())
+        // 只注册当前平台对应的后端, 避免 first() 选到没有 native library 的 player.
+        if (currentPlatformDesktop().usesMpv()) {
+            MediampPlayerFactoryLoader.register(MpvMediampPlayerFactory())
+            MediampPlayerSurfaceProviderLoader.register(MpvMediampPlayerSurfaceProvider())
+        } else {
+            MediampPlayerFactoryLoader.register(VlcMediampPlayerFactory())
+            MediampPlayerSurfaceProviderLoader.register(VlcMediampPlayerSurfaceProvider())
+        }
         MediampPlayerFactoryLoader.first()
     }
     single<BrowserNavigator> { DesktopBrowserNavigator() }
