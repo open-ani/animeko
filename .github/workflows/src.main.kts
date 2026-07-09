@@ -1376,10 +1376,6 @@ class WithMatrix(
             )
         }
 
-        run(
-            command = shell($$"""cat local.properties"""),
-            shell = Shell.Bash,
-        )
     }
 
     fun JobBuilder<*>.chmod777() {
