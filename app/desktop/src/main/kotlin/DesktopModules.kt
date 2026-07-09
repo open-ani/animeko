@@ -130,6 +130,8 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
 
     single<MediampPlayerFactory<*>> {
         MediampPlayerFactoryLoader.register(MpvMediampPlayerFactory())
+        MediampPlayerFactoryLoader.register(VlcMediampPlayerFactory())
+        MediampPlayerSurfaceProviderLoader.register(VlcMediampPlayerSurfaceProvider())
         MediampPlayerSurfaceProviderLoader.register(MpvMediampPlayerSurfaceProvider())
         MediampPlayerFactoryLoader.first()
     }

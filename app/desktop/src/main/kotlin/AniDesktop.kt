@@ -50,7 +50,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.repository.SavedWindowState
@@ -115,12 +114,14 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.trace
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.currentPlatformDesktop
+import me.him188.ani.utils.platform.is64bit
+import me.him188.ani.utils.platform.isAArch
 import me.him188.ani.utils.platform.isMacOS
 import me.him188.ani.utils.platform.isWindows
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.openani.mediamp.ffmpeg.FFmpegKit
-import org.openani.mediamp.mpv.MpvMediampPlayer
+import org.openani.mediamp.mpv.MPVHandle
 import java.awt.Desktop
 import java.awt.Frame
 import java.io.File
@@ -321,43 +322,60 @@ object AniDesktop {
         val loadLibraryJob = coroutineScope.launch(Dispatchers.IO) {
             try {
                 AnitorrentLibraryLoader.loadLibraries()
+                logger.info { "Anitorrent is loaded." }
             } catch (e: Throwable) {
                 logger.error(e) { "Failed to load anitorrent libraries" }
             }
 
+            // 为什么是这个目录?
+            // CMP 打包 task 会把 resource dir 放到 jar 包的目录里
+            // 我们 hack 打包 task 把包含 runtime library 的 jar 包解压到那一堆 jar 包的目录
+            val composeResDir = File(System.getProperty("compose.application.resources.dir"))
+                .parentFile.absolutePath
+
             try {
                 if (currentProcessName()?.contains("java") == true) {
-                    // dev 环境将 runtime libraries 解压到 temp 里
                     FFmpegKit.useDefaultRuntimeLibraryDirectory()
                 } else {
-                    // 为什么是这个目录?
-                    // CMP 打包 task 会把 resource dir 放到 jar 包的目录里
-                    // 我们 hack 打包 task 把包含 runtime library 的 jar 包解压到那一堆 jar 包的目录
-                    val userDir = File(System.getProperty("compose.application.resources.dir"))
-                        .parentFile.absolutePath
-                    FFmpegKit.setRuntimeLibraryDirectory(userDir, false)
+                    FFmpegKit.setRuntimeLibraryDirectory(composeResDir, false)
                 }
+                logger.info { "FFmpegKit is loaded." }
             } catch (e: Throwable) {
-                logger.error(e) { "Failed to load FFmpeg and mpv." }
+                logger.error(e) { "Failed to load FFmpeg component of mediamp." }
             }
+
+            if (currentPlatformDesktop().run { (isWindows() && is64bit()) || (isMacOS() && isAArch()) }) {
+                try {
+                    if (currentProcessName()?.contains("java") == true) {
+                        MPVHandle.useDefaultRuntimeLibraryDirectory()
+                    } else {
+                        MPVHandle.setRuntimeLibraryDirectory(composeResDir, false)
+                    }
+                } catch (e: Throwable) {
+                    logger.error(e) { "Failed to load libmpv component of mediamp." }
+                }
+                logger.info { "libmpv is loaded." }
+            } else {
+                VlcMediampPlayer.prepareLibraries()
+            }
+
         }
 
         // Initialize CEF application.
         coroutineScope.launch {
-            logger.info { "[JCEF init] waiting for anitorrent load" }
+            logger.info { "[JCEF init] awaiting anitorrent, FFmpegKit and VLC/libmpv loaded." }
             try {
                 analyticsInitializer.join()
                 loadLibraryJob.join()
             } catch (_: Throwable) {
             }
-            logger.info { "[JCEF init] anitorrent loaded" }
             // Load anitorrent libraries before JCEF, so they won't load at the same time.
             // We suspect concurrent loading of native libraries may cause some issues #1121.
 
             val proxySettings = koin.koin.get<ProxyProvider>()
                 .proxy.first()
 
-            logger.info { "[JCEF init] Calling AniCefApp.initialize" }
+            logger.info { "[JCEF init] initializing AniCefApp." }
 
             AniCefApp.initialize(
                 logDir = dataDir.toFile().resolve("logs"),
@@ -367,37 +385,7 @@ object AniDesktop {
                 proxyAuthPassword = proxySettings?.authorization?.password,
             )
 
-            logger.info { "[JCEF init] Initialize done, now prepare mpv libraries" }
-
-            // 预先加载 mpv 运行时, 加载策略与 FFmpegKit 一致:
-            // 1. composite dev 构建: Gradle 根据 local.properties 的 ani.build.mediamp.path
-            //    注入 -Dani.mpv.native.dir 指向 mediamp 的 dev-native 产物
-            // 2. dev 环境: 从 classpath 的 mediamp-mpv-runtime jar 解压到 temp
-            // 3. 打包版: 打包 task 已把 runtime jar 解压到 jar 目录, 直接加载
-            kotlin.runCatching {
-                withContext(Dispatchers.IO) {
-                    val devNativeDir = System.getProperty("ani.mpv.native.dir")
-                    when {
-                        devNativeDir != null -> {
-                            MpvMediampPlayer.prepareLibraries(devNativeDir, extractRuntimeLibrary = false)
-                        }
-
-                        currentProcessName()?.contains("java") == true -> {
-                            MpvMediampPlayer.prepareLibraries()
-                        }
-
-                        else -> {
-                            val userDir = File(System.getProperty("compose.application.resources.dir"))
-                                .parentFile.absolutePath
-                            MpvMediampPlayer.prepareLibraries(userDir, extractRuntimeLibrary = false)
-                        }
-                    }
-                }
-            }.onFailure {
-                logger.error(it) { "Failed to prepare mpv" }
-            }
-
-            logger.info { "[JCEF init] mpv libraries prepared." }
+            logger.info { "[JCEF init] AniCefApp is initialized." }
         }
 
         coroutineScope.launch {
