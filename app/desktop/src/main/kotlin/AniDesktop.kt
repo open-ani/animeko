@@ -43,7 +43,6 @@ import com.sun.jna.platform.win32.Advapi32Util
 import com.sun.jna.platform.win32.WinReg
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -121,7 +120,7 @@ import me.him188.ani.utils.platform.isWindows
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.openani.mediamp.ffmpeg.FFmpegKit
-import org.openani.mediamp.vlc.VlcMediampPlayer
+import org.openani.mediamp.mpv.MpvMediampPlayer
 import java.awt.Desktop
 import java.awt.Frame
 import java.io.File
@@ -368,18 +367,37 @@ object AniDesktop {
                 proxyAuthPassword = proxySettings?.authorization?.password,
             )
 
-            logger.info { "[JCEF init] Initialize done, now prepare FFmpeg libraries" }
+            logger.info { "[JCEF init] Initialize done, now prepare mpv libraries" }
 
-            // 预先加载 VLC, https://github.com/open-ani/ani/issues/618
+            // 预先加载 mpv 运行时, 加载策略与 FFmpegKit 一致:
+            // 1. composite dev 构建: Gradle 根据 local.properties 的 ani.build.mediamp.path
+            //    注入 -Dani.mpv.native.dir 指向 mediamp 的 dev-native 产物
+            // 2. dev 环境: 从 classpath 的 mediamp-mpv-runtime jar 解压到 temp
+            // 3. 打包版: 打包 task 已把 runtime jar 解压到 jar 目录, 直接加载
             kotlin.runCatching {
                 withContext(Dispatchers.IO) {
-                    VlcMediampPlayer.prepareLibraries()
+                    val devNativeDir = System.getProperty("ani.mpv.native.dir")
+                    when {
+                        devNativeDir != null -> {
+                            MpvMediampPlayer.prepareLibraries(devNativeDir, extractRuntimeLibrary = false)
+                        }
+
+                        currentProcessName()?.contains("java") == true -> {
+                            MpvMediampPlayer.prepareLibraries()
+                        }
+
+                        else -> {
+                            val userDir = File(System.getProperty("compose.application.resources.dir"))
+                                .parentFile.absolutePath
+                            MpvMediampPlayer.prepareLibraries(userDir, extractRuntimeLibrary = false)
+                        }
+                    }
                 }
             }.onFailure {
-                logger.error(it) { "Failed to prepare VLC" }
+                logger.error(it) { "Failed to prepare mpv" }
             }
 
-            logger.info { "[JCEF init] VLC libraries prepared." }
+            logger.info { "[JCEF init] mpv libraries prepared." }
         }
 
         coroutineScope.launch {

@@ -28,9 +28,9 @@ import me.him188.ani.tools.datasourcetestmcp.selector.SelectorEngineService
 import me.him188.ani.tools.datasourcetestmcp.source.DataSourceRegistry
 import me.him188.ani.tools.datasourcetestmcp.source.SourceTestService
 import me.him188.ani.tools.datasourcetestmcp.video.M3u8AdAnalyzer
+import me.him188.ani.tools.datasourcetestmcp.video.MpvVideoAnalyzer
 import me.him188.ani.tools.datasourcetestmcp.video.VideoProbe
 import me.him188.ani.tools.datasourcetestmcp.video.VideoService
-import me.him188.ani.tools.datasourcetestmcp.video.VlcVideoAnalyzer
 import me.him188.ani.utils.ktor.asScopedHttpClient
 import java.io.FileDescriptor
 import java.io.FileOutputStream
@@ -86,7 +86,7 @@ fun main() {
         )
         val videoService = VideoService(
             probe = probe,
-            analyzer = VlcVideoAnalyzer(),
+            analyzer = MpvVideoAnalyzer(),
             adAnalyzer = M3u8AdAnalyzer(client),
         )
         val sourceTestService = SourceTestService(
