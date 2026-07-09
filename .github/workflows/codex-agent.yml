@@ -105,6 +105,7 @@ jobs:
       REPO: ${{ github.repository }}
       ISSUE_NUMBER: ${{ github.event.issue.number }}
       ISSUE_URL: ${{ github.event.issue.html_url }}
+      ANI_UI_OUT_DIR: ${{ runner.temp }}/ui-shots   # skills write screenshots here
     steps:
       - name: Set up tool PATH
         run: |
@@ -148,16 +149,14 @@ jobs:
             echo
             echo "Steps:"
             echo "1. Make the code changes on a new branch: codex/issue-$ISSUE_NUMBER (branch off $BASE_BRANCH)."
-            echo "2. Verify UI-facing changes at runtime with the repo skills (auto-loaded from .agents/skills):"
-            echo "     android-ui-verify  -> Android emulator (build, install, screenshot, tap/swipe/type)"
-            echo "     desktop-ui-verify  -> Compose Desktop executable"
-            echo "   Actually run the relevant skill and confirm from a screenshot; never claim UI works without evidence."
+            echo "2. If your change affects any UI, verify it at runtime with the repo skills (auto-loaded from .agents/skills)"
+            echo "   and embed detailed screenshots in the PR. Run android-ui-verify AND desktop-ui-verify separately if multiple platforms are affected."
             echo "3. Commit with a concise message, then: git push -u origin codex/issue-$ISSUE_NUMBER"
             echo "   (origin already points at the SSH push remote; identity is preconfigured.)"
             echo "4. Open a PR: gh pr create --base $BASE_BRANCH --head codex/issue-$ISSUE_NUMBER"
-            echo "   Title = concise summary. Body must start with 'Closes #$ISSUE_NUMBER' and summarize the change + how you verified it."
+            echo "   Body must start with 'Closes #$ISSUE_NUMBER' and summarize the change + how you verified it (with screenshots for UI changes)."
             echo "5. If no code change is warranted, do NOT open a PR — instead comment your reasoning on the issue with: gh issue comment $ISSUE_NUMBER --body ..."
-            echo "Finish by printing a short summary (mention which verification skill you used)."
+            echo "Finish by printing a short summary."
           } > "$RUNNER_TEMP/prompt.txt"
 
       - name: Run Codex (new session) & remember it
@@ -215,6 +214,7 @@ jobs:
       COMMENT_ID: ${{ github.event.comment.id }}
       PR_URL: ${{ github.event.pull_request.html_url || github.event.issue.html_url }}
       TRIGGER_URL: ${{ github.event.comment.html_url || github.event.review.html_url }}
+      ANI_UI_OUT_DIR: ${{ runner.temp }}/ui-shots   # skills write screenshots here
     steps:
       - name: Set up tool PATH
         run: |
@@ -275,8 +275,8 @@ jobs:
             echo "  Feedback: $TRIGGER_URL"
             echo "Read the full context yourself with: gh pr view $PR_NUMBER --comments   (and gh api for review threads)."
             echo
-            echo "Follow AGENTS.md. If you change UI, re-verify with the repo skills (auto-loaded from .agents/skills):"
-            echo "  android-ui-verify (emulator) or desktop-ui-verify (Compose Desktop); confirm from a screenshot."
+            echo "Follow AGENTS.md. If your change affects any UI, re-verify at runtime with the repo skills (.agents/skills) and refresh"
+            echo "the screenshots in the PR — run android-ui-verify AND desktop-ui-verify separately if multiple platforms are affected."
             echo
             echo "You have full access to git and gh — respond to the feedback however you judge best. Options include:"
             echo "  - adjust the code and update the PR:  git push origin HEAD:${{ steps.pr.outputs.head_ref }}"
