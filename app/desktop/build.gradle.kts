@@ -48,10 +48,10 @@ dependencies {
     when (val triple = getOsTriple()) {
         "windows-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.windows.x64)
         "macos-arm64" -> runtimeOnly(libs.mediamp.mpv.runtime.macos.arm64)
-        "linux-x64" -> implementation(libs.vlcj)
-        "macos-x64" -> implementation(libs.vlcj)
-        else -> throw UnsupportedOperationException("Unknown os: $triple")
+        else -> {}
     }
+    // vlcj 依赖里没有 native libraries，依赖是手动放的
+    implementation(libs.vlcj)
 }
 
 // workaround for compose limitation

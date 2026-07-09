@@ -108,10 +108,12 @@ import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsConfig
 import me.him188.ani.utils.analytics.AnalyticsImpl
 import me.him188.ani.utils.analytics.AnalyticsSecrets
+import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.trace
+import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.currentPlatformDesktop
 import me.him188.ani.utils.platform.isMacOS
@@ -120,6 +122,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.openani.mediamp.ffmpeg.FFmpegKit
 import org.openani.mediamp.mpv.MPVHandle
+import org.openani.mediamp.vlc.VlcMediampPlayer
 import java.awt.Desktop
 import java.awt.Frame
 import java.io.File
@@ -348,6 +351,21 @@ object AniDesktop {
                         MPVHandle.useDefaultRuntimeLibraryDirectory()
                     } else {
                         MPVHandle.setRuntimeLibraryDirectory(composeResDir, false)
+                    }
+                    val mpvLogger = logger<MPVHandle>()
+                    // mpv_log_level in https://github.com/mpv-player/mpv/blob/master/include/mpv/client.h
+                    MPVHandle.setLogHandler {
+                        if (it.level in 1..20) {
+                            mpvLogger.error { "[mpv:${it.prefix}:${it.level}] ${it.line}" }
+                        } else if (it.level <= 30) {
+                            mpvLogger.warn { "[mpv:${it.prefix}:${it.level}] ${it.line}" }
+                        } else if (it.level <= 40) {
+                            mpvLogger.info { "[mpv:${it.prefix}:${it.level}] ${it.line}" }
+                        } else if (it.level <= 50) {
+                            mpvLogger.debug { "[mpv:${it.prefix}:${it.level}] ${it.line}" }
+                        } else {
+                            mpvLogger.trace { "[mpv:${it.prefix}:${it.level}] ${it.line}" }
+                        }
                     }
                 } catch (e: Throwable) {
                     logger.error(e) { "Failed to load libmpv component of mediamp." }
