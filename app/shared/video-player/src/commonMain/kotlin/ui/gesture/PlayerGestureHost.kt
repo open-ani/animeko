@@ -17,6 +17,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -52,7 +53,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -65,17 +65,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.isShiftPressed
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.coerceAtLeast
@@ -85,8 +77,6 @@ import kotlinx.coroutines.flow.collectLatest
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
-import me.him188.ani.app.ui.foundation.effects.ComposeKey
-import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
@@ -94,6 +84,7 @@ import me.him188.ani.app.utils.fixToString
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.playerFocusHost
 import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.BRIGHTNESS
 import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.FAST_BACKWARD
 import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.FAST_FORWARD
@@ -104,7 +95,6 @@ import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.VOLU
 import me.him188.ani.app.videoplayer.ui.gesture.SwipeSeekerState.Companion.swipeToSeek
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
-import me.him188.ani.app.videoplayer.ui.top.needWorkaroundForFocusManager
 import me.him188.ani.utils.platform.Platform
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.AudioLevelController
@@ -376,7 +366,6 @@ val Platform.mouseFamily: GestureFamily
 
 @Immutable
 enum class GestureFamily(
-    val useDesktopGestureLayoutWorkaround: Boolean,
     val clickToPauseResume: Boolean,
     val clickToToggleController: Boolean,
     val doubleClickToFullscreen: Boolean,
@@ -388,16 +377,9 @@ enum class GestureFamily(
     val scrollForVolume: Boolean,
     val autoHideController: Boolean,
     val volumeControllerOnBottomBar: Boolean,
-    val keyboardSpaceForPauseResume: Boolean = true,
-    val keyboardUpDownForVolume: Boolean = true,
-    val keyboardLeftRightToSeek: Boolean = true,
     val mouseHoverForController: Boolean = true, // not supported on mobile
-    val keyboardControlFullscreen: Boolean = true,
-    val keyboardControlSpeed: Boolean = true,
-    val keyboardToggleDanmaku: Boolean = true,
 ) {
     TOUCH(
-        useDesktopGestureLayoutWorkaround = false,
         clickToPauseResume = false,
         clickToToggleController = true,
         doubleClickToFullscreen = false,
@@ -412,7 +394,6 @@ enum class GestureFamily(
         mouseHoverForController = false,
     ),
     MOUSE(
-        useDesktopGestureLayoutWorkaround = true,
         clickToPauseResume = true,
         clickToToggleController = false,
         doubleClickToFullscreen = true,
@@ -470,394 +451,238 @@ fun PlayerGestureHost(
         val adjustingForwardOrBackward =
             indicatorState.visible && (indicatorState.state == FAST_FORWARD || indicatorState.state == FAST_BACKWARD)
 
-        // TODO: 临时解决方案, 安卓和 PC 需要不同的组件层级关系才能实现各种快捷手势
-        val needWorkaroundForFocusManager = needWorkaroundForFocusManager
-        if (family.useDesktopGestureLayoutWorkaround) {
-            val indicatorTasker = rememberUiMonoTasker()
-            val focusRequester = remember { FocusRequester() }
-            val manager = LocalFocusManager.current
-            val keyboardFocus = remember { FocusRequester() } // focus 了才能用键盘快捷键
+        val indicatorTasker = rememberUiMonoTasker()
+        val audioLevelController = playerState.features[AudioLevelController]
+        val useMediaAudioController = family == GestureFamily.MOUSE
+        val systemFullscreen = isSystemInFullscreen()
+        val playerFocusState = controllerState.focusState
 
-            val audioLevelController = playerState.features[AudioLevelController]
-            Box(
-                modifier
-                    .focusRequester(keyboardFocus)
-                    .ifThen(family.swipeToSeek) {
-                        swipeToSeek(
-                            seekerState,
-                            Orientation.Horizontal,
-                            //调节音量/亮度时禁用水平seek
-                            enabled = !adjustingVolumeOrBrightness,
-                        )
-                    }
-                    .ifThen(family.keyboardLeftRightToSeek) {
-                        keyboardSeekAndFastForward(
-                            onSeekBackward = {
-                                seekerState.onSeek(-5)
-                            },
-                            onSeekForward = {
-                                seekerState.onSeek(5)
-                            },
-                            fastSkipState = fastSkipState,
-                        )
-                    }
-                    .ifThen(family.keyboardUpDownForVolume && audioLevelController != null) {
-                        if (audioLevelController == null) return@ifThen this
-                        onKeyEvent {
-                            if (it.type == KeyEventType.KeyUp) return@onKeyEvent false
-                            val consumed = when {
-                                it.isShiftPressed && it.key == ComposeKey.DirectionUp -> {
-                                    audioLevelController.volumeUp(0.01f)
-                                    true
-                                }
-
-                                it.isShiftPressed && it.key == ComposeKey.DirectionDown -> {
-                                    audioLevelController.volumeDown(0.01f)
-                                    true
-                                }
-
-                                it.key == ComposeKey.DirectionUp -> {
-                                    audioLevelController.volumeUp()
-                                    true
-                                }
-
-                                it.key == ComposeKey.DirectionDown -> {
-                                    audioLevelController.volumeDown()
-                                    true
-                                }
-
-                                else -> false
-                            }
-                            if (consumed) {
-                                audioLevelController.setMute(false)
-                                indicatorTasker.launch {
-                                    indicatorState.showVolumeRange(audioLevelController.volume.value / audioLevelController.maxVolume)
-                                }
-                            }
-                            consumed
+        val keyboardModifier = modifier
+            .testTag("VideoGestureHost")
+            .playerKeyboardShortcuts(
+                seekerState = seekerState,
+                fastSkipState = fastSkipState,
+                playbackSpeedControllerState = playbackSpeedControllerState,
+                volumeEnabled = !useMediaAudioController || audioLevelController != null,
+                onVolumeUp = { fineAdjustment ->
+                    if (useMediaAudioController) {
+                        checkNotNull(audioLevelController)
+                        if (fineAdjustment) audioLevelController.volumeUp(0.01f) else audioLevelController.volumeUp()
+                        audioLevelController.setMute(false)
+                        indicatorTasker.launch {
+                            indicatorState.showVolumeRange(audioLevelController.volume.value / audioLevelController.maxVolume)
+                        }
+                    } else {
+                        audioController.increaseLevel(if (fineAdjustment) audioController.levelStep else 0.10f)
+                        indicatorTasker.launch {
+                            indicatorState.showVolumeRange(audioController.level)
                         }
                     }
-                    .ifThen(family.keyboardSpaceForPauseResume) {
-                        onKey(ComposeKey.Spacebar) {
-                            onTogglePauseResumeState()
+                },
+                onVolumeDown = { fineAdjustment ->
+                    if (useMediaAudioController) {
+                        checkNotNull(audioLevelController)
+                        if (fineAdjustment) audioLevelController.volumeDown(0.01f) else audioLevelController.volumeDown()
+                        audioLevelController.setMute(false)
+                        indicatorTasker.launch {
+                            indicatorState.showVolumeRange(audioLevelController.volume.value / audioLevelController.maxVolume)
+                        }
+                    } else {
+                        audioController.decreaseLevel(if (fineAdjustment) audioController.levelStep else 0.10f)
+                        indicatorTasker.launch {
+                            indicatorState.showVolumeRange(audioController.level)
                         }
                     }
-                    .ifThen(family.mouseHoverForController) {
-                        val scope = rememberUiMonoTasker()
-                        // 没有人请求 alwaysOn 时自动隐藏控制器
-                        LaunchedEffect(true) {
-                            snapshotFlow { controllerState.alwaysOn }.collectLatest { alwaysOn ->
-                                if (alwaysOn) return@collectLatest
-                                snapshotFlow { controllerState.visibility != ControllerVisibility.Invisible }.collectLatest {
-                                    if (!it) {
-                                        delay(VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION)
-                                        controllerState.toggleFullVisible(false)
-                                    }
-                                }
-                            }
-                        }
-                        // 这里不能用 hover, 因为在当控制器隐藏后, hover 状态仍然有, 于是下次移动鼠标时不会重复触发 hover 事件, 也就无法显示
-                        // See test case: `mouse - mouseHoverForController - center screen twice`
-                        onPointerEventMultiplatform(PointerEventType.Move) { _ ->
-                            controllerState.toggleFullVisible(true)
-                            keyboardFocus.requestFocus()
-                            scope.launch {
-                                delay(VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION)
-                                controllerState.toggleFullVisible(false)
-                            }
-                        }
-                    }
-                    .ifThen(family.keyboardControlFullscreen) {
-                        onKey(ComposeKey.Escape) {
-                            if (needWorkaroundForFocusManager) {
-                                manager.clearFocus()
-                            }
-                            onExitFullscreen()
-                        }.onKey(ComposeKey.F) {
-                            if (needWorkaroundForFocusManager) {
-                                manager.clearFocus()
-                            }
-                            onToggleFullscreen()
-                        }
-                    }
-                    .ifThen(family.keyboardControlSpeed && playbackSpeedControllerState != null) {
-                        if (playbackSpeedControllerState == null) return@ifThen this
-                        onKey(ComposeKey.A) { playbackSpeedControllerState.speedDown() }
-                            .onKey(ComposeKey.D) { playbackSpeedControllerState.speedUp() }
-                            .onKey(ComposeKey.S) { playbackSpeedControllerState.reset() }
-                    }
-                    .ifThen(family.keyboardToggleDanmaku) {
-                        onKey(ComposeKey.B, onToggleDanmaku)
-                    }
-                    .ifThen(family.scrollForVolume && audioLevelController != null) {
-                        if (audioLevelController == null) return@ifThen this
-                        onPointerEventMultiplatform(PointerEventType.Scroll) { event ->
-                            event.changes.firstOrNull()?.scrollDelta?.y?.run {
-                                audioLevelController.setMute(false)
-                                if (this < 0) audioLevelController.volumeUp()
-                                else if (this > 0) audioLevelController.volumeDown()
+                },
+                onTogglePauseResume = onTogglePauseResumeState,
+                onToggleFullscreen = onToggleFullscreen,
+                onExitFullscreen = onExitFullscreen,
+                onToggleDanmaku = onToggleDanmaku,
+            )
+            .playerFocusHost(playerFocusState, systemFullscreen)
 
-                                indicatorTasker.launch {
-                                    indicatorState.showVolumeRange(audioLevelController.volume.value / audioLevelController.maxVolume)
-                                }
+        if (family.autoHideController) {
+            LaunchedEffect(controllerState.visibility, controllerState.alwaysOn) {
+                if (controllerState.alwaysOn) return@LaunchedEffect
+                if (controllerState.visibility.bottomBar) {
+                    delay(VIDEO_GESTURE_TOUCH_SHOW_CONTROLLER_DURATION)
+                    controllerState.toggleFullVisible(false)
+                }
+            }
+        }
+
+        if (family.mouseHoverForController) {
+            // 没有人请求 alwaysOn 时自动隐藏控制器
+            LaunchedEffect(controllerState) {
+                snapshotFlow { controllerState.alwaysOn }.collectLatest { alwaysOn ->
+                    if (alwaysOn) return@collectLatest
+                    snapshotFlow { controllerState.visibility != ControllerVisibility.Invisible }.collectLatest {
+                        if (!it) {
+                            delay(VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION)
+                            controllerState.toggleFullVisible(false)
+                        }
+                    }
+                }
+            }
+        }
+
+        @Composable
+        fun Modifier.combineClickableWithFamilyGesture() = this then
+                combinedClickable(
+                    remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = remember(family, playerFocusState) {
+                        {
+                            if (family.clickToPauseResume) {
+                                onTogglePauseResumeState()
+                            }
+                            if (family.clickToToggleController) {
+                                controllerState.toggleFullVisible()
+                            }
+                            playerFocusState.requestPlayerFocus()
+                        }
+                    },
+                    onDoubleClick = remember(family, onToggleFullscreen, playerFocusState) {
+                        {
+                            if (family.doubleClickToFullscreen) {
+                                onToggleFullscreen()
+                            }
+                            if (family.doubleClickToPauseResume) {
+                                onTogglePauseResumeState()
+                            }
+                            playerFocusState.requestPlayerFocus()
+                        }
+                    },
+                )
+
+        val mouseMoveTasker = rememberUiMonoTasker()
+        Box(
+            keyboardModifier
+                .combineClickableWithFamilyGesture()
+                .ifThen(family.swipeToSeek && enableSwipeToSeek) {
+                    val swipeToSeekRequester = rememberAlwaysOnRequester(controllerState, "swipeToSeek")
+                    swipeToSeek(
+                        seekerState,
+                        Orientation.Horizontal,
+                        //调节音量/亮度时禁用水平seek
+                        enabled = !adjustingVolumeOrBrightness,
+                        onDragStarted = {
+                            if (controllerState.visibility.bottomBar) {
+                                swipeToSeekRequester.request()
+                            }
+                            controllerState.setRequestProgressBar(swipeToSeekRequester)
+                        },
+                        onDragStopped = {
+                            if (controllerState.visibility.bottomBar) {
+                                swipeToSeekRequester.cancelRequest()
+                            }
+                            controllerState.cancelRequestProgressBarVisible(swipeToSeekRequester)
+                            progressSliderState.finishPreview()
+                        },
+                    ) {
+                        progressSliderState.run {
+                            if (totalDurationMillis == 0L) return@run
+                            val offsetRatio =
+                                (currentPositionMillis + seekerState.deltaSeconds.times(1000)).toFloat() / totalDurationMillis
+                            previewPositionRatio(offsetRatio.coerceIn(0f, 1f))
+                        }
+                    }
+                }
+                .onPointerEventMultiplatform(PointerEventType.Move) { event ->
+                    if (event.changes.firstOrNull()?.type == PointerType.Mouse) {
+                        playerFocusState.requestPlayerFocus()
+                    }
+                }
+                .ifThen(family.mouseHoverForController) {
+                    // 这里不能用 hover, 因为在当控制器隐藏后, hover 状态仍然有, 于是下次移动鼠标时不会重复触发 hover 事件, 也就无法显示
+                    // See test case: `mouse - mouseHoverForController - center screen twice`
+                    onPointerEventMultiplatform(PointerEventType.Move) { _ ->
+                        controllerState.toggleFullVisible(true)
+                        mouseMoveTasker.launch {
+                            delay(VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION)
+                            controllerState.toggleFullVisible(false)
+                        }
+                    }
+                }
+                .ifThen(family.scrollForVolume && audioLevelController != null) {
+                    if (audioLevelController == null) return@ifThen this
+                    onPointerEventMultiplatform(PointerEventType.Scroll) { event ->
+                        event.changes.firstOrNull()?.scrollDelta?.y?.run {
+                            audioLevelController.setMute(false)
+                            if (this < 0) audioLevelController.volumeUp()
+                            else if (this > 0) audioLevelController.volumeDown()
+
+                            indicatorTasker.launch {
+                                indicatorState.showVolumeRange(audioLevelController.volume.value / audioLevelController.maxVolume)
                             }
                         }
                     }
-                    .fillMaxSize(),
+                }
+                .focusable()
+                .fillMaxSize(),
+        ) {
+            Row(
+                Modifier.matchParentSize()
+                    .ifThen(
+                        family.swipeLhsForBrightness ||
+                                family.swipeRhsForVolume ||
+                                family.longPressForFastSkip,
+                    ) {
+                        systemGesturesPadding()
+                    }
+                    .ifThen(family.longPressForFastSkip) {
+                        fastSkipState?.let {
+                            longPressFastSkip(it, SkipDirection.FORWARD)
+                        }
+                    },
             ) {
                 Box(
                     Modifier
-                        .ifThen(needWorkaroundForFocusManager) {
-                            onFocusEvent {
-                                if (it.hasFocus) {
-                                    focusRequester.requestFocus()
-                                }
-                            }
+                        .ifThen(family.swipeLhsForBrightness) {
+                            swipeLevelControlWithIndicator(
+                                brightnessController,
+                                ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
+                                Orientation.Vertical,
+                                indicatorState,
+                                enabled = !seekerState.isSeeking && !adjustingForwardOrBackward,
+                                step = 0.01f,
+                                setup = {
+                                    indicatorState.state = BRIGHTNESS
+                                },
+                            )
                         }
-                        .matchParentSize()
-                        .combinedClickable(
-                            remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = remember(family) {
-                                {
-                                    if (family.clickToPauseResume) {
-                                        onTogglePauseResumeState()
-                                    }
-                                    if (family.clickToToggleController) {
-                                        controllerState.toggleFullVisible()
-                                    }
-                                }
-                            },
-                            onDoubleClick = remember(family, onToggleFullscreen) {
-                                {
-                                    if (needWorkaroundForFocusManager) {
-                                        manager.clearFocus()
-                                    }
-                                    if (family.doubleClickToFullscreen) {
-                                        onToggleFullscreen()
-                                    }
-                                    if (family.doubleClickToPauseResume) {
-                                        onTogglePauseResumeState()
-                                    }
-                                }
-                            },
-                        ),
+                        .weight(1f)
+                        .fillMaxHeight(),
+                )
 
-                    )
+                Box(Modifier.weight(1f).fillMaxHeight())
 
-                Row(Modifier.focusRequester(focusRequester).matchParentSize()) {
-                    Box(
-                        Modifier
-                            .ifThen(family.swipeLhsForBrightness) {
-                                swipeLevelControlWithIndicator(
-                                    brightnessController,
-                                    ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
-                                    Orientation.Vertical,
-                                    indicatorState,
-                                    enabled = !seekerState.isSeeking && !adjustingForwardOrBackward,
-                                    step = 0.01f,
-                                    setup = {
-                                        indicatorState.state = BRIGHTNESS
-                                    },
-                                )
-                            }
-                            .weight(1f)
-                            .fillMaxHeight(),
-                    )
-
-                    Box(Modifier.weight(1f).fillMaxHeight())
-
-                    Box(
-                        Modifier
-                            .ifThen(family.swipeRhsForVolume) {
-                                swipeLevelControlWithIndicator(
-                                    audioController,
-                                    ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
-                                    Orientation.Vertical,
-                                    indicatorState,
-                                    enabled = !seekerState.isSeeking && !adjustingForwardOrBackward,
-                                    step = 0.05f,
-                                    setup = {
-                                        indicatorState.state = VOLUME
-                                    },
-                                )
-                            }
-                            .weight(1f)
-                            .fillMaxHeight(),
-                    )
-                }
-
-                SideEffect {
-                    focusRequester.requestFocus()
-                }
+                Box(
+                    Modifier
+                        .ifThen(family.swipeRhsForVolume) {
+                            swipeLevelControlWithIndicator(
+                                audioController,
+                                ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
+                                Orientation.Vertical,
+                                indicatorState,
+                                enabled = !seekerState.isSeeking && !adjustingForwardOrBackward,
+                                step = 0.05f,
+                                setup = {
+                                    indicatorState.state = VOLUME
+                                },
+                            )
+                        }
+                        .weight(1f)
+                        .fillMaxHeight(),
+                )
             }
-        } else {
+        }
 
-            val indicatorTasker = rememberUiMonoTasker()
-            val focusManager by rememberUpdatedState(LocalFocusManager.current) // workaround for #288
-
-            if (family.autoHideController) {
-                LaunchedEffect(controllerState.visibility, controllerState.alwaysOn) {
-                    if (controllerState.alwaysOn) return@LaunchedEffect
-                    if (controllerState.visibility.bottomBar) {
-                        delay(VIDEO_GESTURE_TOUCH_SHOW_CONTROLLER_DURATION)
-                        controllerState.toggleFullVisible(false)
-                    }
-                }
-            }
-
-            @Composable
-            fun Modifier.combineClickableWithFamilyGesture() = this then
-                    combinedClickable(
-                        remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = remember(family) {
-                            {
-                                if (family.clickToPauseResume) {
-                                    onTogglePauseResumeState()
-                                }
-                                if (family.clickToToggleController) {
-                                    focusManager.clearFocus()
-                                    controllerState.toggleFullVisible()
-                                }
-                            }
-                        },
-                        onDoubleClick = remember(family, onToggleFullscreen) {
-                            {
-                                if (family.doubleClickToFullscreen) {
-                                    onToggleFullscreen()
-                                }
-                                if (family.doubleClickToPauseResume) {
-                                    onTogglePauseResumeState()
-                                }
-                            }
-                        },
-                    )
-            Box(
-                modifier
-                    .testTag("VideoGestureHost")
-                    .ifThen(needWorkaroundForFocusManager) {
-                        onFocusEvent {
-                            if (it.hasFocus) {
-                                focusManager.clearFocus()
-                            }
-                        }
-                    }
-                    .combineClickableWithFamilyGesture()
-                    .ifThen(family.swipeToSeek && enableSwipeToSeek) {
-                        val swipeToSeekRequester = rememberAlwaysOnRequester(controllerState, "swipeToSeek")
-                        swipeToSeek(
-                            seekerState,
-                            Orientation.Horizontal,
-                            //调节音量/亮度时禁用水平seek
-                            enabled = !adjustingVolumeOrBrightness,
-                            onDragStarted = {
-                                if (controllerState.visibility.bottomBar) {
-                                    swipeToSeekRequester.request()
-                                }
-                                controllerState.setRequestProgressBar(swipeToSeekRequester)
-                            },
-                            onDragStopped = {
-                                if (controllerState.visibility.bottomBar) {
-                                    swipeToSeekRequester.cancelRequest()
-                                }
-                                controllerState.cancelRequestProgressBarVisible(swipeToSeekRequester)
-                                progressSliderState.finishPreview()
-                            },
-                        ) {
-                            progressSliderState.run {
-                                if (totalDurationMillis == 0L) return@run
-                                val offsetRatio =
-                                    (currentPositionMillis + seekerState.deltaSeconds.times(1000)).toFloat() / totalDurationMillis
-                                previewPositionRatio(offsetRatio.coerceIn(0f, 1f))
-                            }
-                        }
-                    }
-                    .ifThen(family.keyboardLeftRightToSeek) {
-                        keyboardSeekAndFastForward(
-                            onSeekBackward = {
-                                seekerState.onSeek(-5)
-                            },
-                            onSeekForward = {
-                                seekerState.onSeek(5)
-                            },
-                            fastSkipState = fastSkipState,
-                        )
-                    }
-                    .ifThen(family.keyboardUpDownForVolume) {
-                        audioController.let { controller ->
-                            onKey(ComposeKey.DirectionUp) {
-                                controller.increaseLevel(0.10f)
-                            }
-                            onKey(ComposeKey.DirectionDown) {
-                                controller.decreaseLevel(0.10f)
-                            }
-                        }
-                    }
-                    .ifThen(family.keyboardSpaceForPauseResume) {
-                        onKey(ComposeKey.Spacebar) {
-                            onTogglePauseResumeState()
-                        }
-                    }
-                    .fillMaxSize(),
-            ) {
-                Row(
-                    Modifier.matchParentSize()
-                        .systemGesturesPadding()
-                        .ifThen(family.longPressForFastSkip) {
-                            fastSkipState?.let {
-                                longPressFastSkip(it, SkipDirection.FORWARD)
-                            }
-                        },
-                ) {
-                    Box(
-                        Modifier
-                            .ifThen(family.swipeLhsForBrightness) {
-                                swipeLevelControlWithIndicator(
-                                    brightnessController,
-                                    ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
-                                    Orientation.Vertical,
-                                    indicatorState,
-                                    enabled = !seekerState.isSeeking && !adjustingForwardOrBackward,
-                                    step = 0.01f,
-                                    setup = {
-                                        indicatorState.state = BRIGHTNESS
-                                    },
-                                )
-                            }
-                            .weight(1f)
-                            .fillMaxHeight(),
-                    )
-
-                    Box(Modifier.weight(1f).fillMaxHeight())
-
-                    Box(
-                        Modifier
-                            .ifThen(family.swipeRhsForVolume) {
-                                swipeLevelControlWithIndicator(
-                                    audioController,
-                                    ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
-                                    Orientation.Vertical,
-                                    indicatorState,
-                                    enabled = !seekerState.isSeeking && !adjustingForwardOrBackward,
-                                    step = 0.05f,
-                                    setup = {
-                                        indicatorState.state = VOLUME
-                                    },
-                                )
-                            }
-                            .weight(1f)
-                            .fillMaxHeight(),
-                    )
-                }
-            }
-
+        if (family.clickToToggleController && systemFullscreen) {
             // 状态栏区域响应点击手势
             Box(
                 Modifier.fillMaxWidth()
-                    .ifThen(isSystemInFullscreen()) {
-                        windowInsetsTopHeight(WindowInsets.systemGestures)
-                    }
+                    .windowInsetsTopHeight(WindowInsets.systemGestures)
                     .combineClickableWithFamilyGesture(),
             )
         }

@@ -34,7 +34,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -45,6 +44,8 @@ import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.episode_send_danmaku
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerFocusState
+import me.him188.ani.app.videoplayer.ui.playerTextInputFocus
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.danmaku.api.DanmakuContent
@@ -62,6 +63,7 @@ fun PlayerDanmakuEditor(
     videoScaffoldConfig: VideoScaffoldConfig,
     playerControllerState: PlayerControllerState,
     modifier: Modifier = Modifier,
+    onEscape: (() -> Unit)? = null,
 ) {
     val sending by danmakuEditorState.isSending.collectAsStateWithLifecycle()
     PlayerDanmakuEditor(
@@ -71,7 +73,7 @@ fun PlayerDanmakuEditor(
         onSend = {
             danmakuEditorState.post(it)
         },
-        danmakuTextPlaceholder, playerState, videoScaffoldConfig, playerControllerState, modifier,
+        danmakuTextPlaceholder, playerState, videoScaffoldConfig, playerControllerState, modifier, onEscape,
     )
 }
 
@@ -87,10 +89,11 @@ fun PlayerDanmakuEditor(
     videoScaffoldConfig: VideoScaffoldConfig,
     playerControllerState: PlayerControllerState,
     modifier: Modifier = Modifier,
+    onEscape: (() -> Unit)? = null,
 ) {
     val danmakuEditorRequester = rememberAlwaysOnRequester(playerControllerState, "danmakuEditor")
 
-    val focusManager = LocalFocusManager.current
+    val playerFocusState = playerControllerState.focusState
 
     /**
      * 是否设置了暂停
@@ -114,7 +117,7 @@ fun PlayerDanmakuEditor(
                             location = DanmakuLocation.NORMAL,
                         ),
                     )
-                    focusManager.clearFocus()
+                    playerFocusState.preferPlayer()
                 }
             },
             modifier = Modifier.onFocusChanged {
@@ -132,6 +135,8 @@ fun PlayerDanmakuEditor(
                     danmakuEditorRequester.cancelRequest()
                 }
             }.weight(1f),
+            playerFocusState = playerFocusState,
+            onEscape = onEscape,
         )
     }
 }
@@ -143,14 +148,16 @@ fun PlayerDanmakuEditor(
     isSending: () -> Boolean,
     placeholderText: String,
     onSend: (text: String) -> Unit,
+    playerFocusState: PlayerFocusState,
     modifier: Modifier = Modifier,
+    onEscape: (() -> Unit)? = null,
     colors: TextFieldColors = PlayerControllerDefaults.inVideoDanmakuTextFieldColors(),
     style: TextStyle = MaterialTheme.typography.bodyMedium,
 ) {
     PlayerControllerDefaults.DanmakuTextField(
         text,
         onValueChange = onTextChange,
-        modifier = modifier,
+        modifier = modifier.playerTextInputFocus(playerFocusState, onEscape),
         onSend = {
             if (text.isEmpty()) return@DanmakuTextField
             onSend(text)

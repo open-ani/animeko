@@ -149,6 +149,7 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerFocusState
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
@@ -772,7 +773,9 @@ private fun EpisodeScreenContentPhone(
                     }
                 },
                 focusRequester,
-                Modifier.imePadding(),
+                vm.playerControllerState.focusState,
+                onDismiss = dismiss,
+                modifier = Modifier.imePadding(),
             )
             LaunchedEffect(true) {
                 focusRequester.requestFocus()
@@ -786,6 +789,8 @@ private fun DetachedDanmakuEditorLayout(
     danmakuEditorState: DanmakuEditorState,
     onSend: (text: String) -> Unit,
     focusRequester: FocusRequester,
+    playerFocusState: PlayerFocusState,
+    onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.padding(all = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -797,7 +802,9 @@ private fun DetachedDanmakuEditorLayout(
             isSending = { isSending.value },
             placeholderText = rememberRandomDanmakuPlaceholder(),
             onSend = onSend,
-            Modifier.fillMaxWidth().focusRequester(focusRequester),
+            playerFocusState = playerFocusState,
+            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+            onEscape = onDismiss,
             colors = OutlinedTextFieldDefaults.colors(),
         )
     }

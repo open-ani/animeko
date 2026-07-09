@@ -12,6 +12,7 @@ package me.him188.ani.app.videoplayer.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -20,6 +21,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import me.him188.ani.app.ui.foundation.effects.ComposeKey
+import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.interaction.hoverable
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -33,6 +40,86 @@ fun rememberVideoControllerState(
 ): PlayerControllerState {
     return remember {
         PlayerControllerState(initialVisibility)
+    }
+}
+
+enum class PlayerFocusTarget {
+    PLAYER,
+    TEXT_INPUT,
+}
+
+/** Coordinates focus policy; [preferredTarget] is intent, not the currently focused Compose node. */
+@Stable
+class PlayerFocusState {
+    var preferredTarget: PlayerFocusTarget by mutableStateOf(PlayerFocusTarget.PLAYER)
+        private set
+
+    internal val requester = FocusRequester()
+    private var textInputOwner: Any? = null
+
+    fun preferPlayer() {
+        textInputOwner = null
+        preferredTarget = PlayerFocusTarget.PLAYER
+    }
+
+    internal fun preferTextInput(owner: Any) {
+        textInputOwner = owner
+        preferredTarget = PlayerFocusTarget.TEXT_INPUT
+    }
+
+    internal fun releaseTextInput(owner: Any) {
+        if (textInputOwner === owner) {
+            preferPlayer()
+        }
+    }
+
+    internal fun requestPlayerFocus() {
+        preferPlayer()
+        requester.requestFocus()
+    }
+
+    internal fun restorePlayerFocusIfPreferred() {
+        if (preferredTarget == PlayerFocusTarget.PLAYER) {
+            requester.requestFocus()
+        }
+    }
+}
+
+/** Attaches the player requester and restores focus when its policy or [reapplyKey] changes. */
+@Composable
+internal fun Modifier.playerFocusHost(
+    state: PlayerFocusState,
+    reapplyKey: Any?,
+): Modifier {
+    val preferredTarget = state.preferredTarget
+
+    LaunchedEffect(state, preferredTarget, reapplyKey) {
+        state.restorePlayerFocusIfPreferred()
+    }
+    return focusRequester(state.requester)
+}
+
+fun Modifier.playerTextInputFocus(
+    state: PlayerFocusState,
+    onEscape: (() -> Unit)? = null,
+): Modifier = composed {
+    val owner = remember { Any() }
+    DisposableEffect(state, owner) {
+        onDispose {
+            state.releaseTextInput(owner)
+        }
+    }
+
+    onFocusChanged {
+        if (it.hasFocus) {
+            state.preferTextInput(owner)
+        }
+    }.onKey(ComposeKey.Escape) {
+        if (onEscape == null) {
+            state.requestPlayerFocus()
+        } else {
+            onEscape()
+        }
     }
 }
 
@@ -85,6 +172,8 @@ class PlayerControllerState(
     companion object {
         val DEFAULT_INITIAL_VISIBILITY = ControllerVisibility.Invisible
     }
+
+    val focusState = PlayerFocusState()
 
     private var fullVisible by mutableStateOf(initialVisibility == ControllerVisibility.Visible)
     private val hasProgressBarRequester by derivedStateOf { progressBarRequesters.isNotEmpty() }
