@@ -383,4 +383,56 @@ class SelectVideoFileAnitorrentEntryTest {
             selected,
         )
     }
+
+    @Test
+    fun `does not select S00 special when selecting main episode with same number`() {
+        val selected = TorrentMediaResolver.selectVideoFileEntry(
+            (listOf("Example Anime Series 2020 S00E04-[1080p][BDRIP][x265.OPUS].mkv") +
+                    (1..12).map { "Example Anime Series 2020 S03E${it.toString().padStart(2, '0')}-[1080p][BDRIP][x265.OPUS].mkv" }),
+            { this },
+            episodeTitles = listOf("某一集标题"),
+            episodeSort = EpisodeSort(4),
+            episodeEp = EpisodeSort(4),
+        )
+        assertEquals(
+            "Example Anime Series 2020 S03E04-[1080p][BDRIP][x265.OPUS].mkv",
+            selected,
+        )
+    }
+
+    @Test
+    fun `does not select S00E01 special when selecting first episode`() {
+        val selected = TorrentMediaResolver.selectVideoFileEntry(
+            listOf(
+                "Example Anime Series 2015 S00E01-[1080p][BDRIP][x265.OPUS].mkv",
+                "Example Anime Series 2015 S01E01-[1080p][BDRIP][x265.OPUS].mkv",
+                "Example Anime Series 2015 S01E02-[1080p][BDRIP][x265.OPUS].mkv",
+            ),
+            { this },
+            episodeTitles = listOf("某一集标题"),
+            episodeSort = EpisodeSort(1),
+            episodeEp = EpisodeSort(1),
+        )
+        assertEquals(
+            "Example Anime Series 2015 S01E01-[1080p][BDRIP][x265.OPUS].mkv",
+            selected,
+        )
+    }
+
+    @Test
+    fun `can still select S00 special when it is the only file`() {
+        val selected = TorrentMediaResolver.selectVideoFileEntry(
+            listOf(
+                "Example Anime Series 2020 S00E04-[1080p][BDRIP][x265.OPUS].mkv",
+            ),
+            { this },
+            episodeTitles = listOf("特典"),
+            episodeSort = EpisodeSort(4),
+            episodeEp = EpisodeSort(4),
+        )
+        assertEquals(
+            "Example Anime Series 2020 S00E04-[1080p][BDRIP][x265.OPUS].mkv",
+            selected,
+        )
+    }
 }
