@@ -58,8 +58,10 @@ import androidx.compose.material3.adaptive.navigation.BackNavigationBehavior
 import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -72,6 +74,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -79,6 +83,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -100,6 +105,9 @@ import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastExpanded
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.theme.LocalAppChromeHazeState
+import me.him188.ani.app.ui.foundation.theme.appChromeHazeSource
+import me.him188.ani.app.ui.foundation.theme.isAppChromeFrostedGlassActive
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
@@ -385,7 +393,7 @@ internal fun SettingsPageLayout(
     containerColor: Color = AniThemeDefaults.pageContentBackgroundColor,
     layoutParameters: ListDetailLayoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective),
     navigationIcon: @Composable () -> Unit = {},
-) = Surface(color = containerColor) {
+) = SettingsPageSurface(containerColor) {
     val layoutParametersState by rememberUpdatedState(layoutParameters)
 
     @Stable
@@ -399,13 +407,16 @@ internal fun SettingsPageLayout(
         }
     }
 
-    val listPaneTopAppBarScrollBehavior = if (LocalPlatform.current.hasScrollingBug()) {
+    // 毛玻璃模式下顶栏覆盖在内容上方并保持常驻, 以便展示模糊效果.
+    val frostedGlassActive = isAppChromeFrostedGlassActive()
+
+    val listPaneTopAppBarScrollBehavior = if (LocalPlatform.current.hasScrollingBug() || frostedGlassActive) {
         TopAppBarDefaults.pinnedScrollBehavior()
     } else {
         TopAppBarDefaults.enterAlwaysScrollBehavior()
     }
 
-    val detailPaneTopAppBarScrollBehavior = if (LocalPlatform.current.hasScrollingBug()) {
+    val detailPaneTopAppBarScrollBehavior = if (LocalPlatform.current.hasScrollingBug() || frostedGlassActive) {
         TopAppBarDefaults.pinnedScrollBehavior()
     } else {
         TopAppBarDefaults.enterAlwaysScrollBehavior()
@@ -422,71 +433,99 @@ internal fun SettingsPageLayout(
             else -> TopAppBarSize.SMALL
         }
     }
-    AniListDetailPaneScaffold(
-        navigator,
-        listPaneTopAppBar = {
-            AniTopAppBar(
-                title = { AniTopAppBarDefaults.Title(stringResource(Lang.settings)) },
-                navigationIcon = {
-                    if (navigator.canNavigateBack()) {
-                        BackNavigationIconButton(
-                            onNavigateBack = {
-                                onClickBackOnListPage()
-                            },
-                        )
-                    } else {
-                        navigationIcon()
-                    }
-                },
-                colors = if (isSinglePane) {
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = containerColor,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+    val listPaneTopAppBar: @Composable PaneScope.() -> Unit = {
+        AniTopAppBar(
+            title = { AniTopAppBarDefaults.Title(stringResource(Lang.settings)) },
+            navigationIcon = {
+                if (navigator.canNavigateBack()) {
+                    BackNavigationIconButton(
+                        onNavigateBack = {
+                            onClickBackOnListPage()
+                        },
                     )
                 } else {
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = containerColor,
-                        scrolledContainerColor = containerColor,
-                    )
-                },
-                scrollBehavior = listPaneTopAppBarScrollBehavior,
-                windowInsets = paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-                size = topAppBarSize,
-            )
-        },
+                    navigationIcon()
+                }
+            },
+            colors = if (isSinglePane) {
+                TopAppBarDefaults.topAppBarColors(
+                    containerColor = containerColor,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                )
+            } else {
+                TopAppBarDefaults.topAppBarColors(
+                    containerColor = containerColor,
+                    scrolledContainerColor = containerColor,
+                )
+            },
+            scrollBehavior = listPaneTopAppBarScrollBehavior,
+            windowInsets = paneContentWindowInsets.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+            size = topAppBarSize,
+        )
+    }
+    AniListDetailPaneScaffold(
+        navigator,
+        // 毛玻璃模式下顶栏由 listPaneContent 内部覆盖绘制.
+        listPaneTopAppBar = if (frostedGlassActive) null else listPaneTopAppBar,
         listPaneContent = paneScope@{
-            PermanentDrawerSheet(
-                Modifier
-                    .paneContentPadding(extraStart = (-8).dp, extraEnd = (-8).dp)
-                    .paneWindowInsetsPadding()
-                    .fillMaxWidth()
-                    .nestedScroll(listPaneTopAppBarScrollBehavior.nestedScrollConnection)
-                    .verticalScroll(listPaneScrollState),
-                drawerContainerColor = Color.Unspecified,
-            ) {
-                val highlightSelectedItemState = rememberUpdatedState(layoutParametersState.highlightSelectedItem)
-                val scope = remember(this, navigator, currentTab, highlightSelectedItemState) {
-                    object : SettingsDrawerScope(), ColumnScope by this {
-                        @Composable
-                        override fun Item(item: SettingsTab) {
-                            NavigationDrawerItem(
-                                icon = { Icon(getIcon(item), contentDescription = null) },
-                                label = { Text(getName(item)) },
-                                selected = item == currentTab() && highlightSelectedItemState.value,
-                                onClick = {
-                                    onSelectedTab(item)
-                                },
-                            )
+            var listTopAppBarHeight by remember { mutableStateOf(0) }
+            val drawerSheet: @Composable PaneScope.() -> Unit = {
+                PermanentDrawerSheet(
+                    Modifier
+                        .paneContentPadding(extraStart = (-8).dp, extraEnd = (-8).dp)
+                        .paneWindowInsetsPadding()
+                        .fillMaxWidth()
+                        .nestedScroll(listPaneTopAppBarScrollBehavior.nestedScrollConnection)
+                        .verticalScroll(listPaneScrollState),
+                    drawerContainerColor = Color.Unspecified,
+                ) {
+                    val highlightSelectedItemState = rememberUpdatedState(layoutParametersState.highlightSelectedItem)
+                    val scope = remember(this, navigator, currentTab, highlightSelectedItemState) {
+                        object : SettingsDrawerScope(), ColumnScope by this {
+                            @Composable
+                            override fun Item(item: SettingsTab) {
+                                NavigationDrawerItem(
+                                    icon = { Icon(getIcon(item), contentDescription = null) },
+                                    label = { Text(getName(item)) },
+                                    selected = item == currentTab() && highlightSelectedItemState.value,
+                                    onClick = {
+                                        onSelectedTab(item)
+                                    },
+                                )
+                            }
                         }
                     }
+
+
+                    val verticalPadding = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding
+
+                    // 毛玻璃顶栏覆盖在内容上方时, 在滚动内容顶部留出顶栏的空间.
+                    if (frostedGlassActive) {
+                        Spacer(Modifier.height(with(LocalDensity.current) { listTopAppBarHeight.toDp() })) // scrollable
+                    }
+                    Spacer(Modifier.height(verticalPadding - 8.dp)) // scrollable
+                    navItems(scope)
+                    Spacer(Modifier.height(verticalPadding)) // scrollable
                 }
+            }
 
-
-                val verticalPadding = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding
-
-                Spacer(Modifier.height(verticalPadding - 8.dp)) // scrollable
-                navItems(scope)
-                Spacer(Modifier.height(verticalPadding)) // scrollable
+            if (frostedGlassActive) {
+                Box {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            // 顶栏覆盖在内容上, 这里代替 scaffold 消耗顶栏的 insets.
+                            .consumeWindowInsets(paneContentWindowInsets.only(WindowInsetsSides.Top))
+                            .appChromeHazeSource(backgroundColor = containerColor),
+                    ) {
+                        drawerSheet()
+                    }
+                    Box(Modifier.onSizeChanged { listTopAppBarHeight = it.height }) {
+                        listPaneTopAppBar()
+                    }
+                }
+            } else {
+                drawerSheet()
             }
         },
         // empty because our detailPaneContent already has it
@@ -531,6 +570,12 @@ internal fun SettingsPageLayout(
                             .wrapContentWidth()
                             .widthIn(max = 1000.dp),
                     ) {
+                        // 毛玻璃顶栏覆盖在内容上方时, 在滚动内容顶部留出顶栏的空间
+                        val topAppBarUnderlapHeight = LocalSettingsTopAppBarUnderlapHeight.current
+                        if (topAppBarUnderlapHeight > 0) {
+                            Spacer(Modifier.height(with(LocalDensity.current) { topAppBarUnderlapHeight.toDp() }))
+                        }
+
                         scope.content()
 
                         // 滚动容器底部留出安全区域
@@ -651,6 +696,23 @@ internal fun SettingsPageLayout(
     )
 }
 
+/**
+ * 设置页自带一个独立的毛玻璃作用域: 启用毛玻璃时, 顶栏模糊其下方滚动的内容.
+ */
+@Composable
+private fun SettingsPageSurface(containerColor: Color, content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalAppChromeHazeState provides rememberHazeState()) {
+        Surface(color = containerColor, content = content)
+    }
+}
+
+/**
+ * 毛玻璃顶栏覆盖在 pane 内容上方时, 滚动内容需要在顶部留出的空间 (px).
+ *
+ * 不启用毛玻璃时为 0.
+ */
+private val LocalSettingsTopAppBarUnderlapHeight = compositionLocalOf { 0 }
+
 @Stable
 interface SettingsDetailPaneScope : PaneScope {
     val detailPaneNavController: NavHostController
@@ -663,6 +725,38 @@ private fun PaneScope.DetailPaneRoute(
     modifier: Modifier = Modifier,
     tabContent: @Composable (PaneScope.() -> Unit),
 ) {
+    if (isAppChromeFrostedGlassActive()) {
+        // 毛玻璃: 顶栏覆盖在内容上方, 内容从顶栏下方滚过并被模糊.
+        // 内容通过 LocalSettingsTopAppBarUnderlapHeight 在滚动内容顶部留出顶栏的空间.
+        var topAppBarHeight by remember { mutableStateOf(0) }
+        Box(modifier) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .consumeWindowInsets(paneContentWindowInsets.only(WindowInsetsSides.Top))
+                    .appChromeHazeSource(backgroundColor = AniThemeDefaults.pageContentBackgroundColor),
+            ) {
+                Column(
+                    Modifier
+                        .paneContentPadding(
+                            extraStart = -SettingsScope.itemHorizontalPadding,
+                            extraEnd = -SettingsScope.itemHorizontalPadding,
+                        )
+                        .paneWindowInsetsPadding()
+                        .nestedScroll(detailPaneTopAppBarScrollBehavior.nestedScrollConnection),
+                ) {
+                    CompositionLocalProvider(LocalSettingsTopAppBarUnderlapHeight provides topAppBarHeight) {
+                        tabContent()
+                    }
+                }
+            }
+            Box(Modifier.onSizeChanged { topAppBarHeight = it.height }) {
+                topAppBar()
+            }
+        }
+        return
+    }
+
     Column(modifier) {
         topAppBar()
 
