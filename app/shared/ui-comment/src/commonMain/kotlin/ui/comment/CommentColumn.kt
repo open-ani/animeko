@@ -48,6 +48,11 @@ import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
 import me.him188.ani.app.ui.search.isLoadingNextPage
 import me.him188.ani.utils.platform.isMobile
 
+/**
+ * @param pullToRefreshEnabled 是否启用下拉刷新. 当此列表位于会优先消费向下滚动的容器中时
+ * (例如 [me.him188.ani.app.ui.foundation.layout.NestedScrollableColumn] 的 header 未完全展开),
+ * 应传 `false`, 否则下拉刷新会先于容器消费掉下拉手势.
+ */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CommentColumn(
@@ -57,6 +62,7 @@ fun CommentColumn(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     connectedScrollState: ConnectedScrollState? = null,
     state: LazyGridState = rememberLazyGridState(),
+    pullToRefreshEnabled: Boolean = true,
     commentItem: @Composable LazyGridItemScope.(index: Int, item: UIComment) -> Unit
 ) {
     val emptyContentModifier = Modifier
@@ -77,7 +83,7 @@ fun CommentColumn(
         isRefreshing = items.isLoadingFirstPageOrRefreshing,
         onRefresh = { items.refresh() },
         modifier = modifier,
-        enabled = LocalPlatform.current.isMobile(),
+        enabled = pullToRefreshEnabled && LocalPlatform.current.isMobile(),
         contentAlignment = Alignment.TopCenter,
     ) {
         if (items.isFinishedAndEmpty) {

@@ -102,6 +102,15 @@ class NestedScrollableColumnState(
     }
 
     /**
+     * 布局是否处于最顶部, 即 header 完全可见 (未滚出任何距离).
+     *
+     * 可用于决定是否启用 pull-to-refresh 等只应在顶部生效的手势.
+     */
+    val isHeaderFullyVisible by derivedStateOf {
+        scrolledOffset.roundToInt() <= 0
+    }
+
+    /**
      * header 滚出的进度, `0f` = 完全可见, `1f` = 完全滚出.
      */
     val collapseProgress by derivedStateOf {

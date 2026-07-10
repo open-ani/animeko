@@ -56,6 +56,7 @@ fun SubjectDetailsDefaults.SubjectCommentColumn(
     connectedScrollState: ConnectedScrollState? = null,
     gridState: LazyGridState = rememberLazyGridState(),
     contentPadding: PaddingValues = PaddingValues(0.dp),
+    pullToRefreshEnabled: Boolean = true,
 ) {
     Box(modifier, contentAlignment = Alignment.TopCenter) {
         CommentColumn(
@@ -68,6 +69,7 @@ fun SubjectDetailsDefaults.SubjectCommentColumn(
             contentPadding = contentPadding,
             state = gridState,
             connectedScrollState = connectedScrollState,
+            pullToRefreshEnabled = pullToRefreshEnabled,
         ) { _, comment ->
             val commentWithOverlay = state.withReactionOverlay(comment)
             SubjectComment(

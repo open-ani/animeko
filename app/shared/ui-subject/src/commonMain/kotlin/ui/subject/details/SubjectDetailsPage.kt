@@ -495,6 +495,9 @@ private fun SubjectDetailsPage(
                             .nestedScrollWorkaround(state.commentTabLazyGridState),
                         gridState = state.commentTabLazyGridState,
                         contentPadding = tabContentPadding,
+                        // 下拉手势优先交给 NestedScrollableColumn 展开 header;
+                        // 只有整页在最顶部时才启用下拉刷新.
+                        pullToRefreshEnabled = nestedScrollableColumnState.isHeaderFullyVisible,
                     )
                 },
                 discussionsTab = {
