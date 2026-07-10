@@ -21,6 +21,7 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.Platform
 import java.io.File
+import kotlin.concurrent.thread
 import kotlin.io.path.createTempDirectory
 import kotlin.system.exitProcess
 
@@ -120,8 +121,7 @@ object MacOSUpdateInstaller : DesktopUpdateInstaller {
             .start()
 
         logger.info { "Exiting old instance." }
-        Thread.sleep(1000)
-        exitProcess(0)
+        return exitProcessForUpdate(delayMillis = 1000)
     }
 
     /**
@@ -276,6 +276,21 @@ object MacOSUpdateInstaller : DesktopUpdateInstaller {
     }
 }
 
+/**
+ * 在后台线程退出进程, 让外部更新程序接管.
+ *
+ * [UpdateInstaller.install] 在 AWT 事件线程 (EDT) 上被调用, 而 System.exit 会阻塞当前线程等待
+ * 所有 JVM shutdown hook 完成, 其中 JCEF 的清理 hook 又需要 EDT 处理事件 —
+ * 在 EDT 上直接 exitProcess 会互相等待, 进程永远无法退出 (#3067 后表现为点击更新后 app 冻结).
+ */
+private fun exitProcessForUpdate(delayMillis: Long): InstallationResult {
+    thread(name = "ani-update-exit") {
+        if (delayMillis > 0) Thread.sleep(delayMillis)
+        exitProcess(0)
+    }
+    return InstallationResult.Succeed
+}
+
 object LinuxUpdateInstaller : DesktopUpdateInstaller {
     override fun deleteOldUpdater() {
         // no-op
@@ -323,7 +338,7 @@ object WindowsUpdateInstaller : DesktopUpdateInstaller {
             .start()
 
         logger.info { "Installer started" }
-        exitProcess(0)
+        return exitProcessForUpdate(delayMillis = 0)
     }
 
     override fun deleteOldUpdater() {

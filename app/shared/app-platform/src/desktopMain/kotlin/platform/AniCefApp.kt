@@ -41,6 +41,8 @@ import java.text.SimpleDateFormat
 import java.util.Collections
 import java.util.Date
 import java.util.IdentityHashMap
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import javax.swing.SwingUtilities
@@ -343,8 +345,23 @@ object AniCefApp {
         if (!shouldDispose) return
 
         runCatching {
-            blockOnCefContext {
+            if (SwingUtilities.isEventDispatchThread()) {
                 target.dispose()
+            } else {
+                // 此方法会在 JVM shutdown hook 中调用. 若这次 shutdown 是 EDT 调用 System.exit 触发的,
+                // EDT 正阻塞等待 hook 结束, invokeAndWait 无限等待会互相死锁, 进程永远无法退出,
+                // 因此只能有界等待.
+                val latch = CountDownLatch(1)
+                SwingUtilities.invokeLater {
+                    try {
+                        target.dispose()
+                    } finally {
+                        latch.countDown()
+                    }
+                }
+                if (!latch.await(5, TimeUnit.SECONDS)) {
+                    logger.warn { "Timed out waiting for JCEF disposal on EDT, proceeding without it." }
+                }
             }
         }.onFailure {
             logger.warn(it) { "Failed to dispose JCEF." }
