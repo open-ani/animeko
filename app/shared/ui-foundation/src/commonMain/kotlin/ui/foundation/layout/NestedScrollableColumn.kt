@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.foundation.layout
 
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.ScrollableDefaults
@@ -17,6 +18,20 @@ import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
@@ -28,6 +43,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clipToBounds
@@ -39,9 +55,12 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.StandardDecelerateEasing
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
 import kotlin.math.roundToInt
@@ -300,5 +319,71 @@ fun NestedScrollableColumn(
             headerPlaceable.place(0, -scrolledOffset)
             contentPlaceable.place(0, headerPlaceable.height - scrolledOffset)
         }
+    }
+}
+
+@Composable
+@Preview
+private fun PreviewNestedScrollableColumn() = ProvideCompositionLocalsForPreview {
+    Surface(color = MaterialTheme.colorScheme.surface) {
+        val state = rememberNestedScrollableColumnState()
+        val pagerState = rememberPagerState(pageCount = { 3 })
+        val uiScope = rememberCoroutineScope()
+
+        NestedScrollableColumn(
+            header = {
+                Column(Modifier.fillMaxWidth()) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(280.dp)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "Header\n" +
+                                    "collapseProgress = ${(collapseProgress * 100).roundToInt()}%\n" +
+                                    "isHeaderScrolledOut = $isHeaderScrolledOut",
+                        )
+                    }
+
+                    TabRow(selectedTabIndex = pagerState.currentPage) {
+                        repeat(3) { index ->
+                            Tab(
+                                selected = pagerState.currentPage == index,
+                                onClick = { uiScope.launch { pagerState.animateScrollToPage(index) } },
+                                text = { Text("Tab $index") },
+                            )
+                        }
+                    }
+                }
+            },
+            content = {
+                HorizontalPager(
+                    pagerState,
+                    Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.Top,
+                ) { page ->
+                    val listState = rememberLazyListState()
+                    LazyColumn(
+                        Modifier
+                            .fillMaxSize()
+                            .nestedScrollWorkaround(listState),
+                        state = listState,
+                    ) {
+                        items(100) { item ->
+                            Text(
+                                "Page $page - Item $item",
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                            )
+                        }
+                    }
+                }
+            },
+            Modifier.fillMaxSize(),
+            state = state,
+        )
     }
 }
