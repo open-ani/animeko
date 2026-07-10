@@ -410,13 +410,13 @@ internal fun SettingsPageLayout(
     // 毛玻璃模式下顶栏覆盖在内容上方并保持常驻, 以便展示模糊效果.
     val frostedGlassActive = isAppChromeFrostedGlassActive()
 
-    val listPaneTopAppBarScrollBehavior = if (LocalPlatform.current.hasScrollingBug() || frostedGlassActive) {
+    val listPaneTopAppBarScrollBehavior = if (LocalPlatform.current.hasScrollingBug()) {
         TopAppBarDefaults.pinnedScrollBehavior()
     } else {
         TopAppBarDefaults.enterAlwaysScrollBehavior()
     }
 
-    val detailPaneTopAppBarScrollBehavior = if (LocalPlatform.current.hasScrollingBug() || frostedGlassActive) {
+    val detailPaneTopAppBarScrollBehavior = if (LocalPlatform.current.hasScrollingBug()) {
         TopAppBarDefaults.pinnedScrollBehavior()
     } else {
         TopAppBarDefaults.enterAlwaysScrollBehavior()
