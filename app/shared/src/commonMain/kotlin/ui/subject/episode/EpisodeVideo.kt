@@ -125,6 +125,7 @@ import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.SpeedS
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.VideoAspectRatioSelector
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.SubtitleSwitcher
+import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.rememberVideoControllerState
@@ -412,6 +413,7 @@ internal fun EpisodeVideoImpl(
                             progressSliderState,
                             cacheProgressInfoFlow = cacheProgressInfoFlow,
                             showPreviewTimeTextOnThumb = expanded,
+                            framePreview = rememberMediaProgressFramePreviewState(playerState),
                         )
                     },
                     danmakuEditor = danmakuEditor,

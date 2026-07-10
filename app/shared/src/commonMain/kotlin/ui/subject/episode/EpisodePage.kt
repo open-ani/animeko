@@ -155,6 +155,7 @@ import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.asLevelController
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.rememberRandomDanmakuPlaceholder
+import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.danmaku.api.DanmakuContent
 import me.him188.ani.danmaku.api.DanmakuLocation
@@ -977,6 +978,7 @@ private fun EpisodeVideo(
                 progressSliderState,
                 cacheProgressInfoFlow = vm.cacheProgressInfoFlow,
                 enabled = false,
+                framePreview = rememberMediaProgressFramePreviewState(vm.player),
             )
         },
         sidebarVisible = vm.sidebarVisible,
