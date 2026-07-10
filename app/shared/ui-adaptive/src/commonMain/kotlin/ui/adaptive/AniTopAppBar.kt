@@ -116,9 +116,11 @@ fun AniTopAppBar(
         .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal), // You would like to add only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     scrollBehavior: TopAppBarScrollBehavior? = null,
     size: TopAppBarSize = TopAppBarSize.SMALL,
+    // 当调用方自行为包含此 app bar 的更大区域应用毛玻璃效果时 (例如 CollectionPage 的 tab row), 传入 false 以避免重复应用.
+    enableFrostedGlass: Boolean = true,
 ) {
     val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
-    val frostedGlassActive = isAppChromeFrostedGlassActive()
+    val frostedGlassActive = enableFrostedGlass && isAppChromeFrostedGlassActive()
     val containerColor by rememberCurrentTopAppBarContainerColor(colors, scrollBehavior)
     val appBarModifier = modifier.appChromeFrostedGlass(
         enabled = frostedGlassActive,

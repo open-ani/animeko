@@ -70,6 +70,7 @@ import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthCompact
+import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.search.LoadErrorCard
@@ -99,6 +100,7 @@ fun SubjectCollectionsColumn(
     modifier: Modifier = Modifier,
     gridState: LazyGridState = rememberLazyGridState(),
     enableAnimation: Boolean = true,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     val isCompact = currentWindowAdaptiveInfo1().windowSizeClass.isWidthCompact
     val spacedBy = if (isCompact) 16.dp else 24.dp
@@ -108,7 +110,7 @@ fun SubjectCollectionsColumn(
         GridCells.Adaptive(360.dp),
         modifier,
         gridState,
-        contentPadding = PaddingValues(all = spacedBy / 2),
+        contentPadding = contentPadding + PaddingValues(all = spacedBy / 2),
         userScrollEnabled = true,
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) { Spacer(Modifier.height(1.dp)) } // 添加新 item 时保持到顶部

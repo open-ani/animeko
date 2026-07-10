@@ -70,7 +70,9 @@ fun AniNavigationSuite(
     val defaultItemColors by rememberUpdatedState(NavigationSuiteDefaults.itemColors())
 
     val viewConfiguration = LocalViewConfiguration.current
-    val frostedGlassActive = isAppChromeFrostedGlassActive()
+    // 毛玻璃效果仅对底部导航栏启用: 只有 NavigationBar 布局会将内容延伸到导航栏下方.
+    val frostedGlassActive = isAppChromeFrostedGlassActive() &&
+            layoutType == NavigationSuiteType.NavigationBar
 
     @Composable
     fun withDoubleClick(
@@ -124,11 +126,8 @@ fun AniNavigationSuite(
 
         NavigationSuiteType.NavigationRail -> {
             NavigationRail(
-                modifier = modifier.appChromeFrostedGlass(
-                    enabled = frostedGlassActive,
-                    containerColor = colors.navigationRailContainerColor,
-                ),
-                containerColor = if (frostedGlassActive) Color.Transparent else colors.navigationRailContainerColor,
+                modifier = modifier,
+                containerColor = colors.navigationRailContainerColor,
                 contentColor = colors.navigationRailContentColor,
                 windowInsets = AniWindowInsets.forNavigationRail(), // Ani added
                 header = {
@@ -174,11 +173,8 @@ fun AniNavigationSuite(
 
         NavigationSuiteType.NavigationDrawer -> {
             PermanentDrawerSheet(
-                modifier = modifier.appChromeFrostedGlass(
-                    enabled = frostedGlassActive,
-                    containerColor = colors.navigationDrawerContainerColor,
-                ),
-                drawerContainerColor = if (frostedGlassActive) Color.Transparent else colors.navigationDrawerContainerColor,
+                modifier = modifier,
+                drawerContainerColor = colors.navigationDrawerContainerColor,
                 drawerContentColor = colors.navigationDrawerContentColor,
                 windowInsets = AniWindowInsets.forNavigationDrawer(), // Ani added
             ) {

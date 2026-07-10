@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
@@ -75,6 +77,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpOffset
@@ -103,11 +106,13 @@ import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
+import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.rememberCurrentTopAppBarContainerColor
 import me.him188.ani.app.ui.foundation.session.SelfAvatar
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.theme.appChromeHazeSource
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
@@ -359,8 +364,18 @@ private fun CacheManagementLayout(
         containerColor = AniThemeDefaults.pageContentBackgroundColor,
         contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
     ) { paddingValues ->
+        val layoutDirection = LocalLayoutDirection.current
+        // bottom padding 作为列表的 contentPadding, 让内容可以滚动到毛玻璃导航栏下方.
+        val listBottomPadding = PaddingValues(bottom = paddingValues.calculateBottomPadding())
         AniListDetailPaneScaffold(
-            modifier = Modifier.padding(paddingValues),
+            // 毛玻璃 app chrome 的模糊来源.
+            modifier = Modifier
+                .appChromeHazeSource(backgroundColor = AniThemeDefaults.pageContentBackgroundColor)
+                .padding(
+                    start = paddingValues.calculateStartPadding(layoutDirection),
+                    top = paddingValues.calculateTopPadding(),
+                    end = paddingValues.calculateEndPadding(layoutDirection),
+                ),
             navigator = navigator,
             listPaneTopAppBar = null,
             listPaneContent = {
@@ -376,6 +391,7 @@ private fun CacheManagementLayout(
                             .widthIn(max = 1300.dp),
                         state = listState,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = listBottomPadding,
                     ) {
                         item("overall_stats") {
                             Surface(
@@ -425,6 +441,7 @@ private fun CacheManagementLayout(
                             .nestedScroll(scrollBehavior.nestedScrollConnection),
                         state = listState,
                         verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = listBottomPadding,
                     ) {
                         item("overall_stats") {
                             Surface(
@@ -475,7 +492,8 @@ private fun CacheManagementLayout(
                             .fillMaxHeight(),
                         state = detailListState,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(vertical = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding),
+                        contentPadding = listBottomPadding +
+                                PaddingValues(vertical = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding),
                     ) {
                         val entries = selectedGroup?.entries.orEmpty()
                         if (entries.isEmpty()) {
@@ -510,7 +528,8 @@ private fun CacheManagementLayout(
                     }
                 }
             },
-            contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+            // Bottom 通过 listBottomPadding 应用, 这里不再包含, 避免重复.
+            contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal),
             useSharedTransition = false,
         )
     }

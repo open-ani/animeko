@@ -16,10 +16,12 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.add
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.verticalScroll
@@ -37,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,6 +59,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.foundation.VersionExpiryService
 import me.him188.ani.app.navigation.LocalNavigator
@@ -73,6 +77,7 @@ import me.him188.ani.app.ui.exploration.ExplorationScreen
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopCaptionButton
@@ -84,6 +89,8 @@ import me.him188.ani.app.ui.foundation.layout.setRequestFullScreen
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.theme.LocalAppChromeHazeState
+import me.him188.ani.app.ui.foundation.theme.LocalAppChromeOverlayInsets
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.app.ui.lang.Lang
@@ -155,11 +162,72 @@ private fun MainScreenContent(
     val explorationPageViewModel = viewModel { ExplorationPageViewModel() }
     val userCollectionsViewModel = viewModel<UserCollectionsViewModel> { UserCollectionsViewModel() }
     val cacheManagementViewModel = viewModel { CacheManagementViewModel() }
-    val scope = rememberCoroutineScope()
 
     var showAccountSettingsPopup: Boolean by remember { mutableStateOf(false) }
     val profileViewModel = viewModel { ProfileViewModel() }
 
+    val navigatorState = rememberUpdatedState(LocalNavigator.current)
+    val navigator by navigatorState
+
+    // 毛玻璃 app chrome 仅在主页面启用: 各 tab 页面通过 appChromeHazeSource 标记模糊来源,
+    // 其他页面不提供 HazeState, 保持不透明的 chrome.
+    CompositionLocalProvider(LocalAppChromeHazeState provides rememberHazeState()) {
+        MainScreenNavigationLayout(
+            page = page,
+            selfInfo = selfInfo,
+            onNavigateToPage = onNavigateToPage,
+            onNavigateToSettings = onNavigateToSettings,
+            onNavigateToSearch = onNavigateToSearch,
+            onLogin = { showAccountSettingsPopup = true },
+            explorationPageViewModel = explorationPageViewModel,
+            userCollectionsViewModel = userCollectionsViewModel,
+            cacheManagementViewModel = cacheManagementViewModel,
+            modifier = modifier,
+            navigationLayoutType = navigationLayoutType,
+        )
+    }
+
+    if (showAccountSettingsPopup) {
+        ProfilePopup(
+            vm = profileViewModel,
+            onDismissRequest = { showAccountSettingsPopup = false },
+            onNavigateToSettings = {
+                showAccountSettingsPopup = false
+                onNavigateToSettings(null)
+            },
+            onNavigateToAccountSettings = {
+                showAccountSettingsPopup = false
+                onNavigateToSettings(SettingsTab.PROFILE)
+            },
+            onNavigateToPlaybackHistory = {
+                showAccountSettingsPopup = false
+                navigator.navigatePlaybackHistory()
+            },
+            onNavigateToLogin = {
+                showAccountSettingsPopup = false
+                navigator.navigateEmailLoginStart()
+            },
+        )
+    }
+}
+
+@Composable
+private fun MainScreenNavigationLayout(
+    page: MainScreenPage,
+    selfInfo: SelfInfoUiState,
+    onNavigateToPage: (MainScreenPage) -> Unit,
+    onNavigateToSettings: (tab: SettingsTab?) -> Unit,
+    onNavigateToSearch: () -> Unit,
+    onLogin: () -> Unit,
+    explorationPageViewModel: ExplorationPageViewModel,
+    userCollectionsViewModel: UserCollectionsViewModel,
+    cacheManagementViewModel: CacheManagementViewModel,
+    modifier: Modifier = Modifier,
+    navigationLayoutType: NavigationSuiteType = AniNavigationSuiteDefaults.calculateLayoutType(
+        currentWindowAdaptiveInfo1(),
+    ),
+) {
+    val scope = rememberCoroutineScope()
     val navigatorState = rememberUpdatedState(LocalNavigator.current)
     val navigator by navigatorState
 
@@ -247,6 +315,9 @@ private fun MainScreenContent(
             },
         ) {
             val aniMotionScheme = LocalAniMotionScheme.current
+            // 毛玻璃导航栏覆盖在内容上方时, 页面内容需要额外的 bottom insets 才不会被遮挡.
+            val pageWindowInsets = AniWindowInsets.forPageContent()
+                .add(LocalAppChromeOverlayInsets.current)
             AnimatedContent(
                 page,
                 Modifier.fillMaxSize(),
@@ -261,8 +332,9 @@ private fun MainScreenContent(
                             selfInfo,
                             onSearch = onNavigateToSearch,
                             onClickSettings = { navigator.navigateSettings() },
-                            onClickLogin = { showAccountSettingsPopup = true },
+                            onClickLogin = onLogin,
                             modifier = Modifier.fillMaxSize(),
+                            windowInsets = pageWindowInsets,
                         )
                     }
 
@@ -272,7 +344,7 @@ private fun MainScreenContent(
                             selfInfo = selfInfo,
                             fullSyncState = userCollectionsViewModel.fullSyncState.collectAsStateWithLifecycle().value,
                             onClickSearch = onNavigateToSearch,
-                            onClickLogin = { showAccountSettingsPopup = true },
+                            onClickLogin = onLogin,
                             onClickSettings = { navigator.navigateSettings() },
                             onCollectionUpdate = { subjectId, episode ->
                                 coroutineScope.launch {
@@ -284,6 +356,7 @@ private fun MainScreenContent(
                                 }
                             },
                             modifier = Modifier.fillMaxSize(),
+                            windowInsets = pageWindowInsets,
                             enableAnimation = userCollectionsViewModel.myCollectionsSettings.enableListAnimation1,
                         )
                     }
@@ -294,37 +367,15 @@ private fun MainScreenContent(
                             selfInfo = selfInfo,
                             onPlay = { navigator.navigateEpisodeDetails(it.subjectId, it.episodeId) },
                             onNavigateCacheDetail = { navigator.navigateCacheDetails(it) },
-                            onClickLogin = { showAccountSettingsPopup = true },
+                            onClickLogin = onLogin,
                             modifier = Modifier.fillMaxSize(),
                             navigationIcon = { },
+                            windowInsets = pageWindowInsets,
                         )
                     }
                 }
             }
         }
-    }
-
-    if (showAccountSettingsPopup) {
-        ProfilePopup(
-            vm = profileViewModel,
-            onDismissRequest = { showAccountSettingsPopup = false },
-            onNavigateToSettings = {
-                showAccountSettingsPopup = false
-                onNavigateToSettings(null)
-            },
-            onNavigateToAccountSettings = {
-                showAccountSettingsPopup = false
-                onNavigateToSettings(SettingsTab.PROFILE)
-            },
-            onNavigateToPlaybackHistory = {
-                showAccountSettingsPopup = false
-                navigator.navigatePlaybackHistory()
-            },
-            onNavigateToLogin = {
-                showAccountSettingsPopup = false
-                navigator.navigateEmailLoginStart()
-            },
-        )
     }
 }
 
@@ -355,7 +406,10 @@ private fun TabContent(
         Box(Modifier.fillMaxWidth()) {
             content()
 
-            UpdateNotifierWithVersionExpiryCheck()
+            // 毛玻璃导航栏覆盖在内容上时, 通知需要避开导航栏.
+            Box(Modifier.matchParentSize().windowInsetsPadding(LocalAppChromeOverlayInsets.current)) {
+                UpdateNotifierWithVersionExpiryCheck()
+            }
         }
     }
 }

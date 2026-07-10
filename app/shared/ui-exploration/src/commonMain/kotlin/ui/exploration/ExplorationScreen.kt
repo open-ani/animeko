@@ -88,9 +88,11 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
+import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.foundation.rememberHorizontalScrollControlState
 import me.him188.ani.app.ui.foundation.session.SelfAvatar
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.theme.appChromeHazeSource
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.exploration_continue_watching
@@ -220,16 +222,17 @@ fun ExplorationScreen(
         LazyVerticalGrid(
             layoutParams.gridCells,
             Modifier
+                // 毛玻璃 app chrome 的模糊来源. 内容通过 contentPadding 延伸到 chrome 下方.
+                .appChromeHazeSource(backgroundColor = AniThemeDefaults.pageContentBackgroundColor)
                 .fillMaxWidth()
                 .wrapContentWidth()
                 .widthIn(max = 1300.dp)
-                .padding(topBarPadding)
                 .fillMaxSize()
                 .ifNotNullThen(scrollBehavior) {
                     nestedScroll(it.nestedScrollConnection)
                 },
             state = state.pageScrollState,
-            contentPadding = PaddingValues(horizontal = horizontalPadding),
+            contentPadding = topBarPadding + PaddingValues(horizontal = horizontalPadding),
             horizontalArrangement = layoutParams.horizontalArrangement,
             verticalArrangement = layoutParams.verticalArrangement,
         ) {
