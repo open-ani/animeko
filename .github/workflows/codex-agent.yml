@@ -4,10 +4,8 @@
 # Runner prereqs (already set up on the machine):
 #   - codex logged in at ~/.codex/auth.json (ChatGPT subscription); binary at ~/.local/bin/codex.
 #   - gh installed at /opt/homebrew/bin/gh.
-#   - SSH push identity for the `openanibot` GitHub account:
-#       key  ~/.ssh/id_ed25519_codex   +  ssh config alias `github.com-codex`.
-#     The agent pushes via `git@github.com-codex:...`, so its pushes trigger CI and never
-#     touch the default github.com config used by build.yml's submodule checkout.
+#   - Repository secret OPENANI_BOT_TOKEN authenticates `gh`, checkout, fetch, and push as
+#     the `openanibot` GitHub account. The token must have read/write access to this repo.
 #
 # Triggers:
 #   1. Add the `ready-for-dev` label to an issue  -> the agent implements it and opens a PR.
@@ -45,7 +43,6 @@ env:
   READY_LABEL: ready-for-dev
   TRIGGER_PHRASE: '@codex'
   BASE_BRANCH: main
-  ORIGIN_SSH: git@github.com-codex:open-ani/animeko.git
   GIT_NAME: openanibot
   GIT_EMAIL: openanibot@users.noreply.github.com
   CODEX_MODEL: ''   # optional model pin; empty = ~/.codex/config.toml default
@@ -70,11 +67,18 @@ jobs:
     steps:
       - id: check
         env:
-          GH_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.OPENANI_BOT_TOKEN }}
           ACTOR: ${{ github.event.sender.login }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
+          test -n "${GH_TOKEN:-}" || { echo "::error::OPENANI_BOT_TOKEN is not configured"; exit 1; }
+          BOT_LOGIN=$(gh api user --jq .login)
+          test "$(printf '%s' "$BOT_LOGIN" | tr '[:upper:]' '[:lower:]')" = "$(printf '%s' "$GIT_NAME" | tr '[:upper:]' '[:lower:]')" || {
+            echo "::error::OPENANI_BOT_TOKEN authenticates as $BOT_LOGIN, expected $GIT_NAME"
+            exit 1
+          }
+          echo "GitHub bot=$BOT_LOGIN"
           PERM=$(gh api "repos/$REPO/collaborators/$ACTOR/permission" --jq '.permission' 2>/dev/null || echo none)
           echo "actor=$ACTOR permission=$PERM"
           case "$PERM" in
@@ -101,30 +105,17 @@ jobs:
       group: codex-agent
       cancel-in-progress: false
     env:
-      GH_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN || github.token }}
+      GH_TOKEN: ${{ secrets.OPENANI_BOT_TOKEN }}
       REPO: ${{ github.repository }}
       ISSUE_NUMBER: ${{ github.event.issue.number }}
       ISSUE_URL: ${{ github.event.issue.html_url }}
-      ANI_UI_OUT_DIR: ${{ runner.temp }}/ui-shots   # skills write screenshots here
     steps:
       - name: Set up tool PATH
         run: |
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"   # codex
           echo "/opt/homebrew/bin" >> "$GITHUB_PATH"  # gh, node
-
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.repository.default_branch }}
-          persist-credentials: false
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Configure git remote & identity
-        run: |
-          set -euo pipefail
-          git config user.name  "$GIT_NAME"
-          git config user.email "$GIT_EMAIL"
-          git remote set-url origin "$ORIGIN_SSH"
+          mkdir -p "$RUNNER_TEMP/ui-shots"
+          echo "ANI_UI_OUT_DIR=$RUNNER_TEMP/ui-shots" >> "$GITHUB_ENV"  # skills write screenshots here
 
       - name: Preflight
         run: |
@@ -132,7 +123,27 @@ jobs:
           command -v codex >/dev/null || { echo "::error::codex not on PATH"; exit 1; }
           command -v gh    >/dev/null || { echo "::error::gh not on PATH"; exit 1; }
           test -f "${CODEX_HOME:-$HOME/.codex}/auth.json" || { echo "::error::codex not logged in"; exit 1; }
-          echo "codex $(codex --version) | $(gh --version | head -1)"
+          test -n "${GH_TOKEN:-}" || { echo "::error::OPENANI_BOT_TOKEN is not configured"; exit 1; }
+          BOT_LOGIN=$(gh api user --jq .login)
+          test "$(printf '%s' "$BOT_LOGIN" | tr '[:upper:]' '[:lower:]')" = "$(printf '%s' "$GIT_NAME" | tr '[:upper:]' '[:lower:]')" || {
+            echo "::error::OPENANI_BOT_TOKEN authenticates as $BOT_LOGIN, expected $GIT_NAME"
+            exit 1
+          }
+          echo "codex $(codex --version) | $(gh --version | head -1) | GitHub $BOT_LOGIN"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          token: ${{ secrets.OPENANI_BOT_TOKEN }}
+          persist-credentials: true
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          set -euo pipefail
+          git config user.name  "$GIT_NAME"
+          git config user.email "$GIT_EMAIL"
 
       - name: React 👀 to the issue
         run: |
@@ -147,12 +158,16 @@ jobs:
             echo "  $ISSUE_URL"
             echo "Read the issue yourself with: gh issue view $ISSUE_NUMBER --comments"
             echo
+            echo "IMPORTANT: Do every GitHub action (PRs, comments, reactions, issue/PR reads) with the 'gh' CLI only."
+            echo "Do NOT use any GitHub connector / MCP integration — 'gh' authenticates as the CI bot, a connector would act under a personal account."
+            echo "GH_TOKEN is already set from the OPENANI_BOT_TOKEN repository secret. Use that existing token; do not run 'gh auth login' or replace it."
+            echo
             echo "Steps:"
             echo "1. Make the code changes on a new branch: codex/issue-$ISSUE_NUMBER (branch off $BASE_BRANCH)."
             echo "2. If your change affects any UI, verify it at runtime with the repo skills (auto-loaded from .agents/skills)"
             echo "   and embed detailed screenshots in the PR. Run android-ui-verify AND desktop-ui-verify separately if multiple platforms are affected."
             echo "3. Commit with a concise message, then: git push -u origin codex/issue-$ISSUE_NUMBER"
-            echo "   (origin already points at the SSH push remote; identity is preconfigured.)"
+            echo "   (origin already uses HTTPS credentials from OPENANI_BOT_TOKEN; identity is preconfigured.)"
             echo "4. Open a PR: gh pr create --base $BASE_BRANCH --head codex/issue-$ISSUE_NUMBER"
             echo "   Body must start with 'Closes #$ISSUE_NUMBER' and summarize the change + how you verified it (with screenshots for UI changes)."
             echo "5. If no code change is warranted, do NOT open a PR — instead comment your reasoning on the issue with: gh issue comment $ISSUE_NUMBER --body ..."
@@ -207,32 +222,20 @@ jobs:
       group: codex-agent
       cancel-in-progress: false
     env:
-      GH_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN || github.token }}
+      GH_TOKEN: ${{ secrets.OPENANI_BOT_TOKEN }}
       REPO: ${{ github.repository }}
       EVENT: ${{ github.event_name }}
       PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
       COMMENT_ID: ${{ github.event.comment.id }}
       PR_URL: ${{ github.event.pull_request.html_url || github.event.issue.html_url }}
       TRIGGER_URL: ${{ github.event.comment.html_url || github.event.review.html_url }}
-      ANI_UI_OUT_DIR: ${{ runner.temp }}/ui-shots   # skills write screenshots here
     steps:
       - name: Set up tool PATH
         run: |
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           echo "/opt/homebrew/bin" >> "$GITHUB_PATH"
-
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Configure git remote & identity
-        run: |
-          set -euo pipefail
-          git config user.name  "$GIT_NAME"
-          git config user.email "$GIT_EMAIL"
-          git remote set-url origin "$ORIGIN_SSH"
+          mkdir -p "$RUNNER_TEMP/ui-shots"
+          echo "ANI_UI_OUT_DIR=$RUNNER_TEMP/ui-shots" >> "$GITHUB_ENV"  # skills write screenshots here
 
       - name: Preflight
         run: |
@@ -240,6 +243,26 @@ jobs:
           command -v codex >/dev/null || { echo "::error::codex not on PATH"; exit 1; }
           command -v gh    >/dev/null || { echo "::error::gh not on PATH"; exit 1; }
           test -f "${CODEX_HOME:-$HOME/.codex}/auth.json" || { echo "::error::codex not logged in"; exit 1; }
+          test -n "${GH_TOKEN:-}" || { echo "::error::OPENANI_BOT_TOKEN is not configured"; exit 1; }
+          BOT_LOGIN=$(gh api user --jq .login)
+          test "$(printf '%s' "$BOT_LOGIN" | tr '[:upper:]' '[:lower:]')" = "$(printf '%s' "$GIT_NAME" | tr '[:upper:]' '[:lower:]')" || {
+            echo "::error::OPENANI_BOT_TOKEN authenticates as $BOT_LOGIN, expected $GIT_NAME"
+            exit 1
+          }
+          echo "codex $(codex --version) | $(gh --version | head -1) | GitHub $BOT_LOGIN"
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.OPENANI_BOT_TOKEN }}
+          persist-credentials: true
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          set -euo pipefail
+          git config user.name  "$GIT_NAME"
+          git config user.email "$GIT_EMAIL"
 
       - name: Resolve & check out PR branch
         id: pr
@@ -274,6 +297,10 @@ jobs:
             echo "  PR:       $PR_URL"
             echo "  Feedback: $TRIGGER_URL"
             echo "Read the full context yourself with: gh pr view $PR_NUMBER --comments   (and gh api for review threads)."
+            echo
+            echo "IMPORTANT: Do every GitHub action (PR updates, comments, replies, reactions, reads) with the 'gh' CLI only."
+            echo "Do NOT use any GitHub connector / MCP integration — 'gh' authenticates as the CI bot, a connector would act under a personal account."
+            echo "GH_TOKEN is already set from the OPENANI_BOT_TOKEN repository secret. Use that existing token; do not run 'gh auth login' or replace it."
             echo
             echo "Follow AGENTS.md. If your change affects any UI, re-verify at runtime with the repo skills (.agents/skills) and refresh"
             echo "the screenshots in the PR — run android-ui-verify AND desktop-ui-verify separately if multiple platforms are affected."
