@@ -42,6 +42,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.swipe
 import androidx.compose.ui.window.WindowPlacement
+import androidx.compose.ui.window.WindowState
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.preference.DarkMode
@@ -195,18 +196,21 @@ class EpisodeVideoControllerTest {
         playbackSpeedControllerState: PlaybackSpeedControllerState? = null,
         onPlayerStateCreated: (TestMediampPlayer) -> Unit = {},
         onPlatformWindow: (PlatformWindow) -> Unit = {},
+        platformWindowOverride: PlatformWindow? = null,
         showDanmakuEditor: () -> Boolean = { true },
         onEditorEscape: (() -> Unit)? = null,
     ) {
         ProvideCompositionLocalsForPreview(darkMode = DarkMode.DARK) {
-            onPlatformWindow(LocalPlatformWindow.current)
-            val scope = rememberCoroutineScope()
-            val playerState = remember {
-                TestMediampPlayer(scope.coroutineContext).also(onPlayerStateCreated)
-            }
-            val expanded = true
-            val cacheProgressInfoFlow = staticMediaCacheProgressState(ChunkState.NONE).flow
-            EpisodeVideoImpl(
+            val platformWindow = platformWindowOverride ?: LocalPlatformWindow.current
+            CompositionLocalProvider(LocalPlatformWindow provides platformWindow) {
+                onPlatformWindow(platformWindow)
+                val scope = rememberCoroutineScope()
+                val playerState = remember {
+                    TestMediampPlayer(scope.coroutineContext).also(onPlayerStateCreated)
+                }
+                val expanded = true
+                val cacheProgressInfoFlow = staticMediaCacheProgressState(ChunkState.NONE).flow
+                EpisodeVideoImpl(
                 playerState = playerState,
                 expanded = expanded,
                 hasNextEpisode = true,
@@ -319,9 +323,16 @@ class EpisodeVideoControllerTest {
                 shareData = MediaShareData(null, null),
                 onClickCache = {},
                 modifier = Modifier.testTag("PLAYER"),
-            )
+                )
+            }
         }
     }
+
+    private fun placementBackedPlatformWindow(): PlatformWindow = PlatformWindow(
+        windowHandle = 0L,
+        windowState = WindowState(),
+        platform = Platform.Linux(Arch.X86_64),
+    )
 
     private class TestLevelController(
         initialLevel: Float,
@@ -761,13 +772,13 @@ class EpisodeVideoControllerTest {
 
     @Test
     fun `mouse - keyboard shortcuts - reclaim focus when fullscreen changes`() = runAniComposeUiTest {
-        lateinit var platformWindow: PlatformWindow
+        val platformWindow = placementBackedPlatformWindow()
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         setContent {
             Player(
                 GestureFamily.MOUSE,
                 playerControllerState = visibleControllerState,
-                onPlatformWindow = { platformWindow = it },
+                platformWindowOverride = platformWindow,
             )
         }
         waitForIdle()
@@ -789,13 +800,13 @@ class EpisodeVideoControllerTest {
 
     @Test
     fun `mouse - keyboard shortcuts - preserve editor focus when fullscreen changes`() = runAniComposeUiTest {
-        lateinit var platformWindow: PlatformWindow
+        val platformWindow = placementBackedPlatformWindow()
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         setContent {
             Player(
                 GestureFamily.MOUSE,
                 playerControllerState = visibleControllerState,
-                onPlatformWindow = { platformWindow = it },
+                platformWindowOverride = platformWindow,
             )
         }
         waitForIdle()
