@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
@@ -33,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -45,10 +48,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
+import dev.chrisbanes.haze.rememberHazeState
 import me.him188.ani.app.data.models.person.CharacterDetailsInfo
 import me.him188.ani.app.data.models.person.CharacterSubjectInfo
 import me.him188.ani.app.data.models.person.InfoboxRowInfo
@@ -62,6 +67,10 @@ import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
+import me.him188.ani.app.ui.foundation.theme.LocalAppChromeHazeState
+import me.him188.ani.app.ui.foundation.theme.appChromeFrostedGlass
+import me.him188.ani.app.ui.foundation.theme.appChromeHazeSource
+import me.him188.ani.app.ui.foundation.theme.isAppChromeFrostedGlassActive
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.person_details_basic_info
 import me.him188.ani.app.ui.lang.person_details_casts
@@ -195,7 +204,12 @@ private fun PeopleDetailsScaffold(
             }
         }
         val topAppBarWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
+        val backgroundColor = AniThemeDefaults.pageContentBackgroundColor
+        val stickyTopBarColor = AniThemeDefaults.navigationContainerColor
 
+        // 本页自带一个独立的毛玻璃作用域: 粘性顶栏模糊其下方滚过的内容.
+        CompositionLocalProvider(LocalAppChromeHazeState provides rememberHazeState()) {
+        val frostedGlassActive = isAppChromeFrostedGlassActive()
         Scaffold(
             topBar = {
                 Box {
@@ -212,24 +226,39 @@ private fun PeopleDetailsScaffold(
                             title = {
                                 Text(topBarTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             },
-                            navigationIcon = navigationIcon,
-                            colors = AniThemeDefaults.topAppBarColors(
-                                containerColor = AniThemeDefaults.navigationContainerColor,
+                            modifier = Modifier.appChromeFrostedGlass(
+                                enabled = frostedGlassActive,
+                                containerColor = stickyTopBarColor,
                             ),
+                            navigationIcon = navigationIcon,
+                            colors = if (frostedGlassActive) {
+                                AniThemeDefaults.topAppBarColors().copy(containerColor = Color.Transparent)
+                            } else {
+                                AniThemeDefaults.topAppBarColors(containerColor = stickyTopBarColor)
+                            },
                             windowInsets = topAppBarWindowInsets,
                         )
                     }
                 }
             },
-            containerColor = AniThemeDefaults.pageContentBackgroundColor,
+            containerColor = backgroundColor,
             contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
         ) { padding ->
             if (!layoutParams.isMultiColumn) {
+                val layoutDirection = LocalLayoutDirection.current
                 Column(
                     Modifier
                         .fillMaxSize()
-                        .padding(padding)
+                        // 毛玻璃粘性顶栏的模糊来源.
+                        .appChromeHazeSource(backgroundColor = backgroundColor)
+                        // top padding 放在滚动内容内, 让内容可以滚动到顶栏下方 (与条目详情单栏一致).
+                        .padding(
+                            start = padding.calculateStartPadding(layoutDirection),
+                            end = padding.calculateEndPadding(layoutDirection),
+                            bottom = padding.calculateBottomPadding(),
+                        )
                         .verticalScroll(scrollState)
+                        .padding(top = padding.calculateTopPadding())
                         .padding(horizontal = layoutParams.contentHorizontalPadding)
                         .padding(
                             top = contentTopPadding,
@@ -242,6 +271,8 @@ private fun PeopleDetailsScaffold(
                 Row(
                     Modifier
                         .fillMaxSize()
+                        // 毛玻璃粘性顶栏的模糊来源 (多栏内容不延伸到顶栏下方, 采样到页面背景).
+                        .appChromeHazeSource(backgroundColor = backgroundColor)
                         .padding(padding)
                         .verticalScroll(scrollState)
                         .padding(
@@ -324,6 +355,7 @@ private fun PeopleDetailsScaffold(
                     }
                 }
             }
+        }
         }
     }
 
