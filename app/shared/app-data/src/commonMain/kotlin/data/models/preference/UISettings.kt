@@ -87,6 +87,7 @@ data class LegacyThemeSettings(
 @Immutable
 data class MyCollectionsSettings(
     val enableListAnimation1: Boolean = true,
+    val sortByName: Boolean = false,
 ) {
     companion object {
         @Stable

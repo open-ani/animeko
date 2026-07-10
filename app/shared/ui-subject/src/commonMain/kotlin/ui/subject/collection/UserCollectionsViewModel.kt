@@ -133,4 +133,10 @@ class UserCollectionsViewModel : AbstractViewModel(), KoinComponent {
             collectionType.toggleCollected(),
         )
     }
+
+    suspend fun toggleSortByName() {
+        settingsRepository.uiSettings.update {
+            copy(myCollections = myCollections.copy(sortByName = !myCollections.sortByName))
+        }
+    }
 }
