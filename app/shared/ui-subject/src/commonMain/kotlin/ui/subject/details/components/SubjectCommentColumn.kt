@@ -52,8 +52,8 @@ fun SubjectDetailsDefaults.SubjectCommentColumn(
     state: CommentState,
     onClickUrl: (url: String) -> Unit,
     onClickImage: (String) -> Unit,
-    connectedScrollState: ConnectedScrollState,
     modifier: Modifier = Modifier,
+    connectedScrollState: ConnectedScrollState? = null,
     gridState: LazyGridState = rememberLazyGridState(),
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
