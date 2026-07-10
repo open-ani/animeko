@@ -66,8 +66,11 @@ class MpvVideoAnalyzer {
     suspend fun analyze(input: ProbeVideoInput): Output {
         runCatching {
             val nativeDir = System.getProperty("ani.mpv.native.dir")
-                ?: "/Users/him188/Projects/mediamp/.claude/worktrees/cool-stonebraker-07836e/mediamp-mpv/build/dev-native"
-            MpvMediampPlayer.prepareLibraries(nativeDir, extractRuntimeLibrary = false)
+            if (nativeDir != null) {
+                MPVHandle.setRuntimeLibraryDirectory(nativeDir, extractRuntimeLibrary = false)
+            } else {
+                MPVHandle.useDefaultRuntimeLibraryDirectory()
+            }
             MPVHandle.setLogHandler { msg ->
                 if (msg.level <= 30) println("[mpv/" + msg.prefix + "] " + msg.line) // warn+
             }
