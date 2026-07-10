@@ -17,11 +17,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.add
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.verticalScroll
@@ -407,7 +407,12 @@ private fun TabContent(
             content()
 
             // 毛玻璃导航栏覆盖在内容上时, 通知需要避开导航栏.
-            Box(Modifier.matchParentSize().windowInsetsPadding(LocalAppChromeOverlayInsets.current)) {
+            // 注意不能用 windowInsetsPadding: 祖先已 consume 了系统导航栏 insets,
+            // windowInsetsPadding 会减去已消耗的部分, 导致通知被导航栏遮挡一截.
+            Box(
+                Modifier.matchParentSize()
+                    .padding(LocalAppChromeOverlayInsets.current.asPaddingValues()),
+            ) {
                 UpdateNotifierWithVersionExpiryCheck()
             }
         }
