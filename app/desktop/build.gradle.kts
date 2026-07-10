@@ -59,7 +59,7 @@ dependencies {
                 }
             }
         } else {
-            runtimeOnly("org.openani.mediamp:mediamp-mpv-runtime-$mpvTriple:${libs.versions.mediampMpv.get()}")
+            runtimeOnly("org.openani.mediamp:mediamp-mpv-runtime-$mpvTriple:${libs.versions.mediamp.get()}")
         }
     }
     // vlcj 依赖里没有 native libraries，依赖是手动放的
