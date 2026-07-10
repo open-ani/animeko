@@ -45,10 +45,22 @@ dependencies {
     }
     // mpv 后端只分发给 Windows x64 与 macOS arm64; Linux x64 与 macOS x64 仍用 VLC.
     // 与 me.him188.ani.app.desktop.usesMpv() 保持一致.
-    when (val triple = getOsTriple()) {
-        "windows-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.windows.x64)
-        "macos-arm64" -> runtimeOnly(libs.mediamp.mpv.runtime.macos.arm64)
-        else -> {}
+    val mpvTriple = getOsTriple().takeIf { it in listOf("windows-x64", "macos-arm64") }
+    if (mpvTriple != null) {
+        if (getLocalProperty("ani.build.mediamp.path") != null) {
+            // Composite 模式: natives 按 capability 从 :mediamp-mpv 的 composite runtime variant 取
+            // (mpvCompositeRuntimeElements-*, 产物来自本地 mpv-output 构建). 不能直接依赖
+            // mediamp-mpv-runtime-* 模块: 它不在 settings 的替换名单里, 会从 mavenLocal 解析 —
+            // 版本恰好已发布时静默用上发布版 natives (本地 native 改动不生效), 未发布时解析失败.
+            // 也不能在 settings 里替换: composite 的 dependencySubstitution 不保留 capability 选择.
+            runtimeOnly(libs.mediamp.mpv) {
+                capabilities {
+                    requireCapability("org.openani.mediamp:mediamp-mpv-runtime-$mpvTriple")
+                }
+            }
+        } else {
+            runtimeOnly("org.openani.mediamp:mediamp-mpv-runtime-$mpvTriple:${libs.versions.mediampMpv.get()}")
+        }
     }
     // vlcj 依赖里没有 native libraries，依赖是手动放的
     implementation(libs.vlcj)
