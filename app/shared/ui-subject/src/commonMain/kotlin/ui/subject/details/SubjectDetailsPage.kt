@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.ui.subject.details
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,6 +72,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -455,8 +458,13 @@ private fun SubjectDetailsPage(
                     else -> {}
                 }
             },
-            tabRow = {
-                SubjectDetailsContentTabRow(pagerState)
+            tabRow = { isOverlay, visible ->
+                SubjectDetailsContentTabRow(
+                    pagerState, 
+                    modifier = Modifier.ifThen(!isOverlay) {
+                        alpha(if (visible) 1f else 0f)
+                    }
+                )
             },
             nestedScrollableColumnState = nestedScrollableColumnState,
         ) { contentPadding ->
@@ -664,7 +672,7 @@ fun SubjectDetailsSingleColumnPage(
     onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit = {},
     onClickOpenExternal: () -> Unit = {},
     floatingActionButton: @Composable () -> Unit = {},
-    tabRow: (@Composable () -> Unit)? = null,
+    tabRow: (@Composable (isOverlay: Boolean, visible: Boolean) -> Unit)? = null,
     nestedScrollableColumnState: NestedScrollableColumnState = rememberNestedScrollableColumnState(),
     content: @Composable NestedScrollableScope.(contentPadding: PaddingValues) -> Unit,
 ) {
@@ -711,6 +719,21 @@ fun SubjectDetailsSingleColumnPage(
                 contentAlignment = Alignment.TopCenter,
             ) {
                 var tabRowHeightPx by remember { mutableStateOf(0) }
+                
+                // 粘性面板: 第二个 TopAppBar + 第二份 TabRow.
+                // 作为模糊来源的 sibling 绘制在其上方, 毛玻璃可采样到下方滚动的内容.
+                val density = LocalDensity.current
+                val anchorHeightPx = rememberUpdatedState(
+                    with(density) { scaffoldPadding.calculateTopPadding().roundToPx() },
+                )
+                // 触发条件: header 内的 tabRow 顶边滚动到顶栏底部 (anchor).
+                val stickyPanelVisible by remember(nestedScrollableColumnState) {
+                    derivedStateOf {
+                        val state = nestedScrollableColumnState
+                        val threshold = state.headerHeight - tabRowHeightPx - anchorHeightPx.value
+                        state.headerHeight > 0 && state.scrolledOffset > 0f && state.scrolledOffset >= threshold
+                    }
+                }
 
                 NestedScrollableColumn(
                     header = {
@@ -760,7 +783,7 @@ fun SubjectDetailsSingleColumnPage(
                                         .padding(remainingContentPadding)
                                         .fillMaxWidth(),
                                 ) {
-                                    tabRow()
+                                    tabRow(false, !stickyPanelVisible)
                                 }
                             }
                         }
@@ -775,35 +798,27 @@ fun SubjectDetailsSingleColumnPage(
                     state = nestedScrollableColumnState,
                 )
 
-                // 粘性面板: 第二个 TopAppBar + 第二份 TabRow.
-                // 作为模糊来源的 sibling 绘制在其上方, 毛玻璃可采样到下方滚动的内容.
-                val density = LocalDensity.current
-                val anchorHeightPx = rememberUpdatedState(
-                    with(density) { scaffoldPadding.calculateTopPadding().roundToPx() },
-                )
-                // 触发条件: header 内的 tabRow 顶边滚动到顶栏底部 (anchor).
-                val stickyPanelVisible by remember(nestedScrollableColumnState) {
-                    derivedStateOf {
-                        val state = nestedScrollableColumnState
-                        val threshold = state.headerHeight - tabRowHeightPx - anchorHeightPx.value
-                        state.headerHeight > 0 && state.scrolledOffset > 0f && state.scrolledOffset >= threshold
-                    }
-                }
                 if (showTopBar || tabRow != null) {
-                    AniAnimatedVisibility(
-                        stickyPanelVisible,
-                        Modifier.align(Alignment.TopCenter),
+                    // 面板底色/毛玻璃按分段应用: TopAppBar 段随 fade 渐入渐出,
+                    // TabRow 段直接 snap, 与 header 中 TabRow (同帧 alpha 隐藏/显示) 无缝交接.
+                    val panelBackgroundModifier = Modifier
+                        .appChromeFrostedGlass(
+                            enabled = frostedGlassActive,
+                            containerColor = stickyTopBarColor,
+                        )
+                        .ifThen(!frostedGlassActive) { background(stickyTopBarColor) }
+
+                    Column(
+                        Modifier
+                            .align(Alignment.TopCenter)
+                            .fillMaxWidth(),
                     ) {
-                        Column(
-                            Modifier
-                                .fillMaxWidth()
-                                .appChromeFrostedGlass(
-                                    enabled = frostedGlassActive,
-                                    containerColor = stickyTopBarColor,
-                                )
-                                .ifThen(!frostedGlassActive) { background(stickyTopBarColor) },
-                        ) {
-                            if (showTopBar) {
+                        if (showTopBar) {
+                            AniAnimatedVisibility(
+                                stickyPanelVisible,
+                                enter = fadeIn(),
+                                exit = fadeOut(),
+                            ) {
                                 WindowDragArea {
                                     TopAppBar(
                                         title = {
@@ -813,6 +828,7 @@ fun SubjectDetailsSingleColumnPage(
                                                 overflow = TextOverflow.Ellipsis,
                                             )
                                         },
+                                        modifier = panelBackgroundModifier,
                                         navigationIcon = navigationIcon,
                                         actions = topAppBarActions,
                                         colors = AniThemeDefaults.topAppBarColors().copy(containerColor = Color.Transparent),
@@ -820,11 +836,15 @@ fun SubjectDetailsSingleColumnPage(
                                     )
                                 }
                             }
+                        }
 
-                            if (tabRow != null) {
-                                Box(Modifier.padding(remainingContentPadding).fillMaxWidth()) {
-                                    tabRow()
-                                }
+                        if (tabRow != null && stickyPanelVisible) {
+                            Box(
+                                panelBackgroundModifier
+                                    .padding(remainingContentPadding)
+                                    .fillMaxWidth(),
+                            ) {
+                                tabRow(true, stickyPanelVisible)
                             }
                         }
                     }
