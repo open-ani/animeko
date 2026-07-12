@@ -9,8 +9,13 @@
 
 package me.him188.ani.app.tools.update
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.utils.io.SystemPath
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * 安装包安装器
@@ -21,11 +26,75 @@ import me.him188.ani.utils.io.SystemPath
  */
 interface UpdateInstaller {
     /**
+     * 返回安装前需要下载的文件地址.
+     *
+     * 默认直接使用版本 API 返回的安装包地址. Linux AppImage 将其转换为较小的 zsync 元数据地址,
+     * 实际差分数据由外部更新器在安装阶段下载.
+     */
+    fun getUpdatePreparationUrls(packageUrls: List<String>): List<String> = packageUrls
+
+    /**
      * 如果 [install] 可能返回 [InstallationResult.Failed], 则需实现
      */
     suspend fun openForManualInstallation(file: SystemPath, context: ContextMP): Boolean = false
 
     fun install(file: SystemPath, context: ContextMP): InstallationResult
+
+    /**
+     * 使用版本 API 返回的原始安装包地址执行安装.
+     *
+     * 默认平台仍安装已经下载到 [file] 的完整安装包.
+     */
+    suspend fun install(
+        file: SystemPath,
+        packageUrls: List<String>,
+        context: ContextMP,
+    ): InstallationResult = install(file, context)
+}
+
+sealed class UpdateInstallationState {
+    data object Idle : UpdateInstallationState()
+    data object Installing : UpdateInstallationState()
+    data object Succeed : UpdateInstallationState()
+    data class Failed(val result: InstallationResult.Failed) : UpdateInstallationState()
+    data class Cancelled(val cause: CancellationException) : UpdateInstallationState()
+}
+
+class UpdateInstallationRunner(
+    private val installer: UpdateInstaller,
+) {
+    private val _state = MutableStateFlow<UpdateInstallationState>(UpdateInstallationState.Idle)
+    val state: StateFlow<UpdateInstallationState> = _state.asStateFlow()
+
+    suspend fun install(
+        file: SystemPath,
+        packageUrls: List<String>,
+        context: ContextMP,
+    ) {
+        _state.value = UpdateInstallationState.Installing
+        try {
+            _state.value = when (val result = installer.install(file, packageUrls, context)) {
+                InstallationResult.Succeed -> UpdateInstallationState.Succeed
+                is InstallationResult.Failed -> UpdateInstallationState.Failed(result)
+            }
+        } catch (e: CancellationException) {
+            _state.value = UpdateInstallationState.Cancelled(e)
+            throw e
+        } catch (e: Throwable) {
+            _state.value = UpdateInstallationState.Failed(
+                InstallationResult.Failed(
+                    InstallationFailureReason.FAILED_TO_COPY,
+                    e.message,
+                ),
+            )
+        }
+    }
+
+    fun dismissFailure() {
+        _state.update { state ->
+            if (state is UpdateInstallationState.Failed) UpdateInstallationState.Idle else state
+        }
+    }
 }
 
 sealed class InstallationResult {

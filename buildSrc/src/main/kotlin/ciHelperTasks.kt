@@ -403,6 +403,11 @@ abstract class UploadDesktopInstallersTask : ReleaseUploadTask() {
     @get:PathSensitive(PathSensitivity.NONE)
     abstract val linuxAppImage: RegularFileProperty
 
+    @get:Optional
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val linuxAppImageZsync: RegularFileProperty
+
     @TaskAction
     fun uploadInstallers() {
         val fullVersion = releaseFullVersion.get()
@@ -445,16 +450,28 @@ abstract class UploadDesktopInstallersTask : ReleaseUploadTask() {
                 }
             }
 
-            ReleaseHostOs.LINUX -> uploadReleaseAsset(
-                name = ReleaseArtifactNames.desktopDistributionFile(
-                    fullVersion = fullVersion,
-                    osName = "linux",
-                    archName = "x86_64",
-                    extension = "appimage",
-                ),
-                contentType = "application/x-appimage",
-                file = requiredFile(linuxAppImage, "linuxAppImage"),
-            )
+            ReleaseHostOs.LINUX -> {
+                uploadReleaseAsset(
+                    name = ReleaseArtifactNames.desktopDistributionFile(
+                        fullVersion = fullVersion,
+                        osName = "linux",
+                        archName = "x86_64",
+                        extension = "appimage",
+                    ),
+                    contentType = "application/x-appimage",
+                    file = requiredFile(linuxAppImage, "linuxAppImage"),
+                )
+                uploadReleaseAsset(
+                    name = ReleaseArtifactNames.desktopDistributionFile(
+                        fullVersion = fullVersion,
+                        osName = "linux",
+                        archName = "x86_64",
+                        extension = "appimage.zsync",
+                    ),
+                    contentType = "application/octet-stream",
+                    file = requiredFile(linuxAppImageZsync, "linuxAppImageZsync"),
+                )
+            }
         }
     }
 

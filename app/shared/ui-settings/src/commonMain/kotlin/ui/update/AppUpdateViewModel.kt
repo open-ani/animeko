@@ -33,6 +33,8 @@ import me.him188.ani.app.tools.MonoTasker
 import me.him188.ani.app.tools.update.DefaultFileDownloader
 import me.him188.ani.app.tools.update.FileDownloaderState
 import me.him188.ani.app.tools.update.InstallationResult
+import me.him188.ani.app.tools.update.UpdateInstallationRunner
+import me.him188.ani.app.tools.update.UpdateInstallationState
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.utils.io.createDirectories
@@ -57,6 +59,7 @@ class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
     private val updateManager: UpdateManager by inject()
     private val clientProvider: HttpClientProvider by inject()
     private val updateInstaller: UpdateInstaller by inject()
+    private val installationRunner by lazy { UpdateInstallationRunner(updateInstaller) }
 
     private val fileDownloader by lazy { DefaultFileDownloader(clientProvider.get()) }
     private val updateChecker: UpdateChecker = UpdateChecker()
@@ -72,19 +75,24 @@ class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
      */
     private val fileDownloaderPresenter = FileDownloaderPresenter(fileDownloader, backgroundScope)
     private val autoCheckTasker = MonoTasker(backgroundScope)
+    // Linux keeps the app alive while AppImageUpdate downloads and builds a replacement.
+    // Track that work separately so the UI can show installation state and cancel it safely.
+    private val installationTasker = MonoTasker(backgroundScope)
     private val checkUpdateErrorFlow = MutableStateFlow<LoadError?>(null)
 
     val presentationFlow = combine(
         latestVersionFlow,
         fileDownloaderPresenter.flow,
         autoCheckTasker.isRunning,
+        installationRunner.state,
         checkUpdateErrorFlow,
-    ) { latestVersion, fileDownloaderStats, isCheckingUpdate, checkUpdateError ->
+    ) { latestVersion, fileDownloaderStats, isCheckingUpdate, installationState, checkUpdateError ->
         val latestVersion = latestVersion
         val state = when {
             // 还没检查过
             lastCheckTime.value == 0L -> AppUpdateState.ClickToCheck
             latestVersion == null -> AppUpdateState.AlreadyUpToDate
+            installationState is UpdateInstallationState.Installing -> AppUpdateState.Installing(latestVersion)
             else -> {
                 when (fileDownloaderStats.state) {
                     FileDownloaderState.Idle -> AppUpdateState.HasUpdate(latestVersion)
@@ -111,6 +119,7 @@ class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
             fileDownloaderStats = fileDownloaderStats,
             isCheckingUpdate = isCheckingUpdate,
             checkUpdateError = checkUpdateError,
+            installationFailure = (installationState as? UpdateInstallationState.Failed)?.result,
             isPlaceholder = latestVersion == null && fileDownloaderStats.isPlaceholder,
         )
     }.stateIn(
@@ -188,10 +197,12 @@ class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
                 return@launch
             }
 
+            // Linux prepares a small zsync file; other platforms prepare the package URL unchanged.
+            val preparationUrls = updateInstaller.getUpdatePreparationUrls(ver.downloadUrlAlternatives)
             val dir = updateManager.saveDir
             if (dir.exists()) {
                 // 删除旧的文件
-                val allowedFilenames = ver.downloadUrlAlternatives.map {
+                val allowedFilenames = preparationUrls.map {
                     it.substringAfterLast("/", "")
                 }.let { list ->
                     list + list.map { "$it.sha1" }
@@ -208,7 +219,7 @@ class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
 
             withContext(Dispatchers.IO) { dir.createDirectories() }
             fileDownloader.download(
-                alternativeUrls = ver.downloadUrlAlternatives,
+                alternativeUrls = preparationUrls,
                 filenameProvider = { it.substringAfterLast("/", "") },
                 saveDir = dir,
             )
@@ -219,18 +230,28 @@ class AppUpdateViewModel : AbstractViewModel(), KoinComponent {
         latestVersionFlow.value?.let { startDownload(it, uriHandler) }
     }
 
-    fun install(context: ContextMP): InstallationResult.Failed? {
+    fun install(context: ContextMP) {
         val state = presentationFlow.value.state as? AppUpdateState.Downloaded
-            ?: return null
-        val result = updateInstaller.install(state.file, context)
-        return when (result) {
-            is InstallationResult.Failed -> result
-            InstallationResult.Succeed -> null
+            ?: return
+        installationTasker.launch(Dispatchers.Main) {
+            installationRunner.install(
+                file = state.file,
+                packageUrls = state.version.downloadUrlAlternatives,
+                context = context,
+            )
         }
     }
 
+    fun dismissInstallationFailure() {
+        installationRunner.dismissFailure()
+    }
+
     fun cancelDownload() {
-        downloadTasker.cancel()
+        if (installationTasker.isRunning.value) {
+            installationTasker.cancel()
+        } else {
+            downloadTasker.cancel()
+        }
     }
 }
 
@@ -241,6 +262,7 @@ data class AppUpdatePresentation(
     val fileDownloaderStats: FileDownloaderStats,
     val isCheckingUpdate: Boolean,
     val checkUpdateError: LoadError? = null,
+    val installationFailure: InstallationResult.Failed? = null,
     val currentVersion: String = currentAniBuildConfig.versionName,
     val isPlaceholder: Boolean = false,
 ) {
@@ -251,6 +273,7 @@ data class AppUpdatePresentation(
         is AppUpdateState.Downloaded -> true
         is AppUpdateState.Downloading -> true
         is AppUpdateState.HasUpdate -> false
+        is AppUpdateState.Installing -> true
     }
     val downloadError = (state as? AppUpdateState.DownloadFailed)?.throwable?.let { LoadError.fromException(it) }
 

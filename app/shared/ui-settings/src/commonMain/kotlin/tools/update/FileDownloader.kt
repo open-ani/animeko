@@ -217,7 +217,8 @@ class DefaultFileDownloader(
     private suspend fun fetchRemoteChecksum(client: ScopedHttpClient, url: String): String? {
         return try {
             // The server should serve the checksum as plain text
-            client.use { get("$url.sha1").body() }
+            // Checksum sidecars may have no line ending, LF, or CRLF; trim all surrounding whitespace.
+            client.use { get("$url.sha1").body<String>().trim() }
         } catch (e: CancellationException) {
             throw e
         } catch (e: ClientRequestException) {

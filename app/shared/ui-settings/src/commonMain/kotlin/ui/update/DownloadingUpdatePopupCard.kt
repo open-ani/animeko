@@ -10,6 +10,7 @@
 package me.him188.ani.app.ui.update
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -43,9 +44,12 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_update_popup_cancel
 import me.him188.ani.app.ui.lang.settings_update_popup_cancel_download
+import me.him188.ani.app.ui.lang.settings_update_popup_cancel_install
 import me.him188.ani.app.ui.lang.settings_update_popup_continue_download
+import me.him188.ani.app.ui.lang.settings_update_popup_continue_update
 import me.him188.ani.app.ui.lang.settings_update_popup_download_complete
 import me.him188.ani.app.ui.lang.settings_update_popup_downloading
+import me.him188.ani.app.ui.lang.settings_update_popup_installing
 import me.him188.ani.app.ui.lang.settings_update_popup_restart_update
 import me.him188.ani.app.ui.search.LoadErrorCard
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -57,6 +61,7 @@ fun DownloadingUpdatePopupCard(
     version: NewVersion,
     fileDownloaderStats: FileDownloaderStats,
     error: LoadError?,
+    isInstalling: Boolean,
     onInstallClick: () -> Unit,
     onCancelClick: () -> Unit,
     onRetryClick: () -> Unit,
@@ -64,23 +69,29 @@ fun DownloadingUpdatePopupCard(
 ) {
     var showConfirmCancel by rememberSaveable { mutableStateOf(false) }
     val onRequestCancel = {
-        when (fileDownloaderStats.state) {
-            // 弹一个对话框问一下
+        // 下载或安装仍在进行时需要确认取消；其余下载终态没有活动任务，直接关闭卡片即可。
+        if (isInstalling) {
+            showConfirmCancel = true
+        } else when (fileDownloaderStats.state) {
             FileDownloaderState.Downloading -> showConfirmCancel = true
-
-            // 直接关闭
             is FileDownloaderState.Succeed,
             is FileDownloaderState.Failed,
             is FileDownloaderState.Cancelled,
             FileDownloaderState.Idle -> onCancelClick()
         }
-
     }
 
     if (showConfirmCancel) {
         AlertDialog(
             onDismissRequest = { showConfirmCancel = false },
-            text = { Text(stringResource(Lang.settings_update_popup_cancel_download)) },
+            text = {
+                Text(
+                    stringResource(
+                        if (isInstalling) Lang.settings_update_popup_cancel_install
+                        else Lang.settings_update_popup_cancel_download,
+                    ),
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -95,21 +106,33 @@ fun DownloadingUpdatePopupCard(
                 TextButton(
                     onClick = { showConfirmCancel = false },
                 ) {
-                    Text(stringResource(Lang.settings_update_popup_continue_download))
+                    Text(
+                        stringResource(
+                            if (isInstalling) Lang.settings_update_popup_continue_update
+                            else Lang.settings_update_popup_continue_download,
+                        ),
+                    )
                 }
             },
         )
     }
 
     BasicNotificationPopupCard(
-        title = { Text(stringResource(Lang.settings_update_popup_downloading)) },
+        title = {
+            Text(
+                stringResource(
+                    if (isInstalling) Lang.settings_update_popup_installing
+                    else Lang.settings_update_popup_downloading,
+                ),
+            )
+        },
         modifier,
         dismissButton = {
             NotificationPopupDefaults.DismissButton(onRequestCancel)
         },
         subtitle = { Text(version.name) },
         actions = {
-            if (fileDownloaderStats.state is FileDownloaderState.Succeed) {
+            if (!isInstalling && fileDownloaderStats.state is FileDownloaderState.Succeed) {
                 Button(
                     onClick = onInstallClick,
                 ) {
@@ -119,7 +142,7 @@ fun DownloadingUpdatePopupCard(
         },
     ) {
         when {
-            fileDownloaderStats.state is FileDownloaderState.Succeed -> {
+            !isInstalling && fileDownloaderStats.state is FileDownloaderState.Succeed -> {
                 ListItem(
                     headlineContent = {
                         Text(stringResource(Lang.settings_update_popup_download_complete))
@@ -135,7 +158,7 @@ fun DownloadingUpdatePopupCard(
                 )
             }
 
-            error != null -> {
+            !isInstalling && error != null -> {
                 LoadErrorCard(
                     error,
                     onRetry = onRetryClick,
@@ -161,23 +184,31 @@ fun DownloadingUpdatePopupCard(
             }
 
             else -> {
+                val progress = if (isInstalling) null else fileDownloaderStats.progress
+                val indicatorModifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 8.dp)
+                    .wrapContentHeight(Alignment.CenterVertically)
                 ListItem(
                     headlineContent = {
-                        LinearProgressIndicator(
-                            progress = { fileDownloaderStats.progress },
-                            Modifier.weight(1f).heightIn(min = 8.dp).wrapContentHeight(Alignment.CenterVertically),
-                        )
+                        if (progress == null) {
+                            LinearProgressIndicator(modifier = indicatorModifier)
+                        } else {
+                            LinearProgressIndicator(progress = { progress }, modifier = indicatorModifier)
+                        }
                     },
-                    trailingContent = {
-                        Box(Modifier.padding(start = 16.dp), contentAlignment = Alignment.CenterEnd) {
-                            Text(
-                                "${999}%",
-                                Modifier.alpha(0f), // 占位
-                            )
-                            Text(
-                                "${(fileDownloaderStats.progress * 100).fastRoundToInt()}%",
-                                Modifier,
-                            )
+                    trailingContent = progress?.let {
+                        {
+                            Box(Modifier.padding(start = 16.dp), contentAlignment = Alignment.CenterEnd) {
+                                Text(
+                                    "${999}%",
+                                    Modifier.alpha(0f), // 占位
+                                )
+                                Text(
+                                    "${(progress * 100).fastRoundToInt()}%",
+                                    Modifier,
+                                )
+                            }
                         }
                     },
                     colors = ListItemDefaults.colors(
@@ -197,6 +228,7 @@ private fun PreviewDownloadingUpdatePopupCard() = ProvideCompositionLocalsForPre
         version = TestNewVersion,
         fileDownloaderStats = TestFileDownloaderStats.Downloading,
         error = null,
+        isInstalling = false,
         {}, {}, {},
     )
 }
@@ -209,6 +241,7 @@ private fun PreviewDownloadingUpdatePopupCardError() = ProvideCompositionLocalsF
         version = TestNewVersion,
         fileDownloaderStats = TestFileDownloaderStats.Failed,
         error = LoadError.NetworkError,
+        isInstalling = false,
         {}, {}, {},
     )
 }
@@ -222,6 +255,7 @@ private fun PreviewDownloadingUpdatePopupCardSuccess() = ProvideCompositionLocal
         version = TestNewVersion,
         fileDownloaderStats = TestFileDownloaderStats.Succeed,
         error = null,
+        isInstalling = false,
         {}, {}, {},
     )
 }

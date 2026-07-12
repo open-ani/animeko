@@ -140,6 +140,7 @@ tasks.register("uploadDesktopInstallers", UploadDesktopInstallersTask::class) {
 
         ReleaseHostOs.LINUX -> {
             linuxAppImage.set(rootProject.layout.projectDirectory.file("Animeko-x86_64.AppImage"))
+            linuxAppImageZsync.set(rootProject.layout.projectDirectory.file("Animeko-x86_64.AppImage.zsync"))
         }
     }
 }

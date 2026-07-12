@@ -1795,10 +1795,18 @@ class WithMatrix(
                         # Download appimagetool
                         wget https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
                         chmod +x appimagetool-x86_64.AppImage
+
+                        # Bundle the external updater. It is copied out of the read-only AppImage mount before use.
+                        appImageUpdateVersion="2.0.0-alpha-1-20251018"
+                        appImageUpdateTool="appimageupdatetool-x86_64.AppImage"
+                        wget "https://github.com/AppImageCommunity/AppImageUpdate/releases/download/$appImageUpdateVersion/$appImageUpdateTool"
+                        echo "d976cdac667b03dee8cb23fb95ef74b042c406c5cbab3ff294d2b16efeaff84f  $appImageUpdateTool" | sha256sum -c -
+                        chmod +x "$appImageUpdateTool"
                         
                         # Prepare AppDir
                         mkdir -p AppDir/usr
                         cp -r app/desktop/build/compose/binaries/main-release/app/Ani/* AppDir/usr
+                        cp "$appImageUpdateTool" AppDir/usr/lib/app/resources/
                         
                         cp app/desktop/appResources/linux-x64/AppRun AppDir/AppRun
                         cp app/desktop/appResources/linux-x64/animeko.desktop AppDir/animeko.desktop
@@ -1809,18 +1817,36 @@ class WithMatrix(
                         chmod a+x AppDir/usr/bin/Ani
                         chmod a+x AppDir/usr/lib/runtime/lib/jcef_helper
                         
-                        # Build AppImage
-                        ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir
+                        # Build an AppImage whose zsync metadata points at this repository's release asset.
+                        # Build with the final release filename so the generated zsync metadata keeps that name,
+                        # then normalize the local filenames expected by the upload tasks below.
+                        releaseTag="$GITHUB_REF_NAME"
+                        releaseVersion="$(printf '%s' "$releaseTag" | sed 's/^v//')"
+                        # Pull request merge refs contain '/', which must not become a path separator here.
+                        releaseVersion="${releaseVersion//\//-}"
+                        releaseAsset="ani-$releaseVersion-linux-x86_64.appimage"
+                        updateInformation="zsync|https://github.com/$GITHUB_REPOSITORY/releases/download/$releaseTag/$releaseAsset.zsync"
+                        ARCH=x86_64 ./appimagetool-x86_64.AppImage \
+                          -u "$updateInformation" \
+                          AppDir \
+                          "$releaseAsset"
+                        # Keep the zsync reusable on GitHub, d.myani.org and compatible mirrors.
+                        sed -i "s|^URL:.*|URL: $releaseAsset|" "$releaseAsset.zsync"
+                        mv "$releaseAsset" Animeko-x86_64.AppImage
+                        mv "$releaseAsset.zsync" Animeko-x86_64.AppImage.zsync
                         """.trimIndent(),
                 )
-                // Expected output path: Animeko-x86_64.AppImage.
+                // Expected output paths: Animeko-x86_64.AppImage and Animeko-x86_64.AppImage.zsync.
                 // If changed, change also uploadDesktopDistributions in :ci-helper
 
                 usesWithAttempts(
                     name = "Upload Linux packages",
                     action = UploadArtifact(
                         name = ArtifactNames.linuxAppImage(matrix.arch),
-                        path_Untyped = "Animeko-x86_64.AppImage",
+                        path_Untyped = $$"""
+                            Animeko-x86_64.AppImage
+                            Animeko-x86_64.AppImage.zsync
+                            """.trimIndent(),
                         overwrite = true,
                         ifNoFilesFound = UploadArtifact.BehaviorIfNoFilesFound.Error,
                     ),

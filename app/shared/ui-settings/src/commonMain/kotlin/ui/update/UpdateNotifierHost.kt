@@ -43,7 +43,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.window.core.layout.WindowSizeClass
 import me.him188.ani.app.platform.LocalContext
-import me.him188.ani.app.tools.update.InstallationResult
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -66,7 +65,6 @@ fun BoxScope.UpdateNotifier(
 
     val presentation by viewModel.presentationFlow.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var showInstallationError by rememberSaveable { mutableStateOf<InstallationResult.Failed?>(null) }
 
     UpdateNotifier(
         presentation = presentation,
@@ -76,9 +74,7 @@ fun BoxScope.UpdateNotifier(
             }
         },
         onInstallClick = {
-            viewModel.install(context)?.let {
-                showInstallationError = it
-            }
+            viewModel.install(context)
         },
         onCancelClick = {
             viewModel.cancelDownload()
@@ -90,11 +86,11 @@ fun BoxScope.UpdateNotifier(
         layoutKind = layoutKind,
     )
 
-    showInstallationError?.let {
+    presentation.installationFailure?.let {
         FailedToInstallDialog(
             it.reason.toString(),
             onDismissRequest = {
-                showInstallationError = null
+                viewModel.dismissInstallationFailure()
             },
             state = presentation.state,
         )
@@ -140,10 +136,13 @@ fun BoxScope.UpdateNotifier(
                     version = presentation.newVersion,
                     fileDownloaderStats = presentation.fileDownloaderStats,
                     error = presentation.downloadError,
+                    isInstalling = presentation.state is AppUpdateState.Installing,
                     onInstallClick = onInstallClick,
                     onCancelClick = {
                         onCancelClick()
-                        dismissedManually = true
+                        if (presentation.state !is AppUpdateState.Installing) {
+                            dismissedManually = true
+                        }
                     },
                     onRetryClick = onRetryClick,
                     modifier = positionModifiers,

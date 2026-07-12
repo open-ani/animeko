@@ -147,7 +147,8 @@ class DefaultFileDownloaderTest {
                 // For instance, use an online SHA1 tool or write a snippet to compute it:
                 // echo -n "Hello, this is a test file!" | sha1sum
                 // => 6963709dcf9c2be481cba0498a4900a919feab84
-                call.respondText("0fc7c10d0d0193c654b2654dba75c319bcdc6edb")
+                // Release checksum sidecars are text files and include a trailing newline.
+                call.respondText("0fc7c10d0d0193c654b2654dba75c319bcdc6edb\n")
             }
 
             // Corrupted file with mismatched .sha1

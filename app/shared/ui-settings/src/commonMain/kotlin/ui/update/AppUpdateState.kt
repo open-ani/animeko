@@ -69,5 +69,9 @@ sealed interface AppUpdateState {
         val file: SystemPath,
     ) : HasNewVersion
 
+    /** 正在安装更新, 应保持应用运行直到安装器返回结果. */
+    @Immutable
+    data class Installing(override val version: NewVersion) : HasNewVersion
+
     companion object
 }

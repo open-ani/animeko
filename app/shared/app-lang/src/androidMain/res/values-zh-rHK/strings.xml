@@ -442,9 +442,12 @@
     <string name="settings_update_popup_auto_update">自動更新</string>
     <string name="settings_update_popup_close">關閉</string>
     <string name="settings_update_popup_downloading">正在下載更新</string>
+    <string name="settings_update_popup_installing">正在安裝更新</string>
     <string name="settings_update_popup_cancel_download">要取消下載嗎?</string>
+    <string name="settings_update_popup_cancel_install">要取消更新嗎?</string>
     <string name="settings_update_popup_cancel">取消</string>
     <string name="settings_update_popup_continue_download">繼續下載</string>
+    <string name="settings_update_popup_continue_update">繼續更新</string>
     <string name="settings_update_popup_restart_update">重啟更新</string>
     <string name="settings_update_popup_download_complete">下載完成</string>
 
