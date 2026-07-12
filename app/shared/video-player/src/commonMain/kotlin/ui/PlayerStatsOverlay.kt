@@ -79,7 +79,6 @@ fun PlayerStatsOverlay(
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            val unknown = stringResource(Lang.video_player_stats_unknown)
             Text(
                 "${stringResource(Lang.video_player_stats_title)}  ${stringResource(Lang.video_player_stats_hide_hint)}",
                 style = MaterialTheme.typography.labelLarge.copy(
@@ -96,45 +95,43 @@ fun PlayerStatsOverlay(
                 stringResource(Lang.video_player_stats_progress),
                 "${formatDuration(stats.positionMillis)} / ${formatDuration(stats.durationMillis)}",
             )
-            PlayerStatsRow(stringResource(Lang.video_player_stats_resolution), stats.resolution ?: unknown)
-            PlayerStatsRow(
-                stringResource(Lang.video_player_stats_frame_rate),
-                stats.frameRate?.let { "${formatDecimal(it)} fps" } ?: unknown,
-            )
-            PlayerStatsRow(stringResource(Lang.video_player_stats_video_codec), stats.videoCodec ?: unknown)
-            PlayerStatsRow(stringResource(Lang.video_player_stats_video_bitrate), formatBitrate(stats.videoBitrate, unknown))
-            PlayerStatsRow(stringResource(Lang.video_player_stats_audio_codec), stats.audioCodec ?: unknown)
-            PlayerStatsRow(stringResource(Lang.video_player_stats_audio_bitrate), formatBitrate(stats.audioBitrate, unknown))
-            PlayerStatsRow(
-                stringResource(Lang.video_player_stats_audio_format),
-                listOfNotNull(
-                    stats.audioSampleRate?.takeIf { it > 0 }?.let { "${it} Hz" },
-                    stats.audioChannels?.takeIf { it > 0 }?.let { "${it} ch" },
-                ).joinToString(" / ").ifBlank { unknown },
-            )
-            PlayerStatsRow(
-                stringResource(Lang.video_player_stats_playback_speed),
-                stats.playbackSpeed?.let { "${formatDecimal(it)}x" } ?: unknown,
-            )
-            PlayerStatsRow(
-                stringResource(Lang.video_player_stats_realtime_input),
-                formatBitrate(stats.realtimeInputBitrate, unknown),
-            )
-            PlayerStatsRow(
-                stringResource(Lang.video_player_stats_realtime_demux),
-                formatBitrate(stats.realtimeDemuxBitrate, unknown),
-            )
-            PlayerStatsRow(
-                stringResource(Lang.video_player_stats_decode_stats),
-                listOfNotNull(
-                    stats.decodedVideoFrames?.let { "V $it" },
-                    stats.decodedAudioFrames?.let { "A $it" },
-                    stats.droppedVideoFrames?.takeIf { it > 0 }
-                        ?.let { stringResource(Lang.video_player_stats_dropped_video_frames, it.toString()) },
-                    stats.droppedAudioBuffers?.takeIf { it > 0 }
-                        ?.let { stringResource(Lang.video_player_stats_dropped_audio_buffers, it.toString()) },
-                ).joinToString(" / ").ifBlank { unknown },
-            )
+            stats.resolution?.let { PlayerStatsRow(stringResource(Lang.video_player_stats_resolution), it) }
+            stats.frameRate?.let {
+                PlayerStatsRow(stringResource(Lang.video_player_stats_frame_rate), "${formatDecimal(it)} fps")
+            }
+            stats.videoCodec?.let { PlayerStatsRow(stringResource(Lang.video_player_stats_video_codec), it) }
+            formatBitrate(stats.videoBitrate)?.let {
+                PlayerStatsRow(stringResource(Lang.video_player_stats_video_bitrate), it)
+            }
+            stats.audioCodec?.let { PlayerStatsRow(stringResource(Lang.video_player_stats_audio_codec), it) }
+            formatBitrate(stats.audioBitrate)?.let {
+                PlayerStatsRow(stringResource(Lang.video_player_stats_audio_bitrate), it)
+            }
+            listOfNotNull(
+                stats.audioSampleRate?.takeIf { it > 0 }?.let { "${it} Hz" },
+                stats.audioChannels?.takeIf { it > 0 }?.let { "${it} ch" },
+            ).joinToString(" / ").takeIf { it.isNotBlank() }?.let {
+                PlayerStatsRow(stringResource(Lang.video_player_stats_audio_format), it)
+            }
+            stats.playbackSpeed?.let {
+                PlayerStatsRow(stringResource(Lang.video_player_stats_playback_speed), "${formatDecimal(it)}x")
+            }
+            formatBitrate(stats.realtimeInputBitrate)?.let {
+                PlayerStatsRow(stringResource(Lang.video_player_stats_realtime_input), it)
+            }
+            formatBitrate(stats.realtimeDemuxBitrate)?.let {
+                PlayerStatsRow(stringResource(Lang.video_player_stats_realtime_demux), it)
+            }
+            listOfNotNull(
+                stats.decodedVideoFrames?.let { "V $it" },
+                stats.decodedAudioFrames?.let { "A $it" },
+                stats.droppedVideoFrames?.takeIf { it > 0 }
+                    ?.let { stringResource(Lang.video_player_stats_dropped_video_frames, it.toString()) },
+                stats.droppedAudioBuffers?.takeIf { it > 0 }
+                    ?.let { stringResource(Lang.video_player_stats_dropped_audio_buffers, it.toString()) },
+            ).joinToString(" / ").takeIf { it.isNotBlank() }?.let {
+                PlayerStatsRow(stringResource(Lang.video_player_stats_decode_stats), it)
+            }
         }
     }
 }
@@ -176,8 +173,8 @@ private fun formatDuration(millis: Long?): String {
 
 private fun Long.toPadded2(): String = if (this < 10) "0$this" else toString()
 
-private fun formatBitrate(bitsPerSecond: Long?, unknown: String): String {
-    if (bitsPerSecond == null || bitsPerSecond <= 0) return unknown
+private fun formatBitrate(bitsPerSecond: Long?): String? {
+    if (bitsPerSecond == null || bitsPerSecond <= 0) return null
     return if (bitsPerSecond >= 1_000_000) {
         "${formatDecimal(bitsPerSecond / 1_000_000f)} Mbps"
     } else {

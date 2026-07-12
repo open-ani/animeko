@@ -733,7 +733,6 @@
     <string name="video_player_stats_realtime_input">实时输入</string>
     <string name="video_player_stats_realtime_demux">实时解复用</string>
     <string name="video_player_stats_decode_stats">解码统计</string>
-    <string name="video_player_stats_unknown">未知</string>
     <string name="video_player_stats_dropped_video_frames">丢帧 %1$s</string>
     <string name="video_player_stats_dropped_audio_buffers">音频丢包 %1$s</string>
     <string name="video_player_danmaku_placeholder_1">来发一条弹幕吧~</string>

@@ -697,7 +697,6 @@
     <string name="video_player_stats_realtime_input">即時輸入</string>
     <string name="video_player_stats_realtime_demux">即時解多工</string>
     <string name="video_player_stats_decode_stats">解碼統計</string>
-    <string name="video_player_stats_unknown">未知</string>
     <string name="video_player_stats_dropped_video_frames">丟幀 %1$s</string>
     <string name="video_player_stats_dropped_audio_buffers">音訊丟包 %1$s</string>
     <string name="video_player_danmaku_placeholder_1">來發一條彈幕吧~</string>

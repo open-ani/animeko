@@ -693,7 +693,6 @@
     <string name="video_player_stats_realtime_input">Input bitrate</string>
     <string name="video_player_stats_realtime_demux">Demux bitrate</string>
     <string name="video_player_stats_decode_stats">Decode stats</string>
-    <string name="video_player_stats_unknown">Unknown</string>
     <string name="video_player_stats_dropped_video_frames">Dropped %1$s</string>
     <string name="video_player_stats_dropped_audio_buffers">Audio lost %1$s</string>
     <string name="video_player_danmaku_placeholder_1">Send a danmaku~</string>
