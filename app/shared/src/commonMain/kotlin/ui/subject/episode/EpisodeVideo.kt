@@ -19,8 +19,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
-import androidx.compose.material.icons.rounded.Analytics
-import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.rounded.DisplaySettings
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.MoreVert
@@ -83,7 +82,8 @@ import me.him188.ani.app.ui.lang.subject_episode_fast_forward_85_seconds
 import me.him188.ani.app.ui.lang.subject_episode_more_options
 import me.him188.ani.app.ui.lang.subject_episode_preview_mode
 import me.him188.ani.app.ui.lang.subject_episode_select_media_source
-import me.him188.ani.app.ui.lang.video_player_stats_title
+import me.him188.ani.app.ui.lang.video_player_stats_title_hide
+import me.him188.ani.app.ui.lang.video_player_stats_title_show
 import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
 import me.him188.ani.app.ui.mediafetch.ViewKind
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
@@ -514,7 +514,8 @@ private fun EpisodeVideoTopBarActions(
     val moreOptionsText = stringResource(Lang.subject_episode_more_options)
     val externalLinksText = stringResource(Lang.subject_episode_external_links)
     val cacheText = stringResource(Lang.subject_episode_cache)
-    val playerStatsText = stringResource(Lang.video_player_stats_title)
+    val showPlayerStatsText = stringResource(Lang.video_player_stats_title_show)
+    val hidePlayerStatsText = stringResource(Lang.video_player_stats_title_hide)
     val collapseSidebarText = stringResource(Lang.subject_episode_collapse_sidebar)
     val expandSidebarText = stringResource(Lang.subject_episode_expand_sidebar)
 
@@ -560,17 +561,12 @@ private fun EpisodeVideoTopBarActions(
             onDismissRequest = { showMoreDropdown = false },
         ) {
             DropdownMenuItem(
-                text = { Text(playerStatsText) },
+                text = { Text(if (playerStatsVisible) hidePlayerStatsText else showPlayerStatsText) },
                 onClick = {
                     showMoreDropdown = false
                     onTogglePlayerStats()
                 },
-                leadingIcon = { Icon(Icons.Rounded.Analytics, null) },
-                trailingIcon = if (playerStatsVisible) {
-                    { Icon(Icons.Rounded.Check, null) }
-                } else {
-                    null
-                },
+                leadingIcon = { Icon(Icons.Outlined.Analytics, null) },
             )
             DropdownMenuItem(
                 text = { Text(externalLinksText) },

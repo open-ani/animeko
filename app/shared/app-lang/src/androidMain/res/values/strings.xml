@@ -677,6 +677,8 @@
     <string name="video_player_skip_op_ed">Skipping OP or ED soon</string>
     <string name="video_player_cancel">Cancel</string>
     <string name="video_player_stats_title">Playback Info</string>
+    <string name="video_player_stats_title_show">Show Playback Info</string>
+    <string name="video_player_stats_title_hide">Hide Playback Info</string>
     <string name="video_player_stats_hide_hint">Tab to hide</string>
     <string name="video_player_stats_backend">Backend</string>
     <string name="video_player_stats_state">State</string>
