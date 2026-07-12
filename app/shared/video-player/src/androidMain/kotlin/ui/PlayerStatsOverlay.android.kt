@@ -17,78 +17,90 @@ import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.mediacodec.MediaCodecInfo
+import androidx.media3.exoplayer.mediacodec.MediaCodecRenderer
+import androidx.media3.exoplayer.upstream.BandwidthMeter
 import kotlinx.coroutines.delay
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.PlaybackSpeed
+import java.lang.reflect.Field
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * 由 [AnalyticsListener] 回调采集的、无法从 [ExoPlayer] 直接轮询的信息.
+ * 通过反射读取 [ExoPlayer] 未公开的实时信息 (网速估计, 实际解码器名).
+ *
+ * 反射目标在 proguard 规则中保留 (见 app/shared/proguard-rules.pro). 任一目标解析或读取失败时,
+ * 对应访问器被置空, 后续轮询不再重试, 相应字段保持为 null.
  */
-private class ExoPlayerListenerStats {
-    var bandwidthEstimate: Long? = null
-    var videoDecoderName: String? = null
-    var audioDecoderName: String? = null
+@OptIn(UnstableApi::class)
+private class ExoPlayerReflectionStats(private val exoPlayer: ExoPlayer) {
+    private var bandwidthMeter: BandwidthMeter? = try {
+        findField(exoPlayer.javaClass, "bandwidthMeter")?.get(exoPlayer) as? BandwidthMeter
+    } catch (_: Exception) {
+        null
+    }
+
+    private var codecInfoField: Field? = try {
+        MediaCodecRenderer::class.java.getDeclaredField("codecInfo").apply { isAccessible = true }
+    } catch (_: Exception) {
+        null
+    }
+
+    fun bandwidthEstimate(): Long? {
+        val meter = bandwidthMeter ?: return null
+        return try {
+            meter.bitrateEstimate.takeIf { it > 0 }
+        } catch (_: Exception) {
+            bandwidthMeter = null
+            null
+        }
+    }
+
+    fun decoderName(trackType: Int): String? {
+        val field = codecInfoField ?: return null
+        return try {
+            for (i in 0 until exoPlayer.rendererCount) {
+                if (exoPlayer.getRendererType(i) != trackType) continue
+                val renderer = exoPlayer.getRenderer(i)
+                if (renderer !is MediaCodecRenderer) continue
+                val info = field.get(renderer) as? MediaCodecInfo ?: continue
+                return info.name
+            }
+            null
+        } catch (_: Exception) {
+            codecInfoField = null
+            null
+        }
+    }
+
+    private fun findField(clazz: Class<*>, name: String): Field? {
+        var current: Class<*>? = clazz
+        while (current != null) {
+            try {
+                return current.getDeclaredField(name).apply { isAccessible = true }
+            } catch (_: NoSuchFieldException) {
+                current = current.superclass
+            }
+        }
+        return null
+    }
 }
 
 @OptIn(UnstableApi::class)
 @Composable
 actual fun rememberPlayerStatsState(player: MediampPlayer): State<PlayerStatsSnapshot?> {
     return produceState<PlayerStatsSnapshot?>(initialValue = null, player) {
-        val listenerStats = ExoPlayerListenerStats()
-        val exoPlayer = player.impl as? ExoPlayer
-        val listener = object : AnalyticsListener {
-            override fun onBandwidthEstimate(
-                eventTime: AnalyticsListener.EventTime,
-                totalLoadTimeMs: Int,
-                totalBytesLoaded: Long,
-                bitrateEstimate: Long,
-            ) {
-                listenerStats.bandwidthEstimate = bitrateEstimate.takeIf { it > 0 }
-            }
-
-            override fun onVideoDecoderInitialized(
-                eventTime: AnalyticsListener.EventTime,
-                decoderName: String,
-                initializedTimestampMs: Long,
-                initializationDurationMs: Long,
-            ) {
-                listenerStats.videoDecoderName = decoderName
-            }
-
-            override fun onVideoDecoderReleased(eventTime: AnalyticsListener.EventTime, decoderName: String) {
-                if (listenerStats.videoDecoderName == decoderName) listenerStats.videoDecoderName = null
-            }
-
-            override fun onAudioDecoderInitialized(
-                eventTime: AnalyticsListener.EventTime,
-                decoderName: String,
-                initializedTimestampMs: Long,
-                initializationDurationMs: Long,
-            ) {
-                listenerStats.audioDecoderName = decoderName
-            }
-
-            override fun onAudioDecoderReleased(eventTime: AnalyticsListener.EventTime, decoderName: String) {
-                if (listenerStats.audioDecoderName == decoderName) listenerStats.audioDecoderName = null
-            }
-        }
-        runCatching { exoPlayer?.addAnalyticsListener(listener) }
-        try {
-            while (true) {
-                value = runCatching { player.readAndroidPlayerStats(listenerStats) }
-                    .getOrElse { player.readFallbackPlayerStats("ExoPlayer") }
-                delay(1.seconds)
-            }
-        } finally {
-            runCatching { exoPlayer?.removeAnalyticsListener(listener) }
+        val reflectionStats = (player.impl as? ExoPlayer)?.let { ExoPlayerReflectionStats(it) }
+        while (true) {
+            value = runCatching { player.readAndroidPlayerStats(reflectionStats) }
+                .getOrElse { player.readFallbackPlayerStats("ExoPlayer") }
+            delay(1.seconds)
         }
     }
 }
 
 @OptIn(UnstableApi::class)
-private fun MediampPlayer.readAndroidPlayerStats(listenerStats: ExoPlayerListenerStats): PlayerStatsSnapshot {
+private fun MediampPlayer.readAndroidPlayerStats(reflectionStats: ExoPlayerReflectionStats?): PlayerStatsSnapshot {
     val exoPlayer = impl as? ExoPlayer
         ?: return readFallbackPlayerStats(impl::class.simpleName ?: "Android")
     val videoFormat = exoPlayer.videoFormat
@@ -108,13 +120,19 @@ private fun MediampPlayer.readAndroidPlayerStats(listenerStats: ExoPlayerListene
         playbackSpeed = features[PlaybackSpeed]?.value ?: exoPlayer.playbackParameters.speed,
         resolution = if (width != null && height != null) "${width}×${height}" else null,
         frameRate = videoFormat?.frameRate?.takeIf { it > 0f },
-        videoCodec = readableCodecWithDecoder(videoFormat?.readableCodecName(), listenerStats.videoDecoderName),
+        videoCodec = readableCodecWithDecoder(
+            videoFormat?.readableCodecName(),
+            reflectionStats?.decoderName(C.TRACK_TYPE_VIDEO),
+        ),
         videoBitrate = videoFormat?.readableBitrate(),
-        audioCodec = readableCodecWithDecoder(audioFormat?.readableCodecName(), listenerStats.audioDecoderName),
+        audioCodec = readableCodecWithDecoder(
+            audioFormat?.readableCodecName(),
+            reflectionStats?.decoderName(C.TRACK_TYPE_AUDIO),
+        ),
         audioBitrate = audioFormat?.readableBitrate(),
         audioSampleRate = audioFormat?.sampleRate?.validMedia3Value(),
         audioChannels = audioFormat?.channelCount?.validMedia3Value(),
-        realtimeInputBitrate = listenerStats.bandwidthEstimate,
+        realtimeInputBitrate = reflectionStats?.bandwidthEstimate(),
         realtimeDemuxBitrate = null,
         decodedVideoFrames = exoPlayer.videoDecoderCounters?.renderedOutputBufferCount?.toLong(),
         decodedAudioFrames = exoPlayer.audioDecoderCounters?.renderedOutputBufferCount?.toLong(),
