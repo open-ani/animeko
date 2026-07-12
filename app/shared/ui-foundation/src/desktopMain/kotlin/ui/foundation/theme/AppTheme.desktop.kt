@@ -19,6 +19,7 @@ import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamicColorScheme
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
+import me.him188.ani.utils.platform.isLinux
 import me.him188.ani.utils.platform.isWindows
 
 @Composable
@@ -48,5 +49,5 @@ actual fun appColorScheme(
 
 @Composable
 actual fun isPlatformSupportDynamicTheme(): Boolean {
-    return LocalPlatform.current.isWindows()
+    return LocalPlatform.current.run { isWindows() || isLinux() }
 }

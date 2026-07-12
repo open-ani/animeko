@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.platform.window.BasicWindowProc
 import me.him188.ani.app.platform.window.LayoutHitTestOwner
+import me.him188.ani.app.platform.window.LinuxAccentColorMonitor
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.isWindows
 
@@ -40,8 +41,11 @@ actual open class PlatformWindow(
 
     // Common desktop accent color for window.
     val accentColor: Flow<Color>
-        get() = windowsWindowProc.flatMapLatest {
-            it?.accentColor ?: flowOf(Color.Unspecified)
+        get() = when (platform) {
+            is Platform.Linux -> LinuxAccentColorMonitor.accentColor
+            else -> windowsWindowProc.flatMapLatest {
+                it?.accentColor ?: flowOf(Color.Unspecified)
+            }
         }
 
     private var isWindowsUndecoratedFullscreen by mutableStateOf(false)
