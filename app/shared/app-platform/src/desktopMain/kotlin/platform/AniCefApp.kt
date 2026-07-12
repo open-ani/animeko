@@ -141,6 +141,9 @@ object AniCefApp {
         }
         if (platform.isLinux()) {
             jcefConfig.appArgsAsList.apply {
+                // Embedded browsers do not save passwords; avoid depending on desktop keyrings such as KWallet.
+                add("--password-store=basic")
+
                 // will cause 139 (segfault)
                 // add("--disable-gpu")
                 // add("--disable-software-rasterizer")

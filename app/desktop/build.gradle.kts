@@ -12,6 +12,7 @@ import org.jetbrains.compose.desktop.application.tasks.AbstractJLinkTask
 import org.jetbrains.compose.desktop.application.tasks.AbstractJPackageTask
 import org.jetbrains.compose.reload.gradle.ComposeHotRun
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
+import java.nio.file.Files
 import java.util.UUID
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
@@ -367,6 +368,7 @@ tasks.withType(AbstractJPackageTask::class) {
         destinationDir.get().asFile
             .walk()
             .filter(::isRuntimePayloadJar)
+            .toList()
             .forEach { jar ->
                 unpackJar(jar, jar.parentFile) {
                     !(it.name.contains("MANIFEST") || it.name.contains("META-INF"))
@@ -377,6 +379,33 @@ tasks.withType(AbstractJPackageTask::class) {
                     "Extracted ${jar.name} into ${jar.parentFile} and deleted the jars",
                 )
             }
+
+        if (triple == "linux-x64") {
+            destinationDir.get().asFile
+                .walk()
+                .filter { it.isDirectory && it.name == "app" && it.parentFile.name == "lib" }
+                .flatMap { it.walk() }
+                .filter { it.isFile && it.name.startsWith("lib") && it.extension == "so" }
+                .forEach { library ->
+                    val process = ProcessBuilder("readelf", "-d", library.absolutePath)
+                        .redirectErrorStream(true)
+                        .start()
+                    val readElf = process.inputStream.bufferedReader().use { it.readText() }
+                    if (process.waitFor() != 0) return@forEach
+                    val soname = Regex("Library soname: \\[(.+)]")
+                        .find(readElf)
+                        ?.groupValues
+                        ?.get(1)
+                        ?: return@forEach
+                    if (soname == library.name) return@forEach
+
+                    val alias = library.toPath().resolveSibling(soname)
+                    if (Files.notExists(alias)) {
+                        Files.createSymbolicLink(alias, library.toPath().fileName)
+                        logger.lifecycle("Created SONAME alias $alias -> ${library.name}")
+                    }
+                }
+        }
     }
 }
 
