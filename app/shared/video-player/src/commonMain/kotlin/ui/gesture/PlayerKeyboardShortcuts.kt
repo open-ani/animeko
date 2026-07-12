@@ -14,6 +14,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import me.him188.ani.app.ui.foundation.effects.ComposeKey
 import me.him188.ani.app.ui.foundation.effects.onKey
@@ -70,5 +71,12 @@ internal fun Modifier.playerKeyboardShortcuts(
             .onKey(ComposeKey.D, playbackSpeedControllerState::speedUp)
             .onKey(ComposeKey.S, playbackSpeedControllerState::reset)
     }
-    return result.onKey(ComposeKey.B, onToggleDanmaku)
+    return result
+        .onKey(ComposeKey.B, onToggleDanmaku)
+        // The same node carries combinedClickable, which treats Enter as a click when focused.
+        // Enter is not a player shortcut, so swallow it; DPad center is left for clickable so that
+        // remote/DPad activation still works like a tap.
+        .onPreviewKeyEvent { event ->
+            event.key == ComposeKey.Enter || event.key == ComposeKey.NumPadEnter
+        }
 }

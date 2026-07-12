@@ -749,6 +749,33 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
+    fun `mouse - keyboard shortcuts - enter does not activate click gesture`() = runAniComposeUiTest {
+        lateinit var playerState: TestMediampPlayer
+        val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+        setContent {
+            Player(
+                GestureFamily.MOUSE,
+                playerControllerState = visibleControllerState,
+                onPlayerStateCreated = { playerState = it },
+            )
+        }
+        waitForIdle()
+        runOnIdle {
+            playerState.playbackState.value = PlaybackState.PAUSED
+        }
+
+        videoGestureHost.assertIsFocused()
+        videoGestureHost.performKeyInput {
+            pressKey(Key.Enter)
+            pressKey(Key.NumPadEnter)
+        }
+        waitForIdle()
+        runOnIdle {
+            assertEquals(PlaybackState.PAUSED, playerState.playbackState.value)
+        }
+    }
+
+    @Test
     fun `touch - keyboard shortcuts - reclaim focus from editor on mouse move`() = runAniComposeUiTest {
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         setContent {
