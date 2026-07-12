@@ -27,6 +27,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.lang.*
+import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.MediampPlayer
 import kotlin.math.roundToInt
 
@@ -77,42 +79,61 @@ fun PlayerStatsOverlay(
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
+            val unknown = stringResource(Lang.video_player_stats_unknown)
             Text(
-                "播放信息  Tab 隐藏",
+                "${stringResource(Lang.video_player_stats_title)}  ${stringResource(Lang.video_player_stats_hide_hint)}",
                 style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = FontFamily.Monospace,
                 ),
                 color = Color.White,
             )
-            PlayerStatsRow("后端", stats.backend)
-            PlayerStatsRow("状态", stats.playbackState)
-            stats.title?.takeIf { it.isNotBlank() }?.let { PlayerStatsRow("标题", it) }
-            PlayerStatsRow("进度", "${formatDuration(stats.positionMillis)} / ${formatDuration(stats.durationMillis)}")
-            PlayerStatsRow("分辨率", stats.resolution ?: "未知")
-            PlayerStatsRow("帧率", stats.frameRate?.let { "${formatDecimal(it)} fps" } ?: "未知")
-            PlayerStatsRow("视频编码", stats.videoCodec ?: "未知")
-            PlayerStatsRow("视频码率", formatBitrate(stats.videoBitrate))
-            PlayerStatsRow("音频编码", stats.audioCodec ?: "未知")
-            PlayerStatsRow("音频码率", formatBitrate(stats.audioBitrate))
+            PlayerStatsRow(stringResource(Lang.video_player_stats_backend), stats.backend)
+            PlayerStatsRow(stringResource(Lang.video_player_stats_state), stats.playbackState)
+            stats.title?.takeIf { it.isNotBlank() }
+                ?.let { PlayerStatsRow(stringResource(Lang.video_player_stats_media_title), it) }
             PlayerStatsRow(
-                "音频格式",
+                stringResource(Lang.video_player_stats_progress),
+                "${formatDuration(stats.positionMillis)} / ${formatDuration(stats.durationMillis)}",
+            )
+            PlayerStatsRow(stringResource(Lang.video_player_stats_resolution), stats.resolution ?: unknown)
+            PlayerStatsRow(
+                stringResource(Lang.video_player_stats_frame_rate),
+                stats.frameRate?.let { "${formatDecimal(it)} fps" } ?: unknown,
+            )
+            PlayerStatsRow(stringResource(Lang.video_player_stats_video_codec), stats.videoCodec ?: unknown)
+            PlayerStatsRow(stringResource(Lang.video_player_stats_video_bitrate), formatBitrate(stats.videoBitrate, unknown))
+            PlayerStatsRow(stringResource(Lang.video_player_stats_audio_codec), stats.audioCodec ?: unknown)
+            PlayerStatsRow(stringResource(Lang.video_player_stats_audio_bitrate), formatBitrate(stats.audioBitrate, unknown))
+            PlayerStatsRow(
+                stringResource(Lang.video_player_stats_audio_format),
                 listOfNotNull(
                     stats.audioSampleRate?.takeIf { it > 0 }?.let { "${it} Hz" },
                     stats.audioChannels?.takeIf { it > 0 }?.let { "${it} ch" },
-                ).joinToString(" / ").ifBlank { "未知" },
+                ).joinToString(" / ").ifBlank { unknown },
             )
-            PlayerStatsRow("播放速度", stats.playbackSpeed?.let { "${formatDecimal(it)}x" } ?: "未知")
-            PlayerStatsRow("实时输入", formatBitrate(stats.realtimeInputBitrate))
-            PlayerStatsRow("实时解复用", formatBitrate(stats.realtimeDemuxBitrate))
             PlayerStatsRow(
-                "解码统计",
+                stringResource(Lang.video_player_stats_playback_speed),
+                stats.playbackSpeed?.let { "${formatDecimal(it)}x" } ?: unknown,
+            )
+            PlayerStatsRow(
+                stringResource(Lang.video_player_stats_realtime_input),
+                formatBitrate(stats.realtimeInputBitrate, unknown),
+            )
+            PlayerStatsRow(
+                stringResource(Lang.video_player_stats_realtime_demux),
+                formatBitrate(stats.realtimeDemuxBitrate, unknown),
+            )
+            PlayerStatsRow(
+                stringResource(Lang.video_player_stats_decode_stats),
                 listOfNotNull(
                     stats.decodedVideoFrames?.let { "V $it" },
                     stats.decodedAudioFrames?.let { "A $it" },
-                    stats.droppedVideoFrames?.takeIf { it > 0 }?.let { "丢帧 $it" },
-                    stats.droppedAudioBuffers?.takeIf { it > 0 }?.let { "音频丢包 $it" },
-                ).joinToString(" / ").ifBlank { "未知" },
+                    stats.droppedVideoFrames?.takeIf { it > 0 }
+                        ?.let { stringResource(Lang.video_player_stats_dropped_video_frames, it.toString()) },
+                    stats.droppedAudioBuffers?.takeIf { it > 0 }
+                        ?.let { stringResource(Lang.video_player_stats_dropped_audio_buffers, it.toString()) },
+                ).joinToString(" / ").ifBlank { unknown },
             )
         }
     }
@@ -155,8 +176,8 @@ private fun formatDuration(millis: Long?): String {
 
 private fun Long.toPadded2(): String = if (this < 10) "0$this" else toString()
 
-private fun formatBitrate(bitsPerSecond: Long?): String {
-    if (bitsPerSecond == null || bitsPerSecond <= 0) return "未知"
+private fun formatBitrate(bitsPerSecond: Long?, unknown: String): String {
+    if (bitsPerSecond == null || bitsPerSecond <= 0) return unknown
     return if (bitsPerSecond >= 1_000_000) {
         "${formatDecimal(bitsPerSecond / 1_000_000f)} Mbps"
     } else {
