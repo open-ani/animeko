@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Analytics
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.DisplaySettings
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.MoreVert
@@ -81,6 +83,7 @@ import me.him188.ani.app.ui.lang.subject_episode_fast_forward_85_seconds
 import me.him188.ani.app.ui.lang.subject_episode_more_options
 import me.him188.ani.app.ui.lang.subject_episode_preview_mode
 import me.him188.ani.app.ui.lang.subject_episode_select_media_source
+import me.him188.ani.app.ui.lang.video_player_stats_title
 import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
 import me.him188.ani.app.ui.mediafetch.ViewKind
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
@@ -246,6 +249,8 @@ internal fun EpisodeVideoImpl(
                                 playerControllerState = playerControllerState,
                                 sidebarVisible = sidebarVisible,
                                 onToggleSidebar = onToggleSidebar,
+                                playerStatsVisible = showPlayerStats,
+                                onTogglePlayerStats = { showPlayerStats = !showPlayerStats },
                             )
                         },
                         // VideoScaffold already applies top/horizontal insets around the top bar.
@@ -496,6 +501,8 @@ private fun EpisodeVideoTopBarActions(
     playerControllerState: PlayerControllerState,
     sidebarVisible: Boolean,
     onToggleSidebar: (isCollapsed: Boolean) -> Unit,
+    playerStatsVisible: Boolean,
+    onTogglePlayerStats: () -> Unit,
 ) {
     var showShareDropdown by rememberSaveable { mutableStateOf(false) }
     var showMoreDropdown by rememberSaveable { mutableStateOf(false) }
@@ -507,6 +514,7 @@ private fun EpisodeVideoTopBarActions(
     val moreOptionsText = stringResource(Lang.subject_episode_more_options)
     val externalLinksText = stringResource(Lang.subject_episode_external_links)
     val cacheText = stringResource(Lang.subject_episode_cache)
+    val playerStatsText = stringResource(Lang.video_player_stats_title)
     val collapseSidebarText = stringResource(Lang.subject_episode_collapse_sidebar)
     val expandSidebarText = stringResource(Lang.subject_episode_expand_sidebar)
 
@@ -551,6 +559,19 @@ private fun EpisodeVideoTopBarActions(
             expanded = showMoreDropdown,
             onDismissRequest = { showMoreDropdown = false },
         ) {
+            DropdownMenuItem(
+                text = { Text(playerStatsText) },
+                onClick = {
+                    showMoreDropdown = false
+                    onTogglePlayerStats()
+                },
+                leadingIcon = { Icon(Icons.Rounded.Analytics, null) },
+                trailingIcon = if (playerStatsVisible) {
+                    { Icon(Icons.Rounded.Check, null) }
+                } else {
+                    null
+                },
+            )
             DropdownMenuItem(
                 text = { Text(externalLinksText) },
                 onClick = {
