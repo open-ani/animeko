@@ -141,6 +141,11 @@ object AniCefApp {
         }
         if (platform.isLinux()) {
             jcefConfig.appArgsAsList.apply {
+                // Chromium 137's hardware ANGLE path crashes the JCEF GPU process on Linux.
+                // TODO: Remove after upgrading to Chromium 141+ and verifying Intel, AMD, and NVIDIA.
+                add("--use-gl=angle")
+                add("--use-angle=swiftshader-webgl")
+
                 // will cause 139 (segfault)
                 // add("--disable-gpu")
                 // add("--disable-software-rasterizer")
