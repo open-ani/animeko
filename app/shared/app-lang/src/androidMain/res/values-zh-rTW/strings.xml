@@ -804,6 +804,9 @@
     <string name="cache_management_exit_selection">退出選擇</string>
     <string name="cache_management_select_all">選擇所有</string>
     <string name="cache_management_delete_selected">刪除所選</string>
+    <string name="cache_management_resume_selected">繼續</string>
+    <string name="cache_management_pause_selected">暫停</string>
+    <string name="cache_management_selection_summary">已選 %1$d 項 · 共 %2$s</string>
     <string name="cache_management_enter_selection_mode">進入選擇模式</string>
     <string name="cache_management_delete_cache_title">刪除緩存</string>
     <string name="cache_management_delete_cache_confirmation">刪除後不可恢復，確認刪除嗎？</string>

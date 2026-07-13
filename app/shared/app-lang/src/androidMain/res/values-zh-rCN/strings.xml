@@ -840,6 +840,9 @@
     <string name="cache_management_exit_selection">退出选择</string>
     <string name="cache_management_select_all">选择所有</string>
     <string name="cache_management_delete_selected">删除所选</string>
+    <string name="cache_management_resume_selected">继续</string>
+    <string name="cache_management_pause_selected">暂停</string>
+    <string name="cache_management_selection_summary">已选 %1$d 项 · 共 %2$s</string>
     <string name="cache_management_enter_selection_mode">进入选择模式</string>
     <string name="cache_management_delete_cache_title">删除缓存</string>
     <string name="cache_management_delete_cache_confirmation">删除后不可恢复，确认删除吗？</string>
