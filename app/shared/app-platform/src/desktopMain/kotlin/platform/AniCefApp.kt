@@ -143,6 +143,10 @@ object AniCefApp {
             jcefConfig.appArgsAsList.apply {
                 // Embedded browsers do not save passwords; avoid depending on desktop keyrings such as KWallet.
                 add("--password-store=basic")
+                // Chromium 137's hardware ANGLE path crashes the JCEF GPU process on Linux.
+                // TODO: Remove after upgrading to Chromium 141+ and verifying Intel, AMD, and NVIDIA.
+                add("--use-gl=angle")
+                add("--use-angle=swiftshader-webgl")
 
                 // will cause 139 (segfault)
                 // add("--disable-gpu")
