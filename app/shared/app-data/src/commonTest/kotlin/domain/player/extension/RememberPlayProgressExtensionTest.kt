@@ -171,7 +171,7 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceTimeBy(1)
         runCurrent()
         assertEquals(
-            listOf(0L, 2000L),
+            listOf(2000L),
             repository.pendingOpsFlow.first()
                 .filterIsInstance<PlaybackHistoryPendingOp.Upsert>()
                 .map { it.positionMillis },

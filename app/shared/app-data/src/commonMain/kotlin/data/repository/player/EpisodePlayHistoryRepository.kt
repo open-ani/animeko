@@ -130,7 +130,7 @@ class EpisodePlayHistoryRepositoryImpl(
                 history.copy(deletedAtMillis = now, isDirty = false).toEntity()
             },
         )
-        playbackHistoryDao.insertPendingOps(
+        playbackHistoryDao.replacePendingOps(
             activeHistories.map { history ->
                 PlaybackHistoryPendingOp.Delete(
                     id = 0,
@@ -163,7 +163,7 @@ class EpisodePlayHistoryRepositoryImpl(
                 history.copy(deletedAtMillis = now, isDirty = false).toEntity()
             },
         )
-        playbackHistoryDao.insertPendingOps(
+        playbackHistoryDao.replacePendingOps(
             histories.map { history ->
                 PlaybackHistoryPendingOp.Delete(
                     id = 0,
@@ -206,7 +206,7 @@ class EpisodePlayHistoryRepositoryImpl(
 
         val pendingOp = episodeHistory.toPendingUpsertOrNull()
         if (pendingOp != null) {
-            playbackHistoryDao.insertPendingOp(pendingOp.toEntity())
+            playbackHistoryDao.replacePendingOp(pendingOp.toEntity())
             onDirtyChanged()
         }
     }
@@ -280,7 +280,7 @@ class EpisodePlayHistoryRepositoryImpl(
                     .filterNot(EpisodeHistory::isDeleted)
                     .mapNotNull { it.toPendingUpsertOrNull() }
                 if (pendingOps.isNotEmpty()) {
-                    playbackHistoryDao.insertPendingOps(pendingOps.map { it.toEntity() })
+                    playbackHistoryDao.replacePendingOps(pendingOps.map { it.toEntity() })
                     onDirtyChanged()
                 }
             }
