@@ -10,15 +10,22 @@
 package me.him188.ani.app.domain.episode
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
+import me.him188.ani.app.domain.media.hls.HlsPlaybackPrepareOptions
 import me.him188.ani.app.domain.media.hls.HlsPlaybackProxySession
+import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.MediaResolutionException
@@ -39,6 +46,7 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.koin.core.Koin
 import org.openani.mediamp.MediampPlayer
+import org.openani.mediamp.PlaybackState
 import org.openani.mediamp.source.MediaData
 import org.openani.mediamp.source.UriMediaData
 import kotlin.coroutines.CoroutineContext
@@ -64,6 +72,12 @@ class PlayerSession(
     private val getVideoScaffoldConfigUseCase: GetVideoScaffoldConfigUseCase by koin.inject()
 
     private var hlsPlaybackProxySession: HlsPlaybackProxySession? = null
+    private val hlsSessionScope = CoroutineScope(SupervisorJob() + mainDispatcher)
+    private var hlsPlaybackStateJob: Job? = null
+    private var hlsCacheProgressJob: Job? = null
+    private val _hlsCacheProgressInfoFlow = MutableStateFlow(MediaCacheProgressInfo.Empty)
+
+    val hlsCacheProgressInfoFlow: StateFlow<MediaCacheProgressInfo> = _hlsCacheProgressInfoFlow.asStateFlow()
 
     private val _videoLoadingStateFlow: MutableStateFlow<VideoLoadingState> =
         MutableStateFlow(VideoLoadingState.Initial)
@@ -103,7 +117,7 @@ class PlayerSession(
 
             logger.info { "Set media data to player: $preparedData" }
             player.setMediaData(preparedData)
-            hlsPlaybackProxySession = preparedHlsPlaybackProxySession
+            replaceHlsPlaybackProxySession(preparedHlsPlaybackProxySession)
             preparedHlsPlaybackProxySession = null
 
             _videoLoadingStateFlow.value = VideoLoadingState.Succeed(isBt = source is TorrentBackedMediaDataProvider)
@@ -161,6 +175,7 @@ class PlayerSession(
 
     fun close() {
         closeHlsPlaybackProxySession()
+        hlsSessionScope.coroutineContext[Job]?.cancel()
         player.close()
     }
 
@@ -174,20 +189,53 @@ class PlayerSession(
         if (data !is UriMediaData) {
             return PreparedMediaData(data)
         }
-        val enabled = getVideoScaffoldConfigUseCase
+        val config = getVideoScaffoldConfigUseCase
             .invoke()
             .first()
-            .enableExperimentalHlsSegmentFiltering
-        if (!enabled) {
+        if (!config.enableExperimentalHlsSegmentFiltering && !config.enablePauseHlsPrefetch) {
             return PreparedMediaData(data)
         }
-        val result = hlsPlaybackPreparer.prepare(data)
+        val result = hlsPlaybackPreparer.prepare(
+            data,
+            HlsPlaybackPrepareOptions(
+                enableSegmentFiltering = config.enableExperimentalHlsSegmentFiltering,
+                enablePausePrefetch = config.enablePauseHlsPrefetch,
+            ),
+        )
         return PreparedMediaData(result.data, result.session)
     }
 
+    private fun replaceHlsPlaybackProxySession(session: HlsPlaybackProxySession?) {
+        closeHlsPlaybackProxySession()
+        hlsPlaybackProxySession = session
+        if (session == null) return
+
+        hlsPlaybackStateJob = hlsSessionScope.launch {
+            var hasStartedPlaying = player.playbackState.value == PlaybackState.PLAYING
+            player.playbackState.collect { state ->
+                if (state == PlaybackState.PLAYING) {
+                    hasStartedPlaying = true
+                }
+                if (hasStartedPlaying) {
+                    session.onPlaybackStateChanged(state)
+                }
+            }
+        }
+        hlsCacheProgressJob = hlsSessionScope.launch {
+            session.cacheProgressInfoFlow.collect { progress ->
+                _hlsCacheProgressInfoFlow.value = progress
+            }
+        }
+    }
+
     private fun closeHlsPlaybackProxySession() {
+        hlsPlaybackStateJob?.cancel()
+        hlsPlaybackStateJob = null
+        hlsCacheProgressJob?.cancel()
+        hlsCacheProgressJob = null
         hlsPlaybackProxySession?.close()
         hlsPlaybackProxySession = null
+        _hlsCacheProgressInfoFlow.value = MediaCacheProgressInfo.Empty
     }
 
     companion object {

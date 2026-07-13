@@ -38,11 +38,11 @@ class HlsManifestFilterTest {
     }
 
     @Test
-    fun `detects relative ad directory as strong path`() {
+    fun `detects ad account directory as strong path`() {
         val result = HlsManifestFilter.filter(
             mediaPlaylist(
                 group(30, duration = 3.0, uriPrefix = "main/seg0"),
-                group(3, duration = 6.0, uriPrefix = "ads/ad", startNumber = 900),
+                group(3, duration = 6.0, uriPrefix = "sycp/ad-account/ad", startNumber = 900),
                 group(30, duration = 3.0, uriPrefix = "main/seg1"),
             ),
         )
@@ -50,7 +50,7 @@ class HlsManifestFilterTest {
         assertEquals(HlsManifestFilterStatus.Filtered, result.status)
         assertEquals(1, result.removedGroups.size)
         assertTrue("strong_path" in result.removedGroups.single().reasons)
-        assertFalse("ads/ad900.ts" in result.content)
+        assertFalse("sycp/ad-account/ad900.ts" in result.content)
     }
 
     @Test
