@@ -883,6 +883,7 @@ private fun EpisodeVideo(
 ) {
     val context by rememberUpdatedState(LocalContext.current)
     val navigator = LocalNavigator.current
+    val isAndroid = LocalPlatform.current.isAndroid()
 
     // Don't rememberSavable. 刻意让每次切换都是隐藏的
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -982,7 +983,11 @@ private fun EpisodeVideo(
             // 条目ID-剧集序号-视频时间点.png
             val filename = "${vm.subjectId}-${page.episodePresentation.ep}-${currentPosition}.png"
             scope.launch {
-                vm.player.features[Screenshots]?.takeScreenshot(filename)
+                if (isAndroid) {
+                    takeAndroidPlayerScreenshot(context, vm.player, filename)
+                } else {
+                    vm.player.features[Screenshots]?.takeScreenshot(filename)
+                }
             }
         },
         detachedProgressSlider = {

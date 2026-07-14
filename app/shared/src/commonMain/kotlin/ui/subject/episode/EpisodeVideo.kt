@@ -141,6 +141,7 @@ import me.him188.ani.app.videoplayer.ui.rememberVideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 import me.him188.ani.app.videoplayer.ui.top.SystemTime
 import me.him188.ani.utils.platform.annotations.TestOnly
+import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
 import org.jetbrains.compose.resources.stringResource
@@ -385,7 +386,7 @@ internal fun EpisodeVideoImpl(
                 }
             },
             rhsButtons = {
-                if (expanded && LocalPlatform.current.isDesktop()) {
+                if (expanded && (LocalPlatform.current.isDesktop() || LocalPlatform.current.isAndroid())) {
                     ScreenshotButton(
                         onClick = onClickScreenshot,
                     )

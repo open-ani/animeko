@@ -41,6 +41,18 @@ class AndroidPermissionManager : PermissionManager {
         return activity.requestPermission(Manifest.permission.POST_NOTIFICATIONS)
     }
 
+    override suspend fun requestWriteExternalStoragePermission(context: ContextMP): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) return true
+        val activity = context.findActivity() as? BaseComponentActivity ?: return false
+        if (
+            ActivityCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return true
+        }
+        return activity.requestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+    }
+
     override fun openSystemNotificationSettings(context: ContextMP) {
         val openSystemNotificationIntent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

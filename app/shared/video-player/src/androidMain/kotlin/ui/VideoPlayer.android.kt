@@ -11,6 +11,7 @@ package me.him188.ani.app.videoplayer.ui
 
 import android.graphics.Color
 import android.graphics.Typeface
+import android.view.SurfaceView
 import android.view.View
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
@@ -36,6 +37,7 @@ actual fun VideoPlayer(
         Box(modifier)
     } else {
         ExoPlayerMediampPlayerSurface(player as ExoPlayerMediampPlayer, modifier) {
+            (videoSurfaceView as? SurfaceView)?.let { registerAndroidVideoSurface(player, it) }
             controllerAutoShow = false
             useController = false
             controllerHideOnTouch = false

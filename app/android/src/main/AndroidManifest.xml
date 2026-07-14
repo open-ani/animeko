@@ -21,8 +21,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <!--    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"-->
-    <!--            tools:ignore="ScopedStorage" />-->
+    <uses-permission
+            android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+            android:maxSdkVersion="28"
+            tools:ignore="ScopedStorage" />
 
     <application
             android:name="AniApplication"
