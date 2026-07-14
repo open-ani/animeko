@@ -377,7 +377,6 @@ private fun SettingsScope.UploadAvatarDialog(
     var filePickerLaunched by rememberSaveable { mutableStateOf(false) }
     var cropTarget by remember { mutableStateOf<ByteArray?>(null) }
     val asyncHandler = rememberAsyncHandler()
-    val selectAvatarText = stringResource(Lang.settings_account_profile_select_avatar)
     val doneText = stringResource(Lang.settings_account_profile_done)
     val uploadAvatarText = stringResource(Lang.settings_account_profile_upload_avatar)
     val selectFileText = stringResource(Lang.settings_account_profile_select_file)
@@ -386,7 +385,6 @@ private fun SettingsScope.UploadAvatarDialog(
         stringResource(Lang.settings_account_profile_select_file_description_desktop)
     val filePicker = rememberFilePickerLauncher(
         type = FileKitType.Image,
-        title = selectAvatarText,
     ) {
         filePickerLaunched = false
         it?.let { file ->
