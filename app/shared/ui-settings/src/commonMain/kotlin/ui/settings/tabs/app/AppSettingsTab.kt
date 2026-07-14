@@ -14,14 +14,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowOutward
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.intl.Locale
@@ -74,6 +78,10 @@ import me.him188.ani.app.ui.lang.settings_player_experimental_hls_segment_filter
 import me.him188.ani.app.ui.lang.settings_player_experimental_hls_segment_filter_description
 import me.him188.ani.app.ui.lang.settings_player_pause_hls_prefetch
 import me.him188.ani.app.ui.lang.settings_player_pause_hls_prefetch_description
+import me.him188.ani.app.ui.lang.settings_player_pause_hls_prefetch_recommend_enable_filter
+import me.him188.ani.app.ui.lang.settings_player_pause_hls_prefetch_recommend_message
+import me.him188.ani.app.ui.lang.settings_player_pause_hls_prefetch_recommend_prefetch_only
+import me.him188.ani.app.ui.lang.settings_player_pause_hls_prefetch_recommend_title
 import me.him188.ani.app.ui.lang.settings_player_enable_regex_filter
 import me.him188.ani.app.ui.lang.settings_player_fullscreen_always_show
 import me.him188.ani.app.ui.lang.settings_player_fullscreen_auto_hide
@@ -418,8 +426,9 @@ fun SettingsScope.PlayerGroup(
     danmakuRegexFilterState: DanmakuRegexFilterState,
     showDebug: Boolean
 ) {
+    val config by videoScaffoldConfig
+    var showPausePrefetchRecommendation by remember { mutableStateOf(false) }
     Group(title = { Text(stringResource(Lang.settings_player)) }) {
-        val config by videoScaffoldConfig
         DropdownItem(
             selected = { config.fullscreenSwitchMode },
             values = { FullscreenSwitchMode.entries },
@@ -513,8 +522,12 @@ fun SettingsScope.PlayerGroup(
         if (!LocalPlatform.current.isIos()) {
             SwitchItem(
                 checked = config.enablePauseHlsPrefetch,
-                onCheckedChange = {
-                    videoScaffoldConfig.update(config.copy(enablePauseHlsPrefetch = it))
+                onCheckedChange = { enabled ->
+                    if (enabled && !config.enableExperimentalHlsSegmentFiltering) {
+                        showPausePrefetchRecommendation = true
+                    } else {
+                        videoScaffoldConfig.update(config.copy(enablePauseHlsPrefetch = enabled))
+                    }
                 },
                 title = { Text(stringResource(Lang.settings_player_pause_hls_prefetch)) },
                 description = { Text(stringResource(Lang.settings_player_pause_hls_prefetch_description)) },
@@ -541,6 +554,38 @@ fun SettingsScope.PlayerGroup(
             description = { Text(stringResource(Lang.settings_player_long_press_fast_forward_speed_description)) },
         )
         PlayerGroupPlatform(videoScaffoldConfig)
+    }
+    if (showPausePrefetchRecommendation) {
+        AlertDialog(
+            onDismissRequest = { showPausePrefetchRecommendation = false },
+            title = { Text(stringResource(Lang.settings_player_pause_hls_prefetch_recommend_title)) },
+            text = { Text(stringResource(Lang.settings_player_pause_hls_prefetch_recommend_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        videoScaffoldConfig.update(
+                            config.copy(
+                                enablePauseHlsPrefetch = true,
+                                enableExperimentalHlsSegmentFiltering = true,
+                            ),
+                        )
+                        showPausePrefetchRecommendation = false
+                    },
+                ) {
+                    Text(stringResource(Lang.settings_player_pause_hls_prefetch_recommend_enable_filter))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        videoScaffoldConfig.update(config.copy(enablePauseHlsPrefetch = true))
+                        showPausePrefetchRecommendation = false
+                    },
+                ) {
+                    Text(stringResource(Lang.settings_player_pause_hls_prefetch_recommend_prefetch_only))
+                }
+            },
+        )
     }
 }
 

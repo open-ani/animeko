@@ -39,7 +39,52 @@ import kotlin.test.assertTrue
 
 class PlatformHlsPlaybackPreparerTest {
     @Test
-    fun `pause prefetch filters ads and skips non-media URI attributes`() = runTest {
+    fun `pause prefetch leaves ad segments untouched when filtering is disabled`() = runTest {
+        val requestedAdSegments = CountDownLatch(2)
+        val server = StaticManifestServer(
+            content = """
+                #EXTM3U
+                #EXT-X-VERSION:3
+                #EXT-X-TARGETDURATION:10
+                #EXTINF:10,
+                main0.ts
+                #EXT-X-DISCONTINUITY
+                #EXTINF:1,
+                sycp/ad-account/ad0.tmp
+                #EXTINF:1,
+                sycp/ad-account/ad1.tmp
+                #EXT-X-DISCONTINUITY
+                #EXTINF:10,
+                main1.ts
+                #EXT-X-ENDLIST
+            """.trimIndent(),
+            onRequest = { path ->
+                if (path == "/unfiltered/sycp/ad-account/ad0.tmp" ||
+                    path == "/unfiltered/sycp/ad-account/ad1.tmp"
+                ) {
+                    requestedAdSegments.countDown()
+                }
+            },
+        )
+        val provider = DefaultHttpClientProvider(NoProxyProvider, backgroundScope)
+        val preparer = PlatformHlsPlaybackPreparer(provider)
+        val result = preparer.prepare(
+            UriMediaData("${server.baseUrl}/unfiltered/index.m3u8"),
+            HlsPlaybackPrepareOptions(enableSegmentFiltering = false, enablePausePrefetch = true),
+        )
+
+        try {
+            result.session!!.onPlaybackStateChanged(PlaybackState.PAUSED)
+            assertTrue(withContext(Dispatchers.IO) { requestedAdSegments.await(3, TimeUnit.SECONDS) })
+        } finally {
+            result.session?.close()
+            provider.forceReleaseAll()
+            server.close()
+        }
+    }
+
+    @Test
+    fun `pause prefetch filters ads and skips non-media URI attributes when filtering is enabled`() = runTest {
         val requestedVideoSegments = CountDownLatch(2)
         val nonMediaAssetRequested = AtomicBoolean(false)
         val server = StaticManifestServer(
@@ -73,7 +118,7 @@ class PlatformHlsPlaybackPreparerTest {
         val preparer = PlatformHlsPlaybackPreparer(provider)
         val result = preparer.prepare(
             UriMediaData("${server.baseUrl}/filtered/index.m3u8"),
-            HlsPlaybackPrepareOptions(enableSegmentFiltering = false, enablePausePrefetch = true),
+            HlsPlaybackPrepareOptions(enableSegmentFiltering = true, enablePausePrefetch = true),
         )
 
         try {

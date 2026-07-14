@@ -88,8 +88,7 @@ class PlatformHlsPlaybackPreparer(
 
         val isMaster = inspectedManifest.status == HlsManifestFilterStatus.Unsupported &&
             inspectedManifest.reason == "master_playlist"
-        // Paused prefetch must not cache playlist groups the existing filter has identified as ads.
-        val shouldFilterSegments = options.enableSegmentFiltering || options.enablePausePrefetch
+        val shouldFilterSegments = options.enableSegmentFiltering
         val playlistContent = if (shouldFilterSegments && inspectedManifest.status == HlsManifestFilterStatus.Filtered) {
             inspectedManifest.content
         } else {

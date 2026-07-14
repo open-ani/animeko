@@ -269,6 +269,10 @@
     <string name="settings_player_auto_switch_media_on_error">Automatically switch resources on playback failure</string>
     <string name="settings_player_pause_hls_prefetch">Prefetch paused online video</string>
     <string name="settings_player_pause_hls_prefetch_description">When a VOD HLS video is paused, temporarily download the remaining segments. The temporary files are deleted after leaving the episode.</string>
+    <string name="settings_player_pause_hls_prefetch_recommend_title">Also enable inserted-ad filtering?</string>
+    <string name="settings_player_pause_hls_prefetch_recommend_message">Some online sources insert inaccessible ad segments. Enabling filtering can avoid cache gaps and stalls when seeking, but it is experimental and may skip normal content if misidentified.</string>
+    <string name="settings_player_pause_hls_prefetch_recommend_enable_filter">Enable both</string>
+    <string name="settings_player_pause_hls_prefetch_recommend_prefetch_only">Prefetch only</string>
     <string name="settings_player_experimental_hls_segment_filter">Filter inserted ads (experimental)</string>
     <string name="settings_player_experimental_hls_segment_filter_description">Attempts to filter inserted ads from some online sources. Only works when ads are inserted as separate segments; incorrect detection may skip normal content.</string>
     <string name="settings_player_long_press_fast_forward_speed">Long-press fast-forward speed</string>
