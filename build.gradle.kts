@@ -53,6 +53,14 @@ allprojects {
 }
 
 subprojects {
+    // Pin JNA: FileKit and other deps may request newer JNA, which breaks VLC.
+    configurations.configureEach {
+        resolutionStrategy.force(
+            "net.java.dev.jna:jna:${libs.versions.jna.get()}",
+            "net.java.dev.jna:jna-platform:${libs.versions.jna.get()}",
+        )
+    }
+
     afterEvaluate {
         configureKotlinOptIns()
         configureKotlinTestSettings()
