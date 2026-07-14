@@ -990,8 +990,6 @@ private fun EpisodeVideo(
                 progressSliderState,
                 cacheProgressInfoFlow = vm.cacheProgressInfoFlow,
                 enabled = false,
-                framePreview = framePreview,
-                showFramePreviewInPopup = expanded,
             )
         },
         sidebarVisible = vm.sidebarVisible,

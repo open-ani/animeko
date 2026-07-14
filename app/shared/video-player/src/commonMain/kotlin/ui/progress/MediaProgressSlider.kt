@@ -14,6 +14,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -33,6 +35,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -57,7 +60,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -157,6 +165,13 @@ class PlayerProgressSliderState(
         onPreviewFinished((ratio * totalDurationMillis).roundToLong())
         previewPositionRatio = Float.NaN
     }
+
+    /**
+     * Stops previewing without seeking to the previewed position.
+     */
+    fun cancelPreview() {
+        previewPositionRatio = Float.NaN
+    }
 }
 
 private class Data(
@@ -252,6 +267,12 @@ class MediaProgressSliderColors(
     val previewTimeTextColor: Color,
 )
 
+@Stable
+class TouchSeekCancellation(
+    val isInCancelArea: (positionInRoot: Offset) -> Boolean,
+    val onCancellationChanged: (cancelled: Boolean) -> Unit,
+)
+
 /**
  * 视频播放器的进度条, 支持拖动调整播放位置, 支持显示缓冲进度.
  */
@@ -264,6 +285,7 @@ fun MediaProgressSlider(
     showPreviewTimeTextOnThumb: Boolean = true,
     framePreview: MediaProgressFramePreviewState? = null,
     showFramePreviewInPopup: Boolean = true,
+    touchSeekCancellation: TouchSeekCancellation? = null,
 //    drawThumb: @Composable DrawScope.() -> Unit = {
 //        drawCircle(
 //            MaterialTheme.colorScheme.primary,
@@ -384,6 +406,17 @@ fun MediaProgressSlider(
         var mousePosX by rememberSaveable { mutableStateOf(0f) }
         var thumbWidth by rememberSaveable { mutableIntStateOf(0) }
         var sliderWidth by rememberSaveable { mutableIntStateOf(0) }
+        var sliderCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+        var touchSeekCancelled by remember { mutableStateOf(false) }
+        var latestTouchPreviewRatio by remember { mutableFloatStateOf(Float.NaN) }
+
+        DisposableEffect(touchSeekCancellation) {
+            onDispose {
+                if (touchSeekCancelled) {
+                    touchSeekCancellation?.onCancellationChanged(false)
+                }
+            }
+        }
 
         fun renderPreviewTime(previewTimeMillis: Long): String {
             state.chapters.find {
@@ -488,7 +521,12 @@ fun MediaProgressSlider(
         Slider(
             value = state.displayPositionRatio,
             valueRange = 0f..1f,
-            onValueChange = { state.previewPositionRatio(it) },
+            onValueChange = {
+                latestTouchPreviewRatio = it
+                if (!touchSeekCancelled) {
+                    state.previewPositionRatio(it)
+                }
+            },
             interactionSource = interactionSource,
             thumb = {
                 Canvas(Modifier.width(12.dp).height(24.dp)) {
@@ -542,12 +580,54 @@ fun MediaProgressSlider(
             },
             enabled = enabled,
             modifier = Modifier.fillMaxWidth().height(24.dp)
+                .onGloballyPositioned {
+                    sliderCoordinates = it
+                }
                 .onSizeChanged {
                     sliderWidth = it.width
                 }
                 .hoverable(interactionSource = hoverInteraction)
                 .onPointerEventMultiplatform(PointerEventType.Move) {
                     mousePosX = it.changes.firstOrNull()?.position?.x ?: return@onPointerEventMultiplatform
+                }
+                .pointerInput(touchSeekCancellation) {
+                    val cancellation = touchSeekCancellation ?: return@pointerInput
+                    awaitEachGesture {
+                        val down = awaitFirstDown(
+                            requireUnconsumed = false,
+                            pass = PointerEventPass.Initial,
+                        )
+                        if (down.type != PointerType.Touch) return@awaitEachGesture
+
+                        try {
+                            while (true) {
+                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                if (!change.pressed) break
+
+                                val coordinates = sliderCoordinates ?: continue
+                                val cancelled = cancellation.isInCancelArea(coordinates.localToRoot(change.position))
+                                if (cancelled == touchSeekCancelled) continue
+
+                                touchSeekCancelled = cancelled
+                                if (cancelled) {
+                                    cancellation.onCancellationChanged(true)
+                                    state.cancelPreview()
+                                } else {
+                                    if (!latestTouchPreviewRatio.isNaN()) {
+                                        state.previewPositionRatio(latestTouchPreviewRatio)
+                                    }
+                                    cancellation.onCancellationChanged(false)
+                                }
+                            }
+                        } finally {
+                            if (touchSeekCancelled) {
+                                state.cancelPreview()
+                                touchSeekCancelled = false
+                                cancellation.onCancellationChanged(false)
+                            }
+                        }
+                    }
                 },
         )
     }

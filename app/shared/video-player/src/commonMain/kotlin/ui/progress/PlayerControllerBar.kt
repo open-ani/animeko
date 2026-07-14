@@ -75,14 +75,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.VisualTransformation
@@ -616,6 +620,7 @@ object PlayerControllerDefaults {
         showPreviewTimeTextOnThumb: Boolean = true,
         framePreview: MediaProgressFramePreviewState? = null,
         showFramePreviewInPopup: Boolean = true,
+        touchSeekCancellation: TouchSeekCancellation? = null,
     ) {
         val cacheProgressInfo by cacheProgressInfoFlow.collectAsStateWithLifecycle(null)
         MediaProgressSlider(
@@ -624,6 +629,7 @@ object PlayerControllerDefaults {
             showPreviewTimeTextOnThumb = showPreviewTimeTextOnThumb,
             framePreview = framePreview,
             showFramePreviewInPopup = showFramePreviewInPopup,
+            touchSeekCancellation = touchSeekCancellation,
             modifier = modifier,
         )
     }
@@ -669,6 +675,7 @@ object PlayerControllerDefaults {
  * @param expanded Whether the controller bar is expanded.
  * If `true`, the [progressIndicator] and [progressSlider] will be shown on a separate row above. The bottom row will contain a [danmakuEditor].
  * If `false`, the entire bar will be only one row. [danmakuEditor] will be ignored.
+ * @param sliderOnly Whether to keep only [progressSlider] visible without replacing its composition.
  */
 @Composable
 fun PlayerControllerBar(
@@ -678,6 +685,7 @@ fun PlayerControllerBar(
     danmakuEditor: @Composable RowScope.() -> Unit,
     endActions: @Composable RowScope.() -> Unit,
     expanded: Boolean,
+    sliderOnly: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -692,6 +700,7 @@ fun PlayerControllerBar(
             ProvideTextStyle(MaterialTheme.typography.labelMedium) {
                 Row(
                     Modifier
+                        .keepLayoutWhenHidden(sliderOnly)
                         .padding(start = if (expanded) 8.dp else 4.dp)
                         .padding(vertical = if (expanded) 4.dp else 2.dp),
                 ) {
@@ -714,6 +723,7 @@ fun PlayerControllerBar(
         ) {
             // 播放 / 暂停按钮
             Row(
+                Modifier.keepLayoutWhenHidden(sliderOnly),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 startActions()
@@ -724,8 +734,10 @@ fun PlayerControllerBar(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (expanded) {
-                    ProvideTextStyle(MaterialTheme.typography.labelSmall) {
-                        danmakuEditor()
+                    Row(Modifier.keepLayoutWhenHidden(sliderOnly)) {
+                        ProvideTextStyle(MaterialTheme.typography.labelSmall) {
+                            danmakuEditor()
+                        }
                     }
                 } else {
                     progressSlider()
@@ -733,10 +745,24 @@ fun PlayerControllerBar(
             }
 
             Row(
+                Modifier.keepLayoutWhenHidden(sliderOnly),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 endActions()
             }
         }
     }
+}
+
+private fun Modifier.keepLayoutWhenHidden(hidden: Boolean): Modifier {
+    if (!hidden) return this
+    return alpha(0f)
+        .clearAndSetSemantics { }
+        .pointerInput(Unit) {
+            awaitPointerEventScope {
+                while (true) {
+                    awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                }
+            }
+        }
 }

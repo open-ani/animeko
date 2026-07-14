@@ -162,6 +162,16 @@ data class ControllerVisibility(
             gestureLock = false,
             detachedSlider = true,
         )
+
+        @Stable
+        val InlineSliderOnly = ControllerVisibility(
+            topBar = false,
+            bottomBar = true,
+            floatingBottomEnd = false,
+            rhsBar = false,
+            gestureLock = false,
+            detachedSlider = false,
+        )
     }
 }
 
@@ -177,12 +187,20 @@ class PlayerControllerState(
 
     private var fullVisible by mutableStateOf(initialVisibility == ControllerVisibility.Visible)
     private val hasProgressBarRequester by derivedStateOf { progressBarRequesters.isNotEmpty() }
+    private val hasDetachedProgressSliderRequester by derivedStateOf {
+        detachedProgressSliderRequesters.isNotEmpty()
+    }
+    private val hasInlineProgressSliderRequester by derivedStateOf {
+        inlineProgressSliderRequesters.isNotEmpty()
+    }
 
     /**
      * 当前 UI 应当显示的状态
      */
     val visibility: ControllerVisibility by derivedStateOf {
         // 根据 hasProgressBarRequester, alwaysOn 和 fullVisible 计算正确的 `ControllerVisibility`
+        if (hasDetachedProgressSliderRequester) return@derivedStateOf ControllerVisibility.DetachedSliderOnly
+        if (hasInlineProgressSliderRequester) return@derivedStateOf ControllerVisibility.InlineSliderOnly
         if (alwaysOn) return@derivedStateOf ControllerVisibility.Visible
         if (fullVisible) return@derivedStateOf ControllerVisibility.Visible
         if (hasProgressBarRequester) return@derivedStateOf ControllerVisibility.DetachedSliderOnly
@@ -228,6 +246,40 @@ class PlayerControllerState(
     }
 
     private val progressBarRequesters = SnapshotStateList<Any>()
+
+    private val detachedProgressSliderRequesters = SnapshotStateList<Any>()
+    private val inlineProgressSliderRequesters = SnapshotStateList<Any>()
+
+    /**
+     * 只显示独立进度条, 暂时隐藏其他控制器元素.
+     *
+     * 取消请求后会恢复由 [fullVisible]、[alwaysOn] 和普通进度条请求共同决定的可见状态.
+     */
+    fun setRequestDetachedProgressSlider(requester: Any) {
+        if (requester in detachedProgressSliderRequesters) return
+        detachedProgressSliderRequesters.add(requester)
+    }
+
+    /**
+     * 取消只显示独立进度条的请求.
+     */
+    fun cancelRequestDetachedProgressSlider(requester: Any) {
+        detachedProgressSliderRequesters.remove(requester)
+    }
+
+    /**
+     * 保留底部控制栏中的原进度条, 同时隐藏其他控制器元素.
+     *
+     * 与 [setRequestDetachedProgressSlider] 不同, 该模式不会替换正在接收触摸事件的进度条.
+     */
+    fun setRequestInlineProgressSlider(requester: Any) {
+        if (requester in inlineProgressSliderRequesters) return
+        inlineProgressSliderRequesters.add(requester)
+    }
+
+    fun cancelRequestInlineProgressSlider(requester: Any) {
+        inlineProgressSliderRequesters.remove(requester)
+    }
 
     /**
      * 请求显示进度条

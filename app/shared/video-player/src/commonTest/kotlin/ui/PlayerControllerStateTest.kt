@@ -65,6 +65,58 @@ class PlayerControllerStateTest {
     }
 
     @Test
+    fun `detached slider request temporarily hides visible controller`() {
+        val state = PlayerControllerState(ControllerVisibility.Visible)
+        val requester = Any()
+
+        state.setRequestDetachedProgressSlider(requester)
+        assertEquals(ControllerVisibility.DetachedSliderOnly, state.visibility)
+
+        state.cancelRequestDetachedProgressSlider(requester)
+        assertEquals(ControllerVisibility.Visible, state.visibility)
+    }
+
+    @Test
+    fun `detached slider request takes priority over always on`() {
+        val state = PlayerControllerState(ControllerVisibility.Invisible)
+        val alwaysOnRequester = Any()
+        val sliderRequester = Any()
+        state.setRequestAlwaysOn(alwaysOnRequester, true)
+
+        state.setRequestDetachedProgressSlider(sliderRequester)
+        assertEquals(ControllerVisibility.DetachedSliderOnly, state.visibility)
+
+        state.cancelRequestDetachedProgressSlider(sliderRequester)
+        assertEquals(ControllerVisibility.Visible, state.visibility)
+    }
+
+    @Test
+    fun `inline slider request keeps bottom bar while hiding other controls`() {
+        val state = PlayerControllerState(ControllerVisibility.Visible)
+        val requester = Any()
+
+        state.setRequestInlineProgressSlider(requester)
+        assertEquals(ControllerVisibility.InlineSliderOnly, state.visibility)
+
+        state.cancelRequestInlineProgressSlider(requester)
+        assertEquals(ControllerVisibility.Visible, state.visibility)
+    }
+
+    @Test
+    fun `detached slider takes priority over inline slider`() {
+        val state = PlayerControllerState(ControllerVisibility.Visible)
+        val inlineRequester = Any()
+        val detachedRequester = Any()
+        state.setRequestInlineProgressSlider(inlineRequester)
+
+        state.setRequestDetachedProgressSlider(detachedRequester)
+        assertEquals(ControllerVisibility.DetachedSliderOnly, state.visibility)
+
+        state.cancelRequestDetachedProgressSlider(detachedRequester)
+        assertEquals(ControllerVisibility.InlineSliderOnly, state.visibility)
+    }
+
+    @Test
     fun `visibility when nothing`() {
         val state = createStateRequested(false, false, false)
         assertEquals(ControllerVisibility.Invisible, state.visibility)

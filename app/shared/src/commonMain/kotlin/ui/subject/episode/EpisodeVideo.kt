@@ -42,10 +42,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -118,6 +123,8 @@ import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.LockableVideoGestureHost
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.ScreenshotButton
+import me.him188.ani.app.videoplayer.ui.gesture.SwipeSeekerConfig
+import me.him188.ani.app.videoplayer.ui.gesture.isInCancelArea
 import me.him188.ani.app.videoplayer.ui.gesture.mouseFamily
 import me.him188.ani.app.videoplayer.ui.gesture.rememberGestureIndicatorState
 import me.him188.ani.app.videoplayer.ui.gesture.rememberSwipeSeekerState
@@ -133,6 +140,7 @@ import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.VideoA
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.ProgressSliderCenteredPreviewFrame
 import me.him188.ani.app.videoplayer.ui.progress.SubtitleSwitcher
+import me.him188.ani.app.videoplayer.ui.progress.TouchSeekCancellation
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.rememberPlayerStatsState
@@ -222,6 +230,54 @@ internal fun EpisodeVideoImpl(
                     || anySideSheetVisible)
         }
     }
+    val inlineProgressSliderRequester = remember(playerControllerState) { Any() }
+    var sliderSeekCancelled by remember { mutableStateOf(false) }
+    val useTouchSliderOnly =
+        gestureFamily == GestureFamily.TOUCH && (progressSliderState.isPreviewing || sliderSeekCancelled)
+    DisposableEffect(playerControllerState, inlineProgressSliderRequester, useTouchSliderOnly) {
+        if (useTouchSliderOnly) {
+            playerControllerState.setRequestInlineProgressSlider(inlineProgressSliderRequester)
+        }
+        onDispose {
+            playerControllerState.cancelRequestInlineProgressSlider(inlineProgressSliderRequester)
+        }
+    }
+    val indicatorState = rememberGestureIndicatorState()
+    var videoBounds by remember { mutableStateOf<Rect?>(null) }
+    var sliderCancellationTicket by remember { mutableStateOf<Int?>(null) }
+    DisposableEffect(indicatorState) {
+        onDispose {
+            sliderCancellationTicket?.let(indicatorState::stopSeekCancellation)
+        }
+    }
+    val touchSeekCancellation = if (gestureFamily == GestureFamily.TOUCH) {
+        val bounds = videoBounds
+        remember(indicatorState, bounds) {
+            TouchSeekCancellation(
+                isInCancelArea = { positionInRoot ->
+                    if (bounds == null) {
+                        false
+                    } else {
+                        SwipeSeekerConfig.Default.isInCancelArea(
+                            position = positionInRoot - Offset(bounds.left, bounds.top),
+                            containerSize = IntSize(bounds.width.toInt(), bounds.height.toInt()),
+                        )
+                    }
+                },
+                onCancellationChanged = { cancelled ->
+                    sliderSeekCancelled = cancelled
+                    if (cancelled && sliderCancellationTicket == null) {
+                        sliderCancellationTicket = indicatorState.startSeekCancellation()
+                    } else if (!cancelled) {
+                        sliderCancellationTicket?.let(indicatorState::stopSeekCancellation)
+                        sliderCancellationTicket = null
+                    }
+                },
+            )
+        }
+    } else {
+        null
+    }
 
     AniTheme(darkModeOverride = DarkMode.DARK) {
         val progressSliderColors = MediaProgressSliderDefaults.colors()
@@ -229,7 +285,10 @@ internal fun EpisodeVideoImpl(
             expanded = expanded,
             modifier = modifier
                 .hoverable(videoInteractionSource)
-                .cursorVisibility(showCursor),
+                .cursorVisibility(showCursor)
+                .onGloballyPositioned {
+                    videoBounds = it.boundsInRoot()
+                },
             contentWindowInsets = contentWindowInsets,
             maintainAspectRatio = maintainAspectRatio,
             controllerState = playerControllerState,
@@ -307,7 +366,6 @@ internal fun EpisodeVideoImpl(
                 }
 
                 val indicatorTasker = rememberUiMonoTasker()
-                val indicatorState = rememberGestureIndicatorState()
                 LockableVideoGestureHost(
                     playerControllerState,
                     swipeSeekerState,
@@ -445,6 +503,7 @@ internal fun EpisodeVideoImpl(
                             showPreviewTimeTextOnThumb = expanded,
                             framePreview = framePreview,
                             showFramePreviewInPopup = expanded,
+                            touchSeekCancellation = touchSeekCancellation,
                         )
                     },
                     danmakuEditor = danmakuEditor,
@@ -494,6 +553,7 @@ internal fun EpisodeVideoImpl(
                         )
                     },
                     expanded = expanded,
+                    sliderOnly = playerControllerState.visibility == ControllerVisibility.InlineSliderOnly,
                 )
             },
             detachedProgressSlider = detachedProgressSlider,

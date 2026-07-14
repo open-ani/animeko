@@ -39,6 +39,7 @@ import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.BrightnessHigh
 import androidx.compose.material.icons.rounded.BrightnessLow
 import androidx.compose.material.icons.rounded.BrightnessMedium
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.Pause
@@ -50,6 +51,7 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -79,6 +81,7 @@ import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.utils.fixToString
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
@@ -93,10 +96,10 @@ import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.VOLU
 import me.him188.ani.app.videoplayer.ui.gesture.SwipeSeekerState.Companion.swipeToSeek
 import me.him188.ani.app.videoplayer.ui.playerFocusHost
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
-import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.utils.platform.Platform
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.AudioLevelController
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.seconds
 
@@ -124,6 +127,7 @@ class GestureIndicatorState {
     internal var state: State? by mutableStateOf(null)
     internal var progressValue: Float by mutableFloatStateOf(0f)
     internal var deltaSeconds: Int by mutableIntStateOf(0)
+    internal var seekCancelled: Boolean by mutableStateOf(false)
     private var counter: Int = 0
 
     private inline fun startShow(
@@ -193,10 +197,26 @@ class GestureIndicatorState {
     @UiThread
     suspend fun showSeeking(
         deltaSeconds: Int,
+        cancelled: Boolean = false,
     ) {
-        show(SEEKING, setup = { this.deltaSeconds = deltaSeconds }) {
+        show(SEEKING, setup = {
+            this.deltaSeconds = deltaSeconds
+            this.seekCancelled = cancelled
+        }) {
             delay(SHORT)
         }
+    }
+
+    @UiThread
+    fun startSeekCancellation(): Int {
+        return startShow(SEEKING) {
+            seekCancelled = true
+        }
+    }
+
+    @UiThread
+    fun stopSeekCancellation(ticket: Int) {
+        stopShow(ticket)
     }
 
     @UiThread
@@ -293,30 +313,35 @@ fun GestureIndicator(
                         }
 
                         SEEKING -> {
-                            val deltaDuration = state.deltaSeconds
-                            // 记忆变为 0 之前的 delta, 这样在快进/快退结束后, 会显示上一次的 delta, 而不是显示 0
-                            val duration = if (deltaDuration == 0) {
-                                lastDelta
+                            if (state.seekCancelled) {
+                                Icon(Icons.Rounded.Close, null, Modifier.size(iconSize))
+                                Text(stringResource(Lang.video_player_release_to_cancel), maxLines = 1)
                             } else {
-                                deltaDuration.also {
-                                    lastDelta = deltaDuration
-                                }
-                            }
-
-                            Icon(
-                                if (duration > 0) {
-                                    Icons.Rounded.FastForward
+                                val deltaDuration = state.deltaSeconds
+                                // 记忆变为 0 之前的 delta, 这样在快进/快退结束后, 会显示上一次的 delta, 而不是显示 0
+                                val duration = if (deltaDuration == 0) {
+                                    lastDelta
                                 } else {
-                                    Icons.Rounded.FastRewind
-                                },
-                                null,
-                                Modifier.size(iconSize),
-                            )
-                            val text = renderTime(duration.absoluteValue)
-                            Text(
-                                text,
-                                maxLines = 1,
-                            )
+                                    deltaDuration.also {
+                                        lastDelta = deltaDuration
+                                    }
+                                }
+
+                                Icon(
+                                    if (duration > 0) {
+                                        Icons.Rounded.FastForward
+                                    } else {
+                                        Icons.Rounded.FastRewind
+                                    },
+                                    null,
+                                    Modifier.size(iconSize),
+                                )
+                                val text = renderTime(duration.absoluteValue)
+                                Text(
+                                    text,
+                                    maxLines = 1,
+                                )
+                            }
                         }
 
                         VOLUME -> {
@@ -441,9 +466,20 @@ fun PlayerGestureHost(
                 .systemGesturesPadding()
                 .padding(top = 16.dp),
         ) {
-            LaunchedEffect(seekerState.deltaSeconds) {
-                if (seekerState.isSeeking) {
-                    indicatorState.showSeeking(seekerState.deltaSeconds)
+            val showSeekCancellation = seekerState.isSeeking && seekerState.isCancelled
+            LaunchedEffect(showSeekCancellation) {
+                if (showSeekCancellation) {
+                    progressSliderState.cancelPreview()
+                }
+            }
+            DisposableEffect(indicatorState, showSeekCancellation) {
+                val ticket = if (showSeekCancellation) {
+                    indicatorState.startSeekCancellation()
+                } else {
+                    null
+                }
+                onDispose {
+                    ticket?.let(indicatorState::stopSeekCancellation)
                 }
             }
             GestureIndicator(indicatorState)
@@ -564,28 +600,35 @@ fun PlayerGestureHost(
             keyboardModifier
                 .combineClickableWithFamilyGesture()
                 .ifThen(family.swipeToSeek && enableSwipeToSeek) {
-                    val swipeToSeekRequester = rememberAlwaysOnRequester(controllerState, "swipeToSeek")
+                    val swipeToSeekRequester = remember(controllerState) { Any() }
+                    DisposableEffect(controllerState, swipeToSeekRequester) {
+                        onDispose {
+                            controllerState.cancelRequestInlineProgressSlider(swipeToSeekRequester)
+                        }
+                    }
                     swipeToSeek(
                         seekerState,
                         Orientation.Horizontal,
                         //调节音量/亮度时禁用水平seek
                         enabled = !adjustingVolumeOrBrightness,
                         onDragStarted = {
-                            if (controllerState.visibility.bottomBar) {
-                                swipeToSeekRequester.request()
-                            }
-                            controllerState.setRequestProgressBar(swipeToSeekRequester)
+                            controllerState.setRequestInlineProgressSlider(swipeToSeekRequester)
                         },
-                        onDragStopped = {
-                            if (controllerState.visibility.bottomBar) {
-                                swipeToSeekRequester.cancelRequest()
+                        onDragStopped = { _, cancelled ->
+                            controllerState.cancelRequestInlineProgressSlider(swipeToSeekRequester)
+                            if (cancelled) {
+                                progressSliderState.cancelPreview()
+                            } else {
+                                progressSliderState.finishPreview()
                             }
-                            controllerState.cancelRequestProgressBarVisible(swipeToSeekRequester)
-                            progressSliderState.finishPreview()
                         },
                     ) {
                         progressSliderState.run {
                             if (totalDurationMillis == 0L) return@run
+                            if (seekerState.isCancelled) {
+                                cancelPreview()
+                                return@run
+                            }
                             val offsetRatio =
                                 (currentPositionMillis + seekerState.deltaSeconds.times(1000)).toFloat() / totalDurationMillis
                             previewPositionRatio(offsetRatio.coerceIn(0f, 1f))

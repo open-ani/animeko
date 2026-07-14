@@ -20,13 +20,19 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.isSpecified
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.unit.IntSize
 import kotlinx.coroutines.CoroutineScope
+import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
 import kotlin.math.roundToInt
 
 
@@ -58,6 +64,14 @@ data class SwipeSeekerConfig(
     // 用户不能从最左边开始滑. 因此稍微留了点余量.
     // 实测差不多可以滑到 87 秒, 看三秒 op 让他知道他完了 op
     val maxDragSeconds: Int = 97,
+    /**
+     * 屏幕顶部作为取消区域的高度占比.
+     */
+    val cancelAreaHeightRatio: Float = 0.25f,
+    /**
+     * 屏幕左右两侧各自作为取消区域的宽度占比.
+     */
+    val cancelAreaWidthRatio: Float = 0.25f,
 ) {
     companion object {
         val Default = SwipeSeekerConfig()
@@ -81,22 +95,47 @@ class SwipeSeekerState(
      */
     private var seekDelta: Float by mutableFloatStateOf(Float.NaN)
 
+    /**
+     * 当前滑动是否已进入取消区域.
+     */
+    var isCancelled: Boolean by mutableStateOf(false)
+        private set
+
+    private var lastPointerPosition: Offset = Offset.Unspecified
+    private var lastPointerContainerSize: IntSize = IntSize.Zero
+
     @UiThread
-    private fun onSwipeStarted() {
+    internal fun onSwipeStarted() {
         seekDelta = 0f
+        isCancelled = isInCancelArea(lastPointerPosition, lastPointerContainerSize)
     }
 
     @UiThread
-    private fun onSwipeStopped() {
+    internal fun onSwipeStopped() {
         if (seekDelta.isNaN()) return
-        onSeek(deltaSeconds)
+        if (!isCancelled) {
+            onSeek(deltaSeconds)
+        }
         seekDelta = Float.NaN
+        isCancelled = false
     }
 
     @UiThread
-    private fun onSwipeOffset(offsetPx: Float) {
+    internal fun onSwipeOffset(offsetPx: Float) {
         seekDelta += offsetPx
     }
+
+    @UiThread
+    internal fun onPointerMoved(position: Offset, containerSize: IntSize) {
+        lastPointerPosition = position
+        lastPointerContainerSize = containerSize
+        if (!isSeeking) return
+
+        isCancelled = isInCancelArea(position, containerSize)
+    }
+
+    private fun isInCancelArea(position: Offset, containerSize: IntSize): Boolean =
+        swipeSeekerConfig.isInCancelArea(position, containerSize)
 
     /**
      * 是否正在快进, 即用户是否正在滑动屏幕
@@ -133,7 +172,7 @@ class SwipeSeekerState(
             interactionSource: MutableInteractionSource? = null,
             reverseDirection: Boolean = false,
             onDragStarted: suspend CoroutineScope.(startedPosition: Offset) -> Unit = {},
-            onDragStopped: suspend CoroutineScope.(velocity: Float) -> Unit = {},
+            onDragStopped: suspend CoroutineScope.(velocity: Float, cancelled: Boolean) -> Unit = { _, _ -> },
             onDelta: (Float) -> Unit = {},
         ): Modifier {
             return composed(
@@ -142,25 +181,44 @@ class SwipeSeekerState(
                     properties["seekerState"] = seekerState
                 },
             ) {
-                draggable(
-                    rememberDraggableState {
-                        seekerState.onSwipeOffset(it)
-                        onDelta(it)
-                    },
-                    orientation,
-                    onDragStarted = {
-                        seekerState.onSwipeStarted()
-                        onDragStarted(it)
-                    },
-                    onDragStopped = {
-                        seekerState.onSwipeStopped()
-                        onDragStopped(it)
-                    },
-                    enabled = enabled,
-                    interactionSource = interactionSource,
-                    reverseDirection = reverseDirection,
-                )
+                Modifier
+                    .onPointerEventMultiplatform(
+                        PointerEventType.Move,
+                        pass = PointerEventPass.Initial,
+                    ) { event ->
+                        event.changes.firstOrNull()?.let { change ->
+                            seekerState.onPointerMoved(change.position, size)
+                        }
+                    }
+                    .draggable(
+                        rememberDraggableState {
+                            seekerState.onSwipeOffset(it)
+                            onDelta(it)
+                        },
+                        orientation,
+                        onDragStarted = {
+                            seekerState.onSwipeStarted()
+                            onDragStarted(it)
+                        },
+                        onDragStopped = {
+                            val cancelled = seekerState.isCancelled
+                            seekerState.onSwipeStopped()
+                            onDragStopped(it, cancelled)
+                        },
+                        enabled = enabled,
+                        interactionSource = interactionSource,
+                        reverseDirection = reverseDirection,
+                    )
             }
         }
     }
+}
+
+fun SwipeSeekerConfig.isInCancelArea(position: Offset, containerSize: IntSize): Boolean {
+    if (!position.isSpecified || containerSize.width <= 0 || containerSize.height <= 0) return false
+
+    val inTopArea = position.y <= containerSize.height * cancelAreaHeightRatio
+    val inLeftArea = position.x <= containerSize.width * cancelAreaWidthRatio
+    val inRightArea = position.x >= containerSize.width * (1f - cancelAreaWidthRatio)
+    return inTopArea && (inLeftArea || inRightArea)
 }
