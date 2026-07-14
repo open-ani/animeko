@@ -688,7 +688,7 @@
     <string name="video_player_stats_title">播放資訊</string>
     <string name="video_player_stats_title_show">顯示播放資訊</string>
     <string name="video_player_stats_title_hide">隱藏播放資訊</string>
-    <string name="video_player_stats_hide_hint">Tab 隱藏</string>
+    <string name="video_player_stats_hide_hint">按 I 隱藏</string>
     <string name="video_player_stats_backend">後端</string>
     <string name="video_player_stats_state">狀態</string>
     <string name="video_player_stats_media_title">標題</string>

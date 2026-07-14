@@ -845,6 +845,40 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
+    fun `mouse - keyboard shortcuts - I toggles playback info and Tab does not`() = runAniComposeUiTest {
+        val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+        setContent {
+            Player(
+                GestureFamily.MOUSE,
+                playerControllerState = visibleControllerState,
+            )
+        }
+        waitForIdle()
+
+        videoGestureHost.assertIsFocused()
+        videoGestureHost.performKeyInput {
+            pressKey(Key.Tab)
+        }
+        waitForIdle()
+        onNodeWithText("Playback Info", substring = true).doesNotExist()
+
+        videoGestureHost.performClick()
+        videoGestureHost.performKeyInput {
+            pressKey(Key.I)
+        }
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            onNodeWithText("Playback Info", substring = true).exists()
+        }
+
+        videoGestureHost.performKeyInput {
+            pressKey(Key.I)
+        }
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            !onNodeWithText("Playback Info", substring = true).exists()
+        }
+    }
+
+    @Test
     fun `touch - keyboard shortcuts - reclaim focus from editor on mouse move`() = runAniComposeUiTest {
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         setContent {

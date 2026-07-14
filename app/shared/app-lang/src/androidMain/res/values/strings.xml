@@ -684,7 +684,7 @@
     <string name="video_player_stats_title">Playback Info</string>
     <string name="video_player_stats_title_show">Show Playback Info</string>
     <string name="video_player_stats_title_hide">Hide Playback Info</string>
-    <string name="video_player_stats_hide_hint">Tab to hide</string>
+    <string name="video_player_stats_hide_hint">I to hide</string>
     <string name="video_player_stats_backend">Backend</string>
     <string name="video_player_stats_state">State</string>
     <string name="video_player_stats_media_title">Title</string>

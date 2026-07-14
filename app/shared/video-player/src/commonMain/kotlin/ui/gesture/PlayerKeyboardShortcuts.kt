@@ -74,7 +74,7 @@ internal fun Modifier.playerKeyboardShortcuts(
     }
     return result
         .onKey(ComposeKey.B, onToggleDanmaku)
-        .onKey(ComposeKey.Tab, onTogglePlayerStats)
+        .onKey(ComposeKey.I, onTogglePlayerStats)
         // The same node carries combinedClickable, which treats Enter as a click when focused.
         // Enter is not a player shortcut, so swallow it; DPad center is left for clickable so that
         // remote/DPad activation still works like a tap.

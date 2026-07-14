@@ -17,6 +17,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -622,6 +623,10 @@ fun PlayerGestureHost(
                         }
                     }
                 }
+                // Do not remove this as redundant with combinedClickable. Its focus target uses
+                // Focusability.SystemDefined, which is not focusable while Android is in touch input mode.
+                // This always-focusable child is the fallback that keeps hardware shortcuts working.
+                .focusable()
                 .fillMaxSize(),
         ) {
             Row(
