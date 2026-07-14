@@ -113,11 +113,14 @@ import me.him188.ani.app.videoplayer.ui.VideoPlayer
 import me.him188.ani.app.videoplayer.ui.VideoScaffold
 import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.gesture.GestureFamily
+import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState
 import me.him188.ani.app.videoplayer.ui.gesture.GestureLock
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.LockableVideoGestureHost
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.ScreenshotButton
+import me.him188.ani.app.videoplayer.ui.gesture.SwipeSeekerConfig
+import me.him188.ani.app.videoplayer.ui.gesture.isInCancelArea
 import me.him188.ani.app.videoplayer.ui.gesture.mouseFamily
 import me.him188.ani.app.videoplayer.ui.gesture.rememberGestureIndicatorState
 import me.him188.ani.app.videoplayer.ui.gesture.rememberSwipeSeekerState
@@ -133,6 +136,7 @@ import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.VideoA
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.ProgressSliderCenteredPreviewFrame
 import me.him188.ani.app.videoplayer.ui.progress.SubtitleSwitcher
+import me.him188.ani.app.videoplayer.ui.progress.TouchSeekState
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.rememberPlayerStatsState
@@ -222,6 +226,14 @@ internal fun EpisodeVideoImpl(
                     || anySideSheetVisible)
         }
     }
+    val indicatorState = rememberGestureIndicatorState()
+    // commonMain 中的 TOUCH 仅表示移动端触屏交互。CMP Desktop 尚无稳定的触控支持，
+    // 因此桌面端继续使用 MOUSE 分支，不启用进度条触摸取消状态机。
+    val touchSeekState = rememberPlayerTouchSeekState(
+        enabled = gestureFamily == GestureFamily.TOUCH,
+        controllerState = playerControllerState,
+        indicatorState = indicatorState,
+    )
 
     AniTheme(darkModeOverride = DarkMode.DARK) {
         val progressSliderColors = MediaProgressSliderDefaults.colors()
@@ -307,7 +319,6 @@ internal fun EpisodeVideoImpl(
                 }
 
                 val indicatorTasker = rememberUiMonoTasker()
-                val indicatorState = rememberGestureIndicatorState()
                 LockableVideoGestureHost(
                     playerControllerState,
                     swipeSeekerState,
@@ -376,6 +387,7 @@ internal fun EpisodeVideoImpl(
                     }
                 }
             },
+            touchSeekState = touchSeekState,
             framePreviewOverlay = {
                 if (!expanded) {
                     ProgressSliderCenteredPreviewFrame(
@@ -445,6 +457,7 @@ internal fun EpisodeVideoImpl(
                             showPreviewTimeTextOnThumb = expanded,
                             framePreview = framePreview,
                             showFramePreviewInPopup = expanded,
+                            touchSeekState = touchSeekState,
                         )
                     },
                     danmakuEditor = danmakuEditor,
@@ -494,12 +507,59 @@ internal fun EpisodeVideoImpl(
                         )
                     },
                     expanded = expanded,
+                    sliderOnly = playerControllerState.visibility == ControllerVisibility.InlineSliderOnly,
                 )
             },
             detachedProgressSlider = detachedProgressSlider,
             floatingBottomEnd = { fullscreenSwitchButton() },
             rhsSheet = { sideSheets(sheetsController) },
             leftBottomTips = leftBottomTips,
+        )
+    }
+}
+
+/**
+ * 将进度条的通用触摸状态机接入播放器 UI：拖动期间保留 inline progress slider，
+ * 手指进入取消区域时持续显示取消提示。非触屏分支返回 `null`，不改变原有交互。
+ */
+@Composable
+private fun rememberPlayerTouchSeekState(
+    enabled: Boolean,
+    controllerState: PlayerControllerState,
+    indicatorState: GestureIndicatorState,
+): TouchSeekState? {
+    if (!enabled) return null
+
+    return remember(controllerState, indicatorState) {
+        // requester 和 indicator ticket 跨状态迁移保持不变，确保每次请求都由同一实例撤销。
+        val controllerRequester = Any()
+        var indicatorTicket: Int? = null
+        fun stopCancellationIndicator() {
+            indicatorTicket?.let(indicatorState::stopSeekCancellation)
+            indicatorTicket = null
+        }
+        TouchSeekState(
+            isInCancelArea = SwipeSeekerConfig.Default::isInCancelArea,
+            onStateChanged = { state ->
+                when (state) {
+                    // 手势结束：恢复控制器的正常显隐，并关闭可能存在的取消提示。
+                    TouchSeekState.State.Idle -> {
+                        controllerState.cancelRequestInlineProgressSlider(controllerRequester)
+                        stopCancellationIndicator()
+                    }
+
+                    // 正常拖动：保留 bottom bar 内正在接收触摸事件的原进度条。
+                    TouchSeekState.State.Seeking -> {
+                        controllerState.setRequestInlineProgressSlider(controllerRequester)
+                        stopCancellationIndicator()
+                    }
+
+                    // 进入取消区域：进度条保持原位，只将中央指示器切换为取消提示。
+                    TouchSeekState.State.Cancelling -> {
+                        indicatorTicket = indicatorState.startSeekCancellation()
+                    }
+                }
+            },
         )
     }
 }

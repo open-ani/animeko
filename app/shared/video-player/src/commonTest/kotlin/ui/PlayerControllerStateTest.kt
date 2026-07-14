@@ -65,6 +65,18 @@ class PlayerControllerStateTest {
     }
 
     @Test
+    fun `inline slider request keeps bottom bar while hiding other controls`() {
+        val state = PlayerControllerState(ControllerVisibility.Visible)
+        val requester = Any()
+
+        state.setRequestInlineProgressSlider(requester)
+        assertEquals(ControllerVisibility.InlineSliderOnly, state.visibility)
+
+        state.cancelRequestInlineProgressSlider(requester)
+        assertEquals(ControllerVisibility.Visible, state.visibility)
+    }
+
+    @Test
     fun `visibility when nothing`() {
         val state = createStateRequested(false, false, false)
         assertEquals(ControllerVisibility.Invisible, state.visibility)

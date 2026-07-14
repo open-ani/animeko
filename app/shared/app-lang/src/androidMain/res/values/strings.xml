@@ -681,6 +681,7 @@
     <string name="video_player_speed">Speed</string>
     <string name="video_player_skip_op_ed">Skipping OP or ED soon</string>
     <string name="video_player_cancel">Cancel</string>
+    <string name="video_player_release_to_cancel">Release to cancel</string>
     <string name="video_player_stats_title">Playback Info</string>
     <string name="video_player_stats_title_show">Show Playback Info</string>
     <string name="video_player_stats_title_hide">Hide Playback Info</string>

@@ -40,9 +40,13 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
@@ -50,6 +54,7 @@ import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.gesture.PlayerGestureHost
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBar
+import me.him188.ani.app.videoplayer.ui.progress.TouchSeekState
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 
 /**
@@ -100,7 +105,9 @@ fun VideoScaffold(
     centerOverlay: @Composable BoxScope.() -> Unit = {},
     framePreviewOverlay: @Composable BoxScope.() -> Unit = {},
     playerStatsOverlay: @Composable BoxScope.() -> Unit = {},
+    touchSeekState: TouchSeekState? = null,
 ) {
+    val inlineSliderOnly = controllerState.visibility == ControllerVisibility.InlineSliderOnly
     val controllerVisibility = controllerState.visibility
         .withGestureLocked(gestureLocked)
         .withExpanded(expanded)
@@ -113,6 +120,9 @@ fun VideoScaffold(
     ) { // 16:9 box
         Box(
             Modifier
+                .onGloballyPositioned {
+                    touchSeekState?.containerCoordinates = it
+                }
                 .then(
                     if (!maintainAspectRatio) {
                         Modifier.fillMaxSize()
@@ -161,7 +171,7 @@ fun VideoScaffold(
                 Column(Modifier.fillMaxSize().background(Color.Transparent)) {
                     // 顶部控制栏: 返回键, 标题, 设置
                     me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility(
-                        visible = controllerVisibility.topBar,
+                        visible = controllerVisibility.topBar || inlineSliderOnly,
                         enter = enterTransition,
                         exit = exitTransition,
                     ) {
@@ -181,6 +191,7 @@ fun VideoScaffold(
 
                             Column(
                                 Modifier
+                                    .keepLayoutWhenHidden(inlineSliderOnly)
                                     .hoverToRequestAlwaysOn(alwaysOnRequester)
                                     .fillMaxWidth(),
                             ) {
@@ -206,6 +217,7 @@ fun VideoScaffold(
 
                             Box(
                                 Modifier.matchParentSize()
+                                    .keepLayoutWhenHidden(inlineSliderOnly)
                                     .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Top))
                                     .padding(top = 8.dp),
                                 contentAlignment = Alignment.TopCenter,
@@ -360,6 +372,19 @@ fun VideoScaffold(
             }
         }
     }
+}
+
+internal fun Modifier.keepLayoutWhenHidden(hidden: Boolean): Modifier {
+    if (!hidden) return this
+    return alpha(0f)
+        .clearAndSetSemantics { }
+        .pointerInput(Unit) {
+            awaitPointerEventScope {
+                while (true) {
+                    awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                }
+            }
+        }
 }
 
 

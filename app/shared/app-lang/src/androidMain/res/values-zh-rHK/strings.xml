@@ -696,6 +696,7 @@
     <string name="video_player_speed">倍速</string>
     <string name="video_player_skip_op_ed">即將跳過 OP 或 ED</string>
     <string name="video_player_cancel">取消</string>
+    <string name="video_player_release_to_cancel">放開手指取消</string>
     <string name="video_player_stats_title">播放資訊</string>
     <string name="video_player_stats_title_show">顯示播放資訊</string>
     <string name="video_player_stats_title_hide">隱藏播放資訊</string>

@@ -104,6 +104,7 @@ import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
+import me.him188.ani.app.videoplayer.ui.keepLayoutWhenHidden
 import me.him188.ani.app.videoplayer.ui.renderAspectRatioMode
 import me.him188.ani.app.videoplayer.ui.top.needWorkaroundForFocusManager
 import kotlin.math.roundToInt
@@ -616,6 +617,7 @@ object PlayerControllerDefaults {
         showPreviewTimeTextOnThumb: Boolean = true,
         framePreview: MediaProgressFramePreviewState? = null,
         showFramePreviewInPopup: Boolean = true,
+        touchSeekState: TouchSeekState? = null,
     ) {
         val cacheProgressInfo by cacheProgressInfoFlow.collectAsStateWithLifecycle(null)
         MediaProgressSlider(
@@ -624,6 +626,7 @@ object PlayerControllerDefaults {
             showPreviewTimeTextOnThumb = showPreviewTimeTextOnThumb,
             framePreview = framePreview,
             showFramePreviewInPopup = showFramePreviewInPopup,
+            touchSeekState = touchSeekState,
             modifier = modifier,
         )
     }
@@ -669,6 +672,7 @@ object PlayerControllerDefaults {
  * @param expanded Whether the controller bar is expanded.
  * If `true`, the [progressIndicator] and [progressSlider] will be shown on a separate row above. The bottom row will contain a [danmakuEditor].
  * If `false`, the entire bar will be only one row. [danmakuEditor] will be ignored.
+ * @param sliderOnly Whether to keep only [progressSlider] visible without replacing its composition.
  */
 @Composable
 fun PlayerControllerBar(
@@ -678,6 +682,7 @@ fun PlayerControllerBar(
     danmakuEditor: @Composable RowScope.() -> Unit,
     endActions: @Composable RowScope.() -> Unit,
     expanded: Boolean,
+    sliderOnly: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -692,6 +697,7 @@ fun PlayerControllerBar(
             ProvideTextStyle(MaterialTheme.typography.labelMedium) {
                 Row(
                     Modifier
+                        .keepLayoutWhenHidden(sliderOnly)
                         .padding(start = if (expanded) 8.dp else 4.dp)
                         .padding(vertical = if (expanded) 4.dp else 2.dp),
                 ) {
@@ -714,13 +720,14 @@ fun PlayerControllerBar(
         ) {
             // 播放 / 暂停按钮
             Row(
+                Modifier.keepLayoutWhenHidden(sliderOnly),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 startActions()
             }
 
             Row(
-                Modifier.weight(1f),
+                Modifier.weight(1f).keepLayoutWhenHidden(sliderOnly && expanded),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (expanded) {
@@ -733,6 +740,7 @@ fun PlayerControllerBar(
             }
 
             Row(
+                Modifier.keepLayoutWhenHidden(sliderOnly),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 endActions()
