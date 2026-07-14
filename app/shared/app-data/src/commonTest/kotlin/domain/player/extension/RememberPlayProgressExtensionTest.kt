@@ -485,6 +485,26 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     @Test
+    fun `switching source after player error restores cached progress`() = runTest {
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+
+        loadSelectedMedia(suite, state)
+        suite.player.seekTo(1000)
+        suite.player.playbackState.value = PlaybackState.PLAYING
+        advanceUntilIdle()
+
+        suite.player.playbackState.value = PlaybackState.ERROR
+        advanceUntilIdle()
+
+        loadSelectedMedia(suite, state, mediaIndex = 1)
+
+        assertSingleSavedHistoryList(1000)
+        assertEquals(1000, suite.player.currentPositionMillis.value)
+        testScope.cancel()
+    }
+
+    @Test
     fun `player finished when duration is zero does not remove history`() = runTest {
         val (testScope, suite, state) = createCase()
         advanceUntilIdle()

@@ -12,6 +12,7 @@ package me.him188.ani.app.domain.player.extension
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
@@ -45,6 +46,9 @@ class RememberPlayProgressExtension(
     private val latestInfoBundleMutex = Mutex()
     private val latestInfoBundles = mutableMapOf<Int, SubjectEpisodeInfoBundle>()
 
+    @Volatile
+    private var lastKnownPlaybackPosition: PlaybackPosition? = null
+
     override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
         val mediaLoaded = CompletableDeferred<Unit>()
         backgroundTaskScope.launch("MediaLoadedListener") {
@@ -59,6 +63,21 @@ class RememberPlayProgressExtension(
             episodeSession.infoBundleFlow.filterNotNull().collect { info ->
                 latestInfoBundleMutex.withLock {
                     latestInfoBundles[info.episodeId] = info
+                }
+            }
+        }
+
+        backgroundTaskScope.launch("PlaybackPositionCache") {
+            combine(
+                context.player.currentPositionMillis,
+                context.player.mediaProperties
+            ) { positionMillis, mediaProperties ->
+                mediaProperties?.durationMillis
+                    ?.takeIf { it > 0L }
+                    ?.let { PlaybackPosition(positionMillis, it) }
+            }.filterNotNull().collect { position ->
+                if (position.isValid) {
+                    lastKnownPlaybackPosition = position
                 }
             }
         }
@@ -153,22 +172,21 @@ class RememberPlayProgressExtension(
     ) {
         val player = context.player
         val playbackState = player.playbackState.value
-        val videoDurationMillis = player.mediaProperties.value?.durationMillis
-
-        if (videoDurationMillis == null || videoDurationMillis <= 0L) {
-            return
-        }
-
-        when (playbackState) {
+        val position = when (playbackState) {
             PlaybackState.DESTROYED,
             PlaybackState.CREATED,
-            PlaybackState.READY,
-            PlaybackState.ERROR -> return
+            PlaybackState.READY -> return
+
+            // 播放器出错后可能无法再提供有效位置，但自动换源仍需使用最近位置恢复本集播放。
+            PlaybackState.ERROR -> lastKnownPlaybackPosition ?: return
 
             PlaybackState.FINISHED,
             PlaybackState.PAUSED,
             PlaybackState.PLAYING,
             PlaybackState.PAUSED_BUFFERING -> {
+                val videoDurationMillis = player.mediaProperties.value?.durationMillis
+                    ?.takeIf { it > 0L }
+                    ?: return
                 val currentPositionMillis = withContext(Dispatchers.Main.immediate) {
                     try {
                         player.getCurrentPositionMillis()
@@ -183,24 +201,28 @@ class RememberPlayProgressExtension(
                     return
                 }
 
-                if (videoDurationMillis - currentPositionMillis < 5000 || currentPositionMillis > videoDurationMillis) {
-                    playProgressRepository.remove(episodeId)
-                } else {
-                    val info = latestInfoBundle(episodeId, episodeSession)
-                    playProgressRepository.saveOrUpdate(
-                        episodeId = episodeId,
-                        positionMillis = currentPositionMillis,
-                        subjectId = info?.subjectId,
-                        episodeSort = info?.episodeInfo?.sort?.number,
-                        subjectName = info?.subjectInfo?.displayName,
-                        subjectImageUrl = info?.subjectInfo?.imageLarge,
-                        episodeName = info?.episodeInfo?.displayName,
-                        durationMillis = videoDurationMillis,
-                    )
-                }
-                return
+                PlaybackPosition(currentPositionMillis, videoDurationMillis)
             }
         }
+
+        if (playbackState != PlaybackState.ERROR &&
+            (position.durationMillis - position.positionMillis < 5000 || position.positionMillis > position.durationMillis)
+        ) {
+            playProgressRepository.remove(episodeId)
+            return
+        }
+
+        val info = latestInfoBundle(episodeId, episodeSession)
+        playProgressRepository.saveOrUpdate(
+            episodeId = episodeId,
+            positionMillis = position.positionMillis,
+            subjectId = info?.subjectId,
+            episodeSort = info?.episodeInfo?.sort?.number,
+            subjectName = info?.subjectInfo?.displayName,
+            subjectImageUrl = info?.subjectInfo?.imageLarge,
+            episodeName = info?.episodeInfo?.displayName,
+            durationMillis = position.durationMillis,
+        )
     }
 
     private suspend fun latestInfoBundle(
@@ -219,5 +241,13 @@ class RememberPlayProgressExtension(
             RememberPlayProgressExtension(context, koin)
 
         private val logger = logger<RememberPlayProgressExtension>()
+    }
+
+    private data class PlaybackPosition(
+        val positionMillis: Long,
+        val durationMillis: Long,
+    ) {
+        val isValid: Boolean
+            get() = positionMillis > 0L && positionMillis <= durationMillis
     }
 }
