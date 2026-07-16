@@ -40,7 +40,7 @@ actual fun VideoPlayer(
         Box(modifier)
     } else {
         val libassPlayer = player as? LibassExoPlayerMediampPlayer
-        val exoPlayer = libassPlayer?.delegate ?: player as ExoPlayerMediampPlayer
+        val exoPlayer = libassPlayer?.exoMediampPlayer ?: player as ExoPlayerMediampPlayer
         ExoPlayerMediampPlayerSurface(exoPlayer, modifier) {
             (videoSurfaceView as? SurfaceView)?.let { registerAndroidVideoSurface(player, it) }
             controllerAutoShow = false

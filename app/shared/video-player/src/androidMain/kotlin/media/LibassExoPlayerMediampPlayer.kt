@@ -35,7 +35,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -45,9 +44,7 @@ import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.PlaybackState
 import org.openani.mediamp.exoplayer.ExoPlayerMediampPlayer
-import org.openani.mediamp.features.PlayerFeatures
 import org.openani.mediamp.io.SeekableInput
-import org.openani.mediamp.metadata.MediaProperties
 import org.openani.mediamp.source.MediaData
 import org.openani.mediamp.source.SeekableInputMediaData
 import org.openani.mediamp.source.UriMediaData
@@ -64,17 +61,26 @@ import kotlin.time.Duration.Companion.milliseconds
  */
 @OptIn(InternalForInheritanceMediampApi::class)
 @AndroidxOptIn(UnstableApi::class)
-class LibassExoPlayerMediampPlayer(
+class LibassExoPlayerMediampPlayer private constructor(
     private val context: Context,
     parentCoroutineContext: CoroutineContext,
-) : MediampPlayer {
-    internal val delegate = ExoPlayerMediampPlayer(context, parentCoroutineContext)
+    internal val exoMediampPlayer: ExoPlayerMediampPlayer,
+) : MediampPlayer by exoMediampPlayer {
+    constructor(
+        context: Context,
+        parentCoroutineContext: CoroutineContext,
+    ) : this(
+        context,
+        parentCoroutineContext,
+        ExoPlayerMediampPlayer(context, parentCoroutineContext),
+    )
+
     internal val assHandler = AssHandler(
         renderType = AssRenderType.OVERLAY_OPEN_GL,
         config = AssHandlerConfig(maxRenderPixels = 1920 * 1080),
     )
 
-    private val exoPlayer: ExoPlayer get() = delegate.impl
+    private val exoPlayer: ExoPlayer get() = exoMediampPlayer.impl
     private val backgroundScope = CoroutineScope(
         parentCoroutineContext + SupervisorJob(parentCoroutineContext[Job.Key]),
     )
@@ -98,19 +104,9 @@ class LibassExoPlayerMediampPlayer(
         }
     }
 
-    override val impl: ExoPlayer get() = exoPlayer
-    override val playbackState: StateFlow<PlaybackState> get() = delegate.playbackState
-    override val mediaData: Flow<MediaData?> = delegate.mediaData.map { data ->
+    override val mediaData: Flow<MediaData?> = exoMediampPlayer.mediaData.map { data ->
         (data as? TrackingSeekableInputMediaData)?.source ?: data
     }
-    override val mediaProperties: StateFlow<MediaProperties?> get() = delegate.mediaProperties
-    override val currentPositionMillis: StateFlow<Long> get() = delegate.currentPositionMillis
-    override val playbackProgress: Flow<Float> get() = delegate.playbackProgress
-    override val features: PlayerFeatures get() = delegate.features
-
-    override fun getCurrentMediaProperties(): MediaProperties? = delegate.getCurrentMediaProperties()
-    override fun getCurrentPlaybackState(): PlaybackState = delegate.getCurrentPlaybackState()
-    override fun getCurrentPositionMillis(): Long = delegate.getCurrentPositionMillis()
 
     override suspend fun setMediaData(data: MediaData) {
         if (data == currentMediaData) return
@@ -120,7 +116,7 @@ class LibassExoPlayerMediampPlayer(
         } else {
             data
         }
-        delegate.setMediaData(playerData)
+        exoMediampPlayer.setMediaData(playerData)
 
         pendingMediaSource = createMediaSource(data, playerData)
         currentMediaData = data
@@ -128,8 +124,8 @@ class LibassExoPlayerMediampPlayer(
 
     override fun resume() {
         val mediaSource = pendingMediaSource
-        if (mediaSource == null || delegate.getCurrentPlaybackState() != PlaybackState.READY) {
-            delegate.resume()
+        if (mediaSource == null || exoMediampPlayer.getCurrentPlaybackState() != PlaybackState.READY) {
+            exoMediampPlayer.resume()
             return
         }
 
@@ -137,23 +133,21 @@ class LibassExoPlayerMediampPlayer(
         // Let MediaMP perform its READY -> PLAYING transition, then immediately replace the
         // default source before its loader can consume media. The replacement keeps MediaMP's
         // listeners and track selector while enabling libass parsing.
-        delegate.resume()
+        exoMediampPlayer.resume()
         exoPlayer.setMediaSource(mediaSource)
         exoPlayer.prepare()
         exoPlayer.play()
     }
 
-    override fun pause() = delegate.pause()
-
     override fun stopPlayback() {
         pendingMediaSource = null
         currentMediaData = null
-        delegate.stopPlayback()
+        exoMediampPlayer.stopPlayback()
     }
 
     override fun seekTo(positionMillis: Long) {
-        if (delegate.getCurrentPlaybackState() < PlaybackState.READY) return
-        delegate.seekTo(positionMillis)
+        if (exoMediampPlayer.getCurrentPlaybackState() < PlaybackState.READY) return
+        exoMediampPlayer.seekTo(positionMillis)
         // ExoPlayer applies a seek asynchronously. Update libass immediately as well so the
         // paused overlay does not retain the subtitle from the previous playback position.
         val positionUs = positionMillis * 1_000
@@ -171,7 +165,7 @@ class LibassExoPlayerMediampPlayer(
         backgroundScope.cancel()
         exoPlayer.removeListener(assHandler)
         assHandler.release()
-        delegate.close()
+        exoMediampPlayer.close()
     }
 
     private fun createMediaSource(
