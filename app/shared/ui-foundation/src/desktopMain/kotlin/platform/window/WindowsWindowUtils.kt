@@ -323,6 +323,8 @@ internal interface Dwmapi : StdCallLibrary {
 }
 
 internal interface ExtendedUser32 : User32 {
+    fun GetPointerInfo(pointerId: Int, pointerInfo: POINTER_INFO): Boolean
+
     /**
      * Is the window zoomed (maximised) or not?
      *

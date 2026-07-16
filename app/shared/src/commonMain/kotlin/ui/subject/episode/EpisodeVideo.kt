@@ -228,8 +228,9 @@ internal fun EpisodeVideoImpl(
         }
     }
     val indicatorState = rememberGestureIndicatorState()
-    // commonMain 中的 TOUCH 仅表示移动端触屏交互。CMP Desktop 尚无稳定的触控支持，
-    // 因此桌面端继续使用 MOUSE 分支，不启用进度条触摸取消状态机。
+    // 桌面设备可能同时支持鼠标和触摸；当前 GestureFamily 不能按单次输入来源分流，
+    // 因此桌面端仍使用 MOUSE 分支。后续实现来源级分流时再支持桌面触摸手势。
+    // TODO: 根据触控能力与平台特性建立设备抽象，并据此选择手势策略。
     val touchSeekState = rememberPlayerTouchSeekState(
         enabled = gestureFamily == GestureFamily.TOUCH,
         controllerState = playerControllerState,

@@ -94,6 +94,7 @@ fun HandleWindowsWindowProc() {
 internal open class BasicWindowProc(
     private val user32: ExtendedUser32,
     window: Window,
+    installTouchBridge: Boolean = true,
 ) : WindowProc, AutoCloseable {
     protected val windowHandle: HWND = HWND(
         (window as? ComposeWindow)
@@ -105,18 +106,58 @@ internal open class BasicWindowProc(
     val accentColor: StateFlow<Color> = _accentColor.asStateFlow()
 
     private val defaultWindowProc =
-        user32.SetWindowLongPtr(
+        user32.installWindowProc(
             windowHandle,
-            WinUser.GWL_WNDPROC,
             CallbackReference.getFunctionPointer(this),
         )
+
+    private val touchBridge = if (installTouchBridge) ComposeSceneTouchBridge.create(window) else null
+    private val touchInputHandler = touchBridge?.let { bridge ->
+        WindowsPointerInputHandler(
+            readPointerInfo = user32::GetPointerInfo,
+            dispatch = bridge::send,
+            cancel = bridge::cancel,
+            debugHookName = "BasicWindowProc",
+        )
+    }
+
+    init {
+        WindowsNativeTouchDebug.logHook(
+            hookName = "BasicWindowProc",
+            hookedWindow = windowHandle,
+            topLevelWindow = windowHandle,
+            skiaLayerWindow = null,
+            contentWindow = null,
+        )
+    }
 
     override fun callback(
         hwnd: HWND,
         uMsg: Int,
         wParam: WinDef.WPARAM,
+        lParam: WinDef.LPARAM,
+    ): LRESULT {
+        return try {
+            callbackInternal(hwnd, uMsg, wParam, lParam)
+        } catch (error: Throwable) {
+            logger.error(error) { "Windows BasicWindowProc callback failed" }
+            runCatching { callDefWindowProc(hwnd, uMsg, wParam, lParam) }
+                .getOrElse { fallbackError ->
+                    logger.error(fallbackError) { "Windows BasicWindowProc fallback failed" }
+                    LRESULT(0)
+                }
+        }
+    }
+
+    private fun callbackInternal(
+        hwnd: HWND,
+        uMsg: Int,
+        wParam: WinDef.WPARAM,
         lParam: WinDef.LPARAM
     ): LRESULT {
+        if (touchInputHandler?.handleMessage(uMsg, wParam, hwnd) == true) {
+            return LRESULT(0)
+        }
         if (uMsg == WM_SETTINGCHANGE) {
             val changedKey = Pointer(lParam.toLong()).getWideString(0)
             // Theme changed for color and darkTheme
@@ -153,7 +194,9 @@ internal open class BasicWindowProc(
     }
 
     override fun close() {
-        user32.SetWindowLongPtr(windowHandle, WinUser.GWL_WNDPROC, defaultWindowProc)
+        touchInputHandler?.close()
+        touchBridge?.close()
+        user32.restoreWindowProc(windowHandle, defaultWindowProc)
     }
 }
 
@@ -161,7 +204,7 @@ internal class ExtendedTitleBarWindowProc(
     window: Window,
     private val user32: ExtendedUser32,
     dwmapi: Dwmapi
-) : BasicWindowProc(user32, window) {
+) : BasicWindowProc(user32, window, installTouchBridge = false) {
 
     private var childHitTestOwner: WindowsWindowHitTestOwner? = null
 
@@ -174,7 +217,7 @@ internal class ExtendedTitleBarWindowProc(
     private var hitTestResult = WindowsWindowHitResult.CLIENT
 
     private val skiaLayerWindowProc: SkiaLayerHitTestWindowProc? =
-        window.findSkiaLayer()?.let { SkiaLayerHitTestWindowProc(it, user32, ::hitTest) }
+        window.findSkiaLayer()?.let { SkiaLayerHitTestWindowProc(it, user32, ::hitTest, window) }
 
     private var isMaximized: Boolean = user32.isWindowInMaximized(windowHandle)
     private var dpi: UINT = UINT(0)
@@ -517,16 +560,39 @@ internal class SkiaLayerHitTestWindowProc(
     skiaLayer: SkiaLayer,
     private val user32: ExtendedUser32,
     private val hitTest: (lParam: WinDef.LPARAM) -> WindowsWindowHitResult,
+    window: Window,
 ) : WindowProc, AutoCloseable {
+    private val topLevelWindowHandle = HWND(
+        (window as? ComposeWindow)
+            ?.let { Pointer(it.windowHandle) }
+            ?: Native.getWindowPointer(window),
+    )
     private val windowHandle = HWND(Pointer(skiaLayer.windowHandle))
     internal val contentHandle = HWND(skiaLayer.canvas.let(Native::getComponentPointer))
 
     private val defaultWindowProc =
-        user32.SetWindowLongPtr(contentHandle, WinUser.GWL_WNDPROC, CallbackReference.getFunctionPointer(this))
+        user32.installWindowProc(contentHandle, CallbackReference.getFunctionPointer(this))
+
+    private val touchBridge = ComposeSceneTouchBridge.create(window)
+    private val touchInputHandler = touchBridge?.let { bridge ->
+        WindowsPointerInputHandler(
+            readPointerInfo = user32::GetPointerInfo,
+            dispatch = bridge::send,
+            cancel = bridge::cancel,
+            debugHookName = "SkiaLayerHitTestWindowProc",
+        )
+    }
 
     private var hitResult = WindowsWindowHitResult.CLIENT
 
     init {
+        WindowsNativeTouchDebug.logHook(
+            hookName = "SkiaLayerHitTestWindowProc",
+            hookedWindow = contentHandle,
+            topLevelWindow = topLevelWindowHandle,
+            skiaLayerWindow = windowHandle,
+            contentWindow = contentHandle,
+        )
         val buildNumber = WindowsWindowUtils.instance.windowsBuildNumber() ?: 22000
         skiaLayer.transparency = buildNumber < 22000
     }
@@ -537,6 +603,27 @@ internal class SkiaLayerHitTestWindowProc(
         wParam: WinDef.WPARAM,
         lParam: WinDef.LPARAM,
     ): LRESULT {
+        return try {
+            callbackInternal(hwnd, uMsg, wParam, lParam)
+        } catch (error: Throwable) {
+            logger.error(error) { "Windows SkiaLayer WindowProc callback failed" }
+            runCatching { user32.CallWindowProc(defaultWindowProc, hwnd, uMsg, wParam, lParam) ?: LRESULT(0) }
+                .getOrElse { fallbackError ->
+                    logger.error(fallbackError) { "Windows SkiaLayer WindowProc fallback failed" }
+                    LRESULT(0)
+                }
+        }
+    }
+
+    private fun callbackInternal(
+        hwnd: HWND,
+        uMsg: Int,
+        wParam: WinDef.WPARAM,
+        lParam: WinDef.LPARAM,
+    ): LRESULT {
+        if (touchInputHandler?.handleMessage(uMsg, wParam, hwnd) == true) {
+            return LRESULT(0)
+        }
         return when (uMsg) {
 
             WM_NCHITTEST -> {
@@ -581,7 +668,24 @@ internal class SkiaLayerHitTestWindowProc(
     }
 
     override fun close() {
-        user32.SetWindowLongPtr(contentHandle, WinUser.GWL_WNDPROC, defaultWindowProc)
+        touchInputHandler?.close()
+        touchBridge?.close()
+        user32.restoreWindowProc(contentHandle, defaultWindowProc)
+    }
+}
+
+private fun ExtendedUser32.installWindowProc(windowHandle: HWND, callback: Pointer): Pointer {
+    return SetWindowLongPtr(windowHandle, WinUser.GWL_WNDPROC, callback).also { previous ->
+        check(previous != null) {
+            "SetWindowLongPtr failed for $windowHandle, lastError=${Native.getLastError()}"
+        }
+    }
+}
+
+private fun ExtendedUser32.restoreWindowProc(windowHandle: HWND, previousWindowProc: Pointer) {
+    val restored = SetWindowLongPtr(windowHandle, WinUser.GWL_WNDPROC, previousWindowProc)
+    if (restored == null) {
+        logger.error("恢复 Windows WndProc 失败: hwnd=$windowHandle, lastError=${Native.getLastError()}")
     }
 }
 
