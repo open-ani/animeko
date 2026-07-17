@@ -12,7 +12,6 @@ package me.him188.ani.app.torrent.anitorrent
 import me.him188.ani.app.torrent.api.TorrentLibraryLoader
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.Arch
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
@@ -96,16 +95,7 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
         if (targetPlatform !is Platform.MacOS) return workingDirectory
 
         return Files.createTempDirectory("animeko-anitorrent-").apply {
-            Runtime.getRuntime().addShutdownHook(
-                Thread(
-                    {
-                        if (!toFile().deleteRecursively()) {
-                            logger.warn { "Failed to delete temporary anitorrent library directory $this" }
-                        }
-                    },
-                    "anitorrent-library-cleanup",
-                ),
-            )
+            toFile().deleteOnExit()
         }
     }
 
@@ -141,6 +131,9 @@ object AnitorrentLibraryLoader : TorrentLibraryLoader {
         tempDir: Path
     ) {
         extractLibraryFromResources(name, tempDir)?.let {
+            if (platform is Platform.MacOS) {
+                it.toFile().deleteOnExit()
+            }
             System.load(it.absolutePathString())
         } ?: throw UnsatisfiedLinkError("Failed to extract library $name from resources (possibly no such resource)")
     }
