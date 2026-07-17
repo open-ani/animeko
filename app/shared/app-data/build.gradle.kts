@@ -87,8 +87,18 @@ kotlin {
     sourceSets.getByName("jvmTest").dependencies {
         implementation(libs.slf4j.simple)
     }
+    sourceSets.desktopMain {
+        resources.srcDir("src/androidMain/assets")
+        dependencies {
+            implementation(libs.onnxruntime)
+        }
+    }
+    sourceSets.desktopTest {
+        resources.srcDir("src/androidDeviceTest/assets")
+    }
     sourceSets.androidMain.dependencies {
         implementation(libs.androidx.browser)
+        implementation(libs.onnxruntime.android)
         api(libs.androidx.lifecycle.runtime.ktx)
         api(libs.androidx.lifecycle.service)
         api(libs.androidx.lifecycle.process)
