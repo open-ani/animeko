@@ -206,6 +206,7 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
     private val proxyTester = ProxyTester(
         clientProvider = clientProvider,
         flowScope = backgroundScope,
+        serviceIds = setOf(ServiceConnectionTesters.ID_ANI),
     )
 
     private val configureProxyUiState = combine(
