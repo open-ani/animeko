@@ -91,12 +91,12 @@ val BangumiClient.turnstileBaseUrl: String
     get() = "$BANGUMI_NEXT_API_HOST/p1/turnstile"
 
 private const val BANGUMI_API_HOST = "https://api.bgm.tv"
-private const val BANGUMI_NEXT_API_HOST = "https://next.bgm.tv" // dev.bgm38.com for testing
+private const val BANGUMI_NEXT_API_HOST = "https://next.bangumi.lol"
 private const val BANGUMI_HOST = "https://bgm.tv"
 
 class BangumiClientImpl(
     /**
-     * 总是带有 token
+     * 不会自动携带 Bangumi token. 需要 token 的请求会显式添加, 并继续使用官方 API 域名.
      */
     private val client: ScopedHttpClient,
 ) : BangumiClient {
