@@ -405,15 +405,10 @@ class DefaultSelectorMediaSourceEngine(
     override suspend fun searchImpl(
         finalUrl: Url,
     ): SearchSubjectResult = withContext(ioDispatcher) {
-        val girigiriBypass = GirigiriSearchBypass.create(finalUrl)
         try {
             client.use {
-                prepareGet(girigiriBypass?.requestUrl ?: finalUrl) {
-                    if (girigiriBypass == null) {
-                        accept(ContentType.Text.Html)
-                    } else {
-                        girigiriBypass.configureRequest(this)
-                    }
+                prepareGet(finalUrl) {
+                    accept(ContentType.Text.Html)
                 }.execute { response ->
                     when (response.status) {
                         HttpStatusCode.NotFound -> SearchSubjectResult(
@@ -435,7 +430,7 @@ class DefaultSelectorMediaSourceEngine(
 
                         else -> {
                             val channel = response.body<ByteReadChannel>()
-                            parseSearchResult(finalUrl, channel, girigiriBypass)
+                            parseSearchResult(finalUrl, channel)
                         }
                     }
                 }
@@ -531,10 +526,8 @@ class DefaultSelectorMediaSourceEngine(
     private suspend fun parseSearchResult(
         finalUrl: Url,
         channel: ByteReadChannel,
-        girigiriBypass: GirigiriSearchBypass?,
     ): SearchSubjectResult {
-        val body = readHtml(channel)
-        val html = girigiriBypass?.adaptResponse(body) ?: body
+        val html = readHtml(channel)
         return parseSearchResult(finalUrl, html)
     }
 

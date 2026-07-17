@@ -73,6 +73,14 @@ interface CaptchaBrowser : AutoCloseable {
     suspend fun currentPage(): LoadedPage?
 
     /**
+     * 在当前页面执行脚本. 实现必须自行切换到平台要求的浏览器线程.
+     *
+     * 自动图片验证码策略通过脚本读取验证码图片并填写答案; 页面是否已通过仍由
+     * `PageEvaluator` 统一判定, 平台层不解释脚本结果.
+     */
+    suspend fun executeJavaScript(script: String)
+
+    /**
      * 收集 [urls] 各自可见的 cookies (去重由调用方负责).
      */
     suspend fun collectCookies(urls: List<String>): List<BrowserCookie>

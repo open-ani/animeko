@@ -97,6 +97,12 @@ class CefCaptchaBrowser private constructor(
         }
     }
 
+    override suspend fun executeJavaScript(script: String) {
+        AniCefApp.runOnCefContext {
+            browser.executeJavaScript(script, browser.url, 0)
+        }
+    }
+
     override suspend fun collectCookies(urls: List<String>): List<BrowserCookie> {
         val result = mutableListOf<BrowserCookie>()
         for (url in urls) {

@@ -79,6 +79,10 @@ class WebViewCaptchaBrowser private constructor(
         }
     }
 
+    override suspend fun executeJavaScript(script: String) = withContext(Dispatchers.Main.immediate) {
+        webView.evaluateJavascript(script, null)
+    }
+
     override suspend fun collectCookies(urls: List<String>): List<BrowserCookie> =
         withContext(Dispatchers.Main.immediate) {
             val manager = CookieManager.getInstance()

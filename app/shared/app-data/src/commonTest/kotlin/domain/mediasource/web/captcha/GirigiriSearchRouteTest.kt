@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.domain.mediasource.web
+package me.him188.ani.app.domain.mediasource.web.captcha
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -16,15 +16,23 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
+import me.him188.ani.app.domain.mediasource.web.PageEvaluator
+import me.him188.ani.app.domain.mediasource.web.PageExpectation
+import me.him188.ani.app.domain.mediasource.web.PageVerdict
+import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
+import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
 import me.him188.ani.app.domain.mediasource.web.format.SelectorSubjectFormatIndexed
 import me.him188.ani.utils.ktor.asScopedHttpClient
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
-class GirigiriSearchBypassTest {
+class GirigiriSearchRouteTest {
     @Test
-    fun `girigiri search uses vod api and adapts response for existing selector`() = runTest {
+    fun `uses vod api and evaluates response with existing selector`() = runTest {
         val client = HttpClient(MockEngine { request ->
             assertEquals("m3u8.girigirilove.com", request.url.host)
             assertEquals("/api.php/provide/vod/", request.url.encodedPath)
@@ -46,32 +54,18 @@ class GirigiriSearchBypassTest {
                       ]
                     }
                 """.trimIndent(),
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Text.Html.toString()),
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
             )
         })
-        val engine = DefaultSelectorMediaSourceEngine(client.asScopedHttpClient())
+        val route = GirigiriSearchRoute(PageEvaluator())
 
-        val result = engine.searchSubjects(
-            searchUrl = "https://ani.girigirilove.com/search/-------------/?wd={keyword}",
-            subjectName = "test anime",
-            useOnlyFirstWord = false,
-            removeSpecial = false,
-        )
-        val document = assertNotNull(result.document)
-        val subjects = assertNotNull(
-            engine.selectSubjects(
-                document,
-                SelectorSearchConfig(
-                    searchUrl = "https://ani.girigirilove.com/search/-------------/?wd={keyword}",
-                    subjectFormatId = SelectorSubjectFormatIndexed.id,
-                    selectorSubjectFormatIndexed = SelectorSubjectFormatIndexed.Config(
-                        selectNames = "body > .box-width .vod-detail .detail-info .slide-info-title",
-                        selectLinks = "body > .box-width .vod-detail .detail-info > a",
-                    ),
-                ),
-            ),
+        val result = route.fetch(
+            url = "https://ani.girigirilove.com/search/-------------/?wd=test%20anime",
+            expectation = PageExpectation.SearchResults(config),
+            http = client.asScopedHttpClient(),
         )
 
+        val subjects = assertIs<PageVerdict.Ok<List<WebSearchSubjectInfo>>>(result).value
         assertEquals(2, subjects.size)
         assertEquals("Test Anime", subjects[0].name)
         assertEquals("https://ani.girigirilove.com/GV123/", subjects[0].fullUrl)
@@ -80,21 +74,29 @@ class GirigiriSearchBypassTest {
     }
 
     @Test
-    fun `non girigiri search keeps original request`() = runTest {
-        val client = HttpClient(MockEngine { request ->
-            assertEquals("example.com", request.url.host)
-            assertEquals("text/html", request.headers[HttpHeaders.Accept])
-            respond("<html><body>ok</body></html>")
-        })
-        val engine = DefaultSelectorMediaSourceEngine(client.asScopedHttpClient())
+    fun `does not intercept unrelated host or non-search expectation`() = runTest {
+        val route = GirigiriSearchRoute(PageEvaluator())
+        val client = HttpClient(MockEngine { error("request must not be sent") }).asScopedHttpClient()
 
-        val result = engine.searchSubjects(
-            searchUrl = "https://example.com/search?wd={keyword}",
-            subjectName = "test",
-            useOnlyFirstWord = false,
-            removeSpecial = false,
+        assertFalse(route.matches("example.com"))
+        assertTrue(route.matches("ani.girigirilove.com"))
+        assertNull(
+            route.fetch(
+                url = "https://ani.girigirilove.com/search/?wd=test",
+                expectation = PageExpectation.AnyContent,
+                http = client,
+            ),
         )
+    }
 
-        assertNotNull(result.document)
+    private companion object {
+        val config = SelectorSearchConfig(
+            searchUrl = "https://ani.girigirilove.com/search/-------------/?wd={keyword}",
+            subjectFormatId = SelectorSubjectFormatIndexed.id,
+            selectorSubjectFormatIndexed = SelectorSubjectFormatIndexed.Config(
+                selectNames = "body > .box-width .vod-detail .detail-info .slide-info-title",
+                selectLinks = "body > .box-width .vod-detail .detail-info > a",
+            ),
+        )
     }
 }

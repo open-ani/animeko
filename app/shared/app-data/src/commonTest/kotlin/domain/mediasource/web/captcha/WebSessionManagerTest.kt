@@ -338,6 +338,9 @@ private class FakeCaptchaBrowser : CaptchaBrowser {
 
     override suspend fun currentPage(): LoadedPage? = current
 
+    override suspend fun executeJavaScript(script: String) {
+    }
+
     override suspend fun collectCookies(urls: List<String>): List<BrowserCookie> = cookies
 
     override fun setResourceInterceptor(handler: ((url: String) -> InterceptDecision)?) {
