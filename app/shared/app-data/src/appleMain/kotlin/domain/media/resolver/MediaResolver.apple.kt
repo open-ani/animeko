@@ -150,11 +150,18 @@ class IosWebViewVideoExtractor(
         resourceMatcher: (String) -> WebViewVideoExtractor.Instruction
     ): WebResource? = withContext(Dispatchers.Main) {
         initWebView()
+        configureUserScripts(config)
 
         // Create a new handler for each request to avoid re-entrancy issues
         val handler = Handler(pageUrl, config, resourceMatcher)
         currentHandler = handler
-        handler.run()
+        try {
+            handler.run()
+        } finally {
+            if (currentHandler === handler) {
+                currentHandler = null
+            }
+        }
     }
 
     // Must be on Main thread
@@ -175,68 +182,23 @@ class IosWebViewVideoExtractor(
                         try {
                             val body = didReceiveScriptMessage.body.toString()
                             logger.info { "JS -> Native: $body" }
-                            currentHandler?.handleInterceptedUrl(body)
+                            if (body.startsWith(DOM_MEDIA_URL_MESSAGE_PREFIX)) {
+                                currentHandler?.handleDomMediaUrl(
+                                    body.removePrefix(DOM_MEDIA_URL_MESSAGE_PREFIX),
+                                )
+                            } else if (body.startsWith(INLINE_SCRIPT_URL_MESSAGE_PREFIX)) {
+                                currentHandler?.handleInlineScriptUrl(
+                                    body.removePrefix(INLINE_SCRIPT_URL_MESSAGE_PREFIX),
+                                )
+                            } else {
+                                currentHandler?.handleInterceptedUrl(body)
+                            }
                         } catch (e: Throwable) {
                             logger.warn(e) { "Error in script message handler" }
                         }
                     }
                 },
                 name = "AniIntercept",
-            )
-
-            // Insert a small test to ensure the script actually runs
-            val injectionScript = """
-            console.log("[AniIntercept] Script injected at documentStart.");
-            (function() {
-                function reportUrl(value) {
-                    try {
-                        let url;
-                        if (typeof value === 'string') {
-                            url = value;
-                        } else if (typeof Request !== 'undefined' && value instanceof Request) {
-                            url = value.url;
-                        } else if (typeof URL !== 'undefined' && value instanceof URL) {
-                            url = value.href;
-                        } else {
-                            url = String(value);
-                        }
-                        window.webkit.messageHandlers.AniIntercept.postMessage(url);
-                    } catch (error) {
-                        console.warn("[AniIntercept] Failed to report URL:", error);
-                    }
-                }
-
-                const oldFetch = window.fetch;
-                window.fetch = function() {
-                    const url = arguments[0];
-                    console.log("[AniIntercept] fetch called:", url);
-                    reportUrl(url);
-                    return oldFetch.apply(this, arguments);
-                };
-
-                const oldOpen = XMLHttpRequest.prototype.open;
-                XMLHttpRequest.prototype.open = function(method, url) {
-                    console.log("[AniIntercept] XHR open:", url);
-                    reportUrl(url);
-                    return oldOpen.apply(this, arguments);
-                };
-
-                const origSetSrc = HTMLMediaElement.prototype.setAttribute;
-                HTMLMediaElement.prototype.setAttribute = function(name, value) {
-                    if (name === 'src') {
-                        reportUrl(value);
-                    }
-                    return origSetSrc.apply(this, arguments);
-                };
-            })();
-        """.trimIndent()
-
-            addUserScript(
-                WKUserScript(
-                    source = injectionScript,
-                    injectionTime = WKUserScriptInjectionTime.WKUserScriptInjectionTimeAtDocumentStart,
-                    forMainFrameOnly = false,
-                ),
             )
         }
 
@@ -257,6 +219,92 @@ class IosWebViewVideoExtractor(
         )
     }
 
+    @OptIn(ExperimentalForeignApi::class)
+    private fun configureUserScripts(config: WebViewConfig) {
+        aniInterceptContentController.removeAllUserScripts()
+        aniInterceptContentController.addUserScript(
+            WKUserScript(
+                source = """
+                    console.log("[AniIntercept] Script injected at documentStart.");
+                    (function() {
+                        function reportUrl(value) {
+                            try {
+                                let url;
+                                if (typeof value === 'string') {
+                                    url = value;
+                                } else if (typeof Request !== 'undefined' && value instanceof Request) {
+                                    url = value.url;
+                                } else if (typeof URL !== 'undefined' && value instanceof URL) {
+                                    url = value.href;
+                                } else {
+                                    url = String(value);
+                                }
+                                window.webkit.messageHandlers.AniIntercept.postMessage(url);
+                            } catch (error) {
+                                console.warn("[AniIntercept] Failed to report URL:", error);
+                            }
+                        }
+
+                        const oldFetch = window.fetch;
+                        window.fetch = function() {
+                            const url = arguments[0];
+                            console.log("[AniIntercept] fetch called:", url);
+                            reportUrl(url);
+                            return oldFetch.apply(this, arguments);
+                        };
+
+                        const oldOpen = XMLHttpRequest.prototype.open;
+                        XMLHttpRequest.prototype.open = function(method, url) {
+                            console.log("[AniIntercept] XHR open:", url);
+                            reportUrl(url);
+                            return oldOpen.apply(this, arguments);
+                        };
+
+                        const origSetSrc = HTMLMediaElement.prototype.setAttribute;
+                        HTMLMediaElement.prototype.setAttribute = function(name, value) {
+                            if (name === 'src') {
+                                reportUrl(value);
+                            }
+                            return origSetSrc.apply(this, arguments);
+                        };
+                    })();
+                """.trimIndent(),
+                injectionTime = WKUserScriptInjectionTime.WKUserScriptInjectionTimeAtDocumentStart,
+                forMainFrameOnly = false,
+            ),
+        )
+        if (config.scanDomMediaUrls) {
+            aniInterceptContentController.addUserScript(
+                WKUserScript(
+                    source = domMediaUrlScannerScript(
+                        """
+                            window.webkit.messageHandlers.AniIntercept.postMessage(
+                                "$DOM_MEDIA_URL_MESSAGE_PREFIX" + url
+                            );
+                        """.trimIndent(),
+                    ),
+                    injectionTime = WKUserScriptInjectionTime.WKUserScriptInjectionTimeAtDocumentStart,
+                    forMainFrameOnly = false,
+                ),
+            )
+        }
+        if (config.scanInlineScriptUrls) {
+            aniInterceptContentController.addUserScript(
+                WKUserScript(
+                    source = inlineScriptUrlScannerScript(
+                        """
+                            window.webkit.messageHandlers.AniIntercept.postMessage(
+                                "$INLINE_SCRIPT_URL_MESSAGE_PREFIX" + url
+                            );
+                        """.trimIndent(),
+                    ),
+                    injectionTime = WKUserScriptInjectionTime.WKUserScriptInjectionTimeAtDocumentStart,
+                    forMainFrameOnly = false,
+                ),
+            )
+        }
+    }
+
     @OptIn(DelicateCoroutinesApi::class)
     private inner class Handler(
         private val pageUrl: String,
@@ -264,6 +312,8 @@ class IosWebViewVideoExtractor(
         private val resourceMatcher: (String) -> WebViewVideoExtractor.Instruction,
     ) {
         private val deferred = CompletableDeferred<WebResource>()
+        private val domMediaUrlCollector = DomMediaUrlCollector()
+        private val inlineScriptUrlCollector = InlineScriptUrlCollector()
 
         suspend fun run(): WebResource? {
             logger.info { "Starting webview for $pageUrl" }
@@ -288,10 +338,25 @@ class IosWebViewVideoExtractor(
                 return result
             } finally {
                 logger.info { "Cleaning up webview" }
+                if (deferred.isActive) {
+                    deferred.cancel()
+                }
+                if (config.scanDomMediaUrls) {
+                    webView.evaluateJavaScript(
+                        stopDomMediaUrlScannerScript(),
+                        completionHandler = null,
+                    )
+                }
+                if (config.scanInlineScriptUrls) {
+                    webView.evaluateJavaScript(
+                        stopInlineScriptUrlScannerScript(),
+                        completionHandler = null,
+                    )
+                }
+                aniInterceptContentController.removeAllUserScripts()
                 webView.stopLoading()
                 webView.loadHTMLString("", baseURL = null)
                 webView.navigationDelegate = null
-                // Remove the injected script so subsequent calls can re-inject if needed.
             }
         }
 
@@ -304,6 +369,26 @@ class IosWebViewVideoExtractor(
                 logger.warn(e) { "Failed to handle intercepted URL: $url" }
                 null
             }
+        }
+
+        fun handleDomMediaUrl(rawUrl: String): WKNavigationActionPolicy? {
+            if (!config.scanDomMediaUrls || deferred.isCompleted) {
+                return WKNavigationActionPolicy.WKNavigationActionPolicyAllow
+            }
+            val currentWebViewUrl = webView.URL?.absoluteString ?: pageUrl
+            val absoluteUrl = domMediaUrlCollector.collect(currentWebViewUrl, rawUrl)
+                ?: return WKNavigationActionPolicy.WKNavigationActionPolicyAllow
+            return handleInterceptedUrl(absoluteUrl)
+        }
+
+        fun handleInlineScriptUrl(rawUrl: String): WKNavigationActionPolicy? {
+            if (!config.scanInlineScriptUrls || deferred.isCompleted) {
+                return WKNavigationActionPolicy.WKNavigationActionPolicyAllow
+            }
+            val currentWebViewUrl = webView.URL?.absoluteString ?: pageUrl
+            val absoluteUrl = inlineScriptUrlCollector.collect(currentWebViewUrl, rawUrl)
+                ?: return WKNavigationActionPolicy.WKNavigationActionPolicyAllow
+            return handleInterceptedUrl(absoluteUrl)
         }
 
         // Shared logic for any new request we want to evaluate

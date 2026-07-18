@@ -690,7 +690,11 @@ class SelectorWebVideoMatcher(
     override fun patchConfig(config: WebViewConfig): WebViewConfig {
         val configuredCookies = matchVideoConfig.cookies.lines().filter { it.isNotBlank() }
         // 复用 SelectorMediaSource.matcher 的合并实现: 按 cookie 名去重, 后面的覆盖前面的
-        return config.copy(cookies = SelectorMediaSource.mergeCookies(config.cookies, configuredCookies))
+        return config.copy(
+            cookies = SelectorMediaSource.mergeCookies(config.cookies, configuredCookies),
+            scanDomMediaUrls = config.scanDomMediaUrls || matchVideoConfig.scanDomMediaUrls,
+            scanInlineScriptUrls = config.scanInlineScriptUrls || matchVideoConfig.scanInlineScriptUrls,
+        )
     }
 }
 

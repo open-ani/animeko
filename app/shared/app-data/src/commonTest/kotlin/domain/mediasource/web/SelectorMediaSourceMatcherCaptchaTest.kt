@@ -22,6 +22,7 @@ import me.him188.ani.datasources.api.source.serializeArguments
 import me.him188.ani.utils.ktor.asScopedHttpClient
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class SelectorMediaSourceMatcherCaptchaTest {
     @Test
@@ -39,6 +40,8 @@ class SelectorMediaSourceMatcherCaptchaTest {
                             searchUrl = "https://www.example.com/search/{keyword}",
                             matchVideo = SelectorSearchConfig.MatchVideoConfig(
                                 cookies = "quality=1080\nsession=static",
+                                scanDomMediaUrls = true,
+                                scanInlineScriptUrls = true,
                             ),
                         ),
                     ),
@@ -81,6 +84,8 @@ class SelectorMediaSourceMatcherCaptchaTest {
             ),
             patched.cookies.associateBy { it.substringBefore("=") },
         )
+        assertTrue(patched.scanDomMediaUrls)
+        assertTrue(patched.scanInlineScriptUrls)
     }
 
     private class FakeWebCaptchaCoordinator(

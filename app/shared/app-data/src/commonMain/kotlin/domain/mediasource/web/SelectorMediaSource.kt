@@ -435,12 +435,18 @@ class SelectorMediaSource(
                     mediaSourceId = mediaSourceId,
                     pageUrl = searchConfig.searchUrl,
                 )
+                val scanDomMediaUrls = config.scanDomMediaUrls ||
+                        arguments.searchConfig.matchVideo.scanDomMediaUrls
+                val scanInlineScriptUrls = config.scanInlineScriptUrls ||
+                        arguments.searchConfig.matchVideo.scanInlineScriptUrls
                 return config.copy(
                     cookies = mergeCookies(
                         config.cookies,
                         configuredCookies,
                         captchaCookies,
                     ),
+                    scanDomMediaUrls = scanDomMediaUrls,
+                    scanInlineScriptUrls = scanInlineScriptUrls,
                 )
             }
         }

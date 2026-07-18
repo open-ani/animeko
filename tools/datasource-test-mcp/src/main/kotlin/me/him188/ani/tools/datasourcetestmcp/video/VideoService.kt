@@ -10,6 +10,13 @@
 package me.him188.ani.tools.datasourcetestmcp.video
 
 import kotlinx.coroutines.withTimeout
+import me.him188.ani.utils.logging.debug
+import me.him188.ani.utils.logging.error
+import me.him188.ani.utils.logging.info
+import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.trace
+import me.him188.ani.utils.logging.warn
+import org.openani.mediamp.mpv.MPVHandle
 
 /**
  * 视频能力: HTTP 可达性探测 + Animeko 播放器 (VLC) 真实播放测试.
@@ -19,6 +26,28 @@ class VideoService(
     private val analyzer: MpvVideoAnalyzer,
     private val adAnalyzer: M3u8AdAnalyzer,
 ) {
+    private val logger = logger<VideoService>()
+
+    fun initialize() {
+        MPVHandle.useDefaultRuntimeLibraryDirectory()
+        // mpv_log_level in https://github.com/mpv-player/mpv/blob/master/include/mpv/client.h
+        MPVHandle.setLogHandler {
+            val prefix = it.prefix.padStart(9, ' ')
+            val handle = "0x${it.instanceHandle.toHexString().trimStart('0')}"
+            if (it.level in 1..20) {
+                logger.error { "[$prefix@$handle] ${it.line}" }
+            } else if (it.level <= 30) {
+                logger.warn { "[$prefix@$handle] ${it.line}" }
+            } else if (it.level <= 40) {
+                logger.info { "[$prefix@$handle] ${it.line}" }
+            } else if (it.level <= 50) {
+                logger.debug { "[$prefix@$handle] ${it.line}" }
+            } else {
+                logger.trace { "[$prefix@$handle] ${it.line}" }
+            }
+        }
+    }
+
     suspend fun probeVideo(input: ProbeVideoInput): ProbeVideoResult {
         val totalStart = System.currentTimeMillis()
         val httpProbeStart = System.currentTimeMillis()

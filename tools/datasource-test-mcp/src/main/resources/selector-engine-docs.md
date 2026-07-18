@@ -118,6 +118,12 @@ MCP 工具对应关系:
 
 匹配成功后,视频请求会附带 `addHeadersToVideo` 配置的 `User-Agent` / `Referer`;
 WebView 加载播放页时会注入 `cookies`(每行一个 `name=value`)。
+`scanDomMediaUrls=true` 时还会在每个文档初次就绪和后续 DOM 变更时扫描
+`iframe[src]` / `video[src]` / `source[src]` / `audio[src]`,将去重后的绝对 URL 交给相同的
+`matchNestedUrl` / `matchVideoUrl` 逻辑。该字段默认为 `false`,旧配置的行为不变。
+`scanInlineScriptUrls=true` 时会额外扫描内联 `script` 文本中的 HTTP(S) URL 候选（包括
+`https:\/\/` 形式），并把解转义、去重后的有界候选交给同一 matcher。扫描器不会执行脚本文本、
+读取外链脚本响应或点击页面；该字段同样默认为 `false`。
 
 MCP 工具:
 

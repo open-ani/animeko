@@ -89,7 +89,7 @@ fun main(args: Array<String>) {
             probe = probe,
             analyzer = MpvVideoAnalyzer(),
             adAnalyzer = M3u8AdAnalyzer(client),
-        )
+        ).apply { initialize() }
         val sourceTestService = SourceTestService(
             httpClient = client,
             registry = DataSourceRegistry(scopedClient),

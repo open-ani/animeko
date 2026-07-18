@@ -48,6 +48,7 @@ import org.cef.browser.CefFrame
 import org.cef.browser.CefRendering
 import org.cef.browser.CefRequestContext
 import org.cef.handler.CefDisplayHandlerAdapter
+import org.cef.handler.CefLoadHandlerAdapter
 import org.cef.handler.CefResourceRequestHandlerAdapter
 import org.cef.network.CefCookie
 import org.cef.network.CefCookieManager
@@ -153,6 +154,38 @@ class CefVideoExtractor(
         var client: org.cef.CefClient? = null
         var browser: CefBrowser? = null
         val deferred = CompletableDeferred<WebResource>()
+        val domMediaUrlCollector = DomMediaUrlCollector()
+        val inlineScriptUrlCollector = InlineScriptUrlCollector()
+        val lastUrl = object {
+            // browser.url is not updated immediately, so we need to keep track of the current url.
+            var value: String? by atomic(null)
+        }
+
+        /**
+         * @return `true` to intercept the request that supplied [url].
+         */
+        fun handleUrl(browser: CefBrowser, url: String): Boolean = synchronized(deferred) {
+            if (!deferred.isActive) return false
+            return when (resourceMatcher(url)) {
+                Instruction.Continue -> false
+                Instruction.FoundResource -> {
+                    deferred.complete(WebResource(url))
+                    logger.info { "Found video stream resource: $url" }
+                    true
+                }
+
+                Instruction.LoadPage -> {
+                    if (browser.url == url || lastUrl.value == url) return false // don't recurse
+                    logger.info { "CEF loading nested page: $url, lastUrl=${lastUrl.value}" }
+                    lastUrl.value = url
+                    val escapedUrl = json.encodeToString(String.serializer(), url)
+                    AniCefApp.runOnCefContext {
+                        browser.executeJavaScript("window.location.href=$escapedUrl;", "", 1)
+                    }
+                    true
+                }
+            }
+        }
 
         try {
             val createdClient = AniCefApp.suspendCoroutineOnCefContext {
@@ -164,10 +197,6 @@ class CefVideoExtractor(
             client = createdClient
 
             val createdBrowser = AniCefApp.suspendCoroutineOnCefContext {
-                val lastUrl = object {
-                    // browser.url is not updated immediately, so we need to keep track of the current url.
-                    var value: String? by atomic(null)
-                }
                 createdClient.createBrowser(
                     pageUrl,
                     CefRendering.DEFAULT,
@@ -180,41 +209,11 @@ class CefVideoExtractor(
                                 request: CefRequest?
                             ): Boolean {
                                 if (request != null && browser != null) {
-                                    if (handleUrl(request, browser)) {
+                                    if (handleUrl(browser, request.url)) {
                                         return true
                                     }
                                 }
                                 return super.onBeforeResourceLoad(browser, frame, request)
-                            }
-
-                            /**
-                             * @return `true` to intercept
-                             */
-                            private fun handleUrl(
-                                request: CefRequest,
-                                browser: CefBrowser
-                            ): Boolean = synchronized(this) {
-                                val url = request.url
-                                val matched = resourceMatcher(url)
-                                when (matched) {
-                                    Instruction.Continue -> return false
-                                    Instruction.FoundResource -> {
-                                        deferred.complete(WebResource(url))
-                                        logger.info { "Found video stream resource: $url" }
-                                        return true
-                                    }
-
-                                    Instruction.LoadPage -> {
-                                        if (browser.url == url || lastUrl.value == url) return false // don't recurse
-                                        logger.info { "CEF loading nested page: $url, lastUrl=${lastUrl.value}" }
-                                        lastUrl.value = url
-                                        val escapedUrl = json.encodeToString(String.serializer(), url)
-                                        AniCefApp.runOnCefContext {
-                                            browser.executeJavaScript("window.location.href=$escapedUrl;", "", 1)
-                                        }
-                                        return true
-                                    }
-                                }
                             }
                         }
                     },
@@ -224,6 +223,37 @@ class CefVideoExtractor(
 
             AniCefApp.suspendCoroutineOnCefContext {
                 createdBrowser.setCloseAllowed()
+                if (config.scanDomMediaUrls || config.scanInlineScriptUrls) {
+                    createdClient.addLoadHandler(
+                        object : CefLoadHandlerAdapter() {
+                            override fun onLoadEnd(
+                                browser: CefBrowser?,
+                                frame: CefFrame?,
+                                httpStatusCode: Int,
+                            ) {
+                                if (frame == null || !deferred.isActive) return
+                                if (config.scanDomMediaUrls) {
+                                    frame.executeJavaScript(
+                                        domMediaUrlScannerScript(
+                                            "console.log(\"$DOM_MEDIA_URL_MESSAGE_PREFIX\" + url);",
+                                        ),
+                                        frame.url,
+                                        1,
+                                    )
+                                }
+                                if (config.scanInlineScriptUrls) {
+                                    frame.executeJavaScript(
+                                        inlineScriptUrlScannerScript(
+                                            "console.log(\"$INLINE_SCRIPT_URL_MESSAGE_PREFIX\" + url);",
+                                        ),
+                                        frame.url,
+                                        1,
+                                    )
+                                }
+                            }
+                        },
+                    )
+                }
                 createdClient.addDisplayHandler(
                     object : CefDisplayHandlerAdapter() {
                         override fun onConsoleMessage(
@@ -233,6 +263,37 @@ class CefVideoExtractor(
                             source: String?,
                             line: Int
                         ): Boolean {
+                            if (
+                                config.scanDomMediaUrls &&
+                                browser != null &&
+                                message?.startsWith(DOM_MEDIA_URL_MESSAGE_PREFIX) == true
+                            ) {
+                                val rawUrl = message.removePrefix(DOM_MEDIA_URL_MESSAGE_PREFIX)
+                                val baseUrl = source?.takeIf { it.isNotBlank() }
+                                    ?: browser.url?.takeIf { it.isNotBlank() }
+                                    ?: pageUrl
+                                val absoluteUrl = synchronized(domMediaUrlCollector) {
+                                    domMediaUrlCollector.collect(baseUrl, rawUrl)
+                                }
+                                if (absoluteUrl != null) {
+                                    handleUrl(browser, absoluteUrl)
+                                }
+                            } else if (
+                                config.scanInlineScriptUrls &&
+                                browser != null &&
+                                message?.startsWith(INLINE_SCRIPT_URL_MESSAGE_PREFIX) == true
+                            ) {
+                                val rawUrl = message.removePrefix(INLINE_SCRIPT_URL_MESSAGE_PREFIX)
+                                val baseUrl = source?.takeIf { it.isNotBlank() }
+                                    ?: browser.url?.takeIf { it.isNotBlank() }
+                                    ?: pageUrl
+                                val absoluteUrl = synchronized(inlineScriptUrlCollector) {
+                                    inlineScriptUrlCollector.collect(baseUrl, rawUrl)
+                                }
+                                if (absoluteUrl != null) {
+                                    handleUrl(browser, absoluteUrl)
+                                }
+                            }
                             logger.info { "CEF client console: ${message?.replace("\n", "\\n")} ($source:$line)" }
                             return super.onConsoleMessage(browser, level, message, source, line)
                         }
@@ -265,6 +326,27 @@ class CefVideoExtractor(
             null
         } finally {
             withContext(NonCancellable) {
+                if (deferred.isActive) {
+                    deferred.cancel()
+                }
+                if (config.scanDomMediaUrls && browser != null) {
+                    AniCefApp.suspendCoroutineOnCefContext {
+                        browser.executeJavaScript(
+                            stopDomMediaUrlScannerScript(),
+                            browser.url ?: pageUrl,
+                            1,
+                        )
+                    }
+                }
+                if (config.scanInlineScriptUrls && browser != null) {
+                    AniCefApp.suspendCoroutineOnCefContext {
+                        browser.executeJavaScript(
+                            stopInlineScriptUrlScannerScript(),
+                            browser.url ?: pageUrl,
+                            1,
+                        )
+                    }
+                }
                 AniCefApp.closeBrowserAndDisposeClient(browser, client)
             }
             logger.info { "CEF client is disposed." }

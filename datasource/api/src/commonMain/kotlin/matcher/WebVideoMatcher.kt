@@ -37,6 +37,8 @@ fun interface WebVideoMatcher { // SPI service load
 
 data class WebViewConfig(
     val cookies: List<String> = emptyList(),
+    val scanDomMediaUrls: Boolean = false,
+    val scanInlineScriptUrls: Boolean = false,
 ) {
     companion object {
         val Empty = WebViewConfig()

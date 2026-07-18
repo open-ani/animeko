@@ -114,6 +114,8 @@ data class SelectorSearchConfig(
     @Serializable
     @Suppress("RegExpRedundantEscape")
     data class MatchVideoConfig(
+        val scanDomMediaUrls: Boolean = false,
+        val scanInlineScriptUrls: Boolean = false,
         val enableNestedUrl: Boolean = true,
         @param:Language("regexp")
         val matchNestedUrl: String = """^.+(m3u8|vip|xigua\.php).+\?""",

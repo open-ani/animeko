@@ -50,6 +50,12 @@ dependencies {
     implementation(libs.vlcj)
     implementation(compose.desktop.currentOs)
 
+    when (val triple = getOsTriple()) {
+        "windows-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.windows.x64)
+        "macos-arm64" -> runtimeOnly(libs.mediamp.mpv.runtime.macos.arm64)
+        else -> {}
+    }
+
     runtimeOnly(libs.slf4j.simple)
 
     testImplementation(kotlin("test"))

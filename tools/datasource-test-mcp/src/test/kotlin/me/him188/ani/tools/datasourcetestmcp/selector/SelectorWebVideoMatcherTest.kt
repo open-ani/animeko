@@ -16,6 +16,8 @@ import me.him188.ani.datasources.api.matcher.WebViewConfig
 import me.him188.ani.utils.xml.Document
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
  * [SelectorWebVideoMatcher.patchConfig] 的 cookie 合并必须与 App 内
@@ -30,9 +32,17 @@ class SelectorWebVideoMatcherTest {
             throw UnsupportedOperationException()
     }
 
-    private fun matcher(cookies: String) = SelectorWebVideoMatcher(
+    private fun matcher(
+        cookies: String = "",
+        scanDomMediaUrls: Boolean = false,
+        scanInlineScriptUrls: Boolean = false,
+    ) = SelectorWebVideoMatcher(
         engine,
-        SelectorSearchConfig.MatchVideoConfig(cookies = cookies),
+        SelectorSearchConfig.MatchVideoConfig(
+            cookies = cookies,
+            scanDomMediaUrls = scanDomMediaUrls,
+            scanInlineScriptUrls = scanInlineScriptUrls,
+        ),
     )
 
     @Test
@@ -63,5 +73,43 @@ class SelectorWebVideoMatcherTest {
             WebViewConfig(cookies = listOf(" quality=720 ")),
         )
         assertEquals(listOf("quality=1080"), result.cookies)
+    }
+
+    @Test
+    fun `DOM scanning config is merged with OR semantics`() {
+        assertTrue(
+            matcher(scanDomMediaUrls = true)
+                .patchConfig(WebViewConfig(scanDomMediaUrls = false))
+                .scanDomMediaUrls,
+        )
+        assertTrue(
+            matcher(scanDomMediaUrls = false)
+                .patchConfig(WebViewConfig(scanDomMediaUrls = true))
+                .scanDomMediaUrls,
+        )
+        assertFalse(
+            matcher(scanDomMediaUrls = false)
+                .patchConfig(WebViewConfig(scanDomMediaUrls = false))
+                .scanDomMediaUrls,
+        )
+    }
+
+    @Test
+    fun `inline script scanning config is merged with OR semantics`() {
+        assertTrue(
+            matcher(scanInlineScriptUrls = true)
+                .patchConfig(WebViewConfig(scanInlineScriptUrls = false))
+                .scanInlineScriptUrls,
+        )
+        assertTrue(
+            matcher(scanInlineScriptUrls = false)
+                .patchConfig(WebViewConfig(scanInlineScriptUrls = true))
+                .scanInlineScriptUrls,
+        )
+        assertFalse(
+            matcher(scanInlineScriptUrls = false)
+                .patchConfig(WebViewConfig(scanInlineScriptUrls = false))
+                .scanInlineScriptUrls,
+        )
     }
 }

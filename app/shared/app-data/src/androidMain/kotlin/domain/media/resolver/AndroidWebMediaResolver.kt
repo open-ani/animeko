@@ -12,6 +12,7 @@ package me.him188.ani.app.domain.media.resolver
 import android.annotation.SuppressLint
 import android.content.Context
 import android.webkit.CookieManager
+import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
@@ -20,9 +21,7 @@ import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -155,6 +154,8 @@ class AndroidWebViewVideoExtractor(
         return withContext(Dispatchers.Main) {
             val deferred = CompletableDeferred<WebResource>()
             val loadedNestedUrls = ConcurrentSkipListSet<String>()
+            val domMediaUrlCollector = DomMediaUrlCollector()
+            val inlineScriptUrlCollector = InlineScriptUrlCollector()
 
             runCatching {
                 for (string in config.cookies) {
@@ -168,6 +169,7 @@ class AndroidWebViewVideoExtractor(
              * @return if the url has been consumed
              */
             fun handleUrl(webView: WebView, url: String): Boolean {
+                if (!deferred.isActive) return false
                 val matched = resourceMatcher(url)
                 when (matched) {
                     Instruction.Continue -> return false
@@ -179,6 +181,7 @@ class AndroidWebViewVideoExtractor(
                     Instruction.LoadPage -> {
                         logger.info { "WebView loading nested page: $url" }
                         launch(Dispatchers.Main) {
+                            if (!deferred.isActive) return@launch
                             if (webView.url == url) return@launch // avoid infinite loop
                             if (!loadedNestedUrls.add(url)) return@launch
                             logger.info { "WebView navigating to new url: $url" }
@@ -191,7 +194,15 @@ class AndroidWebViewVideoExtractor(
             }
 
             loadedNestedUrls.add(pageUrl)
-            createWebView(context, deferred, ::handleUrl).loadUrl(pageUrl)
+            val webView = createWebView(
+                context = context,
+                pageUrl = pageUrl,
+                config = config,
+                deferred = deferred,
+                domMediaUrlCollector = domMediaUrlCollector,
+                inlineScriptUrlCollector = inlineScriptUrlCollector,
+                handleUrl = ::handleUrl,
+            )
 
             //            webView.webChromeClient = object : WebChromeClient() {
             //                override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
@@ -208,6 +219,7 @@ class AndroidWebViewVideoExtractor(
             //            }
 
             try {
+                webView.loadUrl(pageUrl)
                 withTimeoutOrNull(timeoutMillis) {
                     deferred.await()
                 }
@@ -216,28 +228,87 @@ class AndroidWebViewVideoExtractor(
                     deferred.cancel()
                 }
                 throw e
+            } finally {
+                if (deferred.isActive) {
+                    deferred.cancel()
+                }
+                if (config.scanDomMediaUrls) {
+                    webView.evaluateJavascript(stopDomMediaUrlScannerScript(), null)
+                    webView.removeJavascriptInterface(DOM_MEDIA_URL_JAVASCRIPT_INTERFACE)
+                }
+                if (config.scanInlineScriptUrls) {
+                    webView.evaluateJavascript(stopInlineScriptUrlScannerScript(), null)
+                    webView.removeJavascriptInterface(INLINE_SCRIPT_URL_JAVASCRIPT_INTERFACE)
+                }
+                webView.stopLoading()
+                webView.webViewClient = WebViewClient()
+                webView.destroy()
             }
         }
 //        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    @OptIn(DelicateCoroutinesApi::class)
     private fun createWebView(
         context: Context,
+        pageUrl: String,
+        config: WebViewConfig,
         deferred: CompletableDeferred<WebResource>,
+        domMediaUrlCollector: DomMediaUrlCollector,
+        inlineScriptUrlCollector: InlineScriptUrlCollector,
         handleUrl: (WebView, String) -> Boolean,
     ): WebView = WebView(context).apply {
         val webView = this
-        deferred.invokeOnCompletion {
-            GlobalScope.launch(Dispatchers.Main.immediate) {
-                webView.destroy()
-            }
+        if (config.scanDomMediaUrls) {
+            addJavascriptInterface(
+                DomMediaUrlJavascriptInterface { rawUrl ->
+                    webView.post {
+                        if (!deferred.isActive) return@post
+                        val baseUrl = webView.url ?: pageUrl
+                        val absoluteUrl = domMediaUrlCollector.collect(baseUrl, rawUrl) ?: return@post
+                        handleUrl(webView, absoluteUrl)
+                    }
+                },
+                DOM_MEDIA_URL_JAVASCRIPT_INTERFACE,
+            )
+        }
+        if (config.scanInlineScriptUrls) {
+            addJavascriptInterface(
+                InlineScriptUrlJavascriptInterface { rawUrl ->
+                    webView.post {
+                        if (!deferred.isActive) return@post
+                        val baseUrl = webView.url ?: pageUrl
+                        val absoluteUrl = inlineScriptUrlCollector.collect(baseUrl, rawUrl) ?: return@post
+                        handleUrl(webView, absoluteUrl)
+                    }
+                },
+                INLINE_SCRIPT_URL_JAVASCRIPT_INTERFACE,
+            )
         }
         webView.settings.javaScriptEnabled = true
         webView.settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
         webView.settings.domStorageEnabled = true
         webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView, url: String) {
+                super.onPageFinished(view, url)
+                if (config.scanDomMediaUrls && deferred.isActive) {
+                    view.evaluateJavascript(
+                        domMediaUrlScannerScript(
+                            "window.$DOM_MEDIA_URL_JAVASCRIPT_INTERFACE.report(url);",
+                        ),
+                        null,
+                    )
+                }
+                if (config.scanInlineScriptUrls && deferred.isActive) {
+                    view.evaluateJavascript(
+                        inlineScriptUrlScannerScript(
+                            "window.$INLINE_SCRIPT_URL_JAVASCRIPT_INTERFACE.report(url);",
+                        ),
+                        null,
+                    )
+                }
+            }
+
             override fun shouldInterceptRequest(
                 view: WebView,
                 request: WebResourceRequest
@@ -263,6 +334,24 @@ class AndroidWebViewVideoExtractor(
                 }
                 super.onLoadResource(view, url)
             }
+        }
+    }
+
+    private class DomMediaUrlJavascriptInterface(
+        private val onUrl: (String) -> Unit,
+    ) {
+        @JavascriptInterface
+        fun report(url: String) {
+            onUrl(url)
+        }
+    }
+
+    private class InlineScriptUrlJavascriptInterface(
+        private val onUrl: (String) -> Unit,
+    ) {
+        @JavascriptInterface
+        fun report(url: String) {
+            onUrl(url)
         }
     }
 }
