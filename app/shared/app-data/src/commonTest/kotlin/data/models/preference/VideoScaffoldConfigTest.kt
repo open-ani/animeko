@@ -16,10 +16,10 @@ import kotlin.time.Duration.Companion.seconds
 
 class VideoScaffoldConfigTest {
     @Test
-    fun `missing OP ED skip duration uses 80 seconds`() {
+    fun `missing OP ED skip duration uses 85 seconds`() {
         val config = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}")
 
-        assertEquals(80.seconds, config.opEdSkipDuration)
+        assertEquals(85.seconds, config.opEdSkipDuration)
     }
 
     @Test

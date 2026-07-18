@@ -87,7 +87,7 @@ fun interface OpEdLength {
     fun isOpEdChapter(chapterLength: Duration): Boolean
 
     companion object {
-        private val Normal = OpEdLength { it in DEFAULT_OP_ED_SKIP_DURATION..95.seconds }
+        private val Normal = OpEdLength { it in 80.seconds..95.seconds }
         private val Short = OpEdLength { it in 55.seconds..65.seconds }
 
         fun fromVideoLengthOrNull(length: Duration): OpEdLength? {

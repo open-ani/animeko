@@ -76,7 +76,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
     /**
      * 跳过 OP 和 ED 的时长. UI 仅提供 80, 85 和 90 秒三个选项.
      */
-    val opEdSkipDuration: Duration = 80.seconds,
+    val opEdSkipDuration: Duration = 85.seconds,
     /**
      * 在播放器错误时自动切换视频源
      */

@@ -209,7 +209,7 @@ class EpisodeVideoControllerTest {
         onToggleDanmaku: () -> Unit = {},
         audioController: LevelController = NoOpLevelController,
         playbackSpeedControllerState: PlaybackSpeedControllerState? = null,
-        opEdSkipDuration: Duration = 80.seconds,
+        opEdSkipDuration: Duration = 85.seconds,
         onPlayerStateCreated: (TestMediampPlayer) -> Unit = {},
         onPlatformWindow: (PlatformWindow) -> Unit = {},
         platformWindowOverride: PlatformWindow? = null,
@@ -386,7 +386,7 @@ class EpisodeVideoControllerTest {
     @Test
     fun `forward opening button follows configured duration`() = runAniComposeUiTest {
         lateinit var playerState: TestMediampPlayer
-        var opEdSkipDuration by mutableStateOf(80.seconds)
+        var opEdSkipDuration by mutableStateOf(85.seconds)
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         setContent {
             Player(
