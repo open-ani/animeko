@@ -181,7 +181,7 @@ class PlayerSessionHlsPlaybackPreparerTest {
             ),
         )
         val player = TestMediampPlayer(StandardTestDispatcher(testScheduler))
-        return PlayerSession(player, koin, mainDispatcher = EmptyCoroutineContext)
+        return PlayerSession(player, koin, this, mainDispatcher = EmptyCoroutineContext)
     }
 
     private class StaticMediaResolver(

@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -65,6 +66,7 @@ class MediaFetchSelectBundle(
 class PlayerSession(
     val player: MediampPlayer,
     koin: Koin,
+    parentScope: CoroutineScope,
     private val mainDispatcher: CoroutineContext = Dispatchers.Main.immediate,
 ) {
     val mediaResolver: MediaResolver by koin.inject()
@@ -72,7 +74,9 @@ class PlayerSession(
     private val getVideoScaffoldConfigUseCase: GetVideoScaffoldConfigUseCase by koin.inject()
 
     private var hlsPlaybackProxySession: HlsPlaybackProxySession? = null
-    private val hlsSessionScope = CoroutineScope(SupervisorJob() + mainDispatcher)
+    private val hlsSessionScope = CoroutineScope(
+        mainDispatcher + SupervisorJob(parentScope.coroutineContext[Job]),
+    )
     private var hlsPlaybackStateJob: Job? = null
     private var hlsCacheProgressJob: Job? = null
     private val _hlsCacheProgressInfoFlow = MutableStateFlow(MediaCacheProgressInfo.Empty)
@@ -175,7 +179,7 @@ class PlayerSession(
 
     fun close() {
         closeHlsPlaybackProxySession()
-        hlsSessionScope.coroutineContext[Job]?.cancel()
+        hlsSessionScope.cancel()
         player.close()
     }
 
