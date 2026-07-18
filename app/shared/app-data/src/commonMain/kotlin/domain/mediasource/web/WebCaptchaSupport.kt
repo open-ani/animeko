@@ -9,12 +9,8 @@
 
 package me.him188.ani.app.domain.mediasource.web
 
-import androidx.compose.runtime.Composable
 import io.ktor.http.Url
-import me.him188.ani.app.domain.media.resolver.WebResource
-import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor
 import me.him188.ani.utils.xml.Document
-import me.him188.ani.utils.xml.Html
 
 enum class WebCaptchaKind {
     Image,
@@ -24,100 +20,21 @@ enum class WebCaptchaKind {
     Unknown,
 }
 
-data class WebCaptchaRequest(
-    val mediaSourceId: String,
-    val pageUrl: String,
-    val kind: WebCaptchaKind,
-    val searchProbe: WebCaptchaSearchProbe? = null,
-)
-
 /**
- * 只在“搜索页验证码”场景下使用。
- * 当浏览器页 URL 变化或刷新时，我们会尝试按当前 source 的 selector 解析页面；
- * 只有真的能解析出条目，才认为这次验证码处理已经完成。
+ * 引擎的调试管线 (如 `tools/datasource-test-mcp`) 在被挡状态码上抛出的异常.
+ * App 的正式链路使用 [BlockedException].
  */
-data class WebCaptchaSearchProbe(
-    val searchConfig: SelectorSearchConfig,
-)
-
-data class WebCaptchaLoadedPage(
-    val finalUrl: String,
-    val html: String,
-)
-
-sealed interface WebCaptchaSolveResult {
-    data class Solved(
-        val finalUrl: String,
-        val cookies: List<String>,
-    ) : WebCaptchaSolveResult
-
-    data class StillBlocked(
-        val kind: WebCaptchaKind,
-    ) : WebCaptchaSolveResult
-
-    data object Cancelled : WebCaptchaSolveResult
-
-    data object Unsupported : WebCaptchaSolveResult
-}
-
-interface WebCaptchaCoordinator {
-    @Composable
-    fun ComposeContent() {
-    }
-
-    fun getSolvedCookies(
-        mediaSourceId: String,
-        pageUrl: String,
-    ): List<String> {
-        return emptyList()
-    }
-
-    suspend fun extractVideoResourceInSolvedSession(
-        mediaSourceId: String,
-        pageUrl: String,
-        timeoutMillis: Long,
-        resourceMatcher: (String) -> WebViewVideoExtractor.Instruction,
-    ): WebResource? {
-        return null
-    }
-
-    suspend fun loadPageInSolvedSession(
-        mediaSourceId: String,
-        pageUrl: String,
-    ): WebCaptchaLoadedPage? {
-        return null
-    }
-
-    suspend fun tryAutoSolve(request: WebCaptchaRequest): WebCaptchaSolveResult
-
-    suspend fun solveInteractively(request: WebCaptchaRequest): WebCaptchaSolveResult
-
-    fun cancelAutoResolutionRequests() {
-    }
-
-    fun resetSolvedSession(mediaSourceId: String) {
-    }
-}
-
-object NoopWebCaptchaCoordinator : WebCaptchaCoordinator {
-    override suspend fun tryAutoSolve(request: WebCaptchaRequest): WebCaptchaSolveResult {
-        return WebCaptchaSolveResult.Unsupported
-    }
-
-    override suspend fun solveInteractively(request: WebCaptchaRequest): WebCaptchaSolveResult {
-        return WebCaptchaSolveResult.Unsupported
-    }
-}
-
-class CaptchaRequiredException(
-    val request: WebCaptchaRequest,
-) : Exception("Captcha required: ${request.kind} @ ${request.pageUrl}")
-
 class WebPageCaptchaException(
     val url: String,
     val kind: WebCaptchaKind,
 ) : Exception("Captcha detected while loading $url: $kind")
 
+/**
+ * 启发式验证码检测器.
+ *
+ * 定位是**纯分类器**: 只在解析失败后由 [PageEvaluator] 运行, 职责只是猜验证码类型,
+ * 用于决定 UI 文案与 auto-solve 策略. 判错的代价很低, 因此规则宁可漏报也不误报.
+ */
 object WebCaptchaDetector {
     fun detect(pageUrl: String, html: String): WebCaptchaKind? {
         val lowerHtml = html.lowercase()
@@ -202,20 +119,13 @@ object WebCaptchaDetector {
                 "data-type='search'" in lowerHtml ||
                 "提交驗證" in html ||
                 "提交验证" in html
+
+        // 图片验证码必须有结构证据 (输入框 + 提交按钮 + 验证码图片三件套).
+        // 刻意不再兜底匹配 "captcha" 等宽泛词: 检测器只是解析失败后的分类器, 宁可漏报也不误报.
         if (
             hasInlineVerifyImage &&
             hasInlineVerifyInput &&
             hasInlineVerifySubmit
-        ) {
-            return WebCaptchaKind.Image
-        }
-
-        if (
-            "captcha" in lowerHtml && (
-                "<img" in lowerHtml ||
-                    "verification code" in lowerHtml ||
-                    "verify" in lowerHtml
-                )
         ) {
             return WebCaptchaKind.Image
         }
@@ -232,32 +142,9 @@ fun WebCaptchaKind.displayName(): String = when (this) {
     WebCaptchaKind.SliderCaptcha -> "滑动验证"
 }
 
-internal fun WebCaptchaRequest.storageKey(): String {
-    val host = normalizedSessionHost(pageUrl) ?: pageUrl.lowercase()
-    return "$mediaSourceId@$host"
-}
-
-internal fun selectSolvedSessionKey(
-    mediaSourceId: String,
-    pageUrl: String,
-    solvedKeys: Set<String>,
-    solvedByMediaSource: Map<String, String>,
-): String? {
-    val exactKey = WebCaptchaRequest(
-        mediaSourceId = mediaSourceId,
-        pageUrl = pageUrl,
-        kind = WebCaptchaKind.Unknown,
-    ).storageKey()
-    if (exactKey in solvedKeys) {
-        return exactKey
-    }
-    val fallbackKey = solvedByMediaSource[mediaSourceId] ?: return null
-    if (fallbackKey !in solvedKeys) {
-        return null
-    }
-    return fallbackKey
-}
-
+/**
+ * 会话注册表与 cookie/UA 归属使用的 host key: 小写, 去 `www.` 前缀.
+ */
 internal fun normalizedSessionHost(pageUrl: String): String? {
     return runCatching { Url(pageUrl).host.lowercase() }
         .getOrNull()
@@ -274,121 +161,9 @@ internal fun normalizedStorageOrigin(pageUrl: String): String? {
     return "${url.protocol.name}://$host$port"
 }
 
-internal fun normalizedComparableUrl(pageUrl: String): String? {
-    val url = runCatching { Url(pageUrl) }.getOrNull() ?: return null
-    val origin = normalizedStorageOrigin(pageUrl) ?: return null
-    val path = url.encodedPath.trimEnd('/').ifBlank { "/" }
-    val query = url.encodedQuery.takeIf { it.isNotBlank() } ?: ""
-    return buildString {
-        append(origin)
-        append(path)
-        if (query.isNotBlank()) {
-            append('?')
-            append(query)
-        }
-    }
-}
-
-internal fun WebCaptchaLoadedPage.isRelevantFor(request: WebCaptchaRequest): Boolean {
-    if (
-        finalUrl.isBlank() ||
-        finalUrl == "about:blank" ||
-        finalUrl.startsWith("chrome-error://")
-    ) {
-        return false
-    }
-    val requestHost = normalizedSessionHost(request.pageUrl) ?: return true
-    val pageHost = normalizedSessionHost(finalUrl) ?: return false
-    return pageHost == requestHost
-}
-
-internal fun WebCaptchaLoadedPage.matchesRequestedUrl(pageUrl: String): Boolean {
-    return normalizedComparableUrl(finalUrl) == normalizedComparableUrl(pageUrl)
-}
-
-internal fun WebCaptchaLoadedPage.hasMeaningfulHtml(): Boolean {
-    val trimmed = html.trim()
-    if (trimmed.isBlank()) {
-        return false
-    }
-    return trimmed.contains("<html", ignoreCase = true) ||
-        trimmed.contains("<body", ignoreCase = true) ||
-        trimmed.length >= 128
-}
-
-internal fun WebCaptchaLoadedPage.detectMeaningfulCaptcha(
-    request: WebCaptchaRequest,
-): WebCaptchaKind? {
-    if (!isRelevantFor(request) || !hasMeaningfulHtml()) {
-        return request.kind
-    }
-    if (isFallbackHomePageFor(request)) {
-        return request.kind
-    }
-    return WebCaptchaDetector.detect(finalUrl, html)
-}
-
-internal fun WebCaptchaLoadedPage.isUsableSolvedPage(
-    request: WebCaptchaRequest,
-): Boolean {
-    return detectMeaningfulCaptcha(request) == null
-}
-
-internal fun WebCaptchaLoadedPage.hasSearchResults(
-    searchProbe: WebCaptchaSearchProbe,
-): Boolean {
-    // We intentionally probe the live page with the source's real selector instead of
-    // relying on captcha heuristics. Unknown WAF pages may look "captcha-free" but still
-    // not be the actual search result page we need.
-    val document = runCatching { Html.parse(html) }.getOrNull() ?: return false
-    if (document.isSearchCooldownPage()) {
-        return false
-    }
-    val subjects = selectSubjectsForCaptchaProbe(document, searchProbe.searchConfig) ?: return false
-    return subjects.isNotEmpty()
-}
-
-internal fun WebCaptchaLoadedPage.shouldAutoCompleteInteractiveSolve(
-    request: WebCaptchaRequest,
-): Boolean {
-    val searchProbe = request.searchProbe
-    if (searchProbe != null) {
-        // For search-page captcha flows, selector success is the source of truth.
-        // Some sites redirect to a canonical search URL or add transient query params
-        // after solving the captcha. As long as the live page can already be parsed
-        // into real search results, we should close immediately instead of waiting for
-        // an exact URL match that may never happen.
-        return hasSearchResults(searchProbe)
-    }
-    return detectMeaningfulCaptcha(request) == null
-}
-
-internal fun WebCaptchaLoadedPage.shouldMarkAutoSolveAsSolved(
-    request: WebCaptchaRequest,
-): Boolean {
-    val searchProbe = request.searchProbe
-    if (searchProbe != null) {
-        // Keep the auto-solve success rule aligned with interactive auto-close:
-        // once the source selector can parse results from the current page, the
-        // captcha session is good enough to continue the search flow.
-        return hasSearchResults(searchProbe)
-    }
-    return detectMeaningfulCaptcha(request) == null
-}
-
-internal fun WebCaptchaLoadedPage.isFallbackHomePageFor(request: WebCaptchaRequest): Boolean {
-    val requestUrl = runCatching { Url(request.pageUrl) }.getOrNull() ?: return false
-    val pageUrl = runCatching { Url(finalUrl) }.getOrNull() ?: return false
-    val requestOrigin = normalizedStorageOrigin(request.pageUrl) ?: return false
-    val pageOrigin = normalizedStorageOrigin(finalUrl) ?: return false
-    if (requestOrigin != pageOrigin) {
-        return false
-    }
-    val requestPath = requestUrl.encodedPath.trimEnd('/').ifBlank { "/" }
-    val pagePath = pageUrl.encodedPath.trimEnd('/').ifBlank { "/" }
-    return requestPath != "/" && pagePath == "/"
-}
-
+/**
+ * 站内冷却页 (如 "请不要频繁操作"). 属于限流, 不是验证码.
+ */
 internal fun Document.isSearchCooldownPage(): Boolean {
     val normalizedText = text()
         .replace(Regex("\\s+"), " ")

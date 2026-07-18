@@ -30,7 +30,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor.Instruction
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.matcher.MediaSourceWebVideoMatcherLoader
@@ -51,7 +51,7 @@ import java.util.concurrent.ConcurrentSkipListSet
 class AndroidWebMediaResolver(
     private val matcherLoader: MediaSourceWebVideoMatcherLoader,
     private val settingsRepository: SettingsRepository,
-    private val webCaptchaCoordinator: WebCaptchaCoordinator,
+    private val webSessionManager: WebSessionManager,
 ) : MediaResolver {
     private companion object {
         private val logger = logger<AndroidWebMediaResolver>()
@@ -111,8 +111,7 @@ class AndroidWebMediaResolver(
         }
 
         val webVideo = (
-            webCaptchaCoordinator.extractVideoResourceInSolvedSession(
-                mediaSourceId = media.mediaSourceId,
+            webSessionManager.extractVideoResource(
                 pageUrl = media.download.uri,
                 timeoutMillis = timeoutMillis,
                 resourceMatcher = resourceMatcher,

@@ -26,18 +26,14 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
-import me.him188.ani.app.data.repository.RepositoryAuthorizationException
-import me.him188.ani.app.data.repository.RepositoryRateLimitedException
-import me.him188.ani.app.domain.mediasource.MediaSourceEngineHelpers
 import me.him188.ani.app.domain.mediasource.test.web.SelectorMediaSourceTester
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodeListResult
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestSearchSubjectResult
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestSubjectPresentation
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaSolveResult
+import me.him188.ani.app.domain.mediasource.web.SolveRequest
+import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
 import me.him188.ani.app.ui.settings.mediasource.AbstractMediaSourceTestState
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.utils.coroutines.flows.combine as combineMany
@@ -54,8 +50,8 @@ data class SelectorTestPresentation(
     val filteredEpisodes: List<SelectorTestEpisodePresentation>?,
     val filterByChannel: String?,
     val selectedSubjectIndex: Int,
-    val subjectCaptchaRequest: WebCaptchaRequest?,
-    val episodeCaptchaRequest: WebCaptchaRequest?,
+    val subjectCaptchaRequest: SolveRequest?,
+    val episodeCaptchaRequest: SolveRequest?,
     val hasCaptchaSession: Boolean,
     val isHandlingCaptcha: Boolean,
     val isPlaceholder: Boolean = false,
@@ -155,76 +151,22 @@ class SelectorTestState(
         hasCaptchaSession,
         isHandlingCaptcha,
         ->
-        val normalizedSubjectSearchResult = normalizeSubjectSearchResult(subjectSearchResult)
-        val normalizedEpisodeListSearchResult =
-            normalizeEpisodeListSearchResult(episodeListSearchResult, selectedSubject)
+        // 验证码与限流由 PageEvaluator 在数据层如实分类, UI 不再做 "把限流伪装成验证码" 的归一化
         SelectorTestPresentation(
             isSearchingSubject = isSearchingSubject,
             isSearchingEpisode = isSearchingEpisode,
-            subjectSearchResult = normalizedSubjectSearchResult,
-            episodeListSearchResult = normalizedEpisodeListSearchResult,
+            subjectSearchResult = subjectSearchResult,
+            episodeListSearchResult = episodeListSearchResult,
             selectedSubject = selectedSubject,
             filteredEpisodes = filteredEpisodes,
             filterByChannel = filterByChannel,
             selectedSubjectIndex = selectedSubjectIndex,
-            subjectCaptchaRequest = (normalizedSubjectSearchResult as? SelectorTestSearchSubjectResult.CaptchaRequired)?.request,
-            episodeCaptchaRequest = (normalizedEpisodeListSearchResult as? SelectorTestEpisodeListResult.CaptchaRequired)?.request,
+            subjectCaptchaRequest = (subjectSearchResult as? SelectorTestSearchSubjectResult.CaptchaRequired)?.request,
+            episodeCaptchaRequest = (episodeListSearchResult as? SelectorTestEpisodeListResult.CaptchaRequired)?.request,
             hasCaptchaSession = hasCaptchaSession,
             isHandlingCaptcha = isHandlingCaptcha,
         )
     }.shareIn(backgroundScope, SharingStarted.WhileSubscribed(5000), replay = 1)
-
-    private fun normalizeSubjectSearchResult(
-        result: SelectorTestSearchSubjectResult?,
-    ): SelectorTestSearchSubjectResult? {
-        val apiError = result as? SelectorTestSearchSubjectResult.ApiError ?: return result
-        val exception = apiError.exception
-        if (exception !is RepositoryAuthorizationException && exception !is RepositoryRateLimitedException) {
-            return result
-        }
-        val searchConfig = searchConfigState.value ?: return result
-        if (searchConfig.searchUrl.isBlank()) return result
-        val pageUrl = createSearchUrl(searchConfig)
-        return SelectorTestSearchSubjectResult.CaptchaRequired(
-            WebCaptchaRequest(
-                mediaSourceId = tester.mediaSourceId,
-                pageUrl = pageUrl,
-                kind = WebCaptchaKind.Unknown,
-            ),
-        )
-    }
-
-    private fun normalizeEpisodeListSearchResult(
-        result: SelectorTestEpisodeListResult?,
-        selectedSubject: SelectorTestSubjectPresentation?,
-    ): SelectorTestEpisodeListResult? {
-        val apiError = result as? SelectorTestEpisodeListResult.ApiError ?: return result
-        val exception = apiError.exception
-        if (exception !is RepositoryAuthorizationException && exception !is RepositoryRateLimitedException) {
-            return result
-        }
-        val pageUrl = selectedSubject?.subjectDetailsPageUrl ?: return result
-        return SelectorTestEpisodeListResult.CaptchaRequired(
-            WebCaptchaRequest(
-                mediaSourceId = tester.mediaSourceId,
-                pageUrl = pageUrl,
-                kind = WebCaptchaKind.Unknown,
-            ),
-        )
-    }
-
-    private fun createSearchUrl(
-        searchConfig: SelectorSearchConfig,
-    ): String {
-        val encodedUrl = MediaSourceEngineHelpers.encodeUrlSegment(
-            MediaSourceEngineHelpers.getSearchKeyword(
-                searchKeyword,
-                searchConfig.searchRemoveSpecial,
-                searchConfig.searchUseOnlyFirstWord,
-            ),
-        )
-        return searchConfig.searchUrl.replace("{keyword}", encodedUrl)
-    }
 
     @UiThread
     suspend fun observeChanges() {
@@ -280,11 +222,11 @@ class SelectorTestState(
         tester.episodeSearchLifecycle.restart()
     }
 
-    fun solveCaptcha(request: WebCaptchaRequest, forEpisodeSearch: Boolean) {
+    fun solveCaptcha(request: SolveRequest, forEpisodeSearch: Boolean) {
         backgroundScope.launch {
             isHandlingCaptchaFlow.value = true
             try {
-                if (tester.solveCaptchaInteractively(request) is WebCaptchaSolveResult.Solved) {
+                if (tester.solveCaptchaInteractively(request) == SolveOutcome.Solved) {
                     if (forEpisodeSearch) {
                         restartCurrentEpisodeSearch()
                     } else {

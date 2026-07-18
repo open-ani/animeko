@@ -38,8 +38,9 @@ import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.OfflineDownloadMediaResolver
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
-import me.him188.ani.app.domain.mediasource.web.DesktopWebCaptchaCoordinator
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
+import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
+import me.him188.ani.app.domain.mediasource.web.captcha.DesktopCaptchaBrowserFactory
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.torrent.DefaultTorrentManager
 import me.him188.ani.app.domain.torrent.TorrentEngine
 import me.him188.ani.app.domain.torrent.TorrentManager
@@ -159,7 +160,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
         MediampPlayerFactoryLoader.first()
     }
     single<BrowserNavigator> { DesktopBrowserNavigator() }
-    single<WebCaptchaCoordinator> { DesktopWebCaptchaCoordinator(AniDesktopCaptchaTopBar) }
+    single<CaptchaBrowserFactory> { DesktopCaptchaBrowserFactory() }
     single<HlsPlaybackPreparer> { PlatformHlsPlaybackPreparer(get()) }
     single<OfflineDownloadEngine> {
         val settings = get<SettingsRepository>()
@@ -217,7 +218,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
                     DesktopWebMediaResolver(
                         getContext(),
                         get<MediaSourceManager>().webVideoMatcherLoader,
-                        get<WebCaptchaCoordinator>(),
+                        get<WebSessionManager>(),
                     ),
                 ),
         )

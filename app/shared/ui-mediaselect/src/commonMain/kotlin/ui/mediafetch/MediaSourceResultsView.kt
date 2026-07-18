@@ -67,6 +67,7 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.cache_details_source_online
 import me.him188.ani.app.ui.lang.media_source_results_captcha_required
+import me.him188.ani.app.ui.lang.media_source_results_rate_limited
 import me.him188.ani.app.ui.lang.media_source_results_click_retry
 import me.him188.ani.app.ui.lang.media_source_results_click_verify
 import me.him188.ani.app.ui.lang.media_source_results_data_sources_count
@@ -193,7 +194,7 @@ fun MediaSourceResultsView(
                 { item ->
                     if (item.isCaptchaRequired) {
                         onResolveCaptcha(item)
-                    } else if (item.isDisabled || item.isFailedOrAbandoned) {
+                    } else if (item.isDisabled || item.isFailedOrAbandoned || item.isRateLimited) {
                         onRestartSource(item.instanceId)
                     } else {
                         onClickEnabled(item.mediaSourceId)
@@ -314,6 +315,7 @@ private fun MediaSourceResultCard(
     val failedText = stringResource(Lang.media_source_results_failed)
     val clickRetryText = stringResource(Lang.media_source_results_click_retry)
     val captchaRequiredText = stringResource(Lang.media_source_results_captcha_required)
+    val rateLimitedText = stringResource(Lang.media_source_results_rate_limited)
     val clickVerifyText = stringResource(Lang.media_source_results_click_verify)
     val successText = stringResource(Lang.media_source_results_success)
     val verifyText = stringResource(Lang.media_source_results_verify)
@@ -380,6 +382,13 @@ private fun MediaSourceResultCard(
                                 }
                             }
 
+                            source.isRateLimited -> {
+                                CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.tertiary) {
+                                    Icon(Icons.Outlined.HorizontalRule, rateLimitedText)
+                                    Text(rateLimitedText)
+                                }
+                            }
+
                             else -> {
                                 Icon(Icons.Outlined.Check, successText)
                                 Text(remember(source.totalCount) { "${source.totalCount}" })
@@ -420,6 +429,12 @@ private fun MediaSourceResultCard(
                     source.isCaptchaRequired -> {
                         CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.error) {
                             Text(verifyText)
+                        }
+                    }
+
+                    source.isRateLimited -> {
+                        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.tertiary) {
+                            Text(rateLimitedText)
                         }
                     }
 

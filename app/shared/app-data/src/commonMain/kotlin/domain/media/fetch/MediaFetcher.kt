@@ -50,7 +50,8 @@ import me.him188.ani.app.data.repository.RepositoryRequestError
 import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
 import me.him188.ani.app.data.repository.RepositoryUnknownException
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
-import me.him188.ani.app.domain.mediasource.web.CaptchaRequiredException
+import me.him188.ani.app.domain.mediasource.web.BlockReason
+import me.him188.ani.app.domain.mediasource.web.BlockedException
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.paging.SizedSource
@@ -68,8 +69,12 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.collections.EnumMap
 import me.him188.ani.utils.platform.collections.ImmutableEnumMap
+import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.time.Duration.Companion.seconds
+
+private val DEFAULT_RATE_LIMIT_RETRY_DELAY = 30.seconds
 
 /**
  * [MediaFetcher], 为支持从多个 [MediaSource] 并行获取 [Media] 的综合查询工具.
@@ -157,7 +162,7 @@ class MediaSourceMediaFetcher(
         private val config: MediaFetcherConfig,
         val disabled: Boolean,
         pagedSources: Flow<SizedSource<MediaMatch>>,
-        flowContext: CoroutineContext,
+        private val flowContext: CoroutineContext,
     ) : MediaSourceFetchResult, SynchronizedObject() {
         /**
          * 为了确保线程安全, 对 [state] 的写入必须谨慎.
@@ -201,8 +206,22 @@ class MediaSourceMediaFetcher(
                         sources.results.map { it.media }
                     }
                     .catch { exception ->
-                        state.value = when (exception) {
-                            is CaptchaRequiredException -> MediaSourceFetchState.CaptchaRequired(exception.request, restartCount)
+                        state.value = when {
+                            exception is BlockedException -> when (val reason = exception.reason) {
+                                is BlockReason.Captcha -> MediaSourceFetchState.CaptchaRequired(
+                                    exception.request,
+                                    restartCount,
+                                )
+
+                                is BlockReason.RateLimited -> MediaSourceFetchState.RateLimited(
+                                    retryAt = currentTimeMillis() +
+                                            (reason.retryAfter ?: DEFAULT_RATE_LIMIT_RETRY_DELAY).inWholeMilliseconds,
+                                    id = restartCount,
+                                ).also { scheduleRateLimitAutoRestart(it) }
+
+                                else -> MediaSourceFetchState.Failed(exception, restartCount)
+                            }
+
                             else -> MediaSourceFetchState.Failed(exception, restartCount)
                         }
                         logUpstreamException(exception)
@@ -222,6 +241,7 @@ class MediaSourceMediaFetcher(
                         if (exception == null) {
                             // catch might have already updated the state
                             if (state.value !is MediaSourceFetchState.Completed) {
+                                resetRateLimitAutoRestartBudget()
                                 state.value = MediaSourceFetchState.Succeed(restartCount)
                                 // 不能直接设置为 Succeed, 必须等待 `shareIn` 完成缓存 (replayCache)
                             }
@@ -255,8 +275,8 @@ class MediaSourceMediaFetcher(
                     logger.warn { "Failed to fetch media from ${sourceInfo.displayName} due to network error" }
                 }
 
-                is CaptchaRequiredException -> {
-                    logger.warn { "Failed to fetch media from ${sourceInfo.displayName} due to captcha: ${exception.request.kind}" }
+                is BlockedException -> {
+                    logger.warn { "Failed to fetch media from ${sourceInfo.displayName} due to blocked: ${exception.reason}" }
                 }
 
                 is CancellationException -> {
@@ -294,6 +314,33 @@ class MediaSourceMediaFetcher(
                 else -> {
                     logger.error(exception) { "Failed to fetch media from ${sourceInfo.displayName} due to upstream error" }
                 }
+            }
+        }
+
+        // 限流自动重试: 到点自动 restart 一次. 若重试后仍被限流则不再自动重试, 等待用户手动操作.
+        private var rateLimitAutoRestartBudget = 1
+
+        private fun scheduleRateLimitAutoRestart(rateLimited: MediaSourceFetchState.RateLimited) {
+            val allowed = synchronized(this) {
+                if (rateLimitAutoRestartBudget <= 0) {
+                    false
+                } else {
+                    rateLimitAutoRestartBudget--
+                    true
+                }
+            }
+            if (!allowed) return
+            CoroutineScope(flowContext).launch {
+                delay((rateLimited.retryAt - currentTimeMillis()).coerceAtLeast(0))
+                if (state.value == rateLimited) {
+                    restart()
+                }
+            }
+        }
+
+        private fun resetRateLimitAutoRestartBudget() {
+            synchronized(this) {
+                rateLimitAutoRestartBudget = 1
             }
         }
 

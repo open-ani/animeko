@@ -28,6 +28,7 @@ import kotlinx.io.readString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonPrimitive
 import me.him188.ani.app.data.repository.RepositoryException
+import me.him188.ani.app.data.repository.RepositoryRateLimitedException
 import me.him188.ani.app.domain.mediasource.MediaListFilter
 import me.him188.ani.app.domain.mediasource.MediaListFilterContext
 import me.him188.ani.app.domain.mediasource.MediaListFilters
@@ -188,30 +189,7 @@ abstract class SelectorMediaSourceEngine {
         subjectDetailsPage: Element,
         subjectUrl: String,
         config: SelectorSearchConfig,
-    ): SelectedChannelEpisodes? {
-        val channelFormat = SelectorChannelFormat.findById(config.channelFormatId)
-            ?: throw UnsupportedOperationException("Unsupported channel format: ${config.channelFormatId}")
-
-        @Suppress("UNCHECKED_CAST")
-        channelFormat as SelectorChannelFormat<SelectorFormatConfig>
-        val formatConfig = config.getFormatConfig(channelFormat)
-        if (!formatConfig.isValid()) {
-            return null
-        }
-
-        val finalBaseUrl = kotlin.runCatching {
-            URLBuilder(subjectUrl).apply {
-                pathSegments = pathSegments.dropLast(1)
-            }.buildString()
-        }.getOrElse {
-            return null
-        }
-        return channelFormat.select(
-            subjectDetailsPage,
-            finalBaseUrl,
-            formatConfig,
-        )
-    }
+    ): SelectedChannelEpisodes? = selectEpisodesImpl(subjectDetailsPage, subjectUrl, config)
 
     data class SelectMediaResult(
         val originalList: List<DefaultMedia>,
@@ -345,6 +323,40 @@ abstract class SelectorMediaSourceEngine {
     protected abstract suspend fun doHttpGet(uri: String): Document
 }
 
+/**
+ * 解析条目详情页的剧集列表. 纯函数, 供 [SelectorMediaSourceEngine.selectEpisodes] 与 [PageEvaluator] 共用.
+ *
+ * @return `null` if config is invalid
+ */
+internal fun selectEpisodesImpl(
+    subjectDetailsPage: Element,
+    subjectUrl: String,
+    config: SelectorSearchConfig,
+): SelectedChannelEpisodes? {
+    val channelFormat = SelectorChannelFormat.findById(config.channelFormatId)
+        ?: throw UnsupportedOperationException("Unsupported channel format: ${config.channelFormatId}")
+
+    @Suppress("UNCHECKED_CAST")
+    channelFormat as SelectorChannelFormat<SelectorFormatConfig>
+    val formatConfig = config.getFormatConfig(channelFormat)
+    if (!formatConfig.isValid()) {
+        return null
+    }
+
+    val finalBaseUrl = kotlin.runCatching {
+        URLBuilder(subjectUrl).apply {
+            pathSegments = pathSegments.dropLast(1)
+        }.buildString()
+    }.getOrElse {
+        return null
+    }
+    return channelFormat.select(
+        subjectDetailsPage,
+        finalBaseUrl,
+        formatConfig,
+    )
+}
+
 internal fun selectSubjectsForCaptchaProbe(
     document: Element,
     config: SelectorSearchConfig,
@@ -404,11 +416,13 @@ class DefaultSelectorMediaSourceEngine(
                             document = null,
                         )
 
+                        // 限流不是验证码: 429 走独立的异常, 不伪装成 captchaKind.
+                        HttpStatusCode.TooManyRequests -> throw RepositoryRateLimitedException()
+
                         in blockedSearchStatuses -> SearchSubjectResult(
                             finalUrl,
                             document = null,
                             captchaKind = detectCaptchaKindFromBlockedResponse(
-                                response.status,
                                 finalUrl.toString(),
                                 response.bodyAsText(),
                             ),
@@ -428,11 +442,12 @@ class DefaultSelectorMediaSourceEngine(
                     document = null,
                 )
 
+                HttpStatusCode.TooManyRequests -> throw RepositoryRateLimitedException(cause = e)
+
                 in blockedSearchStatuses -> SearchSubjectResult(
                     finalUrl,
                     document = null,
                     captchaKind = detectCaptchaKindFromBlockedResponse(
-                        e.response.status,
                         finalUrl.toString(),
                         runCatching { e.response.bodyAsText() }.getOrDefault(""),
                     ),
@@ -440,6 +455,8 @@ class DefaultSelectorMediaSourceEngine(
 
                 else -> throw RepositoryException.wrapOrThrowCancellation(e)
             }
+        } catch (e: RepositoryException) {
+            throw e
         } catch (e: Exception) {
             throw RepositoryException.wrapOrThrowCancellation(e)
         }
@@ -453,11 +470,13 @@ class DefaultSelectorMediaSourceEngine(
                 prepareGet(uri) {
                     accept(ContentType.Text.Html)
                 }.execute { response ->
+                    if (response.status == HttpStatusCode.TooManyRequests) {
+                        throw RepositoryRateLimitedException()
+                    }
                     if (response.status in blockedSearchStatuses) {
                         throw WebPageCaptchaException(
                             uri,
                             detectCaptchaKindFromBlockedResponse(
-                                response.status,
                                 uri,
                                 response.bodyAsText(),
                             ),
@@ -470,16 +489,20 @@ class DefaultSelectorMediaSourceEngine(
                 }
             }
         } catch (e: ClientRequestException) {
+            if (e.response.status == HttpStatusCode.TooManyRequests) {
+                throw RepositoryRateLimitedException(cause = e)
+            }
             if (e.response.status in blockedSearchStatuses) {
                 throw WebPageCaptchaException(
                     uri,
                     detectCaptchaKindFromBlockedResponse(
-                        e.response.status,
                         uri,
                         runCatching { e.response.bodyAsText() }.getOrDefault(""),
                     ),
                 )
             }
+            throw e
+        } catch (e: RepositoryException) {
             throw e
         } catch (e: Exception) {
             throw RepositoryException.wrapOrThrowCancellation(e)
@@ -487,18 +510,15 @@ class DefaultSelectorMediaSourceEngine(
     }
 
     private fun detectCaptchaKindFromBlockedResponse(
-        status: HttpStatusCode,
         pageUrl: String,
         html: String,
     ): WebCaptchaKind {
-        return WebCaptchaDetector.detect(pageUrl, html)
-            ?: if (status in blockedSearchStatuses) WebCaptchaKind.Unknown else WebCaptchaKind.Unknown
+        return WebCaptchaDetector.detect(pageUrl, html) ?: WebCaptchaKind.Unknown
     }
 
     private companion object {
         val blockedSearchStatuses = setOf(
             HttpStatusCode.Forbidden,
-            HttpStatusCode.TooManyRequests,
             HttpStatusCode(468, "Captcha Required"),
         )
     }

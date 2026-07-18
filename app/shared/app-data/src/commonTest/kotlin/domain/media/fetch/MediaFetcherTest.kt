@@ -16,9 +16,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.domain.media.TestMediaList
-import me.him188.ani.app.domain.mediasource.web.CaptchaRequiredException
+import me.him188.ani.app.domain.mediasource.web.BlockReason
+import me.him188.ani.app.domain.mediasource.web.BlockedException
+import me.him188.ani.app.domain.mediasource.web.PageExpectation
+import me.him188.ani.app.domain.mediasource.web.SolveRequest
 import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstance
 import me.him188.ani.datasources.api.EpisodeSort
@@ -179,16 +181,17 @@ class MediaFetcherTest {
 
     @Test
     fun `captcha required becomes completed captcha state`() = runTest {
-        val request = WebCaptchaRequest(
+        val request = SolveRequest(
             mediaSourceId = "test-source",
             pageUrl = "https://example.com/search",
             kind = WebCaptchaKind.Cloudflare,
+            expectation = PageExpectation.AnyContent,
         )
         val session = createFetcher(
             createTestMediaSourceInstance(
                 TestHttpMediaSource(
                     fetch = {
-                        throw CaptchaRequiredException(request)
+                        throw BlockedException(BlockReason.Captcha(WebCaptchaKind.Cloudflare), request)
                     },
                 ),
             ),
@@ -205,17 +208,18 @@ class MediaFetcherTest {
     @Test
     fun `captcha required source can restart and succeed later`() = runTest {
         val fetchCalled = AtomicInteger(0)
-        val captchaRequest = WebCaptchaRequest(
+        val captchaRequest = SolveRequest(
             mediaSourceId = "test-source",
             pageUrl = "https://example.com/search",
             kind = WebCaptchaKind.Cloudflare,
+            expectation = PageExpectation.AnyContent,
         )
         val session = createFetcher(
             createTestMediaSourceInstance(
                 TestHttpMediaSource(
                     fetch = {
                         if (fetchCalled.incrementAndGet() == 1) {
-                            throw CaptchaRequiredException(captchaRequest)
+                            throw BlockedException(BlockReason.Captcha(WebCaptchaKind.Cloudflare), captchaRequest)
                         }
                         SinglePagePagedSource {
                             TestMediaList.map { MediaMatch(it, MatchKind.EXACT) }.asFlow()

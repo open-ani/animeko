@@ -43,9 +43,9 @@ import me.him188.ani.app.domain.media.selector.MediaPreferenceItem
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorContext
 import me.him188.ani.app.domain.media.selector.isPerfectMatch
-import me.him188.ani.app.domain.mediasource.web.NoopWebCaptchaCoordinator
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaSolveResult
+import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
+import me.him188.ani.app.domain.mediasource.web.captcha.createTestWebSessionManager
 import me.him188.ani.app.domain.mediasource.web.displayName
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.foundation.rememberBackgroundScope
@@ -64,7 +64,7 @@ fun rememberMediaSelectorState(
     mediaSelector: () -> MediaSelector,// lambda remembered
 ): MediaSelectorState {
     val scope = rememberBackgroundScope()
-    val webCaptchaCoordinator = remember { GlobalKoin.get<WebCaptchaCoordinator>() }
+    val webSessionManager = remember { GlobalKoin.get<WebSessionManager>() }
     val selector by remember {
         derivedStateOf(mediaSelector)
     }
@@ -75,7 +75,7 @@ fun rememberMediaSelectorState(
             mediaSourceInfoProvider,
             flowOf(null),
             scope.backgroundScope,
-            webCaptchaCoordinator,
+            webSessionManager,
         )
     }
 }
@@ -145,7 +145,7 @@ class MediaSelectorState(
     val mediaSourceInfoProvider: MediaSourceInfoProvider,
     private val preferredWebMediaSource: Flow<String?>,
     private val backgroundScope: CoroutineScope,
-    private val webCaptchaCoordinator: WebCaptchaCoordinator,
+    private val webSessionManager: WebSessionManager,
 ) {
     @Immutable
     data class Presentation(
@@ -299,6 +299,7 @@ class MediaSelectorState(
             WebSourceChannel(media.properties.alliance, original = media)
         }.toList()
         val captchaRequest = (state as? MediaSourceFetchState.CaptchaRequired)?.request
+        val rateLimitedUntil = (state as? MediaSourceFetchState.RateLimited)?.retryAt
 
         when {
             state is MediaSourceFetchState.Disabled -> {
@@ -329,6 +330,8 @@ class MediaSelectorState(
                     captchaRequest = captchaRequest,
                     captchaMessage = captchaRequest?.kind?.let { "需要处理${it.displayName()}" },
                     isResolvingCaptcha = source.instanceId in resolvingCaptchaInstanceIds,
+                    rateLimitedUntilMillis = rateLimitedUntil,
+                    isCaptchaSupported = webSessionManager.isInteractiveSupported,
                 )
             }
         }
@@ -358,7 +361,7 @@ class MediaSelectorState(
         val request = source.captchaRequest ?: return false
         resolvingCaptchaInstanceIds.value = resolvingCaptchaInstanceIds.value + source.instanceId
         return try {
-            webCaptchaCoordinator.solveInteractively(request) is WebCaptchaSolveResult.Solved
+            webSessionManager.solve(request, interactive = true) == SolveOutcome.Solved
         } finally {
             resolvingCaptchaInstanceIds.value = resolvingCaptchaInstanceIds.value - source.instanceId
         }
@@ -397,5 +400,5 @@ fun createTestMediaSelectorState(backgroundScope: CoroutineScope) =
         createTestMediaSourceInfoProvider(),
         preferredWebMediaSource = flowOf(null),
         backgroundScope,
-        NoopWebCaptchaCoordinator,
+        createTestWebSessionManager(backgroundScope),
     )

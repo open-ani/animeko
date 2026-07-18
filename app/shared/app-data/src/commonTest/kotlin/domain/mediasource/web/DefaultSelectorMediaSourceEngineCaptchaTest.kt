@@ -174,7 +174,8 @@ class DefaultSelectorMediaSourceEngineCaptchaTest {
     }
 
     @Test
-    fun `doHttpGet throws captcha exception when detail page is blocked`() = runTest {
+    fun `doHttpGet parses page mentioning captcha without structural evidence`() = runTest {
+        // 检测器已收紧: 缺少 输入框 + 提交按钮 + 验证码图片 三件套的正常页面不再误报 (旧实现问题 5)
         val engine = createEngine { _ ->
             """
             <html>
@@ -188,15 +189,8 @@ class DefaultSelectorMediaSourceEngineCaptchaTest {
             """.trimIndent()
         }
 
-        val exception = kotlin.test.assertFailsWith<RepositoryException> {
-            engine.doHttpGet("https://example.com/detail")
-        }
-        val cause = generateSequence(exception as Throwable) { it.cause }
-            .filterIsInstance<WebPageCaptchaException>()
-            .first()
-
-        assertEquals("https://example.com/detail", cause.url)
-        assertEquals(WebCaptchaKind.Image, cause.kind)
+        val document = engine.doHttpGet("https://example.com/detail")
+        assertEquals(1, document.select("form#login").size)
     }
 
     @Test

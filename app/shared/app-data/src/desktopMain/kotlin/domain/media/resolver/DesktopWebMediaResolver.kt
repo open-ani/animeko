@@ -27,7 +27,7 @@ import me.him188.ani.app.data.models.preference.VideoResolverSettings
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.resolver.WebViewVideoExtractor.Instruction
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.platform.AniCefApp
 import me.him188.ani.app.platform.Context
@@ -62,7 +62,7 @@ import kotlin.coroutines.cancellation.CancellationException
 class DesktopWebMediaResolver(
     private val context: DesktopContext,
     private val matcherLoader: MediaSourceWebVideoMatcherLoader,
-    private val webCaptchaCoordinator: WebCaptchaCoordinator,
+    private val webSessionManager: WebSessionManager,
 ) : MediaResolver, KoinComponent {
     private companion object {
         private val logger = logger<DesktopWebMediaResolver>()
@@ -110,8 +110,7 @@ class DesktopWebMediaResolver(
             }
 
             val webVideo = (
-                    webCaptchaCoordinator.extractVideoResourceInSolvedSession(
-                        mediaSourceId = media.mediaSourceId,
+                    webSessionManager.extractVideoResource(
                         pageUrl = media.download.uri,
                         timeoutMillis = resolverSettings.effectiveResourceExtractionTimeoutMillis,
                         resourceMatcher = resourceMatcher,

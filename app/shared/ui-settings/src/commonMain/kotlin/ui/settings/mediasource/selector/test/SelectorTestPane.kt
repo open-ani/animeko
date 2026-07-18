@@ -62,10 +62,10 @@ import me.him188.ani.app.domain.mediasource.test.web.SelectorMediaSourceTester
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodeListResult
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestSearchSubjectResult
-import me.him188.ani.app.domain.mediasource.web.NoopWebCaptchaCoordinator
+import me.him188.ani.app.domain.mediasource.web.captcha.createTestWebSessionManager
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
+import me.him188.ani.app.domain.mediasource.web.SolveRequest
 import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
 import me.him188.ani.app.domain.mediasource.web.displayName
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -290,9 +290,9 @@ fun SelectorTestPane(
 
 @Composable
 private fun SelectorCaptchaHintRow(
-    request: WebCaptchaRequest?,
+    request: SolveRequest?,
     isHandlingCaptcha: Boolean,
-    onSolve: (WebCaptchaRequest) -> Unit,
+    onSolve: (SolveRequest) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (request == null) return
@@ -346,8 +346,7 @@ fun PreviewSelectorTestPane() = ProvideCompositionLocalsForPreview {
                     SelectorTestState(
                         searchConfigState = mutableStateOf(SelectorSearchConfig.Empty),
                         tester = SelectorMediaSourceTester(
-                            engine = TestSelectorMediaSourceEngine(),
-                            webCaptchaCoordinator = NoopWebCaptchaCoordinator,
+                            sessionManager = createTestWebSessionManager(scope),
                             mediaSourceId = "preview-selector-test",
                         ),
                         backgroundScope = scope,

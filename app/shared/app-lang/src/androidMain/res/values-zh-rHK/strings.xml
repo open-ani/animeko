@@ -1003,6 +1003,9 @@
     <string name="media_selector_web_edit_query_prompt">都不對？</string>
     <string name="media_selector_web_edit_query_action">修改查詢</string>
     <string name="media_selector_web_waiting_captcha">正在等待驗證碼處理</string>
+    <string name="media_selector_web_rate_limited">限流中 · %1$d 秒後自動重試</string>
+    <string name="media_selector_web_captcha_unsupported">此源需要網頁驗證, 當前平台暫不支持, 請在桌面 / Android 端使用或更換數據源</string>
+    <string name="media_source_results_rate_limited">限流中</string>
     <string name="media_selector_summary_manual_select">手動選擇</string>
     <string name="media_selector_summary_change">更換</string>
     <string name="media_selector_summary_auto_selecting">正在自動選擇資料來源</string>

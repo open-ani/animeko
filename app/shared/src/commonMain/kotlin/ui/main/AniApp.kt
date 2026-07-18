@@ -41,7 +41,8 @@ import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
+import me.him188.ani.app.domain.mediasource.web.captcha.WebCaptchaDialogHost
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.app.navigation.BrowserNavigator
@@ -81,7 +82,7 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
     private val settings: SettingsRepository by inject()
     private val httpClientProvider: HttpClientProvider by inject()
     private val mediaCacheManager: MediaCacheManager by inject()
-    private val webCaptchaCoordinator: WebCaptchaCoordinator by inject()
+    private val webSessionManager: WebSessionManager by inject()
     private val userRepository: UserRepository by inject()
     private val sessionStateProvider: SessionStateProvider by inject()
 
@@ -116,7 +117,7 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
             uiSettings.mainSceneInitialPage,
             themeSettings,
             imageLoaderClient,
-            mediaCacheComposables + listOf(@Composable { webCaptchaCoordinator.ComposeContent() }),
+            mediaCacheComposables + listOf(@Composable { WebCaptchaDialogHost(webSessionManager) }),
             // Windows 并且 ani 语言为中文的话, 显式使用 Microsoft YaHei UI.
             // 如果 Windows 语言不是中文, 那系统会使用 Microsoft JhengHei UI 作为中文字体, 这个字体对简体中文的支持不好.
             if (currentPlatform() is Platform.Windows && uiSettings.appLanguage == LocaleZhCN) {

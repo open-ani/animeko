@@ -45,8 +45,9 @@ import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.torrent.pikpak.PikPakCredentials
 import me.him188.ani.torrent.pikpak.PikPakOfflineDownloadEngine
 import me.him188.ani.torrent.pikpak.PikPakSessionStoreAdapter
-import me.him188.ani.app.domain.mediasource.web.AndroidWebCaptchaCoordinator
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
+import me.him188.ani.app.domain.mediasource.web.captcha.AndroidCaptchaBrowserFactory
+import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.torrent.DefaultTorrentManager
 import me.him188.ani.app.domain.torrent.IRemoteAniTorrentEngine
@@ -97,7 +98,7 @@ fun getAndroidModules(
         AndroidPermissionManager()
     }
     single<BrowserNavigator> { AndroidBrowserNavigator() }
-    single<WebCaptchaCoordinator> { AndroidWebCaptchaCoordinator(androidContext()) }
+    single<CaptchaBrowserFactory> { AndroidCaptchaBrowserFactory(androidContext()) }
     single<HlsPlaybackPreparer> { PlatformHlsPlaybackPreparer(get()) }
 
     single<TorrentEngineAccess> { serviceConnectionManager }
@@ -227,7 +228,7 @@ fun getAndroidModules(
                     AndroidWebMediaResolver(
                         get<MediaSourceManager>().webVideoMatcherLoader,
                         get<SettingsRepository>(),
-                        get<WebCaptchaCoordinator>(),
+                        get<WebSessionManager>(),
                     ),
                 ),
         )

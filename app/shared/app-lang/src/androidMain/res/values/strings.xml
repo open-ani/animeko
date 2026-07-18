@@ -988,6 +988,9 @@
     <string name="media_selector_web_edit_query_prompt">Not right? </string>
     <string name="media_selector_web_edit_query_action">Edit query</string>
     <string name="media_selector_web_waiting_captcha">Waiting for captcha handling</string>
+    <string name="media_selector_web_rate_limited">Rate limited · auto retry in %1$d s</string>
+    <string name="media_selector_web_captcha_unsupported">Web verification required. Not supported on this platform; please use the desktop or Android app, or switch sources.</string>
+    <string name="media_source_results_rate_limited">Rate limited</string>
     <string name="media_selector_summary_manual_select">Manual select</string>
     <string name="media_selector_summary_change">Change</string>
     <string name="media_selector_summary_auto_selecting">Automatically selecting a data source</string>

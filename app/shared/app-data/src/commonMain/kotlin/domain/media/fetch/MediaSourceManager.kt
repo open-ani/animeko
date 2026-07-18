@@ -40,7 +40,9 @@ import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceSave
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceCookieJar
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceIdentityRegistry
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.platform.getAniUserAgent
 import me.him188.ani.app.tools.ServiceLoader
@@ -208,7 +210,9 @@ class MediaSourceManagerImpl(
     private val mikanIndexCacheRepository: MikanIndexCacheRepository by inject()
     private val instances: MediaSourceInstanceRepository by inject()
     private val selectorMediaSourceEpisodeCacheRepository: SelectorMediaSourceEpisodeCacheRepository by inject()
-    private val webCaptchaCoordinator: WebCaptchaCoordinator by inject()
+    private val webSessionManager: WebSessionManager by inject()
+    private val webSourceCookieJar: WebSourceCookieJar by inject()
+    private val webSourceIdentityRegistry: WebSourceIdentityRegistry by inject()
     private val clientProvider: HttpClientProvider by inject()
     private val codecManager: MediaSourceCodecManager by inject()
 
@@ -226,7 +230,7 @@ class MediaSourceManagerImpl(
         add(JellyfinMediaSource.Factory())
         add(EmbyMediaSource.Factory())
         add(IkarosMediaSource.Factory())
-        add(SelectorMediaSource.Factory(selectorMediaSourceEpisodeCacheRepository, webCaptchaCoordinator))
+        add(SelectorMediaSource.Factory(selectorMediaSourceEpisodeCacheRepository, webSessionManager))
     }.toList()
 
     private val additionalSources by lazy {
@@ -264,7 +268,12 @@ class MediaSourceManagerImpl(
                     config,
                     save.mediaSourceId,
                     save.config,
-                    clientProvider.get(ScopedHttpClientUserAgent.BROWSER),
+                    // web 源共享 cookie jar 与 per-host UA 对齐, 保证 HTTP 侧身份与浏览器一致
+                    clientProvider.get(
+                        ScopedHttpClientUserAgent.BROWSER,
+                        cookieJar = webSourceCookieJar,
+                        identityRegistry = webSourceIdentityRegistry,
+                    ),
                 ),
             )
         }

@@ -28,6 +28,8 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.ProxyConfig
 import me.him188.ani.app.domain.media.fetch.toClientProxyConfig
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceCookieJar
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceIdentityRegistry
 import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.utils.coroutines.childScope
@@ -97,15 +99,19 @@ fun HttpClientProvider.get(
     serverListConfig: ServerListFeatureConfig = ServerListFeatureConfig.Default,
     useAniToken: Boolean = false,
     distroChannel: String? = currentAniBuildConfig.distroChannel,
+    cookieJar: WebSourceCookieJar? = null,
+    identityRegistry: WebSourceIdentityRegistry? = null,
 ): ScopedHttpClient = get(
-    setOf(
-        UserAgentFeature.withValue(userAgent),
-        ServerListFeature.withValue(serverListConfig),
-        ConvertSendCountExceedExceptionFeature.withValue(true),
-        UseAniTokenFeature.withValue(useAniToken),
-        VersionExpiryFeature.withValue(true),
-        DistributionChannelFeature.withValue { distroChannel },
-    ),
+    buildSet {
+        add(UserAgentFeature.withValue(userAgent))
+        add(ServerListFeature.withValue(serverListConfig))
+        add(ConvertSendCountExceedExceptionFeature.withValue(true))
+        add(UseAniTokenFeature.withValue(useAniToken))
+        add(VersionExpiryFeature.withValue(true))
+        add(DistributionChannelFeature.withValue { distroChannel })
+        if (cookieJar != null) add(CookieJarFeature.withValue(cookieJar))
+        if (identityRegistry != null) add(WebSourceIdentityFeature.withValue(identityRegistry))
+    },
 )
 
 /**

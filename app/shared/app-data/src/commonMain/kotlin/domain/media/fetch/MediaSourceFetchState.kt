@@ -10,7 +10,7 @@
 package me.him188.ani.app.domain.media.fetch
 
 import androidx.compose.runtime.Stable
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
+import me.him188.ani.app.domain.mediasource.web.SolveRequest
 
 /**
  * @see MediaSourceFetchResult.state
@@ -41,8 +41,21 @@ sealed class MediaSourceFetchState {
         val cause: Throwable, override val id: Int,
     ) : Completed()
 
+    /**
+     * 该源需要解决验证码才能继续. 点击 chip 后调用 `WebSessionManager.solve(request, interactive = true)`.
+     */
     data class CaptchaRequired(
-        val request: WebCaptchaRequest,
+        val request: SolveRequest,
+        override val id: Int,
+    ) : Completed()
+
+    /**
+     * 该源被限流 (HTTP 429 / 站内冷却页). 到达 [retryAt] 后会自动重试一次, 不弹浏览器.
+     *
+     * @param retryAt epoch millis
+     */
+    data class RateLimited(
+        val retryAt: Long,
         override val id: Int,
     ) : Completed()
 
@@ -59,3 +72,4 @@ val MediaSourceFetchState.isDisabled get() = this is MediaSourceFetchState.Disab
 val MediaSourceFetchState.isFinal get() = this is MediaSourceFetchState.Completed || this is MediaSourceFetchState.Disabled
 val MediaSourceFetchState.isFailedOrAbandoned get() = this is MediaSourceFetchState.Failed || this is MediaSourceFetchState.Abandoned
 val MediaSourceFetchState.isCaptchaRequired get() = this is MediaSourceFetchState.CaptchaRequired
+val MediaSourceFetchState.isRateLimited get() = this is MediaSourceFetchState.RateLimited
