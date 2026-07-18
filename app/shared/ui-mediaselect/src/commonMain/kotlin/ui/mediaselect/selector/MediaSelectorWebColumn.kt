@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.IconButton as MaterialIconButton
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
 import me.him188.ani.app.ui.foundation.IconButton
@@ -97,7 +99,11 @@ fun MediaSelectorWebSourcesColumn(
     onSelect: (WebSource, WebSourceChannel) -> Unit,
     onRefresh: (WebSource) -> Unit,
     onResolveCaptcha: (WebSource) -> Unit,
+    onRefreshAll: () -> Unit,
+    hideDeadSourcesEnabled: Boolean,
+    onHideDeadSourcesEnabledChange: (Boolean) -> Unit,
     onRequestQueryEdit: () -> Unit,
+    hiddenDeadSourceCount: Int,
     modifier: Modifier = Modifier,
     preferredSourceContainerColor: Color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.33f)
 ) {
@@ -130,6 +136,33 @@ fun MediaSelectorWebSourcesColumn(
 //    }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // not scrollable. 否则会跟 bottom sheet 的 scroll 冲突. 
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "\u9690\u85CF\u65E0\u4FE1\u53F7\u6E90",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Switch(
+                checked = hideDeadSourcesEnabled,
+                onCheckedChange = onHideDeadSourcesEnabledChange,
+            )
+            MaterialIconButton(onClick = onRefreshAll) {
+                Icon(
+                    Icons.Rounded.Refresh,
+                    contentDescription = "\u91CD\u65B0\u6D4B\u8BD5\u6E90",
+                )
+            }
+            if (hideDeadSourcesEnabled && hiddenDeadSourceCount > 0) {
+                Text(
+                    "\u5DF2\u9690\u85CF $hiddenDeadSourceCount \u4E2A\u5931\u6548\u6E90",
+                    color = MaterialTheme.colorScheme.outline,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
         list.forEach { source ->
             card(source)
         }
@@ -271,7 +304,11 @@ private fun PreviewMediaSelectorWebColumn() {
                 onSelect = { _, _ -> },
                 onRefresh = {},
                 onResolveCaptcha = {},
+                onRefreshAll = {},
+                hideDeadSourcesEnabled = false,
+                onHideDeadSourcesEnabledChange = {},
                 onRequestQueryEdit = {},
+                hiddenDeadSourceCount = 0,
             )
         }
     }
@@ -290,7 +327,11 @@ private fun PreviewMediaSelectorWebColumn3() {
                 onSelect = { _, _ -> },
                 onRefresh = {},
                 onResolveCaptcha = {},
+                onRefreshAll = {},
+                hideDeadSourcesEnabled = true,
+                onHideDeadSourcesEnabledChange = {},
                 onRequestQueryEdit = {},
+                hiddenDeadSourceCount = 1,
             )
         }
     }

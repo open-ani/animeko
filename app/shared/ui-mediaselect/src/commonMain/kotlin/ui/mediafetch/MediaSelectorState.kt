@@ -32,6 +32,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.data.repository.user.Settings
+import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
@@ -65,6 +67,7 @@ fun rememberMediaSelectorState(
 ): MediaSelectorState {
     val scope = rememberBackgroundScope()
     val webCaptchaCoordinator = remember { GlobalKoin.get<WebCaptchaCoordinator>() }
+    val settingsRepository = remember { GlobalKoin.get<SettingsRepository>() }
     val selector by remember {
         derivedStateOf(mediaSelector)
     }
@@ -76,6 +79,7 @@ fun rememberMediaSelectorState(
             flowOf(null),
             scope.backgroundScope,
             webCaptchaCoordinator,
+            settingsRepository.mediaSelectorSettings,
         )
     }
 }
@@ -146,6 +150,10 @@ class MediaSelectorState(
     private val preferredWebMediaSource: Flow<String?>,
     private val backgroundScope: CoroutineScope,
     private val webCaptchaCoordinator: WebCaptchaCoordinator,
+    private val mediaSelectorSettings: Settings<MediaSelectorSettings> = object : Settings<MediaSelectorSettings> {
+        override val flow: Flow<MediaSelectorSettings> = flowOf(MediaSelectorSettings.Default)
+        override suspend fun set(value: MediaSelectorSettings) = Unit
+    },
 ) {
     @Immutable
     data class Presentation(
@@ -162,6 +170,8 @@ class MediaSelectorState(
         val webSources: List<WebSource>,
         val selectedWebSource: WebSource?,
         val selectedWebSourceChannel: WebSourceChannel?,
+        val hideDeadWebSourcesEnabled: Boolean,
+        val hiddenDeadWebSourceCount: Int,
         val isPlaceholder: Boolean = false,
     )
 
@@ -192,8 +202,21 @@ class MediaSelectorState(
         subtitleLanguageId.presentationFlow,
         mediaSource.presentationFlow,
         createWebSourcesFlow(),
-    ) { filteredCandidatesMedia, preferredCandidates, selected, alliance, resolution, subtitleLanguageId, mediaSource, webSources ->
+        mediaSelectorSettings.flow.map { it.hideDeadWebSources },
+    ) { filteredCandidatesMedia, preferredCandidates, selected, alliance, resolution, subtitleLanguageId, mediaSource, webSources, hideDeadWebSourcesEnabled ->
         val (groupsExcluded, groupsIncluded) = MediaGrouper.buildGroups(preferredCandidates).partition { it.isExcluded }
+        val selectedWebSource = webSources.find { source -> source.channels.any { it.original == selected } }
+        val selectedWebSourceChannel = selectedWebSource?.channels?.find { it.original == selected }
+        val visibleWebSources = if (hideDeadWebSourcesEnabled) {
+            webSources.filterNot { it.shouldBeHiddenAsDeadSource(selected) }
+        } else {
+            webSources
+        }
+        val hiddenDeadWebSourceCount = if (hideDeadWebSourcesEnabled) {
+            webSources.count { it.shouldBeHiddenAsDeadSource(selected) }
+        } else {
+            0
+        }
         Presentation(
             filteredCandidatesMedia,
             preferredCandidates.mapNotNull { it.result },
@@ -201,9 +224,11 @@ class MediaSelectorState(
             groupsExcluded,
             selected,
             alliance, resolution, subtitleLanguageId, mediaSource,
-            webSources,
-            selectedWebSource = webSources.find { source -> source.channels.any { it.original == selected } },
-            selectedWebSourceChannel = webSources.firstNotNullOfOrNull { source -> source.channels.find { it.original == selected } },
+            visibleWebSources,
+            selectedWebSource = selectedWebSource,
+            selectedWebSourceChannel = selectedWebSourceChannel,
+            hideDeadWebSourcesEnabled = hideDeadWebSourcesEnabled,
+            hiddenDeadWebSourceCount = hiddenDeadWebSourceCount,
         )
     }.stateIn(
         backgroundScope,
@@ -217,6 +242,8 @@ class MediaSelectorState(
             webSources = emptyList(),
             selectedWebSource = null,
             selectedWebSourceChannel = null,
+            hideDeadWebSourcesEnabled = false,
+            hiddenDeadWebSourceCount = 0,
             isPlaceholder = true,
         ),
     )
@@ -363,6 +390,18 @@ class MediaSelectorState(
             resolvingCaptchaInstanceIds.value = resolvingCaptchaInstanceIds.value - source.instanceId
         }
     }
+
+    fun setHideDeadWebSourcesEnabled(enabled: Boolean) {
+        backgroundScope.launch {
+            mediaSelectorSettings.update {
+                copy(hideDeadWebSources = enabled)
+            }
+        }
+    }
+
+    private fun WebSource.shouldBeHiddenAsDeadSource(selected: Media?): Boolean {
+        return isError && channels.none { it.original == selected }
+    }
 }
 
 @Stable
@@ -398,4 +437,8 @@ fun createTestMediaSelectorState(backgroundScope: CoroutineScope) =
         preferredWebMediaSource = flowOf(null),
         backgroundScope,
         NoopWebCaptchaCoordinator,
+        object : Settings<MediaSelectorSettings> {
+            override val flow: Flow<MediaSelectorSettings> = flowOf(MediaSelectorSettings.Default)
+            override suspend fun set(value: MediaSelectorSettings) = Unit
+        },
     )
