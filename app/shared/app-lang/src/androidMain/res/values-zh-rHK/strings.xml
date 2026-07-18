@@ -1240,7 +1240,7 @@
     <string name="subject_episode_danmaku_service_baha_short">巴</string>
     <string name="subject_episode_now_playing">正在播放</string>
     <string name="subject_episode_danmaku_settings_title">彈幕設置</string>
-    <string name="subject_episode_fast_forward_85_seconds">快進 85 秒</string>
+    <string name="subject_episode_fast_forward_80_seconds">快進 80 秒</string>
     <string name="subject_episode_collapse_sidebar">摺疊側邊欄</string>
     <string name="subject_episode_expand_sidebar">展開側邊欄</string>
     <string name="subject_episode_preview_mode">預覽模式</string>

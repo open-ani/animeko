@@ -1225,7 +1225,7 @@
     <string name="subject_episode_danmaku_service_baha_short">BA</string>
     <string name="subject_episode_now_playing">Now playing</string>
     <string name="subject_episode_danmaku_settings_title">Danmaku settings</string>
-    <string name="subject_episode_fast_forward_85_seconds">Fast forward 85 seconds</string>
+    <string name="subject_episode_fast_forward_80_seconds">Fast forward 80 seconds</string>
     <string name="subject_episode_collapse_sidebar">Collapse sidebar</string>
     <string name="subject_episode_expand_sidebar">Expand sidebar</string>
     <string name="subject_episode_preview_mode">Preview mode</string>

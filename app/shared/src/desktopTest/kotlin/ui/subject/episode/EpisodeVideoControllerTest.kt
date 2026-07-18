@@ -380,6 +380,27 @@ class EpisodeVideoControllerTest {
         }
     }
 
+    @Test
+    fun `forward opening button skips 80 seconds`() = runAniComposeUiTest {
+        lateinit var playerState: TestMediampPlayer
+        val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+        setContent {
+            Player(
+                GestureFamily.MOUSE,
+                playerControllerState = visibleControllerState,
+                onPlayerStateCreated = { playerState = it },
+            )
+        }
+        runOnIdle {
+            playerState.currentPositionMillis.value = 5_000L
+        }
+
+        onNodeWithContentDescription("Fast forward 80 seconds").performClick()
+
+        runOnIdle {
+            assertEquals(85_000L, playerState.currentPositionMillis.value)
+        }
+    }
 
     /**
      * @see GestureFamily.clickToToggleController

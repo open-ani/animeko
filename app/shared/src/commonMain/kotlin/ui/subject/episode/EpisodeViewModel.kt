@@ -141,6 +141,7 @@ import me.him188.ani.app.ui.subject.episode.details.EpisodeDetailsState
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatisticsCollector
+import me.him188.ani.app.ui.subject.episode.video.DEFAULT_OP_ED_SKIP_DURATION
 import me.him188.ani.app.ui.subject.episode.video.PlayerSkipOpEdState
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorState
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
@@ -681,7 +682,7 @@ class EpisodeViewModel(
             player.mediaProperties.mapNotNull { it?.durationMillis?.milliseconds },
         ) { millisecondTimes, videoLength ->
             val durationMillis = when {
-                videoLength > 20.minutes -> 85_000L
+                videoLength > 20.minutes -> DEFAULT_OP_ED_SKIP_DURATION.inWholeMilliseconds
                 videoLength > 10.minutes -> 55_000L
                 else -> 0L
             }
@@ -928,16 +929,16 @@ class EpisodeViewModel(
     }
 
     /**
-     * UI handler for the "skip 85 seconds" button.
+     * UI handler for the "skip 80 seconds" button.
      * Reports the action to server with throttling and then performs the seek.
      */
     @OptIn(UnsafeEpisodeSessionApi::class)
-    fun onClickSkip85(currentPositionMillis: Long) {
+    fun onClickSkip80(currentPositionMillis: Long) {
         // Seek immediately for UX
-        player.skip(85_000L)
+        player.skip(DEFAULT_OP_ED_SKIP_DURATION.inWholeMilliseconds)
         // Report in background
         launchInBackground {
-            logger.info { "Reporting skip 85 at ${currentPositionMillis / 1000}s" }
+            logger.info { "Reporting skip 80 at ${currentPositionMillis / 1000}s" }
             val episodeId = fetchPlayState.getCurrentEpisodeId()
             val selected = fetchPlayState.episodeSessionFlow.firstOrNull()
                 ?.fetchSelectFlow
@@ -948,7 +949,7 @@ class EpisodeViewModel(
             val mediaSourceId = selected?.mediaSourceId ?: return@launchInBackground
             val timeSeconds = (currentPositionMillis / 1000).toInt()
             if (timeSeconds < 0 || timeSeconds > 200 * 60) {
-                logger.warn { "Refusing to report skip 85 at invalid time ${timeSeconds}s" }
+                logger.warn { "Refusing to report skip 80 at invalid time ${timeSeconds}s" }
                 return@launchInBackground
             }
             autoSkipRepository.reportSkip(episodeId, mediaSourceId, timeSeconds, currentPositionMillis)

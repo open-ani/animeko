@@ -21,6 +21,8 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
+internal val DEFAULT_OP_ED_SKIP_DURATION = 80.seconds
+
 @Stable
 class PlayerSkipOpEdState(
     chapters: State<List<Chapter>>,
@@ -84,7 +86,7 @@ fun interface OpEdLength {
     fun isOpEdChapter(chapterLength: Duration): Boolean
 
     companion object {
-        private val Normal = OpEdLength { it in 85.seconds..95.seconds }
+        private val Normal = OpEdLength { it in DEFAULT_OP_ED_SKIP_DURATION..95.seconds }
         private val Short = OpEdLength { it in 55.seconds..65.seconds }
 
         fun fromVideoLengthOrNull(length: Duration): OpEdLength? {
