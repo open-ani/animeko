@@ -17,6 +17,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +40,7 @@ import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.BrightnessHigh
 import androidx.compose.material.icons.rounded.BrightnessLow
 import androidx.compose.material.icons.rounded.BrightnessMedium
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.Pause
@@ -50,6 +52,7 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -79,6 +82,7 @@ import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.utils.fixToString
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
@@ -93,10 +97,10 @@ import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.VOLU
 import me.him188.ani.app.videoplayer.ui.gesture.SwipeSeekerState.Companion.swipeToSeek
 import me.him188.ani.app.videoplayer.ui.playerFocusHost
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
-import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.utils.platform.Platform
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.AudioLevelController
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.seconds
 
@@ -124,6 +128,7 @@ class GestureIndicatorState {
     internal var state: State? by mutableStateOf(null)
     internal var progressValue: Float by mutableFloatStateOf(0f)
     internal var deltaSeconds: Int by mutableIntStateOf(0)
+    internal var seekCancelled: Boolean by mutableStateOf(false)
     private var counter: Int = 0
 
     private inline fun startShow(
@@ -194,9 +199,24 @@ class GestureIndicatorState {
     suspend fun showSeeking(
         deltaSeconds: Int,
     ) {
-        show(SEEKING, setup = { this.deltaSeconds = deltaSeconds }) {
+        show(SEEKING, setup = {
+            this.deltaSeconds = deltaSeconds
+            seekCancelled = false
+        }) {
             delay(SHORT)
         }
+    }
+
+    @UiThread
+    fun startSeekCancellation(): Int {
+        return startShow(SEEKING) {
+            seekCancelled = true
+        }
+    }
+
+    @UiThread
+    fun stopSeekCancellation(ticket: Int) {
+        stopShow(ticket)
     }
 
     @UiThread
@@ -236,15 +256,17 @@ class GestureIndicatorState {
 @Composable
 fun GestureIndicator(
     state: GestureIndicatorState,
+    swipeSeekerState: SwipeSeekerState? = null,
 ) {
     val shape = MaterialTheme.shapes.small
     val colors = MaterialTheme.colorScheme
+    val activeSwipeSeekerState = swipeSeekerState?.takeIf { it.isSeeking }
     var lastDelta by remember(state) {
         mutableIntStateOf(state.deltaSeconds)
     }
 
     AniAnimatedVisibility(
-        visible = state.visible,
+        visible = state.visible || activeSwipeSeekerState != null,
         enter = fadeIn(spring(stiffness = Spring.StiffnessMedium)),
         exit = fadeOut(tween(durationMillis = 500)),
         label = "SeekPositionIndicator",
@@ -280,7 +302,7 @@ fun GestureIndicator(
                         }
                     }
 
-                    when (state.state) {
+                    when (if (activeSwipeSeekerState != null) SEEKING else state.state) {
                         RESUMED_ONCE -> {
                             Icon(
                                 Icons.Rounded.PlayArrow, null,
@@ -293,7 +315,8 @@ fun GestureIndicator(
                         }
 
                         SEEKING -> {
-                            val deltaDuration = state.deltaSeconds
+                            val deltaDuration = activeSwipeSeekerState?.deltaSeconds ?: state.deltaSeconds
+                            val seekCancelled = activeSwipeSeekerState?.isCancelled ?: state.seekCancelled
                             // 记忆变为 0 之前的 delta, 这样在快进/快退结束后, 会显示上一次的 delta, 而不是显示 0
                             val duration = if (deltaDuration == 0) {
                                 lastDelta
@@ -304,17 +327,20 @@ fun GestureIndicator(
                             }
 
                             Icon(
-                                if (duration > 0) {
-                                    Icons.Rounded.FastForward
-                                } else {
-                                    Icons.Rounded.FastRewind
+                                when {
+                                    seekCancelled -> Icons.Rounded.Close
+                                    duration > 0 -> Icons.Rounded.FastForward
+                                    else -> Icons.Rounded.FastRewind
                                 },
-                                null,
-                                Modifier.size(iconSize),
+                                contentDescription = null,
+                                modifier = Modifier.size(iconSize),
                             )
-                            val text = renderTime(duration.absoluteValue)
                             Text(
-                                text,
+                                text = if (seekCancelled) {
+                                    stringResource(Lang.video_player_release_to_cancel)
+                                } else {
+                                    renderTime(duration.absoluteValue)
+                                },
                                 maxLines = 1,
                             )
                         }
@@ -413,6 +439,78 @@ enum class GestureFamily(
 val VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION = 3.seconds
 val VIDEO_GESTURE_TOUCH_SHOW_CONTROLLER_DURATION = 3.seconds
 
+/**
+ * 将屏幕横滑 seek 的状态迁移映射到控制器显隐和进度预览。
+ * [SwipeSeekerState] 负责识别手势，本类只响应开始、取消区域变化和结束事件。
+ */
+private class SwipeSeekInteraction(
+    private val controllerState: PlayerControllerState,
+    private val seekerState: SwipeSeekerState,
+    private val progressSliderState: PlayerProgressSliderState,
+) {
+    fun onStarted() {
+        if (controllerState.visibility.bottomBar) {
+            controllerState.setRequestInlineProgressSlider(this)
+        } else {
+            controllerState.setRequestProgressBar(this)
+        }
+    }
+
+    fun onCancellationChanged(cancelled: Boolean) {
+        if (cancelled) {
+            progressSliderState.cancelPreview()
+        } else {
+            updatePreview()
+        }
+    }
+
+    fun updatePreview() {
+        if (seekerState.isCancelled) {
+            progressSliderState.cancelPreview()
+            return
+        }
+        if (progressSliderState.totalDurationMillis == 0L) return
+
+        val previewPositionMillis =
+            progressSliderState.currentPositionMillis + seekerState.deltaSeconds.times(1000)
+        val offsetRatio = previewPositionMillis.toFloat() / progressSliderState.totalDurationMillis
+        progressSliderState.previewPositionRatio(offsetRatio.coerceIn(0f, 1f))
+    }
+
+    fun onStopped(cancelled: Boolean) {
+        cancelControllerRequest()
+        if (cancelled) {
+            progressSliderState.cancelPreview()
+        } else {
+            progressSliderState.finishPreview()
+        }
+    }
+
+    fun dispose() {
+        cancelControllerRequest()
+    }
+
+    private fun cancelControllerRequest() {
+        controllerState.cancelRequestInlineProgressSlider(this)
+        controllerState.cancelRequestProgressBarVisible(this)
+    }
+}
+
+@Composable
+private fun rememberSwipeSeekInteraction(
+    controllerState: PlayerControllerState,
+    seekerState: SwipeSeekerState,
+    progressSliderState: PlayerProgressSliderState,
+): SwipeSeekInteraction {
+    val interaction = remember(controllerState, seekerState, progressSliderState) {
+        SwipeSeekInteraction(controllerState, seekerState, progressSliderState)
+    }
+    DisposableEffect(interaction) {
+        onDispose(interaction::dispose)
+    }
+    return interaction
+}
+
 @Composable
 fun PlayerGestureHost(
     controllerState: PlayerControllerState,
@@ -441,12 +539,7 @@ fun PlayerGestureHost(
                 .systemGesturesPadding()
                 .padding(top = 16.dp),
         ) {
-            LaunchedEffect(seekerState.deltaSeconds) {
-                if (seekerState.isSeeking) {
-                    indicatorState.showSeeking(seekerState.deltaSeconds)
-                }
-            }
-            GestureIndicator(indicatorState)
+            GestureIndicator(indicatorState, swipeSeekerState = seekerState)
         }
         val maxHeight = maxHeight
         val adjustingVolumeOrBrightness =
@@ -564,32 +657,27 @@ fun PlayerGestureHost(
             keyboardModifier
                 .combineClickableWithFamilyGesture()
                 .ifThen(family.swipeToSeek && enableSwipeToSeek) {
-                    val swipeToSeekRequester = rememberAlwaysOnRequester(controllerState, "swipeToSeek")
+                    val swipeSeekInteraction = rememberSwipeSeekInteraction(
+                        controllerState,
+                        seekerState,
+                        progressSliderState,
+                    )
                     swipeToSeek(
                         seekerState,
                         Orientation.Horizontal,
                         //调节音量/亮度时禁用水平seek
                         enabled = !adjustingVolumeOrBrightness,
                         onDragStarted = {
-                            if (controllerState.visibility.bottomBar) {
-                                swipeToSeekRequester.request()
-                            }
-                            controllerState.setRequestProgressBar(swipeToSeekRequester)
+                            swipeSeekInteraction.onStarted()
                         },
-                        onDragStopped = {
-                            if (controllerState.visibility.bottomBar) {
-                                swipeToSeekRequester.cancelRequest()
-                            }
-                            controllerState.cancelRequestProgressBarVisible(swipeToSeekRequester)
-                            progressSliderState.finishPreview()
+                        onDragStopped = { _, cancelled ->
+                            swipeSeekInteraction.onStopped(cancelled)
+                        },
+                        onCancellationChanged = { cancelled ->
+                            swipeSeekInteraction.onCancellationChanged(cancelled)
                         },
                     ) {
-                        progressSliderState.run {
-                            if (totalDurationMillis == 0L) return@run
-                            val offsetRatio =
-                                (currentPositionMillis + seekerState.deltaSeconds.times(1000)).toFloat() / totalDurationMillis
-                            previewPositionRatio(offsetRatio.coerceIn(0f, 1f))
-                        }
+                        swipeSeekInteraction.updatePreview()
                     }
                 }
                 .onPointerEventMultiplatform(PointerEventType.Move) { event ->
@@ -622,6 +710,10 @@ fun PlayerGestureHost(
                         }
                     }
                 }
+                // Do not remove this as redundant with combinedClickable. Its focus target uses
+                // Focusability.SystemDefined, which is not focusable while Android is in touch input mode.
+                // This always-focusable child is the fallback that keeps hardware shortcuts working.
+                .focusable()
                 .fillMaxSize(),
         ) {
             Row(

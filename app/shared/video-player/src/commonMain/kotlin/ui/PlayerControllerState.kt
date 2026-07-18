@@ -153,6 +153,9 @@ data class ControllerVisibility(
             detachedSlider = false,
         )
 
+        /**
+         * 控制器原本隐藏时的 seek 指示状态：只展示固定在播放器底部的独立进度条。
+         */
         @Stable
         val DetachedSliderOnly = ControllerVisibility(
             topBar = false,
@@ -161,6 +164,20 @@ data class ControllerVisibility(
             rhsBar = false,
             gestureLock = false,
             detachedSlider = true,
+        )
+
+        /**
+         * 已有底栏交互时的 seek 状态：保留底栏原进度条及其布局，其他控制器元素仅在视觉上隐藏。
+         * 直接拖动进度条必须使用此状态，避免替换正在接收触摸事件的组件。
+         */
+        @Stable
+        val InlineSliderOnly = ControllerVisibility(
+            topBar = false,
+            bottomBar = true,
+            floatingBottomEnd = false,
+            rhsBar = false,
+            gestureLock = false,
+            detachedSlider = false,
         )
     }
 }
@@ -177,12 +194,16 @@ class PlayerControllerState(
 
     private var fullVisible by mutableStateOf(initialVisibility == ControllerVisibility.Visible)
     private val hasProgressBarRequester by derivedStateOf { progressBarRequesters.isNotEmpty() }
+    private val hasInlineProgressSliderRequester by derivedStateOf {
+        inlineProgressSliderRequesters.isNotEmpty()
+    }
 
     /**
      * 当前 UI 应当显示的状态
      */
     val visibility: ControllerVisibility by derivedStateOf {
         // 根据 hasProgressBarRequester, alwaysOn 和 fullVisible 计算正确的 `ControllerVisibility`
+        if (hasInlineProgressSliderRequester) return@derivedStateOf ControllerVisibility.InlineSliderOnly
         if (alwaysOn) return@derivedStateOf ControllerVisibility.Visible
         if (fullVisible) return@derivedStateOf ControllerVisibility.Visible
         if (hasProgressBarRequester) return@derivedStateOf ControllerVisibility.DetachedSliderOnly
@@ -229,12 +250,40 @@ class PlayerControllerState(
 
     private val progressBarRequesters = SnapshotStateList<Any>()
 
+    private val inlineProgressSliderRequesters = SnapshotStateList<Any>()
+
     /**
-     * 请求显示进度条
-     * 当目前没有显示进度条时, 将显示独立的进度条.
-     * 若目前已经有进度条, 则会保持该状态, 防止自动关闭.
+     * 请求只显示底部控制栏内已有的 inline progress slider.
      *
-     * @param requester 是谁希望请求显示进度条. 在 [cancelRequestProgressBarVisible] 时需要传入相同实例. 同一时刻有任一 requester 则会让进度条一直显示.
+     * 该进度条属于 bottom bar；进入此模式后仍保留整个 bottom bar 的布局，
+     * 只是将进度条以外的控制器元素隐藏。因此正在接收触摸事件的进度条不会被替换。
+     * 适用于直接拖动进度条，或控制器可见时开始的屏幕横滑。
+     *
+     * [setRequestProgressBar] 请求的则是 bottom bar 之外的另一个 detached progress slider，
+     * 用于控制器隐藏时的屏幕横滑，不能代替正在接收触摸事件的 inline progress slider.
+     *
+     * @param requester 请求方；取消时必须将同一实例传给 [cancelRequestInlineProgressSlider].
+     */
+    fun setRequestInlineProgressSlider(requester: Any) {
+        if (requester in inlineProgressSliderRequesters) return
+        inlineProgressSliderRequesters.add(requester)
+    }
+
+    fun cancelRequestInlineProgressSlider(requester: Any) {
+        inlineProgressSliderRequesters.remove(requester)
+    }
+
+    /**
+     * 请求在控制器隐藏时显示独立的 detached progress slider.
+     *
+     * 该进度条位于 bottom bar 之外，是专门用于指示屏幕横滑 seek 的另一个组件；
+     * 它不会保留或复用 bottom bar 内的 inline progress slider.
+     * 适用于控制器隐藏时开始的屏幕横滑。
+     *
+     * 如果控制器当前完整显示，则完整控制器优先；控制器隐藏后，只要本请求仍存在，
+     * 就会显示 detached progress slider，而不是让进度指示一并消失。
+     *
+     * @param requester 请求方；取消时必须将同一实例传给 [cancelRequestProgressBarVisible].
      */
     fun setRequestProgressBar(requester: Any) {
         if (requester in progressBarRequesters) return

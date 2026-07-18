@@ -43,6 +43,10 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      */
     val fullscreenSwitchMode: FullscreenSwitchMode = FullscreenSwitchMode.ALWAYS_SHOW_FLOATING,
     /**
+     * 悬浮或拖动播放进度条时显示视频帧预览.
+     */
+    val enableFramePreview: Boolean = true,
+    /**
      * 在编辑弹幕时暂停视频.
      * @since 3.2.0-beta01
      */
@@ -115,6 +119,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
         @OptIn(SerializationOnly::class)
         val AllDisabled = VideoScaffoldConfig(
             fullscreenSwitchMode = FullscreenSwitchMode.ONLY_IN_CONTROLLER,
+            enableFramePreview = false,
             pauseVideoOnEditDanmaku = false,
             autoMarkDone = false,
             hideSelectorOnSelect = false,

@@ -20,6 +20,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -29,6 +30,7 @@ import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.isRoot
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -86,11 +88,14 @@ import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION
 import me.him188.ani.app.videoplayer.ui.gesture.VIDEO_GESTURE_TOUCH_SHOW_CONTROLLER_DURATION
+import me.him188.ani.app.videoplayer.ui.progress.MediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.TAG_DANMAKU_ICON_BUTTON
 import me.him188.ani.app.videoplayer.ui.progress.TAG_MEDIA_PROGRESS_INDICATOR_TEXT
 import me.him188.ani.app.videoplayer.ui.progress.TAG_PROGRESS_SLIDER
+import me.him188.ani.app.videoplayer.ui.progress.TAG_PROGRESS_SLIDER_CENTERED_PREVIEW_FRAME
+import me.him188.ani.app.videoplayer.ui.progress.TAG_PROGRESS_SLIDER_PREVIEW_FRAME
 import me.him188.ani.app.videoplayer.ui.progress.TAG_PROGRESS_SLIDER_PREVIEW_POPUP
 import me.him188.ani.app.videoplayer.ui.progress.TAG_SELECT_EPISODE_ICON_BUTTON
 import me.him188.ani.app.videoplayer.ui.progress.TAG_SPEED_SWITCHER_DROPDOWN_MENU
@@ -153,6 +158,15 @@ class EpisodeVideoControllerTest {
             gestureLock = false,
             detachedSlider = true,
         )
+
+        private val PREVIEW_INLINE_SLIDER = ControllerVisibility(
+            topBar = false,
+            bottomBar = true,
+            floatingBottomEnd = false,
+            rhsBar = false,
+            gestureLock = false,
+            detachedSlider = false,
+        )
     }
 
 
@@ -199,6 +213,9 @@ class EpisodeVideoControllerTest {
         platformWindowOverride: PlatformWindow? = null,
         showDanmakuEditor: () -> Boolean = { true },
         onEditorEscape: (() -> Unit)? = null,
+        expanded: Boolean = true,
+        framePreview: MediaProgressFramePreviewState? = null,
+        cacheChunkState: ChunkState = ChunkState.NONE,
     ) {
         ProvideCompositionLocalsForPreview(darkMode = DarkMode.DARK) {
             val platformWindow = platformWindowOverride ?: LocalPlatformWindow.current
@@ -208,8 +225,7 @@ class EpisodeVideoControllerTest {
                 val playerState = remember {
                     TestMediampPlayer(scope.coroutineContext).also(onPlayerStateCreated)
                 }
-                val expanded = true
-                val cacheProgressInfoFlow = staticMediaCacheProgressState(ChunkState.NONE).flow
+                val cacheProgressInfoFlow = staticMediaCacheProgressState(cacheChunkState).flow
                 EpisodeVideoImpl(
                 playerState = playerState,
                 expanded = expanded,
@@ -246,12 +262,15 @@ class EpisodeVideoControllerTest {
                         cacheProgressInfoFlow = cacheProgressInfoFlow,
                         Modifier.testTag(TAG_DETACHED_PROGRESS_SLIDER),
                         enabled = false,
+                        framePreview = framePreview,
+                        showFramePreviewInPopup = expanded,
                     )
                 },
                 sidebarVisible = true,
                 onToggleSidebar = {},
                 progressSliderState = progressSliderState,
                 cacheProgressInfoFlow = cacheProgressInfoFlow,
+                framePreview = framePreview,
                 audioController = audioController,
                 brightnessController = NoOpLevelController,
                 playbackSpeedControllerState = playbackSpeedControllerState ?: remember {
@@ -836,6 +855,40 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
+    fun `mouse - keyboard shortcuts - I toggles playback info and Tab does not`() = runAniComposeUiTest {
+        val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+        setContent {
+            Player(
+                GestureFamily.MOUSE,
+                playerControllerState = visibleControllerState,
+            )
+        }
+        waitForIdle()
+
+        videoGestureHost.assertIsFocused()
+        videoGestureHost.performKeyInput {
+            pressKey(Key.Tab)
+        }
+        waitForIdle()
+        onNodeWithText("Playback Info", substring = true).doesNotExist()
+
+        videoGestureHost.performClick()
+        videoGestureHost.performKeyInput {
+            pressKey(Key.I)
+        }
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            onNodeWithText("Playback Info", substring = true).exists()
+        }
+
+        videoGestureHost.performKeyInput {
+            pressKey(Key.I)
+        }
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            !onNodeWithText("Playback Info", substring = true).exists()
+        }
+    }
+
+    @Test
     fun `touch - keyboard shortcuts - reclaim focus from editor on mouse move`() = runAniComposeUiTest {
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         setContent {
@@ -1108,7 +1161,7 @@ class EpisodeVideoControllerTest {
      * @see GestureFamily.swipeToSeek
      */
     @Test
-    fun `touch - swipeToSeek shows detached slider`() = runAniComposeUiTest {
+    fun `touch - swipeToSeek shows detached slider when controller is hidden`() = runAniComposeUiTest {
         setContent {
             Player(GestureFamily.TOUCH)
         }
@@ -1148,7 +1201,7 @@ class EpisodeVideoControllerTest {
      * @see GestureFamily.swipeToSeek
      */
     @Test
-    fun `touch - swipe when controller is already fully visible`() = runAniComposeUiTest {
+    fun `touch - swipe hides visible controls without moving slider`() = runAniComposeUiTest {
         setContent {
             Player(GestureFamily.TOUCH)
         }
@@ -1164,6 +1217,7 @@ class EpisodeVideoControllerTest {
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
             detachedProgressSlider.assertDoesNotExist()
         }
+        val progressSliderBoundsBeforeDrag = progressSlider.fetchSemanticsNode().boundsInRoot
 
         runOnUiThread {
             root.performTouchInput {
@@ -1172,9 +1226,18 @@ class EpisodeVideoControllerTest {
             }
         }
         runOnIdle {
+            mainClock.advanceTimeBy(1000L)
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { previewPopup.exists() }
+            // Top controls remain laid out but are drawn transparently, preserving the top scrim.
+            topBar.assertExists()
             detachedProgressSlider.assertDoesNotExist()
-            assertEquals(NORMAL_VISIBLE, controllerState.visibility)
+            progressSlider.assertExists()
+            assertEquals(
+                progressSliderBoundsBeforeDrag,
+                progressSlider.fetchSemanticsNode().boundsInRoot,
+            )
+            onNodeWithTag(TAG_PROGRESS_SLIDER_PREVIEW_FRAME, useUnmergedTree = true).assertDoesNotExist()
+            assertEquals(PREVIEW_INLINE_SLIDER, controllerState.visibility)
         }
 
         runOnUiThread {
@@ -1183,10 +1246,46 @@ class EpisodeVideoControllerTest {
             }
         }
         runOnIdle {
+            mainClock.advanceTimeBy(1000L)
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { previewPopup.doesNotExist() }
             detachedProgressSlider.assertDoesNotExist()
             assertEquals(NORMAL_VISIBLE, controllerState.visibility)
         }
+    }
+
+    @Test
+    fun `compact frame preview shows centered image and time-only popup`() = runAniComposeUiTest {
+        val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+        val framePreview = MediaProgressFramePreviewState(
+            fetchFrame = { ImageBitmap(width = 160, height = 90) },
+            debounceMillis = 0,
+        )
+        setContent {
+            Player(
+                gestureFamily = GestureFamily.MOUSE,
+                playerControllerState = visibleControllerState,
+                expanded = false,
+                framePreview = framePreview,
+                cacheChunkState = ChunkState.DONE,
+            )
+        }
+        waitForIdle()
+
+        runOnUiThread {
+            progressSlider.performMouseInput { moveTo(center) }
+        }
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            previewPopup.exists() &&
+                onNodeWithTag(TAG_PROGRESS_SLIDER_CENTERED_PREVIEW_FRAME, useUnmergedTree = true).exists()
+        }
+
+        onNodeWithTag(TAG_PROGRESS_SLIDER_PREVIEW_FRAME, useUnmergedTree = true).assertDoesNotExist()
+        val playerCenter = player.fetchSemanticsNode().boundsInRoot.center
+        val frameCenter = onNodeWithTag(
+            TAG_PROGRESS_SLIDER_CENTERED_PREVIEW_FRAME,
+            useUnmergedTree = true,
+        ).fetchSemanticsNode().boundsInRoot.center
+        assertEquals(playerCenter, frameCenter)
     }
 
     @Test
@@ -1211,10 +1310,11 @@ class EpisodeVideoControllerTest {
             moveBy(Offset(centerX, 0f))
         }
         waitForIdle() // does nothing because autoAdvance is false
-        mainClock.advanceTimeByFrame() // renders the next frame (i.e. update derivedStateOf and Text)
-        mediaProgressIndicatorText.assertTextEquals("00:47 / 01:40")
+        mainClock.advanceTimeBy(1000L)
+        previewPopup.assertExists()
+        onAllNodesWithText("00:47", useUnmergedTree = true).onFirst().assertExists()
         runOnUiThread {
-            assertEquals(NORMAL_VISIBLE, controllerState.visibility)
+            assertEquals(PREVIEW_INLINE_SLIDER, controllerState.visibility)
         }
 
         // 松开手指
@@ -1245,6 +1345,7 @@ class EpisodeVideoControllerTest {
                 waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
                 detachedProgressSlider.assertDoesNotExist()
             }
+            val progressSliderBoundsBeforeDrag = progressSlider.fetchSemanticsNode().boundsInRoot
 
             runOnUiThread {
                 progressSlider.performTouchInput {
@@ -1253,8 +1354,20 @@ class EpisodeVideoControllerTest {
                 }
             }
             runOnIdle {
-                waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithText("00:48 / 01:40").exists() }
-                assertEquals(NORMAL_VISIBLE, controllerState.visibility)
+                mainClock.advanceTimeBy(1000L)
+                waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+                    controllerState.visibility == ControllerVisibility.InlineSliderOnly
+                }
+                topBar.assertExists()
+                // Other controller content stays composed so the slider keeps the same layout,
+                // but PlayerControllerBar draws it transparently while dragging.
+                mediaProgressIndicatorText.assertExists()
+                progressSlider.assertExists()
+                assertEquals(
+                    progressSliderBoundsBeforeDrag,
+                    progressSlider.fetchSemanticsNode().boundsInRoot,
+                )
+                assertEquals(true, progressSliderState.isPreviewing)
             }
 
             // 松开手指
@@ -1276,6 +1389,96 @@ class EpisodeVideoControllerTest {
                 assertEquals(NORMAL_VISIBLE, controllerState.visibility)
             }
         }
+
+    @Test
+    fun `touch - progress slider drag can be cancelled`() = runAniComposeUiTest {
+        setContent {
+            Player(GestureFamily.TOUCH)
+        }
+        waitForIdle()
+        val root = onAllNodes(isRoot()).onFirst()
+
+        mainClock.autoAdvance = false
+        root.performClick()
+        mainClock.advanceTimeBy(1000L)
+        waitForIdle()
+
+        val playerBounds = player.fetchSemanticsNode().boundsInRoot
+        val sliderBounds = progressSlider.fetchSemanticsNode().boundsInRoot
+        progressSlider.performTouchInput {
+            down(centerLeft)
+            moveTo(Offset(width * 0.75f, centerY))
+        }
+        runOnIdle {
+            assertEquals(true, progressSliderState.isPreviewing)
+        }
+
+        progressSlider.performTouchInput {
+            moveTo(playerBounds.topLeft + Offset(1f, 1f) - sliderBounds.topLeft)
+        }
+        runOnIdle {
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+                onNodeWithText("Release to cancel").exists()
+            }
+            assertEquals(false, progressSliderState.isPreviewing)
+            assertEquals(ControllerVisibility.InlineSliderOnly, controllerState.visibility)
+        }
+
+        progressSlider.performTouchInput {
+            moveTo(Offset(width * 0.6f, centerY))
+        }
+        runOnIdle {
+            mainClock.advanceTimeBy(1000L)
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+                onNodeWithText("Release to cancel").doesNotExist()
+            }
+            assertEquals(true, progressSliderState.isPreviewing)
+        }
+
+        progressSlider.performTouchInput {
+            moveTo(playerBounds.topLeft + Offset(1f, 1f) - sliderBounds.topLeft)
+        }
+        runOnIdle {
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+                onNodeWithText("Release to cancel").exists()
+            }
+        }
+
+        progressSlider.performTouchInput {
+            up()
+        }
+        runOnIdle {
+            mainClock.advanceTimeBy(1000L)
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+                onNodeWithText("Release to cancel").doesNotExist()
+            }
+            assertEquals(0L, currentPositionMillis)
+            assertEquals(false, progressSliderState.isPreviewing)
+        }
+    }
+
+    @Test
+    fun `mouse - previewing progress slider keeps full controller visible`() = runAniComposeUiTest {
+        setContent {
+            Player(GestureFamily.MOUSE)
+        }
+        waitForIdle()
+
+        runOnUiThread {
+            controllerState.toggleFullVisible(true)
+            progressSliderState.previewPositionRatio(0.5f)
+        }
+        runOnIdle {
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
+            assertEquals(NORMAL_VISIBLE, controllerState.visibility)
+            mediaProgressIndicatorText.assertExists()
+            progressSlider.assertExists()
+        }
+
+        runOnUiThread {
+            progressSliderState.cancelPreview()
+        }
+    }
 
     /**
      * @see GestureFamily.swipeToSeek

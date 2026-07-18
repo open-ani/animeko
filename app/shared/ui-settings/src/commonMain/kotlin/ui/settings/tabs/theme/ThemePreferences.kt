@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -44,7 +44,7 @@ import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.theme.themeColorOptions
-import me.him188.ani.utils.platform.isAndroid
+import me.him188.ani.utils.platform.isMobile
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -109,7 +109,7 @@ fun SettingsScope.ThemeGroup(
             description = { Text(stringResource(Lang.settings_theme_animated_gradient_subject_description)) },
         )
 
-        if (LocalPlatform.current.isAndroid()) {
+        if (LocalPlatform.current.isMobile()) {
             SwitchItem(
                 checked = themeSettings.enableFrostedGlassEffect,
                 onCheckedChange = { checked ->

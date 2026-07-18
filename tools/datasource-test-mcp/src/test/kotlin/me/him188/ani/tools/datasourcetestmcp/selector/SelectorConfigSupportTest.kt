@@ -219,4 +219,25 @@ class SelectorConfigSupportTest {
         assertEquals(SelectorConfigSupport.FORMAT_SEARCH_CONFIG, parsed.detectedFormat)
         assertEquals("https://example.com/s/{keyword}", parsed.arguments.searchConfig.searchUrl)
     }
+
+    /**
+     * selector-engine-docs.md 中的「最小可用示例」必须始终是有效配置 (文档由 get_selector_engine_docs 提供给 agent).
+     */
+    @Test
+    fun `docs example config is valid`() {
+        val docs = checkNotNull(javaClass.getResourceAsStream("/selector-engine-docs.md")) {
+            "selector-engine-docs.md not found in resources"
+        }.bufferedReader().use { it.readText() }
+        val example = docs.substringAfter("```json", "").substringBefore("```").trim()
+        assertTrue(example.isNotEmpty(), "docs should contain a ```json example block")
+
+        val result = validate(example)
+        assertTrue(result.ok, result.summary + ": " + result.issues)
+        assertEquals(SelectorConfigSupport.FORMAT_EXPORTED, result.detectedFormat)
+
+        val parsed = SelectorConfigSupport.parseSelectorArguments(json.parseToJsonElement(example), json)
+        assertEquals("稀饭动漫", parsed.arguments.name)
+        assertEquals("indexed", parsed.arguments.searchConfig.subjectFormatId.value)
+        assertEquals("index-grouped", parsed.arguments.searchConfig.channelFormatId.value)
+    }
 }

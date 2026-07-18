@@ -67,6 +67,7 @@ import me.him188.ani.app.platform.findActivity
 import me.him188.ani.app.tools.update.AndroidUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.ui.exprovider.ExternalContentProviderFactory
+import me.him188.ani.app.videoplayer.media.LibassExoPlayerMediampPlayerFactory
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.deleteRecursively
@@ -83,7 +84,6 @@ import org.koin.dsl.module
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.MediampPlayerFactoryLoader
 import org.openani.mediamp.compose.MediampPlayerSurfaceProviderLoader
-import org.openani.mediamp.exoplayer.ExoPlayerMediampPlayerFactory
 import org.openani.mediamp.exoplayer.compose.ExoPlayerMediampPlayerSurfaceProvider
 import java.io.File
 import kotlin.concurrent.thread
@@ -173,7 +173,7 @@ fun getAndroidModules(
     }
 
     single<MediampPlayerFactory<*>> {
-        MediampPlayerFactoryLoader.register(ExoPlayerMediampPlayerFactory())
+        MediampPlayerFactoryLoader.register(LibassExoPlayerMediampPlayerFactory())
         MediampPlayerSurfaceProviderLoader.register(ExoPlayerMediampPlayerSurfaceProvider())
         MediampPlayerFactoryLoader.first()
     }

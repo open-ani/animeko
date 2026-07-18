@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.desktop
 
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
@@ -28,6 +29,8 @@ import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatformDesktop
 import org.koin.core.context.GlobalContext
 import org.koin.mp.KoinPlatform
+import org.openani.mediamp.ffmpeg.FFmpegKit
+import org.openani.mediamp.vlc.VlcMediampPlayer
 import java.io.File
 import kotlin.system.exitProcess
 
@@ -40,6 +43,21 @@ object TestTasks {
         when (taskName) {
             "anitorrent-load-test" -> {
                 AnitorrentLibraryLoader.loadLibraries()
+                exitProcess(0)
+            }
+
+            "mediamp-ffmpeg-smoke-test" -> {
+                checkMediampFfmpeg()
+                exitProcess(0)
+            }
+
+            "mediamp-vlc-load-test" -> {
+                VlcMediampPlayer.prepareLibraries()
+                exitProcess(0)
+            }
+
+            "sqlite-bundled-load-test" -> {
+                checkBundledSqlite()
                 exitProcess(0)
             }
 
@@ -72,6 +90,20 @@ object TestTasks {
                 exitProcess(1)
             }
         }
+    }
+
+    private fun checkMediampFfmpeg() {
+        val runtimeDirectory = File(System.getProperty("compose.application.resources.dir"))
+            .parentFile.absolutePath
+        FFmpegKit.setRuntimeLibraryDirectory(runtimeDirectory, false)
+        val result = runBlocking {
+            FFmpegKit().execute(listOf("-version"))
+        }
+        check(result.isSuccess) { "FFmpeg smoke test failed: $result" }
+    }
+
+    private fun checkBundledSqlite() {
+        BundledSQLiteDriver().open(":memory:").use { }
     }
 
     // https://d.myani.org/v4.0.0-release-checksum-1/ani-4.0.0-release-checksum-1-macos-aarch64.dmg

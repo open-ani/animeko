@@ -13,25 +13,33 @@ searchSubjects → selectSubjects → searchEpisodes → selectEpisodes → sele
 
 MCP 工具对应关系:
 
-- `selector_resolve_episode` 自动跑完整流程并返回每步 trace;
+- `selector_resolve_episode` 自动跑完整流程并返回每步 trace。**默认**还会继续做 WebView 视频解析与
+  VLC 播放探测(会启动 CEF 与播放器,耗时较长),只测解析层请传 `extractVideo=false`。
+  每个搜索词默认只访问前 3 个条目的详情页(`maxSubjectsPerName`;App 内无此限制。条目按名称长度
+  升序排序,目标条目排名靠后时把它调大);
 - `selector_run_step` 单独跑其中一个步骤;
 - `validate_selector_config` 离线校验配置字段。
+
+> **命名区分**: MCP 工具 `search_subjects` 查询的是 **Ani API 的条目元数据**(拿 subjectId/episodeId),
+> 与引擎步骤 `searchSubjects`(`selector_run_step` 的 `step` 值,请求**目标站点**的搜索页)是两回事,
+> 名字只差一个下划线,不要混用。
 
 ## 1. searchSubjects — 搜索条目列表
 
 **做什么**: 把搜索关键词(番剧名)代入 `searchUrl` 的 `{keyword}` 占位符,HTTP GET 该 URL,返回搜索结果页。
 
-**输入**: `searchUrl`、关键词、`searchUseOnlyFirstWord`(只用名字的第一个词搜索)、`searchRemoveSpecial`(移除特殊字符,如「剧场版」标记外的符号)。
+**输入**: `searchUrl`、关键词、`searchUseOnlyFirstWord`(只用名字的第一个词搜索)、`searchRemoveSpecial`(移除特殊字符,并删除「剧场版」「OVA」「总集篇」等标记词——例如「剧场版 命运石之门」会以「命运石之门」作为关键词,避免取首词时只剩「剧场版」)。
 
 **输出**: `SearchSubjectResult { url, document, captchaKind }`。
 `document == null` 表示 404;`captchaKind != null` 表示被人机验证(Cloudflare 等)拦截。
 
 **常见问题**:
 - 返回 404 / 空页面 → searchUrl 模板错误,或站点换了搜索路径;
-- captchaKind 非空 → 站点开了防爬,需要真实浏览器 cookie;
+- captchaKind 非空 → 站点开了防爬。本工具**没有**过验证码/注入浏览器 cookie 的能力,
+  请改用 App 内设置页的数据源测试器(支持交互过验证码);
 - 返回的是 JSON API 响应 → 配合 `json-path-indexed` 条目格式使用。
 
-`selector_run_step(step=searchSubjects, config, keyword)` 会返回抓到的原始 HTML,便于人工检查页面结构。
+`selector_run_step(step=searchSubjects, config, keyword)` 会返回抓到的原始 HTML(默认最多 100k 字符,超长会截断,用 `maxHtmlLength` 调大;截断的 HTML 再拿去离线解析可能失真),便于人工检查页面结构。后续 select* 步骤也支持直接传 `url` 由其自行抓取,不必手动搬运 HTML。
 
 ## 2. selectSubjects — 解析条目列表
 
@@ -73,6 +81,10 @@ MCP 工具对应关系:
 `matchEpisodeSortFromName` 是从剧集名提取序号的正则,需要 `(?<ep>...)` 命名分组,
 默认 `第\s*(?<ep>.+)\s*[话集]`。名为「正片」「高清版」或含分辨率字样的会被当作电影,序号视为 01。
 
+注意剧集的相对链接以**条目页所在目录**(条目页 URL 去掉最后一段路径)为基拼接,与搜索结果页
+用站点根 `finalBaseUrl` 的语义不同——所以离线传 `html` 调试时必须同时提供真实的 `subjectUrl`,
+否则 `playUrl` 会拼错。
+
 **输出**: `SelectedChannelEpisodes { channels, episodes }`;`episodes` 每项为
 `WebSearchEpisodeInfo { channel, name, episodeSortOrEp, playUrl }`。返回 `null` 表示配置无效。
 
@@ -113,7 +125,7 @@ MCP 工具:
 - `selector_run_step(step=extractVideo, url, config?)` — 真实启动 WebView 加载播放页并拦截视频 URL;
 - `probe_video(videoUrl, headers)` — 对最终视频 URL 做 HTTP 探测,并用 Animeko 桌面端同款播放器 (VLC) 真实播放几秒,报告分辨率、时长、编码、帧率、码率。
 
-## 配置 JSON 形态
+## 配置 JSON 形态与示例
 
 `validate_selector_config` / `selector_resolve_episode` / `selector_run_step` 的 `config` 参数接受:
 
@@ -122,11 +134,44 @@ MCP 工具:
 3. 裸 searchConfig: `{"searchUrl": "...", ...}`;
 4. 订阅列表: `{"mediaSources": [{...}, ...]}`(取第一个 web-selector 源)。
 
+没有现成配置时,可以从下面这个**最小可用示例**开始(App 导出格式,来自一个真实站点;
+未列出的字段都有合理默认值,`name`/`description`/`iconUrl` 为必填):
+
+```json
+{
+  "factoryId": "web-selector",
+  "version": 2,
+  "arguments": {
+    "name": "稀饭动漫",
+    "description": "",
+    "iconUrl": "https://dm1.xfdm.pro/upload/site/20240308-1/813e41f81d6f85bfd7a44bf8a813f9e5.png",
+    "searchConfig": {
+      "searchUrl": "https://dm1.xfdm.pro/search.html?wd={keyword}",
+      "subjectFormatId": "indexed",
+      "selectorSubjectFormatIndexed": {
+        "selectNames": "body > .box-width .search-box .thumb-content > .thumb-txt",
+        "selectLinks": "body > .box-width .search-box .thumb-menu > a"
+      },
+      "channelFormatId": "index-grouped",
+      "selectorChannelFormatFlattened": {
+        "selectChannelNames": ".anthology-tab > .swiper-wrapper a",
+        "matchChannelName": "^()?(?<ch>.+?)(\\d+)?$",
+        "selectEpisodeLists": ".anthology-list-box",
+        "selectEpisodesFromList": "a"
+      }
+    },
+    "tier": 2
+  }
+}
+```
+
+也可以在 App 内导出现成配置: 设置 → 数据源 → 选择一个 Selector 源 → 导出,得到的就是上述格式 1。
+
 ## 调试建议流程
 
-1. `validate_selector_config` 先排除语法错误;
-2. `search_subjects` / `get_subject_episodes` 拿到目标条目与 episodeId;
-3. `selector_resolve_episode` 跑全流程,看哪一步的 trace 先出问题;
-4. 用 `selector_run_step` 单独重跑该步骤(可传 HTML 离线迭代 selector);
+1. 没有配置时,从上方「最小可用示例」或 App 导出的 JSON 开始;`validate_selector_config` 先排除语法错误;
+2. `search_subjects` / `get_subject_episodes` 拿到目标条目与 episodeId(这是 Ani API 元数据查询,不是引擎步骤);
+3. `selector_resolve_episode` 跑全流程,看哪一步的 trace 先出问题(只测解析层传 `extractVideo=false`,更快且不弹窗);
+4. 用 `selector_run_step` 单独重跑该步骤(可传 HTML 离线迭代 selector,也可直接传 url);
 5. 视频链接解析不出来时用 `matchWebVideo` 调正则、`extractVideo` 看 WebView 实际拦截到了什么;
 6. 最后 `probe_video` 验证视频真实可播放。

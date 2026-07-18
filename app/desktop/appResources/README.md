@@ -8,3 +8,5 @@ See <https://github.com/JetBrains/compose-multiplatform/blob/master/tutorials/Na
 
 - macos-x64: 3.0.18
 - linux-x64: 3.0.20
+- windows-x64: 3.0.20
+- windows-arm64: 3.0.23 (3.0.20 is unavailable for winarm64)

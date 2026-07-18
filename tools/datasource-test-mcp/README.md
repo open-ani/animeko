@@ -1,9 +1,15 @@
 # datasource-test-mcp
 
-An stdio MCP server for developing and validating Animeko media sources.
+An HTTP MCP server for developing and validating Animeko media sources.
 
-The stdio transport follows the MCP spec (newline-delimited JSON-RPC). Legacy `Content-Length` framed
-clients are auto-detected and answered in the same framing.
+The transport is a stateless subset of the MCP Streamable HTTP spec: JSON-RPC messages are POSTed to
+`/mcp` and answered as `application/json` (no SSE streams, no sessions). The server binds to
+`127.0.0.1` by default and rejects non-local `Origin` headers to prevent DNS rebinding.
+
+> **Agent 操作手册**: [.agents/skills/datasource-test](../../.agents/skills/datasource-test/SKILL.md)
+> 描述了「拿到一份数据源 JSON 配置 → 分层测试 → 定位修复 → 出报告」的完整流程,
+> 包括 server 启动/直连 HTTP 调用方式、每步失败的判读表、行为红线,
+> 以及站点超出现有引擎能力时的「能力进化」闭环 (缺口取证 → 文档 → subagent 产出 patch → 复测)。
 
 ## Capabilities
 
@@ -18,8 +24,9 @@ clients are auto-detected and answered in the same framing.
 - `validate_selector_config` — 离线校验 selector 配置 JSON: 必填字段, CSS selector/JsonPath/正则语法,
   命名分组等. 接受 App 导出格式 / 裸 arguments / 裸 searchConfig / 订阅列表四种形态.
 - `selector_resolve_episode` — 提供 subjectId+episodeId+配置, 自动跑 `SelectorMediaSourceEngine`
-  全流程 (searchSubjects → selectSubjects → searchEpisodes → selectEpisodes → selectMedia,
-  可选 WebView 视频解析与播放探测), 返回每个步骤的 trace 便于定位问题.
+  全流程 (searchSubjects → selectSubjects → searchEpisodes → selectEpisodes → selectMedia),
+  返回每个步骤的 trace 便于定位问题. **默认**继续做 WebView 视频解析与 VLC 播放探测
+  (会启动 CEF 与播放器); 只测解析层传 `extractVideo=false`.
 - `selector_run_step` — 单步执行任意引擎步骤: 支持离线传 HTML 调试 selector, 离线测 matchVideo 正则,
   以及真实 WebView 拦截视频 URL.
 - `get_selector_engine_docs` — 返回引擎步骤文档 (源文件: [selector-engine-docs.md](src/main/resources/selector-engine-docs.md)).
@@ -42,7 +49,7 @@ clients are auto-detected and answered in the same framing.
 
 按能力分包 (`src/main/kotlin/.../datasourcetestmcp/`):
 
-- `mcp/` — stdio MCP server (帧格式/JSON-RPC) 与工具注册表
+- `mcp/` — HTTP MCP server (Streamable HTTP/JSON-RPC) 与工具注册表
 - `info/` — 信息能力: Ani API 番剧/剧集查询
 - `selector/` — 数据源能力: 配置解析校验 + 引擎全流程/单步执行
 - `resolver/` — WebView 视频解析管线 (播放页 → 视频 URL) 与逐线路测试
@@ -52,11 +59,15 @@ clients are auto-detected and answered in the same framing.
 
 ## Typical debugging flow
 
-1. `validate_selector_config` 排除配置语法错误;
-2. `search_subjects` / `get_subject_episodes` 找到目标 episodeId;
-3. `selector_resolve_episode` 跑全流程, 看哪一步的 trace 先失败;
+1. `validate_selector_config` 排除配置语法错误 (没有配置时, `get_selector_engine_docs`
+   返回的文档里有一份最小可用示例);
+2. `search_subjects` / `get_subject_episodes` 找到目标 episodeId
+   (注意: 这是 Ani API 元数据查询, 与引擎步骤 `searchSubjects` 是两回事);
+3. `selector_resolve_episode` 跑全流程, 看哪一步的 trace 先失败 (只测解析层传 `extractVideo=false`);
 4. `selector_run_step` 单独重跑该步骤 (支持直接传 HTML 离线迭代 selector);
 5. `probe_video` 验证解析出的视频 URL 真实可播放.
+
+站点开了人机验证 (trace 里 captchaKind 非空) 时, 本工具无法过验证码, 请改用 App 内设置页的数据源测试器.
 
 ## Handshake Failure Hints
 
@@ -106,7 +117,23 @@ Top-level `ok` means at least one tested channel passed playback probing.
 ./tools/datasource-test-mcp/build/install/datasource-test-mcp/bin/datasource-test-mcp
 ```
 
-Point your MCP client at the installed launcher script so it does not invoke Gradle on every startup.
+Defaults to `http://127.0.0.1:8264/mcp`; override with `--host <host>` / `--port <port>`.
+
+Point your MCP client at the running server, e.g. in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "ani-datasource-test": {
+      "type": "http",
+      "url": "http://127.0.0.1:8264/mcp"
+    }
+  }
+}
+```
+
+The `.agents/skills/datasource-test` skill looks for this MCP under the name `ani-datasource-test`
+(tools like `mcp__ani-datasource-test__selector_resolve_episode`); keep the name in sync if you change it.
 
 ## Test
 

@@ -12,8 +12,12 @@ package me.him188.ani.app.data.repository.player
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -35,6 +39,8 @@ import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.logging.info
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 class PlaybackHistorySyncer(
@@ -43,35 +49,39 @@ class PlaybackHistorySyncer(
     private val sessionStateProvider: SessionStateProvider,
     private val scope: CoroutineScope,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
+    requestCooldown: Duration = 5.seconds,
 ) : Repository() {
     private val syncMutex = Mutex()
+    private val requestGate = LeadingTrailingSyncGate(
+        scope = scope,
+        cooldown = requestCooldown,
+        task = ::syncOnceCatching,
+    )
 
     fun start() {
         scope.launch(CoroutineName("PlaybackHistorySyncer")) {
             sessionStateProvider.stateFlow
                 .filterIsInstance<SessionState.Valid>()
                 .first()
-            syncOnceCatching()
+            requestSync()
 
             sessionStateProvider.eventFlow.collect { event ->
                 if (event is SessionEvent.NewLogin) {
-                    syncOnceCatching()
+                    requestSync()
                 }
             }
         }
     }
 
     fun requestSync() {
-        scope.launch(CoroutineName("PlaybackHistorySyncer.requestSync")) {
-            syncOnceCatching()
-        }
+        requestGate.request()
     }
 
     suspend fun syncOnce() = syncMutex.withLock {
         if (sessionStateProvider.stateFlow.first() !is SessionState.Valid) return@withLock
 
         val pendingOps = repository.pendingOpsFlow.first()
-        val ops = pendingOps.map { it.toApiOp() }
+        val ops = pendingOps.latestPerEpisode().map { it.toApiOp() }
         val cursor = repository.lastSyncAtMillisFlow.first()
 
         val response = withContext(ioDispatcher) {
@@ -163,4 +173,44 @@ class PlaybackHistorySyncer(
     private fun String.toEpochMillis(): Long {
         return Instant.parse(this).toEpochMilliseconds()
     }
+}
+
+/**
+ * Runs the first request immediately, then coalesces requests received during [cooldown] into one trailing run.
+ * Every trailing run starts a new cooldown of its own.
+ */
+internal class LeadingTrailingSyncGate(
+    scope: CoroutineScope,
+    private val cooldown: Duration,
+    private val task: suspend () -> Unit,
+) {
+    private val requests = Channel<Unit>(Channel.CONFLATED)
+
+    init {
+        require(cooldown.isPositive()) { "cooldown must be positive" }
+        scope.launch(CoroutineName("PlaybackHistorySyncer.requestGate")) {
+            while (currentCoroutineContext().isActive) {
+                requests.receive()
+                do {
+                    task()
+                    delay(cooldown)
+                } while (requests.tryReceive().isSuccess)
+            }
+        }
+    }
+
+    fun request() {
+        requests.trySend(Unit)
+    }
+}
+
+internal fun List<PlaybackHistoryPendingOp>.latestPerEpisode(): List<PlaybackHistoryPendingOp> {
+    return groupBy(PlaybackHistoryPendingOp::episodeId)
+        .values
+        .map { episodeOps ->
+            episodeOps.maxWith(
+                compareBy(PlaybackHistoryPendingOp::versionMillis, PlaybackHistoryPendingOp::id),
+            )
+        }
+        .sortedBy(PlaybackHistoryPendingOp::id)
 }

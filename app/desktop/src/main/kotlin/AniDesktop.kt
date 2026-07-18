@@ -355,16 +355,18 @@ object AniDesktop {
                     val mpvLogger = logger<MPVHandle>()
                     // mpv_log_level in https://github.com/mpv-player/mpv/blob/master/include/mpv/client.h
                     MPVHandle.setLogHandler {
+                        val prefix = it.prefix.padStart(9, ' ')
+                        val handle = "0x${it.instanceHandle.toHexString().trimStart('0')}"
                         if (it.level in 1..20) {
-                            mpvLogger.error { "[mpv:${it.prefix}:${it.level}] ${it.line}" }
+                            mpvLogger.error { "[$prefix@$handle] ${it.line}" }
                         } else if (it.level <= 30) {
-                            mpvLogger.warn { "[mpv:${it.prefix}:${it.level}] ${it.line}" }
+                            mpvLogger.warn { "[$prefix@$handle] ${it.line}" }
                         } else if (it.level <= 40) {
-                            mpvLogger.info { "[mpv:${it.prefix}:${it.level}] ${it.line}" }
+                            mpvLogger.info { "[$prefix@$handle] ${it.line}" }
                         } else if (it.level <= 50) {
-                            mpvLogger.debug { "[mpv:${it.prefix}:${it.level}] ${it.line}" }
+                            mpvLogger.debug { "[$prefix@$handle] ${it.line}" }
                         } else {
-                            mpvLogger.trace { "[mpv:${it.prefix}:${it.level}] ${it.line}" }
+                            mpvLogger.trace { "[$prefix@$handle] ${it.line}" }
                         }
                     }
                 } catch (e: Throwable) {

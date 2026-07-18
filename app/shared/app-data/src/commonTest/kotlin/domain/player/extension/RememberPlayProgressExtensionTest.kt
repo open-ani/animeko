@@ -15,7 +15,9 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.data.models.player.EpisodeHistory
@@ -24,6 +26,7 @@ import me.him188.ani.app.data.persistent.database.dao.createMemoryPlaybackHistor
 import me.him188.ani.app.data.repository.player.EpisodeHistories
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepositoryImpl
+import me.him188.ani.app.data.repository.player.PlaybackHistoryPendingOp
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
@@ -36,6 +39,8 @@ import me.him188.ani.utils.coroutines.childScope
 import org.openani.mediamp.PlaybackState
 import org.openani.mediamp.metadata.MediaProperties
 import org.openani.mediamp.source.UriMediaData
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -54,16 +59,23 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         state: EpisodeFetchSelectPlayState,
         durationMillis: Long = 100_000L,
         mediaIndex: Int = 0,
+        advanceUntilSettled: Boolean = true,
     ) {
         val media = TestMediaList[mediaIndex]
         val source = suite.mediaSelectorTestBuilder.delayedMediaSource("remember-$mediaIndex")
         source.complete(listOf(media))
         state.mediaSelectorFlow.filterNotNull().first().select(media)
         suite.setMediaDuration(durationMillis)
-        advanceUntilIdle()
+        if (advanceUntilSettled) {
+            advanceUntilIdle()
+        } else {
+            runCurrent()
+        }
     }
 
-    private fun TestScope.createCase() = run {
+    private fun TestScope.createCase(
+        periodicReportInterval: Duration = Duration.INFINITE,
+    ) = run {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
 
         val testScope = this.childScope()
@@ -71,9 +83,12 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         suite.registerComponent<EpisodePlayHistoryRepository> { repository }
         suite.registerComponent<MediaResolver> { TestUniversalMediaResolver }
 
+        val rememberPlayProgress = EpisodePlayerExtensionFactory { context, koin ->
+            RememberPlayProgressExtension(context, koin, periodicReportInterval)
+        }
         val state = suite.createState(
             listOf(
-                RememberPlayProgressExtension,
+                rememberPlayProgress,
             ),
         )
         state.onUIReady()
@@ -101,6 +116,71 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
     ///////////////////////////////////////////////////////////////////////////
     // Normal save cases
     ///////////////////////////////////////////////////////////////////////////
+
+    @Test
+    fun `reports after playback remains playing for five seconds`() = runTest {
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+
+        loadSelectedMedia(suite, state, advanceUntilSettled = false)
+        runCurrent()
+        assertEquals(emptyList(), repository.pendingOpsFlow.first())
+
+        advanceTimeBy(4_999)
+        runCurrent()
+        assertEquals(emptyList(), repository.pendingOpsFlow.first())
+
+        advanceTimeBy(1)
+        runCurrent()
+
+        assertSingleSavedHistoryList(0)
+        assertEquals(
+            listOf(0L),
+            repository.pendingOpsFlow.first()
+                .filterIsInstance<PlaybackHistoryPendingOp.Upsert>()
+                .map { it.positionMillis },
+        )
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `reports once per minute while playing`() = runTest {
+        val (testScope, suite, state) = createCase(periodicReportInterval = 1.minutes)
+        advanceUntilIdle()
+
+        loadSelectedMedia(suite, state, advanceUntilSettled = false)
+        runCurrent()
+        assertEquals(emptyList(), repository.pendingOpsFlow.first())
+
+        advanceTimeBy(5_000)
+        runCurrent()
+
+        assertEquals(
+            listOf(0L),
+            repository.pendingOpsFlow.first()
+                .filterIsInstance<PlaybackHistoryPendingOp.Upsert>()
+                .map { it.positionMillis },
+        )
+
+        suite.player.seekTo(2000)
+        advanceTimeBy(59_999)
+        runCurrent()
+        assertEquals(1, repository.pendingOpsFlow.first().size)
+
+        advanceTimeBy(1)
+        runCurrent()
+        assertEquals(
+            listOf(2000L),
+            repository.pendingOpsFlow.first()
+                .filterIsInstance<PlaybackHistoryPendingOp.Upsert>()
+                .map { it.positionMillis },
+        )
+
+        suite.player.playbackState.value = PlaybackState.PAUSED
+        runCurrent()
+        testScope.cancel()
+    }
 
     @Test
     fun `does nothing initially`() = runTest {

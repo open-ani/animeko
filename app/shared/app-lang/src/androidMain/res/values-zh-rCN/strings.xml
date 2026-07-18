@@ -271,6 +271,8 @@
     <string name="settings_player_fullscreen_only_in_controller">不显示</string>
     <string name="settings_player_fullscreen_button">竖屏模式下显示全屏按钮</string>
     <string name="settings_player_fullscreen_button_description">总是显示播放器右下角的切换全屏按钮，方便切换</string>
+    <string name="settings_player_frame_preview">显示进度条画面预览</string>
+    <string name="settings_player_frame_preview_description">悬停或拖动进度条时，显示目标位置的视频画面</string>
     <string name="settings_player_enable_regex_filter">启用正则弹幕过滤器</string>
     <string name="settings_player_pause_on_edit_danmaku">发送弹幕时自动暂停播放</string>
     <string name="settings_player_auto_mark_done">观看 90% 后自动标记为看过</string>
@@ -725,10 +727,11 @@
     <string name="video_player_speed">倍速</string>
     <string name="video_player_skip_op_ed">即将跳过 OP 或 ED</string>
     <string name="video_player_cancel">取消</string>
+    <string name="video_player_release_to_cancel">松开手指取消</string>
     <string name="video_player_stats_title">播放信息</string>
     <string name="video_player_stats_title_show">显示播放信息</string>
     <string name="video_player_stats_title_hide">隐藏播放信息</string>
-    <string name="video_player_stats_hide_hint">Tab 隐藏</string>
+    <string name="video_player_stats_hide_hint">按 I 隐藏</string>
     <string name="video_player_stats_backend">后端</string>
     <string name="video_player_stats_state">状态</string>
     <string name="video_player_stats_media_title">标题</string>
@@ -846,6 +849,9 @@
     <string name="cache_management_exit_selection">退出选择</string>
     <string name="cache_management_select_all">选择所有</string>
     <string name="cache_management_delete_selected">删除所选</string>
+    <string name="cache_management_resume_selected">继续</string>
+    <string name="cache_management_pause_selected">暂停</string>
+    <string name="cache_management_selection_summary">已选 %1$d 项 · 共 %2$s</string>
     <string name="cache_management_enter_selection_mode">进入选择模式</string>
     <string name="cache_management_delete_cache_title">删除缓存</string>
     <string name="cache_management_delete_cache_confirmation">删除后不可恢复，确认删除吗？</string>

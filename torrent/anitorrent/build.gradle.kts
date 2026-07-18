@@ -56,7 +56,8 @@ fun getAnitorrentTriple(): String? {
         Os.Windows -> {
             when (getArch()) {
                 Arch.X86_64 -> "windows-x64"
-                else -> error("Unsupported architecture: ${getArch()}")
+                // Windows ARM64 builds intentionally ship without the local BT engine.
+                Arch.AARCH64 -> null
             }
         }
 

@@ -114,6 +114,24 @@ class SelectorMediaSource(
         val FactoryId = FactoryId("web-selector")
 
         private val REGEX_OVA_TAILING = Regex(".+OVA\\s*\\d*$", RegexOption.IGNORE_CASE)
+
+        /**
+         * 按 cookie 名称合并多组 cookies: 后面列表中的同名 cookie 覆盖前面的, 顺序为名称首次出现的顺序.
+         *
+         * 这是 [matcher] 向 WebView 注入 cookies 时的合并语义.
+         * 公开给外部工具 (如 `tools/datasource-test-mcp`) 复用, 以保证与 App 行为一致.
+         */
+        fun mergeCookies(vararg cookieLists: List<String>): List<String> {
+            val merged = linkedMapOf<String, String>()
+            for (cookie in cookieLists.asSequence().flatten()) {
+                val trimmed = cookie.trim()
+                if (trimmed.isBlank()) continue
+                val name = trimmed.substringBefore("=").trim()
+                if (name.isBlank()) continue
+                merged[name] = trimmed
+            }
+            return merged.values.toList()
+        }
     }
 
     private val arguments =
@@ -428,17 +446,6 @@ class SelectorMediaSource(
         }
     }
 
-    private fun mergeCookies(vararg cookieLists: List<String>): List<String> {
-        val merged = linkedMapOf<String, String>()
-        for (cookie in cookieLists.asSequence().flatten()) {
-            val trimmed = cookie.trim()
-            if (trimmed.isBlank()) continue
-            val name = trimmed.substringBefore("=").trim()
-            if (name.isBlank()) continue
-            merged[name] = trimmed
-        }
-        return merged.values.toList()
-    }
 }
 
 /**

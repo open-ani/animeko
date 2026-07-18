@@ -74,6 +74,41 @@ class EpisodePlayHistoryRepositoryTest {
     }
 
     @Test
+    fun `successive saves keep only the latest pending op for each episode`() = runTest {
+        val repository = createRepository()
+
+        repository.saveOrUpdate(
+            episodeId = 1,
+            positionMillis = 20_000,
+            subjectId = 10,
+            durationMillis = 100_000,
+        )
+        now = 200
+        repository.saveOrUpdate(
+            episodeId = 1,
+            positionMillis = 40_000,
+            subjectId = 10,
+            durationMillis = 100_000,
+        )
+        repository.saveOrUpdate(
+            episodeId = 2,
+            positionMillis = 30_000,
+            subjectId = 20,
+            durationMillis = 100_000,
+        )
+
+        val pendingOps = repository.pendingOpsFlow.first()
+        assertEquals(2, pendingOps.size)
+        assertEquals(
+            mapOf(1 to 40_000L, 2 to 30_000L),
+            pendingOps.associate { op ->
+                val upsert = op as PlaybackHistoryPendingOp.Upsert
+                upsert.episodeId to upsert.positionMillis
+            },
+        )
+    }
+
+    @Test
     fun `legacy migration stores records and enqueues pending upsert ops`() = runTest {
         val repository = createRepository(
             EpisodeHistories(
@@ -131,8 +166,9 @@ class EpisodePlayHistoryRepositoryTest {
         assertNull(repository.getPositionMillisByEpisodeId(1))
 
         val pendingOps = repository.pendingOpsFlow.first()
-        assertTrue(pendingOps.last() is PlaybackHistoryPendingOp.Delete)
-        assertEquals(1, pendingOps.last().episodeId)
+        assertEquals(1, pendingOps.size)
+        assertTrue(pendingOps.single() is PlaybackHistoryPendingOp.Delete)
+        assertEquals(1, pendingOps.single().episodeId)
     }
 
     @Test

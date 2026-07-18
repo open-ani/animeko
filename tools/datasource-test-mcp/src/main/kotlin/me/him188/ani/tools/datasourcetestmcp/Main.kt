@@ -21,8 +21,9 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import me.him188.ani.app.domain.mediasource.web.DefaultSelectorMediaSourceEngine
 import me.him188.ani.tools.datasourcetestmcp.info.AniInfoService
-import me.him188.ani.tools.datasourcetestmcp.mcp.StdioMcpServer
+import me.him188.ani.tools.datasourcetestmcp.mcp.McpRequestHandler
 import me.him188.ani.tools.datasourcetestmcp.mcp.buildToolRegistrations
+import me.him188.ani.tools.datasourcetestmcp.mcp.runHttpMcpServer
 import me.him188.ani.tools.datasourcetestmcp.resolver.WebViewVideoResolverEngine
 import me.him188.ani.tools.datasourcetestmcp.selector.SelectorEngineService
 import me.him188.ani.tools.datasourcetestmcp.source.DataSourceRegistry
@@ -32,14 +33,14 @@ import me.him188.ani.tools.datasourcetestmcp.video.MpvVideoAnalyzer
 import me.him188.ani.tools.datasourcetestmcp.video.VideoProbe
 import me.him188.ani.tools.datasourcetestmcp.video.VideoService
 import me.him188.ani.utils.ktor.asScopedHttpClient
-import java.io.FileDescriptor
-import java.io.FileOutputStream
-import java.io.PrintStream
 import kotlin.time.Duration.Companion.seconds
 
-fun main() {
-    val protocolOutput = System.out
-    System.setOut(PrintStream(FileOutputStream(FileDescriptor.err), true, Charsets.UTF_8))
+private const val DEFAULT_HOST = "127.0.0.1"
+private const val DEFAULT_PORT = 8264
+
+fun main(args: Array<String>) {
+    val host = cliOption(args, "--host") ?: DEFAULT_HOST
+    val port = cliOption(args, "--port")?.toIntOrNull() ?: DEFAULT_PORT
 
     val json = Json {
         ignoreUnknownKeys = true
@@ -71,7 +72,7 @@ fun main() {
         }
         expectSuccess = true
     }
-    try {
+    client.use { client ->
         val scopedClient = client.asScopedHttpClient()
         val resolver = WebViewVideoResolverEngine()
         val probe = VideoProbe(client)
@@ -97,9 +98,7 @@ fun main() {
             probe = probe,
         )
 
-        StdioMcpServer(
-            input = System.`in`,
-            output = protocolOutput,
+        val handler = McpRequestHandler(
             registrations = buildToolRegistrations(
                 json = json,
                 aniInfoService = aniInfoService,
@@ -108,8 +107,17 @@ fun main() {
                 sourceTestService = sourceTestService,
             ),
             json = json,
-        ).run()
-    } finally {
-        client.close()
+        )
+        println("animeko-datasource-test-mcp: starting HTTP MCP server at http://$host:$port/mcp")
+        runHttpMcpServer(host = host, port = port, handler = handler)
     }
+}
+
+/** 支持 `--port 8264` 与 `--port=8264` 两种写法 */
+private fun cliOption(args: Array<String>, name: String): String? {
+    args.forEachIndexed { index, arg ->
+        if (arg == name) return args.getOrNull(index + 1)
+        if (arg.startsWith("$name=")) return arg.substringAfter('=')
+    }
+    return null
 }

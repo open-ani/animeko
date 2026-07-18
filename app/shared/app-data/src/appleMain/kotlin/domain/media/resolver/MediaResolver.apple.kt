@@ -30,6 +30,7 @@ import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.utils.ktor.UrlHelpers
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import org.openani.mediamp.source.MediaData
 import platform.CoreGraphics.CGRectMake
 import platform.Foundation.NSHTTPCookie
@@ -171,9 +172,13 @@ class IosWebViewVideoExtractor(
                         userContentController: WKUserContentController,
                         didReceiveScriptMessage: WKScriptMessage
                     ) {
-                        val body = didReceiveScriptMessage.body.toString()
-                        logger.info { "JS -> Native: $body" }
-                        currentHandler?.handleInterceptedUrl(body)
+                        try {
+                            val body = didReceiveScriptMessage.body.toString()
+                            logger.info { "JS -> Native: $body" }
+                            currentHandler?.handleInterceptedUrl(body)
+                        } catch (e: Throwable) {
+                            logger.warn(e) { "Error in script message handler" }
+                        }
                     }
                 },
                 name = "AniIntercept",
@@ -183,30 +188,46 @@ class IosWebViewVideoExtractor(
             val injectionScript = """
             console.log("[AniIntercept] Script injected at documentStart.");
             (function() {
+                function reportUrl(value) {
+                    try {
+                        let url;
+                        if (typeof value === 'string') {
+                            url = value;
+                        } else if (typeof Request !== 'undefined' && value instanceof Request) {
+                            url = value.url;
+                        } else if (typeof URL !== 'undefined' && value instanceof URL) {
+                            url = value.href;
+                        } else {
+                            url = String(value);
+                        }
+                        window.webkit.messageHandlers.AniIntercept.postMessage(url);
+                    } catch (error) {
+                        console.warn("[AniIntercept] Failed to report URL:", error);
+                    }
+                }
+
                 const oldFetch = window.fetch;
                 window.fetch = function() {
                     const url = arguments[0];
                     console.log("[AniIntercept] fetch called:", url);
-                    window.webkit.messageHandlers.AniIntercept.postMessage(url);
+                    reportUrl(url);
                     return oldFetch.apply(this, arguments);
                 };
 
                 const oldOpen = XMLHttpRequest.prototype.open;
                 XMLHttpRequest.prototype.open = function(method, url) {
                     console.log("[AniIntercept] XHR open:", url);
-                    window.webkit.messageHandlers.AniIntercept.postMessage(url);
+                    reportUrl(url);
                     return oldOpen.apply(this, arguments);
                 };
-            })();
-            
-            (function() {
-              const origSetSrc = HTMLMediaElement.prototype.setAttribute;
-              HTMLMediaElement.prototype.setAttribute = function(name, value) {
-                if (name === 'src') {
-                  window.webkit.messageHandlers.AniIntercept.postMessage(value);
-                }
-                return origSetSrc.apply(this, arguments);
-              };
+
+                const origSetSrc = HTMLMediaElement.prototype.setAttribute;
+                HTMLMediaElement.prototype.setAttribute = function(name, value) {
+                    if (name === 'src') {
+                        reportUrl(value);
+                    }
+                    return origSetSrc.apply(this, arguments);
+                };
             })();
         """.trimIndent()
 
@@ -276,14 +297,25 @@ class IosWebViewVideoExtractor(
 
         private val handledUrls = mutableSetOf<String>()
 
-        fun handleInterceptedUrl(url: String) = doHandleUrl(url)
+        fun handleInterceptedUrl(url: String): WKNavigationActionPolicy? {
+            return try {
+                doHandleUrl(url)
+            } catch (e: Throwable) {
+                logger.warn(e) { "Failed to handle intercepted URL: $url" }
+                null
+            }
+        }
 
         // Shared logic for any new request we want to evaluate
-        private fun doHandleUrl(rawUrl: String): WKNavigationActionPolicy {
+        private fun doHandleUrl(rawUrl: String): WKNavigationActionPolicy? {
             if (deferred.isCompleted) return WKNavigationActionPolicy.WKNavigationActionPolicyAllow
 
             val currentWebViewUrl = webView.URL?.absoluteString ?: pageUrl
-            val url = UrlHelpers.computeAbsoluteUrl(currentWebViewUrl, rawUrl)
+            val url = UrlHelpers.computeAbsoluteUrlOrNull(currentWebViewUrl, rawUrl)
+            if (url == null) {
+                logger.warn { "Ignoring invalid intercepted URL: $rawUrl (base: $currentWebViewUrl)" }
+                return null
+            }
 
             if (handledUrls.contains(url)) {
                 logger.info { "Already handled url: $url" }

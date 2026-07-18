@@ -23,6 +23,11 @@ interface PermissionManager {
     suspend fun requestNotificationPermission(context: ContextMP): Boolean
 
     /**
+     * Android 9 及以下请求写入公共外部存储空间的权限。
+     */
+    suspend fun requestWriteExternalStoragePermission(context: ContextMP): Boolean
+
+    /**
      * 打开系统设置手动授权通知权限
      */
     fun openSystemNotificationSettings(context: ContextMP)
@@ -39,6 +44,10 @@ object GrantedPermissionManager : PermissionManager {
     }
     
     override suspend fun requestNotificationPermission(context: ContextMP): Boolean {
+        return true
+    }
+
+    override suspend fun requestWriteExternalStoragePermission(context: ContextMP): Boolean {
         return true
     }
 

@@ -20,6 +20,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import me.him188.ani.app.domain.mediasource.web.DefaultSelectorMediaSourceEngine
+import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchQuery
@@ -688,7 +689,8 @@ class SelectorWebVideoMatcher(
 
     override fun patchConfig(config: WebViewConfig): WebViewConfig {
         val configuredCookies = matchVideoConfig.cookies.lines().filter { it.isNotBlank() }
-        return config.copy(cookies = (config.cookies + configuredCookies).distinct())
+        // 复用 SelectorMediaSource.matcher 的合并实现: 按 cookie 名去重, 后面的覆盖前面的
+        return config.copy(cookies = SelectorMediaSource.mergeCookies(config.cookies, configuredCookies))
     }
 }
 

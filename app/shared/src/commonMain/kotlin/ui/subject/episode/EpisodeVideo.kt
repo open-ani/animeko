@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.Analytics
@@ -112,24 +113,30 @@ import me.him188.ani.app.videoplayer.ui.VideoPlayer
 import me.him188.ani.app.videoplayer.ui.VideoScaffold
 import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.gesture.GestureFamily
+import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState
 import me.him188.ani.app.videoplayer.ui.gesture.GestureLock
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.LockableVideoGestureHost
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.ScreenshotButton
+import me.him188.ani.app.videoplayer.ui.gesture.SwipeSeekerConfig
+import me.him188.ani.app.videoplayer.ui.gesture.isInCancelArea
 import me.him188.ani.app.videoplayer.ui.gesture.mouseFamily
 import me.him188.ani.app.videoplayer.ui.gesture.rememberGestureIndicatorState
 import me.him188.ani.app.videoplayer.ui.gesture.rememberSwipeSeekerState
 import me.him188.ani.app.videoplayer.ui.hasPageAsState
 import me.him188.ani.app.videoplayer.ui.progress.AudioSwitcher
+import me.him188.ani.app.videoplayer.ui.progress.MediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressIndicatorText
+import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSliderDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBar
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.SpeedSwitcher
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.VideoAspectRatioSelector
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
+import me.him188.ani.app.videoplayer.ui.progress.ProgressSliderCenteredPreviewFrame
 import me.him188.ani.app.videoplayer.ui.progress.SubtitleSwitcher
-import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressFramePreviewState
+import me.him188.ani.app.videoplayer.ui.progress.TouchSeekState
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.rememberPlayerStatsState
@@ -138,6 +145,7 @@ import me.him188.ani.app.videoplayer.ui.rememberVideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 import me.him188.ani.app.videoplayer.ui.top.SystemTime
 import me.him188.ani.utils.platform.annotations.TestOnly
+import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
 import org.jetbrains.compose.resources.stringResource
@@ -184,6 +192,7 @@ internal fun EpisodeVideoImpl(
     onToggleSidebar: (isCollapsed: Boolean) -> Unit,
     progressSliderState: PlayerProgressSliderState,
     cacheProgressInfoFlow: Flow<MediaCacheProgressInfo>,
+    framePreview: MediaProgressFramePreviewState? = null,
     audioController: LevelController,
     brightnessController: LevelController,
     playbackSpeedControllerState: PlaybackSpeedControllerState?,
@@ -218,8 +227,18 @@ internal fun EpisodeVideoImpl(
                     || anySideSheetVisible)
         }
     }
+    val indicatorState = rememberGestureIndicatorState()
+    // 桌面设备可能同时支持鼠标和触摸；当前 GestureFamily 不能按单次输入来源分流，
+    // 因此桌面端仍使用 MOUSE 分支。后续实现来源级分流时再支持桌面触摸手势。
+    // TODO: 根据触控能力与平台特性建立设备抽象，并据此选择手势策略。
+    val touchSeekState = rememberPlayerTouchSeekState(
+        enabled = gestureFamily == GestureFamily.TOUCH,
+        controllerState = playerControllerState,
+        indicatorState = indicatorState,
+    )
 
     AniTheme(darkModeOverride = DarkMode.DARK) {
+        val progressSliderColors = MediaProgressSliderDefaults.colors()
         VideoScaffold(
             expanded = expanded,
             modifier = modifier
@@ -302,7 +321,6 @@ internal fun EpisodeVideoImpl(
                 }
 
                 val indicatorTasker = rememberUiMonoTasker()
-                val indicatorState = rememberGestureIndicatorState()
                 LockableVideoGestureHost(
                     playerControllerState,
                     swipeSeekerState,
@@ -371,8 +389,17 @@ internal fun EpisodeVideoImpl(
                     }
                 }
             },
+            touchSeekState = touchSeekState,
+            framePreviewOverlay = {
+                if (!expanded) {
+                    ProgressSliderCenteredPreviewFrame(
+                        frame = framePreview?.frame,
+                        borderColor = progressSliderColors.previewTimeBackgroundColor,
+                    )
+                }
+            },
             rhsButtons = {
-                if (expanded && LocalPlatform.current.isDesktop()) {
+                if (expanded && (LocalPlatform.current.isDesktop() || LocalPlatform.current.isAndroid())) {
                     ScreenshotButton(
                         onClick = onClickScreenshot,
                     )
@@ -430,7 +457,9 @@ internal fun EpisodeVideoImpl(
                             progressSliderState,
                             cacheProgressInfoFlow = cacheProgressInfoFlow,
                             showPreviewTimeTextOnThumb = expanded,
-                            framePreview = rememberMediaProgressFramePreviewState(playerState),
+                            framePreview = framePreview,
+                            showFramePreviewInPopup = expanded,
+                            touchSeekState = touchSeekState,
                         )
                     },
                     danmakuEditor = danmakuEditor,
@@ -480,12 +509,59 @@ internal fun EpisodeVideoImpl(
                         )
                     },
                     expanded = expanded,
+                    sliderOnly = playerControllerState.visibility == ControllerVisibility.InlineSliderOnly,
                 )
             },
             detachedProgressSlider = detachedProgressSlider,
             floatingBottomEnd = { fullscreenSwitchButton() },
             rhsSheet = { sideSheets(sheetsController) },
             leftBottomTips = leftBottomTips,
+        )
+    }
+}
+
+/**
+ * 将进度条的通用触摸状态机接入播放器 UI：拖动期间保留 inline progress slider，
+ * 手指进入取消区域时持续显示取消提示。非触屏分支返回 `null`，不改变原有交互。
+ */
+@Composable
+private fun rememberPlayerTouchSeekState(
+    enabled: Boolean,
+    controllerState: PlayerControllerState,
+    indicatorState: GestureIndicatorState,
+): TouchSeekState? {
+    if (!enabled) return null
+
+    return remember(controllerState, indicatorState) {
+        // requester 和 indicator ticket 跨状态迁移保持不变，确保每次请求都由同一实例撤销。
+        val controllerRequester = Any()
+        var indicatorTicket: Int? = null
+        fun stopCancellationIndicator() {
+            indicatorTicket?.let(indicatorState::stopSeekCancellation)
+            indicatorTicket = null
+        }
+        TouchSeekState(
+            isInCancelArea = SwipeSeekerConfig.Default::isInCancelArea,
+            onStateChanged = { state ->
+                when (state) {
+                    // 手势结束：恢复控制器的正常显隐，并关闭可能存在的取消提示。
+                    TouchSeekState.State.Idle -> {
+                        controllerState.cancelRequestInlineProgressSlider(controllerRequester)
+                        stopCancellationIndicator()
+                    }
+
+                    // 正常拖动：保留 bottom bar 内正在接收触摸事件的原进度条。
+                    TouchSeekState.State.Seeking -> {
+                        controllerState.setRequestInlineProgressSlider(controllerRequester)
+                        stopCancellationIndicator()
+                    }
+
+                    // 进入取消区域：进度条保持原位，只将中央指示器切换为取消提示。
+                    TouchSeekState.State.Cancelling -> {
+                        indicatorTicket = indicatorState.startSeekCancellation()
+                    }
+                }
+            },
         )
     }
 }
@@ -714,7 +790,10 @@ private fun PreviewVideoScaffoldImpl(
             VideoAspectRatioControllerState(NoOpVideoAspectRatio, scope)
         },
         leftBottomTips = {
-            PlayerControllerDefaults.LeftBottomTips(onClick = {})
+            PlayerControllerDefaults.LeftBottomTips(
+                onClick = {},
+                modifier = Modifier.padding(if (expanded) 16.dp else 8.dp)
+            )
         },
         fullscreenSwitchButton = {
             EpisodeVideoDefaults.FloatingFullscreenSwitchButton(

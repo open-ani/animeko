@@ -16,6 +16,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -99,8 +100,25 @@ interface PlaybackHistoryDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertPendingOps(ops: List<PlaybackHistoryPendingOpEntity>): List<Long>
 
+    @Query("DELETE FROM playback_history_pending_op WHERE episodeId = :episodeId")
+    suspend fun deletePendingOpsByEpisodeId(episodeId: Int)
+
     @Query("DELETE FROM playback_history_pending_op WHERE id IN (:ids)")
     suspend fun deletePendingOpsByIds(ids: Collection<Long>)
+
+    @Transaction
+    suspend fun replacePendingOp(op: PlaybackHistoryPendingOpEntity): Long {
+        deletePendingOpsByEpisodeId(op.episodeId)
+        return insertPendingOp(op)
+    }
+
+    @Transaction
+    suspend fun replacePendingOps(ops: List<PlaybackHistoryPendingOpEntity>): List<Long> {
+        return ops.map { op ->
+            deletePendingOpsByEpisodeId(op.episodeId)
+            insertPendingOp(op)
+        }
+    }
 }
 
 fun PlaybackHistoryRecordEntity.toEpisodeHistory(): EpisodeHistory {
@@ -242,6 +260,10 @@ fun createMemoryPlaybackHistoryDao(): PlaybackHistoryDao {
 
         override suspend fun insertPendingOps(ops: List<PlaybackHistoryPendingOpEntity>): List<Long> {
             return ops.map { insertPendingOp(it) }
+        }
+
+        override suspend fun deletePendingOpsByEpisodeId(episodeId: Int) {
+            pendingOpsStore.value = pendingOpsStore.value.filterNot { it.episodeId == episodeId }
         }
 
         override suspend fun deletePendingOpsByIds(ids: Collection<Long>) {

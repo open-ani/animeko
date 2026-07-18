@@ -40,9 +40,13 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
@@ -50,6 +54,7 @@ import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.gesture.PlayerGestureHost
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBar
+import me.him188.ani.app.videoplayer.ui.progress.TouchSeekState
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 
 /**
@@ -69,6 +74,7 @@ import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
  * @param danmakuHost 为 `DanmakuHost` 留的区域
  * @param gestureHost 手势区域, 例如快进/快退, 音量调节等. See [PlayerGestureHost]
  * @param floatingMessage 悬浮消息, 例如正在缓冲. 将会对齐到中央
+ * @param framePreviewOverlay 位于整个播放器区域正中央的叠层, 不应用系统窗口边距.
  * @param rhsBar 右侧控制栏, 锁定手势等.
  * @param bottomBar [PlayerControllerBar]
  * @param expanded 当前是否处于全屏模式. 全屏时此框架会 [Modifier.fillMaxSize], 否则会限制为一个 16:9 的框.
@@ -97,8 +103,11 @@ fun VideoScaffold(
     rhsSheet: @Composable () -> Unit = {},
     leftBottomTips: @Composable () -> Unit = {},
     centerOverlay: @Composable BoxScope.() -> Unit = {},
+    framePreviewOverlay: @Composable BoxScope.() -> Unit = {},
     playerStatsOverlay: @Composable BoxScope.() -> Unit = {},
+    touchSeekState: TouchSeekState? = null,
 ) {
+    val inlineSliderOnly = controllerState.visibility == ControllerVisibility.InlineSliderOnly
     val controllerVisibility = controllerState.visibility
         .withGestureLocked(gestureLocked)
         .withExpanded(expanded)
@@ -111,6 +120,9 @@ fun VideoScaffold(
     ) { // 16:9 box
         Box(
             Modifier
+                .onGloballyPositioned {
+                    touchSeekState?.containerCoordinates = it
+                }
                 .then(
                     if (!maintainAspectRatio) {
                         Modifier.fillMaxSize()
@@ -159,7 +171,7 @@ fun VideoScaffold(
                 Column(Modifier.fillMaxSize().background(Color.Transparent)) {
                     // 顶部控制栏: 返回键, 标题, 设置
                     me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility(
-                        visible = controllerVisibility.topBar,
+                        visible = controllerVisibility.topBar || inlineSliderOnly,
                         enter = enterTransition,
                         exit = exitTransition,
                     ) {
@@ -179,6 +191,7 @@ fun VideoScaffold(
 
                             Column(
                                 Modifier
+                                    .keepLayoutWhenHidden(inlineSliderOnly)
                                     .hoverToRequestAlwaysOn(alwaysOnRequester)
                                     .fillMaxWidth(),
                             ) {
@@ -204,6 +217,7 @@ fun VideoScaffold(
 
                             Box(
                                 Modifier.matchParentSize()
+                                    .keepLayoutWhenHidden(inlineSliderOnly)
                                     .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Top))
                                     .padding(top = 8.dp),
                                 contentAlignment = Alignment.TopCenter,
@@ -345,13 +359,32 @@ fun VideoScaffold(
                     }
                 }
             }
-
+            // FramePreview popup for compact layout
+            Box(
+                Modifier.matchParentSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                framePreviewOverlay()
+            }
             // 右侧 sheet
             Box(Modifier.matchParentSize().windowInsetsPadding(contentWindowInsets)) {
                 rhsSheet()
             }
         }
     }
+}
+
+internal fun Modifier.keepLayoutWhenHidden(hidden: Boolean): Modifier {
+    if (!hidden) return this
+    return alpha(0f)
+        .clearAndSetSemantics { }
+        .pointerInput(Unit) {
+            awaitPointerEventScope {
+                while (true) {
+                    awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                }
+            }
+        }
 }
 
 

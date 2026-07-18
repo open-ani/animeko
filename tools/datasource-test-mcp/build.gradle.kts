@@ -40,6 +40,8 @@ dependencies {
     implementation(libs.ktor.client.okhttp)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.cio)
 
     // probe_video: 用与桌面 App 相同的 VLC 播放器真实播放视频
     implementation(libs.mediamp.api)
@@ -54,6 +56,7 @@ dependencies {
     testImplementation(libs.junit5.jupiter.api)
     testImplementation(libs.junit5.jupiter.params)
     testImplementation(libs.ktor.client.mock)
+    testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlinx.coroutines.test)
 }
 

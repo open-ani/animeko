@@ -12,8 +12,8 @@ package me.him188.ani.app.domain.player.extension
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -28,11 +28,16 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.PlaybackState
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * 记忆播放进度.
  *
  * 在以下情况时保存播放进度:
+ * - 开始或恢复播放 5 秒后
+ * - 播放中每分钟
  * - 切换数据源
  * - 暂停
  * - 播放完成
@@ -40,6 +45,8 @@ import org.openani.mediamp.PlaybackState
 class RememberPlayProgressExtension(
     private val context: PlayerExtensionContext,
     koin: Koin,
+    private val periodicReportInterval: Duration = 1.minutes,
+    private val initialReportDelay: Duration = 5.seconds,
 ) : PlayerExtension(name = "SaveProgressExtension") {
     private val playProgressRepository: EpisodePlayHistoryRepository by koin.inject()
     private val latestInfoBundleMutex = Mutex()
@@ -75,39 +82,44 @@ class RememberPlayProgressExtension(
             }
         }
 
-        backgroundTaskScope.launch("PlayProgressLoader") {
-            val player = context.player
-            var haveResumedOnce = false
-
-            player.playbackState
-                .filter { it == PlaybackState.PLAYING || it == PlaybackState.READY }
-                .collect {
-                    if (it == PlaybackState.READY) {
-                        haveResumedOnce = false
-                        return@collect
-                    }
-
-                    if (haveResumedOnce) return@collect
-
-                    val positionMillis = playProgressRepository.getPositionMillisByEpisodeId(episodeSession.episodeId)
-                    if (positionMillis == null) {
-                        logger.info { "Did not find saved position" }
-                        return@collect
-                    }
-
-                    logger.info { "Loaded saved position: $positionMillis, seeking to $positionMillis" }
-                    withContext(Dispatchers.Main + NonCancellable) { // android must call in main thread
-                        player.seekTo(positionMillis)
-                    }
-
-                    haveResumedOnce = true
-                }
-        }
-
         backgroundTaskScope.launch("PlaybackStateListener") {
             val player = context.player
+            var haveResumedOnce = false
             player.playbackState.collectLatest { playbackState ->
                 when (playbackState) {
+                    PlaybackState.READY -> {
+                        haveResumedOnce = false
+                    }
+
+                    PlaybackState.PLAYING -> {
+                        // Restore immediately, but only report after PLAYING has remained active for 5 seconds.
+                        withContext(NonCancellable) {
+                            if (!haveResumedOnce) {
+                                val positionMillis =
+                                    playProgressRepository.getPositionMillisByEpisodeId(episodeSession.episodeId)
+                                if (positionMillis == null) {
+                                    logger.info { "Did not find saved position" }
+                                } else {
+                                    logger.info { "Loaded saved position: $positionMillis, seeking to $positionMillis" }
+                                    withContext(Dispatchers.Main) { // android must call in main thread
+                                        player.seekTo(positionMillis)
+                                    }
+                                    haveResumedOnce = true
+                                }
+                            }
+                        }
+
+                        delay(initialReportDelay)
+                        savePlayProgressOrRemove(episodeSession, allowZeroPosition = true)
+
+                        if (periodicReportInterval != Duration.INFINITE) {
+                            while (true) {
+                                delay(periodicReportInterval)
+                                savePlayProgressOrRemove(episodeSession, allowZeroPosition = true)
+                            }
+                        }
+                    }
+
                     PlaybackState.PAUSED -> {
                         mediaLoaded.await() // 播放器开始播放了一次之后再保存状态
                         savePlayProgressOrRemove(episodeSession)
@@ -137,8 +149,9 @@ class RememberPlayProgressExtension(
 
     private suspend fun savePlayProgressOrRemove(
         episodeSession: EpisodeSession,
+        allowZeroPosition: Boolean = false,
     ) {
-        savePlayProgressOrRemove(episodeSession.episodeId, episodeSession)
+        savePlayProgressOrRemove(episodeSession.episodeId, episodeSession, allowZeroPosition)
     }
 
     private suspend fun savePlayProgressOrRemove(
@@ -150,6 +163,7 @@ class RememberPlayProgressExtension(
     private suspend fun savePlayProgressOrRemove(
         episodeId: Int,
         episodeSession: EpisodeSession?,
+        allowZeroPosition: Boolean = false,
     ) {
         val player = context.player
         val playbackState = player.playbackState.value
@@ -179,7 +193,7 @@ class RememberPlayProgressExtension(
                     }
                 }
 
-                if (currentPositionMillis <= 0L) {
+                if (currentPositionMillis < 0L || (currentPositionMillis == 0L && !allowZeroPosition)) {
                     return
                 }
 
