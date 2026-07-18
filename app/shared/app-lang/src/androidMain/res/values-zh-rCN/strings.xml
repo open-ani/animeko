@@ -286,8 +286,10 @@
     <string name="settings_player_auto_switch_media_on_error">播放失败时自动切换资源</string>
     <string name="settings_player_experimental_hls_segment_filter">过滤贴片广告（实验性）</string>
     <string name="settings_player_experimental_hls_segment_filter_description">尝试过滤部分在线源插入的贴片广告。只对以独立片段插入的广告有效，识别错误时可能跳过正常内容。</string>
-    <string name="settings_player_long_press_fast_forward_speed">长按快进速度</string>
-    <string name="settings_player_long_press_fast_forward_speed_description">长按快进时的速度倍率</string>
+    <string name="settings_player_long_press_fast_forward_speed">长按播放速度</string>
+    <string name="settings_player_long_press_fast_forward_speed_description">长按时使用的播放倍率</string>
+    <string name="settings_player_playback_speed_range">倍速范围</string>
+    <string name="settings_player_playback_speed_range_description">影响播放页倍速滑块和长按播放速度的可调范围</string>
 
     <!-- Version Expired Overlay -->
     <string name="settings_update_version_expired_title">版本过期</string>

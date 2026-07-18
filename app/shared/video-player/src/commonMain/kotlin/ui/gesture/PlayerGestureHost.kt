@@ -84,6 +84,7 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
 import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.utils.fixToString
+import me.him188.ani.app.utils.formatSpeedValue
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
@@ -91,6 +92,7 @@ import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.BRIG
 import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.FAST_BACKWARD
 import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.FAST_FORWARD
 import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.PAUSED_ONCE
+import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.PLAYBACK_SPEED
 import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.RESUMED_ONCE
 import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.SEEKING
 import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.VOLUME
@@ -122,6 +124,7 @@ class GestureIndicatorState {
         SEEKING,
         FAST_FORWARD,
         FAST_BACKWARD,
+        PLAYBACK_SPEED,
     }
 
     internal var visible: Boolean by mutableStateOf(false)
@@ -129,6 +132,7 @@ class GestureIndicatorState {
     internal var progressValue: Float by mutableFloatStateOf(0f)
     internal var deltaSeconds: Int by mutableIntStateOf(0)
     internal var seekCancelled: Boolean by mutableStateOf(false)
+    internal var playbackSpeed: Float by mutableFloatStateOf(1f)
     private var counter: Int = 0
 
     private inline fun startShow(
@@ -191,6 +195,13 @@ class GestureIndicatorState {
     @UiThread
     suspend fun showBrightnessRange(currentRatio: Float) {
         show(BRIGHTNESS, setup = { progressValue = currentRatio }) {
+            delay(SHORT)
+        }
+    }
+
+    @UiThread
+    suspend fun showPlaybackSpeed(speed: Float) {
+        show(PLAYBACK_SPEED, setup = { playbackSpeed = speed }) {
             delay(SHORT)
         }
     }
@@ -372,6 +383,11 @@ fun GestureIndicator(
 
                         FAST_BACKWARD -> {
                             Icon(Icons.Rounded.FastRewind, null, Modifier.size(iconSize))
+                        }
+
+                        PLAYBACK_SPEED -> {
+                            Icon(Icons.Rounded.FastForward, null, Modifier.size(iconSize))
+                            Text("${state.playbackSpeed.formatSpeedValue()}x", maxLines = 1)
                         }
 
                         null -> {}
@@ -558,7 +574,13 @@ fun PlayerGestureHost(
             .playerKeyboardShortcuts(
                 seekerState = seekerState,
                 fastSkipState = fastSkipState,
-                playbackSpeedControllerState = playbackSpeedControllerState,
+                currentPlaybackSpeed = playbackSpeedControllerState?.currentSpeed,
+                playbackSpeedRange = playbackSpeedControllerState?.speedRange
+                    ?: PlaybackSpeedControllerState.DEFAULT_SPEED_RANGE,
+                onPlaybackSpeedChanged = {
+                    playbackSpeedControllerState?.commitSpeed(it)
+                    indicatorTasker.launch { indicatorState.showPlaybackSpeed(it) }
+                },
                 volumeEnabled = !useMediaAudioController || audioLevelController != null,
                 onVolumeUp = { fineAdjustment ->
                     if (useMediaAudioController) {

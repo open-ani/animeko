@@ -106,7 +106,6 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeSelectorState
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
-import me.him188.ani.app.videoplayer.ui.NoOpPlaybackSpeedController
 import me.him188.ani.app.videoplayer.ui.NoOpVideoAspectRatio
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
@@ -458,7 +457,10 @@ internal fun EpisodeVideoImpl(
                         }
                     },
                     progressIndicator = {
-                        MediaProgressIndicatorText(progressSliderState)
+                        MediaProgressIndicatorText(
+                            progressSliderState,
+                            playbackSpeedState = playbackSpeedControllerState,
+                        )
                     },
                     progressSlider = {
                         PlayerControllerDefaults.MediaProgressSlider(
@@ -798,9 +800,7 @@ private fun PreviewVideoScaffoldImpl(
         cacheProgressInfoFlow = cacheProgressInfoFlow,
         audioController = NoOpLevelController,
         brightnessController = NoOpLevelController,
-        playbackSpeedControllerState = remember {
-            PlaybackSpeedControllerState(NoOpPlaybackSpeedController, scope = scope)
-        },
+        playbackSpeedControllerState = null,
         videoAspectRatioControllerState = remember {
             VideoAspectRatioControllerState(NoOpVideoAspectRatio, scope)
         },

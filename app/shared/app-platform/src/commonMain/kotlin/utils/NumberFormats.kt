@@ -1,6 +1,11 @@
 package me.him188.ani.app.utils
 
+import me.him188.ani.utils.platform.format2f
 import me.him188.ani.utils.serialization.BigNum
+
+fun Float.formatSpeedValue(): String = String.format2f(this).let {
+    it.padEnd(it.indexOf('.') + 3, '0')
+}
 
 fun Int.fixToString(length: Int, prefix: Char = '0'): String {
     val str = this.toString()

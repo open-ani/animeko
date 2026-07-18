@@ -1020,8 +1020,18 @@ private fun EpisodeVideo(
                 platformComponents.brightnessManager?.asLevelController() ?: NoOpLevelController
             }
         }.value,
-        playbackSpeedControllerState = remember {
-            vm.player.features[PlaybackSpeed]?.let { PlaybackSpeedControllerState(it, scope = scope) }
+        playbackSpeedControllerState = run {
+            val playbackSpeed = vm.player.features[PlaybackSpeed]
+            remember(playbackSpeed) {
+                playbackSpeed?.let {
+                    PlaybackSpeedControllerState(
+                        playbackSpeed = it,
+                        rangeProvider = { vm.playbackSpeedRange },
+                        onCommitSpeed = { speed -> vm.setPlaybackSpeed(speed) },
+                        scope = scope,
+                    )
+                }
+            }
         },
         videoAspectRatioControllerState = remember {
             vm.player.features[VideoAspectRatio]?.let { VideoAspectRatioControllerState(it, scope = scope) }

@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -62,6 +63,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldColors
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -97,6 +100,7 @@ import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.SteppedSlider
 import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
@@ -107,12 +111,15 @@ import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.keepLayoutWhenHidden
 import me.him188.ani.app.videoplayer.ui.renderAspectRatioMode
 import me.him188.ani.app.videoplayer.ui.top.needWorkaroundForFocusManager
+import me.him188.ani.app.utils.formatSpeedValue
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.*
 
 const val TAG_SELECT_EPISODE_ICON_BUTTON = "SelectEpisodeIconButton"
 const val TAG_SPEED_SWITCHER_TEXT_BUTTON = "SpeedSwitcherTextButton"
 const val TAG_SPEED_SWITCHER_DROPDOWN_MENU = "SpeedSwitcherDropdownMenu"
+const val TAG_SPEED_SWITCHER_SLIDER = "SpeedSwitcherSlider"
+const val TAG_SPEED_SWITCHER_VALUE_INDICATOR = "SpeedSwitcherValueIndicator"
 const val TAG_DANMAKU_ICON_BUTTON = "DanmakuIconButton"
 const val TAG_VIDEO_ASPECT_RATIO_SELECTOR_TEXT_BUTTON = "VideoAspectRatioTextButton"
 const val TAG_VIDEO_ASPECT_RATIO_SELECTOR_DROPDOWN_MENU = "VideoAspectRatioDropdownMenu"
@@ -489,33 +496,120 @@ object PlayerControllerDefaults {
     }
 
     /**
-     * Set 1x, 2x playback speed.
-     * @param optionsProvider The options to choose from. Note that when the value changes, it will not reflect in the UI.
+     * 当前倍速入口与 Slider 弹层.
+     *
+     * 入口始终显示规范化后的当前值 (固定两位小数); 弹层只有一条水平 Slider,
+     * 拖动期间实时预览, 松手后提交最终值.
      */
     @Composable
     fun SpeedSwitcher(
-        playbackSpeedControllerState: PlaybackSpeedControllerState,
+        state: PlaybackSpeedControllerState,
         modifier: Modifier = Modifier,
         onExpandedChanged: (expanded: Boolean) -> Unit = {},
     ) {
-        return OptionsSwitcher(
-            value = playbackSpeedControllerState.currentIndex,
-            onValueChange = { playbackSpeedControllerState.setSpeed(it) },
-            optionsProvider = { playbackSpeedControllerState.speedList.indices.toList() },
-            renderValue = { Text(remember(it) { "${playbackSpeedControllerState.speedList[it]}x" }) },
-            renderValueExposed = {
-                val speedValue = playbackSpeedControllerState.speedList[it]
-                val speedText = stringResource(Lang.video_player_speed)
-                Text(remember(speedValue, speedText) { if (speedValue == 1.0f) speedText else """${speedValue}x""" })
-            },
-            modifier,
-            properties = PlatformPopupProperties(
-                clippingEnabled = false,
-            ),
-            textButtonTestTag = TAG_SPEED_SWITCHER_TEXT_BUTTON,
-            dropdownMenuTestTag = TAG_SPEED_SWITCHER_DROPDOWN_MENU,
+        SpeedSwitcher(
+            currentSpeed = state.currentSpeed,
+            speedRange = state.speedRange,
+            onPreviewSpeed = state::previewSpeed,
+            onCommitSpeed = state::commitSpeed,
+            modifier = modifier,
             onExpandedChanged = onExpandedChanged,
         )
+    }
+
+    @Composable
+    fun SpeedSwitcher(
+        currentSpeed: Float,
+        speedRange: ClosedFloatingPointRange<Float>,
+        onPreviewSpeed: (Float) -> Unit,
+        onCommitSpeed: (Float) -> Unit,
+        modifier: Modifier = Modifier,
+        onExpandedChanged: (expanded: Boolean) -> Unit = {},
+    ) {
+        var expanded by rememberSaveable { mutableStateOf(false) }
+        fun setExpanded(value: Boolean) {
+            expanded = value
+            onExpandedChanged(value)
+        }
+
+        Box(modifier, contentAlignment = Alignment.Center) {
+            SpeedSwitcherButton(
+                speed = currentSpeed,
+                onClick = { setExpanded(true) },
+            )
+
+            if (expanded) {
+                SpeedSliderPopup(
+                    currentSpeed,
+                    speedRange,
+                    onPreviewSpeed,
+                    onCommitSpeed,
+                    onDismissRequest = { setExpanded(false) },
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun SpeedSwitcherButton(
+        speed: Float,
+        onClick: () -> Unit,
+    ) {
+        val speedText = stringResource(Lang.video_player_speed)
+        TextButton(
+            onClick,
+            colors = ButtonDefaults.textButtonColors(contentColor = LocalContentColor.current),
+            modifier = Modifier.testTag(TAG_SPEED_SWITCHER_TEXT_BUTTON),
+        ) {
+            Text(remember(speed, speedText) { if (speed == 1.0f) speedText else """${speed.formatSpeedValue()}x""" })
+        }
+    }
+
+    @Composable
+    private fun SpeedSliderPopup(
+        currentSpeed: Float,
+        speedRange: ClosedFloatingPointRange<Float>,
+        onPreviewSpeed: (Float) -> Unit,
+        onCommitSpeed: (Float) -> Unit,
+        onDismissRequest: () -> Unit,
+    ) {
+        Popup(
+            popupPositionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                positioning = TooltipAnchorPosition.Above,
+                spacingBetweenTooltipAndAnchor = 8.dp,
+            ),
+            onDismissRequest = onDismissRequest,
+            properties = PlatformPopupProperties(focusable = true, clippingEnabled = false),
+        ) {
+            AniTheme(darkModeOverride = DarkMode.DARK) {
+                Surface(
+                    modifier = Modifier
+                        .testTag(TAG_SPEED_SWITCHER_DROPDOWN_MENU)
+                        .width(280.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shadowElevation = 8.dp,
+                ) {
+                    SteppedSlider(
+                        value = currentSpeed,
+                        onValueChange = onPreviewSpeed,
+                        onValueChangeFinished = onCommitSpeed,
+                        valueRange = speedRange,
+                        valueIndicator = {
+                            Text(
+                                it.formatSpeedValue(),
+                                Modifier.testTag(TAG_SPEED_SWITCHER_VALUE_INDICATOR),
+                                maxLines = 1,
+                                softWrap = false,
+                            )
+                        },
+                        modifier = Modifier
+                            .testTag(TAG_SPEED_SWITCHER_SLIDER)
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                    )
+                }
+            }
+        }
     }
 
     /**

@@ -8,8 +8,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Label
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.RangeSlider
+import androidx.compose.material3.RangeSliderState
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderColors
 import androidx.compose.material3.SliderDefaults
@@ -24,6 +28,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.SliderValueIndicator
+import me.him188.ani.app.ui.foundation.rememberHoverExitFilteredInteractionSource
 
 
 @SettingsDsl
@@ -108,6 +114,88 @@ fun SettingsScope.SliderItem(
                 onValueChangeFinished,
                 colors,
                 interactionSource,
+            )
+        }
+    }
+}
+
+@SettingsDsl
+@Composable
+fun SettingsScope.RangeSliderItem(
+    value: ClosedFloatingPointRange<Float>,
+    onValueChange: (ClosedFloatingPointRange<Float>) -> Unit,
+    title: @Composable RowScope.() -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+    @IntRange(from = 0)
+    steps: Int = 0,
+    onValueChangeFinished: (() -> Unit)? = null,
+    colors: SliderColors = SliderDefaults.colors(),
+    startInteractionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    endInteractionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    valueIndicator: (@Composable (Float) -> Unit)? = null,
+    valueLabel: @Composable (() -> Unit)? = {
+        Text("$value")
+    },
+    description: @Composable (() -> Unit)? = null,
+) {
+    SliderItem(title, modifier, description, valueLabel) {
+        RangeSlider(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier,
+            enabled = enabled,
+            valueRange = valueRange,
+            onValueChangeFinished = onValueChangeFinished,
+            colors = colors,
+            startInteractionSource = startInteractionSource,
+            endInteractionSource = endInteractionSource,
+            startThumb = rangeSliderThumb(
+                startInteractionSource, colors, enabled, { it.activeRangeStart }, valueIndicator,
+            ),
+            endThumb = rangeSliderThumb(
+                endInteractionSource, colors, enabled, { it.activeRangeEnd }, valueIndicator,
+            ),
+            track = { rangeSliderState ->
+                // M3E 样式: 小圆角轨道; 刻度点不画 (spec 默认关闭, 密步进下是「豌豆荚」).
+                @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+                SliderDefaults.Track(
+                    rangeSliderState = rangeSliderState,
+                    trackCornerSize = 4.dp,
+                    enabled = enabled,
+                    colors = colors,
+                    drawTick = { _, _ -> },
+                )
+            },
+            steps = steps,
+        )
+    }
+}
+
+private fun rangeSliderThumb(
+    interactionSource: MutableInteractionSource,
+    colors: SliderColors,
+    enabled: Boolean,
+    value: (RangeSliderState) -> Float,
+    valueIndicator: (@Composable (Float) -> Unit)?,
+): @Composable (RangeSliderState) -> Unit = { state ->
+    if (valueIndicator == null) {
+        SliderDefaults.Thumb(
+            interactionSource = interactionSource,
+            colors = colors,
+            enabled = enabled,
+        )
+    } else {
+        val labelInteractionSource = rememberHoverExitFilteredInteractionSource(interactionSource)
+        Label(
+            label = { SliderValueIndicator { valueIndicator(value(state)) } },
+            interactionSource = labelInteractionSource,
+        ) {
+            SliderDefaults.Thumb(
+                interactionSource = interactionSource,
+                colors = colors,
+                enabled = enabled,
             )
         }
     }

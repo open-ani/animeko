@@ -18,7 +18,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import me.him188.ani.app.ui.foundation.effects.ComposeKey
 import me.him188.ani.app.ui.foundation.effects.onKey
-import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
+import me.him188.ani.app.videoplayer.ui.nextPlaybackSpeed
 
 /**
  * Installs the player keyboard commands on a single focus target.
@@ -29,7 +29,9 @@ import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 internal fun Modifier.playerKeyboardShortcuts(
     seekerState: SwipeSeekerState,
     fastSkipState: FastSkipState?,
-    playbackSpeedControllerState: PlaybackSpeedControllerState?,
+    currentPlaybackSpeed: Float?,
+    playbackSpeedRange: ClosedFloatingPointRange<Float>,
+    onPlaybackSpeedChanged: (Float) -> Unit,
     volumeEnabled: Boolean,
     onVolumeUp: (fineAdjustment: Boolean) -> Unit,
     onVolumeDown: (fineAdjustment: Boolean) -> Unit,
@@ -66,11 +68,17 @@ internal fun Modifier.playerKeyboardShortcuts(
         .onKey(ComposeKey.Spacebar, onTogglePauseResume)
         .onKey(ComposeKey.Escape, onExitFullscreen)
         .onKey(ComposeKey.F, onToggleFullscreen)
-    if (playbackSpeedControllerState != null) {
+    if (currentPlaybackSpeed != null) {
         result = result
-            .onKey(ComposeKey.A, playbackSpeedControllerState::speedDown)
-            .onKey(ComposeKey.D, playbackSpeedControllerState::speedUp)
-            .onKey(ComposeKey.S, playbackSpeedControllerState::reset)
+            .onKey(ComposeKey.A) {
+                onPlaybackSpeedChanged(nextPlaybackSpeed(currentPlaybackSpeed, playbackSpeedRange, -1))
+            }
+            .onKey(ComposeKey.D) {
+                onPlaybackSpeedChanged(nextPlaybackSpeed(currentPlaybackSpeed, playbackSpeedRange, 1))
+            }
+            .onKey(ComposeKey.S) {
+                onPlaybackSpeedChanged(1f.coerceIn(playbackSpeedRange))
+            }
     }
     return result
         .onKey(ComposeKey.B, onToggleDanmaku)

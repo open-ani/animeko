@@ -95,6 +95,7 @@ import me.him188.ani.app.domain.player.extension.AutoSelectExtension
 import me.him188.ani.app.domain.player.extension.CacheOnBtPlayExtension
 import me.him188.ani.app.domain.player.extension.MarkAsWatchedExtension
 import me.him188.ani.app.domain.player.extension.ObserveWebMediaSourcePreferenceExtension
+import me.him188.ani.app.domain.player.extension.PlaybackSpeedExtension
 import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
 import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
 import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
@@ -279,6 +280,7 @@ class EpisodeViewModel(
         subjectId, initialEpisodeId, player, backgroundScope,
         extensions = listOf(
             AnalyticsExtension,
+            PlaybackSpeedExtension,
             RememberPlayProgressExtension,
             MarkAsWatchedExtension,
             CacheOnBtPlayExtension,
@@ -373,6 +375,19 @@ class EpisodeViewModel(
 
     val videoScaffoldConfig: VideoScaffoldConfig by settingsRepository.videoScaffoldConfig
         .flow.produceState(VideoScaffoldConfig.Default)
+
+    /** 当前生效的用户倍速范围. */
+    val playbackSpeedRange: ClosedFloatingPointRange<Float>
+        get() = videoScaffoldConfig.minPlaybackSpeed..videoScaffoldConfig.maxPlaybackSpeed
+
+    /** 持久化全局倍速；播放器会通过上方的配置订阅同步该值. */
+    fun setPlaybackSpeed(speed: Float) {
+        launchInBackground {
+            settingsRepository.videoScaffoldConfig.update {
+                copy(playbackSpeed = speed)
+            }
+        }
+    }
 
     val playerVolumeFlow: Flow<VideoScaffoldConfig.PlayerVolume> =
         settingsRepository.videoScaffoldConfig.flow.map { it.playerVolume }
