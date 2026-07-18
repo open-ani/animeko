@@ -141,7 +141,6 @@ import me.him188.ani.app.ui.subject.episode.details.EpisodeDetailsState
 import me.him188.ani.app.ui.subject.episode.statistics.DanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatisticsCollector
-import me.him188.ani.app.ui.subject.episode.video.DEFAULT_OP_ED_SKIP_DURATION
 import me.him188.ani.app.ui.subject.episode.video.PlayerSkipOpEdState
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorState
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
@@ -675,41 +674,44 @@ class EpisodeViewModel(
 
     // Combine original chapters with AutoSkip rules fetched from server
     @OptIn(UnsafeEpisodeSessionApi::class, InternalMediampApi::class)
-    private val autoSkipChaptersFlow: Flow<List<Chapter>> =
+    private val autoSkipChaptersFlow: Flow<List<Chapter>> = combine(
         fetchPlayState.episodeSessionFlow.flatMapLatest { session ->
             autoSkipRepository.rulesFlow(session.episodeId)
-        }.combine(
-            player.mediaProperties.mapNotNull { it?.durationMillis?.milliseconds },
-        ) { millisecondTimes, videoLength ->
-            val durationMillis = when {
-                videoLength > 20.minutes -> DEFAULT_OP_ED_SKIP_DURATION.inWholeMilliseconds
-                videoLength > 10.minutes -> 55_000L
-                else -> 0L
-            }
-            if (durationMillis == 0L) {
-                emptyList()
-            } else {
-                millisecondTimes.mapIndexed { index, t ->
-                    val name = if (millisecondTimes.size == 2) {
-                        val anotherIndex = if (index == 0) 1 else 0
-                        if (t <= millisecondTimes[anotherIndex]) {
-                            "OP"
-                        } else {
-                            "ED"
-                        }
-                    } else {
-                        "Ch ${index + 1}"
-                    }
-                    Chapter(
-                        name,
-                        durationMillis,
-                        t,
-                    )
-                }
-            }
-        }.catch {
-            logger.warn(it) { "Failed to fetch AutoSkip chapters" }
+        },
+        player.mediaProperties.mapNotNull { it?.durationMillis?.milliseconds },
+        settingsRepository.videoScaffoldConfig.flow
+            .map { it.opEdSkipDuration }
+            .distinctUntilChanged(),
+    ) { millisecondTimes, videoLength, opEdSkipDuration ->
+        val durationMillis = when {
+            videoLength > 20.minutes -> opEdSkipDuration.inWholeMilliseconds
+            videoLength > 10.minutes -> 55_000L
+            else -> 0L
         }
+        if (durationMillis == 0L) {
+            emptyList()
+        } else {
+            millisecondTimes.mapIndexed { index, t ->
+                val name = if (millisecondTimes.size == 2) {
+                    val anotherIndex = if (index == 0) 1 else 0
+                    if (t <= millisecondTimes[anotherIndex]) {
+                        "OP"
+                    } else {
+                        "ED"
+                    }
+                } else {
+                    "Ch ${index + 1}"
+                }
+                Chapter(
+                    name,
+                    durationMillis,
+                    t,
+                )
+            }
+        }
+    }.catch {
+        logger.warn(it) { "Failed to fetch AutoSkip chapters" }
+    }
 
 
     private val combinedChaptersFlow: Flow<List<Chapter>> =
@@ -929,16 +931,19 @@ class EpisodeViewModel(
     }
 
     /**
-     * UI handler for the "skip 80 seconds" button.
+     * UI handler for the "skip OP/ED" button.
      * Reports the action to server with throttling and then performs the seek.
      */
     @OptIn(UnsafeEpisodeSessionApi::class)
-    fun onClickSkip80(currentPositionMillis: Long) {
+    fun onClickSkipOpEd(currentPositionMillis: Long) {
+        val skipDuration = videoScaffoldConfig.opEdSkipDuration
         // Seek immediately for UX
-        player.skip(DEFAULT_OP_ED_SKIP_DURATION.inWholeMilliseconds)
+        player.skip(skipDuration.inWholeMilliseconds)
         // Report in background
         launchInBackground {
-            logger.info { "Reporting skip 80 at ${currentPositionMillis / 1000}s" }
+            logger.info {
+                "Reporting skip ${skipDuration.inWholeSeconds} at ${currentPositionMillis / 1000}s"
+            }
             val episodeId = fetchPlayState.getCurrentEpisodeId()
             val selected = fetchPlayState.episodeSessionFlow.firstOrNull()
                 ?.fetchSelectFlow
@@ -949,7 +954,9 @@ class EpisodeViewModel(
             val mediaSourceId = selected?.mediaSourceId ?: return@launchInBackground
             val timeSeconds = (currentPositionMillis / 1000).toInt()
             if (timeSeconds < 0 || timeSeconds > 200 * 60) {
-                logger.warn { "Refusing to report skip 80 at invalid time ${timeSeconds}s" }
+                logger.warn {
+                    "Refusing to report skip ${skipDuration.inWholeSeconds} at invalid time ${timeSeconds}s"
+                }
                 return@launchInBackground
             }
             autoSkipRepository.reportSkip(episodeId, mediaSourceId, timeSeconds, currentPositionMillis)

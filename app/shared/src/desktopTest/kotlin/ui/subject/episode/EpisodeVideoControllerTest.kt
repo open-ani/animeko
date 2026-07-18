@@ -111,6 +111,7 @@ import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.test.TestMediampPlayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 private const val TAG_DETACHED_PROGRESS_SLIDER = "detachedProgressSlider"
@@ -208,6 +209,7 @@ class EpisodeVideoControllerTest {
         onToggleDanmaku: () -> Unit = {},
         audioController: LevelController = NoOpLevelController,
         playbackSpeedControllerState: PlaybackSpeedControllerState? = null,
+        opEdSkipDuration: Duration = 80.seconds,
         onPlayerStateCreated: (TestMediampPlayer) -> Unit = {},
         onPlatformWindow: (PlatformWindow) -> Unit = {},
         platformWindowOverride: PlatformWindow? = null,
@@ -232,6 +234,7 @@ class EpisodeVideoControllerTest {
                 hasNextEpisode = true,
                 onClickNextEpisode = {},
                 playerControllerState = playerControllerState,
+                opEdSkipDuration = opEdSkipDuration,
                 title = { PlayerTopBar() },
                 danmakuHost = {},
                 danmakuEnabled = false,
@@ -381,24 +384,30 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
-    fun `forward opening button skips 80 seconds`() = runAniComposeUiTest {
+    fun `forward opening button follows configured duration`() = runAniComposeUiTest {
         lateinit var playerState: TestMediampPlayer
+        var opEdSkipDuration by mutableStateOf(80.seconds)
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         setContent {
             Player(
                 GestureFamily.MOUSE,
                 playerControllerState = visibleControllerState,
+                opEdSkipDuration = opEdSkipDuration,
                 onPlayerStateCreated = { playerState = it },
             )
         }
-        runOnIdle {
-            playerState.currentPositionMillis.value = 5_000L
-        }
 
-        onNodeWithContentDescription("Fast forward 80 seconds").performClick()
+        for (durationSeconds in listOf(80, 85, 90)) {
+            runOnIdle {
+                opEdSkipDuration = durationSeconds.seconds
+                playerState.currentPositionMillis.value = 5_000L
+            }
 
-        runOnIdle {
-            assertEquals(85_000L, playerState.currentPositionMillis.value)
+            onNodeWithContentDescription("Fast forward $durationSeconds seconds").performClick()
+
+            runOnIdle {
+                assertEquals((durationSeconds + 5) * 1_000L, playerState.currentPositionMillis.value)
+            }
         }
     }
 

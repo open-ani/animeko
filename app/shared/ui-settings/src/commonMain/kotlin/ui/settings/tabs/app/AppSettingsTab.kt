@@ -83,6 +83,8 @@ import me.him188.ani.app.ui.lang.settings_player_fullscreen_only_in_controller
 import me.him188.ani.app.ui.lang.settings_player_hide_selector_on_select
 import me.him188.ani.app.ui.lang.settings_player_long_press_fast_forward_speed
 import me.him188.ani.app.ui.lang.settings_player_long_press_fast_forward_speed_description
+import me.him188.ani.app.ui.lang.settings_player_op_ed_skip_duration
+import me.him188.ani.app.ui.lang.settings_player_op_ed_skip_duration_seconds
 import me.him188.ani.app.ui.lang.settings_player_pause_on_edit_danmaku
 import me.him188.ani.app.ui.lang.settings_update_auto_check
 import me.him188.ani.app.ui.lang.settings_update_auto_check_description
@@ -131,6 +133,7 @@ import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isIos
 import me.him188.ani.utils.platform.isMobile
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Duration.Companion.seconds
 
 sealed class CheckVersionResult {
     data class HasNewVersion(
@@ -500,6 +503,18 @@ fun SettingsScope.PlayerGroup(
             },
             title = { Text(stringResource(Lang.settings_player_auto_skip_op_ed)) },
             description = { Text(stringResource(Lang.settings_player_auto_skip_op_ed_description)) },
+        )
+        HorizontalDividerItem()
+        DropdownItem(
+            selected = { config.opEdSkipDuration },
+            values = { listOf(80.seconds, 85.seconds, 90.seconds) },
+            itemText = {
+                Text(stringResource(Lang.settings_player_op_ed_skip_duration_seconds, it.inWholeSeconds))
+            },
+            onSelect = {
+                videoScaffoldConfig.update(config.copy(opEdSkipDuration = it))
+            },
+            title = { Text(stringResource(Lang.settings_player_op_ed_skip_duration)) },
         )
         HorizontalDividerItem()
         SwitchItem(
