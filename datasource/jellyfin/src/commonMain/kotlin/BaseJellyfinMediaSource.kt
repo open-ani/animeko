@@ -20,8 +20,6 @@ import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapConcat
-import kotlinx.coroutines.flow.flatMapMerge
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.serialization.Serializable
 import me.him188.ani.datasources.api.DefaultMedia
@@ -68,16 +66,35 @@ abstract class BaseJellyfinMediaSource(
             query.subjectNames
                 .asFlow()
                 .flatMapConcat { subjectName ->
-                    val resp = doSearch(subjectName)
-                    resp.Items.asFlow()
-                }
-                .flatMapMerge {
-                    when (it.Type) {
-                        // jellyfin 的 type 为 "Series" 在这里应当被处理，否则会 fallback 到 emptyFlow
-                        "Season", "Series" -> doSearch(parentId = it.Id).Items.asFlow()
-                        "Episode" -> flowOf(it)
-                        "Movie" -> flowOf(it)
-                        else -> emptyFlow()
+                    val (baseName, targetSeason) = parseSubjectName(subjectName)
+
+                    val seriesSearchResp = doSearch(subjectName = baseName)
+                    val seriesItems = seriesSearchResp.Items.filter { it.Type == "Series" }
+
+                    if (seriesItems.isNotEmpty()) {
+                        seriesItems.asFlow().flatMapConcat { series ->
+                            val seasonsResp = doGetSeasons(seriesId = series.Id)
+                            val matchedSeasons = if (targetSeason != null) {
+                                seasonsResp.Items.filter { it.IndexNumber == targetSeason }
+                            } else {
+                                seasonsResp.Items
+                            }
+
+                            if (matchedSeasons.isNotEmpty()) {
+                                matchedSeasons.asFlow().flatMapConcat { season ->
+                                    doGetEpisodes(
+                                        seriesId = series.Id,
+                                        seasonNum = season.IndexNumber
+                                            ?: return@flatMapConcat emptyFlow(),
+                                    ).Items.asFlow()
+                                }
+                            } else {
+                                doSearch(parentId = series.Id).Items.asFlow()
+                            }
+                        }
+                    } else {
+                        val resp = doSearch(subjectName = subjectName)
+                        resp.Items.asFlow()
                     }
                 }
                 .filter { (it.Type == "Episode" || it.Type == "Movie") }
@@ -112,9 +129,10 @@ abstract class BaseJellyfinMediaSource(
                             originalTitle = originalTitle,
                             publishedTime = 0,
                             properties = MediaProperties(
-                                // Note: 这里我们 fallback 使用请求的名称, 这样可以在缺少信息时绝对通过后续的过滤, 避免资源被排除. 但这可能会导致有不满足的资源被匹配. 如果未来有问题再考虑. See also #1806.
-                                // subjectName 中 item.SeasonName 在 jellyfin 配合 Bangumi 插件应当是 第 x 季的形式，不修改为 item.SeriesName 不匹配 query 会导致结果进入模糊匹配(这也是为什么修改jellyfin的"季"标题可以通过这个逻辑)
-                                subjectName = item.SeriesName?.takeIf { it.isNotBlank() } ?: item.SeasonName?.takeIf { it.isNotBlank() } ?: query.subjectNameCN,
+                                subjectName = query.subjectNameCN
+                                    ?: item.SeriesName?.takeIf { it.isNotBlank() }
+                                    ?: item.SeasonName?.takeIf { it.isNotBlank() }
+                                    ?: query.subjectNames.firstOrNull() ?: "",
                                 episodeName = item.Name,
                                 subtitleLanguageIds = listOf("CHS"),
                                 resolution = "1080P",
@@ -159,6 +177,65 @@ abstract class BaseJellyfinMediaSource(
         return "$baseUrl/Videos/$itemId/$itemId/Subtitles/$index/0/Stream.$codec"
     }
 
+
+    private data class ParsedSubjectName(
+        val baseName: String,
+        val targetSeason: Int?,
+    )
+
+    private fun parseSubjectName(name: String): ParsedSubjectName {
+        // Chinese: "无职转生 第三季 ～到了异世界就拿出真本事～" → base="无职转生", season=3
+        val chineseSeasonRegex = Regex("[第]([一二三四五六七八九十]+)季")
+        val chineseMatch = chineseSeasonRegex.find(name)
+        if (chineseMatch != null) {
+            val baseName = name.substring(0, chineseMatch.range.first).trim()
+            if (baseName.isNotEmpty()) {
+                return ParsedSubjectName(baseName, chineseToNumber(chineseMatch.groupValues[1]))
+            }
+        }
+        // English: "Mushoku Tensei Season 2", "Mushoku Tensei S2"
+        val enSeasonRegex = Regex("""\b(?:Season|S)\s*(\d+)\b""", RegexOption.IGNORE_CASE)
+        val enMatch = enSeasonRegex.find(name)
+        if (enMatch != null) {
+            val baseName = name.substring(0, enMatch.range.first).trim()
+            if (baseName.isNotEmpty()) {
+                return ParsedSubjectName(baseName, enMatch.groupValues[1].toIntOrNull())
+            }
+        }
+        return ParsedSubjectName(name, null)
+    }
+
+    private fun chineseToNumber(chinese: String): Int {
+        return when (chinese) {
+            "一" -> 1
+            "二" -> 2
+            "三" -> 3
+            "四" -> 4
+            "五" -> 5
+            "六" -> 6
+            "七" -> 7
+            "八" -> 8
+            "九" -> 9
+            "十" -> 10
+            else -> chinese.toIntOrNull() ?: 1
+        }
+    }
+
+    private suspend fun doGetSeasons(seriesId: String) = client.use {
+        get("$baseUrl/Shows/$seriesId/Seasons") {
+            configureAuthorizationHeaders()
+            parameter("userId", userId)
+        }.body<SearchResponse>()
+    }
+
+    private suspend fun doGetEpisodes(seriesId: String, seasonNum: Int) = client.use {
+        get("$baseUrl/Shows/$seriesId/Episodes") {
+            configureAuthorizationHeaders()
+            parameter("userId", userId)
+            parameter("Season", seasonNum)
+            parameter("fields", "MediaStreams")
+        }.body<SearchResponse>()
+    }
 
     private suspend fun doSearch(
         subjectName: String? = null,
