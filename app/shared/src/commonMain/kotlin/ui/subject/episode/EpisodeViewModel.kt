@@ -411,6 +411,11 @@ class EpisodeViewModel(
         }
     }
 
+    /**
+     * 桌面端: 用户是否通过播放器内按钮开启了窗口置顶. 退出播放页时需要自动取消置顶.
+     */
+    var desktopAlwaysOnTopSetByPlayer: Boolean = false
+
     val playerVolumeFlow: Flow<VideoScaffoldConfig.PlayerVolume> =
         settingsRepository.videoScaffoldConfig.flow.map { it.playerVolume }
 

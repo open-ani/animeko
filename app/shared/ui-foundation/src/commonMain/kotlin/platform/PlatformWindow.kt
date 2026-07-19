@@ -30,6 +30,18 @@ expect class PlatformWindow {
      */
     fun maximize()
     fun floating()
+
+    /**
+     * 窗口是否置顶 (always on top). 这是运行时状态, 不会持久化, 关闭应用后自动清除.
+     *
+     * 仅在桌面端有效, 其他平台始终为 `false`.
+     */
+    val isAlwaysOnTop: Boolean
+
+    /**
+     * 设置窗口置顶. 仅在桌面端有效.
+     */
+    fun setAlwaysOnTop(alwaysOnTop: Boolean)
 }
 
 enum class DeviceOrientation {
