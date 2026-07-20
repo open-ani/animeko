@@ -22,7 +22,7 @@ actual fun VideoPlayer(
     player: MediampPlayer,
     modifier: Modifier,
 ) {
-    // 桌面端按平台创建 mpv (Windows x64 / macOS arm64) 或 VLC (Linux x64 / macOS x64) player,
+    // 桌面端按平台创建 mpv (Windows x64 / Windows arm64 / Linux x64 / macOS arm64) 或 VLC (macOS x64) player,
     // 这里根据实际实例选择对应的 surface.
     when (player) {
         is MpvMediampPlayer -> MpvMediampPlayerSurface(player, modifier = modifier)
