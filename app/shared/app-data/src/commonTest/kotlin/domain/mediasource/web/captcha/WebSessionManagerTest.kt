@@ -18,6 +18,7 @@ import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -25,8 +26,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.domain.mediasource.web.BlockReason
 import me.him188.ani.app.domain.mediasource.web.LoadedPage
 import me.him188.ani.app.domain.mediasource.web.PageEvaluator
@@ -93,7 +98,7 @@ class WebSessionManagerTest {
         }.asScopedHttpClient()
 
         /**
-         * 手动时钟. 不能用 `testScheduler.currentTime`: runTest 在测试协程等待真实线程
+         * 手动时钟. 不能用 `testScheduler.currentTime`: runTestWithMainDispatcher 在测试协程等待真实线程
          * (ktor 引擎) 时会跳过 sweep 循环的 delay 无限推进虚拟时间, 几毫秒真实等待就能
          * 推进数小时, 导致暖会话被闲置 TTL 误回收.
          */
@@ -119,9 +124,20 @@ class WebSessionManagerTest {
         expectation = expectation,
     )
 
+    private fun runTestExt(block: suspend TestScope.() -> Unit): TestResult {
+        return runTest {
+            try {
+                Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+                block()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+    }
+
     // 关键用例 8 (v1): 空 solver 列表 → solve(auto) 立即失败, 不创建浏览器
     @Test
-    fun `auto solve with empty solvers fails immediately without browser`() = runTest {
+    fun `auto solve with empty solvers fails immediately without browser`() = runTestExt {
         val fixture = Fixture(this)
 
         val outcome = fixture.manager.solve(solveRequest(), interactive = false)
@@ -133,7 +149,7 @@ class WebSessionManagerTest {
 
     // 关键用例 4: HTTP 429 → RateLimited, 不创建浏览器
     @Test
-    fun `http 429 yields RateLimited and does not create browser`() = runTest {
+    fun `http 429 yields RateLimited and does not create browser`() = runTestExt {
         val fixture = Fixture(this) { _ -> "too many" to HttpStatusCode.TooManyRequests }
 
         val verdict = fixture.manager.fetchPage(searchUrl, expectation)
@@ -145,7 +161,8 @@ class WebSessionManagerTest {
 
     // 关键用例 2: interactive solve 必定弹框 (无陈旧缓存路径); 成功后 cookie 与 UA 同步
     @Test
-    fun `interactive solve always presents dialog and syncs identity on success`() = runTest {
+    fun `interactive solve always presents dialog and syncs identity on success`() = runTestExt {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val fixture = Fixture(this) { _ -> challengeHtml to HttpStatusCode.Forbidden }
 
         // 第一次 solve
@@ -170,7 +187,8 @@ class WebSessionManagerTest {
 
     // 关键用例 5: 同 host 并发 solve → single-flight, 只弹一个对话框, 只建一个浏览器
     @Test
-    fun `concurrent solves for same host are single flight`() = runTest {
+    fun `concurrent solves for same host are single flight`() = runTestExt {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val fixture = Fixture(this) { _ -> challengeHtml to HttpStatusCode.Forbidden }
 
         val result1 = async { fixture.manager.solve(solveRequest(), interactive = true) }
@@ -187,7 +205,8 @@ class WebSessionManagerTest {
 
     // 关键用例 3: solve 成功后同 host 再次 Blocked → 自动失效, 丢弃暖会话与 cookie
     @Test
-    fun `blocked again after solve invalidates warm session and cookies`() = runTest {
+    fun `blocked again after solve invalidates warm session and cookies`() = runTestExt {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val fixture = Fixture(this) { _ -> challengeHtml to HttpStatusCode.Forbidden }
 
         val result = async { fixture.manager.solve(solveRequest(), interactive = true) }
@@ -210,7 +229,7 @@ class WebSessionManagerTest {
 
     // 暖会话重载成功: 直连被挡时用浏览器拿到结果, 不上抛
     @Test
-    fun `warm session browser reload rescues blocked http fetch`() = runTest {
+    fun `warm session browser reload rescues blocked http fetch`() = runTestExt {
         val fixture = Fixture(this) { _ -> challengeHtml to HttpStatusCode.Forbidden }
 
         val result = async { fixture.manager.solve(solveRequest(), interactive = true) }
@@ -227,7 +246,8 @@ class WebSessionManagerTest {
 
     // 关键用例 6: 闲置 TTL 回收 → close() 被调用 (防泄漏回归)
     @Test
-    fun `idle session is closed after ttl`() = runTest {
+    fun `idle session is closed after ttl`() = runTestExt {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val fixture = Fixture(this) { _ -> challengeHtml to HttpStatusCode.Forbidden }
 
         val result = async { fixture.manager.solve(solveRequest(), interactive = true) }
@@ -247,7 +267,7 @@ class WebSessionManagerTest {
 
     // 直连正常时不碰浏览器
     @Test
-    fun `direct http ok does not touch browser`() = runTest {
+    fun `direct http ok does not touch browser`() = runTestExt {
         val fixture = Fixture(this) { _ -> parseableHtml to HttpStatusCode.OK }
 
         val verdict = fixture.manager.fetchPage(searchUrl, expectation)
@@ -258,7 +278,7 @@ class WebSessionManagerTest {
 
     // 手动确认 (✓): 以当前页面判决为准
     @Test
-    fun `manual confirm records failure when page still blocked`() = runTest {
+    fun `manual confirm records failure when page still blocked`() = runTestExt {
         val fixture = Fixture(this) { _ -> challengeHtml to HttpStatusCode.Forbidden }
 
         val result = async { fixture.manager.solve(solveRequest(), interactive = true) }
