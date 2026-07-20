@@ -11,7 +11,6 @@
 package me.him188.ani.app.domain.mediasource.web
 
 import io.ktor.client.request.get
-import io.ktor.http.Url
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -31,6 +30,8 @@ import me.him188.ani.app.domain.mediasource.codec.DefaultMediaSourceCodec
 import me.him188.ani.app.domain.mediasource.codec.DontForgetToRegisterCodec
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceArguments
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceTier
+import me.him188.ani.app.domain.mediasource.web.captcha.SolveOutcome
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.matcher.WebVideoMatcher
@@ -58,7 +59,6 @@ import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.currentTimeMillis
-import me.him188.ani.utils.xml.Document
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.time.Duration
@@ -108,7 +108,7 @@ class SelectorMediaSource(
     val repository: SelectorMediaSourceEpisodeCacheRepository,
     override val kind: MediaSourceKind = MediaSourceKind.WEB,
     private val client: ScopedHttpClient,
-    private val webCaptchaCoordinator: WebCaptchaCoordinator,
+    private val sessionManager: WebSessionManager,
 ) : HttpMediaSource(), WebVideoMatcherProvider {
     companion object {
         val FactoryId = FactoryId("web-selector")
@@ -145,7 +145,7 @@ class SelectorMediaSource(
 
     class Factory(
         val repository: SelectorMediaSourceEpisodeCacheRepository,
-        val webCaptchaCoordinator: WebCaptchaCoordinator,
+        val sessionManager: WebSessionManager,
     ) : MediaSourceFactory {
         override val factoryId: FactoryId get() = FactoryId
 
@@ -161,7 +161,7 @@ class SelectorMediaSource(
             config: MediaSourceConfig,
             client: ScopedHttpClient
         ): MediaSource =
-            SelectorMediaSource(mediaSourceId, config, repository, client = client, webCaptchaCoordinator = webCaptchaCoordinator)
+            SelectorMediaSource(mediaSourceId, config, repository, client = client, sessionManager = sessionManager)
     }
 
     override suspend fun checkConnection(): ConnectionStatus {
@@ -214,8 +214,62 @@ class SelectorMediaSource(
         }
     }
 
+    /**
+     * 获取页面并把被挡状态转换为异常:
+     *
+     * - 解析成功 → 返回值;
+     * - 合法无结果 / 404 → `null`;
+     * - [BlockReason.RateLimited] → 延迟后重试一次, 仍失败则抛 [BlockedException];
+     * - [BlockReason.Captcha] → 尝试自动解决 (v1: solver 列表为空, 立即失败) → 抛 [BlockedException];
+     * - 其他被挡 → 抛 [BlockedException].
+     */
+    private suspend fun <T> fetchPageOrThrow(
+        url: String,
+        expectation: PageExpectation<T>,
+    ): T? {
+        suspend fun once(): PageVerdict<T> = sessionManager.fetchPage(url, expectation)
+
+        var verdict = once()
+        ((verdict as? PageVerdict.Blocked)?.reason as? BlockReason.RateLimited)?.let { rateLimited ->
+            // 限流不是验证码: 不弹浏览器, 延迟后重试一次
+            delay(rateLimited.retryAfter ?: searchConfig.requestInterval)
+            delayUntilNextAllowedSearch()
+            verdict = once()
+        }
+
+        when (val v = verdict) {
+            is PageVerdict.Ok -> return v.value
+            is PageVerdict.EmptyContent -> return null
+            is PageVerdict.Blocked -> {
+                val reason = v.reason
+                val request = SolveRequest(
+                    mediaSourceId = mediaSourceId,
+                    pageUrl = url,
+                    kind = (reason as? BlockReason.Captcha)?.kind ?: WebCaptchaKind.Unknown,
+                    expectation = expectation,
+                )
+                when (reason) {
+                    BlockReason.NotFound -> return null
+
+                    is BlockReason.Captcha -> {
+                        if (sessionManager.solve(request, interactive = false) == SolveOutcome.Solved) {
+                            delayUntilNextAllowedSearch()
+                            when (val retried = once()) {
+                                is PageVerdict.Ok -> return retried.value
+                                is PageVerdict.EmptyContent -> return null
+                                is PageVerdict.Blocked -> throw BlockedException(retried.reason, request)
+                            }
+                        }
+                        throw BlockedException(reason, request)
+                    }
+
+                    else -> throw BlockedException(reason, request)
+                }
+            }
+        }
+    }
+
     // all-in-one search
-    @OptIn(ExperimentalAtomicApi::class)
     private suspend fun EngineType.search(
         searchConfig: SelectorSearchConfig,
         query: SelectorSearchQuery,
@@ -243,153 +297,53 @@ class SelectorMediaSource(
             return@withContext emptyList()
         }
 
-        fun buildSearchUrl(): String {
-            val encodedUrl = MediaSourceEngineHelpers.encodeUrlSegment(
+        val searchUrl = searchConfig.searchUrl.replace(
+            "{keyword}",
+            MediaSourceEngineHelpers.encodeUrlSegment(
                 MediaSourceEngineHelpers.getSearchKeyword(
                     query.subjectName,
                     searchConfig.searchRemoveSpecial,
                     searchConfig.searchUseOnlyFirstWord,
                 ),
-            )
-            return searchConfig.searchUrl.replace("{keyword}", encodedUrl)
-        }
+            ),
+        )
 
-        fun buildSearchCaptchaRequest(
-            pageUrl: String,
-            kind: WebCaptchaKind,
-        ): WebCaptchaRequest {
-            // Search-page captcha flows should only auto-close after the browser
-            // has really landed on a parseable search result page.
-            return WebCaptchaRequest(
-                mediaSourceId = mediaSourceId,
-                pageUrl = pageUrl,
-                kind = kind,
-                searchProbe = WebCaptchaSearchProbe(searchConfig),
-            )
-        }
+        val originalSubjects = fetchPageOrThrow(searchUrl, PageExpectation.SearchResults(searchConfig))
+            ?: return@withContext emptyList()
 
-        suspend fun searchSubjectsOnce() = webCaptchaCoordinator
-            .loadPageInSolvedSession(mediaSourceId, buildSearchUrl())
-            ?.let { parseSearchResult(Url(it.finalUrl), it.html) }
-            ?: searchSubjects(
-                searchConfig.searchUrl,
-                subjectName = query.subjectName,
-                useOnlyFirstWord = searchConfig.searchUseOnlyFirstWord,
-                removeSpecial = searchConfig.searchRemoveSpecial,
-            )
-
-        suspend fun searchSubjectsWithCooldownRetry(): SelectorMediaSourceEngine.SearchSubjectResult {
-            var result = searchSubjectsOnce()
-            if (result.document?.isSearchCooldownPage() == true) {
-                delay(searchConfig.requestInterval)
-                result = searchSubjectsOnce()
-            }
-            return result
-        }
-
-        suspend fun loadSubjectDocument(pageUrl: String): Document? {
-            return webCaptchaCoordinator
-                .loadPageInSolvedSession(mediaSourceId, pageUrl)
-                ?.let { parseDocument(it.finalUrl, it.html) }
-                ?: searchEpisodes(pageUrl)
-        }
-
-        suspend fun solveCaptchaOrThrow(
-            pageUrl: String,
-            kind: WebCaptchaKind,
-            interactive: Boolean,
-            searchProbe: WebCaptchaSearchProbe? = null,
-        ) {
-            val request = WebCaptchaRequest(
-                mediaSourceId = mediaSourceId,
-                pageUrl = pageUrl,
-                kind = kind,
-                searchProbe = searchProbe,
-            )
-            val result = if (interactive) {
-                webCaptchaCoordinator.solveInteractively(request)
-            } else {
-                webCaptchaCoordinator.tryAutoSolve(request)
-            }
-            when (result) {
-                is WebCaptchaSolveResult.Solved -> {
-                    storeCaptchaCookies(client, request.pageUrl, result.cookies)
-                    if (result.finalUrl != request.pageUrl) {
-                        storeCaptchaCookies(client, result.finalUrl, result.cookies)
-                    }
+        val subjects = originalSubjects.let { originalList ->
+            val filters = searchConfig.createFiltersForSubject()
+            with(query.toFilterContext()) {
+                originalList.filter {
+                    filters.applyOn(it.asCandidate())
                 }
-                is WebCaptchaSolveResult.StillBlocked,
-                WebCaptchaSolveResult.Cancelled,
-                WebCaptchaSolveResult.Unsupported,
-                -> throw CaptchaRequiredException(request)
             }
         }
 
-        var blockedSubjectSearchRequest: WebCaptchaRequest? = null
-        var subjectResult = searchSubjectsWithCooldownRetry()
-        val subjectCaptchaKind = subjectResult.captchaKind
-        if (subjectCaptchaKind != null) {
-            blockedSubjectSearchRequest = buildSearchCaptchaRequest(subjectResult.url.toString(), subjectCaptchaKind)
-            solveCaptchaOrThrow(
-                subjectResult.url.toString(),
-                subjectCaptchaKind,
-                interactive = false,
-                searchProbe = WebCaptchaSearchProbe(searchConfig),
-            )
-            delayUntilNextAllowedSearch()
-            subjectResult = searchSubjectsWithCooldownRetry()
-            subjectResult.captchaKind?.let {
-                throw CaptchaRequiredException(
-                    buildSearchCaptchaRequest(subjectResult.url.toString(), it),
+        buildList {
+            for (subjectInfo in subjects) {
+                val episodes = try {
+                    fetchPageOrThrow(
+                        subjectInfo.fullUrl,
+                        PageExpectation.SubjectDetails(searchConfig, subjectInfo.fullUrl),
+                    )?.episodes
+                } catch (e: BlockedException) {
+                    throw e
+                } catch (e: Exception) {
+                    // 单个条目页的网络错误不终止整个搜索
+                    logger.warn(e) { "SelectorMediaSource '$mediaSourceId': failed to load subject page ${subjectInfo.fullUrl}" }
+                    null
+                } ?: continue
+                repository.addCache(mediaSourceId, query.subjectName, subjectInfo, episodes)
+                addAll(
+                    selectMedia(
+                        episodes.asSequence(),
+                        searchConfig,
+                        query,
+                        mediaSourceId,
+                        subjectName = subjectInfo.name,
+                    ).filteredList,
                 )
-            }
-        }
-
-        subjectResult.let { (_, document) ->
-            document ?: return@let emptyList()
-
-            buildList {
-                val originalSubjects = selectSubjects(document, searchConfig).orEmpty()
-                if (originalSubjects.isEmpty() && blockedSubjectSearchRequest != null) {
-                    throw CaptchaRequiredException(
-                        blockedSubjectSearchRequest.copy(
-                            pageUrl = subjectResult.url.toString(),
-                        ),
-                    )
-                }
-                val subjects = originalSubjects
-                    .let { originalList ->
-                        val filters = searchConfig.createFiltersForSubject()
-                        with(query.toFilterContext()) {
-                            originalList.filter {
-                                filters.applyOn(it.asCandidate())
-                            }
-                        }
-                    }
-
-                for (subjectInfo in subjects) {
-                    val episodeDocument = kotlin.runCatching { loadSubjectDocument(subjectInfo.fullUrl) }
-                        .recoverCatching { throwable ->
-                            if (throwable is WebPageCaptchaException) {
-                                solveCaptchaOrThrow(throwable.url, throwable.kind, interactive = false)
-                                loadSubjectDocument(subjectInfo.fullUrl)
-                            } else {
-                                throw throwable
-                            }
-                        }.getOrNull() ?: continue
-                    val episodes =
-                        selectEpisodes(episodeDocument, subjectInfo.fullUrl, searchConfig)?.episodes ?: continue
-                    repository.addCache(mediaSourceId, query.subjectName, subjectInfo, episodes)
-                    addAll(
-                        selectMedia(
-                            episodes.asSequence(),
-                            searchConfig,
-                            query,
-                            mediaSourceId,
-                            subjectName = subjectInfo.name,
-                        ).filteredList,
-                    )
-                }
             }
         }
     }
@@ -431,10 +385,8 @@ class SelectorMediaSource(
                 val configuredCookies = arguments.searchConfig.matchVideo.cookies
                     .lines()
                     .filter { it.isNotBlank() }
-                val captchaCookies = webCaptchaCoordinator.getSolvedCookies(
-                    mediaSourceId = mediaSourceId,
-                    pageUrl = searchConfig.searchUrl,
-                )
+                // HTTP、播放器、两个平台共用同一份 cookie 真相
+                val captchaCookies = sessionManager.cookieJar.getCookieHeaderValues(searchConfig.searchUrl)
                 return config.copy(
                     cookies = mergeCookies(
                         config.cookies,

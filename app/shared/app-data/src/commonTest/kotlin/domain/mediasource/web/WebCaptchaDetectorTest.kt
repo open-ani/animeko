@@ -11,9 +11,7 @@ package me.him188.ani.app.domain.mediasource.web
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class WebCaptchaDetectorTest {
     @Test
@@ -88,9 +86,10 @@ class WebCaptchaDetectorTest {
     }
 
     @Test
-    fun `detects image captcha`() {
-        assertEquals(
-            WebCaptchaKind.Image,
+    fun `does not flag captcha mention without structural evidence`() {
+        // 检测器已收紧: 图片验证码必须有 输入框 + 提交按钮 + 验证码图片 三件套,
+        // 仅提到 captcha 字样的正常页面不再误报 (旧实现问题 5).
+        assertNull(
             WebCaptchaDetector.detect(
                 "https://example.com/search",
                 "<html><img src='/captcha.png' alt='captcha'><label>verification code</label></html>",
@@ -211,64 +210,7 @@ class WebCaptchaDetectorTest {
         )
     }
 
-    @Test
-    fun `storage key normalizes www host`() {
-        val request = WebCaptchaRequest(
-            mediaSourceId = "source-1",
-            pageUrl = "https://www.example.com/search?q=test",
-            kind = WebCaptchaKind.Cloudflare,
-        )
 
-        assertEquals("source-1@example.com", request.storageKey())
-    }
 
-    @Test
-    fun `solved page relevance ignores about blank`() {
-        val request = WebCaptchaRequest(
-            mediaSourceId = "source-1",
-            pageUrl = "https://example.com/search",
-            kind = WebCaptchaKind.Cloudflare,
-        )
 
-        val blankPage = WebCaptchaLoadedPage(
-            finalUrl = "about:blank",
-            html = "",
-        )
-
-        assertFalse(blankPage.isRelevantFor(request))
-        assertEquals(WebCaptchaKind.Cloudflare, blankPage.detectMeaningfulCaptcha(request))
-    }
-
-    @Test
-    fun `solved page relevance ignores chrome error page`() {
-        val request = WebCaptchaRequest(
-            mediaSourceId = "source-1",
-            pageUrl = "https://example.com/search",
-            kind = WebCaptchaKind.Cloudflare,
-        )
-
-        val errorPage = WebCaptchaLoadedPage(
-            finalUrl = "chrome-error://chromewebdata/",
-            html = "<html></html>",
-        )
-
-        assertFalse(errorPage.isRelevantFor(request))
-        assertEquals(WebCaptchaKind.Cloudflare, errorPage.detectMeaningfulCaptcha(request))
-    }
-
-    @Test
-    fun `solved page relevance accepts www variant on same site`() {
-        val request = WebCaptchaRequest(
-            mediaSourceId = "source-1",
-            pageUrl = "https://example.com/search",
-            kind = WebCaptchaKind.Cloudflare,
-        )
-        val page = WebCaptchaLoadedPage(
-            finalUrl = "https://www.example.com/result",
-            html = "<html><body><div>ok</div></body></html>",
-        )
-
-        assertTrue(page.isRelevantFor(request))
-        assertNull(page.detectMeaningfulCaptcha(request))
-    }
 }

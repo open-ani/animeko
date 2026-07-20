@@ -12,9 +12,9 @@ package me.him188.ani.app.ui.mediafetch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.preference.MediaPreference
@@ -23,28 +23,32 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.selector.DefaultMediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorContext
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
+import me.him188.ani.app.domain.mediasource.web.PageExpectation
+import me.him188.ani.app.domain.mediasource.web.SolveRequest
 import me.him188.ani.app.domain.mediasource.web.WebCaptchaKind
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaSolveResult
-import me.him188.ani.app.ui.mediaselect.selector.WebSource
+import me.him188.ani.app.domain.mediasource.web.captcha.createTestWebSessionManager
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.MediaSourceKind
+import me.him188.ani.utils.platform.annotations.TestOnly
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
+@OptIn(TestOnly::class)
 class MediaSelectorCaptchaStateTest {
+    private fun solveRequest(kind: WebCaptchaKind) = SolveRequest(
+        mediaSourceId = "source-1",
+        pageUrl = "https://example.com/search",
+        kind = kind,
+        expectation = PageExpectation.AnyContent,
+    )
+
     @Test
     fun `captcha state is exposed to simple mode presentation`() = runTest {
-        val request = WebCaptchaRequest(
-            mediaSourceId = "source-1",
-            pageUrl = "https://example.com/search",
-            kind = WebCaptchaKind.Cloudflare,
-        )
+        val request = solveRequest(WebCaptchaKind.Cloudflare)
         val stateScope = CoroutineScope(backgroundScope.coroutineContext + SupervisorJob())
         val state = createState(
             sourceResults = listOf(
@@ -68,43 +72,25 @@ class MediaSelectorCaptchaStateTest {
     }
 
     @Test
-    fun `resolveCaptcha delegates to coordinator and returns solved state`() = runTest {
-        val request = WebCaptchaRequest(
-            mediaSourceId = "source-1",
-            pageUrl = "https://example.com/search",
-            kind = WebCaptchaKind.CloudflareTurnstile,
-        )
-        val requests = mutableListOf<WebCaptchaRequest>()
-        val coordinator = FakeWebCaptchaCoordinator { incoming ->
-            requests += incoming
-            WebCaptchaSolveResult.Solved(
-                finalUrl = request.pageUrl,
-                cookies = emptyList(),
-            )
-        }
+    fun `rate limited state is exposed as countdown not captcha`() = runTest {
+        val retryAt = 4_000_000_000_000
         val stateScope = CoroutineScope(backgroundScope.coroutineContext + SupervisorJob())
         val state = createState(
-            sourceResults = emptyList(),
-            coordinator = coordinator,
+            sourceResults = listOf(
+                FakeMediaSourceFetchResult(
+                    initialState = MediaSourceFetchState.RateLimited(retryAt = retryAt, id = 1),
+                ),
+            ),
             backgroundScope = stateScope,
         )
         try {
-            val resolved = state.resolveCaptcha(
-                WebSource(
-                    instanceId = "source-1",
-                    mediaSourceId = "source-1",
-                    iconUrl = "",
-                    name = "source-1",
-                    channels = emptyList(),
-                    isLoading = false,
-                    isError = false,
-                    isPreferred = false,
-                    captchaRequest = request,
-                ),
-            )
+            val presentation = state.presentationFlow.first { !it.isPlaceholder }
+            val source = presentation.webSources.single()
 
-            assertTrue(resolved)
-            assertEquals(listOf(request), requests)
+            // 限流不是验证码: 不显示 "处理验证码" 动作, 只显示倒计时
+            assertFalse(source.isCaptchaRequired)
+            assertTrue(source.isRateLimited)
+            assertEquals(retryAt, source.rateLimitedUntilMillis)
         } finally {
             stateScope.cancel()
         }
@@ -112,11 +98,7 @@ class MediaSelectorCaptchaStateTest {
 
     @Test
     fun `detailed mode presentation keeps captcha action separate from failure`() {
-        val request = WebCaptchaRequest(
-            mediaSourceId = "source-1",
-            pageUrl = "https://example.com/search",
-            kind = WebCaptchaKind.Image,
-        )
+        val request = solveRequest(WebCaptchaKind.Image)
 
         val presentation = MediaSourceResultPresentation(
             instanceId = "source-1",
@@ -131,13 +113,30 @@ class MediaSelectorCaptchaStateTest {
         assertTrue(presentation.isCaptchaRequired)
         assertFalse(presentation.isFailedOrAbandoned)
         assertEquals("需要处理图片验证码", presentation.captchaMessage)
-        assertIs<WebCaptchaRequest>(presentation.captchaRequest)
+        assertIs<SolveRequest>(presentation.captchaRequest)
+    }
+
+    @Test
+    fun `detailed mode presentation exposes rate limited state`() {
+        val presentation = MediaSourceResultPresentation(
+            instanceId = "source-1",
+            mediaSourceId = "source-1",
+            state = MediaSourceFetchState.RateLimited(retryAt = 123L, id = 2),
+            info = MediaSourceInfo(displayName = "source-1"),
+            kind = MediaSourceKind.WEB,
+            totalCount = 0,
+            isPreferred = false,
+        )
+
+        assertTrue(presentation.isRateLimited)
+        assertFalse(presentation.isCaptchaRequired)
+        assertFalse(presentation.isFailedOrAbandoned)
+        assertEquals(123L, presentation.rateLimitedUntilMillis)
     }
 
     private fun createState(
         sourceResults: List<MediaSourceFetchResult>,
         backgroundScope: CoroutineScope,
-        coordinator: WebCaptchaCoordinator = FakeWebCaptchaCoordinator { WebCaptchaSolveResult.Unsupported },
         mediaList: List<Media> = emptyList(),
     ): MediaSelectorState {
         return MediaSelectorState(
@@ -152,7 +151,7 @@ class MediaSelectorCaptchaStateTest {
             mediaSourceInfoProvider = createTestMediaSourceInfoProvider(),
             preferredWebMediaSource = flowOf(null),
             backgroundScope = backgroundScope,
-            webCaptchaCoordinator = coordinator,
+            webSessionManager = createTestWebSessionManager(backgroundScope),
         )
     }
 }
@@ -176,17 +175,5 @@ private class FakeMediaSourceFetchResult(
         if (state.value is MediaSourceFetchState.Disabled) {
             state.value = MediaSourceFetchState.Idle
         }
-    }
-}
-
-private class FakeWebCaptchaCoordinator(
-    private val interactiveSolve: suspend (WebCaptchaRequest) -> WebCaptchaSolveResult,
-) : WebCaptchaCoordinator {
-    override suspend fun tryAutoSolve(request: WebCaptchaRequest): WebCaptchaSolveResult {
-        return WebCaptchaSolveResult.Unsupported
-    }
-
-    override suspend fun solveInteractively(request: WebCaptchaRequest): WebCaptchaSolveResult {
-        return interactiveSolve(request)
     }
 }

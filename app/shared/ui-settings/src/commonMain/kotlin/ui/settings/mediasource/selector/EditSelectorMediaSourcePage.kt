@@ -54,7 +54,7 @@ import me.him188.ani.app.domain.mediasource.test.web.SelectorMediaSourceTester
 import me.him188.ani.app.domain.mediasource.test.web.SelectorTestEpisodePresentation
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceArguments
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.layout.ListDetailAnimatedPane
@@ -91,7 +91,7 @@ class EditSelectorMediaSourcePageState(
     engine: SelectorMediaSourceEngine,
     webViewVideoExtractor: State<WebViewVideoExtractor?>,
     codecManager: MediaSourceCodecManager,
-    private val webCaptchaCoordinator: WebCaptchaCoordinator,
+    private val webSessionManager: WebSessionManager,
     testMediaSourceId: String,
     backgroundScope: CoroutineScope,
     context: Context,
@@ -106,8 +106,7 @@ class EditSelectorMediaSourcePageState(
         SelectorTestState(
             configurationState.searchConfigState,
             SelectorMediaSourceTester(
-                engine = engine,
-                webCaptchaCoordinator = webCaptchaCoordinator,
+                sessionManager = webSessionManager,
                 mediaSourceId = testMediaSourceId,
             ),
             backgroundScope,
@@ -159,7 +158,7 @@ class EditSelectorMediaSourcePageState(
     )
 
     fun cancelAutoCaptchaResolutionRequests() {
-        webCaptchaCoordinator.cancelAutoResolutionRequests()
+        webSessionManager.cancelAutoSolves()
     }
 }
 

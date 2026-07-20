@@ -16,7 +16,7 @@ import me.him188.ani.app.domain.mediasource.test.RefreshResult
 import me.him188.ani.app.domain.mediasource.test.buildMatchTags
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchQuery
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
+import me.him188.ani.app.domain.mediasource.web.SolveRequest
 import me.him188.ani.app.domain.mediasource.web.WebSearchEpisodeInfo
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.utils.platform.Uuid
@@ -40,7 +40,7 @@ sealed class SelectorTestEpisodeListResult : RefreshResult {
 
     @Immutable
     data class CaptchaRequired(
-        val request: WebCaptchaRequest,
+        val request: SolveRequest,
     ) : SelectorTestEpisodeListResult()
 
     @Immutable

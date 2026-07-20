@@ -83,6 +83,8 @@ import me.him188.ani.app.domain.comment.TurnstileState
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeature
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeatureHandler
+import me.him188.ani.app.domain.foundation.CookieJarFeatureHandler
+import me.him188.ani.app.domain.foundation.WebSourceIdentityFeatureHandler
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider.HoldingInstanceMatrix
 import me.him188.ani.app.domain.foundation.DefaultVersionExpiryService
@@ -101,6 +103,11 @@ import me.him188.ani.app.domain.foundation.VersionExpiryFeatureHandler
 import me.him188.ani.app.domain.foundation.VersionExpiryService
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.foundation.withValue
+import me.him188.ani.app.domain.mediasource.web.PageEvaluator
+import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceCookieJar
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceIdentityRegistry
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.MediaCacheManagerImpl
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
@@ -187,7 +194,31 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                 DistributionChannelFeatureHandler { currentAniBuildConfig.distroChannel },
                 ConvertSendCountExceedExceptionFeatureHandler,
                 VersionExpiryFeatureHandler, // handle 426 Upgrade Required -> show blocking dialog
+                CookieJarFeatureHandler, // web 数据源统一 cookie jar (构造时注入)
+                WebSourceIdentityFeatureHandler, // web 数据源 per-host UA 对齐
             ),
+        )
+    }
+    // Web 数据源验证码处理 (docs/dev/media/web-captcha.md)
+    single<WebSourceCookieJar> { WebSourceCookieJar() }
+    single<WebSourceIdentityRegistry> { WebSourceIdentityRegistry() }
+    single<WebSessionManager> {
+        val browserFactory = get<CaptchaBrowserFactory>()
+        WebSessionManager(
+            browserFactory = browserFactory,
+            evaluator = PageEvaluator(),
+            cookieJar = get(),
+            identityRegistry = get(),
+            client = get<HttpClientProvider>().get(
+                userAgent = ScopedHttpClientUserAgent.BROWSER,
+                cookieJar = get(),
+                identityRegistry = get(),
+            ),
+            backgroundScope = coroutineScope,
+            // v1 不注入任何自动解决策略与备用取数路由, 仅预留接缝
+            solvers = emptyList(),
+            searchRoutes = emptyList(),
+            maxSessions = browserFactory.recommendedMaxSessions,
         )
     }
     single<VersionExpiryService> { DefaultVersionExpiryService() }

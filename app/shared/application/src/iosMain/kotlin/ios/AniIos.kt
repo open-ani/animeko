@@ -57,8 +57,8 @@ import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.torrent.pikpak.PikPakCredentials
 import me.him188.ani.torrent.pikpak.PikPakOfflineDownloadEngine
 import me.him188.ani.torrent.pikpak.PikPakSessionStoreAdapter
-import me.him188.ani.app.domain.mediasource.web.NoopWebCaptchaCoordinator
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaCoordinator
+import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
+import me.him188.ani.app.domain.mediasource.web.captcha.UnsupportedCaptchaBrowserFactory
 import me.him188.ani.app.domain.torrent.DefaultTorrentManager
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.navigation.AniNavigator
@@ -277,7 +277,8 @@ fun getIosModules(
         GrantedPermissionManager
     }
     single<BrowserNavigator> { IosBrowserNavigator() }
-    single<WebCaptchaCoordinator> { NoopWebCaptchaCoordinator }
+    // iOS 暂无 CaptchaBrowser 实现: isInteractiveSupported = false, UI 显示降级提示
+    single<CaptchaBrowserFactory> { UnsupportedCaptchaBrowserFactory }
     single<TorrentManager> {
         DefaultTorrentManager.create(
             coroutineScope.coroutineContext,

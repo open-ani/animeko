@@ -34,6 +34,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -46,18 +48,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
-import me.him188.ani.app.domain.mediasource.web.WebCaptchaRequest
+import me.him188.ani.app.domain.mediasource.web.SolveRequest
 import me.him188.ani.app.ui.foundation.IconButton
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.media_selector_web_captcha_unsupported
 import me.him188.ani.app.ui.lang.media_selector_web_edit_query_action
 import me.him188.ani.app.ui.lang.media_selector_web_edit_query_prompt
+import me.him188.ani.app.ui.lang.media_selector_web_rate_limited
 import me.him188.ani.app.ui.lang.media_selector_web_waiting_captcha
 import me.him188.ani.app.ui.lang.settings_mediasource_refresh
 import me.him188.ani.app.ui.mediaselect.common.SourceIcon
+import kotlinx.coroutines.delay
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.utils.platform.annotations.TestOnly
+import me.him188.ani.utils.platform.currentTimeMillis
 import org.jetbrains.compose.resources.stringResource
 
 
@@ -79,11 +85,16 @@ data class WebSource(
     val isLoading: Boolean,
     val isError: Boolean,
     val isPreferred: Boolean,
-    val captchaRequest: WebCaptchaRequest? = null,
+    val captchaRequest: SolveRequest? = null,
     val captchaMessage: String? = null,
     val isResolvingCaptcha: Boolean = false,
+    /** 限流中: 到达该时间 (epoch millis) 后会自动重试. */
+    val rateLimitedUntilMillis: Long? = null,
+    /** 当前平台是否支持交互解决验证码 (iOS 为 false, 显示降级提示). */
+    val isCaptchaSupported: Boolean = true,
 ) {
     val isCaptchaRequired: Boolean get() = captchaRequest != null
+    val isRateLimited: Boolean get() = rateLimitedUntilMillis != null
 }
 
 /**
@@ -168,6 +179,7 @@ private fun WebSourceCard(
     ) {
     val minHeight = 48.dp
     val waitingCaptchaText = stringResource(Lang.media_selector_web_waiting_captcha)
+    val captchaUnsupportedText = stringResource(Lang.media_selector_web_captcha_unsupported)
     val refreshText = stringResource(Lang.settings_mediasource_refresh)
     Row(
         modifier,
@@ -204,17 +216,33 @@ private fun WebSourceCard(
             verticalArrangement = Arrangement.spacedBy((-8).dp),
         ) {
             if (source.isCaptchaRequired) {
-                Text(
-                    text = if (source.isResolvingCaptcha) waitingCaptchaText else source.captchaMessage.orEmpty(),
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier
-                        .minimumInteractiveComponentSize()
-                        .clickable(enabled = !source.isResolvingCaptcha) {
-                            onResolveCaptcha()
-                        }
-                        .padding(vertical = 8.dp),
-                )
+                if (source.isCaptchaSupported) {
+                    Text(
+                        text = if (source.isResolvingCaptcha) waitingCaptchaText else source.captchaMessage.orEmpty(),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .clickable(enabled = !source.isResolvingCaptcha) {
+                                onResolveCaptcha()
+                            }
+                            .padding(vertical = 8.dp),
+                    )
+                } else {
+                    // iOS 等无浏览器平台: 提示降级, 不可点击
+                    Text(
+                        text = captchaUnsupportedText,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier
+                            .minimumInteractiveComponentSize()
+                            .padding(vertical = 8.dp),
+                    )
+                }
+            }
+
+            source.rateLimitedUntilMillis?.let { until ->
+                RateLimitedCountdownText(until)
             }
 
             for (channel in source.channels) {
@@ -257,6 +285,31 @@ private fun WebSourceCard(
         }
     }
 }
+
+@Composable
+private fun RateLimitedCountdownText(untilMillis: Long, modifier: Modifier = Modifier) {
+    val remainingSeconds by produceState(
+        initialValue = remainingSecondsUntil(untilMillis),
+        key1 = untilMillis,
+    ) {
+        while (true) {
+            value = remainingSecondsUntil(untilMillis)
+            if (value <= 0L) break
+            delay(1000)
+        }
+    }
+    Text(
+        text = stringResource(Lang.media_selector_web_rate_limited, remainingSeconds),
+        color = MaterialTheme.colorScheme.tertiary,
+        style = MaterialTheme.typography.bodySmall,
+        modifier = modifier
+            .minimumInteractiveComponentSize()
+            .padding(vertical = 8.dp),
+    )
+}
+
+private fun remainingSecondsUntil(untilMillis: Long): Long =
+    ((untilMillis - currentTimeMillis()) / 1000).coerceAtLeast(0)
 
 @OptIn(TestOnly::class)
 @Composable
