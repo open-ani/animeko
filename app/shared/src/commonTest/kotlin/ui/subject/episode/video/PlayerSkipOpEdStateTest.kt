@@ -20,7 +20,7 @@ import kotlin.time.Duration.Companion.minutes
 class PlayerSkipOpEdStateTest {
     class `OP chapter on start` {
         private val opChapterOnStart = listOf(
-            Chapter("chapter1 op", 90_000L, 0),
+            Chapter("chapter1 op", 80_000L, 0),
             Chapter("chapter2", 10_000L, 100_000L),
             Chapter("chapter3", 10_000L, 110_000L),
         )
@@ -100,7 +100,7 @@ class PlayerSkipOpEdStateTest {
             }
             // 到达 OP 开头
             localState.update(0L)
-            assertEquals(90_000L, skipTime)
+            assertEquals(80_000L, skipTime)
             assertEquals(false, localState.showSkipTips)
             assertEquals(false, localState.skipped)
             // 跳过 OP

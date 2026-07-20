@@ -941,7 +941,8 @@ private fun EpisodeVideo(
         hasNextEpisode = vm.episodeSelectorState.hasNextEpisode,
         onClickNextEpisode = { vm.episodeSelectorState.selectNext() },
         playerControllerState = playerControllerState,
-        onClickSkip85 = { vm.onClickSkip85(it) },
+        opEdSkipDuration = vm.videoScaffoldConfig.opEdSkipDuration,
+        onClickSkipOpEd = { vm.onClickSkipOpEd(it) },
         title = {
             val episode = page.episodePresentation
             val subject = page.subjectPresentation

@@ -65,7 +65,9 @@ import me.him188.ani.app.ui.foundation.TextWithBorder
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.cursorVisibility
 import me.him188.ani.app.ui.foundation.icons.AniIcons
+import me.him188.ani.app.ui.foundation.icons.Forward80
 import me.him188.ani.app.ui.foundation.icons.Forward85
+import me.him188.ani.app.ui.foundation.icons.Forward90
 import me.him188.ani.app.ui.foundation.icons.RightPanelClose
 import me.him188.ani.app.ui.foundation.icons.RightPanelOpen
 import me.him188.ani.app.ui.foundation.icons.SubtitleGear
@@ -79,7 +81,7 @@ import me.him188.ani.app.ui.lang.subject_episode_collapse_sidebar
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_settings_title
 import me.him188.ani.app.ui.lang.subject_episode_expand_sidebar
 import me.him188.ani.app.ui.lang.subject_episode_external_links
-import me.him188.ani.app.ui.lang.subject_episode_fast_forward_85_seconds
+import me.him188.ani.app.ui.lang.subject_episode_fast_forward_seconds
 import me.him188.ani.app.ui.lang.subject_episode_more_options
 import me.him188.ani.app.ui.lang.subject_episode_preview_mode
 import me.him188.ani.app.ui.lang.subject_episode_select_media_source
@@ -91,6 +93,7 @@ import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
 import me.him188.ani.app.ui.mediafetch.request.TestMediaFetchRequest
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.details.components.ShareEpisodeDropdown
+import me.him188.ani.app.ui.subject.episode.video.DEFAULT_OP_ED_SKIP_DURATION
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
 import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
@@ -155,6 +158,7 @@ import org.openani.mediamp.features.subtitleTracks
 import org.openani.mediamp.isPlaying
 import org.openani.mediamp.test.TestMediampPlayer
 import org.openani.mediamp.togglePause
+import kotlin.time.Duration
 
 internal const val TAG_EPISODE_VIDEO_TOP_BAR = "EpisodeVideoTopBar"
 
@@ -177,7 +181,10 @@ internal fun EpisodeVideoImpl(
     hasNextEpisode: Boolean,
     onClickNextEpisode: () -> Unit,
     playerControllerState: PlayerControllerState,
-    onClickSkip85: (currentPositionMillis: Long) -> Unit = { playerState.skip(85_000L) },
+    opEdSkipDuration: Duration = DEFAULT_OP_ED_SKIP_DURATION,
+    onClickSkipOpEd: (currentPositionMillis: Long) -> Unit = {
+        playerState.skip(opEdSkipDuration.inWholeMilliseconds)
+    },
     title: @Composable () -> Unit,
     danmakuHost: @Composable () -> Unit,
     danmakuEnabled: Boolean,
@@ -261,7 +268,8 @@ internal fun EpisodeVideoImpl(
                             EpisodeVideoTopBarActions(
                                 playerState = playerState,
                                 expanded = expanded,
-                                onClickSkip85 = onClickSkip85,
+                                opEdSkipDuration = opEdSkipDuration,
+                                onClickSkipOpEd = onClickSkipOpEd,
                                 sheetsController = sheetsController,
                                 shareData = shareData,
                                 onClickCache = onClickCache,
@@ -570,7 +578,8 @@ private fun rememberPlayerTouchSeekState(
 private fun EpisodeVideoTopBarActions(
     playerState: MediampPlayer,
     expanded: Boolean,
-    onClickSkip85: (currentPositionMillis: Long) -> Unit,
+    opEdSkipDuration: Duration,
+    onClickSkipOpEd: (currentPositionMillis: Long) -> Unit,
     sheetsController: VideoSideSheetsController<EpisodeVideoSideSheetPage>,
     shareData: MediaShareData,
     onClickCache: () -> Unit,
@@ -584,7 +593,8 @@ private fun EpisodeVideoTopBarActions(
     var showMoreDropdown by rememberSaveable { mutableStateOf(false) }
     val dropdownAlwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "topBarExternalActions")
     val isExternalDropdownVisible = showShareDropdown || showMoreDropdown
-    val fastForward85SecondsText = stringResource(Lang.subject_episode_fast_forward_85_seconds)
+    val skipDurationSeconds = opEdSkipDuration.inWholeSeconds
+    val fastForwardSecondsText = stringResource(Lang.subject_episode_fast_forward_seconds, skipDurationSeconds)
     val selectMediaSourceText = stringResource(Lang.subject_episode_select_media_source)
     val danmakuSettingsTitleText = stringResource(Lang.subject_episode_danmaku_settings_title)
     val moreOptionsText = stringResource(Lang.subject_episode_more_options)
@@ -608,8 +618,13 @@ private fun EpisodeVideoTopBarActions(
         }
     }
 
-    IconButton({ onClickSkip85(playerState.getCurrentPositionMillis()) }) {
-        Icon(AniIcons.Forward85, fastForward85SecondsText)
+    IconButton({ onClickSkipOpEd(playerState.getCurrentPositionMillis()) }) {
+        val icon = when (skipDurationSeconds) {
+            85L -> AniIcons.Forward85
+            90L -> AniIcons.Forward90
+            else -> AniIcons.Forward80
+        }
+        Icon(icon, fastForwardSecondsText)
     }
 
     if (expanded) {
@@ -747,7 +762,7 @@ private fun PreviewVideoScaffoldImpl(
         hasNextEpisode = true,
         onClickNextEpisode = {},
         playerControllerState = controllerState,
-        onClickSkip85 = { playerState.skip(85_000L) },
+        onClickSkipOpEd = { playerState.skip(DEFAULT_OP_ED_SKIP_DURATION.inWholeMilliseconds) },
         title = {
             EpisodePlayerTitle(
                 "28",
