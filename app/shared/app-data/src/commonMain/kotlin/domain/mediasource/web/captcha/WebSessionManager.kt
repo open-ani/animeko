@@ -575,7 +575,12 @@ class WebSessionManager(
         if (cookies.isNotEmpty()) {
             cookieJar.addBrowserCookies(finalUrl, cookies)
         }
-        identityRegistry.setUserAgent(host, browser.userAgent)
+        identityRegistry.setUserAgent(
+            host,
+            withContext(Dispatchers.Main) {
+                browser.userAgent
+            },
+        )
         logger.info { "WebSessionManager: synced ${cookies.size} cookies and UA for $host" }
     }
 
