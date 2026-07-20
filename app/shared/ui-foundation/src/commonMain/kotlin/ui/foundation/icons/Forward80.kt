@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2026 OpenAni and contributors.
+ * Copyright (C) 2024 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -19,13 +19,13 @@ import androidx.compose.ui.graphics.vector.ImageVector.Builder
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
-public val AniIcons.Forward85: ImageVector
+public val AniIcons.Forward80: ImageVector
     get() {
-        if (_forward85 != null) {
-            return _forward85!!
+        if (_forward80 != null) {
+            return _forward80!!
         }
-        _forward85 = Builder(
-            name = "Forward85",
+        _forward80 = Builder(
+            name = "Forward80",
             defaultWidth = 24.0.dp,
             defaultHeight = 24.0.dp,
             viewportWidth = 960.0f,
@@ -112,27 +112,29 @@ public val AniIcons.Forward85: ImageVector
                 strokeLineMiter = 4.0f,
                 pathFillType = NonZero,
             ) {
-                moveToRelative(500.006f, 640.0f)
-                verticalLineToRelative(-60.0f)
-                horizontalLineToRelative(99.989f)
-                verticalLineToRelative(-40.0f)
-                horizontalLineToRelative(-99.989f)
-                verticalLineToRelative(-140.0f)
-                horizontalLineToRelative(159.989f)
-                verticalLineToRelative(60.0f)
-                horizontalLineToRelative(-99.989f)
-                verticalLineToRelative(40.0f)
-                horizontalLineToRelative(59.989f)
-                curveToRelative(11.333f, 0.0f, 20.833f, 3.833f, 28.5f, 11.5f)
-                curveToRelative(7.667f, 7.667f, 11.5f, 17.167f, 11.5f, 28.5f)
-                verticalLineToRelative(60.0f)
-                curveToRelative(0.0f, 11.333f, -3.833f, 20.833f, -11.5f, 28.5f)
-                curveToRelative(-7.667f, 7.667f, -17.167f, 11.5f, -28.5f, 11.5f)
+                moveToRelative(540.006f, 640.0f)
+                horizontalLineToRelative(80.0f)
+                curveToRelative(11.333f, 0.0f, 20.833f, -3.833f, 28.5f, -11.5f)
+                curveToRelative(7.667f, -7.667f, 11.5f, -17.167f, 11.5f, -28.5f)
+                verticalLineToRelative(-160.0f)
+                curveToRelative(0.0f, -11.333f, -3.833f, -20.833f, -11.5f, -28.5f)
+                curveToRelative(-7.667f, -7.667f, -17.167f, -11.5f, -28.5f, -11.5f)
+                horizontalLineToRelative(-80.0f)
+                curveToRelative(-11.333f, 0.0f, -20.833f, 3.833f, -28.5f, 11.5f)
+                curveToRelative(-7.667f, 7.667f, -11.5f, 17.167f, -11.5f, 28.5f)
+                verticalLineToRelative(160.0f)
+                curveToRelative(0.0f, 11.333f, 3.833f, 20.833f, 11.5f, 28.5f)
+                curveToRelative(7.667f, 7.667f, 17.167f, 11.5f, 28.5f, 11.5f)
+                close()
+                moveTo(560.006f, 580.0f)
+                verticalLineToRelative(-120.0f)
+                horizontalLineToRelative(40.0f)
+                verticalLineToRelative(120.0f)
                 close()
             }
         }
             .build()
-        return _forward85!!
+        return _forward80!!
     }
 
-private var _forward85: ImageVector? = null
+private var _forward80: ImageVector? = null

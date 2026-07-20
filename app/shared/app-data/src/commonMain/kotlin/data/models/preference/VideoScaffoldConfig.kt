@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -14,6 +14,8 @@ import androidx.compose.runtime.Stable
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import me.him188.ani.utils.platform.annotations.SerializationOnly
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 @Immutable
 @Serializable
@@ -71,6 +73,10 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      * 跳过 OP 和 ED
      */
     val autoSkipOpEd: Boolean = true,
+    /**
+     * 跳过 OP 和 ED 的时长. UI 仅提供 80, 85 和 90 秒三个选项.
+     */
+    val opEdSkipDuration: Duration = 85.seconds,
     /**
      * 在播放器错误时自动切换视频源
      */

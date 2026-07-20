@@ -268,6 +268,8 @@
     <string name="settings_player_auto_play_next">Auto-play next episode</string>
     <string name="settings_player_auto_skip_op_ed">Automatically skip OP and ED</string>
     <string name="settings_player_auto_skip_op_ed_description">Only works for some resources from BT data sources</string>
+    <string name="settings_player_op_ed_skip_duration">OP/ED skip duration</string>
+    <string name="settings_player_op_ed_skip_duration_seconds">%1$d seconds</string>
     <string name="settings_player_auto_switch_media_on_error">Automatically switch resources on playback failure</string>
     <string name="settings_player_experimental_hls_segment_filter">Filter inserted ads (experimental)</string>
     <string name="settings_player_experimental_hls_segment_filter_description">Attempts to filter inserted ads from some online sources. Only works when ads are inserted as separate segments; incorrect detection may skip normal content.</string>
@@ -1228,7 +1230,7 @@
     <string name="subject_episode_danmaku_service_baha_short">BA</string>
     <string name="subject_episode_now_playing">Now playing</string>
     <string name="subject_episode_danmaku_settings_title">Danmaku settings</string>
-    <string name="subject_episode_fast_forward_85_seconds">Fast forward 85 seconds</string>
+    <string name="subject_episode_fast_forward_seconds">Fast forward %1$d seconds</string>
     <string name="subject_episode_collapse_sidebar">Collapse sidebar</string>
     <string name="subject_episode_expand_sidebar">Expand sidebar</string>
     <string name="subject_episode_preview_mode">Preview mode</string>

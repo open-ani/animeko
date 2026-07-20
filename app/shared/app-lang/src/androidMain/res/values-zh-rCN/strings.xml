@@ -281,6 +281,8 @@
     <string name="settings_player_auto_play_next">自动连播</string>
     <string name="settings_player_auto_skip_op_ed">自动跳过 OP 和 ED</string>
     <string name="settings_player_auto_skip_op_ed_description">只对 BT 数据源的部分资源有效</string>
+    <string name="settings_player_op_ed_skip_duration">OP/ED 跳过时长</string>
+    <string name="settings_player_op_ed_skip_duration_seconds">%1$d 秒</string>
     <string name="settings_player_auto_switch_media_on_error">播放失败时自动切换资源</string>
     <string name="settings_player_experimental_hls_segment_filter">过滤贴片广告（实验性）</string>
     <string name="settings_player_experimental_hls_segment_filter_description">尝试过滤部分在线源插入的贴片广告。只对以独立片段插入的广告有效，识别错误时可能跳过正常内容。</string>
@@ -1268,7 +1270,7 @@
     <string name="subject_episode_danmaku_service_baha_short">巴</string>
     <string name="subject_episode_now_playing">正在播放</string>
     <string name="subject_episode_danmaku_settings_title">弹幕设置</string>
-    <string name="subject_episode_fast_forward_85_seconds">快进 85 秒</string>
+    <string name="subject_episode_fast_forward_seconds">快进 %1$d 秒</string>
     <string name="subject_episode_collapse_sidebar">折叠侧边栏</string>
     <string name="subject_episode_expand_sidebar">展开侧边栏</string>
     <string name="subject_episode_preview_mode">预览模式</string>
