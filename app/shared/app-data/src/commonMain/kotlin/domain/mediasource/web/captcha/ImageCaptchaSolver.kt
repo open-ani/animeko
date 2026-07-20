@@ -15,6 +15,7 @@ import io.ktor.client.request.header
 import io.ktor.client.request.prepareGet
 import io.ktor.client.request.preparePost
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.request
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.URLBuilder
@@ -99,6 +100,7 @@ class MacCmsImageCaptchaSolver(
             captureSample = session::captureSample,
             submitAnswer = session::submitAnswer,
             evaluate = ctx.evaluate,
+            onSolved = ctx.retainSolvedPage,
         )
     }
 }
@@ -135,6 +137,7 @@ class BrowserImageCaptchaSolver(
                 browser.awaitSolvedPage(ctx.request, ctx.evaluate)
             },
             evaluate = ctx.evaluate,
+            onSolved = ctx.retainSolvedPage,
         )
     }
 }
@@ -145,6 +148,7 @@ private suspend fun solveImageCaptcha(
     captureSample: suspend (previousBytes: ByteArray?) -> ImageCaptchaSample?,
     submitAnswer: suspend (answer: String) -> LoadedPage?,
     evaluate: suspend (LoadedPage) -> PageVerdict<*>,
+    onSolved: (LoadedPage) -> Unit,
     maxAttempts: Int = IMAGE_CAPTCHA_MAX_ATTEMPTS,
 ): SolveOutcome {
     var previousSampleBytes: ByteArray? = null
@@ -169,6 +173,7 @@ private suspend fun solveImageCaptcha(
         if (solvedPage != null) {
             val verdict = evaluate(solvedPage)
             if (isSuccessfulSolve(solvedPage, verdict, request)) {
+                onSolved(solvedPage)
                 logger.info { "Solved image captcha on attempt ${attempt + 1}/$maxAttempts for ${request.pageUrl}" }
                 return SolveOutcome.Solved
             }

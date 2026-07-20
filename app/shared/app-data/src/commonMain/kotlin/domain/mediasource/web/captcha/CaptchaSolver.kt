@@ -33,7 +33,7 @@ sealed interface SolveOutcome {
 }
 
 /**
- * 自动解决策略 (预留接缝, v1 无实现).
+ * 自动解决策略.
  *
  * `solve(interactive = false)` 遍历注入的策略列表, 按 [canAttempt] 过滤, 从便宜到贵依次 [attempt],
  * 首个让 [SolveContext.evaluate] 返回 [PageVerdict.Ok] 的策略胜出.
@@ -57,10 +57,15 @@ class SolveContext internal constructor(
     val acquireBrowser: suspend () -> CaptchaBrowser,
     /** 唯一真相来源: 判定 [LoadedPage] 是否已解决. */
     val evaluate: suspend (LoadedPage) -> PageVerdict<*>,
+    /**
+     * 保留已经由 [evaluate] 验证过的业务页, 供紧接着的同 URL fetch 一次性消费.
+     * 纯 HTTP 验证码可能只放行当前搜索请求, 不能为验证成功再重复请求一次.
+     */
+    val retainSolvedPage: (LoadedPage) -> Unit = {},
 )
 
 /**
- * 备用取数路由 (预留接缝, v1 无实现).
+ * 备用取数路由.
  *
  * "换一条路取数": HTML 页被验证页挡住时改走站点公开 API 等, 绕过验证码而非解决它.
  * [WebSessionManager.fetchPage] 在发起常规请求之前查询命中 host 的路由;

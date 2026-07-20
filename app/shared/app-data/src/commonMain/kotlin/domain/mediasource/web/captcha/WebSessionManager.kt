@@ -17,6 +17,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.request
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.Url
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -79,12 +80,12 @@ class InteractiveSolveUi internal constructor(
  *
  * - [fetchPage]: 引擎的唯一页面入口. 直连 HTTP 优先, 被挡且有暖会话时用浏览器重载,
  *   60s 粘滞窗口内直接走浏览器; 站点恢复后自动降级回直连.
- * - [solve]: 解决编排. interactive 必定呈现对话框 (无缓存入口); auto 遍历 [solvers] (v1 为空).
+ * - [solve]: 解决编排. interactive 必定呈现对话框 (无缓存入口); auto 按顺序遍历 [solvers].
  * - 会话注册表: key 为 host (去 `www.`), 每 host 最多一个活浏览器, LRU 上限 + 闲置 TTL 自动回收.
- * - 无 solvedResults 缓存: "已解决" 只体现为 jar 里的 cookie 和注册表里的暖会话.
+ * - 无通用 solvedResults 缓存: 自动 solver 可将已验证业务页保留 60s, 仅供精确同 URL 的下一次请求消费一次.
  *
- * @param solvers 自动解决策略链 (预留接缝, v1 注入空列表).
- * @param searchRoutes 备用取数路由 (预留接缝, v1 注入空列表).
+ * @param solvers 自动解决策略链.
+ * @param searchRoutes 备用取数路由.
  */
 class WebSessionManager(
     private val browserFactory: CaptchaBrowserFactory,
@@ -121,11 +122,18 @@ class WebSessionManager(
         var job: Job? = null
     }
 
+    private data class PendingSolvedPage(
+        val requestKey: String,
+        val page: LoadedPage,
+        val storedAtMillis: Long,
+    )
+
     private class HostState {
         var session: BrowserSession? = null
         var lastHttpBlockedAtMillis: Long = 0
         var lastSolveFailedAtMillis: Long = 0
         var lastSolveSucceededAtMillis: Long = 0
+        var pendingSolvedPage: PendingSolvedPage? = null
         var activeSolve: ActiveSolve? = null
     }
 
@@ -177,6 +185,12 @@ class WebSessionManager(
      */
     suspend fun <T> fetchPage(url: String, expectation: PageExpectation<T>): PageVerdict<T> {
         val host = normalizedSessionHost(url)
+
+        if (host != null) {
+            consumePendingSolvedPage(host, url)?.let { page ->
+                return evaluator.evaluate(page, expectation)
+            }
+        }
 
         if (host != null) {
             for (route in searchRoutes) {
@@ -357,7 +371,7 @@ class WebSessionManager(
      *
      * - [interactive] = `true`: 必定呈现对话框. 入口不查任何缓存 —— 用户点 "处理验证码"
      *   本身就是 "当前状态不行" 的证明. 同 host 已有进行中的 solve 则 join (single-flight).
-     * - [interactive] = `false`: 遍历 [solvers], v1 列表为空 → 立即失败, 不创建浏览器.
+     * - [interactive] = `false`: 遍历 [solvers]; 没有可用策略时立即失败, 不创建浏览器.
      */
     suspend fun solve(request: SolveRequest, interactive: Boolean): SolveOutcome {
         val host = normalizedSessionHost(request.pageUrl)
@@ -423,7 +437,7 @@ class WebSessionManager(
             (request.kind.let { BlockReason.Captcha(it) }).let { solver.canAttempt(it, host) }
         }
         if (applicable.isEmpty()) {
-            // v1: 无策略, 立即失败, 不创建浏览器
+            // 无可用策略时立即失败, 不创建浏览器
             return SolveOutcome.Failed(BlockReason.Captcha(request.kind))
         }
 
@@ -440,6 +454,7 @@ class WebSessionManager(
         var lastFailure: SolveOutcome = SolveOutcome.Failed(BlockReason.Captcha(request.kind))
         for (solver in applicable) {
             var acquired: BrowserSession? = null
+            var solvedPage: LoadedPage? = null
             val ctx = SolveContext(
                 request = request,
                 http = client,
@@ -447,10 +462,12 @@ class WebSessionManager(
                     (acquired ?: acquireSession(host).also { acquired = it }).browser
                 },
                 evaluate = { page -> evaluator.evaluate(page, request.expectation) },
+                retainSolvedPage = { page -> solvedPage = page },
             )
             try {
                 when (val outcome = solver.attempt(ctx)) {
                     SolveOutcome.Solved -> {
+                        solvedPage?.let { retainPendingSolvedPage(host, request.pageUrl, it) }
                         acquired?.let { syncBrowserIdentity(host, it.browser, request.pageUrl, request.pageUrl) }
                         return SolveOutcome.Solved
                     }
@@ -547,12 +564,37 @@ class WebSessionManager(
         val session = lock.withLock {
             hostStates[normalized]?.let { state ->
                 state.lastSolveSucceededAtMillis = 0
+                state.pendingSolvedPage = null
                 state.session?.also { state.session = null }
             }
         }
         cookieJar.clearForHost(normalized)
         session?.let { closeSession(it) }
     }
+
+    private suspend fun retainPendingSolvedPage(host: String, requestUrl: String, page: LoadedPage) {
+        lock.withLock {
+            hostStateLocked(host).pendingSolvedPage = PendingSolvedPage(
+                requestKey = pendingPageKey(requestUrl),
+                page = page,
+                storedAtMillis = getTimeMillis(),
+            )
+        }
+    }
+
+    private suspend fun consumePendingSolvedPage(host: String, requestUrl: String): LoadedPage? = lock.withLock {
+        val state = hostStates[host] ?: return@withLock null
+        val pending = state.pendingSolvedPage ?: return@withLock null
+        if (getTimeMillis() - pending.storedAtMillis >= stickyWindow.inWholeMilliseconds) {
+            state.pendingSolvedPage = null
+            return@withLock null
+        }
+        if (pending.requestKey != pendingPageKey(requestUrl)) return@withLock null
+        state.pendingSolvedPage = null
+        pending.page
+    }
+
+    private fun pendingPageKey(url: String): String = runCatching { Url(url).toString() }.getOrDefault(url)
 
     /**
      * 将浏览器的 cookie 与 UA 同步到 HTTP 侧, 保证身份一致.

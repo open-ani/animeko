@@ -78,6 +78,7 @@ class WebSessionManagerTest {
 
     private class Fixture(
         scope: TestScope,
+        solvers: List<CaptchaSolver> = emptyList(),
         var httpResponder: (url: String) -> Pair<String, HttpStatusCode> = { "" to HttpStatusCode.OK },
     ) {
         val factory = FakeCaptchaBrowserFactory()
@@ -111,10 +112,83 @@ class WebSessionManagerTest {
             identityRegistry = identityRegistry,
             client = client,
             backgroundScope = scope.backgroundScope,
+            solvers = solvers,
             getTimeMillis = { nowMillis },
             // 留在测试调度器上, 让浏览器创建/关闭与断言确定性同步
             ioContext = EmptyCoroutineContext,
         )
+    }
+
+    @Test
+    fun `auto solver hands verified page to exact next fetch without duplicate http request`() = runTestExt {
+        var httpRequestCount = 0
+        val solver = object : CaptchaSolver {
+            override val id: String = "one-shot-page"
+
+            override fun canAttempt(reason: BlockReason.Captcha, host: String): Boolean = true
+
+            override suspend fun attempt(ctx: SolveContext): SolveOutcome {
+                val page = LoadedPage(searchUrl, parseableHtml, status = 200)
+                assertIs<PageVerdict.Ok<*>>(ctx.evaluate(page))
+                ctx.retainSolvedPage(page)
+                return SolveOutcome.Solved
+            }
+        }
+        val fixture = Fixture(this, solvers = listOf(solver)) { _ ->
+            httpRequestCount++
+            challengeHtml to HttpStatusCode.Forbidden
+        }
+
+        assertIs<PageVerdict.Blocked>(fixture.manager.fetchPage(searchUrl, expectation))
+        assertEquals(SolveOutcome.Solved, fixture.manager.solve(solveRequest(), interactive = false))
+        assertIs<PageVerdict.Ok<*>>(fixture.manager.fetchPage(searchUrl, expectation))
+        assertEquals(1, httpRequestCount)
+    }
+
+    @Test
+    fun `verified page is not handed to a different url and remains available for the exact url`() = runTestExt {
+        var httpRequestCount = 0
+        val solver = retainingSolver(LoadedPage(searchUrl, parseableHtml, status = 200))
+        val fixture = Fixture(this, solvers = listOf(solver)) { _ ->
+            httpRequestCount++
+            challengeHtml to HttpStatusCode.Forbidden
+        }
+
+        assertEquals(SolveOutcome.Solved, fixture.manager.solve(solveRequest(), interactive = false))
+        assertIs<PageVerdict.Blocked>(fixture.manager.fetchPage("https://example.com/other", expectation))
+        assertIs<PageVerdict.Ok<*>>(fixture.manager.fetchPage(searchUrl, expectation))
+        assertEquals(1, httpRequestCount)
+    }
+
+    @Test
+    fun `verified page expires and is consumed only once`() = runTestExt {
+        var httpRequestCount = 0
+        val solver = retainingSolver(LoadedPage(searchUrl, parseableHtml, status = 200))
+        val fixture = Fixture(this, solvers = listOf(solver)) { _ ->
+            httpRequestCount++
+            challengeHtml to HttpStatusCode.Forbidden
+        }
+
+        assertEquals(SolveOutcome.Solved, fixture.manager.solve(solveRequest(), interactive = false))
+        assertIs<PageVerdict.Ok<*>>(fixture.manager.fetchPage(searchUrl, expectation))
+        assertIs<PageVerdict.Blocked>(fixture.manager.fetchPage(searchUrl, expectation))
+
+        assertEquals(SolveOutcome.Solved, fixture.manager.solve(solveRequest(), interactive = false))
+        fixture.nowMillis += 60_000
+        assertIs<PageVerdict.Blocked>(fixture.manager.fetchPage(searchUrl, expectation))
+        assertEquals(2, httpRequestCount)
+    }
+
+    private fun retainingSolver(page: LoadedPage): CaptchaSolver = object : CaptchaSolver {
+        override val id: String = "one-shot-page"
+
+        override fun canAttempt(reason: BlockReason.Captcha, host: String): Boolean = true
+
+        override suspend fun attempt(ctx: SolveContext): SolveOutcome {
+            assertIs<PageVerdict.Ok<*>>(ctx.evaluate(page))
+            ctx.retainSolvedPage(page)
+            return SolveOutcome.Solved
+        }
     }
 
     private fun solveRequest() = SolveRequest(

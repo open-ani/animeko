@@ -2,8 +2,10 @@
 
 图片验证码链路位于 `app/shared/app-data`，由公共编排、平台浏览器或 HTTP 会话和平台识别器三部分组成。
 
-- `ImageCaptchaRecognizer` 是模型接入点。Android、Desktop 与 iOS 分别向各自的
-  `WebCaptchaCoordinator` 注入实现，识别器只需接收原始图片并返回四位数字。
+- `WebSessionManager` 是页面加载与验证码处理的统一入口，`CaptchaSolver` 实现自动处理策略，
+  `WebSourceCookieJar` 在普通请求与求解请求之间共享站点会话。
+- `ImageCaptchaRecognizer` 是模型接入点。Android、Desktop 与 iOS 向公共图片验证码 solver
+  注入各自实现，识别器只需接收原始图片并返回四位数字。
 - 公共逻辑负责提取验证码图片、校验识别结果、填写并提交、验证页面状态，以及失败后的两次刷新重试。
 - 自动识别分支在三次识别或验证仍未成功时直接进入现有 `CaptchaRequired` 状态，不会自动打开交互式 WebView/JCEF；仅当用户主动选择处理验证码时，才复用原有交互式填写流程。
 
@@ -51,10 +53,9 @@ Android 与 iOS 对检测为图片验证码的 MacCMS 搜索页使用后台 HTTP
 4. 已验证的搜索页会一次性交给原数据源流程直接解析，避免验证码刚通过就因重复请求搜索 URL 再次触发验证。
 5. 识别失败时重新请求图片；只有图片字节哈希发生变化后才执行下一次推理。
 
-请求会手动维护 Cookie，并在验证码图片请求发生同路径跨域重定向时采用新的 origin。这样可以处理数据源从旧域名迁移到新域名的情况，同时避免把跳转到外部图片 CDN 的 URL 当作站点 origin。
+请求通过 `WebSourceCookieJar` 维护 Cookie，并在验证码图片请求发生同路径跨域重定向时采用新的 origin。这样可以处理数据源从旧域名迁移到新域名的情况，同时避免把跳转到外部图片 CDN 的 URL 当作站点 origin。
 
-搜索验证码可能只对单次搜索或短期会话有效。若后续搜索再次检测到同一图片验证码，自动分支不得直接复用之前的 `Solved` 结果，而应重新取图、识别、提交并更新 Cookie；其他类型验证码仍可复用原有 solved session 缓存。
-用户主动处理图片验证码时同样不会复用自动分支留下的 `Solved` 缓存，以免业务页再次触发验证码后点击处理却直接返回；此时继续使用原有交互式填写流程。
+搜索验证码可能只对单次搜索或短期会话有效。`WebSessionManager` 不缓存通用的 `Solved` 结果；自动求解成功后只暂存已经由 `PageEvaluator` 验证过的业务页，并且仅允许紧接着的精确同 URL 请求在 60 秒内消费一次。若后续搜索再次检测到验证码，应重新取图、识别、提交并更新 Cookie。用户主动处理验证码时继续使用现有交互式填写流程。
 
 ## 采集训练样本
 
@@ -75,7 +76,8 @@ Debug 构建的数据源测试页面在检测到图片验证码后会显示“�
 如需在其他开发工具中采集，可直接调用：
 
 ```kotlin
-webCaptchaCoordinator.collectImageCaptchaSamples(
+collectImageCaptchaSamplesToDirectory(
+    browser = browser,
     request = captchaRequest,
     count = 100,
     outputDirectory = outputDirectory,
