@@ -42,6 +42,7 @@ import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.data.models.preference.WatchTogetherSettings
 import me.him188.ani.app.data.network.danmaku.AniBangumiSeverBaseUrls
 import me.him188.ani.app.data.repository.media.MediaSourceInstanceRepository
 import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
@@ -127,6 +128,9 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
 
     val videoScaffoldConfig: SettingsState<VideoScaffoldConfig> =
         settingsRepository.videoScaffoldConfig.stateInBackground(VideoScaffoldConfig.Default.copy(_placeholder = -1))
+
+    val watchTogetherSettings: SettingsState<WatchTogetherSettings> =
+        settingsRepository.watchTogetherSettings.stateInBackground(WatchTogetherSettings.Default)
 
     val videoResolverSettingsState: SettingsState<VideoResolverSettings> =
         settingsRepository.videoResolverSettings.stateInBackground(VideoResolverSettings.Default.copy(_placeholder = -1))

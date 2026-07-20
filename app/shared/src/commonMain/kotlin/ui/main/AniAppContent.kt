@@ -107,6 +107,8 @@ import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
 import me.him188.ani.app.ui.subject.episode.EpisodeScreen
 import me.him188.ani.app.ui.subject.episode.EpisodeViewModel
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
+import me.him188.ani.app.ui.watchtogether.WatchTogetherOverlayHost
+import me.him188.ani.app.ui.watchtogether.WatchTogetherViewModel
 import me.him188.ani.datasources.api.source.FactoryId
 import kotlin.reflect.typeOf
 
@@ -140,6 +142,10 @@ fun AniAppContent(aniNavigator: AniNavigator) {
                 onLogin = {
                     aniNavigator.navigateBangumiAuthorize()
                 },
+            )
+            WatchTogetherOverlayHost(
+                viewModel = viewModel { WatchTogetherViewModel() },
+                aniNavigator = aniNavigator,
             )
         }
     }

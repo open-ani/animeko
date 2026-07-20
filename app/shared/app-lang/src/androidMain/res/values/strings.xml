@@ -1290,6 +1290,54 @@
     <string name="person_details_career_writer">Writer</string>
     <string name="person_details_career_illustrator">Illustrator</string>
     <string name="person_details_career_actor">Actor</string>
+
+    <!-- Watch Together -->
+    <string name="watch_together_title">Watch Together</string>
+    <string name="settings_watch_together_social">Social viewing</string>
+    <string name="settings_watch_together_description">Join a room and keep playback synchronized with friends</string>
+    <string name="watch_together_bubble">Watch Together</string>
+    <string name="watch_together_login_required">Sign in to use Watch Together</string>
+    <string name="watch_together_login_description">Rooms use your Ani account to identify members and keep your session secure.</string>
+    <string name="watch_together_login">Sign in</string>
+    <string name="watch_together_room_name">Room name</string>
+    <string name="watch_together_password">Password</string>
+    <string name="watch_together_show_password">Show password</string>
+    <string name="watch_together_join_helper">A new room is created automatically when this name does not exist.</string>
+    <string name="watch_together_join">Join room</string>
+    <string name="watch_together_joining">Joining…</string>
+    <string name="watch_together_join_failed">Could not join the room: %1$s</string>
+    <string name="watch_together_error_wrong_password">The room password is incorrect</string>
+    <string name="watch_together_error_room_full">The room is full</string>
+    <string name="watch_together_error_room_closed">The room has already closed</string>
+    <string name="watch_together_error_invalid_name">Use a room name between 1 and 32 characters</string>
+    <string name="watch_together_error_invalid_password">Use a password between 1 and 64 characters</string>
+    <string name="watch_together_error_rate_limited">Too many attempts. Try again in a minute</string>
+    <string name="watch_together_error_temporary">The service is temporarily unavailable</string>
+    <string name="watch_together_connection_connected">Connected</string>
+    <string name="watch_together_connection_reconnecting">Reconnecting…</string>
+    <string name="watch_together_connection_degraded">Connected with polling</string>
+    <string name="watch_together_members_count">%1$d members</string>
+    <string name="watch_together_now_playing">Host playback</string>
+    <string name="watch_together_host_idle">The host is not playing an episode</string>
+    <string name="watch_together_host">Host</string>
+    <string name="watch_together_you_are_host">You are the host</string>
+    <string name="watch_together_following">Following host</string>
+    <string name="watch_together_free_watching">Watching independently</string>
+    <string name="watch_together_disconnected">Disconnected</string>
+    <string name="watch_together_idle">Idle</string>
+    <string name="watch_together_watching">Watching</string>
+    <string name="watch_together_follow_host">Follow host playback</string>
+    <string name="watch_together_leave">Leave room</string>
+    <string name="watch_together_disband">Disband room</string>
+    <string name="watch_together_disable">Turn off Watch Together</string>
+    <string name="watch_together_collapse">Collapse</string>
+    <string name="watch_together_cancel">Cancel</string>
+    <string name="watch_together_confirm_disband">Disband this room for everyone?</string>
+    <string name="watch_together_room_closed">The Watch Together room was closed.</string>
+    <string name="watch_together_session_replaced">This room was opened on another device.</string>
+    <string name="watch_together_rejoined">The previous room expired, so it was created again.</string>
+    <string name="watch_together_rejoin_failed">Could not restore the previous Watch Together room.</string>
+    <string name="watch_together_navigation_blocked">Leave or stop following the host before opening another episode.</string>
 </resources>
 
 <!--@formatter:on-->

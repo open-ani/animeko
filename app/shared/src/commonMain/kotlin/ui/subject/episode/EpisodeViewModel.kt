@@ -99,8 +99,10 @@ import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
 import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
 import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
 import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
+import me.him188.ani.app.domain.player.extension.WatchTogetherPlayerExtension
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsUseCase
+import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.ui.comment.BangumiCommentSticker
@@ -267,6 +269,8 @@ class EpisodeViewModel(
     private val setSubjectCollectionTypeOrDeleteUseCase: SetSubjectCollectionTypeOrDeleteUseCase by inject()
     private val getPreferredWebMediaSource: GetPreferredWebMediaSourceUseCase by inject()
     private val webSessionManager: WebSessionManager by inject()
+    private val playbackAutomationGate: PlaybackAutomationGate by inject()
+    val playbackAutomationSuppressed get() = playbackAutomationGate.suppressed
     // endregion
 
     private val tasker = SingleTaskExecutor(backgroundScope.coroutineContext)
@@ -280,6 +284,7 @@ class EpisodeViewModel(
         extensions = listOf(
             AnalyticsExtension,
             RememberPlayProgressExtension,
+            WatchTogetherPlayerExtension,
             MarkAsWatchedExtension,
             CacheOnBtPlayExtension,
             SwitchNextEpisodeExtension.Factory(
@@ -1007,7 +1012,7 @@ class EpisodeViewModel(
                     ) { pos, id, collections ->
                         // 不止一集并且当前是第一集时不跳过
                         if (collections.size > 1 && collections.getOrNull(0)?.episodeId == id) return@combine
-                        playerSkipOpEdState.update(pos)
+                        if (!playbackAutomationGate.suppressed.value) playerSkipOpEdState.update(pos)
                     }.collect()
                 }
         }

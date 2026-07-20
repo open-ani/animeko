@@ -1295,6 +1295,54 @@
     <string name="person_details_career_writer">作家</string>
     <string name="person_details_career_illustrator">繪師</string>
     <string name="person_details_career_actor">演員</string>
+
+    <!-- 一起看 -->
+    <string name="watch_together_title">一起看</string>
+    <string name="settings_watch_together_social">社交觀看</string>
+    <string name="settings_watch_together_description">加入房間，與朋友同步播放進度</string>
+    <string name="watch_together_bubble">一起看</string>
+    <string name="watch_together_login_required">登入後才能使用一起看</string>
+    <string name="watch_together_login_description">房間使用你的 Ani 帳號識別成員並保障工作階段安全。</string>
+    <string name="watch_together_login">前往登入</string>
+    <string name="watch_together_room_name">房間名稱</string>
+    <string name="watch_together_password">密碼</string>
+    <string name="watch_together_show_password">顯示密碼</string>
+    <string name="watch_together_join_helper">若房間不存在，將自動建立新房間。</string>
+    <string name="watch_together_join">加入房間</string>
+    <string name="watch_together_joining">正在加入…</string>
+    <string name="watch_together_join_failed">無法加入房間：%1$s</string>
+    <string name="watch_together_error_wrong_password">房間密碼錯誤</string>
+    <string name="watch_together_error_room_full">房間人數已滿</string>
+    <string name="watch_together_error_room_closed">房間已經關閉</string>
+    <string name="watch_together_error_invalid_name">房間名稱須為 1 至 32 個字元</string>
+    <string name="watch_together_error_invalid_password">密碼須為 1 至 64 個字元</string>
+    <string name="watch_together_error_rate_limited">嘗試次數過多，請稍後再試</string>
+    <string name="watch_together_error_temporary">服務暫時無法使用，請稍後再試</string>
+    <string name="watch_together_connection_connected">已連線</string>
+    <string name="watch_together_connection_reconnecting">正在重新連線…</string>
+    <string name="watch_together_connection_degraded">已透過輪詢連線</string>
+    <string name="watch_together_members_count">%1$d 位成員</string>
+    <string name="watch_together_now_playing">房主播放狀態</string>
+    <string name="watch_together_host_idle">房主暫未播放集數</string>
+    <string name="watch_together_host">房主</string>
+    <string name="watch_together_you_are_host">你是房主</string>
+    <string name="watch_together_following">正在跟隨房主</string>
+    <string name="watch_together_free_watching">正在自由觀看</string>
+    <string name="watch_together_disconnected">已中斷連線</string>
+    <string name="watch_together_idle">閒置</string>
+    <string name="watch_together_watching">觀看中</string>
+    <string name="watch_together_follow_host">跟隨房主播放</string>
+    <string name="watch_together_leave">離開房間</string>
+    <string name="watch_together_disband">解散房間</string>
+    <string name="watch_together_disable">關閉一起看</string>
+    <string name="watch_together_collapse">收合</string>
+    <string name="watch_together_cancel">取消</string>
+    <string name="watch_together_confirm_disband">確定要為所有成員解散此房間嗎？</string>
+    <string name="watch_together_room_closed">一起看房間已關閉。</string>
+    <string name="watch_together_session_replaced">此房間已在另一台裝置上開啟。</string>
+    <string name="watch_together_rejoined">原房間已過期，已為你重新建立。</string>
+    <string name="watch_together_rejoin_failed">無法恢復上次的一起看房間。</string>
+    <string name="watch_together_navigation_blocked">請先離開房間或停止跟隨房主，再開啟其他集數。</string>
 </resources>
 
 <!--@formatter:on-->

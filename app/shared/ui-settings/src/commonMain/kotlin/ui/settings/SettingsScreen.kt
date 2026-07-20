@@ -147,6 +147,7 @@ import me.him188.ani.app.ui.settings.tabs.about.DevelopersTab
 import me.him188.ani.app.ui.settings.tabs.app.AppearanceGroup
 import me.him188.ani.app.ui.settings.tabs.app.PlayerGroup
 import me.him188.ani.app.ui.settings.tabs.app.SoftwareUpdateGroup
+import me.him188.ani.app.ui.settings.tabs.app.WatchTogetherGroup
 import me.him188.ani.app.ui.settings.tabs.log.LogTab
 import me.him188.ani.app.ui.settings.tabs.media.BackupSettings
 import me.him188.ani.app.ui.settings.tabs.media.CacheDirectoryGroup
@@ -323,12 +324,15 @@ fun SettingsScreen(
                             SettingsTab.APPEARANCE -> AppearanceGroup(vm.uiSettings)
                             SettingsTab.THEME -> ThemeGroup(vm.themeSettings)
                             SettingsTab.UPDATE -> SoftwareUpdateGroup(vm.softwareUpdateGroupState)
-                            SettingsTab.PLAYER -> PlayerGroup(
-                                vm.videoScaffoldConfig,
-                                vm.danmakuFilterConfigState,
-                                vm.danmakuRegexFilterState,
-                                vm.isInDebugMode,
-                            )
+                            SettingsTab.PLAYER -> {
+                                PlayerGroup(
+                                    vm.videoScaffoldConfig,
+                                    vm.danmakuFilterConfigState,
+                                    vm.danmakuRegexFilterState,
+                                    vm.isInDebugMode,
+                                )
+                                WatchTogetherGroup(vm.watchTogetherSettings)
+                            }
 
                             SettingsTab.MEDIA_SOURCE -> {
                                 MediaSourceSubscriptionGroup(

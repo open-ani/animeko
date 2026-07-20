@@ -33,12 +33,14 @@ import me.him188.ani.app.data.network.BangumiBangumiCommentServiceImpl
 import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.app.data.network.BangumiProfileService
 import me.him188.ani.app.data.network.BangumiRelatedPeopleService
+import me.him188.ani.app.data.network.DefaultWatchTogetherApiService
 import me.him188.ani.app.data.network.EpisodeService
 import me.him188.ani.app.data.network.EpisodeServiceImpl
 import me.him188.ani.app.data.network.RecommendationRepository
 import me.him188.ani.app.data.network.RemoteSubjectService
 import me.him188.ani.app.data.network.SubjectService
 import me.him188.ani.app.data.network.TrendsRepository
+import me.him188.ani.app.data.network.WatchTogetherApiService
 import me.him188.ani.app.data.persistent.dataStores
 import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.persistent.database.MIGRATION_19_20
@@ -96,6 +98,7 @@ import me.him188.ani.app.domain.foundation.ScopedHttpClientUserAgent
 import me.him188.ani.app.domain.foundation.ServerListFeature
 import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
 import me.him188.ani.app.domain.foundation.ServerListFeatureHandler
+import me.him188.ani.app.domain.foundation.SseFeatureHandler
 import me.him188.ani.app.domain.foundation.UseAniTokenFeatureHandler
 import me.him188.ani.app.domain.foundation.UserAgentFeature
 import me.him188.ani.app.domain.foundation.UserAgentFeatureHandler
@@ -129,6 +132,9 @@ import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.settings.SettingsBasedProxyProvider
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.update.UpdateManager
+import me.him188.ani.app.domain.watchtogether.LocalPlaybackBridge
+import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
+import me.him188.ani.app.domain.watchtogether.WatchTogetherManager
 import me.him188.ani.app.domain.usecase.useCaseModules
 import me.him188.ani.app.ui.subject.details.state.DefaultSubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
@@ -194,6 +200,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                 DistributionChannelFeatureHandler { currentAniBuildConfig.distroChannel },
                 ConvertSendCountExceedExceptionFeatureHandler,
                 VersionExpiryFeatureHandler, // handle 426 Upgrade Required -> show blocking dialog
+                SseFeatureHandler,
                 CookieJarFeatureHandler, // web 数据源统一 cookie jar (构造时注入)
                 WebSourceIdentityFeatureHandler, // web 数据源 per-host UA 对齐
             ),
@@ -232,6 +239,24 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         }
     }
     single<AniApiProvider> { AniApiProvider(get<HttpClientProvider>().get(useAniToken = true)) }
+    single<WatchTogetherApiService> {
+        DefaultWatchTogetherApiService(
+            provider = get(),
+            eventsClient = get<HttpClientProvider>().get(useAniToken = true, useSse = true),
+        )
+    }
+    single<LocalPlaybackBridge> { LocalPlaybackBridge() }
+    single<PlaybackAutomationGate> { PlaybackAutomationGate() }
+    single(createdAtStart = true) {
+        WatchTogetherManager(
+            scope = coroutineScope,
+            api = get(),
+            settings = get<SettingsRepository>().watchTogetherSettings,
+            sessionStateProvider = get(),
+            playbackBridge = get(),
+            automationGate = get(),
+        ).also { it.start() }
+    }
     single<TokenRepository> { TokenRepository(getContext().dataStores.tokenStore) }
     single<EpisodePreferencesRepository> {
         EpisodePreferencesRepositoryImpl(
