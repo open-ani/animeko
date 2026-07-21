@@ -53,6 +53,7 @@ import me.him188.ani.client.models.AniWatchTogetherRoomStatus
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
+import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.math.abs
 import kotlin.math.min
 import kotlin.random.Random
@@ -64,7 +65,7 @@ class WatchTogetherManager(
     private val sessionStateProvider: SessionStateProvider,
     private val playbackBridge: LocalPlaybackBridge,
     private val automationGate: PlaybackAutomationGate,
-    private val localNowMillis: () -> Long = System::currentTimeMillis,
+    private val localNowMillis: () -> Long = ::currentTimeMillis,
     private val reconnectJitterMillis: () -> Long = { Random.nextLong(0L, 1_001L) },
 ) {
     private val started = atomic(false)
@@ -190,7 +191,7 @@ class WatchTogetherManager(
                     WatchTogetherJoinFailure.WRONG_PASSWORD,
                     WatchTogetherJoinFailure.INVALID_NAME,
                     WatchTogetherJoinFailure.INVALID_PASSWORD,
-                    -> {
+                        -> {
                         clearRememberedSession()
                         effectChannel.send(WatchTogetherEffect.RejoinFailed)
                         return@launch
@@ -200,7 +201,7 @@ class WatchTogetherManager(
                     WatchTogetherJoinFailure.RATE_LIMITED,
                     WatchTogetherJoinFailure.TEMPORARY,
                     null,
-                    -> Unit
+                        -> Unit
                 }
                 delay(retryDelayMillis)
                 retryDelayMillis = min(retryDelayMillis * 2, AUTO_JOIN_MAX_RETRY_MILLIS)
@@ -475,7 +476,7 @@ class WatchTogetherManager(
                 AniWatchTogetherMembership.OK -> return
                 AniWatchTogetherMembership.KICKED_TIMEOUT,
                 AniWatchTogetherMembership.NOT_MEMBER,
-                -> rejoin = available.value
+                    -> rejoin = available.value
 
                 AniWatchTogetherMembership.REPLACED -> {
                     clearRememberedSession()
@@ -532,7 +533,7 @@ class WatchTogetherManager(
                     null -> Unit
                     is SyncAction.PushEpisode,
                     is SyncAction.PopThenPushEpisode,
-                    -> effectChannel.send(WatchTogetherEffect.Navigate(action))
+                        -> effectChannel.send(WatchTogetherEffect.Navigate(action))
 
                     is SyncAction.SwitchEpisodeInPlace -> {
                         if (playback != null) playbackBridge.emitDirective(

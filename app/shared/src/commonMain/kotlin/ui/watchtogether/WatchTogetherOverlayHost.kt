@@ -35,8 +35,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.him188.ani.app.domain.watchtogether.SyncAction
 import me.him188.ani.app.domain.watchtogether.WatchTogetherEffect
 import me.him188.ani.app.domain.watchtogether.WatchTogetherRoomEndReason
@@ -44,13 +44,13 @@ import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.EpisodeNavigationGuardRegistry
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.findLast
-import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.watch_together_following
 import me.him188.ani.app.ui.lang.watch_together_navigation_blocked
-import me.him188.ani.app.ui.lang.watch_together_rejoined
 import me.him188.ani.app.ui.lang.watch_together_rejoin_failed
+import me.him188.ani.app.ui.lang.watch_together_rejoined
 import me.him188.ani.app.ui.lang.watch_together_room_closed
 import me.him188.ani.app.ui.lang.watch_together_session_replaced
 import org.jetbrains.compose.resources.stringResource
@@ -113,7 +113,7 @@ internal fun BoxScope.WatchTogetherOverlayHost(
 
                     is SyncAction.SeekOnly,
                     is SyncAction.SwitchEpisodeInPlace,
-                    -> Unit
+                        -> Unit
                 }
 
                 is WatchTogetherEffect.RoomEnded -> toaster.toast(
@@ -195,12 +195,14 @@ private fun BoxScope.DraggableWatchTogetherBubble(
             targetValue = targetY.coerceAtLeast(0f),
             animationSpec = snap(),
         )
+        val animatedAlpha by animateFloatAsState(targetValue = if (state.inPlayer) 0.68f else 1f)
 
         Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .onSizeChanged { bubbleSize = it }
-                .alpha(if (state.inPlayer) 0.68f else 1f)
+                .offsetInParent(animatedX, animatedY)
+                .alpha(animatedAlpha)
                 .pointerInput(containerWidth, containerHeight, bubbleSize) {
                     detectDragGestures(
                         onDragStart = { dragging = true },
@@ -218,8 +220,7 @@ private fun BoxScope.DraggableWatchTogetherBubble(
                         targetX = (targetX + dragAmount.x).coerceIn(marginPx, maxX)
                         targetY = (targetY + dragAmount.y).coerceIn(marginPx, maxY)
                     }
-                }
-                .offsetInParent(animatedX, animatedY),
+                },
         ) {
             WatchTogetherBubble(state, onClick)
         }

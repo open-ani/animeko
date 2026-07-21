@@ -10,9 +10,10 @@
 package me.him188.ani.app.domain.watchtogether
 
 import kotlinx.atomicfu.atomic
+import me.him188.ani.utils.platform.currentTimeMillis
 
 class ServerClock(
-    private val localNowMillis: () -> Long = System::currentTimeMillis,
+    private val localNowMillis: () -> Long = ::currentTimeMillis,
 ) {
     private val offsetMillis = atomic<Double?>(null)
 
