@@ -52,6 +52,25 @@ class WatchTogetherPlayerExtension(
         }
 
         backgroundTaskScope.launch("Reporter") {
+            // Publish the episode before media selection/loading so followers can open the page and load in parallel.
+            val initialInfo = episodeSession.infoBundleFlow.filterNotNull().first()
+            bridge.updateLocalWatching(
+                owner,
+                AniWatchTogetherWatchingInfo(
+                    subjectId = initialInfo.subjectId,
+                    episodeId = initialInfo.episodeId,
+                    subjectName = initialInfo.subjectInfo.displayName,
+                    episodeSort = initialInfo.episodeInfo.sort.toString(),
+                    episodeName = initialInfo.episodeInfo.displayName,
+                    positionMillis = 0L,
+                    positionAtMillis = manager.serverNowMillis(),
+                    durationMillis = 0L,
+                    paused = true,
+                    buffering = true,
+                    playbackRate = 1f,
+                ),
+            )
+
             mediaLoaded.await()
             combine(
                 episodeSession.infoBundleFlow.filterNotNull(),
