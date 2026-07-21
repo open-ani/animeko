@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Downloading
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.HourglassEmpty
 import androidx.compose.material.icons.rounded.Pause
@@ -496,7 +497,7 @@ private fun NowPlayingCard(playback: WatchTogetherPlaybackPresentation, modifier
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
-                Row(
+                if (!playback.loading) Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.padding(top = 6.dp),
@@ -533,6 +534,7 @@ private fun NowPlayingCard(playback: WatchTogetherPlaybackPresentation, modifier
 
 @Composable
 private fun WatchTogetherPlaybackPresentation.stateIconAndText(): Pair<ImageVector, String> = when {
+    loading -> Icons.Rounded.Downloading to stringResource(Lang.watch_together_state_loading)
     buffering -> Icons.Rounded.HourglassEmpty to stringResource(Lang.watch_together_state_buffering)
     paused -> Icons.Rounded.Pause to stringResource(Lang.watch_together_state_paused)
     else -> Icons.Rounded.PlayArrow to stringResource(Lang.watch_together_state_playing)
@@ -753,10 +755,15 @@ private fun WatchTogetherMemberPresentation.statusText(): String = when (state) 
     WatchTogetherMemberPresence.IDLE -> stringResource(Lang.watch_together_idle)
     WatchTogetherMemberPresence.WATCHING -> {
         val watching = watching
-        if (watching == null) {
-            stringResource(Lang.watch_together_watching)
-        } else {
-            stringResource(
+        when {
+            watching == null -> stringResource(Lang.watch_together_watching)
+            watching.loading -> stringResource(
+                Lang.watch_together_member_watching,
+                watching.episodeSort,
+                stringResource(Lang.watch_together_state_loading),
+            )
+
+            else -> stringResource(
                 Lang.watch_together_member_watching,
                 watching.episodeSort,
                 watching.positionMillis.formatDuration(),

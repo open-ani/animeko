@@ -1369,6 +1369,7 @@
     <string name="watch_together_state_playing">房主播放中</string>
     <string name="watch_together_state_paused">已暫停</string>
     <string name="watch_together_state_buffering">緩衝中</string>
+    <string name="watch_together_state_loading">正在載入</string>
     <string name="watch_together_guidance_playing">正在跟隨房主播放《%1$s》第 %2$s 話</string>
     <string name="watch_together_resynced_forward">已與房主重新同步（快進 %1$d 秒）</string>
     <string name="watch_together_resynced_backward">已與房主重新同步（快退 %1$d 秒）</string>

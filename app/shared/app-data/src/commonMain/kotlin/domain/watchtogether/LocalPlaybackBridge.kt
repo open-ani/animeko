@@ -94,7 +94,11 @@ class LocalPlaybackBridge {
     ): Boolean {
         if (old == null || new == null) return old != new
         if (old.subjectId != new.subjectId || old.episodeId != new.episodeId) return true
-        if (old.paused != new.paused || old.buffering != new.buffering || old.playbackRate != new.playbackRate) return true
+        if (old.paused != new.paused || old.buffering != new.buffering ||
+            old.loading != new.loading || old.playbackRate != new.playbackRate
+        ) {
+            return true
+        }
         return abs(new.positionMillis - old.positionAt(new.positionAtMillis)) > POSITION_JUMP_MILLIS
     }
 

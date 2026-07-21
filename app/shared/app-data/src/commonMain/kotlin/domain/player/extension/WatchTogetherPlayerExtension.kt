@@ -25,6 +25,7 @@ import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
 import me.him188.ani.app.domain.watchtogether.LocalPlaybackBridge
 import me.him188.ani.app.domain.watchtogether.PlaybackDirective
 import me.him188.ani.app.domain.watchtogether.WatchTogetherManager
+import me.him188.ani.app.domain.watchtogether.WatchTogetherState
 import me.him188.ani.app.domain.watchtogether.positionAt
 import me.him188.ani.client.models.AniWatchTogetherPlayback
 import me.him188.ani.client.models.AniWatchTogetherWatchingInfo
@@ -66,7 +67,7 @@ class WatchTogetherPlayerExtension(
                     positionAtMillis = manager.serverNowMillis(),
                     durationMillis = 0L,
                     paused = true,
-                    buffering = true,
+                    loading = true,
                     playbackRate = 1f,
                 ),
             )
@@ -84,6 +85,7 @@ class WatchTogetherPlayerExtension(
                 // switching sources mid-episode), or the transient 0 position would be broadcast
                 // and followers would be yanked to it. The last stable fix stays current instead.
                 if (playbackState !in STABLE_REPORT_STATES) return@combine null
+                val durationMillis = mediaProperties?.durationMillis ?: 0L
                 AniWatchTogetherWatchingInfo(
                     subjectId = info.subjectId,
                     episodeId = info.episodeId,
@@ -92,12 +94,25 @@ class WatchTogetherPlayerExtension(
                     episodeName = info.episodeInfo.displayName,
                     positionMillis = context.player.currentPositionMillis.value.coerceAtLeast(0L),
                     positionAtMillis = manager.serverNowMillis(),
-                    durationMillis = mediaProperties?.durationMillis ?: 0L,
+                    durationMillis = durationMillis,
                     paused = playbackState != PlaybackState.PLAYING,
                     buffering = playbackState == PlaybackState.PAUSED_BUFFERING,
+                    // Loading ends only once the player learns the total duration.
+                    loading = durationMillis <= 0L,
                     playbackRate = context.player.features[PlaybackSpeed]?.value ?: 1f,
                 )
             }.filterNotNull().collect { bridge.updateLocalWatching(owner, it) }
+        }
+
+        backgroundTaskScope.launch("HoldAfterLoad") {
+            // In a room, nobody auto-plays after the first load: everyone pauses and waits for
+            // the host to press play, so the host can start once the whole room has loaded.
+            // Mid-episode source reloads don't re-trigger (mediaLoaded completes once per episode).
+            mediaLoaded.await()
+            context.player.playbackState.filter { it == PlaybackState.PLAYING }.first()
+            if (isRoomSyncActive()) {
+                withContext(Dispatchers.Main.immediate) { context.player.pause() }
+            }
         }
 
         backgroundTaskScope.launch("InitialFollowerSync") {
@@ -157,6 +172,13 @@ class WatchTogetherPlayerExtension(
             delta
         }
         if (appliedDelta != null && !forceSeek) bridge.notifyCorrectionApplied(appliedDelta)
+    }
+
+    /** Host and following members participate in room sync; free-watching members do not. */
+    private fun isRoomSyncActive(): Boolean {
+        val state = manager.state.value
+        return state is WatchTogetherState.InRoom &&
+                (state.session.isHost || state.session.following.value)
     }
 
     @OptIn(UnsafeEpisodeSessionApi::class)

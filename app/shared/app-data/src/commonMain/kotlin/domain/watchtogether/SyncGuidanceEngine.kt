@@ -67,7 +67,7 @@ object SyncGuidanceEngine {
 fun AniWatchTogetherWatchingInfo.positionAt(nowMillis: Long): Long {
     val rate = playbackRate ?: 1.0f
     val elapsed = (nowMillis - positionAtMillis).coerceAtLeast(0L)
-    val extrapolated = if (paused || buffering == true) {
+    val extrapolated = if (paused || buffering == true || loading == true) {
         positionMillis
     } else {
         positionMillis + (elapsed * rate).roundToLong()

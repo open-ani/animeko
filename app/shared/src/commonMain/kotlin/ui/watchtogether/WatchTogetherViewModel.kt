@@ -171,6 +171,7 @@ class WatchTogetherViewModel : AbstractViewModel(), KoinComponent {
             durationMillis = durationMillis,
             paused = paused,
             buffering = buffering == true,
+            loading = loading == true,
         )
 
     private fun WatchTogetherConnectionState.toPresentation(): WatchTogetherConnectionPresentation = when (this) {

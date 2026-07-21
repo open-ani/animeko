@@ -10,11 +10,13 @@
 package me.him188.ani.app.domain.player.extension
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -42,7 +44,10 @@ import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.app.domain.watchtogether.WatchTogetherManager
 import me.him188.ani.client.models.AniReportWatchTogetherStateRequest
 import me.him188.ani.client.models.AniWatchTogetherJoinResponse
+import me.him188.ani.client.models.AniWatchTogetherMembership
 import me.him188.ani.client.models.AniWatchTogetherReportResponse
+import me.him188.ani.client.models.AniWatchTogetherRoomSnapshot
+import me.him188.ani.client.models.AniWatchTogetherRoomStatus
 import org.openani.mediamp.PlaybackState
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -66,7 +71,8 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
         assertEquals(NOW_MILLIS, watching.positionAtMillis)
         assertEquals(0L, watching.durationMillis)
         assertTrue(watching.paused)
-        assertTrue(watching.buffering == true)
+        assertTrue(watching.loading == true)
+        assertEquals(false, watching.buffering)
         assertEquals(1f, watching.playbackRate)
     }
 
@@ -105,14 +111,49 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
         assertEquals(31_000L, assertNotNull(bridge.localWatching.value).positionMillis)
     }
 
-    private fun TestScope.createCase(): Pair<EpisodePlayerTestSuite, LocalPlaybackBridge> {
+    @Test
+    fun `everyone pauses after the first load while in a room`() = runTest {
+        val (suite, bridge, manager) = createCase(
+            api = InRoomWatchTogetherApiService(),
+            settings = WatchTogetherSettings(enabled = true),
+        )
+        manager.start()
+        runCurrent()
+        assertTrue(manager.join("Room", "password").isSuccess)
+        runCurrent()
+
+        val state = suite.createState(listOf(WatchTogetherPlayerExtension))
+        state.onUIReady()
+        runCurrent()
+        loadSelectedMedia(suite, state)
+
+        // The player auto-plays right after loading; in a room the first play is held back so
+        // the host can start everyone together.
+        assertEquals(PlaybackState.PAUSED, suite.player.playbackState.value)
+        val heldFix = assertNotNull(bridge.localWatching.value)
+        assertTrue(heldFix.paused)
+        assertEquals(false, heldFix.loading)
+
+        // The host's explicit play is not held back again.
+        suite.player.playbackState.value = PlaybackState.PLAYING
+        advanceTimeBy(1_100)
+        runCurrent()
+        assertEquals(PlaybackState.PLAYING, suite.player.playbackState.value)
+        val playingFix = assertNotNull(bridge.localWatching.value)
+        assertEquals(false, playingFix.paused)
+    }
+
+    private fun TestScope.createCase(
+        api: WatchTogetherApiService = UnusedWatchTogetherApiService,
+        settings: WatchTogetherSettings = WatchTogetherSettings.Default,
+    ): Triple<EpisodePlayerTestSuite, LocalPlaybackBridge, WatchTogetherManager> {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val suite = EpisodePlayerTestSuite(this)
         val bridge = LocalPlaybackBridge()
         val manager = WatchTogetherManager(
             scope = backgroundScope,
-            api = UnusedWatchTogetherApiService,
-            settings = MutableSettings(WatchTogetherSettings.Default),
+            api = api,
+            settings = MutableSettings(settings),
             sessionStateProvider = LoggedInSessionStateProvider,
             playbackBridge = bridge,
             automationGate = PlaybackAutomationGate(),
@@ -121,7 +162,7 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
         suite.registerComponent<LocalPlaybackBridge> { bridge }
         suite.registerComponent<WatchTogetherManager> { manager }
         suite.registerComponent<MediaResolver> { TestUniversalMediaResolver }
-        return suite to bridge
+        return Triple(suite, bridge, manager)
     }
 
     @OptIn(UnsafeEpisodeSessionApi::class)
@@ -154,6 +195,45 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
     private object LoggedInSessionStateProvider : SessionStateProvider {
         override val stateFlow: Flow<SessionState> = flowOf(SessionState.Valid(bangumiConnected = false))
         override val eventFlow: Flow<SessionEvent> = emptyFlow()
+    }
+
+    private class InRoomWatchTogetherApiService : WatchTogetherApiService {
+        override suspend fun join(
+            roomName: String,
+            password: String,
+            following: Boolean,
+        ): AniWatchTogetherJoinResponse = AniWatchTogetherJoinResponse(
+            roomId = "room-id",
+            created = true,
+            isHost = true,
+            sessionNonce = "nonce",
+            serverTime = NOW_MILLIS,
+            snapshot = AniWatchTogetherRoomSnapshot(
+                roomId = "room-id",
+                roomName = roomName,
+                version = 1L,
+                status = AniWatchTogetherRoomStatus.OPEN,
+                hostUserId = "host-id",
+                serverTime = NOW_MILLIS,
+                members = emptyList(),
+            ),
+        )
+
+        override suspend fun report(
+            roomId: String,
+            request: AniReportWatchTogetherStateRequest,
+        ): AniWatchTogetherReportResponse = AniWatchTogetherReportResponse(
+            serverTime = NOW_MILLIS,
+            membership = AniWatchTogetherMembership.OK,
+        )
+
+        override suspend fun leave(roomId: String, sessionNonce: String) {
+        }
+
+        override fun events(roomId: String, sessionNonce: String): Flow<WatchTogetherServerEvent> = flow {
+            emit(WatchTogetherServerEvent.Connected)
+            awaitCancellation()
+        }
     }
 
     private object UnusedWatchTogetherApiService : WatchTogetherApiService {

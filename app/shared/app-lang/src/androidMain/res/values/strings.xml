@@ -1354,6 +1354,7 @@
     <string name="watch_together_state_playing">Host playing</string>
     <string name="watch_together_state_paused">Paused</string>
     <string name="watch_together_state_buffering">Buffering</string>
+    <string name="watch_together_state_loading">Loading</string>
     <string name="watch_together_guidance_playing">Following the host: %1$s · Ep %2$s</string>
     <string name="watch_together_resynced_forward">Re-synced with the host (skipped ahead %1$d s)</string>
     <string name="watch_together_resynced_backward">Re-synced with the host (went back %1$d s)</string>

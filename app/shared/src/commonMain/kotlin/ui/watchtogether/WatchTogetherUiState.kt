@@ -71,6 +71,8 @@ data class WatchTogetherPlaybackPresentation(
     val durationMillis: Long,
     val paused: Boolean,
     val buffering: Boolean = false,
+    /** Initial load (source selection + media loading), until the duration is known. */
+    val loading: Boolean = false,
 )
 
 @Immutable

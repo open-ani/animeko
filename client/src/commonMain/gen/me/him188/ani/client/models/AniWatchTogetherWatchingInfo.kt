@@ -34,6 +34,7 @@ import kotlinx.serialization.encoding.*
  * @param durationMillis
  * @param paused
  * @param buffering
+ * @param loading
  * @param playbackRate
  */
 @Serializable
@@ -59,6 +60,8 @@ data class AniWatchTogetherWatchingInfo (
     @SerialName(value = "paused") @Required val paused: kotlin.Boolean,
 
     @SerialName(value = "buffering") val buffering: kotlin.Boolean? = false,
+
+    @SerialName(value = "loading") val loading: kotlin.Boolean? = false,
 
     @SerialName(value = "playbackRate") val playbackRate: kotlin.Float? = 1.0f
 
