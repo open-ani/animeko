@@ -74,24 +74,30 @@ class WatchTogetherPlayerExtension(
             mediaLoaded.await()
             combine(
                 episodeSession.infoBundleFlow.filterNotNull(),
+                // Drives the fix cadence only; the emitted value reads the live position below so
+                // state-edge fixes (e.g. resume right after a reload) never carry a stale sample.
                 context.player.currentPositionMillis.sampleWithInitial(REPORT_SAMPLE_INTERVAL_MILLIS),
                 context.player.playbackState,
                 context.player.mediaProperties,
-            ) { info, position, playbackState, mediaProperties ->
+            ) { info, _, playbackState, mediaProperties ->
+                // Stable-state gate: no fixes while (re)loading media (CREATED/READY/ERROR, e.g.
+                // switching sources mid-episode), or the transient 0 position would be broadcast
+                // and followers would be yanked to it. The last stable fix stays current instead.
+                if (playbackState !in STABLE_REPORT_STATES) return@combine null
                 AniWatchTogetherWatchingInfo(
                     subjectId = info.subjectId,
                     episodeId = info.episodeId,
                     subjectName = info.subjectInfo.displayName,
                     episodeSort = info.episodeInfo.sort.toString(),
                     episodeName = info.episodeInfo.displayName,
-                    positionMillis = position.coerceAtLeast(0L),
+                    positionMillis = context.player.currentPositionMillis.value.coerceAtLeast(0L),
                     positionAtMillis = manager.serverNowMillis(),
                     durationMillis = mediaProperties?.durationMillis ?: 0L,
                     paused = playbackState != PlaybackState.PLAYING,
                     buffering = playbackState == PlaybackState.PAUSED_BUFFERING,
                     playbackRate = context.player.features[PlaybackSpeed]?.value ?: 1f,
                 )
-            }.collect { bridge.updateLocalWatching(owner, it) }
+            }.filterNotNull().collect { bridge.updateLocalWatching(owner, it) }
         }
 
         backgroundTaskScope.launch("InitialFollowerSync") {
@@ -134,11 +140,13 @@ class WatchTogetherPlayerExtension(
         }
 
         val targetPosition = host.positionAt(manager.serverNowMillis())
-        withContext(Dispatchers.Main.immediate) {
+        val corrected = withContext(Dispatchers.Main.immediate) {
             val player = context.player
+            var didSeek = false
             val localPosition = player.currentPositionMillis.value
             if (forceSeek || abs(localPosition - targetPosition) > POSITION_CORRECTION_THRESHOLD_MILLIS) {
                 player.seekTo(targetPosition)
+                didSeek = true
             }
             player.features[PlaybackSpeed]?.set(host.playbackRate ?: 1f)
             if (host.paused) {
@@ -146,7 +154,9 @@ class WatchTogetherPlayerExtension(
             } else if (player.playbackState.value == PlaybackState.PAUSED) {
                 player.resume()
             }
+            didSeek
         }
+        if (corrected && !forceSeek) bridge.notifyCorrectionApplied()
     }
 
     @OptIn(UnsafeEpisodeSessionApi::class)
@@ -169,5 +179,12 @@ class WatchTogetherPlayerExtension(
         private const val REPORT_SAMPLE_INTERVAL_MILLIS = 1_000L
         private const val POSITION_CORRECTION_THRESHOLD_MILLIS = 3_000L
         private const val BUFFERING_DEBOUNCE_MILLIS = 2_000L
+
+        private val STABLE_REPORT_STATES = setOf(
+            PlaybackState.PLAYING,
+            PlaybackState.PAUSED,
+            PlaybackState.PAUSED_BUFFERING,
+            PlaybackState.FINISHED,
+        )
     }
 }

@@ -1378,6 +1378,8 @@
     <string name="watch_together_rejoined">原房间已过期，已为你重新创建。</string>
     <string name="watch_together_rejoin_failed">无法恢复上次的一起看房间。</string>
     <string name="watch_together_navigation_blocked">请先离开房间或停止跟随房主，再打开其他剧集。</string>
+    <string name="watch_together_stop_following">关闭跟随</string>
+    <string name="watch_together_resynced">已与房主重新同步</string>
 </resources>
 
 <!--@formatter:on-->

@@ -51,11 +51,28 @@ class RoomSession internal constructor(
     internal val lastReportAtMillis = atomic(0L)
     private val closing = atomic(false)
 
+    /**
+     * The latest room version this client is aware of. May run ahead of [snapshot]'s version:
+     * a report response carries the post-bump version without a snapshot when the only change
+     * was the report itself (see server-side gating).
+     */
+    private val knownVersionValue = atomic(initialSnapshot.version)
+    internal val knownVersion: Long get() = knownVersionValue.value
+
     internal fun beginClosing(): Boolean = closing.compareAndSet(expect = false, update = true)
 
     internal val isClosing: Boolean get() = closing.value
 
+    internal fun noteServerVersion(version: Long) {
+        while (true) {
+            val current = knownVersionValue.value
+            if (version <= current) return
+            if (knownVersionValue.compareAndSet(current, version)) return
+        }
+    }
+
     internal fun updateSnapshot(snapshot: AniWatchTogetherRoomSnapshot): Boolean {
+        noteServerVersion(snapshot.version)
         while (true) {
             val current = _snapshot.value
             if (snapshot.version < current.version) return false
@@ -77,6 +94,9 @@ sealed interface WatchTogetherEffect {
     data class RoomEnded(val reason: WatchTogetherRoomEndReason) : WatchTogetherEffect
     data object Rejoined : WatchTogetherEffect
     data object RejoinFailed : WatchTogetherEffect
+
+    /** A continuous-correction seek pulled this follower back to the host's position. */
+    data object ResyncedWithHost : WatchTogetherEffect
 }
 
 enum class WatchTogetherRoomEndReason {

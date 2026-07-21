@@ -9,17 +9,31 @@
 
 package me.him188.ani.app.domain.player.extension
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.data.models.preference.WatchTogetherSettings
 import me.him188.ani.app.data.network.WatchTogetherApiService
 import me.him188.ani.app.data.network.WatchTogetherServerEvent
 import me.him188.ani.app.data.repository.user.Settings
+import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
+import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
+import me.him188.ani.app.domain.episode.mediaSelectorFlow
+import me.him188.ani.app.domain.episode.player
+import me.him188.ani.app.domain.media.TestMediaList
+import me.him188.ani.app.domain.media.resolver.MediaResolver
+import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
 import me.him188.ani.app.domain.session.SessionEvent
 import me.him188.ani.app.domain.session.SessionState
 import me.him188.ani.app.domain.session.SessionStateProvider
@@ -29,27 +43,17 @@ import me.him188.ani.app.domain.watchtogether.WatchTogetherManager
 import me.him188.ani.client.models.AniReportWatchTogetherStateRequest
 import me.him188.ani.client.models.AniWatchTogetherJoinResponse
 import me.him188.ani.client.models.AniWatchTogetherReportResponse
+import org.openani.mediamp.PlaybackState
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
     @Test
     fun `entering player reports loading episode before media is loaded`() = runTest {
-        val suite = EpisodePlayerTestSuite(this)
-        val bridge = LocalPlaybackBridge()
-        val manager = WatchTogetherManager(
-            scope = backgroundScope,
-            api = UnusedWatchTogetherApiService,
-            settings = MutableSettings(WatchTogetherSettings.Default),
-            sessionStateProvider = LoggedInSessionStateProvider,
-            playbackBridge = bridge,
-            automationGate = PlaybackAutomationGate(),
-            localNowMillis = { NOW_MILLIS },
-        )
-        suite.registerComponent<LocalPlaybackBridge> { bridge }
-        suite.registerComponent<WatchTogetherManager> { manager }
+        val (suite, bridge) = createCase()
 
         val state = suite.createState(listOf(WatchTogetherPlayerExtension))
         state.onUIReady()
@@ -64,6 +68,78 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
         assertTrue(watching.paused)
         assertTrue(watching.buffering == true)
         assertEquals(1f, watching.playbackRate)
+    }
+
+    @Test
+    fun `reloading media does not broadcast transient fixes`() = runTest {
+        val (suite, bridge) = createCase()
+        val state = suite.createState(listOf(WatchTogetherPlayerExtension))
+        state.onUIReady()
+        runCurrent()
+
+        loadSelectedMedia(suite, state)
+
+        suite.player.currentPositionMillis.value = 30_000L
+        suite.player.playbackState.value = PlaybackState.PLAYING
+        advanceTimeBy(1_100)
+        runCurrent()
+        val playing = assertNotNull(bridge.localWatching.value)
+        assertEquals(30_000L, playing.positionMillis)
+        assertFalse(playing.paused)
+
+        // Simulate an in-episode source switch: the player drops back to READY and the
+        // position transiently resets to 0. No fix may be produced from this state.
+        suite.player.playbackState.value = PlaybackState.READY
+        suite.player.currentPositionMillis.value = 0L
+        advanceTimeBy(5_000)
+        runCurrent()
+        val duringReload = assertNotNull(bridge.localWatching.value)
+        assertEquals(30_000L, duringReload.positionMillis)
+        assertFalse(duringReload.paused)
+
+        // Once playback stabilizes again, fixes resume from the real position.
+        suite.player.currentPositionMillis.value = 31_000L
+        suite.player.playbackState.value = PlaybackState.PLAYING
+        advanceTimeBy(1_100)
+        runCurrent()
+        assertEquals(31_000L, assertNotNull(bridge.localWatching.value).positionMillis)
+    }
+
+    private fun TestScope.createCase(): Pair<EpisodePlayerTestSuite, LocalPlaybackBridge> {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val suite = EpisodePlayerTestSuite(this)
+        val bridge = LocalPlaybackBridge()
+        val manager = WatchTogetherManager(
+            scope = backgroundScope,
+            api = UnusedWatchTogetherApiService,
+            settings = MutableSettings(WatchTogetherSettings.Default),
+            sessionStateProvider = LoggedInSessionStateProvider,
+            playbackBridge = bridge,
+            automationGate = PlaybackAutomationGate(),
+            localNowMillis = { NOW_MILLIS },
+        )
+        suite.registerComponent<LocalPlaybackBridge> { bridge }
+        suite.registerComponent<WatchTogetherManager> { manager }
+        suite.registerComponent<MediaResolver> { TestUniversalMediaResolver }
+        return suite to bridge
+    }
+
+    @OptIn(UnsafeEpisodeSessionApi::class)
+    private suspend fun TestScope.loadSelectedMedia(
+        suite: EpisodePlayerTestSuite,
+        state: EpisodeFetchSelectPlayState,
+        durationMillis: Long = 100_000L,
+    ) {
+        val media = TestMediaList[0]
+        val source = suite.mediaSelectorTestBuilder.delayedMediaSource("watch-together-0")
+        source.complete(listOf(media))
+        state.mediaSelectorFlow.filterNotNull().first().select(media)
+        suite.setMediaDuration(durationMillis)
+        // Not advanceUntilIdle: once media loads, the reporter's sample ticker keeps the
+        // scheduler busy forever. Bounded advancement is enough to finish the media load.
+        runCurrent()
+        advanceTimeBy(100)
+        runCurrent()
     }
 
     private class MutableSettings<T>(initial: T) : Settings<T> {
@@ -81,8 +157,11 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     private object UnusedWatchTogetherApiService : WatchTogetherApiService {
-        override suspend fun join(roomName: String, password: String): AniWatchTogetherJoinResponse =
-            error("Unexpected Watch Together API call")
+        override suspend fun join(
+            roomName: String,
+            password: String,
+            following: Boolean,
+        ): AniWatchTogetherJoinResponse = error("Unexpected Watch Together API call")
 
         override suspend fun report(
             roomId: String,

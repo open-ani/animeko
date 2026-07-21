@@ -65,6 +65,7 @@ class WatchTogetherManagerTest {
         runCurrent()
         val inRoom = assertIs<WatchTogetherState.InRoom>(manager.state.value)
         assertEquals("Friday", inRoom.session.roomName)
+        assertEquals(true, api.lastJoinFollowing)
         assertTrue(gate.suppressed.value)
         assertNotNull(settings.state.value.rememberedSession)
         assertEquals(1, api.eventConnections)
@@ -173,13 +174,19 @@ class WatchTogetherManagerTest {
         private val joinFailure: WatchTogetherJoinFailure? = null,
     ) : WatchTogetherApiService {
         var joinCalls = 0
+        var lastJoinFollowing: Boolean? = null
         var eventConnections = 0
         var eventCompletions = 0
         var leaveCalls = 0
         val reports = mutableListOf<AniReportWatchTogetherStateRequest>()
 
-        override suspend fun join(roomName: String, password: String): AniWatchTogetherJoinResponse {
+        override suspend fun join(
+            roomName: String,
+            password: String,
+            following: Boolean,
+        ): AniWatchTogetherJoinResponse {
             joinCalls++
+            lastJoinFollowing = following
             joinFailure?.let { throw WatchTogetherJoinException(it) }
             return AniWatchTogetherJoinResponse(
                 roomId = "room-id",

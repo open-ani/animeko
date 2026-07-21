@@ -220,13 +220,13 @@ class WatchTogetherManager(
                 return@withLock Result.failure(IllegalStateException("Watch Together is not ready to join"))
             }
             _state.value = WatchTogetherState.Joining(roomName)
+            val config = settings.flow.first()
             val sentAt = localNowMillis()
             try {
-                val response = api.join(roomName, password)
+                val response = api.join(roomName, password, config.followHost)
                 val receivedAt = localNowMillis()
                 val clock = ServerClock(localNowMillis)
                 clock.recordSample(response.serverTime, sentAt, receivedAt)
-                val config = settings.flow.first()
                 val session = RoomSession(
                     roomId = response.roomId,
                     roomName = response.snapshot.roomName,
@@ -277,6 +277,7 @@ class WatchTogetherManager(
                 launch(CoroutineName("follower-mode")) { observeFollowerMode(session) }
                 launch(CoroutineName("guidance")) { observeGuidance(session) }
                 launch(CoroutineName("correction")) { runContinuousCorrection(session) }
+                launch(CoroutineName("correction-toast")) { observeCorrectionToasts(session) }
             }
         }
         scope.launch(CoroutineName("WatchTogetherRoom.initialReport")) { reportOnce(session) }
@@ -313,6 +314,7 @@ class WatchTogetherManager(
 
             var receivedAny = false
             var silenceTimeout = false
+            var throttledBye = false
             try {
                 val eventChannel = Channel<WatchTogetherServerEvent>(Channel.RENDEZVOUS)
                 supervisorScope {
@@ -337,6 +339,15 @@ class WatchTogetherManager(
                             consecutiveFailures = 0
                             degraded = false
                             session.updateConnection(WatchTogetherConnectionState.ConnectedSse)
+                            // Byes other than lifetime/shutdown/membership (e.g. RATE_LIMITED,
+                            // UNAUTHORIZED) mean the server rejects us right now; reconnecting
+                            // immediately would just hammer it.
+                            if (event is WatchTogetherServerEvent.Bye &&
+                                event.reason !in IMMEDIATE_RECONNECT_BYE_REASONS &&
+                                event.reason.toMembershipOrNull() == null
+                            ) {
+                                throttledBye = true
+                            }
                             if (!processServerEvent(session, event)) break
                         }
                     } finally {
@@ -362,10 +373,10 @@ class WatchTogetherManager(
                 session.updateConnection(WatchTogetherConnectionState.DegradedPolling)
             } else {
                 session.updateConnection(WatchTogetherConnectionState.Reconnecting)
-                val backoff = if (receivedAny) {
-                    0L
-                } else {
-                    min(
+                val backoff = when {
+                    throttledBye -> SSE_THROTTLED_BYE_BACKOFF_MILLIS
+                    receivedAny -> 0L
+                    else -> min(
                         SSE_INITIAL_BACKOFF_MILLIS shl (consecutiveFailures - 1).coerceAtLeast(0),
                         SSE_MAX_BACKOFF_MILLIS,
                     )
@@ -427,11 +438,12 @@ class WatchTogetherManager(
                         },
                         following = session.following.value,
                         watching = watching,
-                        knownVersion = session.snapshot.value.version,
+                        knownVersion = session.knownVersion,
                     ),
                 )
                 val receivedAt = localNowMillis()
                 session.serverClock.recordSample(response.serverTime, sentAt, receivedAt)
+                response.version?.let { session.noteServerVersion(it) }
                 response.snapshot?.let { processSnapshot(session, it) }
                 if (response.membership != AniWatchTogetherMembership.OK) {
                     scheduleMembershipLoss(session, response.membership)
@@ -568,6 +580,17 @@ class WatchTogetherManager(
         }
     }
 
+    private suspend fun observeCorrectionToasts(session: RoomSession) {
+        var lastToastAtMillis = 0L
+        playbackBridge.corrections.collect {
+            if (session.isHost || !session.following.value || !isCurrent(session)) return@collect
+            val now = localNowMillis()
+            if (now - lastToastAtMillis < CORRECTION_TOAST_MIN_INTERVAL_MILLIS) return@collect
+            lastToastAtMillis = now
+            effectChannel.send(WatchTogetherEffect.ResyncedWithHost)
+        }
+    }
+
     private suspend fun clearRememberedSession() {
         settings.update { copy(rememberedSession = null) }
     }
@@ -587,6 +610,8 @@ class WatchTogetherManager(
         const val SSE_DEGRADED_RETRY_MILLIS = 60_000L
         const val SSE_INITIAL_BACKOFF_MILLIS = 2_000L
         const val SSE_MAX_BACKOFF_MILLIS = 30_000L
+        const val SSE_THROTTLED_BYE_BACKOFF_MILLIS = 30_000L
+        val IMMEDIATE_RECONNECT_BYE_REASONS = setOf("LIFETIME", "SHUTDOWN")
         const val REPORT_CHECK_INTERVAL_MILLIS = 1_000L
         const val HOST_REPORT_INTERVAL_MILLIS = 5_000L
         const val MEMBER_REPORT_INTERVAL_MILLIS = 10_000L
@@ -595,6 +620,7 @@ class WatchTogetherManager(
         const val AUTO_JOIN_MAX_RETRY_MILLIS = 30_000L
         const val CORRECTION_INTERVAL_MILLIS = 1_000L
         const val CORRECTION_THRESHOLD_MILLIS = 3_000L
+        const val CORRECTION_TOAST_MIN_INTERVAL_MILLIS = 5_000L
 
         val logger = logger<WatchTogetherManager>()
     }

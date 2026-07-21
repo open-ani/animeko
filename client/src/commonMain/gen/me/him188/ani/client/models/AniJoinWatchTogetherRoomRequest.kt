@@ -26,6 +26,7 @@ import kotlinx.serialization.encoding.*
  *
  * @param roomName
  * @param password
+ * @param following
  */
 @Serializable
 
@@ -33,7 +34,9 @@ data class AniJoinWatchTogetherRoomRequest (
 
     @SerialName(value = "roomName") @Required val roomName: kotlin.String,
 
-    @SerialName(value = "password") @Required val password: kotlin.String
+    @SerialName(value = "password") @Required val password: kotlin.String,
+
+    @SerialName(value = "following") val following: kotlin.Boolean? = true
 
 ) {
 

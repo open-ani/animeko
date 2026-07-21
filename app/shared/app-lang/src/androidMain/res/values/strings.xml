@@ -1338,6 +1338,8 @@
     <string name="watch_together_rejoined">The previous room expired, so it was created again.</string>
     <string name="watch_together_rejoin_failed">Could not restore the previous Watch Together room.</string>
     <string name="watch_together_navigation_blocked">Leave or stop following the host before opening another episode.</string>
+    <string name="watch_together_stop_following">Stop following</string>
+    <string name="watch_together_resynced">Synced back to the host\'s position</string>
 </resources>
 
 <!--@formatter:on-->

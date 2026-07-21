@@ -34,7 +34,7 @@ import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.ktor.UnsafeScopedHttpClientApi
 
 interface WatchTogetherApiService {
-    suspend fun join(roomName: String, password: String): AniWatchTogetherJoinResponse
+    suspend fun join(roomName: String, password: String, following: Boolean): AniWatchTogetherJoinResponse
 
     suspend fun report(
         roomId: String,
@@ -74,10 +74,10 @@ class DefaultWatchTogetherApiService(
     private val json: Json = ApiClient.JSON_DEFAULT,
 ) : WatchTogetherApiService {
     private val api: ApiInvoker<WatchTogetherAniApi> = provider.watchTogetherApi
-    override suspend fun join(roomName: String, password: String): AniWatchTogetherJoinResponse {
+    override suspend fun join(roomName: String, password: String, following: Boolean): AniWatchTogetherJoinResponse {
         try {
             return api {
-                joinWatchTogetherRoom(AniJoinWatchTogetherRoomRequest(roomName, password)).body()
+                joinWatchTogetherRoom(AniJoinWatchTogetherRoomRequest(roomName, password, following)).body()
             }
         } catch (exception: ResponseException) {
             val responseBody = runCatching { exception.response.bodyAsText() }.getOrNull().orEmpty()

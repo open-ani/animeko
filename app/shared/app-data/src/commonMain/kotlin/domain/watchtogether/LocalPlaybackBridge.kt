@@ -41,6 +41,18 @@ class LocalPlaybackBridge {
     )
     val directives: SharedFlow<PlaybackDirective> = _directives.asSharedFlow()
 
+    private val _corrections = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
+    /** Emitted by the player extension when a continuous-correction seek was actually applied. */
+    val corrections: SharedFlow<Unit> = _corrections.asSharedFlow()
+
+    fun notifyCorrectionApplied() {
+        _corrections.tryEmit(Unit)
+    }
+
     fun updateLocalWatching(value: AniWatchTogetherWatchingInfo?) {
         localOwner.value = null
         updateLocalWatchingValue(value)

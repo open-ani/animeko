@@ -18,6 +18,11 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,8 +56,10 @@ import me.him188.ani.app.ui.lang.watch_together_following
 import me.him188.ani.app.ui.lang.watch_together_navigation_blocked
 import me.him188.ani.app.ui.lang.watch_together_rejoin_failed
 import me.him188.ani.app.ui.lang.watch_together_rejoined
+import me.him188.ani.app.ui.lang.watch_together_resynced
 import me.him188.ani.app.ui.lang.watch_together_room_closed
 import me.him188.ani.app.ui.lang.watch_together_session_replaced
+import me.him188.ani.app.ui.lang.watch_together_stop_following
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
@@ -69,7 +76,10 @@ internal fun BoxScope.WatchTogetherOverlayHost(
     val sessionReplacedMessage = stringResource(Lang.watch_together_session_replaced)
     val rejoinedMessage = stringResource(Lang.watch_together_rejoined)
     val rejoinFailedMessage = stringResource(Lang.watch_together_rejoin_failed)
+    val resyncedMessage = stringResource(Lang.watch_together_resynced)
+    val stopFollowingLabel = stringResource(Lang.watch_together_stop_following)
     var dialogVisible by rememberSaveable { mutableStateOf(false) }
+    val denialSnackbarState = remember { SnackbarHostState() }
 
     OnLifecycleEvent { event ->
         when (event) {
@@ -87,6 +97,7 @@ internal fun BoxScope.WatchTogetherOverlayHost(
         sessionReplacedMessage,
         rejoinedMessage,
         rejoinFailedMessage,
+        resyncedMessage,
     ) {
         viewModel.effects.collect { effect ->
             when (effect) {
@@ -125,15 +136,29 @@ internal fun BoxScope.WatchTogetherOverlayHost(
 
                 WatchTogetherEffect.Rejoined -> toaster.toast(rejoinedMessage)
                 WatchTogetherEffect.RejoinFailed -> toaster.toast(rejoinFailedMessage)
+                WatchTogetherEffect.ResyncedWithHost -> toaster.toast(resyncedMessage)
             }
         }
     }
 
-    LaunchedEffect(navigationBlockedMessage) {
+    LaunchedEffect(navigationBlockedMessage, stopFollowingLabel) {
         EpisodeNavigationGuardRegistry.denialEvents.collect {
-            toaster.toast(navigationBlockedMessage)
+            val result = denialSnackbarState.showSnackbar(
+                message = navigationBlockedMessage,
+                actionLabel = stopFollowingLabel,
+                withDismissAction = true,
+                duration = SnackbarDuration.Short,
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.onIntent(WatchTogetherIntent.SetFollowing(false))
+            }
         }
     }
+
+    SnackbarHost(
+        denialSnackbarState,
+        Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp),
+    )
 
     LaunchedEffect(state.featureEnabled) {
         if (!state.featureEnabled) dialogVisible = false
