@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import me.him188.ani.client.models.AniWatchTogetherRoomSnapshot
+import me.him188.ani.client.models.AniWatchTogetherWatchingInfo
 
 sealed interface WatchTogetherState {
     data object Disabled : WatchTogetherState
@@ -49,6 +50,9 @@ class RoomSession internal constructor(
     val following: StateFlow<Boolean> = _following.asStateFlow()
 
     internal val lastReportAtMillis = atomic(0L)
+
+    /** The `watching` payload of the last successfully delivered report; gates paused-idempotent periodic reports. */
+    internal val lastReportedWatching = atomic<AniWatchTogetherWatchingInfo?>(null)
     private val closing = atomic(false)
 
     /**

@@ -113,8 +113,9 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
 
     @Test
     fun `everyone pauses after the first load while in a room`() = runTest {
+        val api = InRoomWatchTogetherApiService()
         val (suite, bridge, manager) = createCase(
-            api = InRoomWatchTogetherApiService(),
+            api = api,
             settings = WatchTogetherSettings(enabled = true),
         )
         manager.start()
@@ -133,14 +134,20 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
         val heldFix = assertNotNull(bridge.localWatching.value)
         assertTrue(heldFix.paused)
         assertEquals(false, heldFix.loading)
+        // The transient auto-play between load and hold must never reach the room.
+        assertTrue(
+            api.reports.mapNotNull { it.watching }.none { it.paused == false },
+            "pre-hold PLAYING leaked into a report: ${api.reports}",
+        )
 
-        // The host's explicit play is not held back again.
+        // The host's explicit play is not held back again and reports immediately.
         suite.player.playbackState.value = PlaybackState.PLAYING
         advanceTimeBy(1_100)
         runCurrent()
         assertEquals(PlaybackState.PLAYING, suite.player.playbackState.value)
         val playingFix = assertNotNull(bridge.localWatching.value)
         assertEquals(false, playingFix.paused)
+        assertTrue(api.reports.mapNotNull { it.watching }.any { it.paused == false })
     }
 
     private fun TestScope.createCase(
@@ -198,6 +205,8 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     private class InRoomWatchTogetherApiService : WatchTogetherApiService {
+        val reports = mutableListOf<AniReportWatchTogetherStateRequest>()
+
         override suspend fun join(
             roomName: String,
             password: String,
@@ -222,10 +231,13 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
         override suspend fun report(
             roomId: String,
             request: AniReportWatchTogetherStateRequest,
-        ): AniWatchTogetherReportResponse = AniWatchTogetherReportResponse(
-            serverTime = NOW_MILLIS,
-            membership = AniWatchTogetherMembership.OK,
-        )
+        ): AniWatchTogetherReportResponse {
+            reports += request
+            return AniWatchTogetherReportResponse(
+                serverTime = NOW_MILLIS,
+                membership = AniWatchTogetherMembership.OK,
+            )
+        }
 
         override suspend fun leave(roomId: String, sessionNonce: String) {
         }

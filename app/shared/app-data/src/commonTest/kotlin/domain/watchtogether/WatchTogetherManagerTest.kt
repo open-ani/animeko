@@ -15,6 +15,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.preference.RememberedRoomSession
@@ -30,9 +33,11 @@ import me.him188.ani.app.domain.session.SessionStateProvider
 import me.him188.ani.client.models.AniReportWatchTogetherStateRequest
 import me.him188.ani.client.models.AniWatchTogetherJoinResponse
 import me.him188.ani.client.models.AniWatchTogetherMembership
+import me.him188.ani.client.models.AniWatchTogetherPlayback
 import me.him188.ani.client.models.AniWatchTogetherReportResponse
 import me.him188.ani.client.models.AniWatchTogetherRoomSnapshot
 import me.him188.ani.client.models.AniWatchTogetherRoomStatus
+import me.him188.ani.client.models.AniWatchTogetherWatchingInfo
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -154,6 +159,107 @@ class WatchTogetherManagerTest {
         )
     }
 
+    @Test
+    fun `follower deviating in-player is pulled back to the host episode`() = runTest {
+        val settings = MutableSettings(WatchTogetherSettings(enabled = true, followHost = true))
+        val bridge = LocalPlaybackBridge()
+        val api = FakeApi(
+            isHost = false,
+            snapshotPlayback = AniWatchTogetherPlayback(
+                info = watchingInfo(subjectId = 10, episodeId = 100),
+                reportedAt = 1_000L,
+            ),
+        )
+        val manager = WatchTogetherManager(
+            scope = backgroundScope,
+            api = api,
+            settings = settings,
+            sessionStateProvider = FakeSessionStateProvider(),
+            playbackBridge = bridge,
+            automationGate = PlaybackAutomationGate(),
+            reconnectJitterMillis = { 1L },
+        )
+        manager.start()
+        runCurrent()
+        assertTrue(manager.join("Friday", "secret").isSuccess)
+        runCurrent()
+
+        val directives = mutableListOf<PlaybackDirective>()
+        backgroundScope.launch { bridge.directives.collect { directives += it } }
+        runCurrent()
+
+        // Playing the host's episode: nothing to correct.
+        bridge.updateLocalWatching(watchingInfo(subjectId = 10, episodeId = 100))
+        runCurrent()
+        assertTrue(directives.filterIsInstance<PlaybackDirective.SwitchEpisode>().isEmpty())
+
+        // An in-player switch bypasses navigation; the manager must pull the follower back.
+        bridge.updateLocalWatching(watchingInfo(subjectId = 10, episodeId = 101))
+        runCurrent()
+        assertEquals(
+            100,
+            directives.filterIsInstance<PlaybackDirective.SwitchEpisode>().single().episodeId,
+        )
+    }
+
+    @Test
+    fun `paused host stops periodic fixes while sse is connected`() = runTest {
+        val settings = MutableSettings(WatchTogetherSettings(enabled = true))
+        val bridge = LocalPlaybackBridge()
+        val api = FakeApi(isHost = true)
+        val manager = WatchTogetherManager(
+            scope = backgroundScope,
+            api = api,
+            settings = settings,
+            sessionStateProvider = FakeSessionStateProvider(),
+            playbackBridge = bridge,
+            automationGate = PlaybackAutomationGate(),
+            localNowMillis = { currentTime },
+            reconnectJitterMillis = { 1L },
+        )
+        manager.start()
+        runCurrent()
+        assertTrue(manager.join("Friday", "secret").isSuccess)
+        runCurrent()
+
+        bridge.updateLocalWatching(watchingInfo(subjectId = 1, episodeId = 2))
+        runCurrent()
+        val playingBaseline = api.reports.size
+        advanceTimeBy(11_000)
+        runCurrent()
+        assertTrue(api.reports.size > playingBaseline, "playing host must keep sending periodic fixes")
+
+        bridge.updateLocalWatching(watchingInfo(subjectId = 1, episodeId = 2, paused = true))
+        runCurrent()
+        val afterPauseEdge = api.reports.size
+        advanceTimeBy(30_000)
+        runCurrent()
+        assertEquals(afterPauseEdge, api.reports.size, "frozen paused fix must not be re-sent periodically")
+
+        bridge.updateLocalWatching(
+            watchingInfo(subjectId = 1, episodeId = 2, paused = false, positionMillis = 60_000L),
+        )
+        runCurrent()
+        assertTrue(api.reports.size > afterPauseEdge, "resume edge must report immediately")
+    }
+
+    private fun watchingInfo(
+        subjectId: Int,
+        episodeId: Int,
+        paused: Boolean = false,
+        positionMillis: Long = 0L,
+    ) = AniWatchTogetherWatchingInfo(
+        subjectId = subjectId,
+        episodeId = episodeId,
+        subjectName = "Subject",
+        episodeSort = "01",
+        episodeName = "Episode",
+        positionMillis = positionMillis,
+        positionAtMillis = 1_000L,
+        durationMillis = 1_440_000L,
+        paused = paused,
+    )
+
     private class MutableSettings<T>(initial: T) : Settings<T> {
         val state = MutableStateFlow(initial)
         override val flow: Flow<T> = state
@@ -172,6 +278,7 @@ class WatchTogetherManagerTest {
         private val isHost: Boolean,
         private val byeReason: String? = null,
         private val joinFailure: WatchTogetherJoinFailure? = null,
+        private val snapshotPlayback: AniWatchTogetherPlayback? = null,
     ) : WatchTogetherApiService {
         var joinCalls = 0
         var lastJoinFollowing: Boolean? = null
@@ -234,6 +341,7 @@ class WatchTogetherManagerTest {
             status = AniWatchTogetherRoomStatus.OPEN,
             hostUserId = "host-id",
             serverTime = 1_000L,
+            playback = snapshotPlayback,
             members = emptyList(),
         )
     }

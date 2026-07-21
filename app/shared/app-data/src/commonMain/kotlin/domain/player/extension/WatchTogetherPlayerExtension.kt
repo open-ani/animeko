@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodeSession
@@ -46,6 +47,10 @@ class WatchTogetherPlayerExtension(
 
     override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
         val mediaLoaded = CompletableDeferred<Unit>()
+        // Completed once the hold-first-play decision has settled (paused, or not applicable);
+        // until then the reporter suppresses PLAYING fixes so the transient auto-play between
+        // load and hold never reaches the room.
+        val holdSettled = CompletableDeferred<Unit>()
         backgroundTaskScope.launch("MediaLoadedListener") {
             context.subscribeEvents<EpisodeFetchSelectPlayState.MediaLoadedEvent>().collectLatest { event ->
                 if (event.episodeId == episodeSession.episodeId && mediaLoaded.isActive) mediaLoaded.complete(Unit)
@@ -85,6 +90,7 @@ class WatchTogetherPlayerExtension(
                 // switching sources mid-episode), or the transient 0 position would be broadcast
                 // and followers would be yanked to it. The last stable fix stays current instead.
                 if (playbackState !in STABLE_REPORT_STATES) return@combine null
+                if (!holdSettled.isCompleted && playbackState == PlaybackState.PLAYING) return@combine null
                 val durationMillis = mediaProperties?.durationMillis ?: 0L
                 AniWatchTogetherWatchingInfo(
                     subjectId = info.subjectId,
@@ -109,14 +115,25 @@ class WatchTogetherPlayerExtension(
             // the host to press play, so the host can start once the whole room has loaded.
             // Mid-episode source reloads don't re-trigger (mediaLoaded completes once per episode).
             mediaLoaded.await()
-            context.player.playbackState.filter { it == PlaybackState.PLAYING }.first()
-            if (isRoomSyncActive()) {
+            val firstStable = context.player.playbackState
+                .filter { it == PlaybackState.PLAYING || it == PlaybackState.PAUSED }
+                .first()
+            if (firstStable == PlaybackState.PLAYING && isRoomSyncActive()) {
                 withContext(Dispatchers.Main.immediate) { context.player.pause() }
+                // Wait for the pause to take effect so the reporter's PLAYING suppression covers
+                // the whole transient; bounded in case the player ignores the pause.
+                withTimeoutOrNull(HOLD_SETTLE_TIMEOUT_MILLIS) {
+                    context.player.playbackState.filter { it != PlaybackState.PLAYING }.first()
+                }
             }
+            holdSettled.complete(Unit)
         }
 
         backgroundTaskScope.launch("InitialFollowerSync") {
             mediaLoaded.await()
+            // Serialized after the hold decision so the initial sync and the hold don't fight
+            // over the play/pause state.
+            holdSettled.await()
             context.player.playbackState
                 .filter { it == PlaybackState.PLAYING || it == PlaybackState.PAUSED }
                 .first()
@@ -201,6 +218,7 @@ class WatchTogetherPlayerExtension(
         private const val REPORT_SAMPLE_INTERVAL_MILLIS = 1_000L
         private const val POSITION_CORRECTION_THRESHOLD_MILLIS = 3_000L
         private const val BUFFERING_DEBOUNCE_MILLIS = 2_000L
+        private const val HOLD_SETTLE_TIMEOUT_MILLIS = 2_000L
 
         private val STABLE_REPORT_STATES = setOf(
             PlaybackState.PLAYING,

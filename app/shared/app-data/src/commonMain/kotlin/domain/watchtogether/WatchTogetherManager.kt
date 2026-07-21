@@ -276,6 +276,7 @@ class WatchTogetherManager(
                 }
                 launch(CoroutineName("follower-mode")) { observeFollowerMode(session) }
                 launch(CoroutineName("guidance")) { observeGuidance(session) }
+                launch(CoroutineName("local-deviation")) { observeLocalDeviation(session) }
                 launch(CoroutineName("correction")) { runContinuousCorrection(session) }
                 launch(CoroutineName("correction-toast")) { observeCorrectionToasts(session) }
             }
@@ -415,6 +416,15 @@ class WatchTogetherManager(
                 session.isHost -> HOST_REPORT_INTERVAL_MILLIS
                 else -> MEMBER_REPORT_INTERVAL_MILLIS
             }
+            // While paused the fix is frozen, so re-sending it is pure waste (spec 3.3: no
+            // periodic fixes while paused). Only skip while SSE is connected — otherwise these
+            // reports double as the presence signal (background host, reconnecting, degraded).
+            if (!degraded && watching != null && watching.paused &&
+                session.connection.value == WatchTogetherConnectionState.ConnectedSse &&
+                watching == session.lastReportedWatching.value
+            ) {
+                continue
+            }
             if (now - session.lastReportAtMillis.value >= interval) reportOnce(session)
         }
     }
@@ -442,6 +452,7 @@ class WatchTogetherManager(
                     ),
                 )
                 val receivedAt = localNowMillis()
+                session.lastReportedWatching.value = watching
                 session.serverClock.recordSample(response.serverTime, sentAt, receivedAt)
                 response.version?.let { session.noteServerVersion(it) }
                 response.snapshot?.let { processSnapshot(session, it) }
@@ -513,10 +524,11 @@ class WatchTogetherManager(
             navigationGuard = if (active) {
                 EpisodeNavigationGuardRegistry.register { subjectId, episodeId ->
                     val host = session.snapshot.value.playback?.info
-                    if (host != null && host.subjectId == subjectId && host.episodeId == episodeId) {
-                        null
-                    } else {
-                        NAVIGATION_DENIED_MESSAGE
+                    when {
+                        // A registration that lost the teardown race must never keep blocking.
+                        !isCurrent(session) -> null
+                        host != null && host.subjectId == subjectId && host.episodeId == episodeId -> null
+                        else -> NAVIGATION_DENIED_MESSAGE
                     }
                 }
             } else {
@@ -564,6 +576,47 @@ class WatchTogetherManager(
                             PlaybackDirective.Sync(playback, initial = true),
                         )
                     }
+                }
+            }
+    }
+
+    /**
+     * Pulls a follower back when the episode they are actually playing deviates from the host's —
+     * in-player episode switches do not pass [EpisodeNavigationGuardRegistry], and the guard is
+     * advisory anyway. Leaving the player (localWatching becoming null) is deliberately not a
+     * trigger: the decision table only guides on follow-start and host changes.
+     */
+    private suspend fun observeLocalDeviation(session: RoomSession) {
+        playbackBridge.localWatching
+            .map { watching -> watching?.let { it.subjectId to it.episodeId } }
+            .distinctUntilChanged()
+            .collect { localKey ->
+                if (localKey == null || session.isHost || !session.following.value || !isCurrent(session)) {
+                    return@collect
+                }
+                val playback = session.snapshot.value.playback ?: return@collect
+                val host = playback.info
+                if (host.subjectId == localKey.first && host.episodeId == localKey.second) return@collect
+                when (
+                    val action = SyncGuidanceEngine.compute(
+                        playback = playback,
+                        local = LocalPosition.InPlayer(localKey.first, localKey.second),
+                        nowMillis = session.serverClock.now(),
+                    )
+                ) {
+                    is SyncAction.SwitchEpisodeInPlace -> playbackBridge.emitDirective(
+                        PlaybackDirective.SwitchEpisode(action.episodeId, playback),
+                    )
+
+                    is SyncAction.PopThenPushEpisode -> effectChannel.send(
+                        WatchTogetherEffect.Navigate(
+                            action,
+                            subjectName = host.subjectName,
+                            episodeSort = host.episodeSort,
+                        ),
+                    )
+
+                    else -> Unit
                 }
             }
     }

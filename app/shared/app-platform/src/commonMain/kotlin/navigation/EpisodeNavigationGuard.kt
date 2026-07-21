@@ -43,4 +43,15 @@ object EpisodeNavigationGuardRegistry {
     internal fun emitDenial(reason: String) {
         _denialEvents.tryEmit(reason)
     }
+
+    /**
+     * Returns `true` when entering the episode is allowed; otherwise emits the denial reason to
+     * [denialEvents] and returns `false`. For episode-switching action points that do not go
+     * through [AniNavigator.navigateEpisodeDetails], e.g. in-player episode selectors.
+     */
+    fun checkOrNotifyDenied(subjectId: Int, episodeId: Int): Boolean {
+        val reason = check(subjectId, episodeId) ?: return true
+        emitDenial(reason)
+        return false
+    }
 }

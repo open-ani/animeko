@@ -95,11 +95,8 @@ interface AniNavigator {
         fullscreen: Boolean = false,
         force: Boolean = false,
     ) {
-        if (!force) {
-            EpisodeNavigationGuardRegistry.check(subjectId, episodeId)?.let { reason ->
-                EpisodeNavigationGuardRegistry.emitDenial(reason)
-                return
-            }
+        if (!force && !EpisodeNavigationGuardRegistry.checkOrNotifyDenied(subjectId, episodeId)) {
+            return
         }
         currentNavigator.popBackStack(NavRoutes.EpisodeDetail(subjectId, episodeId), inclusive = true)
         currentNavigator.navigate(NavRoutes.EpisodeDetail(subjectId, episodeId))
