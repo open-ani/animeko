@@ -30,6 +30,7 @@ import me.him188.ani.app.domain.watchtogether.WatchTogetherState
 import me.him188.ani.app.domain.watchtogether.positionAt
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.launchInBackground
+import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.client.models.AniWatchTogetherMemberState
 import me.him188.ani.client.models.AniWatchTogetherWatchingInfo
 import org.koin.core.component.KoinComponent
@@ -40,6 +41,7 @@ class WatchTogetherViewModel : AbstractViewModel(), KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
     private val sessionStateProvider: SessionStateProvider by inject()
     private val playbackBridge: LocalPlaybackBridge by inject()
+    private val selfInfoProducer = SelfInfoStateProducer(koin = getKoin())
 
     private val joinError = MutableStateFlow<String?>(null)
 
@@ -116,9 +118,11 @@ class WatchTogetherViewModel : AbstractViewModel(), KoinComponent {
         snapshot,
         connection,
         following,
+        selfInfoProducer.flow,
         tickerFlow(),
-    ) { snapshot, connection, following, _ ->
+    ) { snapshot, connection, following, selfInfo, _ ->
         val now = serverClock.now()
+        val selfUserId = selfInfo.selfInfo?.id?.toString()
         RoomProjection(
             phase = WatchTogetherPhase.IN_ROOM,
             following = following,
@@ -130,14 +134,21 @@ class WatchTogetherViewModel : AbstractViewModel(), KoinComponent {
                 members = snapshot.members
                     .sortedWith(compareByDescending { it.isHost })
                     .map { member ->
+                        val state = member.state.toPresentation()
                         WatchTogetherMemberPresentation(
                             userId = member.userId,
                             nickname = member.nickname,
                             avatarUrl = member.avatarUrl,
                             isHost = member.isHost,
+                            isSelf = member.userId == selfUserId,
                             following = member.following,
-                            state = member.state.toPresentation(),
+                            state = state,
                             watching = member.watching?.toPresentation(now),
+                            disconnectedMinutes = if (state == WatchTogetherMemberPresence.DISCONNECTED) {
+                                ((now - member.lastSeenAt) / 60_000L).coerceAtLeast(0L)
+                            } else {
+                                null
+                            },
                         )
                     },
             ),
@@ -159,6 +170,7 @@ class WatchTogetherViewModel : AbstractViewModel(), KoinComponent {
             positionMillis = positionAt(nowMillis),
             durationMillis = durationMillis,
             paused = paused,
+            buffering = buffering == true,
         )
 
     private fun WatchTogetherConnectionState.toPresentation(): WatchTogetherConnectionPresentation = when (this) {

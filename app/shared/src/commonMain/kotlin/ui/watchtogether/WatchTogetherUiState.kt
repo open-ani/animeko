@@ -70,6 +70,7 @@ data class WatchTogetherPlaybackPresentation(
     val positionMillis: Long,
     val durationMillis: Long,
     val paused: Boolean,
+    val buffering: Boolean = false,
 )
 
 @Immutable
@@ -78,9 +79,12 @@ data class WatchTogetherMemberPresentation(
     val nickname: String,
     val avatarUrl: String?,
     val isHost: Boolean,
+    val isSelf: Boolean = false,
     val following: Boolean,
     val state: WatchTogetherMemberPresence,
     val watching: WatchTogetherPlaybackPresentation?,
+    /** Minutes since last seen; only set when [state] is [WatchTogetherMemberPresence.DISCONNECTED]. */
+    val disconnectedMinutes: Long? = null,
 )
 
 enum class WatchTogetherMemberPresence {

@@ -9,32 +9,40 @@
 
 package me.him188.ani.app.ui.watchtogether
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Groups
+import androidx.compose.material.icons.rounded.HourglassEmpty
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -50,9 +58,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import me.him188.ani.app.data.network.WatchTogetherJoinFailure
@@ -82,22 +97,19 @@ internal fun WatchTogetherDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .widthIn(max = 560.dp)
+                .widthIn(max = 420.dp)
                 .heightIn(max = 720.dp)
                 .testTag(WATCH_TOGETHER_DIALOG_TEST_TAG),
-            shape = MaterialTheme.shapes.extraLarge,
+            shape = RoundedCornerShape(28.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = 6.dp,
         ) {
             Column(
                 modifier = Modifier
                     .verticalScroll(rememberScrollState())
                     .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                DialogHeader(onDismissRequest)
                 when {
-                    state.requiresLogin -> LoginRequiredContent(onLogin)
+                    state.requiresLogin -> LoginRequiredContent(onLogin, onDismissRequest)
                     state.phase == WatchTogetherPhase.IN_ROOM && state.room != null -> RoomContent(
                         state = state,
                         onFollowingChange = {
@@ -123,6 +135,8 @@ internal fun WatchTogetherDialog(
                         onJoin = {
                             onIntent(WatchTogetherIntent.JoinRoom(roomName, password))
                         },
+                        onDisable = { onIntent(WatchTogetherIntent.DisableFeature) },
+                        onDismiss = onDismissRequest,
                     )
                 }
             }
@@ -156,31 +170,33 @@ internal fun WatchTogetherDialog(
 }
 
 @Composable
-private fun DialogHeader(onDismissRequest: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = stringResource(Lang.watch_together_title),
-            style = MaterialTheme.typography.headlineSmall,
+private fun LoginRequiredContent(onLogin: () -> Unit, onDismiss: () -> Unit) {
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(
+            Icons.Rounded.Groups,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.size(28.dp),
         )
-        Spacer(Modifier.weight(1f))
-        IconButton(onClick = onDismissRequest) {
-            Icon(Icons.Rounded.Close, contentDescription = stringResource(Lang.watch_together_collapse))
+        Text(
+            text = stringResource(Lang.watch_together_login_required),
+            style = MaterialTheme.typography.headlineSmall,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 12.dp),
+        )
+        Text(
+            text = stringResource(Lang.watch_together_login_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 4.dp, bottom = 20.dp),
+        )
+        Button(onClick = onLogin, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(Lang.watch_together_login))
         }
-    }
-}
-
-@Composable
-private fun LoginRequiredContent(onLogin: () -> Unit) {
-    Text(
-        text = stringResource(Lang.watch_together_login_required),
-        style = MaterialTheme.typography.titleMedium,
-    )
-    Text(
-        text = stringResource(Lang.watch_together_login_description),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    Button(onClick = onLogin, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(Lang.watch_together_login))
+        TextButton(onClick = onDismiss, modifier = Modifier.padding(top = 6.dp)) {
+            Text(stringResource(Lang.watch_together_cancel))
+        }
     }
 }
 
@@ -195,7 +211,30 @@ private fun JoinRoomContent(
     joining: Boolean,
     errorMessage: String?,
     onJoin: () -> Unit,
+    onDisable: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(
+            Icons.Rounded.Groups,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.size(28.dp),
+        )
+        Text(
+            text = stringResource(Lang.watch_together_title),
+            style = MaterialTheme.typography.headlineSmall,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 12.dp),
+        )
+        Text(
+            text = stringResource(Lang.watch_together_join_subtitle),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 4.dp, bottom = 20.dp),
+        )
+    }
     OutlinedTextField(
         value = roomName,
         onValueChange = onRoomNameChange,
@@ -223,12 +262,13 @@ private fun JoinRoomContent(
                 )
             }
         },
-        modifier = Modifier.fillMaxWidth().testTag(WATCH_TOGETHER_PASSWORD_TEST_TAG),
+        modifier = Modifier.fillMaxWidth().padding(top = 16.dp).testTag(WATCH_TOGETHER_PASSWORD_TEST_TAG),
     )
     Text(
         text = stringResource(Lang.watch_together_join_helper),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 8.dp, start = 14.dp),
     )
     if (errorMessage != null) {
         val localizedError = when (errorMessage) {
@@ -245,12 +285,13 @@ private fun JoinRoomContent(
             text = stringResource(Lang.watch_together_join_failed, localizedError),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(top = 8.dp, start = 14.dp),
         )
     }
     Button(
         onClick = onJoin,
         enabled = !joining && roomName.isNotBlank() && password.isNotBlank(),
-        modifier = Modifier.fillMaxWidth().testTag(WATCH_TOGETHER_JOIN_TEST_TAG),
+        modifier = Modifier.fillMaxWidth().padding(top = 18.dp).testTag(WATCH_TOGETHER_JOIN_TEST_TAG),
     ) {
         if (joining) {
             CircularProgressIndicator(
@@ -266,6 +307,18 @@ private fun JoinRoomContent(
             ),
         )
     }
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TextButton(onClick = onDisable) {
+            Text(stringResource(Lang.watch_together_disable), color = MaterialTheme.colorScheme.error)
+        }
+        TextButton(onClick = onDismiss) {
+            Text(stringResource(Lang.watch_together_cancel))
+        }
+    }
 }
 
 @Composable
@@ -277,175 +330,236 @@ private fun RoomContent(
     onCollapse: () -> Unit,
 ) {
     val room = checkNotNull(state.room)
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(room.roomName, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-        StatusChip(room.connection)
-    }
-
-    HostPlaybackCard(room.playback)
-
-    Text(
-        stringResource(Lang.watch_together_members_count, room.members.size),
-        style = MaterialTheme.typography.titleMedium,
-    )
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        room.members.forEach { MemberRow(it) }
-    }
-
-    HorizontalDivider()
-    if (state.isSelfHost) {
-        Text(
-            stringResource(Lang.watch_together_you_are_host),
-            style = MaterialTheme.typography.titleSmall,
-        )
-        Text(
-            stringResource(Lang.settings_watch_together_description),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    } else {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column {
+            Text(
+                room.roomName,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            ConnectionChip(room.connection, Modifier.padding(top = 4.dp))
+        }
+        Spacer(Modifier.weight(1f))
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
         ) {
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(Lang.watch_together_follow_host), style = MaterialTheme.typography.titleSmall)
-                Text(
-                    stringResource(
-                        if (state.following) Lang.watch_together_following else Lang.watch_together_free_watching,
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Switch(
-                checked = state.following,
-                onCheckedChange = onFollowingChange,
-                modifier = Modifier.testTag(WATCH_TOGETHER_FOLLOW_TEST_TAG),
+            Icon(
+                Icons.Rounded.Groups,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp),
+            )
+            Text(
+                stringResource(Lang.watch_together_members_count, room.members.size),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
 
-    OutlinedButton(onClick = onLeave, modifier = Modifier.fillMaxWidth()) {
-        Text(
-            stringResource(
-                if (state.isSelfHost) Lang.watch_together_disband else Lang.watch_together_leave,
-            ),
-            color = MaterialTheme.colorScheme.error,
+    if (room.playback != null) {
+        NowPlayingCard(room.playback, Modifier.padding(top = 16.dp))
+    } else {
+        HostIdleCard(state.isSelfHost, Modifier.padding(top = 16.dp))
+    }
+
+    Text(
+        stringResource(Lang.watch_together_members_label, room.members.size),
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        room.members.forEach { MemberRow(it) }
+    }
+
+    if (state.isSelfHost) {
+        HostIdentityRow(Modifier.padding(top = 12.dp))
+    } else {
+        FollowSwitchRow(
+            following = state.following,
+            onFollowingChange = onFollowingChange,
+            modifier = Modifier.padding(top = 12.dp),
         )
     }
-    TextButton(onClick = onDisable, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(Lang.watch_together_disable))
-    }
-    TextButton(onClick = onCollapse, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(Lang.watch_together_collapse))
-    }
-}
 
-@Composable
-private fun StatusChip(connection: WatchTogetherConnectionPresentation) {
-    val isError = connection != WatchTogetherConnectionPresentation.CONNECTED
-    Surface(
-        shape = MaterialTheme.shapes.extraLarge,
-        color = if (isError) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
-        contentColor = if (isError) {
-            MaterialTheme.colorScheme.onErrorContainer
-        } else {
-            MaterialTheme.colorScheme.onPrimaryContainer
-        },
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = stringResource(
-                when (connection) {
-                    WatchTogetherConnectionPresentation.CONNECTED -> Lang.watch_together_connection_connected
-                    WatchTogetherConnectionPresentation.RECONNECTING -> Lang.watch_together_connection_reconnecting
-                    WatchTogetherConnectionPresentation.DEGRADED -> Lang.watch_together_connection_degraded
-                },
-            ),
-            style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-        )
+        TextButton(onClick = onLeave) {
+            Text(
+                stringResource(
+                    if (state.isSelfHost) Lang.watch_together_disband else Lang.watch_together_leave,
+                ),
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+        TextButton(onClick = onDisable) {
+            Text(stringResource(Lang.watch_together_disable), color = MaterialTheme.colorScheme.error)
+        }
+        TextButton(onClick = onCollapse) {
+            Text(stringResource(Lang.watch_together_collapse))
+        }
     }
 }
 
 @Composable
-private fun HostPlaybackCard(playback: WatchTogetherPlaybackPresentation?) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+private fun ConnectionChip(connection: WatchTogetherConnectionPresentation, modifier: Modifier = Modifier) {
+    val good = connection == WatchTogetherConnectionPresentation.CONNECTED
+    val container = if (good) watchTogetherGoodContainerColor() else MaterialTheme.colorScheme.errorContainer
+    val content = if (good) watchTogetherGoodColor() else MaterialTheme.colorScheme.onErrorContainer
+    Surface(shape = RoundedCornerShape(999.dp), color = container, contentColor = content, modifier = modifier) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp),
         ) {
-            Text(stringResource(Lang.watch_together_now_playing), style = MaterialTheme.typography.labelLarge)
-            if (playback == null) {
+            Box(Modifier.size(6.dp).clip(CircleShape).background(content))
+            Text(
+                text = stringResource(
+                    when (connection) {
+                        WatchTogetherConnectionPresentation.CONNECTED -> Lang.watch_together_connection_connected
+                        WatchTogetherConnectionPresentation.RECONNECTING -> Lang.watch_together_connection_reconnecting
+                        WatchTogetherConnectionPresentation.DEGRADED -> Lang.watch_together_connection_degraded
+                    },
+                ),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun NowPlayingCard(playback: WatchTogetherPlaybackPresentation, modifier: Modifier = Modifier) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier
+                    .size(width = 64.dp, height = 88.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                MaterialTheme.colorScheme.primaryContainer,
+                                MaterialTheme.colorScheme.primary,
+                            ),
+                        ),
+                    ),
+            )
+            Column(Modifier.weight(1f)) {
                 Text(
-                    stringResource(Lang.watch_together_host_idle),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    playback.subjectName,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-            } else {
-                Text(playback.subjectName, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    listOf(playback.episodeSort, playback.episodeName)
-                        .filter { it.isNotBlank() }
-                        .joinToString(" · "),
+                    stringResource(Lang.watch_together_episode_label, playback.episodeSort, playback.episodeName),
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 1.dp),
                 )
-                val progress = if (playback.durationMillis > 0L) {
-                    playback.positionMillis.toFloat() / playback.durationMillis
-                } else {
-                    0f
+                val (stateIcon, stateText) = playback.stateIconAndText()
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(top = 8.dp),
+                ) {
+                    Icon(
+                        stateIcon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        stateText,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
                 }
-                LinearProgressIndicator(
-                    progress = { progress.coerceIn(0f, 1f) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Text(
-                    "${playback.positionMillis.formatDuration()} / ${playback.durationMillis.formatDuration()}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(top = 6.dp),
+                ) {
+                    val progress = if (playback.durationMillis > 0L) {
+                        (playback.positionMillis.toFloat() / playback.durationMillis).coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(progress)
+                                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp)),
+                        )
+                    }
+                    Text(
+                        "${playback.positionMillis.formatDuration()} / ${playback.durationMillis.formatDuration()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun MemberRow(member: WatchTogetherMemberPresentation) {
-    Row(
-        modifier = Modifier.fillMaxWidth().alpha(
-            if (member.state == WatchTogetherMemberPresence.DISCONNECTED) 0.55f else 1f,
-        ),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+private fun WatchTogetherPlaybackPresentation.stateIconAndText(): Pair<ImageVector, String> = when {
+    buffering -> Icons.Rounded.HourglassEmpty to stringResource(Lang.watch_together_state_buffering)
+    paused -> Icons.Rounded.Pause to stringResource(Lang.watch_together_state_paused)
+    else -> Icons.Rounded.PlayArrow to stringResource(Lang.watch_together_state_playing)
+}
+
+@Composable
+private fun HostIdleCard(isSelfHost: Boolean, modifier: Modifier = Modifier) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = modifier.fillMaxWidth(),
     ) {
-        AvatarImage(
-            member.avatarUrl,
-            modifier = Modifier.size(40.dp).clip(CircleShape),
-        )
-        Column(Modifier.weight(1f)) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(member.nickname, style = MaterialTheme.typography.titleSmall)
-                if (member.isHost) {
-                    MemberChip(stringResource(Lang.watch_together_host))
-                } else {
-                    MemberChip(
-                        stringResource(
-                            if (member.following) {
-                                Lang.watch_together_following
-                            } else {
-                                Lang.watch_together_free_watching
-                            },
-                        ),
-                    )
-                }
-            }
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Rounded.Tv,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.size(22.dp),
+            )
             Text(
-                text = member.statusText(),
+                stringResource(
+                    if (isSelfHost) Lang.watch_together_host_empty_self else Lang.watch_together_host_idle,
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -454,37 +568,214 @@ private fun MemberRow(member: WatchTogetherMemberPresentation) {
 }
 
 @Composable
-private fun MemberChip(text: String) {
-    Surface(
-        shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+private fun MemberRow(member: WatchTogetherMemberPresentation) {
+    val disconnected = member.state == WatchTogetherMemberPresence.DISCONNECTED
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text,
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+        AvatarImage(
+            member.avatarUrl,
+            modifier = Modifier
+                .size(38.dp)
+                .clip(CircleShape)
+                .alpha(if (disconnected) 0.45f else 1f),
         )
+        Column(Modifier.weight(1f)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.alpha(if (disconnected) 0.6f else 1f),
+            ) {
+                Text(
+                    member.nickname,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (member.isSelf) {
+                    Text(
+                        stringResource(Lang.watch_together_you),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                when {
+                    member.isHost -> MemberChip(
+                        text = stringResource(Lang.watch_together_host),
+                        icon = Icons.Rounded.Star,
+                        container = MaterialTheme.colorScheme.primaryContainer,
+                        content = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+
+                    member.following -> MemberChip(
+                        text = stringResource(Lang.watch_together_chip_following),
+                        icon = Icons.Rounded.Check,
+                        container = MaterialTheme.colorScheme.secondaryContainer,
+                        content = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+
+                    else -> MemberChip(
+                        text = stringResource(Lang.watch_together_chip_free),
+                        icon = null,
+                        container = Color.Transparent,
+                        content = MaterialTheme.colorScheme.onSurfaceVariant,
+                        outlined = true,
+                    )
+                }
+            }
+            Text(
+                text = member.statusText(),
+                style = MaterialTheme.typography.bodySmall,
+                color = when {
+                    disconnected -> MaterialTheme.colorScheme.error
+                    member.state == WatchTogetherMemberPresence.WATCHING -> watchTogetherGoodColor()
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun MemberChip(
+    text: String,
+    icon: ImageVector?,
+    container: Color,
+    content: Color,
+    outlined: Boolean = false,
+) {
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = container,
+        contentColor = content,
+        modifier = if (outlined) {
+            Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(6.dp))
+        } else {
+            Modifier
+        },
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+        ) {
+            if (icon != null) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(11.dp))
+            }
+            Text(
+                text,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun FollowSwitchRow(
+    following: Boolean,
+    onFollowingChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(Lang.watch_together_follow_host),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    stringResource(Lang.watch_together_follow_host_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 1.dp),
+                )
+            }
+            Switch(
+                checked = following,
+                onCheckedChange = onFollowingChange,
+                modifier = Modifier.testTag(WATCH_TOGETHER_FOLLOW_TEST_TAG),
+            )
+        }
+    }
+}
+
+@Composable
+private fun HostIdentityRow(modifier: Modifier = Modifier) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = modifier.fillMaxWidth().alpha(0.85f),
+    ) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+            Text(
+                stringResource(Lang.watch_together_you_are_host),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                stringResource(Lang.watch_together_host_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 1.dp),
+            )
+        }
     }
 }
 
 @Composable
 private fun WatchTogetherMemberPresentation.statusText(): String = when (state) {
-    WatchTogetherMemberPresence.DISCONNECTED -> stringResource(Lang.watch_together_disconnected)
+    WatchTogetherMemberPresence.DISCONNECTED -> {
+        val minutes = disconnectedMinutes
+        if (minutes != null && minutes > 0) {
+            stringResource(Lang.watch_together_member_offline, minutes)
+        } else {
+            stringResource(Lang.watch_together_disconnected)
+        }
+    }
+
     WatchTogetherMemberPresence.IDLE -> stringResource(Lang.watch_together_idle)
     WatchTogetherMemberPresence.WATCHING -> {
         val watching = watching
         if (watching == null) {
             stringResource(Lang.watch_together_watching)
         } else {
-            listOf(
-                stringResource(Lang.watch_together_watching),
+            stringResource(
+                Lang.watch_together_member_watching,
                 watching.episodeSort,
                 watching.positionMillis.formatDuration(),
-            ).filter { it.isNotBlank() }.joinToString(" · ")
+            )
         }
     }
 }
+
+/**
+ * The design's "good" (green) role — Material 3 has no success color, so these mirror the
+ * mockup values for light/dark themes.
+ */
+@Composable
+internal fun watchTogetherGoodColor(): Color =
+    if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color(0xFFA5D399) else Color(0xFF2E6B27)
+
+@Composable
+internal fun watchTogetherGoodContainerColor(): Color =
+    if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color(0xFF1F3A1B) else Color(0xFFDCEDD8)
 
 private fun Long.formatDuration(): String {
     val totalSeconds = (coerceAtLeast(0L) / 1_000L)
@@ -494,6 +785,6 @@ private fun Long.formatDuration(): String {
     return if (hours > 0L) {
         "$hours:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
     } else {
-        "$minutes:${seconds.toString().padStart(2, '0')}"
+        "${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
     }
 }

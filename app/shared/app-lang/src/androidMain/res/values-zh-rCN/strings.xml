@@ -1356,14 +1356,14 @@
     <string name="watch_together_connection_connected">已连接</string>
     <string name="watch_together_connection_reconnecting">正在重连…</string>
     <string name="watch_together_connection_degraded">已通过轮询连接</string>
-    <string name="watch_together_members_count">%1$d 位成员</string>
+    <string name="watch_together_members_count">%1$d 人</string>
     <string name="watch_together_now_playing">房主播放状态</string>
     <string name="watch_together_host_idle">房主暂未播放剧集</string>
     <string name="watch_together_host">房主</string>
     <string name="watch_together_you_are_host">你是房主</string>
     <string name="watch_together_following">正在跟随房主</string>
     <string name="watch_together_free_watching">正在自由观看</string>
-    <string name="watch_together_disconnected">已断开</string>
+    <string name="watch_together_disconnected">已掉线</string>
     <string name="watch_together_idle">空闲</string>
     <string name="watch_together_watching">观看中</string>
     <string name="watch_together_follow_host">跟随房主播放</string>
@@ -1373,13 +1373,31 @@
     <string name="watch_together_collapse">收起</string>
     <string name="watch_together_cancel">取消</string>
     <string name="watch_together_confirm_disband">确定要为所有成员解散此房间吗？</string>
-    <string name="watch_together_room_closed">一起看房间已关闭。</string>
+    <string name="watch_together_room_closed">房主已解散房间</string>
     <string name="watch_together_session_replaced">此房间已在另一台设备上打开。</string>
     <string name="watch_together_rejoined">原房间已过期，已为你重新创建。</string>
     <string name="watch_together_rejoin_failed">无法恢复上次的一起看房间。</string>
-    <string name="watch_together_navigation_blocked">请先离开房间或停止跟随房主，再打开其他剧集。</string>
+    <string name="watch_together_navigation_blocked">跟随房主中，无法自行进入播放页</string>
     <string name="watch_together_stop_following">关闭跟随</string>
     <string name="watch_together_resynced">已与房主重新同步</string>
+    <string name="watch_together_join_subtitle">加入房间，和朋友同步观看</string>
+    <string name="watch_together_members_label">成员（%1$d）</string>
+    <string name="watch_together_chip_following">跟随中</string>
+    <string name="watch_together_chip_free">自由观看</string>
+    <string name="watch_together_member_watching">观看中 · 第 %1$s 话 %2$s</string>
+    <string name="watch_together_member_offline">已掉线 · %1$d 分钟前</string>
+    <string name="watch_together_you">（我）</string>
+    <string name="watch_together_follow_host_desc">自动进入房主观看的剧集并同步进度</string>
+    <string name="watch_together_host_desc">你的播放、暂停、跳转会同步给跟随中的成员</string>
+    <string name="watch_together_host_empty_self">你还未开始播放。进入任意剧集后，跟随中的成员会自动加入观看。</string>
+    <string name="watch_together_episode_label">第 %1$s 话 · %2$s</string>
+    <string name="watch_together_state_playing">房主播放中</string>
+    <string name="watch_together_state_paused">已暂停</string>
+    <string name="watch_together_state_buffering">缓冲中</string>
+    <string name="watch_together_guidance_playing">正在跟随房主播放《%1$s》第 %2$s 话</string>
+    <string name="watch_together_resynced_forward">已与房主重新同步（快进 %1$d 秒）</string>
+    <string name="watch_together_resynced_backward">已与房主重新同步（快退 %1$d 秒）</string>
+    <string name="watch_together_got_it">知道了</string>
 </resources>
 
 <!--@formatter:on-->

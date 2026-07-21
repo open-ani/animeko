@@ -41,16 +41,19 @@ class LocalPlaybackBridge {
     )
     val directives: SharedFlow<PlaybackDirective> = _directives.asSharedFlow()
 
-    private val _corrections = MutableSharedFlow<Unit>(
+    private val _corrections = MutableSharedFlow<Long>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST,
     )
 
-    /** Emitted by the player extension when a continuous-correction seek was actually applied. */
-    val corrections: SharedFlow<Unit> = _corrections.asSharedFlow()
+    /**
+     * Emitted by the player extension when a continuous-correction seek was actually applied.
+     * The value is the applied position jump in millis (positive = forward).
+     */
+    val corrections: SharedFlow<Long> = _corrections.asSharedFlow()
 
-    fun notifyCorrectionApplied() {
-        _corrections.tryEmit(Unit)
+    fun notifyCorrectionApplied(deltaMillis: Long) {
+        _corrections.tryEmit(deltaMillis)
     }
 
     fun updateLocalWatching(value: AniWatchTogetherWatchingInfo?) {

@@ -19,7 +19,7 @@ import kotlinx.coroutines.runBlocking
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.lang.Lang
-import me.him188.ani.app.ui.lang.watch_together_now_playing
+import me.him188.ani.app.ui.lang.watch_together_members_label
 import org.jetbrains.compose.resources.getString
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -58,7 +58,7 @@ class WatchTogetherDialogTest {
 
     @Test
     fun `in-room state renders playback and dispatches follow change`() = runAniComposeUiTest {
-        val nowPlaying = runBlocking { getString(Lang.watch_together_now_playing) }
+        val membersLabel = runBlocking { getString(Lang.watch_together_members_label, 2) }
         var received: WatchTogetherIntent? = null
         setContent {
             ProvideCompositionLocalsForPreview {
@@ -72,8 +72,8 @@ class WatchTogetherDialogTest {
         }
 
         onNodeWithTag(WATCH_TOGETHER_DIALOG_TEST_TAG).assertIsDisplayed()
-        onNodeWithText(nowPlaying).assertIsDisplayed()
         onNodeWithText("葬送的芙莉莲").assertIsDisplayed()
+        onNodeWithText(membersLabel).assertIsDisplayed()
         onNodeWithText("Alice").assertIsDisplayed()
         onNodeWithTag(WATCH_TOGETHER_FOLLOW_TEST_TAG).performClick()
 

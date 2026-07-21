@@ -545,7 +545,13 @@ class WatchTogetherManager(
                     null -> Unit
                     is SyncAction.PushEpisode,
                     is SyncAction.PopThenPushEpisode,
-                        -> effectChannel.send(WatchTogetherEffect.Navigate(action))
+                        -> effectChannel.send(
+                        WatchTogetherEffect.Navigate(
+                            action,
+                            subjectName = playback?.info?.subjectName,
+                            episodeSort = playback?.info?.episodeSort,
+                        ),
+                    )
 
                     is SyncAction.SwitchEpisodeInPlace -> {
                         if (playback != null) playbackBridge.emitDirective(
@@ -582,12 +588,12 @@ class WatchTogetherManager(
 
     private suspend fun observeCorrectionToasts(session: RoomSession) {
         var lastToastAtMillis = 0L
-        playbackBridge.corrections.collect {
+        playbackBridge.corrections.collect { deltaMillis ->
             if (session.isHost || !session.following.value || !isCurrent(session)) return@collect
             val now = localNowMillis()
             if (now - lastToastAtMillis < CORRECTION_TOAST_MIN_INTERVAL_MILLIS) return@collect
             lastToastAtMillis = now
-            effectChannel.send(WatchTogetherEffect.ResyncedWithHost)
+            effectChannel.send(WatchTogetherEffect.ResyncedWithHost(deltaMillis))
         }
     }
 

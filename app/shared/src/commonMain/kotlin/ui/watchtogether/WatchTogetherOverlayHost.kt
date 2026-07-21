@@ -13,16 +13,33 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Groups
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarData
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SnackbarVisuals
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -34,14 +51,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.watchtogether.SyncAction
 import me.him188.ani.app.domain.watchtogether.WatchTogetherEffect
 import me.him188.ani.app.domain.watchtogether.WatchTogetherRoomEndReason
@@ -50,18 +70,23 @@ import me.him188.ani.app.navigation.EpisodeNavigationGuardRegistry
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.findLast
 import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
-import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.watch_together_following
+import me.him188.ani.app.ui.lang.watch_together_got_it
+import me.him188.ani.app.ui.lang.watch_together_guidance_playing
 import me.him188.ani.app.ui.lang.watch_together_navigation_blocked
 import me.him188.ani.app.ui.lang.watch_together_rejoin_failed
 import me.him188.ani.app.ui.lang.watch_together_rejoined
 import me.him188.ani.app.ui.lang.watch_together_resynced
+import me.him188.ani.app.ui.lang.watch_together_resynced_backward
+import me.him188.ani.app.ui.lang.watch_together_resynced_forward
 import me.him188.ani.app.ui.lang.watch_together_room_closed
 import me.him188.ani.app.ui.lang.watch_together_session_replaced
 import me.him188.ani.app.ui.lang.watch_together_stop_following
-import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.getString
+import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 
 @Composable
 internal fun BoxScope.WatchTogetherOverlayHost(
@@ -69,17 +94,8 @@ internal fun BoxScope.WatchTogetherOverlayHost(
     aniNavigator: AniNavigator,
 ) {
     val state by viewModel.uiStateFlow.collectAsStateWithLifecycle()
-    val toaster = LocalToaster.current
-    val followingMessage = stringResource(Lang.watch_together_following)
-    val navigationBlockedMessage = stringResource(Lang.watch_together_navigation_blocked)
-    val roomClosedMessage = stringResource(Lang.watch_together_room_closed)
-    val sessionReplacedMessage = stringResource(Lang.watch_together_session_replaced)
-    val rejoinedMessage = stringResource(Lang.watch_together_rejoined)
-    val rejoinFailedMessage = stringResource(Lang.watch_together_rejoin_failed)
-    val resyncedMessage = stringResource(Lang.watch_together_resynced)
-    val stopFollowingLabel = stringResource(Lang.watch_together_stop_following)
     var dialogVisible by rememberSaveable { mutableStateOf(false) }
-    val denialSnackbarState = remember { SnackbarHostState() }
+    val toastHostState = remember { SnackbarHostState() }
 
     OnLifecycleEvent { event ->
         when (event) {
@@ -89,76 +105,118 @@ internal fun BoxScope.WatchTogetherOverlayHost(
         }
     }
 
-    LaunchedEffect(
-        viewModel,
-        aniNavigator,
-        followingMessage,
-        roomClosedMessage,
-        sessionReplacedMessage,
-        rejoinedMessage,
-        rejoinFailedMessage,
-        resyncedMessage,
-    ) {
+    LaunchedEffect(viewModel, aniNavigator) {
         viewModel.effects.collect { effect ->
             when (effect) {
-                is WatchTogetherEffect.Navigate -> when (val action = effect.action) {
-                    is SyncAction.PushEpisode -> {
-                        aniNavigator.navigateEpisodeDetails(
+                is WatchTogetherEffect.Navigate -> {
+                    when (val action = effect.action) {
+                        is SyncAction.PushEpisode -> aniNavigator.navigateEpisodeDetails(
                             action.subjectId,
                             action.episodeId,
                             force = true,
                         )
-                        toaster.toast(followingMessage)
-                    }
 
-                    is SyncAction.PopThenPushEpisode -> {
-                        aniNavigator.currentNavigator.findLast<NavRoutes.EpisodeDetail>()
-                            ?.let { aniNavigator.popBackStack(it, inclusive = true) }
-                        aniNavigator.navigateEpisodeDetails(
-                            action.subjectId,
-                            action.episodeId,
-                            force = true,
+                        is SyncAction.PopThenPushEpisode -> {
+                            aniNavigator.currentNavigator.findLast<NavRoutes.EpisodeDetail>()
+                                ?.let { aniNavigator.popBackStack(it, inclusive = true) }
+                            aniNavigator.navigateEpisodeDetails(
+                                action.subjectId,
+                                action.episodeId,
+                                force = true,
+                            )
+                        }
+
+                        is SyncAction.SeekOnly,
+                        is SyncAction.SwitchEpisodeInPlace,
+                            -> return@collect
+                    }
+                    val message = if (effect.subjectName != null && effect.episodeSort != null) {
+                        getString(Lang.watch_together_guidance_playing, effect.subjectName!!, effect.episodeSort!!)
+                    } else {
+                        getString(Lang.watch_together_following)
+                    }
+                    launch {
+                        toastHostState.showSnackbar(
+                            WatchTogetherToastVisuals(message, Icons.Rounded.PlayArrow),
                         )
-                        toaster.toast(followingMessage)
                     }
-
-                    is SyncAction.SeekOnly,
-                    is SyncAction.SwitchEpisodeInPlace,
-                        -> Unit
                 }
 
-                is WatchTogetherEffect.RoomEnded -> toaster.toast(
-                    when (effect.reason) {
-                        WatchTogetherRoomEndReason.ROOM_CLOSED -> roomClosedMessage
-                        WatchTogetherRoomEndReason.SESSION_REPLACED -> sessionReplacedMessage
-                    },
-                )
+                is WatchTogetherEffect.RoomEnded -> {
+                    val message = getString(
+                        when (effect.reason) {
+                            WatchTogetherRoomEndReason.ROOM_CLOSED -> Lang.watch_together_room_closed
+                            WatchTogetherRoomEndReason.SESSION_REPLACED -> Lang.watch_together_session_replaced
+                        },
+                    )
+                    val gotIt = getString(Lang.watch_together_got_it)
+                    launch {
+                        toastHostState.showSnackbar(
+                            WatchTogetherToastVisuals(
+                                message,
+                                Icons.Rounded.Groups,
+                                actionLabel = gotIt,
+                                duration = SnackbarDuration.Long,
+                            ),
+                        )
+                    }
+                }
 
-                WatchTogetherEffect.Rejoined -> toaster.toast(rejoinedMessage)
-                WatchTogetherEffect.RejoinFailed -> toaster.toast(rejoinFailedMessage)
-                WatchTogetherEffect.ResyncedWithHost -> toaster.toast(resyncedMessage)
+                WatchTogetherEffect.Rejoined -> {
+                    val message = getString(Lang.watch_together_rejoined)
+                    launch {
+                        toastHostState.showSnackbar(WatchTogetherToastVisuals(message, Icons.Rounded.Groups))
+                    }
+                }
+
+                WatchTogetherEffect.RejoinFailed -> {
+                    val message = getString(Lang.watch_together_rejoin_failed)
+                    launch {
+                        toastHostState.showSnackbar(WatchTogetherToastVisuals(message, Icons.Rounded.Info))
+                    }
+                }
+
+                is WatchTogetherEffect.ResyncedWithHost -> {
+                    val deltaSeconds = (abs(effect.deltaMillis) / 1000.0).roundToLong()
+                    val message = when {
+                        deltaSeconds == 0L -> getString(Lang.watch_together_resynced)
+                        effect.deltaMillis > 0 -> getString(Lang.watch_together_resynced_forward, deltaSeconds)
+                        else -> getString(Lang.watch_together_resynced_backward, deltaSeconds)
+                    }
+                    launch {
+                        toastHostState.showSnackbar(WatchTogetherToastVisuals(message, Icons.Rounded.Sync))
+                    }
+                }
             }
         }
     }
 
-    LaunchedEffect(navigationBlockedMessage, stopFollowingLabel) {
+    LaunchedEffect(viewModel) {
         EpisodeNavigationGuardRegistry.denialEvents.collect {
-            val result = denialSnackbarState.showSnackbar(
-                message = navigationBlockedMessage,
-                actionLabel = stopFollowingLabel,
-                withDismissAction = true,
-                duration = SnackbarDuration.Short,
-            )
-            if (result == SnackbarResult.ActionPerformed) {
-                viewModel.onIntent(WatchTogetherIntent.SetFollowing(false))
+            val message = getString(Lang.watch_together_navigation_blocked)
+            val stopFollowing = getString(Lang.watch_together_stop_following)
+            launch {
+                val result = toastHostState.showSnackbar(
+                    WatchTogetherToastVisuals(
+                        message,
+                        Icons.Rounded.Info,
+                        actionLabel = stopFollowing,
+                        duration = SnackbarDuration.Long,
+                    ),
+                )
+                if (result == SnackbarResult.ActionPerformed) {
+                    viewModel.onIntent(WatchTogetherIntent.SetFollowing(false))
+                }
             }
         }
     }
 
     SnackbarHost(
-        denialSnackbarState,
-        Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp),
-    )
+        toastHostState,
+        Modifier.align(Alignment.BottomCenter).padding(bottom = 24.dp),
+    ) { data ->
+        WatchTogetherToast(data)
+    }
 
     LaunchedEffect(state.featureEnabled) {
         if (!state.featureEnabled) dialogVisible = false
@@ -182,6 +240,52 @@ internal fun BoxScope.WatchTogetherOverlayHost(
             },
             onDismissRequest = { dialogVisible = false },
         )
+    }
+}
+
+/** Design-styled light prompt (同步引导 · 轻提示): inverse surface, leading icon, optional action. */
+private class WatchTogetherToastVisuals(
+    override val message: String,
+    val icon: ImageVector,
+    override val actionLabel: String? = null,
+    override val duration: SnackbarDuration = SnackbarDuration.Short,
+) : SnackbarVisuals {
+    override val withDismissAction: Boolean = false
+}
+
+@Composable
+private fun WatchTogetherToast(data: SnackbarData) {
+    val visuals = data.visuals
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.inverseSurface,
+        contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+        shadowElevation = 4.dp,
+        modifier = Modifier.padding(horizontal = 16.dp).widthIn(max = 480.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            (visuals as? WatchTogetherToastVisuals)?.let {
+                Icon(it.icon, contentDescription = null, modifier = Modifier.size(18.dp))
+            }
+            Text(
+                visuals.message,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f, fill = false).padding(vertical = 6.dp),
+            )
+            visuals.actionLabel?.let { label ->
+                TextButton(onClick = { data.performAction() }) {
+                    Text(
+                        label,
+                        color = MaterialTheme.colorScheme.inversePrimary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
     }
 }
 

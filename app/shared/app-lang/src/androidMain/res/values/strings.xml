@@ -1333,13 +1333,31 @@
     <string name="watch_together_collapse">Collapse</string>
     <string name="watch_together_cancel">Cancel</string>
     <string name="watch_together_confirm_disband">Disband this room for everyone?</string>
-    <string name="watch_together_room_closed">The Watch Together room was closed.</string>
+    <string name="watch_together_room_closed">The host closed the room.</string>
     <string name="watch_together_session_replaced">This room was opened on another device.</string>
     <string name="watch_together_rejoined">The previous room expired, so it was created again.</string>
     <string name="watch_together_rejoin_failed">Could not restore the previous Watch Together room.</string>
-    <string name="watch_together_navigation_blocked">Leave or stop following the host before opening another episode.</string>
+    <string name="watch_together_navigation_blocked">Following the host — you can\'t open another episode.</string>
     <string name="watch_together_stop_following">Stop following</string>
     <string name="watch_together_resynced">Synced back to the host\'s position</string>
+    <string name="watch_together_join_subtitle">Join a room and watch together with friends</string>
+    <string name="watch_together_members_label">Members (%1$d)</string>
+    <string name="watch_together_chip_following">Following</string>
+    <string name="watch_together_chip_free">Watching freely</string>
+    <string name="watch_together_member_watching">Watching · Ep %1$s %2$s</string>
+    <string name="watch_together_member_offline">Offline · %1$d min ago</string>
+    <string name="watch_together_you">(me)</string>
+    <string name="watch_together_follow_host_desc">Automatically join the episode the host is watching and stay in sync</string>
+    <string name="watch_together_host_desc">Your play, pause and seeks are synced to following members</string>
+    <string name="watch_together_host_empty_self">You haven\'t started playing. Once you enter an episode, following members join automatically.</string>
+    <string name="watch_together_episode_label">Ep %1$s · %2$s</string>
+    <string name="watch_together_state_playing">Host playing</string>
+    <string name="watch_together_state_paused">Paused</string>
+    <string name="watch_together_state_buffering">Buffering</string>
+    <string name="watch_together_guidance_playing">Following the host: %1$s · Ep %2$s</string>
+    <string name="watch_together_resynced_forward">Re-synced with the host (skipped ahead %1$d s)</string>
+    <string name="watch_together_resynced_backward">Re-synced with the host (went back %1$d s)</string>
+    <string name="watch_together_got_it">Got it</string>
 </resources>
 
 <!--@formatter:on-->

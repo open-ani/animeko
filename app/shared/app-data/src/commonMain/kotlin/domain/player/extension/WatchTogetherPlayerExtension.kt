@@ -140,13 +140,13 @@ class WatchTogetherPlayerExtension(
         }
 
         val targetPosition = host.positionAt(manager.serverNowMillis())
-        val corrected = withContext(Dispatchers.Main.immediate) {
+        val appliedDelta = withContext(Dispatchers.Main.immediate) {
             val player = context.player
-            var didSeek = false
+            var delta: Long? = null
             val localPosition = player.currentPositionMillis.value
             if (forceSeek || abs(localPosition - targetPosition) > POSITION_CORRECTION_THRESHOLD_MILLIS) {
                 player.seekTo(targetPosition)
-                didSeek = true
+                delta = targetPosition - localPosition
             }
             player.features[PlaybackSpeed]?.set(host.playbackRate ?: 1f)
             if (host.paused) {
@@ -154,9 +154,9 @@ class WatchTogetherPlayerExtension(
             } else if (player.playbackState.value == PlaybackState.PAUSED) {
                 player.resume()
             }
-            didSeek
+            delta
         }
-        if (corrected && !forceSeek) bridge.notifyCorrectionApplied()
+        if (appliedDelta != null && !forceSeek) bridge.notifyCorrectionApplied(appliedDelta)
     }
 
     @OptIn(UnsafeEpisodeSessionApi::class)

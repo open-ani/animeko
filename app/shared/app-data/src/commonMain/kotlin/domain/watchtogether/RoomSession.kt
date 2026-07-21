@@ -90,13 +90,22 @@ class RoomSession internal constructor(
 }
 
 sealed interface WatchTogetherEffect {
-    data class Navigate(val action: SyncAction) : WatchTogetherEffect
+    data class Navigate(
+        val action: SyncAction,
+        /** Display info of what the host is playing, for the guidance toast. */
+        val subjectName: String? = null,
+        val episodeSort: String? = null,
+    ) : WatchTogetherEffect
+
     data class RoomEnded(val reason: WatchTogetherRoomEndReason) : WatchTogetherEffect
     data object Rejoined : WatchTogetherEffect
     data object RejoinFailed : WatchTogetherEffect
 
-    /** A continuous-correction seek pulled this follower back to the host's position. */
-    data object ResyncedWithHost : WatchTogetherEffect
+    /**
+     * A continuous-correction seek pulled this follower back to the host's position.
+     * [deltaMillis] is the applied jump: positive = skipped forward, negative = went back.
+     */
+    data class ResyncedWithHost(val deltaMillis: Long) : WatchTogetherEffect
 }
 
 enum class WatchTogetherRoomEndReason {
