@@ -65,6 +65,8 @@ import me.him188.ani.app.ui.lang.settings_app_nsfw_hide
 import me.him188.ani.app.ui.lang.settings_app_search
 import me.him188.ani.app.ui.lang.settings_app_language_system
 import me.him188.ani.app.ui.lang.settings_player
+import me.him188.ani.app.ui.lang.settings_player_audio_time_stretch
+import me.him188.ani.app.ui.lang.settings_player_audio_time_stretch_description
 import me.him188.ani.app.ui.lang.settings_player_auto_fullscreen_on_landscape
 import me.him188.ani.app.ui.lang.settings_player_auto_mark_done
 import me.him188.ani.app.ui.lang.settings_player_auto_play_next
@@ -133,6 +135,7 @@ import me.him188.ani.app.ui.update.AppUpdateViewModel
 import me.him188.ani.app.ui.update.NewVersion
 import me.him188.ani.app.ui.update.UpdateNotifier
 import me.him188.ani.utils.platform.annotations.TestOnly
+import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isIos
 import me.him188.ani.utils.platform.isMobile
@@ -543,6 +546,17 @@ fun SettingsScope.PlayerGroup(
             },
             title = { Text(stringResource(Lang.settings_player_auto_switch_media_on_error)) },
         )
+        if (LocalPlatform.current.isAndroid()) {
+            HorizontalDividerItem()
+            SwitchItem(
+                checked = config.enableHighQualityAudioTimeStretch,
+                onCheckedChange = {
+                    videoScaffoldConfig.update(config.copy(enableHighQualityAudioTimeStretch = it))
+                },
+                title = { Text(stringResource(Lang.settings_player_audio_time_stretch)) },
+                description = { Text(stringResource(Lang.settings_player_audio_time_stretch_description)) },
+            )
+        }
         HorizontalDividerItem()
         if (!LocalPlatform.current.isIos()) {
             SwitchItem(

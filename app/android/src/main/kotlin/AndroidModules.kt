@@ -15,6 +15,7 @@ import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.runBlocking
@@ -174,7 +175,14 @@ fun getAndroidModules(
     }
 
     single<MediampPlayerFactory<*>> {
-        MediampPlayerFactoryLoader.register(LibassExoPlayerMediampPlayerFactory())
+        val videoScaffoldConfig = get<SettingsRepository>().videoScaffoldConfig
+        MediampPlayerFactoryLoader.register(
+            LibassExoPlayerMediampPlayerFactory {
+                // 音频处理链在 ExoPlayer 构造时确定, 无法在已创建的播放器上切换.
+                // 工厂接口是同步的, 因此每次创建播放器时在此读取 DataStore 中的当前值.
+                runBlocking { videoScaffoldConfig.flow.first().enableHighQualityAudioTimeStretch }
+            },
+        )
         MediampPlayerSurfaceProviderLoader.register(ExoPlayerMediampPlayerSurfaceProvider())
         MediampPlayerFactoryLoader.first()
     }

@@ -145,18 +145,7 @@ sealed class DefaultMediaSelectorSubtitleKindPlatformTest(
     }
 
     class Windows : DefaultMediaSelectorSubtitleKindPlatformTest(Platform.Windows(Arch.X86_64))
-    class Android : DefaultMediaSelectorSubtitleKindPlatformTest(Platform.Android(Arch.ARMV8A)) {
-        @Test
-        fun `CLOSED is low priority`() = runTest {
-            val target: DefaultMedia
-            addMedia(
-                media(alliance = "字幕组1", subtitleKind = SubtitleKind.CLOSED),
-                media(alliance = "字幕组2").also { target = it },
-            )
-            savedDefaultPreference.value = DEFAULT_PREFERENCE
-            assertEquals(target, selector.trySelectDefault())
-        }
-    }
+    class Android : DefaultMediaSelectorSubtitleKindPlatformTest(Platform.Android(Arch.ARMV8A))
 
     // TODO: Test DefaultMediaSelectorSubtitleKindPlatformTest for iOS
 

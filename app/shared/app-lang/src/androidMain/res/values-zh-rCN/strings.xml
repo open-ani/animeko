@@ -279,6 +279,8 @@
     <string name="settings_player_hide_selector_on_select">选择数据源后自动关闭弹窗</string>
     <string name="settings_player_auto_fullscreen_on_landscape">旋转屏幕时自动全屏</string>
     <string name="settings_player_auto_play_next">自动连播</string>
+    <string name="settings_player_audio_time_stretch">高质量音频变速（WSOLA）</string>
+    <string name="settings_player_audio_time_stretch_description">变速时提供更好的音质；如遇爆音或音频损坏可关闭</string>
     <string name="settings_player_auto_skip_op_ed">自动跳过 OP 和 ED</string>
     <string name="settings_player_auto_skip_op_ed_description">只对 BT 数据源的部分资源有效</string>
     <string name="settings_player_op_ed_skip_duration">OP/ED 跳过时长</string>

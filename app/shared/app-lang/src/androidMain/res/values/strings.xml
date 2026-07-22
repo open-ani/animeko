@@ -266,6 +266,8 @@
     <string name="settings_player_hide_selector_on_select">Automatically close the pop-up after selecting a data source</string>
     <string name="settings_player_auto_fullscreen_on_landscape">Automatically go fullscreen on screen rotation</string>
     <string name="settings_player_auto_play_next">Auto-play next episode</string>
+    <string name="settings_player_audio_time_stretch">High-quality audio time-stretch (WSOLA)</string>
+    <string name="settings_player_audio_time_stretch_description">Better sound quality at non-1x speeds. Turn off if you hear crackling or corrupted audio</string>
     <string name="settings_player_auto_skip_op_ed">Automatically skip OP and ED</string>
     <string name="settings_player_auto_skip_op_ed_description">Only works for some resources from BT data sources</string>
     <string name="settings_player_op_ed_skip_duration">OP/ED skip duration</string>
