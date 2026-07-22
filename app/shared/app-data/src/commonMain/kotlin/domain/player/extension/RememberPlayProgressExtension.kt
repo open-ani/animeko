@@ -24,6 +24,7 @@ import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.episode.SubjectEpisodeInfoBundle
 import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
+import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
@@ -49,6 +50,7 @@ class RememberPlayProgressExtension(
     private val initialReportDelay: Duration = 5.seconds,
 ) : PlayerExtension(name = "SaveProgressExtension") {
     private val playProgressRepository: EpisodePlayHistoryRepository by koin.inject()
+    private val automationGate: PlaybackAutomationGate by koin.inject()
     private val latestInfoBundleMutex = Mutex()
     private val latestInfoBundles = mutableMapOf<Int, SubjectEpisodeInfoBundle>()
 
@@ -95,6 +97,10 @@ class RememberPlayProgressExtension(
                         // Restore immediately, but only report after PLAYING has remained active for 5 seconds.
                         withContext(NonCancellable) {
                             if (!haveResumedOnce) {
+                                if (automationGate.suppressed.value) {
+                                    haveResumedOnce = true
+                                    return@withContext
+                                }
                                 val positionMillis =
                                     playProgressRepository.getPositionMillisByEpisodeId(episodeSession.episodeId)
                                 if (positionMillis == null) {

@@ -87,7 +87,7 @@ google-firebase = "22.0.1"
 posthog-android = "3.11.3"
 posthog-java = "1.2.0"
 openapi-generator = "7.13.0"
-mediamp = "0.1.16"
+mediamp = "0.2.0"
 libass-android = "0.5.0-beta01"
 compose-native-tray = "1.3.0"
 kmpalette = "4.0.0-beta02"
@@ -287,6 +287,7 @@ mediamp-ffmpeg-runtime-ios-xcframework = { module = "org.openani.mediamp:mediamp
 # Apple runtime is published as a @zip XCFramework and is resolved explicitly where needed.
 mediamp-mpv = { module = "org.openani.mediamp:mediamp-mpv", version.ref = "mediamp" }
 mediamp-mpv-runtime-windows-x64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-windows-x64", version.ref = "mediamp" }
+mediamp-mpv-runtime-windows-arm64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-windows-arm64", version.ref = "mediamp" }
 mediamp-mpv-runtime-linux-x64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-linux-x64", version.ref = "mediamp" }
 mediamp-mpv-runtime-macos-x64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-macos-x64", version.ref = "mediamp" }
 mediamp-mpv-runtime-macos-arm64 = { module = "org.openani.mediamp:mediamp-mpv-runtime-macos-arm64", version.ref = "mediamp" }

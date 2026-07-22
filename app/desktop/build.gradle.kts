@@ -56,6 +56,8 @@ dependencies {
     } else {
         when (val triple = getOsTriple()) {
             "windows-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.windows.x64)
+            "windows-arm64" -> runtimeOnly(libs.mediamp.mpv.runtime.windows.arm64)
+            "linux-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.linux.x64)
             "macos-arm64" -> runtimeOnly(libs.mediamp.mpv.runtime.macos.arm64)
             else -> {}
         }

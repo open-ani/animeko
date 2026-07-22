@@ -39,6 +39,7 @@ import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.data.models.preference.WatchTogetherSettings
 import me.him188.ani.app.data.persistent.DataStoreJson
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.utils.logging.debug
@@ -83,6 +84,7 @@ interface SettingsRepository {
 
     val analyticsSettings: Settings<AnalyticsSettings>
     val debugSettings: Settings<DebugSettings>
+    val watchTogetherSettings: Settings<WatchTogetherSettings>
 }
 
 @Stable
@@ -254,6 +256,12 @@ class PreferencesRepositoryImpl(
         "debugSettings",
         DebugSettings.serializer(),
         default = { DebugSettings.Default },
+    )
+
+    override val watchTogetherSettings: Settings<WatchTogetherSettings> = SerializablePreference(
+        "watchTogetherSettings",
+        WatchTogetherSettings.serializer(),
+        default = { WatchTogetherSettings.Default },
     )
 
     private companion object {

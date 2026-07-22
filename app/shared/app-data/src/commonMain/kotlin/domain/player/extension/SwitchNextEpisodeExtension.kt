@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.map
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
+import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
@@ -34,6 +35,7 @@ class SwitchNextEpisodeExtension(
     private val getNextEpisode: suspend (currentEpisodeId: Int) -> Int?,
 ) : PlayerExtension("SwitchNextEpisode") {
     private val getVideoScaffoldConfigUseCase: GetVideoScaffoldConfigUseCase by koin.inject()
+    private val automationGate: PlaybackAutomationGate by koin.inject()
 
     override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
         val mediaLoaded = CompletableDeferred<Unit>()
@@ -68,6 +70,7 @@ class SwitchNextEpisodeExtension(
                 }
 
                 if (closeToEnd) {
+                    if (automationGate.suppressed.value) return@collect
                     val nextEpisode = getNextEpisode(session.episodeId)
                     logger.info("播放完毕，切换下一集 $nextEpisode")
                     context.switchEpisode(nextEpisode ?: return@collect)

@@ -72,6 +72,12 @@ object Log4j2Config {
                 .addAttribute("additivity", false),
         )
         builder.add(
+            builder.newLogger("org.openani.mediamp.mpv.MPVHandle", Level.ALL)
+                .add(builder.newAppenderRef("STDOUT").addAttribute("level", Level.TRACE))
+                .add(builder.newAppenderRef("FILE"))
+                .addAttribute("additivity", false),
+        )
+        builder.add(
             builder.newLogger("org.apache.hc.client5.http.wire", Level.OFF)
                 .addAttribute("additivity", false),
         )

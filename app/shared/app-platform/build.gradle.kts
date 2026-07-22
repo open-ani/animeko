@@ -83,6 +83,7 @@ kotlin {
     }
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)
+        implementation(libs.turbine)
     }
     sourceSets.androidMain.dependencies {
         api(projects.utils.buildConfig)
