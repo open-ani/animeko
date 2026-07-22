@@ -1332,11 +1332,12 @@
     <string name="watch_together_idle">閒置</string>
     <string name="watch_together_watching">觀看中</string>
     <string name="watch_together_follow_host">跟隨房主播放</string>
-    <string name="watch_together_leave">離開房間</string>
-    <string name="watch_together_disband">解散房間</string>
-    <string name="watch_together_disable">關閉一起看</string>
+    <string name="watch_together_leave">離開</string>
+    <string name="watch_together_disband">解散</string>
+    <string name="watch_together_disable">關閉</string>
     <string name="watch_together_collapse">收合</string>
     <string name="watch_together_cancel">取消</string>
+    <string name="watch_together_minimize">最小化</string>
     <string name="watch_together_confirm_disband">確定要為所有成員解散此房間嗎？</string>
     <string name="watch_together_room_closed">房主已解散房間</string>
     <string name="watch_together_session_replaced">此房間已在另一台裝置上開啟。</string>

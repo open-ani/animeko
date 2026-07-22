@@ -41,6 +41,7 @@ import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -73,7 +74,58 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import me.him188.ani.app.data.network.WatchTogetherJoinFailure
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
-import me.him188.ani.app.ui.lang.*
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.watch_together_cancel
+import me.him188.ani.app.ui.lang.watch_together_chip_following
+import me.him188.ani.app.ui.lang.watch_together_chip_free
+import me.him188.ani.app.ui.lang.watch_together_collapse
+import me.him188.ani.app.ui.lang.watch_together_confirm_disband
+import me.him188.ani.app.ui.lang.watch_together_connection_connected
+import me.him188.ani.app.ui.lang.watch_together_connection_degraded
+import me.him188.ani.app.ui.lang.watch_together_connection_reconnecting
+import me.him188.ani.app.ui.lang.watch_together_disable
+import me.him188.ani.app.ui.lang.watch_together_disband
+import me.him188.ani.app.ui.lang.watch_together_disconnected
+import me.him188.ani.app.ui.lang.watch_together_episode_label
+import me.him188.ani.app.ui.lang.watch_together_error_invalid_name
+import me.him188.ani.app.ui.lang.watch_together_error_invalid_password
+import me.him188.ani.app.ui.lang.watch_together_error_rate_limited
+import me.him188.ani.app.ui.lang.watch_together_error_room_closed
+import me.him188.ani.app.ui.lang.watch_together_error_room_full
+import me.him188.ani.app.ui.lang.watch_together_error_temporary
+import me.him188.ani.app.ui.lang.watch_together_error_wrong_password
+import me.him188.ani.app.ui.lang.watch_together_follow_host
+import me.him188.ani.app.ui.lang.watch_together_follow_host_desc
+import me.him188.ani.app.ui.lang.watch_together_host
+import me.him188.ani.app.ui.lang.watch_together_host_desc
+import me.him188.ani.app.ui.lang.watch_together_host_empty_self
+import me.him188.ani.app.ui.lang.watch_together_host_idle
+import me.him188.ani.app.ui.lang.watch_together_idle
+import me.him188.ani.app.ui.lang.watch_together_join
+import me.him188.ani.app.ui.lang.watch_together_join_failed
+import me.him188.ani.app.ui.lang.watch_together_join_helper
+import me.him188.ani.app.ui.lang.watch_together_join_subtitle
+import me.him188.ani.app.ui.lang.watch_together_joining
+import me.him188.ani.app.ui.lang.watch_together_leave
+import me.him188.ani.app.ui.lang.watch_together_login
+import me.him188.ani.app.ui.lang.watch_together_login_description
+import me.him188.ani.app.ui.lang.watch_together_login_required
+import me.him188.ani.app.ui.lang.watch_together_member_offline
+import me.him188.ani.app.ui.lang.watch_together_member_watching
+import me.him188.ani.app.ui.lang.watch_together_members_count
+import me.him188.ani.app.ui.lang.watch_together_members_label
+import me.him188.ani.app.ui.lang.watch_together_minimize
+import me.him188.ani.app.ui.lang.watch_together_password
+import me.him188.ani.app.ui.lang.watch_together_room_name
+import me.him188.ani.app.ui.lang.watch_together_show_password
+import me.him188.ani.app.ui.lang.watch_together_state_buffering
+import me.him188.ani.app.ui.lang.watch_together_state_loading
+import me.him188.ani.app.ui.lang.watch_together_state_paused
+import me.him188.ani.app.ui.lang.watch_together_state_playing
+import me.him188.ani.app.ui.lang.watch_together_title
+import me.him188.ani.app.ui.lang.watch_together_watching
+import me.him188.ani.app.ui.lang.watch_together_you
+import me.him188.ani.app.ui.lang.watch_together_you_are_host
 import org.jetbrains.compose.resources.stringResource
 
 internal const val WATCH_TOGETHER_DIALOG_TEST_TAG = "watch_together_dialog"
@@ -331,7 +383,7 @@ private fun JoinRoomContent(
             Text(stringResource(Lang.watch_together_disable), color = MaterialTheme.colorScheme.error)
         }
         TextButton(onClick = onDismiss) {
-            Text(stringResource(Lang.watch_together_cancel))
+            Text(stringResource(Lang.watch_together_minimize))
         }
     }
 }
@@ -386,10 +438,28 @@ private fun RoomContent(
         style = MaterialTheme.typography.labelMedium,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
+        modifier = Modifier.padding(top = 16.dp, bottom = 16.dp),
     )
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        room.members.forEach { MemberRow(it) }
+
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier,
+        ) {
+            room.members.forEachIndexed { index, presentation ->
+                MemberRow(
+                    presentation,
+                    modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                )
+                if (index != room.members.size - 1) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
+                }
+            }
+        }
+
     }
 
     if (state.isSelfHost) {
@@ -584,10 +654,13 @@ private fun HostIdleCard(isSelfHost: Boolean, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun MemberRow(member: WatchTogetherMemberPresentation) {
+private fun MemberRow(
+    member: WatchTogetherMemberPresentation,
+    modifier: Modifier = Modifier,
+) {
     val disconnected = member.state == WatchTogetherMemberPresence.DISCONNECTED
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

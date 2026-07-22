@@ -1306,12 +1306,12 @@
     <string name="person_details_career_illustrator">繪師</string>
     <string name="person_details_career_actor">演員</string>
 
-    <!-- 一齊睇 -->
-    <string name="watch_together_title">一齊睇</string>
+    <!-- 一齐睇 -->
+    <string name="watch_together_title">一齐睇</string>
     <string name="settings_watch_together_social">社交觀看</string>
     <string name="settings_watch_together_description">加入房間，與朋友同步播放進度</string>
-    <string name="watch_together_bubble">一齊睇</string>
-    <string name="watch_together_login_required">登入後才能使用一齊睇</string>
+    <string name="watch_together_bubble">一齐睇</string>
+    <string name="watch_together_login_required">登入後才能使用一齐睇</string>
     <string name="watch_together_login_description">房間使用你的 Ani 帳戶識別成員並保障工作階段安全。</string>
     <string name="watch_together_login">前往登入</string>
     <string name="watch_together_room_name">房間名稱</string>
@@ -1342,16 +1342,17 @@
     <string name="watch_together_idle">閒置</string>
     <string name="watch_together_watching">觀看中</string>
     <string name="watch_together_follow_host">跟隨房主播放</string>
-    <string name="watch_together_leave">離開房間</string>
-    <string name="watch_together_disband">解散房間</string>
-    <string name="watch_together_disable">關閉一齊睇</string>
+    <string name="watch_together_leave">離開</string>
+    <string name="watch_together_disband">解散</string>
+    <string name="watch_together_disable">關閉</string>
     <string name="watch_together_collapse">收起</string>
     <string name="watch_together_cancel">取消</string>
+    <string name="watch_together_minimize">最小化</string>
     <string name="watch_together_confirm_disband">確定要為所有成員解散此房間嗎？</string>
     <string name="watch_together_room_closed">房主已解散房間</string>
     <string name="watch_together_session_replaced">此房間已在另一部裝置上開啟。</string>
     <string name="watch_together_rejoined">原房間已過期，已為你重新建立。</string>
-    <string name="watch_together_rejoin_failed">無法恢復上次的一齊睇房間。</string>
+    <string name="watch_together_rejoin_failed">無法恢復上次的一齐睇房間。</string>
     <string name="watch_together_navigation_blocked">跟隨房主中，無法自行進入播放頁</string>
     <string name="watch_together_stop_following">關閉跟隨</string>
     <string name="watch_together_resynced">已與房主重新同步</string>

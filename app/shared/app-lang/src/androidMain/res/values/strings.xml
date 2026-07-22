@@ -1327,11 +1327,12 @@
     <string name="watch_together_idle">Idle</string>
     <string name="watch_together_watching">Watching</string>
     <string name="watch_together_follow_host">Follow host playback</string>
-    <string name="watch_together_leave">Leave room</string>
-    <string name="watch_together_disband">Disband room</string>
-    <string name="watch_together_disable">Turn off Watch Together</string>
+    <string name="watch_together_leave">Leave</string>
+    <string name="watch_together_disband">Disband</string>
+    <string name="watch_together_disable">Turn off</string>
     <string name="watch_together_collapse">Collapse</string>
     <string name="watch_together_cancel">Cancel</string>
+    <string name="watch_together_minimize">Minimize</string>
     <string name="watch_together_confirm_disband">Disband this room for everyone?</string>
     <string name="watch_together_room_closed">The host closed the room.</string>
     <string name="watch_together_session_replaced">This room was opened on another device.</string>
