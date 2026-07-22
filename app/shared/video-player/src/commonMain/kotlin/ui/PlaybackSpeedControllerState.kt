@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import org.openani.mediamp.InternalForInheritanceMediampApi
 import org.openani.mediamp.features.PlaybackSpeed
+import kotlin.math.roundToInt
 
 /**
  * Side-effect: creation of this state will immediately set the playback speed to the initial speed.
@@ -31,28 +32,26 @@ import org.openani.mediamp.features.PlaybackSpeed
 @Stable
 class PlaybackSpeedControllerState(
     private val playbackSpeed: PlaybackSpeed,
-    speedProvider: () -> List<Float> = { listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f, 3f) },
+    speedProvider: () -> List<Float> = { listOf(0.25f, 0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f) },
     scope: CoroutineScope
 ) {
+    companion object {
+        const val MIN_CUSTOM_SPEED = 0.1f
+        const val MAX_CUSTOM_SPEED = 5.0f
+    }
+
     val speedList: List<Float> by derivedStateOf(speedProvider)
     var currentSpeed by mutableStateOf(playbackSpeed.value)
+        private set
+    var isCustomSpeedDialogVisible by mutableStateOf(false)
+        private set
+    var customSpeedInput by mutableStateOf(playbackSpeed.value.formatPlaybackSpeed())
         private set
 
     /**
      * `-1` represents a invalid index, which means the current speed is not in the list.
      */
-    val currentIndex: Int by derivedStateOf {
-        val index = speedList.indexOf(currentSpeed)
-        if (index == -1) {
-            speedList.indexOf(1f).also {
-                check(it != -1) {
-                    "Playback speed list must contain 1.0f, but was $speedList"
-                }
-            }
-        } else {
-            index
-        }
-    }
+    val currentIndex: Int by derivedStateOf { speedList.indexOf(currentSpeed) }
 
     init {
         require(speedList.isNotEmpty()) { "Playback speed list must not be empty" }
@@ -72,7 +71,12 @@ class PlaybackSpeedControllerState(
         scope.launch {
             playbackSpeed.valueFlow
                 .distinctUntilChanged()
-                .collect { value -> currentSpeed = value }
+                .collect { value ->
+                    currentSpeed = value
+                    if (!isCustomSpeedDialogVisible) {
+                        customSpeedInput = value.formatPlaybackSpeed()
+                    }
+                }
         }
     }
 
@@ -110,8 +114,36 @@ class PlaybackSpeedControllerState(
         playbackSpeed.set(value)
     }
 
+    fun setCustomSpeed(value: Float) {
+        val normalized = ((value * 10).roundToInt() / 10f)
+            .coerceIn(MIN_CUSTOM_SPEED, MAX_CUSTOM_SPEED)
+        setSpeed(normalized)
+    }
+
+    fun openCustomSpeedDialog() {
+        customSpeedInput = currentSpeed.formatPlaybackSpeed()
+        isCustomSpeedDialogVisible = true
+    }
+
+    fun closeCustomSpeedDialog() {
+        isCustomSpeedDialogVisible = false
+        customSpeedInput = currentSpeed.formatPlaybackSpeed()
+    }
+
+    fun updateCustomSpeedInput(value: String) {
+        customSpeedInput = value
+    }
+
     fun reset() {
         setSpeed(1f)
+    }
+}
+
+private fun Float.formatPlaybackSpeed(): String {
+    return if (this % 1f == 0f) {
+        roundToInt().toString()
+    } else {
+        toString().trimEnd('0').trimEnd('.')
     }
 }
 

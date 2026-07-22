@@ -134,8 +134,8 @@ import me.him188.ani.app.videoplayer.ui.progress.MediaProgressIndicatorText
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSliderDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBar
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
-import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.SpeedSwitcher
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.VideoAspectRatioSelector
+import me.him188.ani.app.videoplayer.ui.progress.PlaybackSpeedSwitcher
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.ProgressSliderCenteredPreviewFrame
 import me.him188.ani.app.videoplayer.ui.progress.SubtitleSwitcher
@@ -502,7 +502,7 @@ internal fun EpisodeVideoImpl(
                             val playbackSpeedAlwaysOnRequester =
                                 rememberAlwaysOnRequester(playerControllerState, "speedSwitcher")
                             playbackSpeedControllerState?.also { controller ->
-                                SpeedSwitcher(controller) {
+                                PlaybackSpeedSwitcher(controller) {
                                     if (it) {
                                         playbackSpeedAlwaysOnRequester.request()
                                     } else {
