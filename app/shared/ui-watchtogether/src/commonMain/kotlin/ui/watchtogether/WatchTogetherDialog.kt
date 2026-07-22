@@ -89,12 +89,26 @@ internal fun WatchTogetherDialog(
     onLogin: () -> Unit,
     onDismissRequest: () -> Unit,
 ) {
+    Dialog(onDismissRequest = onDismissRequest) {
+        WatchTogetherDialogContent(state, onIntent, onLogin, onDismissRequest)
+    }
+}
+
+/** Content of [WatchTogetherDialog], extracted so previews can render it without a dialog window. */
+@Composable
+internal fun WatchTogetherDialogContent(
+    state: WatchTogetherUiState,
+    onIntent: (WatchTogetherIntent) -> Unit,
+    onLogin: () -> Unit,
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     var roomName by rememberSaveable { mutableStateOf(state.joinForm.lastRoomName) }
     var password by rememberSaveable { mutableStateOf("") }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var confirmDisband by remember { mutableStateOf(false) }
 
-    Dialog(onDismissRequest = onDismissRequest) {
+    Box(modifier) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()

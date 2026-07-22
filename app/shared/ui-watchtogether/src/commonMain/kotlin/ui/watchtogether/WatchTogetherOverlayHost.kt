@@ -89,7 +89,7 @@ import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
 @Composable
-internal fun BoxScope.WatchTogetherOverlayHost(
+fun BoxScope.WatchTogetherOverlayHost(
     viewModel: WatchTogetherViewModel,
     aniNavigator: AniNavigator,
 ) {
