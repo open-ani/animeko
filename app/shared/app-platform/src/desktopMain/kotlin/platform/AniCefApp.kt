@@ -179,9 +179,7 @@ object AniCefApp {
 
         val javaHome = File(System.getProperty("java.home"))
         sequence {
-            yield(javaHome.resolve("../Frameworks/Chromium Embedded Framework.framework"))
-            yield(javaHome.resolve("Frameworks/Chromium Embedded Framework.framework"))
-            yield(javaHome.resolve("lib/Frameworks/Chromium Embedded Framework.framework"))
+            yield(javaHome.resolve("../Frameworks/cef_server.app/Contents/Frameworks/Chromium Embedded Framework.framework"))
         }.forEach {
             if (it.exists()) {
                 return it.parentFile.normalize()
