@@ -26,6 +26,7 @@ import androidx.compose.ui.util.fastAll
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.preference.VideoResolverSettings
+import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_media_advanced_settings
@@ -92,6 +93,7 @@ import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.FileSize.Companion.megaBytes
 import me.him188.ani.datasources.api.topic.Resolution
 import me.him188.ani.datasources.api.topic.SubtitleLanguage
+import me.him188.ani.utils.platform.isIos
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -371,18 +373,25 @@ internal fun SettingsScope.MediaSelectionGroup(
                 }
             }
 
-            SwitchItem(
-                checked = mediaSelectorSettings.enableImageCaptchaAutoSolve,
-                onCheckedChange = {
-                    state.mediaSelectorSettingsState.update(
-                        mediaSelectorSettings.copy(enableImageCaptchaAutoSolve = it),
-                    )
-                },
-                title = { Text(stringResource(Lang.settings_media_image_captcha_auto_solve)) },
-                description = { Text(stringResource(Lang.settings_media_image_captcha_auto_solve_description)) },
-            )
+            // iOS 上暂不暴露该开关: iOS 注入的是 UnsupportedCaptchaBrowserFactory, 没有交互式验证码
+            // 填写入口, 一旦关闭自动识别, 带图片验证码的数据源将没有任何兜底手段而直接不可用.
+            // 设置项本身仍然存在且默认开启, 等 iOS 支持交互式验证码后再放开这里即可.
+            if (!LocalPlatform.current.isIos()) {
+                SwitchItem(
+                    checked = mediaSelectorSettings.enableImageCaptchaAutoSolve,
+                    onCheckedChange = {
+                        state.mediaSelectorSettingsState.update(
+                            mediaSelectorSettings.copy(enableImageCaptchaAutoSolve = it),
+                        )
+                    },
+                    title = { Text(stringResource(Lang.settings_media_image_captcha_auto_solve)) },
+                    description = {
+                        Text(stringResource(Lang.settings_media_image_captcha_auto_solve_description))
+                    },
+                )
 
-            HorizontalDividerItem()
+                HorizontalDividerItem()
+            }
 
             SwitchItem(
                 checked = mediaSelectorSettings.showDisabled,

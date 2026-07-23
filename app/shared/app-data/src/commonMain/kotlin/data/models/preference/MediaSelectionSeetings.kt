@@ -64,6 +64,9 @@ constructor(
     /**
      * 使用随应用交付的离线 ONNX 模型自动识别并通过在线数据源的图片验证码.
      * 关闭后遇到图片验证码将直接进入需要用户手动处理的流程.
+     *
+     * 注意: iOS 上没有交互式验证码填写入口, 关闭后将没有兜底手段, 因此设置界面在 iOS 上不暴露该开关,
+     * 该平台恒为默认值 (开启).
      * @since 4.9
      */
     val enableImageCaptchaAutoSolve: Boolean = true,
