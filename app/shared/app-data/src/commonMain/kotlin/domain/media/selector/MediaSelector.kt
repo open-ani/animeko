@@ -76,14 +76,19 @@ import kotlin.coroutines.CoroutineContext
  * 每个数据源 [me.him188.ani.datasources.api.source.MediaSource] 都拥有阶级 [me.him188.ani.app.domain.mediasource.codec.MediaSourceTier]. 阶级会影响排序.
  * 阶级值越低, 数据源排序越靠前.
  *
+ * 数据源还可以为各个 channel (对应 [me.him188.ani.datasources.api.MediaProperties.alliance]) 单独指定 tier
+ * ([MediaSelectorSourceTiers.channelTiers]). 排序时以资源的有效 tier 为准: channel tier 优先, 没有 channel tier 时使用数据源 tier.
+ * 因此同一个数据源的不同 channel 的资源可以有不同的排序优先级.
+ *
  * ### 快速选择
  *
  * 快速选择是由 [MediaSelectorAutoSelect] 实现的[拓展功能][MediaSelectorAutoSelect.fastSelectWebSources], 仅对 [WEB][MediaSourceKind.WEB] 源有效.
  * 如果快速选择数据源功能为启用状态 ([MediaSelectorSettings.fastSelectWebKind] 为 [WEB][MediaSourceKind.WEB]), 将会考虑如下因素:
  *
- * - 当任意 Tier 0 数据源在 [fastSelectWebLowTierToleranceDuration][MediaSelectorSettings.fastSelectWebLowTierToleranceDuration] 
+ * - 当任意 Tier 0 数据源在 [fastSelectWebLowTierToleranceDuration][MediaSelectorSettings.fastSelectWebLowTierToleranceDuration]
  * 时长内加载好, [MediaSelectorAutoSelect] 将会立即选择该数据源.
- * - 在等待 [fastSelectWebLowTierToleranceDuration][MediaSelectorSettings.fastSelectWebLowTierToleranceDuration] 时长后, 
+ * 判定与选择均按 channel 粒度: 只有有效 tier (channel tier 优先) 不超过阈值的资源才会被立即选择.
+ * - 在等待 [fastSelectWebLowTierToleranceDuration][MediaSelectorSettings.fastSelectWebLowTierToleranceDuration] 时长后,
  * 选择所有已加载好的数据源中 Tier 最低的一个.
  *
  * ## 使用示例
@@ -219,6 +224,8 @@ interface MediaSelector {
      * @param blacklistMediaIds 黑名单, 这些 media 不会被选择. 如果遇到黑名单中的 media, 将会跳过.
      * @param allowNonPreferred 是否允许选择不满足用户偏好设置的项目. 如果为 `false`, 将只会从 [preferredCandidatesMedia] 中选择.
      * 如果为 `true`, 则放弃用户偏好, 只根据数据源顺序选择.
+     * @param candidateMediaFilter 额外的 media 级过滤. 只有返回 `true` 的 media 才会被选择.
+     * `null` 表示不额外过滤. 用于 channel 级 tier 等需要比数据源更细粒度控制的场景.
      *
      * @return 成功选择且已经记录的 [Media]. 返回 `null` 时表示没有选择.
      */
@@ -227,11 +234,12 @@ interface MediaSelector {
         overrideUserSelection: Boolean = false,
         blacklistMediaIds: Set<String> = emptySet(),
         allowNonPreferred: Boolean = false,
+        candidateMediaFilter: ((Media) -> Boolean)? = null,
     ): Media?
 
     /**
      * 根据提供的 [candidateSources], 挂起到第一个满足的 media 出现为止.
-     * 
+     *
      * @see trySelectFromMediaSources
      */
     suspend fun awaitSelectFromMediaSources(
@@ -239,6 +247,7 @@ interface MediaSelector {
         overrideUserSelection: Boolean = false,
         blacklistMediaIds: Set<String> = emptySet(),
         allowNonPreferred: Boolean = false,
+        candidateMediaFilter: ((Media) -> Boolean)? = null,
     ): Media?
 
     /**
@@ -722,12 +731,16 @@ class DefaultMediaSelector(
         candidateSources: List<String>,
         overrideUserSelection: Boolean,
         blacklistMediaIds: Set<String>,
-        allowNonPreferred: Boolean
+        allowNonPreferred: Boolean,
+        candidateMediaFilter: ((Media) -> Boolean)?
     ): Media? {
         if (candidateSources.isEmpty()) return null
 
         fun bake(candidates: List<MaybeExcludedMedia.Included>): List<MaybeExcludedMedia.Included> {
-            return candidates.filter { it.result.mediaSourceId in candidateSources && it.result.mediaId !in blacklistMediaIds }
+            return candidates.filter {
+                it.result.mediaSourceId in candidateSources && it.result.mediaId !in blacklistMediaIds
+                        && (candidateMediaFilter == null || candidateMediaFilter(it.result))
+            }
                 .sortedBy { candidateSources.indexOf(it.result.mediaSourceId) }
         }
 
@@ -772,12 +785,16 @@ class DefaultMediaSelector(
         candidateSources: List<String>,
         overrideUserSelection: Boolean,
         blacklistMediaIds: Set<String>,
-        allowNonPreferred: Boolean
+        allowNonPreferred: Boolean,
+        candidateMediaFilter: ((Media) -> Boolean)?
     ): Media? {
         if (candidateSources.isEmpty()) return null
 
         fun bake(candidates: List<MaybeExcludedMedia.Included>): List<MaybeExcludedMedia.Included> {
-            return candidates.filter { it.result.mediaSourceId in candidateSources && it.result.mediaId !in blacklistMediaIds }
+            return candidates.filter {
+                it.result.mediaSourceId in candidateSources && it.result.mediaId !in blacklistMediaIds
+                        && (candidateMediaFilter == null || candidateMediaFilter(it.result))
+            }
                 .sortedBy { candidateSources.indexOf(it.result.mediaSourceId) }
         }
 

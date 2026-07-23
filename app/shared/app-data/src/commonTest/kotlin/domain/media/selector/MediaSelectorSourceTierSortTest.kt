@@ -14,6 +14,7 @@ package me.him188.ani.app.domain.media.selector
 import me.him188.ani.app.domain.media.selector.testFramework.MediaSelectorTestSuite
 import me.him188.ani.app.domain.media.selector.testFramework.assertMedias
 import me.him188.ani.app.domain.media.selector.testFramework.runSimpleMediaSelectorTestSuite
+import me.him188.ani.app.domain.media.selector.testFramework.setChannelTiers
 import me.him188.ani.app.domain.media.selector.testFramework.setSourceTiers
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceKind.BitTorrent
@@ -232,6 +233,77 @@ class MediaSelectorSourceTierSortTest {
             next().assert(sourceId = "t2")
             next().assert(sourceId = "t2")
             next().assert(sourceId = "t3")
+            assertNoMoreElements()
+        }
+    }
+
+    @Test
+    fun `channel tier - channels within one source sorted by channel tier`() = runSimpleMediaSelectorTestSuite {
+        initSubject()
+        mediaApi.addMedia(
+            media(sourceId = "s", kind = WEB, alliance = "channel-b", mediaId = "s.b"),
+            media(sourceId = "s", kind = WEB, alliance = "channel-a", mediaId = "s.a"),
+            media(sourceId = "s", kind = WEB, alliance = "channel-c", mediaId = "s.c"),
+        )
+        mediaApi.shuffle()
+        setSourceTiers("s" to 1u)
+        setChannelTiers(
+            "s",
+            "channel-a" to 0u,
+            "channel-b" to 2u,
+            // channel-c falls back to source tier 1
+        )
+
+        assertMedias {
+            next().assert(mediaId = "s.a")
+            next().assert(mediaId = "s.c")
+            next().assert(mediaId = "s.b")
+            assertNoMoreElements()
+        }
+    }
+
+    @Test
+    fun `channel tier - channel tier participates in cross-source sorting`() = runSimpleMediaSelectorTestSuite {
+        // 用户场景: A 源的 channel A/B 是 tier 0, B 源的 channel C 是 tier 1
+        initSubject()
+        mediaApi.addMedia(
+            media(sourceId = "B", kind = WEB, alliance = "channel-c", mediaId = "B.c"),
+            media(sourceId = "A", kind = WEB, alliance = "channel-a", mediaId = "A.a"),
+            media(sourceId = "A", kind = WEB, alliance = "channel-b", mediaId = "A.b"),
+        )
+        setSourceTiers(
+            "A" to 3u,
+            "B" to 3u,
+        )
+        setChannelTiers("A", "channel-a" to 0u, "channel-b" to 0u)
+        setChannelTiers("B", "channel-c" to 1u)
+
+        assertMedias {
+            // A 源的两个 tier 0 channel 在前 (稳定排序保持加入顺序), B 源的 tier 1 channel 其次
+            next().assert(mediaId = "A.a")
+            next().assert(mediaId = "A.b")
+            next().assert(mediaId = "B.c")
+            assertNoMoreElements()
+        }
+    }
+
+    @Test
+    fun `channel tier - demoted channel ranks after other source`() = runSimpleMediaSelectorTestSuite {
+        // 数据源整体 tier 0, 但单个 channel 被降级到 2, 应排在 tier 1 的其他源之后
+        initSubject()
+        mediaApi.addMedia(
+            media(sourceId = "A", kind = WEB, alliance = "bad-channel", mediaId = "A.bad"),
+            media(sourceId = "B", kind = WEB, alliance = "channel", mediaId = "B.ch"),
+        )
+        setSourceTiers(
+            "A" to 0u,
+            "B" to 1u,
+        )
+        setChannelTiers("A", "bad-channel" to 2u)
+
+        assertMedias {
+            next().assert(mediaId = "B.ch")
+            next().assert(mediaId = "A.bad")
             assertNoMoreElements()
         }
     }

@@ -315,7 +315,8 @@ class MediaSelectorFilterSortAlgorithm {
                 )
                 .thenBy { maybe ->
                     val tiers = context.mediaSourceTiers
-                    tiers?.get(maybe.original.mediaSourceId)
+                    // channel (alliance) 级 tier 优先, 否则数据源级 tier
+                    tiers?.get(maybe.original.mediaSourceId, maybe.original.properties.alliance)
                         ?: MediaSourceTier.MaximumValue // 还没加载出来, 先不排序
                 }
                 .thenByDescending {

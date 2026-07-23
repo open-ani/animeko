@@ -426,8 +426,22 @@ fun MediaSelectorTestSuite.setSourceTier(sourceId: String, tier: MediaSourceTier
         newMap.remove(sourceId)
     }
     preferenceApi.mediaSelectorContext.value = preferenceApi.mediaSelectorContext.value.copy(
-        mediaSourceTiers = MediaSelectorSourceTiers(newMap) {
+        mediaSourceTiers = MediaSelectorSourceTiers(newMap, oldTiers?.channelTiers.orEmpty()) {
             // fallback function if not found
+            MediaSourceTier.Fallback
+        },
+    )
+}
+
+/**
+ * Sets channel-level tiers for a source. Channels not listed fall back to the source tier.
+ */
+fun MediaSelectorTestSuite.setChannelTiers(sourceId: String, vararg pairs: Pair<String, UInt>) {
+    val oldTiers = preferenceApi.mediaSelectorContext.value.mediaSourceTiers
+    val newChannelTiers = oldTiers?.channelTiers.orEmpty().toMutableMap()
+    newChannelTiers[sourceId] = pairs.associate { (channel, tier) -> channel to MediaSourceTier(tier) }
+    preferenceApi.mediaSelectorContext.value = preferenceApi.mediaSelectorContext.value.copy(
+        mediaSourceTiers = MediaSelectorSourceTiers(oldTiers?.tiers.orEmpty(), newChannelTiers) {
             MediaSourceTier.Fallback
         },
     )
@@ -452,7 +466,7 @@ fun MediaSelectorTestSuite.setSourceTiers(vararg pairs: Pair<String, UInt?>) {
         }
     }
     preferenceApi.mediaSelectorContext.value = preferenceApi.mediaSelectorContext.value.copy(
-        mediaSourceTiers = MediaSelectorSourceTiers(newMap) {
+        mediaSourceTiers = MediaSelectorSourceTiers(newMap, oldTiers?.channelTiers.orEmpty()) {
             MediaSourceTier.Fallback
         },
     )
@@ -466,6 +480,18 @@ var Handle.tier: Int?
     set(value) {
         suite.setSourceTier(instance.mediaSourceId, value?.toUInt())
     }
+
+/**
+ * Sets channel-level tiers for this source.
+ * @see setChannelTiers
+ */
+context(suite: MediaSelectorTestSuite)
+fun Handle.channelTiers(vararg pairs: Pair<String, Int>) {
+    suite.setChannelTiers(
+        instance.mediaSourceId,
+        *pairs.map { (channel, tier) -> channel to tier.toUInt() }.toTypedArray(),
+    )
+}
 
 
 ///////////////////////////////////////////////////////////////////////////

@@ -342,12 +342,15 @@ class MediaSourceManagerImpl(
     }
 
     override fun mediaSourceTiersFlow(): Flow<MediaSelectorSourceTiers> = instances.flow.map { list ->
+        val arguments = list.mapNotNull { save ->
+            save.getArgumentOrNull(codecManager)?.let { save.mediaSourceId to it }
+        }
         MediaSelectorSourceTiers(
-            buildMap {
-                for (save in list) {
-                    val argument = save.getArgumentOrNull(codecManager)
-                    if (argument != null) {
-                        put(save.mediaSourceId, argument.tier)
+            tiers = arguments.associate { (id, argument) -> id to argument.tier },
+            channelTiers = buildMap {
+                for ((id, argument) in arguments) {
+                    if (argument.channelTiers.isNotEmpty()) {
+                        put(id, argument.channelTiers)
                     }
                 }
             },

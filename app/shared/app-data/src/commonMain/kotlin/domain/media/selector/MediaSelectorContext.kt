@@ -128,10 +128,44 @@ data class MediaSelectorSourceTiers(
      * Key is [me.him188.ani.datasources.api.source.MediaSource.mediaSourceId]
      */
     val tiers: Map<String, MediaSourceTier>,
+    /**
+     * Channel 级别的 tier 覆盖. 外层 key 是 [me.him188.ani.datasources.api.source.MediaSource.mediaSourceId],
+     * 内层 key 是 channel 名称, 即 [me.him188.ani.datasources.api.MediaProperties.alliance].
+     *
+     * 若一个 media 的 channel 在此表中有记录, 则以该 channel tier 为准, 否则回退到数据源本身的 tier.
+     *
+     * @since 4.9
+     */
+    val channelTiers: Map<String, Map<String, MediaSourceTier>> = emptyMap(),
     val fallback: (mediaSourceId: String) -> MediaSourceTier = { MediaSourceTier.Fallback },
 ) {
     operator fun get(mediaSourceId: String): MediaSourceTier {
         return tiers[mediaSourceId] ?: fallback(mediaSourceId)
+    }
+
+    /**
+     * 获取一个资源的有效 tier: 优先使用其 channel ([channel], 即 alliance) 的 tier, 否则使用数据源的 tier.
+     *
+     * @since 4.9
+     */
+    fun get(mediaSourceId: String, channel: String?): MediaSourceTier {
+        if (!channel.isNullOrEmpty()) {
+            channelTiers[mediaSourceId]?.get(channel)?.let { return it }
+        }
+        return get(mediaSourceId)
+    }
+
+    /**
+     * 数据源能达到的最优 (数值最低) tier, 即数据源自身 tier 与其所有 channel tier 中的最小值.
+     *
+     * 用于快速选择: 只要数据源存在一个足够低 tier 的 channel, 该数据源就有可能立即提供低 tier 资源.
+     *
+     * @since 4.9
+     */
+    fun getBestTier(mediaSourceId: String): MediaSourceTier {
+        val sourceTier = get(mediaSourceId)
+        val channelMin = channelTiers[mediaSourceId]?.values?.minOrNull() ?: return sourceTier
+        return minOf(sourceTier, channelMin)
     }
 
     companion object {

@@ -81,6 +81,11 @@ data class SelectorMediaSourceArguments(
     val iconUrl: String,
     val searchConfig: SelectorSearchConfig = SelectorSearchConfig.Empty,
     override val tier: MediaSourceTier = MediaSourceTier.Fallback,
+    /**
+     * Channel 级别的 tier 覆盖, key 为 channel 名称 (与页面解析出的 channel 名一致).
+     * @since 4.9
+     */
+    override val channelTiers: Map<String, MediaSourceTier> = emptyMap(),
 ) : MediaSourceArguments {
     companion object {
         val Default = SelectorMediaSourceArguments(

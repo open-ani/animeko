@@ -23,6 +23,7 @@ import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.selector.testFramework.FetchMediaSelectorTestSuite
 import me.him188.ani.app.domain.media.selector.testFramework.MediaSelectorTestSuite
 import me.him188.ani.app.domain.media.selector.testFramework.assert
+import me.him188.ani.app.domain.media.selector.testFramework.channelTiers
 import me.him188.ani.app.domain.media.selector.testFramework.runFetchMediaSelectorTestSuite
 import me.him188.ani.app.domain.media.selector.testFramework.tier
 import me.him188.ani.datasources.api.Media
@@ -219,6 +220,93 @@ class MediaSelectorSourceTierAutoSelectTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    @Test
+    fun `channel tier - auto select t0 channel of a high tier source`() = runFetchMediaSelectorTestSuite {
+        initSubject()
+        val (handles, session, sources) = configureFetchSession {
+            object {
+                val web1 by web {
+                    tier = 2
+                    channelTiers("channel-a" to 0)
+                }
+                val web2 by web { tier = 2 }
+            }
+        }
+        createFastSelectFlow(session).test {
+            expectNoEvents()
+            sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName, alliance = "channel-a"))
+            testScope().runCurrent()
+            listOf(assertNotNull(awaitItem())).assert {
+                single().assert(source = sources.web1)
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `channel tier - dont auto select media from demoted channel`() = runFetchMediaSelectorTestSuite {
+        // 数据源整体 tier 0, 但结果全在被降到 tier 2 的 channel, 不能秒选
+        initSubject()
+        val (handles, session, sources) = configureFetchSession {
+            object {
+                val web1 by web {
+                    tier = 0
+                    channelTiers("bad-channel" to 2)
+                }
+                val web2 by web { tier = 2 }
+            }
+        }
+        createFastSelectFlow(session).test {
+            expectNoEvents()
+            sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName, alliance = "bad-channel"))
+            testScope().runCurrent()
+            expectNoEvents()
+
+            testScope().advanceTimeBy(5.seconds) // Wait for timeout
+            testScope().runCurrent()
+
+            // 超时后 fallback 仍可以选择
+            listOf(assertNotNull(awaitItem())).assert {
+                single().assert(source = sources.web1)
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `channel tier - t0 channel selected instantly while t1 channel of other source waits`() =
+        runFetchMediaSelectorTestSuite {
+            // 用户场景: 优先等 A 源的 channel A/B (tier 0), 其次才是 B 源的 channel C (tier 1)
+            initSubject()
+            val (handles, session, sources) = configureFetchSession {
+                object {
+                    val webA by web {
+                        tier = 3
+                        channelTiers("channel-a" to 0, "channel-b" to 0)
+                    }
+                    val webB by web {
+                        tier = 3
+                        channelTiers("channel-c" to 1)
+                    }
+                }
+            }
+            createFastSelectFlow(session).test {
+                expectNoEvents()
+                // B 源先完成, 但其最优 channel 只有 tier 1, 不满足秒选
+                sources.webB.complete(media(kind = WEB, subjectName = initApi.subjectName, alliance = "channel-c"))
+                testScope().runCurrent()
+                expectNoEvents()
+
+                // A 源完成, channel-b 是 tier 0, 立即选择
+                sources.webA.complete(media(kind = WEB, subjectName = initApi.subjectName, alliance = "channel-b"))
+                testScope().runCurrent()
+                listOf(assertNotNull(awaitItem())).assert {
+                    single().assert(source = sources.webA)
+                }
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
 
     private fun FetchMediaSelectorTestSuite.createFastSelectFlow(
         session: MediaFetchSession,

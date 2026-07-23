@@ -100,7 +100,14 @@ class MediaSelectorAutoSelect(
         instantSelectTierThreshold: MediaSourceTier = InstantSelectTierThreshold,
     ): Media? {
 
-        fun MediaSourceFetchResult.getTier(): MediaSourceTier = sourceTiers[this.mediaSourceId]
+        // 数据源能达到的最优 tier: 只要有一个 channel 足够低就有机会被立即选择
+        fun MediaSourceFetchResult.getBestTier(): MediaSourceTier = sourceTiers.getBestTier(this.mediaSourceId)
+
+        // media 级过滤: 只有其有效 tier (channel tier 优先) 满足阈值的资源才能被立即选择.
+        // 这保证了例如数据源整体是 tier 0, 但某个 channel 被降到 tier 1 时, 该 channel 的资源不会被秒选.
+        val instantSelectMediaFilter: (Media) -> Boolean = { media ->
+            sourceTiers.get(media.mediaSourceId, media.properties.alliance) <= instantSelectTierThreshold
+        }
 
         return cancellableCoroutineScope {
             val backgroundTasks = childScope()
@@ -120,7 +127,7 @@ class MediaSelectorAutoSelect(
                     // 所有满足 fast select 条件的源: low tier, succeeded, 有结果
                     val candidateResults = buildList {
                         list.forEach { result ->
-                            if (result.getTier() > instantSelectTierThreshold) return@forEach // high tier 不考虑
+                            if (result.getBestTier() > instantSelectTierThreshold) return@forEach // high tier 不考虑
                             if (result.state.value !is MediaSourceFetchState.Succeed) return@forEach // 没完事的不考虑
                             if (result.results.first().count() <= 0) return@forEach // 没结果的不考虑
                             add(result)
@@ -141,7 +148,8 @@ class MediaSelectorAutoSelect(
                         candidateResults.map { it.mediaSourceId },
                         overrideUserSelection = overrideUserSelection,
                         blacklistMediaIds = blacklistMediaIds,
-                        allowNonPreferred = true, // 快速选择源是 web 源, 可以不考虑偏好. 
+                        allowNonPreferred = true, // 快速选择源是 web 源, 可以不考虑偏好.
+                        candidateMediaFilter = instantSelectMediaFilter,
                     )
                 }
                     .filterNotNull()

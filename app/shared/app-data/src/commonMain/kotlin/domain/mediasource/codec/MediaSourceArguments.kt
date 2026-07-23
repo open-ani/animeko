@@ -28,6 +28,15 @@ interface MediaSourceArguments {
      * @since 4.7
      */
     val tier: MediaSourceTier
+
+    /**
+     * Channel 级别的 tier 覆盖, key 为 channel 名称.
+     * 支持 channel 概念的数据源 (如 web selector 源) 可以覆盖此属性, 为不同 channel 指定不同 tier.
+     * 未在此表中的 channel 使用 [tier].
+     *
+     * @since 4.9
+     */
+    val channelTiers: Map<String, MediaSourceTier> get() = emptyMap()
 }
 
 @RequiresOptIn("实现新的 MediaSourceArgument 时, 还需要在 MediaSourceCodecManager 注册此 Argument 类型的 codec")
