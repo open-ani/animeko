@@ -584,6 +584,7 @@ object ArtifactNames {
         Arch.X64 -> "ani-windows-portable"
         Arch.AARCH64 -> "ani-windows-aarch64-portable"
     }
+
     fun macosDmg(arch: Arch) = "ani-macos-dmg-${arch}"
     fun macosPortable(arch: Arch) = "ani-macos-portable-${arch}"
     fun iosIpa() = "ani-ios-ipa"
@@ -1371,9 +1372,9 @@ class WithMatrix(
         when (matrix.runner.os) {
             OS.MACOS -> {
                 val jbrLocationExpr = if (matrix.arch == Arch.AARCH64) {
-                    downloadJbrUnix("jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz")
+                    downloadJbrUnix("jbrsdk_jcef-21.0.11-osx-aarch64-b1163.116.tar.gz")
                 } else {
-                    downloadJbrUnix("jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz")
+                    downloadJbrUnix("jbrsdk_jcef-21.0.11-osx-x64-b1163.116.tar.gz")
                 }
 
                 uses(
@@ -1390,9 +1391,9 @@ class WithMatrix(
             OS.WINDOWS -> {
                 val jbrLocationExpr = if (matrix.arch == Arch.AARCH64) {
                     // WoA-only: Windows ARM64 needs a JBR/JCEF build matching the process architecture.
-                    downloadJbrUsingPython("jbrsdk_jcef-21.0.10-windows-aarch64-b1163.110.tar.gz")
+                    downloadJbrUsingPython("jbrsdk_jcef-21.0.11-windows-aarch64-b1163.116.tar.gz")
                 } else {
-                    downloadJbrUsingPython("jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz")
+                    downloadJbrUsingPython("jbrsdk_jcef-21.0.11-windows-x64-b1163.116.tar.gz")
                 }
                 uses(
                     name = "Setup JBR 21 for Windows",
@@ -1406,7 +1407,7 @@ class WithMatrix(
             }
 
             OS.UBUNTU -> {
-                val jbrLocationExpr = downloadJbrUsingPython("jbrsdk_jcef-21.0.5-linux-x64-b750.29.tar.gz")
+                val jbrLocationExpr = downloadJbrUsingPython("jbrsdk_jcef-21.0.11-linux-x64-b1163.116.tar.gz")
                 uses(
                     name = "Setup JBR 21 for Ubuntu",
                     action = SetupJava_Untyped(

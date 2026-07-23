@@ -137,8 +137,8 @@ jobs:
       name: 'Get JBR (Windows)'
       env:
         RUNNER_TOOL_CACHE: '${{ runner.tool_cache }}'
-        JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz'
-        JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz.checksum'
+        JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-windows-x64-b1163.116.tar.gz'
+        JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-windows-x64-b1163.116.tar.gz.checksum'
       shell: 'cmd'
       run: 'python .github/workflows/download_jbr.py'
     - id: 'step-7'
@@ -350,7 +350,7 @@ jobs:
       shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz'
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.11-osx-aarch64-b1163.116.tar.gz'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-9'
       name: 'Get JBR 21 for macOS AArch64 (Attempt #1)'
@@ -361,7 +361,7 @@ jobs:
       shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-osx-aarch64-b1163.116.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -373,7 +373,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-osx-aarch64-b1163.116.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -394,7 +394,7 @@ jobs:
       shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-osx-aarch64-b1163.116.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -406,7 +406,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-osx-aarch64-b1163.116.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -903,7 +903,7 @@ jobs:
       shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz'
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.11-osx-aarch64-b1163.116.tar.gz'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-8'
       name: 'Get JBR 21 for macOS AArch64 (Attempt #1)'
@@ -914,7 +914,7 @@ jobs:
       shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-osx-aarch64-b1163.116.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -926,7 +926,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-osx-aarch64-b1163.116.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -947,7 +947,7 @@ jobs:
       shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-osx-aarch64-b1163.116.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -959,7 +959,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-osx-aarch64-b1163.116.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -1158,7 +1158,7 @@ jobs:
       shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz'
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.11-osx-x64-b1163.116.tar.gz'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-8'
       name: 'Get JBR 21 for macOS AArch64 (Attempt #1)'
@@ -1169,7 +1169,7 @@ jobs:
       shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-osx-x64-b1163.116.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -1181,7 +1181,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-osx-x64-b1163.116.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -1202,7 +1202,7 @@ jobs:
       shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-osx-x64-b1163.116.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -1214,7 +1214,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-osx-x64-b1163.116.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -1421,8 +1421,8 @@ jobs:
       name: 'Get JBR (Windows)'
       env:
         RUNNER_TOOL_CACHE: '${{ runner.tool_cache }}'
-        JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-linux-x64-b750.29.tar.gz'
-        JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-linux-x64-b750.29.tar.gz.checksum'
+        JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-linux-x64-b1163.116.tar.gz'
+        JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.11-linux-x64-b1163.116.tar.gz.checksum'
       shell: 'bash'
       run: 'python .github/workflows/download_jbr.py'
     - id: 'step-9'

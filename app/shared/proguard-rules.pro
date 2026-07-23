@@ -46,6 +46,9 @@
 # ffmpeg native
 -keep class org.openani.mediamp.ffmpeg.JvmFFmpegProcess { *; }
 
+# onnxruntime
+-keep class ai.onnxruntime.** { *; } # onnxruntime4j_jni constructs Java values through FindClass/GetMethodID
+
 # Android AIDL for torrent service.
 -keepnames class me.him188.ani.app.domain.torrent.I* { *; }
 -keepnames class me.him188.ani.app.domain.torrent.parcel.** { *; }
