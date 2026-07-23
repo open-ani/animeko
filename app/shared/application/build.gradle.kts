@@ -74,14 +74,30 @@ kotlin {
             )
             val frameworkSearchPathValue = frameworkSearchPath.get().asFile.absolutePath
 
+            val onnxSliceName = when (target.name) {
+                "iosArm64" -> "ios-arm64"
+                "iosSimulatorArm64" -> "ios-arm64_x86_64-simulator"
+                else -> error("Unsupported Apple target: ${target.name}")
+            }
+            val onnxSearchPathValue = layout.buildDirectory
+                .dir("cocoapods/synthetic/ios/Pods/onnxruntime-c/onnxruntime.xcframework/$onnxSliceName")
+                .get().asFile.absolutePath
+
             target.binaries.configureEach {
                 linkerOpts("-F$frameworkSearchPathValue", "-framework", "MediampFFmpegKit")
+                // -lc++ 与 -weak_framework CoreML 对应 onnxruntime-c.podspec 的 libraries / weak_frameworks
+                linkerOpts(
+                    "-F$onnxSearchPathValue", "-framework", "onnxruntime",
+                    "-lc++", "-weak_framework", "CoreML",
+                )
             }
 
             tasks.matching { task ->
                 task.name.startsWith("link") && task.name.endsWith(capitalizedTargetName)
             }.configureEach {
                 dependsOn(":utils:http-downloader:extractMediampFfmpegAppleRuntime")
+                // 上面的 -F 指向该任务产出的 Pods 目录
+                dependsOn("podInstallSyntheticIos")
             }
         }
     }
