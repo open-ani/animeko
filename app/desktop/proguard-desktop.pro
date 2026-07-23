@@ -63,6 +63,7 @@
 -keep class ** implements com.sun.jna.Callback { *; } # JNA callbacks are invoked via native reflection; ProGuard optimization must not remove or inline them
 
 -keepclasseswithmembernames,includedescriptorclasses class * { native <methods>; } # JNI binds native methods by name; shrink/optimize must not remove or alter them
+-keep class ai.onnxruntime.** { *; } # onnxruntime4j_jni constructs Java values through FindClass/GetMethodID
 -keep class org.openani.mediamp.mpv.** { *; } # libmediampv calls back into Java via FindClass/GetMethodID by name
 # libmediampv (mediamp-mpv/src/cpp/method_cache.cpp) also resolves this interface from
 # the mediamp-api `io` package via FindClass and invokes read([BII)I / seekTo(J)V /
