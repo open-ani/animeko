@@ -83,6 +83,15 @@
 - 过滤/排序主实现：`MediaSelectorFilterSortAlgorithm`。算法细节见
   [MediaSelector](media-selector.md)。
 - 选择器主实现：`DefaultMediaSelector`。
+- 阶级（tier）：`MediaSelectorSourceTiers`
+  （`app/shared/app-data/.../domain/media/selector/MediaSelectorContext.kt`）
+  持有数据源级 `tiers` 与 channel 级 `channelTiers`，由
+  `MediaSourceManagerImpl.mediaSourceTiersFlow()` 从各实例的
+  `MediaSourceArguments.tier` / `channelTiers` 汇总。排序按
+  `(mediaSourceId, alliance)` 查有效阶级；快速选择
+  `MediaSelectorAutoSelect.fastSelectWebSources` 用 `getBestTier(...)` 判定候选数据源，
+  并通过 `awaitSelectFromMediaSources` 的 `candidateMediaFilter` 参数把秒选限制在低阶级
+  channel 的资源上。
 - 查询结果并不天然“正确”；数据源实现应尽量返回准确的 `episodeRange`，`MediaSelector`
   只是在其上做额外的过滤和排序。
 

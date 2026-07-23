@@ -7,7 +7,7 @@ MediaSelector 主要包含以下四个阶段：
 
 1. **过滤**：基于条目和剧集信息，遍历每个 media，决定是保留还是排除一个
    media。当被过滤时，会携带排除原因。
-2. **排序**：通过第一阶段的 media，将会按数据源的阶级（质量）、字幕类型等属性排序。
+2. **排序**：通过第一阶段的 media，将会按阶级（数据源或 channel 级，代表质量）、字幕类型等属性排序。
 3. **偏好**：根据用户对这个番剧的偏好，只采取满足用户喜好的 media。
 4. **选择**：支持手动或自动方式来选中某个 [Media]：
     - 手动调用 `select` 方法。
@@ -125,6 +125,28 @@ Sealed class [`MaybeExcludedMedia`][MaybeExcludedMedia] 表示一个可能被排
 ### 过滤规则列表
 
 参考代码中 [`MediaSelectorFilterSortAlgorithm.filterMediaList`][MediaSelectorFilterSortAlgorithm]。
+
+## 排序阶段
+
+排序入口为 [`MediaSelectorFilterSortAlgorithm.sortMediaList`][MediaSelectorFilterSortAlgorithm]。
+排序是**稳定**的，按以下优先级逐级比较，前一级相等才比较下一级：
+
+1. **是否被排除**：`Included` 在前，`Excluded` 全部排在最后；
+2. **播放器兼容性**：当前平台播放器不能正常播放的字幕类型靠后；
+3. **资源类型**：本地缓存永远最前；其余按用户偏好的类型（`preferKind`，WEB 或 BT）排序；
+4. **下载代价**：`Local` < `Lan` < `Online`；
+5. **阶级（tier）**：按资源的*有效阶级*升序。有效阶级优先取该资源所属 channel 的阶级
+   （`MediaSelectorSourceTiers.channelTiers`，以 `Media.properties.alliance` 为 channel 名），
+   未配置时回退到数据源阶级，详见[数据源阶级](media-source.md#数据源阶级)；
+6. **发布时间**：新的在前；
+7. **条目名称相似度**：高的在前。
+
+由于 channel 阶级参与第 5 级比较，同一数据源不同 channel 的资源可以与其他数据源交叉排序。
+例如 A 源的 channel A/B 为 tier 0、B 源的 channel C 为 tier 1 时，排序为
+`A/channelA、A/channelB → B/channelC`，而不是按数据源整体分块。
+
+快速选择（`MediaSelectorAutoSelect.fastSelectWebSources`）同样按 channel 粒度判定：
+只有有效阶级不超过阈值的资源才会被立即选择。
 
 [MediaSelectorFilterSortAlgorithm]: ../../../../app/shared/app-data/src/commonMain/kotlin/domain/media/selector/filter/MediaSelectorFilterSortAlgorithm.kt
 
