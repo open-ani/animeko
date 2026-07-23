@@ -32,6 +32,7 @@ kotlin {
         implementation(projects.app.shared.appPlatform)
         implementation(projects.app.shared.appLang)
         implementation(projects.utils.intellijAnnotations)
+        implementation(libs.compose.components.resources)
         api(projects.app.shared.videoPlayer.videoPlayerApi)
         api(projects.app.shared.videoPlayer.torrentSource)
         api(libs.mediamp.api)
@@ -88,7 +89,6 @@ kotlin {
         implementation(libs.slf4j.simple)
     }
     sourceSets.desktopMain {
-        resources.srcDir("src/androidMain/assets")
         dependencies {
             implementation(libs.onnxruntime)
         }
@@ -108,6 +108,11 @@ kotlin {
         implementation(libs.stately.common) // fixes koin bug
         implementation(libs.kotlinx.io.okio)
     }
+}
+
+compose.resources {
+    packageOfResClass = "me.him188.ani.app.data"
+    generateResClass = always
 }
 
 room {

@@ -16,6 +16,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.mediasource.web.captcha.ImageCaptchaRecognizer
 import me.him188.ani.app.domain.mediasource.web.captcha.ImageCaptchaSample
+import me.him188.ani.app.domain.mediasource.web.captcha.readImageCaptchaModelBytes
+import me.him188.ani.utils.coroutines.SuspendLazy
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -31,19 +33,18 @@ class DesktopOnnxImageCaptchaRecognizer : ImageCaptchaRecognizer {
     private val environment by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         OrtEnvironment.getEnvironment()
     }
-    private val session by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-        val model = checkNotNull(javaClass.getResourceAsStream(MODEL_RESOURCE_PATH)) {
-            "Missing image captcha model: $MODEL_RESOURCE_PATH"
-        }.use { it.readBytes() }
+    private val session = SuspendLazy {
+        val model = readImageCaptchaModelBytes()
         OrtSession.SessionOptions().use { options ->
             environment.createSession(model, options).also {
-                logger.info { "Loaded image captcha model from $MODEL_RESOURCE_PATH" }
+                logger.info { "Loaded image captcha model" }
             }
         }
     }
 
     override suspend fun recognize(sample: ImageCaptchaSample): String? = withContext(Dispatchers.Default) {
-        runCatching { recognizeBlocking(sample.bytes) }
+        val session = session.get()
+        runCatching { recognizeBlocking(session, sample.bytes) }
             .onSuccess { answer ->
                 logger.debug { "Image captcha recognition result for ${sample.sourceUrl}: ${answer ?: "none"}" }
             }
@@ -53,7 +54,7 @@ class DesktopOnnxImageCaptchaRecognizer : ImageCaptchaRecognizer {
             .getOrNull()
     }
 
-    private fun recognizeBlocking(bytes: ByteArray): String? {
+    private fun recognizeBlocking(session: OrtSession, bytes: ByteArray): String? {
         val input = preprocess(bytes) ?: return null
         OnnxTensor.createTensor(
             environment,
@@ -106,7 +107,6 @@ class DesktopOnnxImageCaptchaRecognizer : ImageCaptchaRecognizer {
     private companion object {
         private val logger = logger<DesktopOnnxImageCaptchaRecognizer>()
 
-        private const val MODEL_RESOURCE_PATH = "/captcha/captcha-v1.0.onnx"
         private const val INPUT_NAME = "input"
         private const val OUTPUT_NAME = "logits"
         private const val INPUT_WIDTH = 96

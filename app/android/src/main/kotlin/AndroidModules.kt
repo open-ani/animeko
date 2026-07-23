@@ -102,7 +102,7 @@ fun getAndroidModules(
     }
     single<BrowserNavigator> { AndroidBrowserNavigator() }
     single<CaptchaBrowserFactory> { AndroidCaptchaBrowserFactory(androidContext()) }
-    single<ImageCaptchaRecognizer> { AndroidOnnxImageCaptchaRecognizer(androidContext()) }
+    single<ImageCaptchaRecognizer> { AndroidOnnxImageCaptchaRecognizer() }
     single<HlsPlaybackPreparer> { PlatformHlsPlaybackPreparer(get()) }
 
     single<TorrentEngineAccess> { serviceConnectionManager }

@@ -22,7 +22,7 @@ class AndroidOnnxImageCaptchaRecognizerTest {
     @Test
     fun `recognizes a labeled real captcha sample`() = runBlocking {
         val bytes = context.assets.open(TEST_SAMPLE_ASSET).use { it.readBytes() }
-        val recognizer = AndroidOnnxImageCaptchaRecognizer(context)
+        val recognizer = AndroidOnnxImageCaptchaRecognizer()
 
         val result = recognizer.recognize(
             ImageCaptchaSample(

@@ -13,11 +13,14 @@
 
 ## 平台实现
 
-三个客户端平台都使用同一份 `captcha-v1.0.onnx` 和同一套输入、输出契约：
+三个客户端平台都使用同一份 `captcha-v1.0.onnx` 和同一套输入、输出契约。模型只保存一份，位于
+`app/shared/app-data/src/commonMain/composeResources/files/captcha-v1.0.onnx`，由 Compose Multiplatform
+资源管理统一打包到 Android assets、Desktop classpath 与 iOS app bundle。识别器不再各自定位模型文件，而是通过
+`app-data` commonMain 的公共入口读取这同一份资源。运行时依旧使用各平台的 ONNX Runtime：
 
-- Android 使用 `onnxruntime-android`，模型作为 Android asset 交付；
-- Desktop 使用 ONNX Runtime JVM，构建时将同一 Android asset 加入桌面资源；
-- iOS 使用 `onnxruntime-objc` CocoaPod，生成的 application Pod 将同一模型加入应用资源。
+- Android 使用 `onnxruntime-android`，通过 `readImageCaptchaModelBytes()` 读字节建 session；
+- Desktop 使用 ONNX Runtime JVM，同样通过 `readImageCaptchaModelBytes()` 读字节建 session；
+- iOS 使用 `onnxruntime-objc` CocoaPod。Compose 资源在 iOS 上是 app bundle 内的真实文件，而 ORTSession 只接受文件路径，因此 iOS 改用 `imageCaptchaModelUri()` 拿到资源的 `file://` URI，解析为路径后直接交给 ORTSession，无需读入字节或落临时文件。
 
 Android 与 Desktop 同时支持从浏览器 DOM 提取图片；Android 与 iOS 还支持下述 MacCMS 后台请求协议。
 iOS 当前没有交互式验证码 WebView，因此自动识别失败后会返回现有 `CaptchaRequired` 状态，但用户主动打开
@@ -29,7 +32,7 @@ iOS 当前没有交互式验证码 WebView，因此自动识别失败后会返�
 
 - 输入 `input`：`float32 [B, 1, 32, 96]`，原图先转灰度，再以最近邻缩放，像素范围为 `[0, 1]`；
 - 输出 `logits`：`float32 [B, 4, 10]`，四个位置分别取最大 logit 对应的数字；
-- 模型源文件位于 `app/shared/app-data/src/androidMain/assets/captcha/captcha-v1.0.onnx`。
+- 模型源文件位于 `app/shared/app-data/src/commonMain/composeResources/files/captcha-v1.0.onnx`。
 
 当前生产模型来自 `captcha-final-prod_20260717_124015`，文件为 1,173,896 bytes，SHA-256 为
 `97731e093e77c69a768de81ed9d565bb5f81c6bef88df261b6dd460bca2cfd9a`。它由三个 93,904 参数的

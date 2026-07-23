@@ -16,9 +16,10 @@ import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.platform.Context
 import me.him188.ani.app.domain.mediasource.web.captcha.ImageCaptchaRecognizer
 import me.him188.ani.app.domain.mediasource.web.captcha.ImageCaptchaSample
+import me.him188.ani.app.domain.mediasource.web.captcha.readImageCaptchaModelBytes
+import me.him188.ani.utils.coroutines.SuspendLazy
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -26,24 +27,22 @@ import me.him188.ani.utils.logging.warn
 import java.nio.FloatBuffer
 
 /** Android 图片验证码识别器，使用随应用交付的 captcha-v1.0 ONNX 模型。 */
-class AndroidOnnxImageCaptchaRecognizer(
-    context: Context,
-) : ImageCaptchaRecognizer {
-    private val applicationContext = context.applicationContext
+class AndroidOnnxImageCaptchaRecognizer : ImageCaptchaRecognizer {
     private val environment by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         OrtEnvironment.getEnvironment()
     }
-    private val session by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-        val model = applicationContext.assets.open(MODEL_ASSET_PATH).use { it.readBytes() }
+    private val session = SuspendLazy {
+        val model = readImageCaptchaModelBytes()
         OrtSession.SessionOptions().use { options ->
             environment.createSession(model, options).also {
-                logger.info { "Loaded image captcha model from $MODEL_ASSET_PATH" }
+                logger.info { "Loaded image captcha model" }
             }
         }
     }
 
     override suspend fun recognize(sample: ImageCaptchaSample): String? = withContext(Dispatchers.Default) {
-        runCatching { recognizeBlocking(sample.bytes) }
+        val session = session.get()
+        runCatching { recognizeBlocking(session, sample.bytes) }
             .onSuccess { answer ->
                 logger.debug { "Image captcha recognition result for ${sample.sourceUrl}: ${answer ?: "none"}" }
             }
@@ -53,7 +52,7 @@ class AndroidOnnxImageCaptchaRecognizer(
             .getOrNull()
     }
 
-    private fun recognizeBlocking(bytes: ByteArray): String? {
+    private fun recognizeBlocking(session: OrtSession, bytes: ByteArray): String? {
         val input = preprocess(bytes) ?: return null
         OnnxTensor.createTensor(
             environment,
@@ -101,7 +100,6 @@ class AndroidOnnxImageCaptchaRecognizer(
     private companion object {
         private val logger = logger<AndroidOnnxImageCaptchaRecognizer>()
 
-        private const val MODEL_ASSET_PATH = "captcha/captcha-v1.0.onnx"
         private const val INPUT_NAME = "input"
         private const val OUTPUT_NAME = "logits"
         private const val INPUT_WIDTH = 96

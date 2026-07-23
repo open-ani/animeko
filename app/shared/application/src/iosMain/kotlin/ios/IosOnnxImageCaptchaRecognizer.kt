@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class, kotlinx.cinterop.BetaInteropApi::class)
 
 package me.him188.ani.app.ios
 
@@ -29,10 +29,12 @@ import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.usePinned
+import kotlinx.cinterop.value
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.mediasource.web.captcha.ImageCaptchaRecognizer
 import me.him188.ani.app.domain.mediasource.web.captcha.ImageCaptchaSample
+import me.him188.ani.app.domain.mediasource.web.captcha.imageCaptchaModelUri
 import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -47,11 +49,11 @@ import platform.CoreGraphics.CGImageAlphaInfo
 import platform.CoreGraphics.CGRectMake
 import platform.CoreGraphics.kCGBitmapByteOrder32Big
 import platform.CoreGraphics.kCGInterpolationNone
-import platform.Foundation.NSBundle
 import platform.Foundation.NSData
 import platform.Foundation.NSError
 import platform.Foundation.NSMutableData
 import platform.Foundation.NSNumber
+import platform.Foundation.NSURL
 import platform.Foundation.create
 import platform.Foundation.dataWithLength
 import platform.Foundation.numberWithLongLong
@@ -69,9 +71,7 @@ class IosOnnxImageCaptchaRecognizer : ImageCaptchaRecognizer {
         }
     }
     private val session by lazy {
-        val modelPath = checkNotNull(
-            NSBundle.mainBundle.pathForResource(MODEL_RESOURCE_NAME, ofType = MODEL_RESOURCE_EXTENSION),
-        ) { "Missing image captcha model resource" }
+        val modelPath = resolveModelPath(imageCaptchaModelUri())
         val options = callOrt { error -> ORTSessionOptions(error = error) }
         callOrt { error ->
             ORTSession(
@@ -86,7 +86,7 @@ class IosOnnxImageCaptchaRecognizer : ImageCaptchaRecognizer {
     }
 
     override suspend fun recognize(sample: ImageCaptchaSample): String? = withContext(Dispatchers.Default) {
-        runCatching { recognizeBlocking(sample.bytes) }
+        runCatching { recognizeBlocking(session, sample.bytes) }
             .onSuccess { answer ->
                 logger.debug { "Image captcha recognition result for ${sample.sourceUrl}: ${answer ?: "none"}" }
             }
@@ -96,7 +96,12 @@ class IosOnnxImageCaptchaRecognizer : ImageCaptchaRecognizer {
             .getOrNull()
     }
 
-    private fun recognizeBlocking(bytes: ByteArray): String? {
+    private fun resolveModelPath(uri: String): String =
+        checkNotNull(NSURL.URLWithString(uri)?.path) {
+            "Cannot resolve image captcha model path from $uri"
+        }
+
+    private fun recognizeBlocking(session: ORTSession, bytes: ByteArray): String? {
         val input = preprocess(bytes) ?: return null
         val tensorData = NSMutableData.dataWithLength((input.size * Float.SIZE_BYTES).convert())
             ?: return null
@@ -186,8 +191,6 @@ class IosOnnxImageCaptchaRecognizer : ImageCaptchaRecognizer {
     private companion object {
         private val logger = logger<IosOnnxImageCaptchaRecognizer>()
 
-        private const val MODEL_RESOURCE_NAME = "captcha-v1.0"
-        private const val MODEL_RESOURCE_EXTENSION = "onnx"
         private const val INPUT_NAME = "input"
         private const val OUTPUT_NAME = "logits"
         private const val INPUT_WIDTH = 96

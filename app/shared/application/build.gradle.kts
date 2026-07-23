@@ -58,8 +58,6 @@ kotlin {
             pod("onnxruntime-objc") {
                 version = libs.versions.onnxruntime.get()
             }
-            extraSpecAttributes["resources"] =
-                "'../app-data/src/androidMain/assets/captcha/captcha-v1.0.onnx'"
             // iOS Firebase SDKs are linked from the host Podfile
         }
 
