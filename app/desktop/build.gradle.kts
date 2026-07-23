@@ -12,10 +12,7 @@ import org.jetbrains.compose.desktop.application.tasks.AbstractJLinkTask
 import org.jetbrains.compose.desktop.application.tasks.AbstractJPackageTask
 import org.jetbrains.compose.reload.gradle.ComposeHotRun
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
-import java.nio.file.Files
 import java.util.UUID
-import java.util.zip.ZipEntry
-import java.util.zip.ZipFile
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -105,6 +102,8 @@ compose.desktop {
             "--add-opens=java.desktop/java.awt.peer=ALL-UNNAMED",
             "--add-opens=java.desktop/sun.awt=ALL-UNNAMED",
             "-XX:+EnableDynamicAgentLoading", // ByteBuddy agent
+            "--enable-native-access=ALL-UNNAMED",
+            "--enable-native-access=jcef",
         )
         if (getOs() == Os.MacOS) {
             jvmArgs(
@@ -338,77 +337,8 @@ tasks.withType(KotlinCompilationTask::class) {
 
 tasks.withType(AbstractJPackageTask::class) {
     doLast {
-        val triple = getOsTriple()
-        fun unpackJar(jar: File, dest: File, filter: (ZipEntry) -> Boolean = { true }) {
-            val zip = ZipFile(jar)
-            zip.use {
-                zip.entries().asSequence().filter(filter).forEach { entry ->
-                    val file = dest.resolve(entry.name)
-                    if (entry.isDirectory) {
-                        file.mkdirs()
-                    } else {
-                        file.parentFile.mkdirs()
-                        zip.getInputStream(entry).use { input ->
-                            file.outputStream().use { output ->
-                                input.copyTo(output)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        fun isRuntimePayloadJar(file: File): Boolean {
-            if (!file.isFile || file.extension != "jar") {
-                return false
-            }
-            val name = file.name
-            return name.startsWith("mediamp-mpv-runtime-") ||
-                    name.startsWith("mediamp-ffmpeg-runtime-") ||
-                    (name.startsWith("anitorrent-native-desktop-") && name.contains("-$triple-"))
-        }
-
-        destinationDir.get().asFile
-            .walk()
-            .filter(::isRuntimePayloadJar)
-            .toList()
-            .forEach { jar ->
-                unpackJar(jar, jar.parentFile) {
-                    !(it.name.contains("MANIFEST") || it.name.contains("META-INF"))
-                }
-                jar.delete()
-
-                logger.lifecycle(
-                    "Extracted ${jar.name} into ${jar.parentFile} and deleted the jars",
-                )
-            }
-
-        if (triple == "linux-x64") {
-            destinationDir.get().asFile
-                .walk()
-                .filter { it.isDirectory && it.name == "app" && it.parentFile.name == "lib" }
-                .flatMap { it.walk() }
-                .filter { it.isFile && it.name.startsWith("lib") && it.extension == "so" }
-                .forEach { library ->
-                    val process = ProcessBuilder("readelf", "-d", library.absolutePath)
-                        .redirectErrorStream(true)
-                        .start()
-                    val readElf = process.inputStream.bufferedReader().use { it.readText() }
-                    if (process.waitFor() != 0) return@forEach
-                    val soname = Regex("Library soname: \\[(.+)]")
-                        .find(readElf)
-                        ?.groupValues
-                        ?.get(1)
-                        ?: return@forEach
-                    if (soname == library.name) return@forEach
-
-                    val alias = library.toPath().resolveSibling(soname)
-                    if (Files.notExists(alias)) {
-                        Files.createSymbolicLink(alias, library.toPath().fileName)
-                        logger.lifecycle("Created SONAME alias $alias -> ${library.name}")
-                    }
-                }
-        }
+        unpackComposeDesktopNativeLibraries()
+        reconstructLinuxSolink()
     }
 }
 

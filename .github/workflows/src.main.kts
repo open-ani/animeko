@@ -547,7 +547,7 @@ fun getBuildJobBody(matrix: MatrixInstance): JobBuilder<BuildJobOutputs>.() -> U
         deleteLocalProperties()
         writeLocalProperties()
         setupAndroidSdkForWindowsArm64()
-        installJbr21()
+        installJbr25()
         chmod777()
         setupGradle()
 
@@ -584,6 +584,7 @@ object ArtifactNames {
         Arch.X64 -> "ani-windows-portable"
         Arch.AARCH64 -> "ani-windows-aarch64-portable"
     }
+
     fun macosDmg(arch: Arch) = "ani-macos-dmg-${arch}"
     fun macosPortable(arch: Arch) = "ani-macos-portable-${arch}"
     fun iosIpa() = "ani-ios-ipa"
@@ -1019,7 +1020,7 @@ workflow(
             deleteLocalProperties()
             writeLocalProperties()
             updateJvmArgsInGradleProperties()
-            installJbr21()
+            installJbr25()
             chmod777()
             setupGradle()
 
@@ -1282,7 +1283,7 @@ class WithMatrix(
         }
     }
 
-    fun JobBuilder<*>.installJbr21() {
+    fun JobBuilder<*>.installJbr25() {
         // For mac
         fun downloadJbrUnix(
             filename: String,
@@ -1306,7 +1307,7 @@ class WithMatrix(
             ).outputs["jbrLocation"]
 
             runWithAttempts(
-                name = "Get JBR 21 for macOS AArch64",
+                name = "Get JBR 25 for macOS AArch64",
                 command = shell(
                     $$"""
         jbr_location="$jbrLocation"
@@ -1371,16 +1372,16 @@ class WithMatrix(
         when (matrix.runner.os) {
             OS.MACOS -> {
                 val jbrLocationExpr = if (matrix.arch == Arch.AARCH64) {
-                    downloadJbrUnix("jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz")
+                    downloadJbrUnix("jbrsdk_jcef-25.0.3-osx-aarch64-b508.16.tar.gz")
                 } else {
-                    downloadJbrUnix("jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz")
+                    downloadJbrUnix("jbrsdk_jcef-25.0.3-osx-x64-b508.16.tar.gz")
                 }
 
                 uses(
-                    name = "Setup JBR 21 for macOS ",
+                    name = "Setup JBR 25 for macOS ",
                     action = SetupJava_Untyped(
                         distribution_Untyped = "jdkfile",
-                        javaVersion_Untyped = "21",
+                        javaVersion_Untyped = "25",
                         jdkFile_Untyped = expr { jbrLocationExpr },
                     ),
                     env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
@@ -1390,15 +1391,15 @@ class WithMatrix(
             OS.WINDOWS -> {
                 val jbrLocationExpr = if (matrix.arch == Arch.AARCH64) {
                     // WoA-only: Windows ARM64 needs a JBR/JCEF build matching the process architecture.
-                    downloadJbrUsingPython("jbrsdk_jcef-21.0.10-windows-aarch64-b1163.110.tar.gz")
+                    downloadJbrUsingPython("jbrsdk_jcef-25.0.3-windows-aarch64-b508.16.tar.gz")
                 } else {
-                    downloadJbrUsingPython("jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz")
+                    downloadJbrUsingPython("jbrsdk_jcef-25.0.3-windows-x64-b508.16.tar.gz")
                 }
                 uses(
-                    name = "Setup JBR 21 for Windows",
+                    name = "Setup JBR 25 for Windows",
                     action = SetupJava_Untyped(
                         distribution_Untyped = "jdkfile",
-                        javaVersion_Untyped = "21",
+                        javaVersion_Untyped = "25",
                         jdkFile_Untyped = expr { jbrLocationExpr },
                     ),
                     env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
@@ -1406,12 +1407,12 @@ class WithMatrix(
             }
 
             OS.UBUNTU -> {
-                val jbrLocationExpr = downloadJbrUsingPython("jbrsdk_jcef-21.0.5-linux-x64-b750.29.tar.gz")
+                val jbrLocationExpr = downloadJbrUsingPython("jbrsdk_jcef-25.0.3-linux-aarch64-b508.16.tar.gz")
                 uses(
-                    name = "Setup JBR 21 for Ubuntu",
+                    name = "Setup JBR 25 for Ubuntu",
                     action = SetupJava_Untyped(
                         distribution_Untyped = "jdkfile",
-                        javaVersion_Untyped = "21",
+                        javaVersion_Untyped = "25",
                         jdkFile_Untyped = expr { jbrLocationExpr },
                     ),
                     env = mapOf("GITHUB_TOKEN" to expr { secrets.GITHUB_TOKEN }),
@@ -1421,7 +1422,7 @@ class WithMatrix(
 
         run(
             name = "Dump Local Properties",
-            command = shell($$"""echo "jvm.toolchain.version=21" >> local.properties"""),
+            command = shell($$"""echo "jvm.toolchain.version=25" >> local.properties"""),
         )
     }
 

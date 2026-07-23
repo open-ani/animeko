@@ -161,7 +161,7 @@ object AniCefApp {
 
         CefLog.init(jcefConfig.cefSettings.log_file, jcefConfig.cefSettings.log_severity)
         CefApp.startup(jcefConfig.appArgs)
-        return CefApp.getInstance(jcefConfig.appArgs, jcefConfig.cefSettings)
+        return CefApp.getInstance(jcefConfig.appArgs, jcefConfig.cefSettings, null)
     }
 
     /**
