@@ -45,6 +45,8 @@ import me.him188.ani.app.ui.lang.settings_media_hide_no_subtitle
 import me.him188.ani.app.ui.lang.settings_media_hide_no_subtitle_description
 import me.him188.ani.app.ui.lang.settings_media_hide_single_episode
 import me.him188.ani.app.ui.lang.settings_media_hide_single_episode_description
+import me.him188.ani.app.ui.lang.settings_media_image_captcha_auto_solve
+import me.him188.ani.app.ui.lang.settings_media_image_captcha_auto_solve_description
 import me.him188.ani.app.ui.lang.settings_media_max_wait_time
 import me.him188.ani.app.ui.lang.settings_media_max_wait_time_description
 import me.him188.ani.app.ui.lang.settings_media_none
@@ -368,6 +370,19 @@ internal fun SettingsScope.MediaSelectionGroup(
                     HorizontalDividerItem()
                 }
             }
+
+            SwitchItem(
+                checked = mediaSelectorSettings.enableImageCaptchaAutoSolve,
+                onCheckedChange = {
+                    state.mediaSelectorSettingsState.update(
+                        mediaSelectorSettings.copy(enableImageCaptchaAutoSolve = it),
+                    )
+                },
+                title = { Text(stringResource(Lang.settings_media_image_captcha_auto_solve)) },
+                description = { Text(stringResource(Lang.settings_media_image_captcha_auto_solve_description)) },
+            )
+
+            HorizontalDividerItem()
 
             SwitchItem(
                 checked = mediaSelectorSettings.showDisabled,

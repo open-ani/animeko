@@ -61,6 +61,12 @@ constructor(
      * @since 4.1
      */
     val fastSelectWebLowTierToleranceDuration: Duration = 5.seconds, // 注意, 这是 'enum'. 查看 UI 代码以确定有哪些值可以选.
+    /**
+     * 使用随应用交付的离线 ONNX 模型自动识别并通过在线数据源的图片验证码.
+     * 关闭后遇到图片验证码将直接进入需要用户手动处理的流程.
+     * @since 4.9
+     */
+    val enableImageCaptchaAutoSolve: Boolean = true,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     companion object {

@@ -85,6 +85,8 @@ class InteractiveSolveUi internal constructor(
  * - 无通用 solvedResults 缓存: 自动 solver 可将已验证业务页保留 60s, 仅供精确同 URL 的下一次请求消费一次.
  *
  * @param solvers 自动解决策略链.
+ * @param solverEnabled 自动解决总开关 (用户设置). 每次自动 solve 前读取, 关闭时不尝试任何 [solvers];
+ * 不影响 interactive 手动解决.
  * @param searchRoutes 备用取数路由.
  */
 class WebSessionManager(
@@ -95,6 +97,7 @@ class WebSessionManager(
     private val client: ScopedHttpClient,
     private val backgroundScope: CoroutineScope,
     private val solvers: List<CaptchaSolver> = emptyList(),
+    private val solverEnabled: suspend () -> Boolean = { true },
     private val searchRoutes: List<SearchRoute> = emptyList(),
     private val maxSessions: Int = 3,
     private val idleTtl: Duration = 5.minutes,
@@ -433,6 +436,9 @@ class WebSessionManager(
     }
 
     private suspend fun runAutoSolve(host: String, request: SolveRequest): SolveOutcome {
+        if (!solverEnabled()) {
+            return SolveOutcome.Failed(BlockReason.Captcha(request.kind))
+        }
         val applicable = solvers.filter { solver ->
             (request.kind.let { BlockReason.Captcha(it) }).let { solver.canAttempt(it, host) }
         }

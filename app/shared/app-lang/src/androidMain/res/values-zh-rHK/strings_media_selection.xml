@@ -44,6 +44,8 @@
     <string name="settings_media_max_wait_time_description">每次查詢的最長等待時間。在此時間結束時，將會從已經查詢到的數據源中根據你設置的偏好自動選擇數據源。如果等待時間太短，可能會忽略你的偏好設置；如果時間更長，可以更好地滿足你的偏好設置，但可能會導致每次開播很慢。建議設置 5–10 秒</string>
     <string name="settings_media_show_disabled">顯示禁用的數據源</string>
     <string name="settings_media_show_disabled_description">播放時，以灰色顯示在"數據源管理"設置中禁用的數據源，而不是隱藏。以便在偏好數據源中未找到資源時，可臨時啟用禁用的數據源</string>
+    <string name="settings_media_image_captcha_auto_solve">自動識別圖片驗證碼</string>
+    <string name="settings_media_image_captcha_auto_solve_description">使用內置的離線模型自動識別並通過線上數據源的圖片驗證碼，無需手動輸入。識別完全在本機完成，不會上傳圖片。關閉後遇到驗證碼需要手動處理</string>
     <string name="settings_media_hide_no_subtitle">隱藏無字幕資源</string>
     <string name="settings_media_hide_no_subtitle_description">可以過濾掉一些生肉資源，但也可能會過濾掉未識別到字幕類型的資源</string>
     <string name="settings_media_hide_single_episode">完結一年後隱藏單集 BT 資源</string>

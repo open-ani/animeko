@@ -217,6 +217,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         val browserFactory = get<CaptchaBrowserFactory>()
         val evaluator = PageEvaluator()
         val recognizer = get<ImageCaptchaRecognizer>()
+        val settingsRepository = get<SettingsRepository>()
         WebSessionManager(
             browserFactory = browserFactory,
             evaluator = evaluator,
@@ -232,6 +233,9 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
                 MacCmsImageCaptchaSolver(recognizer),
                 BrowserImageCaptchaSolver(recognizer),
             ),
+            solverEnabled = {
+                settingsRepository.mediaSelectorSettings.flow.first().enableImageCaptchaAutoSolve
+            },
             searchRoutes = listOf(GirigiriSearchRoute(evaluator)),
             maxSessions = browserFactory.recommendedMaxSessions,
         )

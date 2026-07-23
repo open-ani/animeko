@@ -44,6 +44,8 @@
     <string name="settings_media_max_wait_time_description">最大容忍高优先级数据源时间。在此时间结束前若有任意高优先级的数据源查询完成则立即选择此数据源，超时则从已查询的所有源中选择。建议设置 5–10 秒</string>
     <string name="settings_media_show_disabled">显示禁用的数据源</string>
     <string name="settings_media_show_disabled_description">播放时，以灰色显示在"数据源管理"设置中禁用的数据源，而不是隐藏。以便在偏好数据源中未找到资源时，可临时启用禁用的数据源</string>
+    <string name="settings_media_image_captcha_auto_solve">自动识别图片验证码</string>
+    <string name="settings_media_image_captcha_auto_solve_description">使用内置的离线模型自动识别并通过在线数据源的图片验证码，无需手动输入。识别完全在本机完成，不会上传图片。关闭后遇到验证码需要手动处理</string>
     <string name="settings_media_hide_no_subtitle">隐藏无字幕资源</string>
     <string name="settings_media_hide_no_subtitle_description">可以过滤掉一些生肉资源，但也可能会过滤掉未识别到字幕类型的资源</string>
     <string name="settings_media_hide_single_episode">完结一年后隐藏单集 BT 资源</string>

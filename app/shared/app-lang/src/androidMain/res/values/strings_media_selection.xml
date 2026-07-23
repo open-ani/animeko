@@ -44,6 +44,8 @@
     <string name="settings_media_max_wait_time_description">Maximum wait time for each query. At the end of this time, a data source will be automatically selected from those already queried based on your preferences. If the wait time is too short, your preference settings may be ignored; if longer, it can better meet your preferences but may cause slow playback starts. 5–10 seconds is recommended</string>
     <string name="settings_media_show_disabled">Show Disabled Data Sources</string>
     <string name="settings_media_show_disabled_description">During playback, display disabled data sources from the "Data Source Management" settings in gray, rather than hiding them. This allows temporarily enabling disabled sources when preferred sources don\'t have resources</string>
+    <string name="settings_media_image_captcha_auto_solve">Auto-solve image captchas</string>
+    <string name="settings_media_image_captcha_auto_solve_description">Use the built-in offline model to automatically recognize and pass image captchas from online sources, without manual input. Recognition runs entirely on your device; no images are uploaded. When disabled, captchas must be solved manually</string>
     <string name="settings_media_hide_no_subtitle">Hide Resources Without Subtitles</string>
     <string name="settings_media_hide_no_subtitle_description">Can filter out some raw resources, but may also filter out resources where subtitle type wasn\'t detected</string>
     <string name="settings_media_hide_single_episode">Hide Single-Episode BT Resources After One Year</string>
