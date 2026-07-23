@@ -321,21 +321,10 @@ object AniDesktop {
         }
 
         val loadLibraryJob = coroutineScope.launch(Dispatchers.IO) {
-            // 为什么是这个目录?
-            // CMP 打包 task 会把 resource dir 放到 jar 包的目录里
-            // 我们 hack 打包 task 把包含 runtime library 的 jar 包解压到那一堆 jar 包的目录
-            val composeResDir = File(System.getProperty("compose.application.resources.dir"))
-                .parentFile.absolutePath
-
             // Must run before any database access and before JCEF loads NSS/system libsqlite3.
             // The JCEF init coroutine joins this job before AniCefApp.initialize, so placing the
             // guard here still guarantees the ordering. See #3188.
             BundledSqliteInterpositionGuard.install(cacheDir)
-
-            // Manually set onnxruntime native directory for release.
-            if (currentProcessName()?.contains("java") != true) {
-                System.setProperty("onnxruntime.native.path", composeResDir)
-            }
 
             try {
                 AnitorrentLibraryLoader.loadLibraries()
@@ -343,6 +332,12 @@ object AniDesktop {
             } catch (e: Throwable) {
                 logger.error(e) { "Failed to load anitorrent libraries" }
             }
+
+            // 为什么是这个目录?
+            // CMP 打包 task 会把 resource dir 放到 jar 包的目录里
+            // 我们 hack 打包 task 把包含 runtime library 的 jar 包解压到那一堆 jar 包的目录
+            val composeResDir = File(System.getProperty("compose.application.resources.dir"))
+                .parentFile.absolutePath
 
             try {
                 if (currentProcessName()?.contains("java") == true) {

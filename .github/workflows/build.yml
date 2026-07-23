@@ -72,22 +72,22 @@ jobs:
       name: 'Get JBR (Windows)'
       env:
         RUNNER_TOOL_CACHE: '${{ runner.tool_cache }}'
-        JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-25.0.3-windows-x64-b508.16.tar.gz'
-        JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-25.0.3-windows-x64-b508.16.tar.gz.checksum'
+        JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz'
+        JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-windows-x64-b750.29.tar.gz.checksum'
       shell: 'cmd'
       run: 'python .github/workflows/download_jbr.py'
     - id: 'step-5'
-      name: 'Setup JBR 25 for Windows'
+      name: 'Setup JBR 21 for Windows'
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
-        java-version: '25'
+        java-version: '21'
         distribution: 'jdkfile'
         jdkFile: '${{ steps.step-4.outputs.jbrLocation }}'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
     - id: 'step-6'
       name: 'Dump Local Properties'
-      run: 'echo "jvm.toolchain.version=25" >> local.properties'
+      run: 'echo "jvm.toolchain.version=21" >> local.properties'
     - id: 'step-7'
       name: 'Setup Gradle'
       uses: 'gradle/actions/setup-gradle@v3'
@@ -279,22 +279,22 @@ jobs:
       name: 'Get JBR (Windows)'
       env:
         RUNNER_TOOL_CACHE: '${{ runner.tool_cache }}'
-        JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-25.0.3-windows-aarch64-b508.16.tar.gz'
-        JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-25.0.3-windows-aarch64-b508.16.tar.gz.checksum'
+        JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.10-windows-aarch64-b1163.110.tar.gz'
+        JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.10-windows-aarch64-b1163.110.tar.gz.checksum'
       shell: 'cmd'
       run: 'python .github/workflows/download_jbr.py'
     - id: 'step-6'
-      name: 'Setup JBR 25 for Windows'
+      name: 'Setup JBR 21 for Windows'
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
-        java-version: '25'
+        java-version: '21'
         distribution: 'jdkfile'
         jdkFile: '${{ steps.step-5.outputs.jbrLocation }}'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
     - id: 'step-7'
       name: 'Dump Local Properties'
-      run: 'echo "jvm.toolchain.version=25" >> local.properties'
+      run: 'echo "jvm.toolchain.version=21" >> local.properties'
     - id: 'step-8'
       name: 'Setup Gradle'
       uses: 'gradle/actions/setup-gradle@v3'
@@ -498,22 +498,22 @@ jobs:
       name: 'Get JBR (Windows)'
       env:
         RUNNER_TOOL_CACHE: '${{ runner.tool_cache }}'
-        JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-25.0.3-linux-aarch64-b508.16.tar.gz'
-        JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-25.0.3-linux-aarch64-b508.16.tar.gz.checksum'
+        JBR_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-linux-x64-b750.29.tar.gz'
+        JBR_CHECKSUM_URL: 'https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.5-linux-x64-b750.29.tar.gz.checksum'
       shell: 'bash'
       run: 'python .github/workflows/download_jbr.py'
     - id: 'step-7'
-      name: 'Setup JBR 25 for Ubuntu'
+      name: 'Setup JBR 21 for Ubuntu'
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
-        java-version: '25'
+        java-version: '21'
         distribution: 'jdkfile'
         jdkFile: '${{ steps.step-6.outputs.jbrLocation }}'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
     - id: 'step-8'
       name: 'Dump Local Properties'
-      run: 'echo "jvm.toolchain.version=25" >> local.properties'
+      run: 'echo "jvm.toolchain.version=21" >> local.properties'
     - id: 'step-9'
       run: 'chmod -R 777 .'
     - id: 'step-10'
@@ -987,10 +987,10 @@ jobs:
       shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-25.0.3-osx-x64-b508.16.tar.gz'
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-6'
-      name: 'Get JBR 25 for macOS AArch64 (Attempt #1)'
+      name: 'Get JBR 21 for macOS AArch64 (Attempt #1)'
       env:
         jbrLocation: '${{ steps.step-5.outputs.jbrLocation }}'
       continue-on-error: true
@@ -998,7 +998,7 @@ jobs:
       shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-25.0.3-osx-x64-b508.16.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -1010,7 +1010,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-25.0.3-osx-x64-b508.16.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -1023,7 +1023,7 @@ jobs:
         rm -f $checksum_file
         file "$jbr_location"
     - id: 'step-7'
-      name: 'Get JBR 25 for macOS AArch64 (Attempt #2)'
+      name: 'Get JBR 21 for macOS AArch64 (Attempt #2)'
       env:
         jbrLocation: '${{ steps.step-5.outputs.jbrLocation }}'
       continue-on-error: false
@@ -1031,7 +1031,7 @@ jobs:
       shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-25.0.3-osx-x64-b508.16.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -1043,7 +1043,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-25.0.3-osx-x64-b508.16.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.6-osx-x64-b895.91.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -1057,17 +1057,17 @@ jobs:
         file "$jbr_location"
       if: '${{ steps.step-6.outcome == ''failure'' }}'
     - id: 'step-8'
-      name: 'Setup JBR 25 for macOS '
+      name: 'Setup JBR 21 for macOS '
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
-        java-version: '25'
+        java-version: '21'
         distribution: 'jdkfile'
         jdkFile: '${{ steps.step-5.outputs.jbrLocation }}'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
     - id: 'step-9'
       name: 'Dump Local Properties'
-      run: 'echo "jvm.toolchain.version=25" >> local.properties'
+      run: 'echo "jvm.toolchain.version=21" >> local.properties'
     - id: 'step-10'
       run: 'chmod -R 777 .'
     - id: 'step-11'
@@ -1216,10 +1216,10 @@ jobs:
       shell: 'bash'
       run: |-
         # Expand jbrLocationExpr
-        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-25.0.3-osx-aarch64-b508.16.tar.gz'
+        jbr_location_expr='${{ runner.tool_cache }}/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz'
         echo "jbrLocation=$jbr_location_expr" >> $GITHUB_OUTPUT
     - id: 'step-5'
-      name: 'Get JBR 25 for macOS AArch64 (Attempt #1)'
+      name: 'Get JBR 21 for macOS AArch64 (Attempt #1)'
       env:
         jbrLocation: '${{ steps.step-4.outputs.jbrLocation }}'
       continue-on-error: true
@@ -1227,7 +1227,7 @@ jobs:
       shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-25.0.3-osx-aarch64-b508.16.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -1239,7 +1239,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-25.0.3-osx-aarch64-b508.16.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -1252,7 +1252,7 @@ jobs:
         rm -f $checksum_file
         file "$jbr_location"
     - id: 'step-6'
-      name: 'Get JBR 25 for macOS AArch64 (Attempt #2)'
+      name: 'Get JBR 21 for macOS AArch64 (Attempt #2)'
       env:
         jbrLocation: '${{ steps.step-4.outputs.jbrLocation }}'
       continue-on-error: false
@@ -1260,7 +1260,7 @@ jobs:
       shell: 'bash'
       run: |-
         jbr_location="$jbrLocation"
-        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-25.0.3-osx-aarch64-b508.16.tar.gz.checksum"
+        checksum_url="https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz.checksum"
         checksum_file="checksum.tmp"
         wget -q -O $checksum_file $checksum_url
 
@@ -1272,7 +1272,7 @@ jobs:
         fi
 
         if [ "$file_checksum" != "$expected_checksum" ]; then
-            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-25.0.3-osx-aarch64-b508.16.tar.gz -O "$jbr_location"
+            wget -q --tries=3 https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk_jcef-21.0.8-osx-aarch64-b1038.68.tar.gz -O "$jbr_location"
             file_checksum=$(shasum -a 512 "$jbr_location" | awk '{print $1}')
         fi
 
@@ -1286,17 +1286,17 @@ jobs:
         file "$jbr_location"
       if: '${{ steps.step-5.outcome == ''failure'' }}'
     - id: 'step-7'
-      name: 'Setup JBR 25 for macOS '
+      name: 'Setup JBR 21 for macOS '
       uses: 'gmitch215/setup-java@6d2c5e1f82f180ae79f799f0ed6e3e5efb4e664d'
       with:
-        java-version: '25'
+        java-version: '21'
         distribution: 'jdkfile'
         jdkFile: '${{ steps.step-4.outputs.jbrLocation }}'
       env:
         GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
     - id: 'step-8'
       name: 'Dump Local Properties'
-      run: 'echo "jvm.toolchain.version=25" >> local.properties'
+      run: 'echo "jvm.toolchain.version=21" >> local.properties'
     - id: 'step-9'
       run: 'chmod -R 777 .'
     - id: 'step-10'
