@@ -9,18 +9,18 @@
 
 package me.him188.ani.app.desktop
 
-import me.him188.ani.utils.platform.Arch
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.isAArch
+import me.him188.ani.utils.platform.isLinux
 import me.him188.ani.utils.platform.isMacOS
 import me.him188.ani.utils.platform.isWindows
 
 /**
  * 当前桌面平台是否使用 libmpv (mediamp-mpv) 后端而非 VLC.
  *
- * mpv 只为 Windows x64 与 macOS arm64 分发 native library; 其余桌面 target
- * (Linux x64, macOS x64) 分发 VLC binaries. 这里的判断必须与
+ * mpv 为 Windows x64 / Windows arm64 / Linux x64 / macOS arm64 分发 native library;
+ * macOS x64 分发 VLC binaries. 这里的判断必须与
  * `app/desktop/build.gradle.kts` 中按平台选择的 native runtime 依赖保持一致.
  */
 internal fun Platform.Desktop.usesMpv(): Boolean =
-    (isWindows() && arch == Arch.X86_64) || (isMacOS() && isAArch())
+    isLinux() || isWindows() || (isMacOS() && isAArch())

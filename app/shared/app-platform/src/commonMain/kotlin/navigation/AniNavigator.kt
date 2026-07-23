@@ -89,7 +89,15 @@ interface AniNavigator {
         currentNavigator.navigate(NavRoutes.CharacterDetail(characterId))
     }
 
-    fun navigateEpisodeDetails(subjectId: Int, episodeId: Int, fullscreen: Boolean = false) {
+    fun navigateEpisodeDetails(
+        subjectId: Int,
+        episodeId: Int,
+        fullscreen: Boolean = false,
+        force: Boolean = false,
+    ) {
+        if (!force && !EpisodeNavigationGuardRegistry.checkOrNotifyDenied(subjectId, episodeId)) {
+            return
+        }
         currentNavigator.popBackStack(NavRoutes.EpisodeDetail(subjectId, episodeId), inclusive = true)
         currentNavigator.navigate(NavRoutes.EpisodeDetail(subjectId, episodeId))
         Analytics.recordEvent(

@@ -37,6 +37,7 @@ import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.data.models.preference.WatchTogetherSettings
 import me.him188.ani.app.data.network.protocol.ReleaseClass
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.getIcon
@@ -64,6 +65,8 @@ import me.him188.ani.app.ui.lang.settings_app_nsfw_hide
 import me.him188.ani.app.ui.lang.settings_app_search
 import me.him188.ani.app.ui.lang.settings_app_language_system
 import me.him188.ani.app.ui.lang.settings_player
+import me.him188.ani.app.ui.lang.settings_player_audio_time_stretch
+import me.him188.ani.app.ui.lang.settings_player_audio_time_stretch_description
 import me.him188.ani.app.ui.lang.settings_player_auto_fullscreen_on_landscape
 import me.him188.ani.app.ui.lang.settings_player_auto_mark_done
 import me.him188.ani.app.ui.lang.settings_player_auto_play_next
@@ -108,6 +111,9 @@ import me.him188.ani.app.ui.lang.settings_update_type_stable
 import me.him188.ani.app.ui.lang.settings_update_type_stable_short
 import me.him188.ani.app.ui.lang.settings_update_up_to_date
 import me.him188.ani.app.ui.lang.settings_update_view_changelog
+import me.him188.ani.app.ui.lang.settings_watch_together_description
+import me.him188.ani.app.ui.lang.settings_watch_together_social
+import me.him188.ani.app.ui.lang.watch_together_title
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterGroup
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
@@ -129,6 +135,7 @@ import me.him188.ani.app.ui.update.AppUpdateViewModel
 import me.him188.ani.app.ui.update.NewVersion
 import me.him188.ani.app.ui.update.UpdateNotifier
 import me.him188.ani.utils.platform.annotations.TestOnly
+import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isIos
 import me.him188.ani.utils.platform.isMobile
@@ -152,6 +159,7 @@ fun AppSettingsTab(
     uiSettings: SettingsState<UISettings>,
     themeSettings: SettingsState<ThemeSettings>,
     videoScaffoldConfig: SettingsState<VideoScaffoldConfig>,
+    watchTogetherSettings: SettingsState<WatchTogetherSettings>,
     danmakuFilterConfig: SettingsState<DanmakuFilterConfig>,
     danmakuRegexFilterState: DanmakuRegexFilterState,
     showDebug: Boolean,
@@ -167,7 +175,21 @@ fun AppSettingsTab(
             danmakuRegexFilterState,
             showDebug,
         )
+        WatchTogetherGroup(watchTogetherSettings)
         AppSettingsTabPlatform()
+    }
+}
+
+@Composable
+fun SettingsScope.WatchTogetherGroup(state: SettingsState<WatchTogetherSettings>) {
+    val config by state
+    Group(title = { Text(stringResource(Lang.settings_watch_together_social)) }, useThinHeader = true) {
+        SwitchItem(
+            checked = config.enabled,
+            onCheckedChange = { state.update(config.copy(enabled = it)) },
+            title = { Text(stringResource(Lang.watch_together_title)) },
+            description = { Text(stringResource(Lang.settings_watch_together_description)) },
+        )
     }
 }
 
@@ -524,6 +546,17 @@ fun SettingsScope.PlayerGroup(
             },
             title = { Text(stringResource(Lang.settings_player_auto_switch_media_on_error)) },
         )
+        if (LocalPlatform.current.isAndroid()) {
+            HorizontalDividerItem()
+            SwitchItem(
+                checked = config.enableHighQualityAudioTimeStretch,
+                onCheckedChange = {
+                    videoScaffoldConfig.update(config.copy(enableHighQualityAudioTimeStretch = it))
+                },
+                title = { Text(stringResource(Lang.settings_player_audio_time_stretch)) },
+                description = { Text(stringResource(Lang.settings_player_audio_time_stretch_description)) },
+            )
+        }
         HorizontalDividerItem()
         if (!LocalPlatform.current.isIos()) {
             SwitchItem(
@@ -609,6 +642,7 @@ private fun PreviewAppSettingsTab() {
         uiSettings = rememberTestSettingsState(UISettings.Default),
         themeSettings = rememberTestSettingsState(ThemeSettings.Default),
         videoScaffoldConfig = rememberTestSettingsState(VideoScaffoldConfig.Default),
+        watchTogetherSettings = rememberTestSettingsState(WatchTogetherSettings.Default),
         danmakuFilterConfig = rememberTestSettingsState(DanmakuFilterConfig.Default),
         danmakuRegexFilterState = createTestDanmakuRegexFilterState(),
         showDebug = true,

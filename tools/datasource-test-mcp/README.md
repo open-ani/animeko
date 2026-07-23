@@ -25,18 +25,21 @@ The transport is a stateless subset of the MCP Streamable HTTP spec: JSON-RPC me
   命名分组等. 接受 App 导出格式 / 裸 arguments / 裸 searchConfig / 订阅列表四种形态.
 - `selector_resolve_episode` — 提供 subjectId+episodeId+配置, 自动跑 `SelectorMediaSourceEngine`
   全流程 (searchSubjects → selectSubjects → searchEpisodes → selectEpisodes → selectMedia),
-  返回每个步骤的 trace 便于定位问题. **默认**继续做 WebView 视频解析与 VLC 播放探测
-  (会启动 CEF 与播放器); 只测解析层传 `extractVideo=false`.
+  返回每个步骤的 trace 便于定位问题. **默认**继续做 WebView 视频解析与播放探测
+  (会启动 CEF); 只测解析层传 `extractVideo=false`.
 - `selector_run_step` — 单步执行任意引擎步骤: 支持离线传 HTML 调试 selector, 离线测 matchVideo 正则,
   以及真实 WebView 拦截视频 URL.
 - `get_selector_engine_docs` — 返回引擎步骤文档 (源文件: [selector-engine-docs.md](src/main/resources/selector-engine-docs.md)).
 
 ### 视频能力
 
-- `probe_video` — 探测最终视频 URL: HTTP 可达性 + **用 Animeko 桌面端同款播放器 (mediamp-vlc) 真实播放**.
+- `probe_video` — 探测最终视频 URL: HTTP 可达性 + **用 Animeko 桌面端同款播放器 (mediamp-mpv) 真实播放**.
   默认弹出 Compose 测试窗口实时显示画面 (`showWindow=false` 可关), 实际播放几秒验证可播放性,
-  并从 VLC 读取真实媒体信息 (分辨率/时长/编码/帧率/码率).
-  需要系统安装 VLC 3.0.18 (macOS: `/Applications/VLC.app`); 未安装时降级为仅 HTTP 探测.
+  并从 mpv 读取真实媒体信息 (分辨率/时长/编码/帧率/码率).
+  mpv 原生库自动加载 (可用 `-Dani.mpv.native.dir` 指定目录); 加载失败时降级为仅 HTTP 探测.
+- `detect_hls_ads` — 不播放, 仅抓取 m3u8 (自动跟随 master → media) 做结构启发式分析,
+  并运行 Ani 客户端真实的 HLS 广告过滤器 (`HlsManifestFilter`), 报告各疑似广告组的时间偏移
+  (可配合 `probe_video` 的 `captureAtSeconds` 定点截帧确认) 与 App 是否会自动滤除.
 
 ### 兼容保留
 
@@ -53,7 +56,7 @@ The transport is a stateless subset of the MCP Streamable HTTP spec: JSON-RPC me
 - `info/` — 信息能力: Ani API 番剧/剧集查询
 - `selector/` — 数据源能力: 配置解析校验 + 引擎全流程/单步执行
 - `resolver/` — WebView 视频解析管线 (播放页 → 视频 URL) 与逐线路测试
-- `video/` — 视频能力: HTTP 探测 + ffprobe/ffmpeg 分析
+- `video/` — 视频能力: HTTP 探测 + mpv 真实播放分析 + HLS 广告分析
 - `source/` — 通用数据源端到端测试 (dmhy/mikan/... 工厂注册, 域名诊断)
 - 根包 — 入口 `Main.kt` 与共享模型 (`StageResult` 等)
 

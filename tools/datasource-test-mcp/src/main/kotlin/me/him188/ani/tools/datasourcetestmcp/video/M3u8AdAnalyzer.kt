@@ -14,8 +14,13 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.Url
+import me.him188.ani.app.domain.media.hls.HlsManifestFilter
+import me.him188.ani.app.domain.media.hls.HlsManifestFilterStatus
+import me.him188.ani.utils.httpdownloader.m3u.DefaultM3u8Parser
+import me.him188.ani.utils.httpdownloader.m3u.M3u8Playlist
 import me.him188.ani.utils.ktor.UrlHelpers
 import kotlin.math.abs
+import kotlin.math.roundToLong
 
 /**
  * 基于 HLS 播放列表结构的广告启发式分析.
@@ -24,14 +29,20 @@ import kotlin.math.abs
  * - `#EXT-X-DISCONTINUITY`: 广告与正片编码参数不同, 拼接处必打此标记 (最强信号);
  * - 开头若干分片时长明显短于正片主体 (广告常为 5/10/15s 定长);
  * - 广告分片来自独立 CDN, 与正片分片主机不同.
+ *
+ * 此外还会在最终 media playlist 上运行 Ani 客户端真实的 HLS 广告过滤器
+ * ([HlsManifestFilter]), 报告 App 是否会自动滤除这些片段, 以及各组广告的时间偏移.
  */
 class M3u8AdAnalyzer(
     private val httpClient: HttpClient,
 ) {
-    suspend fun analyze(url: String, headers: Map<String, String>): AdAnalysisResult {
+    /**
+     * @param assumeHls true 时跳过 URL 扩展名检查, 直接按 HLS 播放列表分析 (用于 detect_hls_ads)
+     */
+    suspend fun analyze(url: String, headers: Map<String, String>, assumeHls: Boolean = false): AdAnalysisResult {
         val lower = url.lowercase()
         val isM3u8 = lower.contains(".m3u8") || lower.contains("mpegurl")
-        if (!isM3u8) {
+        if (!isM3u8 && !assumeHls) {
             return AdAnalysisResult(
                 suspicion = "unknown",
                 reasons = listOf("非 HLS 播放列表, 无法从结构判断广告 (可看首帧截图)"),
@@ -63,6 +74,10 @@ class M3u8AdAnalyzer(
             return analyzePlaylist(UrlHelpers.computeAbsoluteUrl(url, variant), headers, depth + 1)
         }
 
+        return analyzeMediaPlaylist(url = url, text = text, lines = lines)
+    }
+
+    private fun analyzeMediaPlaylist(url: String, text: String, lines: List<String>): AdAnalysisResult {
         var discontinuityCount = 0
         val segmentDurations = mutableListOf<Double>()
         val segmentHosts = linkedSetOf<String>()
@@ -97,12 +112,69 @@ class M3u8AdAnalyzer(
             leadingSegmentDurations = segmentDurations.take(5),
             medianSegmentDuration = segmentDurations.median(),
         )
-        return score(signals, playlistHost)
+        val filterErrors = mutableListOf<String>()
+        val hlsFilter = runClientFilter(text = text, url = url, errors = filterErrors)
+        return score(signals, playlistHost, hlsFilter, filterErrors)
     }
 
-    private fun score(signals: PlaylistAdSignals, playlistHost: String?): AdAnalysisResult {
+    /**
+     * 在 media playlist 上运行 Ani 客户端真实的 HLS 广告过滤器, 并从原始 (未过滤的)
+     * 播放列表计算各被滤除组的时间偏移.
+     */
+    private fun runClientFilter(text: String, url: String, errors: MutableList<String>): HlsFilterAnalysis? =
+        runCatching {
+            val result = HlsManifestFilter.filter(text, url)
+            val removedGroups = if (result.removedGroups.isEmpty()) {
+                emptyList()
+            } else {
+                val segments = (DefaultM3u8Parser.parse(text, url) as? M3u8Playlist.MediaPlaylist)
+                    ?.segments.orEmpty()
+                // startOffsets[i] = segments[0 until i] 的总时长
+                val startOffsets = DoubleArray(segments.size + 1)
+                segments.forEachIndexed { i, segment ->
+                    startOffsets[i + 1] = startOffsets[i] + segment.duration.toDouble()
+                }
+                result.removedGroups.map { group ->
+                    val start = startOffsets.getOrElse(group.startSegmentIndex) { 0.0 }
+                    RemovedAdGroup(
+                        reasons = group.reasons,
+                        segmentCount = group.segmentCount,
+                        durationSeconds = group.duration.round3(),
+                        startOffsetSeconds = start.round3(),
+                        endOffsetSeconds = (start + group.duration).round3(),
+                        startSegmentIndex = group.startSegmentIndex,
+                        endSegmentIndex = group.endSegmentIndex,
+                        firstSegmentUri = segments.getOrNull(group.startSegmentIndex)?.uri,
+                    )
+                }
+            }
+            HlsFilterAnalysis(
+                status = result.status.name.lowercase(),
+                reason = result.reason,
+                filterable = result.status == HlsManifestFilterStatus.Filtered,
+                mediaPlaylistUrl = url,
+                removedGroups = removedGroups,
+            )
+        }.getOrElse { e ->
+            errors += "Ani HLS 广告过滤器分析失败: ${e::class.simpleName}: ${e.message.orEmpty()}"
+            null
+        }
+
+    private fun score(
+        signals: PlaylistAdSignals,
+        playlistHost: String?,
+        hlsFilter: HlsFilterAnalysis?,
+        extraReasons: List<String>,
+    ): AdAnalysisResult {
         val reasons = mutableListOf<String>()
         var score = 0
+
+        if (hlsFilter != null && hlsFilter.filterable) {
+            score += 2
+            val totalSeconds = hlsFilter.removedGroups.sumOf { it.durationSeconds }
+            reasons += "Ani HLS 广告过滤器识别出 ${hlsFilter.removedGroups.size} 组疑似插入广告片段 " +
+                    "(共 ${"%.1f".format(totalSeconds)}s, 可自动滤除)"
+        }
 
         if (signals.discontinuityCount > 0) {
             score += 2
@@ -140,7 +212,8 @@ class M3u8AdAnalyzer(
         if (suspicion == "none") {
             reasons += "播放列表结构均匀 (无 discontinuity, 单一分片来源), 未见明显广告拼接"
         }
-        return AdAnalysisResult(suspicion = suspicion, reasons = reasons, playlist = signals)
+        reasons += extraReasons
+        return AdAnalysisResult(suspicion = suspicion, reasons = reasons, playlist = signals, hlsFilter = hlsFilter)
     }
 
     private suspend fun fetch(url: String, headers: Map<String, String>): String {
@@ -163,4 +236,7 @@ class M3u8AdAnalyzer(
         val mid = sorted.size / 2
         return if (sorted.size % 2 == 0) (sorted[mid - 1] + sorted[mid]) / 2 else sorted[mid]
     }
+
+    /** 消除 Float 累加噪声, 保留 3 位小数 */
+    private fun Double.round3(): Double = (this * 1000).roundToLong() / 1000.0
 }

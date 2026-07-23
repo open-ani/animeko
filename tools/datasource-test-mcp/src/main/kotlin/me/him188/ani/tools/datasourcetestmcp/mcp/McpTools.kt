@@ -35,6 +35,8 @@ import me.him188.ani.tools.datasourcetestmcp.source.SourceTestResult
 import me.him188.ani.tools.datasourcetestmcp.source.SourceTestService
 import me.him188.ani.tools.datasourcetestmcp.source.TestResourcePageUrlInput
 import me.him188.ani.tools.datasourcetestmcp.source.TestSubjectEpisodeSourceInput
+import me.him188.ani.tools.datasourcetestmcp.video.DetectHlsAdsInput
+import me.him188.ani.tools.datasourcetestmcp.video.DetectHlsAdsResult
 import me.him188.ani.tools.datasourcetestmcp.video.ProbeVideoInput
 import me.him188.ani.tools.datasourcetestmcp.video.ProbeVideoResult
 import me.him188.ani.tools.datasourcetestmcp.video.VideoService
@@ -55,6 +57,7 @@ import me.him188.ani.tools.datasourcetestmcp.video.VideoService
  *
  * 视频能力
  * - `probe_video` 探测视频 URL 的可播放性与真实媒体信息
+ * - `detect_hls_ads` 不播放, 仅从 m3u8 结构 + Ani 客户端广告过滤器判断插入广告
  *
  * 兼容保留
  * - `test_subject_episode_source` 任意数据源端到端测试 (含 BT 源)
@@ -268,10 +271,12 @@ fun buildToolRegistrations(
         McpTool(
             name = "probe_video",
             description = "Test whether a final video URL (m3u8/mp4/mkv...) is actually playable in Animeko and report its real media info. " +
-                    "Runs an HTTP reachability probe, then plays the URL for a few seconds with Animeko's own desktop player " +
-                    "(mediamp-vlc, the same VLC pipeline the app uses), reporting resolution, duration, codecs, frame rate and bitrate. " +
+                    "Runs an HTTP reachability probe, then plays the URL for a few seconds with Animeko's own mpv pipeline " +
+                    "(mediamp-mpv, the same player core the desktop app uses on this platform), " +
+                    "reporting resolution, duration, codecs, frame rate and bitrate. " +
                     "By default a Compose test window pops up showing the actual playback. " +
-                    "Requires VLC 3.0.18 installed on the system; without it only the HTTP probe runs.",
+                    "mpv native libs are loaded automatically (override the directory with -Dani.mpv.native.dir); " +
+                    "without them only the HTTP probe runs.",
             inputSchema = objectSchema(required = listOf("videoUrl")) {
                 put("videoUrl", stringSchema("Final video URL"))
                 put(
@@ -286,7 +291,13 @@ fun buildToolRegistrations(
                 put("playSeconds", integerSchema("Seconds to actually play for the playability test, default 5"))
                 put("playTimeoutMillis", integerSchema("Timeout for entering/finishing playback in milliseconds, default 60000"))
                 put("showWindow", booleanSchema("Show a Compose window with the live playback, default true"))
-                put("detectAds", booleanSchema("Analyze the HLS playlist for ad splicing (discontinuities/foreign hosts), default true"))
+                put(
+                    "detectAds",
+                    booleanSchema(
+                        "Analyze the HLS playlist for ad splicing (discontinuities/foreign hosts), default true; " +
+                                "also reports whether Animeko's client-side HLS ad filter would remove the segments",
+                    ),
+                )
                 put("captureFramesDir", stringSchema("If set, save first-frame and mid PNG screenshots into this dir for visual ad inspection"))
                 put(
                     "captureAtSeconds",
@@ -301,6 +312,34 @@ fun buildToolRegistrations(
     ) { args ->
         val input = json.decodeFromJsonElement(ProbeVideoInput.serializer(), args)
         json.encodeToJsonElement(ProbeVideoResult.serializer(), videoService.probeVideo(input))
+    },
+
+    McpToolRegistration(
+        McpTool(
+            name = "detect_hls_ads",
+            description = "Heuristically detect injected ads in an HLS (m3u8) stream WITHOUT playing it. " +
+                    "Fetches the playlist (follows master -> media), runs structural heuristics " +
+                    "(EXT-X-DISCONTINUITY markers, foreign segment hosts, duration outliers) AND Animeko's real " +
+                    "client-side HLS ad filter (HlsManifestFilter) to report whether the ad segments would be " +
+                    "auto-filtered in the app. " +
+                    "Returns suspected ad groups with start/end time offsets in seconds, so the caller can capture " +
+                    "frames at those positions (e.g. probe_video captureAtSeconds) for visual confirmation. " +
+                    "Note: burned-in watermark/banner ads are invisible to playlist analysis - " +
+                    "frame inspection is still required for those.",
+            inputSchema = objectSchema(required = listOf("url")) {
+                put("url", stringSchema("HLS playlist (m3u8) URL, master or media"))
+                put(
+                    "headers",
+                    buildJsonObject {
+                        put("type", "object")
+                        put("description", JsonPrimitive("Request headers, e.g. Referer / User-Agent"))
+                    },
+                )
+            },
+        ),
+    ) { args ->
+        val input = json.decodeFromJsonElement(DetectHlsAdsInput.serializer(), args)
+        json.encodeToJsonElement(DetectHlsAdsResult.serializer(), videoService.detectHlsAds(input))
     },
     // endregion
 

@@ -82,6 +82,10 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      */
     val autoSwitchMediaOnPlayerError: Boolean = true,
     /**
+     * 在 Android 上使用高质量 WSOLA 处理非 1x 速度的音频.
+     */
+    val enableHighQualityAudioTimeStretch: Boolean = true,
+    /**
      * 过滤 HLS 播放列表中的插播片段.
      *
      * @since 5.7
@@ -128,6 +132,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
             autoPlayNext = false,
             autoSkipOpEd = false,
             autoSwitchMediaOnPlayerError = false,
+            enableHighQualityAudioTimeStretch = false,
             enableExperimentalHlsSegmentFiltering = false,
         )
     }

@@ -12,13 +12,51 @@ package me.him188.ani.tools.datasourcetestmcp.video
 import kotlinx.coroutines.withTimeout
 
 /**
- * 视频能力: HTTP 可达性探测 + Animeko 播放器 (VLC) 真实播放测试.
+ * 视频能力: HTTP 可达性探测 + Animeko 播放器 (mpv) 真实播放测试.
  */
 class VideoService(
     private val probe: VideoUrlProbeEngine,
     private val analyzer: MpvVideoAnalyzer,
     private val adAnalyzer: M3u8AdAnalyzer,
 ) {
+    /**
+     * 不播放, 仅抓取并分析 HLS 播放列表结构判断是否含插入广告 (detect_hls_ads 工具).
+     */
+    suspend fun detectHlsAds(input: DetectHlsAdsInput): DetectHlsAdsResult {
+        val analysis = adAnalyzer.analyze(input.url, input.headers, assumeHls = true)
+        val ok = analysis.suspicion != "unknown" || analysis.hlsFilter != null
+        return DetectHlsAdsResult(
+            ok = ok,
+            url = input.url,
+            summary = buildDetectHlsAdsSummary(analysis),
+            analysis = analysis,
+            errors = if (ok) emptyList() else analysis.reasons,
+        )
+    }
+
+    private fun buildDetectHlsAdsSummary(analysis: AdAnalysisResult): String {
+        val filter = analysis.hlsFilter
+        if (filter != null && filter.filterable) {
+            val ranges = filter.removedGroups.joinToString(", ") {
+                "%.1f-%.1fs".format(it.startOffsetSeconds, it.endOffsetSeconds)
+            }
+            return "疑似插入广告: ${filter.removedGroups.size} 组 ($ranges), Ani HLS 过滤器可自动滤除 (filtered)"
+        }
+        return when (analysis.suspicion) {
+            "unknown" -> "无法分析: ${analysis.reasons.firstOrNull() ?: "未知原因"}"
+            "none" -> "未见明显插入广告拼接; 注意: 烧录进画面的水印广告需截帧目视确认"
+            else -> buildString {
+                append("结构疑似广告拼接 (${analysis.suspicion})")
+                when (filter?.status) {
+                    "unchanged" -> append(", 但 Ani HLS 过滤器未滤除 (unchanged: ${filter.reason})")
+                    "unsupported" -> append(", Ani HLS 过滤器不支持此播放列表 (unsupported: ${filter.reason})")
+                    else -> {}
+                }
+                append("; 建议用 probe_video captureAtSeconds 截帧目视确认")
+            }
+        }
+    }
+
     suspend fun probeVideo(input: ProbeVideoInput): ProbeVideoResult {
         val totalStart = System.currentTimeMillis()
         val httpProbeStart = System.currentTimeMillis()
@@ -83,7 +121,7 @@ class VideoService(
             return httpProbe.summary
         }
         if (!analysis.available) {
-            return httpProbe.summary + " (VLC 不可用, 仅 HTTP 探测)"
+            return httpProbe.summary + " (mpv 不可用, 仅 HTTP 探测)"
         }
         if (analysis.video == null && analysis.playback?.ok != true) {
             val reason = analysis.playback?.errors?.firstOrNull()

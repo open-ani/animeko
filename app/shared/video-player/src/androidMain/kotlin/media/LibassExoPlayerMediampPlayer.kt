@@ -43,6 +43,7 @@ import org.openani.mediamp.InternalForInheritanceMediampApi
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.PlaybackState
+import org.openani.mediamp.exoplayer.ExoPlayerAudioTimeStretch
 import org.openani.mediamp.exoplayer.ExoPlayerMediampPlayer
 import org.openani.mediamp.io.SeekableInput
 import org.openani.mediamp.source.MediaData
@@ -69,10 +70,11 @@ class LibassExoPlayerMediampPlayer private constructor(
     constructor(
         context: Context,
         parentCoroutineContext: CoroutineContext,
+        audioTimeStretch: ExoPlayerAudioTimeStretch = ExoPlayerAudioTimeStretch.HighQualityWsola,
     ) : this(
         context,
         parentCoroutineContext,
-        ExoPlayerMediampPlayer(context, parentCoroutineContext),
+        ExoPlayerMediampPlayer(context, parentCoroutineContext, audioTimeStretch),
     )
 
     internal val assHandler = AssHandler(
@@ -293,7 +295,9 @@ class LibassExoPlayerMediampPlayer private constructor(
     }
 }
 
-class LibassExoPlayerMediampPlayerFactory : MediampPlayerFactory<LibassExoPlayerMediampPlayer> {
+class LibassExoPlayerMediampPlayerFactory(
+    private val enableHighQualityAudioTimeStretch: () -> Boolean = { true },
+) : MediampPlayerFactory<LibassExoPlayerMediampPlayer> {
     override val forClass: KClass<LibassExoPlayerMediampPlayer>
         get() = LibassExoPlayerMediampPlayer::class
 
@@ -302,6 +306,11 @@ class LibassExoPlayerMediampPlayerFactory : MediampPlayerFactory<LibassExoPlayer
         parentCoroutineContext: CoroutineContext,
     ): LibassExoPlayerMediampPlayer {
         require(context is Context) { "The context argument must be android.content.Context on Android" }
-        return LibassExoPlayerMediampPlayer(context, parentCoroutineContext)
+        val audioTimeStretch = if (enableHighQualityAudioTimeStretch()) {
+            ExoPlayerAudioTimeStretch.HighQualityWsola
+        } else {
+            ExoPlayerAudioTimeStretch.Media3Default
+        }
+        return LibassExoPlayerMediampPlayer(context, parentCoroutineContext, audioTimeStretch)
     }
 }

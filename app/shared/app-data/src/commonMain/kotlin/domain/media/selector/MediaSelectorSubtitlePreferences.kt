@@ -82,7 +82,7 @@ value class MediaSelectorSubtitlePreferences(
                 is Platform.Android -> ImmutableEnumMap<SubtitleKind, _> {
                     when (it) {
                         SubtitleKind.EMBEDDED -> NORMAL
-                        SubtitleKind.CLOSED -> HIDE
+                        SubtitleKind.CLOSED -> NORMAL // 已由 libass 渲染
                         SubtitleKind.EXTERNAL_PROVIDED -> NORMAL
                         SubtitleKind.EXTERNAL_DISCOVER -> HIDE
                         SubtitleKind.CLOSED_OR_EXTERNAL_DISCOVER -> NORMAL

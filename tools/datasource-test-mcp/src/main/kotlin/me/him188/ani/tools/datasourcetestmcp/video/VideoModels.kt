@@ -35,7 +35,7 @@ data class ProbeVideoInput(
     val headers: Map<String, String> = emptyMap(),
     val probeTimeoutMillis: Long = 15_000,
     /**
-     * 是否用 Animeko 播放器 (VLC) 真实播放并读取媒体信息
+     * 是否用 Animeko 播放器 (mpv) 真实播放并读取媒体信息
      */
     val analyze: Boolean = true,
     /**
@@ -95,6 +95,53 @@ data class AdAnalysisResult(
      * m3u8 才有的结构信号 (非 m3u8 时为 null)
      */
     val playlist: PlaylistAdSignals? = null,
+    /**
+     * Ani 客户端真实 HLS 广告过滤器 ([me.him188.ani.app.domain.media.hls.HlsManifestFilter]) 的分析结果.
+     * 仅当拿到 media playlist 时非 null.
+     */
+    val hlsFilter: HlsFilterAnalysis? = null,
+)
+
+@Serializable
+data class HlsFilterAnalysis(
+    /** filtered / unchanged / unsupported (小写) */
+    val status: String,
+    /** status != filtered 时的原因 id, 如 no_discontinuity / master_playlist */
+    val reason: String? = null,
+    /** true = Ani 客户端的 HLS 广告过滤器会自动滤除 removedGroups 里的片段 */
+    val filterable: Boolean,
+    val mediaPlaylistUrl: String? = null,
+    val removedGroups: List<RemovedAdGroup> = emptyList(),
+)
+
+@Serializable
+data class RemovedAdGroup(
+    /** 命中启发式: strong_path / repeat_short / sandwiched_short / low_density_short / sequence_island / dense_tiny */
+    val reasons: List<String>,
+    val segmentCount: Int,
+    val durationSeconds: Double,
+    /** 该组在整条视频里的起止时间偏移 (秒), 可用于定点截帧确认 */
+    val startOffsetSeconds: Double,
+    val endOffsetSeconds: Double,
+    val startSegmentIndex: Int,
+    val endSegmentIndex: Int,
+    val firstSegmentUri: String? = null,
+)
+
+@Serializable
+data class DetectHlsAdsInput(
+    val url: String,
+    val headers: Map<String, String> = emptyMap(),
+)
+
+@Serializable
+data class DetectHlsAdsResult(
+    val ok: Boolean,
+    val url: String,
+    /** 一句话人话总结: suspicion + 过滤器结论 + 各组时间范围 */
+    val summary: String,
+    val analysis: AdAnalysisResult,
+    val errors: List<String> = emptyList(),
 )
 
 @Serializable
@@ -131,13 +178,13 @@ data class CapturedFrame(
 @Serializable
 data class MediaAnalysisResult(
     /**
-     * 播放器 (VLC 原生库) 是否可用. 不可用时其余字段为空, 只有 HTTP 探测结果.
+     * 播放器 (mpv 原生库) 是否可用. 不可用时其余字段为空, 只有 HTTP 探测结果.
      */
     val available: Boolean,
     val tool: String? = null,
     val durationSeconds: Double? = null,
     /**
-     * 整体码率, bits per second (来自 VLC demux 统计)
+     * 整体码率, bits per second (来自 mpv 属性 (video-bitrate + audio-bitrate))
      */
     val overallBitrate: Long? = null,
     val video: VideoStreamInfo? = null,
@@ -185,11 +232,12 @@ data class PlaybackTestResult(
      */
     val openMillis: Long? = null,
     /**
-     * resume 到进入 PLAYING 状态的耗时 (起播耗时, 含起播缓冲)
+     * resume 到播放位置首次前进的耗时 (真实起播耗时, 含起播缓冲).
+     * mpv 的 PLAYING 状态在 resume 后同步翻转、不含缓冲, 故不用状态而用位置前进作为起播判据.
      */
     val timeToPlayingMillis: Long? = null,
     /**
-     * resume 到播放位置首次前进的耗时 (约等于首帧时间)
+     * resume 到播放位置首次前进的耗时 (约等于首帧时间, 与 [timeToPlayingMillis] 同源)
      */
     val timeToFirstFrameMillis: Long? = null,
     /**

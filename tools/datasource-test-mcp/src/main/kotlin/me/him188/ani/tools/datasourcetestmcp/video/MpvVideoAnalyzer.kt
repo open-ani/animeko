@@ -28,10 +28,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -103,11 +100,10 @@ class MpvVideoAnalyzer {
         val errors = mutableListOf<String>()
         val frames = mutableListOf<CapturedFrame>()
         val player = MpvMediampPlayer(Any(), coroutineContext)
+        val handle = player.impl as MPVHandle
         val window = if (input.showWindow) createWindow(player, input.videoUrl) else null
         return try {
-            val playbackTest = runPlaybackTest(player, input, errors, frames)
-
-            val handle = player.impl as MPVHandle
+            val playbackTest = runPlaybackTest(player, handle, input, errors, frames)
             // 轨道参数要等 demux/解码就绪才可用, 轮询等待
             withTimeoutOrNull(10_000) {
                 while (handle.getPropertyInt("width") <= 0) {
@@ -173,14 +169,23 @@ class MpvVideoAnalyzer {
 
     /**
      * 真实播放 [ProbeVideoInput.playSeconds] 秒, 并测量起播/首帧/缓冲耗时:
-     * 打开媒体 → 等进入 PLAYING (起播) → 等位置首次前进 (首帧) → 等位置到达目标秒数 (播放测试).
+     * 打开媒体 → 等进入 PLAYING → 等位置首次前进 (起播/首帧) → 等位置到达目标秒数 (播放测试).
+     *
+     * 位置一律直接轮询 mpv `time-pos` 属性: mediamp 的 currentPositionMillis 流在无窗口
+     * (headless) 模式下不更新 (seek 门控卡住), 属性轮询不受影响.
      */
     private suspend fun runPlaybackTest(
         player: MpvMediampPlayer,
+        handle: MPVHandle,
         input: ProbeVideoInput,
         errors: MutableList<String>,
         frames: MutableList<CapturedFrame>,
     ): PlaybackTestResult {
+        fun polledPositionMillis(): Long {
+            val timePos = runCatching { handle.getPropertyDouble("time-pos") }.getOrDefault(0.0)
+            val fromProperty = if (timePos.isFinite() && timePos > 0) (timePos * 1000).toLong() else 0L
+            return maxOf(fromProperty, player.getCurrentPositionMillis())
+        }
         val openStart = System.currentTimeMillis()
         try {
             player.setMediaData(UriMediaData(input.videoUrl, input.headers, MediaExtraFiles()))
@@ -214,23 +219,28 @@ class MpvVideoAnalyzer {
                 ran = true,
                 ok = false,
                 requestedSeconds = input.playSeconds,
-                playedPositionMillis = player.getCurrentPositionMillis(),
+                playedPositionMillis = polledPositionMillis(),
                 finalState = (state ?: player.getCurrentPlaybackState()).toString(),
                 errors = errors.toList(),
                 openMillis = openMillis,
             )
         }
-        val timeToPlayingMillis = System.currentTimeMillis() - resumeAt
 
-        val timeToFirstFrameMillis = withTimeoutOrNull(input.playTimeoutMillis) {
-            player.currentPositionMillis.first { it > 0 }
+        // mpv 的 PLAYING 状态在 resume 后同步翻转, 不含真实缓冲;
+        // 真实起播 = resume → 播放位置首次前进 (此时已完成缓冲并解出首帧).
+        val timeToFirstFrameMillis = withTimeoutOrNull<Long?>(input.playTimeoutMillis) {
+            while (polledPositionMillis() <= 0) {
+                if (player.getCurrentPlaybackState() == PlaybackState.ERROR) return@withTimeoutOrNull null
+                delay(50)
+            }
             System.currentTimeMillis() - resumeAt
         }
+        val timeToPlayingMillis = timeToFirstFrameMillis
 
         // 首帧截图 (前贴片广告时此帧即广告画面)
         val framesDir = input.captureFramesDir?.let { File(it).apply { mkdirs() } }
         if (framesDir != null) {
-            captureFrame(player, framesDir, "first_frame")?.let { frames += it }
+            captureFrame(player, framesDir, "first_frame", polledPositionMillis())?.let { frames += it }
         }
 
         // 播放期间的卡顿统计: 进入 PAUSED_BUFFERING 的次数与总时长
@@ -253,50 +263,56 @@ class MpvVideoAnalyzer {
                 }
             }
             // 多时间点采样: 播放位置越过每个采样秒时截一帧
-            val sampler = if (framesDir != null && input.captureAtSeconds.isNotEmpty()) {
-                launch {
-                    val remaining = input.captureAtSeconds.filter { it >= 0 }.sorted().toMutableList()
-                    player.currentPositionMillis.collect { pos ->
-                        while (remaining.isNotEmpty() && pos >= remaining.first() * 1000L) {
-                            val sec = remaining.removeAt(0)
-                            captureFrame(player, framesDir, "frame_%02ds".format(sec))?.let { frames += it }
-                        }
-                        if (remaining.isEmpty()) return@collect
-                    }
-                }
+            val remainingCaptures = if (framesDir != null) {
+                input.captureAtSeconds.filter { it >= 0 }.sorted().toMutableList()
             } else {
-                null
+                mutableListOf()
             }
             try {
-                withTimeoutOrNull(input.playTimeoutMillis) {
-                    merge(
-                        player.currentPositionMillis.filter { it >= targetPositionMillis }.map { true },
-                        player.playbackState.filter { it == PlaybackState.ERROR }.map { false },
-                    ).first()
+                withTimeoutOrNull<Boolean?>(input.playTimeoutMillis) {
+                    while (true) {
+                        val pos = polledPositionMillis()
+                        while (framesDir != null && remainingCaptures.isNotEmpty() &&
+                            pos >= remainingCaptures.first() * 1000L
+                        ) {
+                            val sec = remainingCaptures.removeAt(0)
+                            captureFrame(player, framesDir, "frame_%02ds".format(sec), pos)?.let { frames += it }
+                        }
+                        when {
+                            pos >= targetPositionMillis -> return@withTimeoutOrNull true
+                            player.getCurrentPlaybackState() == PlaybackState.ERROR -> return@withTimeoutOrNull false
+                            // 媒体比 playSeconds 短: EOF 且位置有前进也算播放成功
+                            pos > 0 && runCatching { handle.getPropertyBoolean("eof-reached") }
+                                .getOrDefault(false) -> return@withTimeoutOrNull true
+
+                            else -> delay(100)
+                        }
+                    }
+                    @Suppress("UNREACHABLE_CODE")
+                    null
                 }
             } finally {
                 bufferingTracker.cancel()
-                sampler?.cancel()
             }
         }
         val playWallClockMillis = System.currentTimeMillis() - playStart
 
         // 播满目标秒数后再截一帧 (此时通常已是正片, 与首帧对比可判断前贴片广告)
         if (framesDir != null && reached == true) {
-            captureFrame(player, framesDir, "mid")?.let { frames += it }
+            captureFrame(player, framesDir, "mid", polledPositionMillis())?.let { frames += it }
         }
 
         if (reached != true) {
             errors += when (reached) {
                 false -> "播放中途出错 (state=ERROR)"
-                else -> "播放 ${input.playSeconds}s 超时: 位置停在 ${player.getCurrentPositionMillis()}ms"
+                else -> "播放 ${input.playSeconds}s 超时: 位置停在 ${polledPositionMillis()}ms"
             }
         }
         return PlaybackTestResult(
             ran = true,
             ok = reached == true,
             requestedSeconds = input.playSeconds,
-            playedPositionMillis = player.getCurrentPositionMillis(),
+            playedPositionMillis = polledPositionMillis(),
             finalState = player.getCurrentPlaybackState().toString(),
             errors = if (reached == true) emptyList() else errors.toList(),
             openMillis = openMillis,
@@ -316,9 +332,9 @@ class MpvVideoAnalyzer {
         player: MpvMediampPlayer,
         dir: File,
         label: String,
+        positionMillis: Long,
     ): CapturedFrame? {
         val file = dir.resolve("$label.png")
-        val positionMillis = player.getCurrentPositionMillis()
         player.features[Screenshots.Key]?.takeScreenshot(file.absolutePath) ?: return null
         repeat(25) {
             if (file.isFile && file.length() > 0) {

@@ -656,18 +656,15 @@ fun getVerifyJobBody(
             step = "Check that Anitorrent can be loaded",
             disabledOn = listOf(Runner.GithubUbuntu2404, Runner.GithubWindows11Arm64),
         ),
-        // Windows ARM64 FFmpeg and VLC use new packaging paths. Startup only logs native load failures,
-        // so the packaged application must verify them explicitly.
+        // Windows ARM64 FFmpeg uses a new packaging path; verify it explicitly because
+        // startup only logs native load failures.
         VerifyTask(
             name = "mediamp-ffmpeg-smoke-test",
             step = "Check that MediaMP FFmpeg can run",
             enabledOnlyOn = listOf(Runner.GithubWindows11Arm64),
         ),
-        VerifyTask(
-            name = "mediamp-vlc-load-test",
-            step = "Check that MediaMP VLC can be loaded",
-            enabledOnlyOn = listOf(Runner.GithubWindows11Arm64),
-        ),
+        // Windows ARM64 relies on an external SQLite patch (AndroidX does not ship Windows ARM64 natives),
+        // so verify that the patched bundled SQLite loads correctly.
         VerifyTask(
             name = "dandanplay-app-id",
             step = "Check that Dandanplay APP ID is valid",
@@ -1816,25 +1813,7 @@ class WithMatrix(
         }
     }
 
-    fun JobBuilder<*>.prepareVlcForWindowsArm64() {
-        if (matrix.isWindowsAArch64) {
-            // The vendored VLC 3.0.20 resources are x64-only;
-            // inject VideoLAN's ARM64 runtime before packaging.
-            run(
-                name = "Prepare VLC runtime for Windows ARM64",
-                shell = Shell.PowerShell,
-                command = shell(
-                    """
-                    powershell.exe -NoProfile -ExecutionPolicy Bypass -File ci-helper/vlc-woa64/prepare-vlc-windows-arm64.ps1 app/desktop/appResources/windows-arm64/lib
-                    """.trimIndent(),
-                ),
-            )
-        }
-    }
-
     fun JobBuilder<*>.packageDesktopAndUpload(): PackageDesktopAndUploadOutputs {
-        prepareVlcForWindowsArm64()
-
         if (matrix.isWindows) {
             // Windows does not support installers
             runGradle(
