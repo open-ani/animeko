@@ -20,6 +20,8 @@
 4. **平台层最薄化**: 平台代码只实现 "一个能被驱动的浏览器", 全部业务逻辑在 commonMain, 可用假浏览器在
    commonTest 全覆盖。
 5. **限流不是验证码**: HTTP 429 / 站内冷却页走独立的重试路径, 不弹浏览器, 不误导用户。
+   无法识别内容的 HTTP 403 仍按未知验证码处理, 因为公开数据源的反爬挑战可能只返回空白
+   `Forbidden`, 需要保留浏览器恢复路径。
 6. **身份一致性**: HTTP 请求呈现的 cookie 与 User-Agent 必须和清掉挑战的浏览器完全一致
    (`cf_clearance` 绑定 UA)。
 
@@ -97,7 +99,7 @@ sealed interface BlockReason {
     /** HTTP 429 或站内冷却页 */
     class RateLimited(val retryAfter: Duration?) : BlockReason
     data object NotFound : BlockReason
-    /** 403 且无验证码特征 */
+    /** 已明确不是验证码的 4xx 响应 */
     class Forbidden(val status: Int) : BlockReason
 }
 ```
@@ -110,7 +112,7 @@ sealed interface BlockReason {
 3. 站内冷却页 (如 "请不要频繁操作") → `RateLimited`;
 4. HTTP 429 → `RateLimited(Retry-After)`;
 5. 启发式检测分类出验证码 → `Captcha(kind)`;
-6. HTTP 403 / 468 无特征 → `Captcha(Unknown)` / `Forbidden`;
+6. HTTP 403 / 468 无特征 → `Captcha(Unknown)`;
 7. 以上都不是 → `EmptyContent`。
 
 规则 2 的 "解析优先" 是整个设计的基石: 页面上出现 "captcha" 字样、嵌了 reCAPTCHA 脚本的正常页面,
@@ -393,7 +395,7 @@ JSON API, 再把结果转成 selector 认得的 HTML 形状。这类 "换一条�
    瞬间返回旧缓存, 对话框不弹; `resetSolvedSession` 在整个 App 无调用方, 只能重启 App;
 3. **EDT 阻塞 + 空 cookie**: 桌面端页面观察者回调 (CEF 在 EDT 上触发) 内 `runBlocking`
    收集 cookie, 而收集又需向 EDT 投任务 → 每 URL 1s 超时 ×4 ≈ 4s UI 冻结, 且收到的 cookie 为空;
-4. **限流被包装成验证码**: 403/429 一律按验证码处理, 真限流时弹浏览器也不可能通过,
+4. **限流被包装成验证码**: 429 被按验证码处理, 真限流时弹浏览器也不可能通过,
    用户被误导去解一个不存在的验证码;
 5. **检测器误报面过大**: `"captcha" && ("<img" || "verify")` 兜底规则几乎命中所有提到 captcha
    的正常页面; 条目页无 probe 兜底, 误报导致条目被静默跳过。

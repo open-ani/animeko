@@ -75,7 +75,7 @@ sealed interface BlockReason {
 
     data object NotFound : BlockReason
 
-    /** 4xx (通常是 403) 且无验证码特征. */
+    /** 已明确不是验证码的 4xx 响应. */
     data class Forbidden(val status: Int) : BlockReason
 }
 
@@ -114,7 +114,7 @@ class BlockedException(
  * 3. 站内冷却页 → [BlockReason.RateLimited];
  * 4. HTTP 429 → [BlockReason.RateLimited] (带 `Retry-After`);
  * 5. 启发式检测分类出验证码 → [BlockReason.Captcha];
- * 6. HTTP 403 无特征 → [BlockReason.Forbidden]; 468 → [BlockReason.Captcha] (Unknown);
+ * 6. HTTP 403 / 468 无特征 → [BlockReason.Captcha] (Unknown);
  * 7. 以上都不是 → [PageVerdict.EmptyContent] (对 [PageExpectation.AnyContent] 则为 [PageVerdict.Ok]).
  */
 class PageEvaluator {
@@ -150,8 +150,7 @@ class PageEvaluator {
 
         // 6. 无特征的被挡状态码
         when (page.status) {
-            468 -> return PageVerdict.Blocked(BlockReason.Captcha(WebCaptchaKind.Unknown))
-            403 -> return PageVerdict.Blocked(BlockReason.Forbidden(403))
+            403, 468 -> return PageVerdict.Blocked(BlockReason.Captcha(WebCaptchaKind.Unknown))
         }
 
         // 7. 兜底
