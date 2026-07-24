@@ -29,6 +29,7 @@ import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
+import me.him188.ani.app.domain.media.fetch.awaitCompletedResults
 import me.him188.ani.app.domain.media.fetch.awaitCompletion
 import me.him188.ani.app.domain.media.fetch.isFinal
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceTier
@@ -181,23 +182,45 @@ class MediaSelectorAutoSelect(
     /**
      * 从用户偏好的 web 数据源快速选择媒体, 如果没有则返回 null
      */
+    @OptIn(UnsafeOriginalMediaAccess::class) // 仅用 original 读 mediaSourceId 判断该源是否已进入候选流, 不参与选择
     suspend fun trySelectPreferredWebSource(
         mediaFetchSession: MediaFetchSession,
         preferredWebMediaSourceId: String?,
     ): Media? {
         if (preferredWebMediaSourceId == null) return null
 
-        // 等待这个源查询完成
-        mediaFetchSession.mediaSourceResults
+        // 等待该源查询完成. 若该源不存在则直接返回.
+        val result = mediaFetchSession.mediaSourceResults
             .firstOrNull { it.mediaSourceId == preferredWebMediaSourceId && it.kind == MediaSourceKind.WEB }
-            ?.awaitCompletion()
+            ?: return null
+        result.awaitCompletion()
 
-        return mediaSelector.trySelectFromMediaSources(
+        suspend fun trySelect(): Media? = mediaSelector.trySelectFromMediaSources(
             listOf(preferredWebMediaSourceId),
             overrideUserSelection = false,
             blacklistMediaIds = emptySet(),
-            allowNonPreferred = true, // 只从这一个源里选
+            allowNonPreferred = false, // 只从这一个源里选
         )
+
+        // 先做一次快照选择. 候选流已就绪时立即成功, 保持与旧实现一致的时序 (不引入额外挂起, 以免在
+        // 上层 select {} 竞争中把该源的选择让给兜底 clause).
+        trySelect()?.let { return it }
+
+        // 快照落空有两种可能:
+        // 1) 该源确实没有可选结果;
+        // 2) awaitCompletion 只保证该源自身状态完成, 而 DefaultMediaSelector 的候选流 (filteredCandidates /
+        //    preferredCandidates) 是经 combine + shareIn(replay=1) 从 cumulativeResults 异步派生的, 传播有延迟,
+        //    此刻 shareIn 回放给 .first() 的还是不含该源结果的旧快照 (生产环境的实际竞态).
+        // 先排除 (1): 该源没有任何结果就无需选择.
+        if (result.awaitCompletedResults().isEmpty()) return null
+
+        // 处理 (2): 挂起等候选流吸收该源的结果后再快照一次; 若仍为空说明该源确实没有可选项.
+        // filterMediaList 是 1:1 map (Included/Excluded), 该源既然有结果就一定会出现在 filteredCandidates 里,
+        // 所以此处不会永久挂起.
+        mediaSelector.filteredCandidates.first { candidates ->
+            candidates.any { it.original.mediaSourceId == preferredWebMediaSourceId }
+        }
+        return trySelect()
     }
 
     /**
