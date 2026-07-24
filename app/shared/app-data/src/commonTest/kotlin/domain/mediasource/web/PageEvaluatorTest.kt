@@ -133,7 +133,7 @@ class PageEvaluatorTest {
 
     // 规则 6
     @Test
-    fun `featureless 403 is Captcha Unknown so browser recovery can run`() {
+    fun `featureless 403 from selector search is Captcha Unknown`() {
         val verdict = evaluateSearch(
             "<html><body>Forbidden</body></html>",
             status = 403,
@@ -141,6 +141,34 @@ class PageEvaluatorTest {
         )
         val blocked = assertIs<PageVerdict.Blocked>(verdict)
         assertEquals(BlockReason.Captcha(WebCaptchaKind.Unknown), blocked.reason)
+    }
+
+    @Test
+    fun `featureless 403 from subject details is Captcha Unknown`() {
+        val verdict = evaluator.evaluate(
+            LoadedPage(
+                "https://example.com/detail/1.html",
+                "<html><body>Forbidden</body></html>",
+                status = 403,
+            ),
+            PageExpectation.SubjectDetails(searchConfig, "https://example.com/detail/1.html"),
+        )
+        val blocked = assertIs<PageVerdict.Blocked>(verdict)
+        assertEquals(BlockReason.Captcha(WebCaptchaKind.Unknown), blocked.reason)
+    }
+
+    @Test
+    fun `featureless 403 without selector expectation is Forbidden`() {
+        val verdict = evaluator.evaluate(
+            LoadedPage(
+                "https://example.com/play/1.html",
+                "<html><body>Forbidden</body></html>",
+                status = 403,
+            ),
+            PageExpectation.AnyContent,
+        )
+        val blocked = assertIs<PageVerdict.Blocked>(verdict)
+        assertEquals(BlockReason.Forbidden(403), blocked.reason)
     }
 
     @Test
