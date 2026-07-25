@@ -16,9 +16,15 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class GestureIndicatorStateTest {
+    @Test
+    fun `fresh state has no indicator presentation`() {
+        assertNull(gestureIndicatorPresentation(GestureIndicatorState(), null))
+    }
+
     @Test
     fun `playback speed is shown temporarily`() = runTest {
         val state = GestureIndicatorState()

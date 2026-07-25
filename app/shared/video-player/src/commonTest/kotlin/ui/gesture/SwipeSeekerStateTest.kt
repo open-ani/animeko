@@ -10,78 +10,65 @@
 package me.him188.ani.app.videoplayer.ui.gesture
 
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SwipeSeekerStateTest {
-    private val containerSize = IntSize(width = 1000, height = 600)
+    private val screenWidthPx = 1000
 
     @Test
-    fun `releasing in top corner cancels seek`() {
+    fun `cancellation follows the configured threshold and can be resumed`() {
         val seeks = mutableListOf<Int>()
-        val state = SwipeSeekerState(screenWidthPx = containerSize.width, onSeek = seeks::add)
+        val threshold = 288f
+        val startY = 400f
+        val state = SwipeSeekerState(
+            screenWidthPx = screenWidthPx,
+            swipeSeekerConfig = SwipeSeekerConfig(cancelVerticalDragDistance = threshold.dp),
+            density = Density(1f),
+            onSeek = seeks::add,
+        )
 
+        state.onPointerDown(Offset(500f, startY))
         state.onSwipeStarted()
         state.onSwipeOffset(500f)
-        state.updateCancellation(Offset(100f, 100f), containerSize)
 
-        assertTrue(state.isCancelled)
-        state.onSwipeStopped()
-        assertEquals(emptyList(), seeks)
-        assertFalse(state.isSeeking)
+        state.updateCancellation(Offset(700f, startY - threshold))
         assertFalse(state.isCancelled)
-    }
 
-    @Test
-    fun `pointer entering cancel area before drag recognition is retained`() {
-        val seeks = mutableListOf<Int>()
-        val state = SwipeSeekerState(screenWidthPx = containerSize.width, onSeek = seeks::add)
-
-        state.updateCancellation(Offset(100f, 100f), containerSize)
-        state.onSwipeStarted()
-        state.onSwipeOffset(500f)
-
-        assertTrue(state.isCancelled)
-        state.onSwipeStopped()
-        assertEquals(emptyList(), seeks)
-    }
-
-    @Test
-    fun `moving out of top corner resumes seek`() {
-        val seeks = mutableListOf<Int>()
-        val state = SwipeSeekerState(screenWidthPx = containerSize.width, onSeek = seeks::add)
-
-        state.onSwipeStarted()
-        state.onSwipeOffset(500f)
-        state.updateCancellation(Offset(900f, 100f), containerSize)
+        state.updateCancellation(Offset(700f, startY - threshold - 1f))
         assertTrue(state.isCancelled)
 
-        state.updateCancellation(Offset(500f, 300f), containerSize)
+        state.updateCancellation(Offset(700f, startY - threshold + 1f))
         assertFalse(state.isCancelled)
         state.onSwipeStopped()
+
         assertEquals(listOf(49), seeks)
     }
 
     @Test
-    fun `top center is outside cancel area`() {
-        val state = SwipeSeekerState(screenWidthPx = containerSize.width, onSeek = {})
+    fun `releasing beyond the cancellation threshold does not seek`() {
+        val seeks = mutableListOf<Int>()
+        val threshold = 144f
+        val startY = 300f
+        val state = SwipeSeekerState(
+            screenWidthPx = screenWidthPx,
+            swipeSeekerConfig = SwipeSeekerConfig(cancelVerticalDragDistance = threshold.dp),
+            density = Density(1f),
+            onSeek = seeks::add,
+        )
 
+        state.onPointerDown(Offset(500f, startY))
         state.onSwipeStarted()
-        state.updateCancellation(Offset(500f, 100f), containerSize)
+        state.onSwipeOffset(500f)
+        state.updateCancellation(Offset(700f, startY - threshold - 1f))
+        state.onSwipeStopped()
 
+        assertEquals(emptyList(), seeks)
+        assertFalse(state.isSeeking)
         assertFalse(state.isCancelled)
-    }
-
-    @Test
-    fun `invalid cancel area input is outside cancel area`() {
-        val config = SwipeSeekerConfig.Default
-
-        assertFalse(config.isInCancelArea(Offset.Unspecified, containerSize))
-        assertFalse(config.isInCancelArea(Offset.Zero, IntSize.Zero))
-        assertFalse(config.isInCancelArea(Offset.Zero, IntSize(width = -1, height = 600)))
-        assertFalse(config.isInCancelArea(Offset.Zero, IntSize(width = 1000, height = -1)))
     }
 }
