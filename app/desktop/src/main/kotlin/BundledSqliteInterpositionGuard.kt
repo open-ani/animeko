@@ -45,8 +45,11 @@ import kotlin.io.path.absolutePathString
  * androidx.sqlite upgrade could silently break it — failure mode is a logged warning plus the
  * original racy behavior. The proper fix is upstream compiling `sqlite3_*` with hidden visibility.
  *
- * Must be called before database initialization and before [AniCefApp.initialize]. It runs as
- * the first step of the desktop `loadLibraryJob`, which the JCEF init coroutine joins.
+ * Must be called before database initialization and before [AniCefApp.initialize]. It runs
+ * synchronously at the top of `main()`, right after the cache directory is resolved: Koin
+ * startup can initialize the `BundledSQLiteDriver` before any coroutine gets scheduled, so
+ * placing this in a launched job is too late — the driver would extract and load its own
+ * `RTLD_LOCAL` copy before the redirect properties are set, reintroducing the race.
  */
 object BundledSqliteInterpositionGuard {
     private val logger = logger<BundledSqliteInterpositionGuard>()

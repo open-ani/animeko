@@ -196,6 +196,10 @@ object AniDesktop {
 
         Log4j2Config.configureLogging(logsDir)
 
+        // Must run before any database access (startKoin below can initialize the
+        // BundledSQLiteDriver) and before JCEF loads NSS/system libsqlite3. See #3188.
+        BundledSqliteInterpositionGuard.install(cacheDir)
+
         if (AniBuildConfigDesktop.isDebug) {
             logger.info { "Debug mode enabled" }
         }
@@ -321,11 +325,6 @@ object AniDesktop {
         }
 
         val loadLibraryJob = coroutineScope.launch(Dispatchers.IO) {
-            // Must run before any database access and before JCEF loads NSS/system libsqlite3.
-            // The JCEF init coroutine joins this job before AniCefApp.initialize, so placing the
-            // guard here still guarantees the ordering. See #3188.
-            BundledSqliteInterpositionGuard.install(cacheDir)
-
             try {
                 AnitorrentLibraryLoader.loadLibraries()
                 logger.info { "Anitorrent is loaded." }
