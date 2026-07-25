@@ -46,7 +46,7 @@ import kotlin.io.path.absolutePathString
  * original racy behavior. The proper fix is upstream compiling `sqlite3_*` with hidden visibility.
  *
  * Must be called before database initialization and before [AniCefApp.initialize]. It runs as
- * the first step of the desktop `loadLibraryJob`, which the JCEF init coroutine joins.
+ * part of synchronous desktop startup, before Koin can launch jobs that access Room.
  */
 object BundledSqliteInterpositionGuard {
     private val logger = logger<BundledSqliteInterpositionGuard>()

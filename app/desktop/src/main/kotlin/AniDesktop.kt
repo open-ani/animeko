@@ -237,6 +237,10 @@ object AniDesktop {
         )
         startupTimeMonitor.mark(StepName.WindowAndContext)
 
+        // Koin startup launches jobs that may access Room immediately. Install this guard
+        // synchronously before Koin so AndroidX cannot load a second sqlite JNI image first.
+        BundledSqliteInterpositionGuard.install(cacheDir)
+
         SingleInstanceChecker.instance.ensureSingleInstance()
         startupTimeMonitor.mark(StepName.SingletonChecker)
 
@@ -321,11 +325,6 @@ object AniDesktop {
         }
 
         val loadLibraryJob = coroutineScope.launch(Dispatchers.IO) {
-            // Must run before any database access and before JCEF loads NSS/system libsqlite3.
-            // The JCEF init coroutine joins this job before AniCefApp.initialize, so placing the
-            // guard here still guarantees the ordering. See #3188.
-            BundledSqliteInterpositionGuard.install(cacheDir)
-
             try {
                 AnitorrentLibraryLoader.loadLibraries()
                 logger.info { "Anitorrent is loaded." }
