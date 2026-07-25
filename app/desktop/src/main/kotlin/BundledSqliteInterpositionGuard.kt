@@ -77,6 +77,8 @@ object BundledSqliteInterpositionGuard {
     }
 
     private fun install0(cacheDir: Path) {
+        Files.createDirectories(cacheDir)
+
         val resource = when (System.getProperty("os.arch")) {
             "aarch64" -> "natives/linux_arm64/libsqliteJni.so"
             else -> "natives/linux_x64/libsqliteJni.so"
