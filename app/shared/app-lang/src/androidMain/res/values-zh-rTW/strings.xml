@@ -312,6 +312,16 @@
     <string name="settings_media_source_disable">停用</string>
     <string name="settings_media_source_enable">啟用</string>
     <string name="settings_media_source_delete_can_readd">刪除（可重新添加）</string>
+    <string name="settings_media_source_enter_selection_mode">進入選擇模式</string>
+    <string name="settings_media_source_exit_selection">退出選擇模式</string>
+    <string name="settings_media_source_selected_count">已選擇 %1$d 個資料源</string>
+    <string name="settings_media_source_select_all">選擇全部資料源</string>
+    <string name="settings_media_source_deselect_all">取消選擇全部資料源</string>
+    <string name="settings_media_source_enable_selected">啟用選中的資料源</string>
+    <string name="settings_media_source_disable_selected">停用選中的資料源</string>
+    <string name="settings_media_source_delete_selected">刪除選中的資料源</string>
+    <string name="settings_media_source_delete_selected_title">刪除選中的資料源？</string>
+    <string name="settings_media_source_delete_selected_confirmation">確定刪除選中的 %1$d 個資料源嗎？刪除後將遺失自訂設定，重新添加時需要再次設定。</string>
     <string name="settings_media_source_select_template">選擇模板</string>
 
     <!-- MediaSourceSubscriptionGroup -->

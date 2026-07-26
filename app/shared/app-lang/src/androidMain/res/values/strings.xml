@@ -323,6 +323,16 @@
     <string name="settings_media_source_disable">Disable</string>
     <string name="settings_media_source_enable">Enable</string>
     <string name="settings_media_source_delete_can_readd">Delete (can re-add)</string>
+    <string name="settings_media_source_enter_selection_mode">Enter selection mode</string>
+    <string name="settings_media_source_exit_selection">Exit selection mode</string>
+    <string name="settings_media_source_selected_count">Selected data sources: %1$d</string>
+    <string name="settings_media_source_select_all">Select all data sources</string>
+    <string name="settings_media_source_deselect_all">Deselect all data sources</string>
+    <string name="settings_media_source_enable_selected">Enable selected data sources</string>
+    <string name="settings_media_source_disable_selected">Disable selected data sources</string>
+    <string name="settings_media_source_delete_selected">Delete selected data sources</string>
+    <string name="settings_media_source_delete_selected_title">Delete selected data sources?</string>
+    <string name="settings_media_source_delete_selected_confirmation">Delete selected data sources (%1$d)? Their custom configurations will be lost and must be reconfigured if they are added again.</string>
     <string name="settings_media_source_select_template">Select template</string>
     <string name="settings_media_source_subscription">Data source subscription</string>
     <string name="settings_media_source_subscription_description">You can add multiple data sources via subscription, which automatically updates on a schedule</string>
