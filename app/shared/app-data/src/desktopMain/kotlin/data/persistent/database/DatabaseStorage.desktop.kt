@@ -16,6 +16,12 @@ import me.him188.ani.app.platform.DesktopContext
 
 actual fun Context.createDatabaseBuilder(): RoomDatabase.Builder<AniDatabase> {
     this as DesktopContext
+    // Do not remove: this is what makes constraint 1 in BundledSqliteInterpositionGuard structural
+    // rather than a convention about where main() calls install(). Because it sits here, no
+    // BundledSQLiteDriver can be constructed before the guard runs, however startup is later
+    // reordered — #3195 regressed precisely by moving that call into a coroutine that raced Koin.
+    // Idempotent, so the earlier call from main() (which additionally covers constraint 2) wins.
+    BundledSqliteInterpositionGuard.install(cacheDir.toPath())
     return Room.databaseBuilder<AniDatabase>(
         name = dataDir.resolve("ani_room_database_main.db").absolutePath,
     )
