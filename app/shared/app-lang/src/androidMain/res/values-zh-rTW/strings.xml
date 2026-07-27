@@ -312,6 +312,16 @@
     <string name="settings_media_source_disable">停用</string>
     <string name="settings_media_source_enable">啟用</string>
     <string name="settings_media_source_delete_can_readd">刪除（可重新添加）</string>
+    <string name="settings_media_source_enter_selection_mode">進入選擇模式</string>
+    <string name="settings_media_source_exit_selection">退出選擇模式</string>
+    <string name="settings_media_source_selected_count">已選擇 %1$d 個資料源</string>
+    <string name="settings_media_source_select_all">選擇全部資料源</string>
+    <string name="settings_media_source_deselect_all">取消選擇全部資料源</string>
+    <string name="settings_media_source_enable_selected">啟用選中的資料源</string>
+    <string name="settings_media_source_disable_selected">停用選中的資料源</string>
+    <string name="settings_media_source_delete_selected">刪除選中的資料源</string>
+    <string name="settings_media_source_delete_selected_title">刪除選中的資料源？</string>
+    <string name="settings_media_source_delete_selected_confirmation">確定刪除選中的 %1$d 個資料源嗎？刪除後將遺失自訂設定，重新添加時需要再次設定。</string>
     <string name="settings_media_source_select_template">選擇模板</string>
 
     <!-- MediaSourceSubscriptionGroup -->
@@ -1339,10 +1349,14 @@
     <string name="watch_together_leave">離開</string>
     <string name="watch_together_disband">解散</string>
     <string name="watch_together_disable">關閉</string>
+    <string name="watch_together_more_options">更多選項</string>
+    <string name="watch_together_disable_feature">關閉一起看功能</string>
+    <string name="watch_together_disable_feature_desc">將退出房間並隱藏懸浮球</string>
     <string name="watch_together_collapse">收合</string>
     <string name="watch_together_cancel">取消</string>
     <string name="watch_together_minimize">最小化</string>
     <string name="watch_together_confirm_disband">確定要為所有成員解散此房間嗎？</string>
+    <string name="watch_together_confirm_disable">確定要關閉「一起看」嗎？關閉後可在設定中重新開啟。</string>
     <string name="watch_together_room_closed">房主已解散房間</string>
     <string name="watch_together_session_replaced">此房間已在另一台裝置上開啟。</string>
     <string name="watch_together_rejoined">原房間已過期，已為你重新建立。</string>

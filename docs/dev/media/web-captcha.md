@@ -20,6 +20,8 @@
 4. **平台层最薄化**: 平台代码只实现 "一个能被驱动的浏览器", 全部业务逻辑在 commonMain, 可用假浏览器在
    commonTest 全覆盖。
 5. **限流不是验证码**: HTTP 429 / 站内冷却页走独立的重试路径, 不弹浏览器, 不误导用户。
+   无法解析内容的结构化 selector 页面若返回 HTTP 403, 仍按未知验证码处理, 因为公开数据源的反爬挑战
+   可能只返回空白 `Forbidden`, 需要保留浏览器恢复路径。
 6. **身份一致性**: HTTP 请求呈现的 cookie 与 User-Agent 必须和清掉挑战的浏览器完全一致
    (`cf_clearance` 绑定 UA)。
 
@@ -97,7 +99,7 @@ sealed interface BlockReason {
     /** HTTP 429 或站内冷却页 */
     class RateLimited(val retryAfter: Duration?) : BlockReason
     data object NotFound : BlockReason
-    /** 403 且无验证码特征 */
+    /** 无结构化 selector 期望的页面返回 HTTP 403, 且无验证码特征 */
     class Forbidden(val status: Int) : BlockReason
 }
 ```
@@ -110,11 +112,16 @@ sealed interface BlockReason {
 3. 站内冷却页 (如 "请不要频繁操作") → `RateLimited`;
 4. HTTP 429 → `RateLimited(Retry-After)`;
 5. 启发式检测分类出验证码 → `Captcha(kind)`;
-6. HTTP 403 / 468 无特征 → `Captcha(Unknown)` / `Forbidden`;
+6. 无特征的 HTTP 403: 搜索页或条目详情页 → `Captcha(Unknown)`, 其他页面 → `Forbidden`;
+   HTTP 468 → `Captcha(Unknown)`;
 7. 以上都不是 → `EmptyContent`。
 
 规则 2 的 "解析优先" 是整个设计的基石: 页面上出现 "captcha" 字样、嵌了 reCAPTCHA 脚本的正常页面,
 只要 selector 能解析出条目/剧集, 就不会被误判为被挡。
+
+结构化 selector 页面上的无特征 403 保留浏览器逃生通道。部分 WAF (如次元城使用的防护)
+会直接返回不带稳定特征的 403; 若将其归类为 `Forbidden`, 交互验证和已注册的自动 solver 都不会运行。
+`AnyContent` 没有可验证的 selector 结果, 因此仍将同类响应归为 `Forbidden`, 避免把普通权限错误误报为验证码。
 
 ### 启发式检测器 (WebCaptchaDetector)
 
@@ -393,7 +400,7 @@ JSON API, 再把结果转成 selector 认得的 HTML 形状。这类 "换一条�
    瞬间返回旧缓存, 对话框不弹; `resetSolvedSession` 在整个 App 无调用方, 只能重启 App;
 3. **EDT 阻塞 + 空 cookie**: 桌面端页面观察者回调 (CEF 在 EDT 上触发) 内 `runBlocking`
    收集 cookie, 而收集又需向 EDT 投任务 → 每 URL 1s 超时 ×4 ≈ 4s UI 冻结, 且收到的 cookie 为空;
-4. **限流被包装成验证码**: 403/429 一律按验证码处理, 真限流时弹浏览器也不可能通过,
+4. **限流被包装成验证码**: 429 被按验证码处理, 真限流时弹浏览器也不可能通过,
    用户被误导去解一个不存在的验证码;
 5. **检测器误报面过大**: `"captcha" && ("<img" || "verify")` 兜底规则几乎命中所有提到 captcha
    的正常页面; 条目页无 probe 兜底, 误报导致条目被静默跳过。

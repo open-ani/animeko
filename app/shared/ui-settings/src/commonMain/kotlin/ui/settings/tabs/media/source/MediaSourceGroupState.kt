@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -276,14 +276,22 @@ class EditMediaSourceState(
     }
 
     fun deleteMediaSource(item: MediaSourcePresentation) {
+        deleteMediaSources(listOf(item))
+    }
+
+    fun deleteMediaSources(items: Collection<MediaSourcePresentation>) {
         editTasker.launch {
-            onDelete(item.instanceId)
+            items.forEach { onDelete(it.instanceId) }
         }
     }
 
     fun toggleMediaSourceEnabled(item: MediaSourcePresentation, enabled: Boolean) {
+        setMediaSourcesEnabled(listOf(item), enabled)
+    }
+
+    fun setMediaSourcesEnabled(items: Collection<MediaSourcePresentation>, enabled: Boolean) {
         editTasker.launch {
-            onSetEnabled(item.instanceId, enabled)
+            items.forEach { onSetEnabled(it.instanceId, enabled) }
         }
     }
 }

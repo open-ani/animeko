@@ -377,5 +377,10 @@ fun JavaExec.configureDevProperties() {
     systemProperty("org.slf4j.simpleLogger.defaultLogLevel", "TRACE")
     systemProperty("kotlinx.coroutines.debug", "on")
     systemProperty("ani.debug", "true")
+    // Windows 原生触摸事件日志: ./gradlew :app:desktop:run -Pani.windows.nativeTouch.debug=true
+    systemProperty(
+        "ani.windows.nativeTouch.debug",
+        providers.gradleProperty("ani.windows.nativeTouch.debug").getOrElse("false"),
+    )
     workingDir(file("test-sandbox"))
 }

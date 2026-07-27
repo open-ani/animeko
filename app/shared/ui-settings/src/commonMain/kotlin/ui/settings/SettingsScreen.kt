@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.settings
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
@@ -70,6 +71,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -96,6 +98,7 @@ import me.him188.ani.app.ui.adaptive.ListDetailLayoutParameters
 import me.him188.ani.app.ui.adaptive.PaneScope
 import me.him188.ani.app.ui.adaptive.TopAppBarSize
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.ifThen
@@ -104,6 +107,7 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastExpanded
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
+import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.LocalAppChromeHazeState
 import me.him188.ani.app.ui.foundation.theme.appChromeHazeSource
@@ -155,7 +159,9 @@ import me.him188.ani.app.ui.settings.tabs.media.MediaSelectionGroup
 import me.him188.ani.app.ui.settings.tabs.media.TorrentEngineGroup
 import me.him188.ani.app.ui.settings.tabs.media.PikPakAcceleratorGroup
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceGroup
+import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSelectionActions
 import me.him188.ani.app.ui.settings.tabs.media.source.MediaSourceSubscriptionGroup
+import me.him188.ani.app.ui.settings.tabs.media.source.rememberMediaSourceSelectionState
 import me.him188.ani.app.ui.settings.tabs.network.ConfigureProxyGroup
 import me.him188.ani.app.ui.settings.tabs.network.ServerSelectionGroup
 import me.him188.ani.app.ui.settings.tabs.theme.ThemeGroup
@@ -190,12 +196,22 @@ fun SettingsScreen(
     var lastSelectedTab by rememberSaveable(initialTab) {
         mutableStateOf(initialTab)
     }
+    val mediaSourceSelectionState = rememberMediaSourceSelectionState()
 
     LaunchedEffect(Unit) {
         if (lastSelectedTab == null && !layoutParameters.preferSinglePane) {
             lastSelectedTab = SettingsTab.APPEARANCE
         }
     }
+    LaunchedEffect(lastSelectedTab) {
+        if (lastSelectedTab != SettingsTab.MEDIA_SOURCE) {
+            mediaSourceSelectionState.clear()
+        }
+    }
+    BackHandler(
+        enabled = lastSelectedTab == SettingsTab.MEDIA_SOURCE && mediaSourceSelectionState.inSelection,
+        onBack = mediaSourceSelectionState::clear,
+    )
     val coroutineScope = rememberCoroutineScope()
     val browserNavigator = rememberAsyncBrowserNavigator()
     val context = LocalContext.current
@@ -220,8 +236,12 @@ fun SettingsScreen(
             }
         },
         onClickBackOnDetailPage = {
-            coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                navigator.navigateBack(BackNavigationBehavior.PopUntilScaffoldValueChange)
+            if (mediaSourceSelectionState.inSelection) {
+                mediaSourceSelectionState.clear()
+            } else {
+                coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                    navigator.navigateBack(BackNavigationBehavior.PopUntilScaffoldValueChange)
+                }
             }
         },
         navItems = {
@@ -341,6 +361,7 @@ fun SettingsScreen(
                                 MediaSourceGroup(
                                     vm.mediaSourceGroupState,
                                     vm.editMediaSourceState,
+                                    mediaSourceSelectionState,
                                 )
                             }
 
@@ -369,6 +390,11 @@ fun SettingsScreen(
                         }
                     }
                 }
+                if (currentTab == SettingsTab.MEDIA_SOURCE) {
+                    AniAnimatedVisibility(mediaSourceSelectionState.inSelection) {
+                        Spacer(Modifier.height(80.dp))
+                    }
+                }
                 Spacer(
                     Modifier.height(
                         currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding,
@@ -376,8 +402,23 @@ fun SettingsScreen(
                 )
             }
         },
-        modifier,
-        windowInsets,
+        detailPaneBottomBar = { currentTab, bottomBarInsets ->
+            if (currentTab == SettingsTab.MEDIA_SOURCE) {
+                AniAnimatedVisibility(
+                    visible = mediaSourceSelectionState.inSelection,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                ) {
+                    MediaSourceSelectionActions(
+                        mediaSources = vm.mediaSourceGroupState.mediaSources,
+                        selectionState = mediaSourceSelectionState,
+                        editState = vm.editMediaSourceState,
+                        windowInsets = bottomBarInsets,
+                    )
+                }
+            }
+        },
+        modifier = modifier,
+        contentWindowInsets = windowInsets,
         navigationIcon = navigationIcon,
         layoutParameters = layoutParameters,
     )
@@ -392,6 +433,8 @@ internal fun SettingsPageLayout(
     onClickBackOnDetailPage: () -> Unit,
     navItems: @Composable (SettingsDrawerScope.() -> Unit),
     tabContent: @Composable SettingsDetailPaneScope.(currentTab: SettingsTab?) -> Unit, // inside Column verticalScroll
+    detailPaneBottomBar: @Composable BoxScope.(currentTab: SettingsTab?, windowInsets: WindowInsets) -> Unit =
+        { _, _ -> },
     modifier: Modifier = Modifier,
     contentWindowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
     containerColor: Color = AniThemeDefaults.pageContentBackgroundColor,
@@ -626,6 +669,14 @@ internal fun SettingsPageLayout(
                                     tabContent(tab)
                                 }
                             },
+                            floatingContent = {
+                                detailPaneBottomBar(
+                                    tab,
+                                    paneContentWindowInsets.only(
+                                        WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal,
+                                    ),
+                                )
+                            },
                         )
                     }
                     composable<DetailPaneRoutes.Acknowledgements> {
@@ -727,6 +778,7 @@ private fun PaneScope.DetailPaneRoute(
     topAppBar: @Composable () -> Unit,
     detailPaneTopAppBarScrollBehavior: TopAppBarScrollBehavior,
     modifier: Modifier = Modifier,
+    floatingContent: @Composable BoxScope.() -> Unit = {},
     tabContent: @Composable (PaneScope.() -> Unit),
 ) {
     if (isAppChromeFrostedGlassActive()) {
@@ -757,6 +809,7 @@ private fun PaneScope.DetailPaneRoute(
             Box(Modifier.onSizeChanged { topAppBarHeight = it.height }) {
                 topAppBar()
             }
+            floatingContent()
         }
         return
     }
@@ -780,6 +833,7 @@ private fun PaneScope.DetailPaneRoute(
             ) {
                 tabContent()
             }
+            floatingContent()
         }
     }
 }

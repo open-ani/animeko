@@ -7,11 +7,10 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-package me.him188.ani.app.desktop
+package me.him188.ani.app.data.persistent.database
 
 import com.sun.jna.Library
 import com.sun.jna.NativeLibrary
-import me.him188.ani.app.platform.AniCefApp
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -22,6 +21,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import kotlin.io.path.absolutePathString
+import kotlin.io.path.readLines
 
 /**
  * Works around a native symbol interposition crash on Linux (#3188).
@@ -30,23 +30,38 @@ import kotlin.io.path.absolutePathString
  * via `System.load` (`RTLD_LOCAL`, lazy binding). When JCEF starts, CEF pulls in NSS, which loads
  * the system `/usr/lib/libsqlite3.so` into the *global* symbol scope. From then on, any not-yet-
  * called `sqlite3_*` PLT entry inside `libsqliteJni.so` resolves to the system library, mixing two
- * sqlite builds with incompatible internal layouts — observed as `SIGSEGV` in
- * `sqlite3_bind_text16` on the home screen's first DB query. Whether a machine crashes is a pure
- * load-order race. macOS (two-level namespace) and Windows (per-module imports) are immune, so
- * this guard is Linux-only.
+ * sqlite builds with incompatible internal layouts. macOS (two-level namespace) and Windows
+ * (per-module imports) are immune, so this guard is Linux-only.
  *
  * Mitigation: load the bundled library ourselves with `RTLD_NOW | RTLD_GLOBAL` before JCEF/NSS or
  * the driver touches sqlite, so its symbols bind to its own implementations first and occupy the
  * global scope; the whole process then uses exactly one sqlite build. The `...bundled.path`/`.name`
  * properties make the driver `System.load()` this same file instead of its own `RTLD_LOCAL` copy.
  *
+ * ## Two independent ordering constraints, both required
+ *
+ * 1. **Before the driver loads.** Violating this puts *two* `libsqliteJni.so` images in the
+ *    process: the driver's own `RTLD_LOCAL` copy under `/tmp` plus this one. The `/tmp` copy's
+ *    `sqlite3_*` PLT entries then bind to our globally-scoped copy on first call, so the JNI entry
+ *    points and the sqlite implementation live in different libraries, each with its own
+ *    `sqlite3GlobalConfig`. The one receiving calls never ran `sqlite3_initialize`, leaving
+ *    `xMalloc` NULL — `SIGSEGV` at `pc=0` in `dbMallocRawFinish`. This is the regression #3195
+ *    introduced by installing the guard from a coroutine that raced Koin's driver construction.
+ *
+ * 2. **Before JCEF/NSS.** Violating this lets the system `libsqlite3` occupy the global scope
+ *    first; `RTLD_NOW` then binds *our* `sqlite3_*` references to it. This is the original #3188 —
+ *    `SIGSEGV` at `pc=0` in `walIndexReadHdr`.
+ *
+ * Constraint 1 holds structurally: [Context.createDatabaseBuilder] installs the guard before
+ * handing out a builder, so no `BundledSQLiteDriver` can be constructed ahead of it. Constraint 2
+ * cannot be enforced that way — nothing about JCEF startup routes through this class — and is why
+ * the desktop `main()` still calls [install] explicitly, ahead of JCEF initialization.
+ *
  * Trade-offs: NSS will use the bundled sqlite instead of the system one (format-compatible, low
  * risk); the guard relies on the semi-internal property and jar resource layout, so an
  * androidx.sqlite upgrade could silently break it — failure mode is a logged warning plus the
- * original racy behavior. The proper fix is upstream compiling `sqlite3_*` with hidden visibility.
- *
- * Must be called before database initialization and before [AniCefApp.initialize]. It runs as
- * part of synchronous desktop startup, before Koin can launch jobs that access Room.
+ * original racy behavior. `BundledSqliteInterpositionGuardTest` is the canary for that upgrade.
+ * The proper fix is upstream compiling `sqlite3_*` with hidden visibility.
  */
 object BundledSqliteInterpositionGuard {
     private val logger = logger<BundledSqliteInterpositionGuard>()
@@ -55,6 +70,11 @@ object BundledSqliteInterpositionGuard {
     private const val RTLD_NOW = 0x2
     private const val RTLD_GLOBAL = 0x100
 
+    /** Fixed name of the extracted copy, so [mappedSqliteJniImages] callers can recognise it. */
+    const val LIB_FILE_NAME = "ani-bundled-sqliteJni.so"
+
+    private val lock = Any()
+
     // Strong reference to the preloaded library. JNA 5.x registers a Cleaner that dlclose()es the
     // native handle when the NativeLibrary instance is GC'd, and JNA's own cache only keeps a
     // WeakReference — dropping this reference would let a GC undo the preload and reintroduce
@@ -62,18 +82,46 @@ object BundledSqliteInterpositionGuard {
     private var preloadedLibrary: NativeLibrary? = null
 
     /**
+     * Preloads the bundled `libsqliteJni.so` into the global symbol scope. No-op off Linux, and
+     * no-op on every call after the first: [install] is reached from both desktop startup and
+     * [Context.createDatabaseBuilder], and re-running it would rewrite the properties the driver
+     * may already have read.
+     *
      * @param cacheDir app-owned directory used to hold the extracted library. A stable location
      * with a fixed name (rewritten only when the bundled bytes change) avoids leaving stale
      * `.so` files in the system temp directory after abnormal exits.
      */
     fun install(cacheDir: Path) {
         if (!currentPlatformDesktop().isLinux()) return
-        try {
-            install0(cacheDir)
-        } catch (e: Throwable) {
-            // Never break startup because of this workaround; the crash it prevents is a race anyway.
-            logger.warn(e) { "Failed to preload bundled libsqliteJni with RTLD_GLOBAL" }
+        synchronized(lock) {
+            if (preloadedLibrary != null) return
+            try {
+                install0(cacheDir)
+            } catch (e: Throwable) {
+                // Never break startup because of this workaround; the crash it prevents is a race anyway.
+                logger.warn(e) { "Failed to preload bundled libsqliteJni with RTLD_GLOBAL" }
+            }
         }
+    }
+
+    /**
+     * Backing files of every `sqliteJni` mapping this process currently holds, as seen by the
+     * kernel. Exactly one entry, ending in [LIB_FILE_NAME], is the invariant both ordering
+     * constraints exist to preserve; anything else is one of the two crashes described above.
+     *
+     * Linux-only — returns an empty set elsewhere, where the problem does not exist.
+     */
+    fun mappedSqliteJniImages(): Set<String> {
+        if (!currentPlatformDesktop().isLinux()) return emptySet()
+        // A /proc/self/maps line ends with the mapped path, e.g.
+        // `7f..-7f.. r-xp 00000000 00:1b 123  /home/u/.cache/ani/ani-bundled-sqliteJni.so`.
+        return Path.of("/proc/self/maps").readLines()
+            .mapNotNull { line ->
+                line.substringAfter(" /", missingDelimiterValue = "")
+                    .let { if (it.isEmpty()) null else "/$it" }
+            }
+            .filter { it.substringAfterLast('/').contains("sqliteJni", ignoreCase = true) }
+            .toSet()
     }
 
     private fun install0(cacheDir: Path) {
@@ -87,7 +135,7 @@ object BundledSqliteInterpositionGuard {
             .getResourceAsStream(resource)?.use { it.readBytes() }
             ?: error("Resource $resource not found on classpath")
 
-        val libFile = cacheDir.resolve("ani-bundled-sqliteJni.so")
+        val libFile = cacheDir.resolve(LIB_FILE_NAME)
         if (!Files.exists(libFile) || !Files.readAllBytes(libFile).contentEquals(bytes)) {
             // Write to a sibling temp file and move atomically: the target may still be mapped
             // by a previous process (or this one), and in-place writes to a mapped .so can SIGBUS.
