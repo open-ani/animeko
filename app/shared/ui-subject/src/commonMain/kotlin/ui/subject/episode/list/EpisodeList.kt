@@ -42,9 +42,10 @@ import androidx.compose.ui.window.DialogProperties
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.lists.ScrollStateVerticalScrollbar
-import me.him188.ani.app.ui.lang.*
+import me.him188.ani.app.ui.foundation.lists.hasScrollableContent
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
 import me.him188.ani.app.ui.foundation.theme.weaken
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.*
 
@@ -59,6 +60,7 @@ fun EpisodeListDialog(
     properties: DialogProperties = DialogProperties(),
 ) {
     val scrollState = rememberScrollState()
+    val scrollbarEndPadding = if (scrollState.hasScrollableContent()) 16.dp else 0.dp
     Dialog(onDismissRequest, properties) {
         Card {
             Box {
@@ -84,7 +86,7 @@ fun EpisodeListDialog(
                             .heightIn(max = 360.dp), // 特别长需要限制高度并且滚动, #182
                     ) {
                         Column(
-                            Modifier.verticalScroll(scrollState).padding(end = 16.dp),
+                            Modifier.verticalScroll(scrollState).padding(end = scrollbarEndPadding),
                         ) {
                             EpisodeListFlowRow(
                                 state.mainEpisodes,

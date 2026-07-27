@@ -73,6 +73,7 @@ import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.launchInBackground
 import me.him188.ani.app.ui.foundation.lists.ScrollStateVerticalScrollbar
+import me.him188.ani.app.ui.foundation.lists.hasScrollableContent
 import me.him188.ani.app.ui.foundation.produceState
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
@@ -351,6 +352,7 @@ fun SubjectCachePageScaffold(
 ) {
     val appBarColors = AniThemeDefaults.topAppBarColors()
     val scrollState = rememberScrollState()
+    val scrollbarEndPadding = if (scrollState.hasScrollableContent()) 16.dp else 0.dp
     Scaffold(
         modifier,
         topBar = {
@@ -368,7 +370,7 @@ fun SubjectCachePageScaffold(
         contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal),
     ) { paddingValues ->
         Box(Modifier.padding(paddingValues).fillMaxSize()) {
-            Column(Modifier.fillMaxSize().verticalScroll(scrollState).padding(end = 16.dp)) {
+            Column(Modifier.fillMaxSize().verticalScroll(scrollState).padding(end = scrollbarEndPadding)) {
 //                Surface(Modifier.fillMaxWidth(), color = appBarColors.containerColor) {
 //                    Row(Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
 //                        ProvideTextStyle(MaterialTheme.typography.titleMedium) {

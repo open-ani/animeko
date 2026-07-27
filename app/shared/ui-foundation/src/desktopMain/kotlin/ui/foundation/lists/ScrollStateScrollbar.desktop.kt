@@ -25,7 +25,7 @@ actual fun ScrollStateVerticalScrollbar(
     state: ScrollState,
     modifier: Modifier,
 ) {
-    if (state.maxValue <= 0 || state.maxValue == Int.MAX_VALUE) return
+    if (!state.hasScrollableContent()) return
 
     val colorScheme = MaterialTheme.colorScheme
     val style = remember(colorScheme) {
