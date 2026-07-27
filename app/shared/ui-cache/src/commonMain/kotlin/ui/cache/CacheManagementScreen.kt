@@ -107,7 +107,7 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
-import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
+import me.him188.ani.app.ui.foundation.layout.paneHorizontalPadding
 import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
@@ -394,6 +394,7 @@ private fun CacheManagementLayout(
         val layoutDirection = LocalLayoutDirection.current
         // bottom padding 作为列表的 contentPadding, 让内容可以滚动到毛玻璃导航栏下方.
         val listBottomPadding = PaddingValues(bottom = paddingValues.calculateBottomPadding())
+        val paneExtraPadding = currentWindowAdaptiveInfo1().windowSizeClass.paneHorizontalPadding
         AniListDetailPaneScaffold(
             // 毛玻璃 app chrome 的模糊来源.
             modifier = Modifier
@@ -418,7 +419,7 @@ private fun CacheManagementLayout(
                             .widthIn(max = 1300.dp),
                         state = listState,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = listBottomPadding,
+                        contentPadding = listBottomPadding + PaddingValues(bottom = paneExtraPadding),
                     ) {
                         item("overall_stats") {
                             Surface(
@@ -478,7 +479,7 @@ private fun CacheManagementLayout(
                             .nestedScroll(scrollBehavior.nestedScrollConnection),
                         state = listState,
                         verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = listBottomPadding,
+                        contentPadding = listBottomPadding + PaddingValues(bottom = paneExtraPadding),
                     ) {
                         item("overall_stats") {
                             Surface(
@@ -530,16 +531,14 @@ private fun CacheManagementLayout(
                             .paneWindowInsetsPadding(),
                     )
                 } else {
-                    val itemContentPadding = 16.dp
                     LazyColumn(
                         modifier = Modifier
-                            .paneContentPadding(extraStart = -itemContentPadding, extraEnd = -itemContentPadding)
+                            .paneContentPadding(extraStart = -paneExtraPadding, extraEnd = -paneExtraPadding)
                             .paneWindowInsetsPadding()
                             .fillMaxHeight(),
                         state = detailListState,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = listBottomPadding +
-                                PaddingValues(vertical = currentWindowAdaptiveInfo1().windowSizeClass.paneVerticalPadding),
+                        contentPadding = listBottomPadding + PaddingValues(vertical = paneExtraPadding),
                     ) {
                         val entries = selectedGroup?.entries.orEmpty()
                         if (entries.isEmpty()) {
@@ -566,7 +565,7 @@ private fun CacheManagementLayout(
                                     onPause = { onPause(entry) },
                                     onViewDetail = { onViewDetail(entry) },
                                     onDelete = { onDelete(entry) },
-                                    contentPadding = PaddingValues(itemContentPadding),
+                                    contentPadding = PaddingValues(paneExtraPadding),
                                     transparentBackgroundIfUnselected = true,
                                 )
                             }

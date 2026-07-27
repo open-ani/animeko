@@ -45,6 +45,7 @@ kotlin {
     }
     sourceSets.commonTest.dependencies {
         implementation(libs.kotlinx.coroutines.test)
+        implementation(projects.utils.uiTesting)
     }
     sourceSets.androidMain.dependencies {
         implementation(libs.androidx.appcompat)
