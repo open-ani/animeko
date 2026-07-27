@@ -15,9 +15,11 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
@@ -42,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -75,6 +78,7 @@ import me.him188.ani.app.ui.lang.settings_network_proxy_save_and_test
 import me.him188.ani.app.ui.lang.settings_network_proxy_service_collection
 import me.him188.ani.app.ui.lang.settings_network_proxy_service_comment
 import me.him188.ani.app.ui.lang.settings_network_proxy_service_danmaku
+import me.him188.ani.app.ui.lang.settings_network_proxy_service_tmdb
 import me.him188.ani.app.ui.lang.settings_network_proxy_system
 import me.him188.ani.app.ui.lang.settings_network_proxy_test_failed
 import me.him188.ani.app.ui.lang.settings_network_proxy_test_success
@@ -87,6 +91,8 @@ import me.him188.ani.app.ui.settings.framework.components.TextItem
 import me.him188.ani.utils.ktor.ClientProxyConfigValidator
 import me.him188.ani.utils.platform.isAndroid
 import org.jetbrains.compose.resources.stringResource
+import kotlin.time.Duration
+import kotlin.time.DurationUnit
 
 @Composable
 fun SettingsScope.ConfigureProxyGroup(
@@ -197,6 +203,7 @@ private fun renderTestCaseName(case: ProxyTestCase): String {
         ProxyTestCaseEnums.ANI -> "Animeko"
         ProxyTestCaseEnums.BANGUMI -> "Bangumi"
         ProxyTestCaseEnums.BANGUMI_NEXT -> "Bangumi"
+        ProxyTestCaseEnums.TMDB -> "TMDB"
     }
 }
 
@@ -206,6 +213,7 @@ private fun renderTestCaseDescription(case: ProxyTestCase): String {
         ProxyTestCaseEnums.ANI -> stringResource(Lang.settings_network_proxy_service_danmaku)
         ProxyTestCaseEnums.BANGUMI -> stringResource(Lang.settings_network_proxy_service_collection)
         ProxyTestCaseEnums.BANGUMI_NEXT -> stringResource(Lang.settings_network_proxy_service_comment)
+        ProxyTestCaseEnums.TMDB -> stringResource(Lang.settings_network_proxy_service_tmdb)
     }
 }
 
@@ -225,7 +233,23 @@ private fun SettingsScope.ProxyTestItemView(
                 contentDescription = renderTestCaseDescription(item.case),
             )
         },
-        action = { ProxyTestStatusIcon(item.state) },
+        action = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // 成功时把耗时显示出来: 打勾只说明"通", 用户还需要区分"通得很快"和"通但要等
+                // 好几秒" —— 后者才是详情页背景图迟迟不出来 (或干脆超时) 的原因
+                item.duration?.let {
+                    Text(
+                        it.toString(DurationUnit.SECONDS, 2),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+                ProxyTestStatusIcon(item.state)
+            }
+        },
     )
 }
 
@@ -427,6 +451,8 @@ enum class ProxyTestCaseState {
 class ProxyTestItem(
     val case: ProxyTestCase,
     val state: ProxyTestCaseState,
+    /** 测试成功的耗时; 其余状态为 null. */
+    val duration: Duration? = null,
 )
 
 @Immutable

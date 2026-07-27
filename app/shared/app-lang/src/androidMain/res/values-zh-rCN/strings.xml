@@ -652,6 +652,7 @@
     <string name="settings_network_proxy_service_danmaku">弹幕服务</string>
     <string name="settings_network_proxy_service_collection">收藏数据服务</string>
     <string name="settings_network_proxy_service_comment">评论服务</string>
+    <string name="settings_network_proxy_service_tmdb">背景图与剧照服务</string>
     <string name="settings_network_proxy_test_success">连接成功</string>
     <string name="settings_network_proxy_test_failed">连接失败</string>
     <string name="settings_network_proxy_current_disabled">未启用代理</string>
