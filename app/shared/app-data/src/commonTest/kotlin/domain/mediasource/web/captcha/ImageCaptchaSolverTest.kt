@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.runTest
+import me.him188.ani.app.domain.mediasource.web.BlockReason
 import me.him188.ani.app.domain.mediasource.web.LoadedPage
 import me.him188.ani.app.domain.mediasource.web.PageEvaluator
 import me.him188.ani.app.domain.mediasource.web.PageExpectation
@@ -49,6 +50,18 @@ class ImageCaptchaSolverTest {
         assertEquals(false, isValidImageCaptchaAnswer("123"))
         assertEquals(false, isValidImageCaptchaAnswer("12345"))
         assertEquals(false, isValidImageCaptchaAnswer("12a4"))
+    }
+
+    @Test
+    fun `MacCMS solver accepts unknown captcha for Cycani`() {
+        val solver = MacCmsImageCaptchaSolver(ImageCaptchaRecognizer { "1234" })
+
+        assertTrue(
+            solver.canAttempt(
+                BlockReason.Captcha(WebCaptchaKind.Unknown),
+                host = "cycani.org",
+            ),
+        )
     }
 
     @Test

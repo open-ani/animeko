@@ -233,6 +233,17 @@ class WebSessionManagerTest {
         assertEquals(0, fixture.factory.createCount)
     }
 
+    @Test
+    fun `featureless 403 from selector page yields unknown captcha`() = runTestExt {
+        val fixture = Fixture(this) { _ -> "Forbidden" to HttpStatusCode.Forbidden }
+
+        val verdict = fixture.manager.fetchPage(searchUrl, expectation)
+
+        val blocked = assertIs<PageVerdict.Blocked>(verdict)
+        assertEquals(BlockReason.Captcha(WebCaptchaKind.Unknown), blocked.reason)
+        assertEquals(0, fixture.factory.createCount)
+    }
+
     // 关键用例 2: interactive solve 必定弹框 (无陈旧缓存路径); 成功后 cookie 与 UA 同步
     @Test
     fun `interactive solve always presents dialog and syncs identity on success`() = runTestExt {
