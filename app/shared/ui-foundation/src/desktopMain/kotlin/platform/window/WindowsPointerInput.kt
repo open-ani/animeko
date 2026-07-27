@@ -29,6 +29,13 @@ internal const val WM_POINTERDOWN: Int = 0x0246
 internal const val WM_POINTERUP: Int = 0x0247
 internal const val WM_POINTERCAPTURECHANGED: Int = 0x024C
 
+// Touches that hit-test into the non-client area (our Compose-drawn caption buttons report
+// HTMINBUTTON/HTMAXBUTTON/HTCLOSE) are delivered as WM_NCPOINTER* instead of WM_POINTER*.
+// They carry the same pointer id and screen coordinates, so they are injected identically.
+internal const val WM_NCPOINTERUPDATE: Int = 0x0241
+internal const val WM_NCPOINTERDOWN: Int = 0x0242
+internal const val WM_NCPOINTERUP: Int = 0x0243
+
 internal const val POINTER_FLAG_INCONTACT: Int = 0x00000004
 internal const val POINTER_FLAG_CANCELED: Int = 0x00008000
 
@@ -336,6 +343,13 @@ internal class POINTER_INFO : Structure() {
     )
 }
 
+/**
+ * Bridges native Win32 pointer messages into [WindowsTouchEvent]s owned by a single sequence state
+ * machine.
+ *
+ * Instances are confined to the wndproc thread of their owning hook; a single [POINTER_INFO] is
+ * reused across messages to keep the hot path allocation-free.
+ */
 internal class WindowsPointerInputHandler(
     private val readPointerInfo: (pointerId: Int, pointerInfo: POINTER_INFO) -> Boolean,
     private val dispatch: (WindowsTouchEvent) -> Unit,
@@ -346,13 +360,19 @@ internal class WindowsPointerInputHandler(
     private var closed = false
     private var disabled = false
 
+    // Reused across messages; safe because the handler is confined to one wndproc thread and the
+    // data is copied into WindowsPointerData before dispatch.
+    private val reusedPointerInfo = POINTER_INFO()
+
     fun handleMessage(uMsg: Int, wParam: WPARAM, callbackWindow: HWND? = null): Boolean {
         if (closed || disabled) return false
         if (uMsg == WM_POINTERCAPTURECHANGED) {
             WindowsNativeTouchDebug.logPointerMessage(debugHookName, uMsg, callbackWindow, wParam, null)
         }
 
-        val pointerId = if (uMsg == WM_POINTERDOWN || uMsg == WM_POINTERUPDATE || uMsg == WM_POINTERUP) {
+        val pointerId = if (uMsg == WM_POINTERDOWN || uMsg == WM_POINTERUPDATE || uMsg == WM_POINTERUP ||
+            uMsg == WM_NCPOINTERDOWN || uMsg == WM_NCPOINTERUPDATE || uMsg == WM_NCPOINTERUP
+        ) {
             pointerIdFromWParam(wParam)
         } else {
             null
@@ -366,6 +386,9 @@ internal class WindowsPointerInputHandler(
                 WM_POINTERDOWN,
                 WM_POINTERUPDATE,
                 WM_POINTERUP,
+                WM_NCPOINTERDOWN,
+                WM_NCPOINTERUPDATE,
+                WM_NCPOINTERUP,
                     -> handlePointerMessage(uMsg, wParam, callbackWindow)
 
                 else -> false
@@ -384,7 +407,7 @@ internal class WindowsPointerInputHandler(
 
     private fun handlePointerMessage(uMsg: Int, wParam: WPARAM, callbackWindow: HWND?): Boolean {
         val pointerId = pointerIdFromWParam(wParam)
-        val pointerInfo = POINTER_INFO()
+        val pointerInfo = reusedPointerInfo
         if (!readPointerInfo(pointerId.toInt(), pointerInfo)) {
             WindowsNativeTouchDebug.logPointerMessage(debugHookName, uMsg, callbackWindow, wParam, null)
             return apply(sequence.handleReadFailure(pointerId))
@@ -392,9 +415,9 @@ internal class WindowsPointerInputHandler(
         WindowsNativeTouchDebug.logPointerMessage(debugHookName, uMsg, callbackWindow, wParam, pointerInfo)
 
         val message = when (uMsg) {
-            WM_POINTERDOWN -> WindowsPointerMessage.DOWN
-            WM_POINTERUPDATE -> WindowsPointerMessage.UPDATE
-            WM_POINTERUP -> WindowsPointerMessage.UP
+            WM_POINTERDOWN, WM_NCPOINTERDOWN -> WindowsPointerMessage.DOWN
+            WM_POINTERUPDATE, WM_NCPOINTERUPDATE -> WindowsPointerMessage.UPDATE
+            WM_POINTERUP, WM_NCPOINTERUP -> WindowsPointerMessage.UP
             else -> error("Unsupported pointer message: $uMsg")
         }
         return apply(sequence.handle(message, pointerInfo.toPointerData(pointerId)))
@@ -431,6 +454,9 @@ private fun Int.debugName(): String = when (this) {
     WM_POINTERUPDATE -> "WM_POINTERUPDATE"
     WM_POINTERDOWN -> "WM_POINTERDOWN"
     WM_POINTERUP -> "WM_POINTERUP"
+    WM_NCPOINTERUPDATE -> "WM_NCPOINTERUPDATE"
+    WM_NCPOINTERDOWN -> "WM_NCPOINTERDOWN"
+    WM_NCPOINTERUP -> "WM_NCPOINTERUP"
     WM_POINTERCAPTURECHANGED -> "WM_POINTERCAPTURECHANGED"
     else -> "0x${toString(16)}"
 }
