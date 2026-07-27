@@ -1359,10 +1359,14 @@
     <string name="watch_together_leave">離開</string>
     <string name="watch_together_disband">解散</string>
     <string name="watch_together_disable">關閉</string>
+    <string name="watch_together_more_options">更多選項</string>
+    <string name="watch_together_disable_feature">關閉一起看功能</string>
+    <string name="watch_together_disable_feature_desc">將退出房間並隱藏懸浮球</string>
     <string name="watch_together_collapse">收起</string>
     <string name="watch_together_cancel">取消</string>
     <string name="watch_together_minimize">最小化</string>
     <string name="watch_together_confirm_disband">確定要為所有成員解散此房間嗎？</string>
+    <string name="watch_together_confirm_disable">確定要關閉「一起看」嗎？關閉後可在設定中重新開啟。</string>
     <string name="watch_together_room_closed">房主已解散房間</string>
     <string name="watch_together_session_replaced">此房間已在另一部裝置上開啟。</string>
     <string name="watch_together_rejoined">原房間已過期，已為你重新建立。</string>

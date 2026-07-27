@@ -32,8 +32,10 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Downloading
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.HourglassEmpty
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material.icons.rounded.Visibility
@@ -41,6 +43,8 @@ import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -79,11 +83,14 @@ import me.him188.ani.app.ui.lang.watch_together_cancel
 import me.him188.ani.app.ui.lang.watch_together_chip_following
 import me.him188.ani.app.ui.lang.watch_together_chip_free
 import me.him188.ani.app.ui.lang.watch_together_collapse
+import me.him188.ani.app.ui.lang.watch_together_confirm_disable
 import me.him188.ani.app.ui.lang.watch_together_confirm_disband
 import me.him188.ani.app.ui.lang.watch_together_connection_connected
 import me.him188.ani.app.ui.lang.watch_together_connection_degraded
 import me.him188.ani.app.ui.lang.watch_together_connection_reconnecting
 import me.him188.ani.app.ui.lang.watch_together_disable
+import me.him188.ani.app.ui.lang.watch_together_disable_feature
+import me.him188.ani.app.ui.lang.watch_together_disable_feature_desc
 import me.him188.ani.app.ui.lang.watch_together_disband
 import me.him188.ani.app.ui.lang.watch_together_disconnected
 import me.him188.ani.app.ui.lang.watch_together_episode_label
@@ -115,6 +122,7 @@ import me.him188.ani.app.ui.lang.watch_together_member_watching
 import me.him188.ani.app.ui.lang.watch_together_members_count
 import me.him188.ani.app.ui.lang.watch_together_members_label
 import me.him188.ani.app.ui.lang.watch_together_minimize
+import me.him188.ani.app.ui.lang.watch_together_more_options
 import me.him188.ani.app.ui.lang.watch_together_password
 import me.him188.ani.app.ui.lang.watch_together_room_name
 import me.him188.ani.app.ui.lang.watch_together_show_password
@@ -133,6 +141,8 @@ internal const val WATCH_TOGETHER_ROOM_NAME_TEST_TAG = "watch_together_room_name
 internal const val WATCH_TOGETHER_PASSWORD_TEST_TAG = "watch_together_password"
 internal const val WATCH_TOGETHER_JOIN_TEST_TAG = "watch_together_join"
 internal const val WATCH_TOGETHER_FOLLOW_TEST_TAG = "watch_together_follow"
+internal const val WATCH_TOGETHER_OPTIONS_TEST_TAG = "watch_together_options"
+internal const val WATCH_TOGETHER_DISABLE_TEST_TAG = "watch_together_disable"
 
 @Composable
 internal fun WatchTogetherDialog(
@@ -159,6 +169,7 @@ internal fun WatchTogetherDialogContent(
     var password by rememberSaveable { mutableStateOf("") }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var confirmDisband by remember { mutableStateOf(false) }
+    var confirmDisable by remember { mutableStateOf(false) }
 
     Box(modifier) {
         Surface(
@@ -186,7 +197,7 @@ internal fun WatchTogetherDialogContent(
                             if (state.isSelfHost) confirmDisband = true
                             else onIntent(WatchTogetherIntent.LeaveRoom)
                         },
-                        onDisable = { onIntent(WatchTogetherIntent.DisableFeature) },
+                        onDisable = { confirmDisable = true },
                         onCollapse = onDismissRequest,
                     )
 
@@ -202,7 +213,7 @@ internal fun WatchTogetherDialogContent(
                         onJoin = {
                             onIntent(WatchTogetherIntent.JoinRoom(roomName, password))
                         },
-                        onDisable = { onIntent(WatchTogetherIntent.DisableFeature) },
+                        onDisable = { confirmDisable = true },
                         onDismiss = onDismissRequest,
                     )
                 }
@@ -233,6 +244,79 @@ internal fun WatchTogetherDialogContent(
                 }
             },
         )
+    }
+
+    if (confirmDisable) {
+        AlertDialog(
+            onDismissRequest = { confirmDisable = false },
+            title = { Text(stringResource(Lang.watch_together_disable_feature)) },
+            text = { Text(stringResource(Lang.watch_together_confirm_disable)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmDisable = false
+                        onIntent(WatchTogetherIntent.DisableFeature)
+                    },
+                ) {
+                    Text(
+                        stringResource(Lang.watch_together_disable),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDisable = false }) {
+                    Text(stringResource(Lang.watch_together_cancel))
+                }
+            },
+        )
+    }
+}
+
+/**
+ * The "⋮" overflow menu that hosts the feature-level "turn off Watch Together" action. Kept out of
+ * the bottom action row so it is never mistaken for the benign "collapse"/"minimize" dismiss, and
+ * given the friction (menu + consequence hint) a destructive feature toggle deserves.
+ */
+@Composable
+private fun WatchTogetherOptionsButton(onDisable: () -> Unit, modifier: Modifier = Modifier) {
+    var expanded by remember { mutableStateOf(false) }
+    Box(modifier) {
+        IconButton(
+            onClick = { expanded = true },
+            modifier = Modifier.testTag(WATCH_TOGETHER_OPTIONS_TEST_TAG),
+        ) {
+            Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(Lang.watch_together_more_options))
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                leadingIcon = {
+                    Icon(
+                        Icons.Rounded.PowerSettingsNew,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                },
+                text = {
+                    Column {
+                        Text(
+                            stringResource(Lang.watch_together_disable_feature),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                        Text(
+                            stringResource(Lang.watch_together_disable_feature_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
+                onClick = {
+                    expanded = false
+                    onDisable()
+                },
+                modifier = Modifier.testTag(WATCH_TOGETHER_DISABLE_TEST_TAG),
+            )
+        }
     }
 }
 
@@ -281,25 +365,31 @@ private fun JoinRoomContent(
     onDisable: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(
-            Icons.Rounded.Groups,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.secondary,
-            modifier = Modifier.size(28.dp),
-        )
-        Text(
-            text = stringResource(Lang.watch_together_title),
-            style = MaterialTheme.typography.headlineSmall,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 12.dp),
-        )
-        Text(
-            text = stringResource(Lang.watch_together_join_subtitle),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 4.dp, bottom = 20.dp),
+    Box(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                Icons.Rounded.Groups,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(28.dp),
+            )
+            Text(
+                text = stringResource(Lang.watch_together_title),
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 12.dp),
+            )
+            Text(
+                text = stringResource(Lang.watch_together_join_subtitle),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 4.dp, bottom = 20.dp),
+            )
+        }
+        WatchTogetherOptionsButton(
+            onDisable = onDisable,
+            modifier = Modifier.align(Alignment.TopEnd),
         )
     }
     OutlinedTextField(
@@ -376,12 +466,8 @@ private fun JoinRoomContent(
     }
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
     ) {
-        TextButton(onClick = onDisable) {
-            Text(stringResource(Lang.watch_together_disable), color = MaterialTheme.colorScheme.error)
-        }
         TextButton(onClick = onDismiss) {
             Text(stringResource(Lang.watch_together_minimize))
         }
@@ -425,6 +511,7 @@ private fun RoomContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        WatchTogetherOptionsButton(onDisable = onDisable, modifier = Modifier.padding(start = 2.dp))
     }
 
     if (room.playback != null) {
@@ -484,9 +571,6 @@ private fun RoomContent(
                 ),
                 color = MaterialTheme.colorScheme.error,
             )
-        }
-        TextButton(onClick = onDisable) {
-            Text(stringResource(Lang.watch_together_disable), color = MaterialTheme.colorScheme.error)
         }
         TextButton(onClick = onCollapse) {
             Text(stringResource(Lang.watch_together_collapse))
