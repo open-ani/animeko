@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ProxyMode
+import me.him188.ani.app.data.network.TmdbImageService
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.session.SessionManager
@@ -115,11 +116,14 @@ class OnboardingViewModel : AbstractSettingsViewModel(), KoinComponent {
 
     // region ConfigureProxy
     private val clientProvider: HttpClientProvider by inject()
+    private val tmdbImageService: TmdbImageService by inject()
     private val proxyProvider = ProxySettingsFlowProxyProvider(proxySettings.flow, backgroundScope)
 
     private val proxyTester = ProxyTester(
         clientProvider = clientProvider,
         flowScope = backgroundScope,
+        tmdbImageService = tmdbImageService,
+        // 引导页只探 Ani 服务器, TMDB 那条不参与 (未登录时详情页还没进得去)
         serviceIds = setOf(ServiceConnectionTesters.ID_ANI),
     )
 
@@ -288,6 +292,7 @@ private fun Map<String, ServiceConnectionTester.TestState>.toUIState(): List<Pro
                 ServiceConnectionTesters.ID_ANI -> ProxyTestCase.AniDanmakuApi
                 ServiceConnectionTesters.ID_BANGUMI -> ProxyTestCase.BangumiApi
                 ServiceConnectionTesters.ID_BANGUMI_NEXT -> ProxyTestCase.BangumiNextApi
+                ServiceConnectionTesters.ID_TMDB -> ProxyTestCase.TmdbApi
                 else -> return@forEach
             }
             val result = when (state) {
@@ -297,7 +302,7 @@ private fun Map<String, ServiceConnectionTester.TestState>.toUIState(): List<Pro
                 is ServiceConnectionTester.TestState.Failed -> ProxyTestCaseState.FAILED
                 is ServiceConnectionTester.TestState.Error -> ProxyTestCaseState.FAILED // todo
             }
-            add(ProxyTestItem(case, result))
+            add(ProxyTestItem(case, result, (state as? ServiceConnectionTester.TestState.Success)?.time))
         }
     }
 }

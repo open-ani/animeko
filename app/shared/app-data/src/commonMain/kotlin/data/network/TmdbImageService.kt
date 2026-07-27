@@ -10,12 +10,15 @@
 package me.him188.ani.app.data.network
 
 import androidx.datastore.core.DataStore
+import io.ktor.client.plugins.expectSuccess
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
+import io.ktor.client.request.head
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -72,6 +75,46 @@ class TmdbImageService(
         timeout {
             connectTimeoutMillis = 5_000
             requestTimeoutMillis = 20_000
+        }
+    }
+
+    /**
+     * 代理设置页的连通性探测.
+     *
+     * 接口和图片本体是两个域名 (`api.themoviedb.org` / `image.tmdb.org`), 在墙内各自独立
+     * 被墙 —— 只探一个会漏判 (常见情况是接口通、图片超时, 表现为详情页背景一直空着),
+     * 所以两个都通才算通.
+     *
+     * 未配置 `ani.tmdb.api.token` 时直接算失败: 那种情况下整个功能本来就是关的
+     * ([getBackdropUrl] 直接返回 null), 报"通"只会让人以为图马上就要出来了.
+     */
+    suspend fun testConnection(): Boolean = withContext(ioDispatcher) {
+        val token = currentAniBuildConfig.tmdbApiToken
+        if (token.isBlank()) return@withContext false
+        try {
+            // /configuration 是最轻的鉴权端点, 顺带验证 token 有效 (token 不对是 401)
+            val apiOk = client.use {
+                get("$API_BASE_URL/configuration") {
+                    bearerAuth(token)
+                    shortConnectTimeout()
+                    expectSuccess = false
+                }.status.isSuccess()
+            }
+            if (!apiOk) return@withContext false
+            // 图片 CDN 只看能否拿到 HTTP 响应, 不看状态码: 裸目录本身就会返回 4xx,
+            // 那不代表被墙; 被墙的表现是连不上或超时, 会抛到下面的 catch
+            client.use {
+                head(IMAGE_BASE_URL) {
+                    shortConnectTimeout()
+                    expectSuccess = false
+                }
+            }
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.warn(e) { "TMDB connection test failed" }
+            false
         }
     }
 
