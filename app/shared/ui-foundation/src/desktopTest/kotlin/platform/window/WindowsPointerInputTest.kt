@@ -217,6 +217,39 @@ class WindowsPointerInputTest {
         assertFalse(handler.handleMessage(WM_POINTERUP, WPARAM(1)))
     }
 
+    ///////////////////////////////////////////////////////////////////////////
+    // 非客户区消息 (Compose 自绘的标题栏按钮)
+    ///////////////////////////////////////////////////////////////////////////
+
+    @Test
+    fun `non-client pointer lifecycle`() {
+        val dispatched = mutableListOf<WindowsTouchEvent>()
+        val handler = touchHandler(dispatch = { dispatched += it })
+
+        assertTrue(handler.handleMessage(WM_NCPOINTERDOWN, WPARAM(1)))
+        assertTrue(handler.handleMessage(WM_NCPOINTERUPDATE, WPARAM(1)))
+        assertTrue(handler.handleMessage(WM_NCPOINTERUP, WPARAM(1)))
+
+        assertEquals(
+            listOf(WindowsTouchEventType.PRESS, WindowsTouchEventType.MOVE, WindowsTouchEventType.RELEASE),
+            dispatched.map { it.type },
+        )
+    }
+
+    private fun touchHandler(
+        dispatch: (WindowsTouchEvent) -> Unit = {},
+        cancel: () -> Unit = {},
+    ) = WindowsPointerInputHandler(
+        readPointerInfo = { _, info ->
+            info.pointerType = PT_TOUCH
+            info.pointerFlags = POINTER_FLAG_INCONTACT
+            info.ptPixelLocation = POINT(30, 30)
+            true
+        },
+        dispatch = dispatch,
+        cancel = cancel,
+    )
+
     private fun pointer(
         id: Long,
         x: Int,
