@@ -664,8 +664,6 @@ fun getVerifyJobBody(
             step = "Check that MediaMP FFmpeg can run",
             enabledOnlyOn = listOf(Runner.GithubWindows11Arm64),
         ),
-        // Windows ARM64 relies on an external SQLite patch (AndroidX does not ship Windows ARM64 natives),
-        // so verify that the patched bundled SQLite loads correctly.
         VerifyTask(
             name = "dandanplay-app-id",
             step = "Check that Dandanplay APP ID is valid",
@@ -678,10 +676,14 @@ fun getVerifyJobBody(
             `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
             disabledOn = listOf(Runner.GithubWindows11Arm64),
         ),
+        // Windows ARM64 relies on an external SQLite patch (AndroidX does not ship Windows ARM64
+        // natives). On Linux this additionally asserts that the process holds exactly one
+        // libsqliteJni image — the invariant behind #3188 and #3213, both of which crashed the
+        // shipped AppImage after the driver had loaded successfully.
         VerifyTask(
             name = "sqlite-bundled-load-test",
             step = "Check that bundled SQLite can be loaded",
-            enabledOnlyOn = listOf(Runner.GithubWindows11Arm64),
+            enabledOnlyOn = listOf(Runner.GithubWindows11Arm64, Runner.GithubUbuntu2404),
         ),
     ).filter { task ->
         // Filter task that should execute on this runner.
