@@ -42,6 +42,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -122,7 +123,6 @@ import me.him188.ani.app.videoplayer.ui.gesture.LockableVideoGestureHost
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.ScreenshotButton
 import me.him188.ani.app.videoplayer.ui.gesture.SwipeSeekerConfig
-import me.him188.ani.app.videoplayer.ui.gesture.isInCancelArea
 import me.him188.ani.app.videoplayer.ui.gesture.mouseFamily
 import me.him188.ani.app.videoplayer.ui.gesture.rememberGestureIndicatorState
 import me.him188.ani.app.videoplayer.ui.gesture.rememberSwipeSeekerState
@@ -234,6 +234,7 @@ internal fun EpisodeVideoImpl(
         }
     }
     val indicatorState = rememberGestureIndicatorState()
+    val swipeSeekerConfig = SwipeSeekerConfig.Default
     // 桌面设备可能同时支持鼠标和触摸；当前 GestureFamily 不能按单次输入来源分流，
     // 因此桌面端仍使用 MOUSE 分支。后续实现来源级分流时再支持桌面触摸手势。
     // TODO: 根据触控能力与平台特性建立设备抽象，并据此选择手势策略。
@@ -241,6 +242,7 @@ internal fun EpisodeVideoImpl(
         enabled = gestureFamily == GestureFamily.TOUCH,
         controllerState = playerControllerState,
         indicatorState = indicatorState,
+        swipeSeekerConfig = swipeSeekerConfig,
     )
 
     AniTheme(darkModeOverride = DarkMode.DARK) {
@@ -317,7 +319,10 @@ internal fun EpisodeVideoImpl(
                 }
             },
             gestureHost = {
-                val swipeSeekerState = rememberSwipeSeekerState(constraints.maxWidth) {
+                val swipeSeekerState = rememberSwipeSeekerState(
+                    constraints.maxWidth,
+                    swipeSeekerConfig,
+                ) {
                     playerState.skip(it * 1000L)
                 }
                 val videoPropertiesState by playerState.mediaProperties.collectAsState(null)
@@ -396,7 +401,6 @@ internal fun EpisodeVideoImpl(
                     }
                 }
             },
-            touchSeekState = touchSeekState,
             framePreviewOverlay = {
                 if (!expanded) {
                     ProgressSliderCenteredPreviewFrame(
@@ -532,18 +536,20 @@ internal fun EpisodeVideoImpl(
 
 /**
  * 将进度条的通用触摸状态机接入播放器 UI：拖动期间保留 inline progress slider，
- * 手指进入取消区域时持续显示取消提示。非触屏分支返回 `null`，不改变原有交互。
+ * 手指向上滑过取消阈值时持续显示取消提示。非触屏分支返回 `null`，不改变原有交互。
  */
 @Composable
 private fun rememberPlayerTouchSeekState(
     enabled: Boolean,
     controllerState: PlayerControllerState,
     indicatorState: GestureIndicatorState,
+    swipeSeekerConfig: SwipeSeekerConfig,
 ): TouchSeekState? {
     if (!enabled) return null
 
-    return remember(controllerState, indicatorState) {
-        // requester 和 indicator ticket 跨状态迁移保持不变，确保每次请求都由同一实例撤销。
+    val density = LocalDensity.current
+    return remember(controllerState, indicatorState, swipeSeekerConfig, density) {
+        // 同一 TouchSeekState 生命周期内，每次请求都由固定 requester 和 indicator ticket 撤销。
         val controllerRequester = Any()
         var indicatorTicket: Int? = null
         fun stopCancellationIndicator() {
@@ -551,7 +557,8 @@ private fun rememberPlayerTouchSeekState(
             indicatorTicket = null
         }
         TouchSeekState(
-            isInCancelArea = SwipeSeekerConfig.Default::isInCancelArea,
+            swipeSeekerConfig = swipeSeekerConfig,
+            density = density,
             onStateChanged = { state ->
                 when (state) {
                     // 手势结束：恢复控制器的正常显隐，并关闭可能存在的取消提示。

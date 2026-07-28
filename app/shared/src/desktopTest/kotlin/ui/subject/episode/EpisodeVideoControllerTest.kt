@@ -112,6 +112,7 @@ import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.test.TestMediampPlayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -1284,6 +1285,67 @@ class EpisodeVideoControllerTest {
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { detachedProgressSlider.doesNotExist() }
             assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
         }
+    }
+
+    @Test
+    fun `touch - swipeToSeek cancellation updates the hint and preview`() = runAniComposeUiTest {
+        setContent {
+            Player(GestureFamily.TOUCH)
+        }
+        waitForIdle()
+        val cancelHint = onNodeWithText("Release to cancel")
+
+        videoGestureHost.performTouchInput {
+            val start = Offset(width * 0.2f, height * 0.8f)
+            down(start)
+            moveTo(Offset(width * 0.8f, start.y))
+        }
+        runOnIdle {
+            assertTrue(progressSliderState.isPreviewing)
+            cancelHint.assertDoesNotExist()
+        }
+
+        videoGestureHost.performTouchInput {
+            moveTo(Offset(width * 0.8f, height * 0.1f))
+        }
+        runOnIdle {
+            cancelHint.assertExists()
+            assertFalse(progressSliderState.isPreviewing)
+        }
+
+        videoGestureHost.performTouchInput {
+            moveTo(Offset(width * 0.8f, height * 0.75f))
+        }
+        runOnIdle {
+            cancelHint.assertDoesNotExist()
+            assertTrue(progressSliderState.isPreviewing)
+        }
+
+        videoGestureHost.performTouchInput {
+            moveTo(Offset(width * 0.8f, height * 0.1f))
+        }
+        runOnIdle {
+            cancelHint.assertExists()
+            assertFalse(progressSliderState.isPreviewing)
+        }
+
+        mainClock.autoAdvance = false
+        videoGestureHost.performTouchInput {
+            up()
+        }
+
+        mainClock.advanceTimeBy(100L)
+        runOnIdle {
+            cancelHint.assertExists()
+        }
+
+        mainClock.advanceTimeBy(500L)
+        runOnIdle {
+            cancelHint.assertDoesNotExist()
+            assertFalse(progressSliderState.isPreviewing)
+            assertEquals(0L, currentPositionMillis)
+        }
+        mainClock.autoAdvance = true
     }
 
     /**

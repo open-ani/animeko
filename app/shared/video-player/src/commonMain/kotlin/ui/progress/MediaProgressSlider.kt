@@ -52,6 +52,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -60,14 +61,13 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
@@ -87,6 +87,8 @@ import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.weaken
+import me.him188.ani.app.videoplayer.ui.gesture.SwipeSeekerConfig
+import me.him188.ani.app.videoplayer.ui.gesture.isVerticalDragCancelled
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.chapters
 import org.openani.mediamp.metadata.Chapter
@@ -269,19 +271,23 @@ class MediaProgressSliderColors(
  * 状态只按以下路径迁移:
  * ```
  * Idle --start--> Seeking
- * Seeking --move into cancel area--> Cancelling
- * Cancelling --move out--> Seeking
+ * Seeking --move upward past threshold--> Cancelling
+ * Cancelling --move back within threshold--> Seeking
  * Seeking / Cancelling --stop--> Idle
  * ```
- * [move] 根据手指是否位于取消区域，在 [State.Seeking] 和 [State.Cancelling] 之间切换；
+ * [move] 根据手指相对按下点的上滑距离，在 [State.Seeking] 和 [State.Cancelling] 之间切换；
  * [stop] 返回松手时是否处于取消状态，供进度条决定提交或放弃 seek.
  * [onStateChanged] 只在状态实际变化时调用，控制器显隐和取消提示统一在这里响应.
  */
 @Stable
 class TouchSeekState(
-    val isInCancelArea: (position: Offset, containerSize: IntSize) -> Boolean,
+    swipeSeekerConfig: SwipeSeekerConfig,
+    density: Density,
     val onStateChanged: (State) -> Unit,
 ) {
+    private val cancelVerticalDragDistancePx =
+        with(density) { swipeSeekerConfig.cancelVerticalDragDistance.toPx() }
+
     enum class State {
         Idle,
         Seeking,
@@ -291,17 +297,23 @@ class TouchSeekState(
     var state: State = State.Idle
         private set
 
-    internal var containerCoordinates: LayoutCoordinates? = null
+    private var dragStartY: Float = Float.NaN
+
+    internal fun onPointerDown(position: Offset) {
+        if (state == State.Idle && position.isSpecified) {
+            dragStartY = position.y
+        }
+    }
 
     internal fun start() {
         transitionTo(State.Seeking)
     }
 
-    internal fun move(sliderCoordinates: LayoutCoordinates, position: Offset): Boolean {
-        val containerCoordinates = containerCoordinates ?: return false
-        val cancelling = isInCancelArea(
-            containerCoordinates.localPositionOf(sliderCoordinates, position),
-            containerCoordinates.size,
+    internal fun move(position: Offset): Boolean {
+        val cancelling = isVerticalDragCancelled(
+            dragStartY,
+            position,
+            cancelVerticalDragDistancePx,
         )
         return transitionTo(if (cancelling) State.Cancelling else State.Seeking)
     }
@@ -309,6 +321,7 @@ class TouchSeekState(
     internal fun stop(): Boolean {
         val cancelled = state == State.Cancelling
         transitionTo(State.Idle)
+        dragStartY = Float.NaN
         return cancelled
     }
 
@@ -453,7 +466,6 @@ fun MediaProgressSlider(
         var mousePosX by rememberSaveable { mutableStateOf(0f) }
         var thumbWidth by rememberSaveable { mutableIntStateOf(0) }
         var sliderWidth by rememberSaveable { mutableIntStateOf(0) }
-        var sliderCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
         var latestTouchPreviewRatio by remember { mutableFloatStateOf(Float.NaN) }
         var handlingTouchInput by remember { mutableStateOf(false) }
 
@@ -628,9 +640,6 @@ fun MediaProgressSlider(
             },
             enabled = enabled,
             modifier = Modifier.fillMaxWidth().height(24.dp)
-                .onGloballyPositioned {
-                    sliderCoordinates = it
-                }
                 .onSizeChanged {
                     sliderWidth = it.width
                 }
@@ -639,7 +648,10 @@ fun MediaProgressSlider(
                     PointerEventType.Press,
                     pass = PointerEventPass.Initial,
                 ) { event ->
-                    handlingTouchInput = event.changes.firstOrNull()?.type == PointerType.Touch
+                    val touchChange = event.changes.firstOrNull()
+                        ?.takeIf { it.type == PointerType.Touch }
+                    handlingTouchInput = touchChange != null
+                    touchChange?.let { touchSeekState?.onPointerDown(it.position) }
                 }
                 .onPointerEventMultiplatform(
                     PointerEventType.Move,
@@ -652,8 +664,7 @@ fun MediaProgressSlider(
                     if (!handlingTouchInput || touchSeekState.state == TouchSeekState.State.Idle) {
                         return@onPointerEventMultiplatform
                     }
-                    val coordinates = sliderCoordinates ?: return@onPointerEventMultiplatform
-                    if (!touchSeekState.move(coordinates, change.position)) {
+                    if (!touchSeekState.move(change.position)) {
                         return@onPointerEventMultiplatform
                     }
 

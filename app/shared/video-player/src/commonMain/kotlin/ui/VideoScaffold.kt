@@ -45,7 +45,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
@@ -54,7 +53,6 @@ import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.gesture.PlayerGestureHost
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerBar
-import me.him188.ani.app.videoplayer.ui.progress.TouchSeekState
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 
 /**
@@ -105,7 +103,6 @@ fun VideoScaffold(
     centerOverlay: @Composable BoxScope.() -> Unit = {},
     framePreviewOverlay: @Composable BoxScope.() -> Unit = {},
     playerStatsOverlay: @Composable BoxScope.() -> Unit = {},
-    touchSeekState: TouchSeekState? = null,
 ) {
     val inlineSliderOnly = controllerState.visibility == ControllerVisibility.InlineSliderOnly
     val controllerVisibility = controllerState.visibility
@@ -120,9 +117,6 @@ fun VideoScaffold(
     ) { // 16:9 box
         Box(
             Modifier
-                .onGloballyPositioned {
-                    touchSeekState?.containerCoordinates = it
-                }
                 .then(
                     if (!maintainAspectRatio) {
                         Modifier.fillMaxSize()
