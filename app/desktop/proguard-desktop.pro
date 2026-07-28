@@ -132,6 +132,16 @@
 -keep class com.jthemedetecor.** { *; } #1404 OsThemeDetector
 -keep class oshi.** { *; } #1404 OsThemeDetector
 
+# ComposeSceneTouchBridge ProGuard rules
+# 原生 Windows 触摸桥接通过反射解析 CMP 内部结构. 这里 obfuscate 是关的, 但 optimize 会内联并删除
+# 这些访问器: 6.0.0-beta02 里 ComposeSceneMediator.getSceneBoundsInPx() 已经被内联掉, 桥接构建失败后
+# 静默退回 AWT 鼠标路径, 触摸被合成为鼠标事件而不跟手.
+-keep class androidx.compose.ui.awt.ComposeWindow { *; }
+-keep class androidx.compose.ui.awt.ComposePanel { *; }
+-keep class androidx.compose.ui.scene.ComposeContainer { *; }
+-keep class androidx.compose.ui.scene.ComposeSceneMediator { *; }
+-keep interface androidx.compose.ui.scene.ComposeScene { *; }
+
 # LayoutHitTestOwner ProGuard rules
 # 保持被反射调用的类
 -keep class androidx.compose.foundation.HoverableNode { *; }
