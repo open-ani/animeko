@@ -91,6 +91,12 @@ kotlin {
     sourceSets.desktopMain {
         dependencies {
             implementation(libs.onnxruntime)
+            // 判断的是构建主机, 所以 Windows ARM64 包必须在 ARM64 机器上原生构建, 无法从 x64 交叉打包.
+            if (getOs() == Os.Windows && getArch() == Arch.AARCH64) {
+                // AndroidX sqlite-bundled-jvm 没有 Windows ARM64 native 库, 这里补上本机编译的 sqliteJni.dll.
+                // 详见 ci-helper/sqlite-woa64/build.gradle.kts 的头注释
+                runtimeOnly(projects.ciHelper.sqliteWoa64)
+            }
         }
     }
     sourceSets.desktopTest {
