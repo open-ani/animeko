@@ -18,9 +18,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -44,6 +47,7 @@ import me.him188.ani.app.ui.lang.subject_details_air_date
 import me.him188.ani.app.ui.lang.subject_details_air_date_format
 import me.him188.ani.app.ui.lang.subject_details_aliases
 import me.him188.ani.app.ui.lang.subject_details_info
+import me.him188.ani.app.ui.lang.subject_details_manage_cache
 import me.him188.ani.app.ui.lang.subject_details_show_less
 import me.him188.ani.app.ui.lang.subject_details_show_more
 import me.him188.ani.app.ui.lang.subject_details_total_episodes
@@ -102,6 +106,37 @@ fun SectionHeaderActionButton(
             contentDescription = null,
             Modifier.size(18.dp),
         )
+    }
+}
+
+/**
+ * 选集区块标题行的 "↓ 缓存管理" 入口 (对齐 Figma `SectionHeader + Actions` 的缓存管理入口).
+ *
+ * [showLabel] 为 false 时只显示图标: 手机与窄双栏的 header 放不下文字标签 (会挤压标题).
+ */
+@Composable
+fun SectionHeaderCacheButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    showLabel: Boolean = true,
+) {
+    if (showLabel) {
+        TextButton(onClick, modifier) {
+            Icon(
+                Icons.Rounded.Download,
+                contentDescription = null,
+                Modifier.size(18.dp),
+            )
+            Text(stringResource(Lang.subject_details_manage_cache), Modifier.padding(start = 4.dp))
+        }
+    } else {
+        IconButton(onClick, modifier) {
+            Icon(
+                Icons.Rounded.Download,
+                contentDescription = stringResource(Lang.subject_details_manage_cache),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
     }
 }
 

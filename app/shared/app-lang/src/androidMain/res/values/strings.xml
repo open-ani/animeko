@@ -927,6 +927,7 @@
     <string name="subject_details_show_more">Show more</string>
     <string name="subject_details_view_all">View all</string>
     <string name="subject_details_episodes">Episodes</string>
+    <string name="subject_details_manage_cache">Manage cache</string>
     <string name="subject_details_rating">Rating</string>
     <string name="subject_details_hot_reviews">Popular reviews</string>
     <string name="subject_details_info">Information</string>

@@ -932,6 +932,7 @@
     <string name="subject_details_show_more">顯示更多</string>
     <string name="subject_details_view_all">查看全部</string>
     <string name="subject_details_episodes">選集</string>
+    <string name="subject_details_manage_cache">緩存管理</string>
     <string name="subject_details_rating">評分</string>
     <string name="subject_details_hot_reviews">熱門評價</string>
     <string name="subject_details_info">作品資訊</string>

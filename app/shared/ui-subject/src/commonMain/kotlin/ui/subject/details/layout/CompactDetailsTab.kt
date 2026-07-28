@@ -49,6 +49,7 @@ import me.him188.ani.app.ui.subject.details.sections.CharactersSection
 import me.him188.ani.app.ui.subject.details.sections.EpisodesRow
 import me.him188.ani.app.ui.subject.details.sections.SectionHeader
 import me.him188.ani.app.ui.subject.details.sections.SectionHeaderActionButton
+import me.him188.ani.app.ui.subject.details.sections.SectionHeaderCacheButton
 import me.him188.ani.app.ui.subject.details.sections.StaffSection
 import me.him188.ani.app.ui.subject.details.sections.SubjectInfoTable
 import me.him188.ani.app.ui.subject.details.sections.SubjectSummarySection
@@ -70,6 +71,7 @@ internal fun CompactDetailsTabContent(
     onPlay: (episodeId: Int) -> Unit,
     onClickTag: (Tag) -> Unit,
     onShowEpisodeList: () -> Unit,
+    onClickCache: () -> Unit,
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
     contentPadding: PaddingValues = PaddingValues(0.dp),
@@ -106,6 +108,7 @@ internal fun CompactDetailsTabContent(
                         stringResource(Lang.subject_details_episodes),
                         horizontalPaddingModifier,
                     ) {
+                        SectionHeaderCacheButton(onClickCache, showLabel = false)
                         SectionHeaderActionButton(onShowEpisodeList) {
                             AiringLabel(
                                 state.airingLabelState,
