@@ -20,6 +20,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.materialkolor.PaletteStyle
@@ -34,26 +35,32 @@ actual fun appColorScheme(
     useBlackBackground: Boolean,
     isDark: Boolean,
 ): ColorScheme {
+    // 见 AppTheme.desktop.kt.
     return if (useDynamicTheme && isPlatformSupportDynamicTheme()) {
+        val context = LocalContext.current
         if (isDark) {
-            modifyColorSchemeForBlackBackground(
-                colorScheme = dynamicDarkColorScheme(LocalContext.current),
-                isDark = true,
-                useBlackBackground = useBlackBackground,
-            )
+            remember(context, useBlackBackground) {
+                modifyColorSchemeForBlackBackground(
+                    colorScheme = dynamicDarkColorScheme(context),
+                    isDark = true,
+                    useBlackBackground = useBlackBackground,
+                )
+            }
         } else {
-            dynamicLightColorScheme(LocalContext.current)
+            remember(context) { dynamicLightColorScheme(context) }
         }
     } else {
-        dynamicColorScheme(
-            primary = seedColor,
-            isDark = isDark,
-            isAmoled = useBlackBackground,
-            style = PaletteStyle.TonalSpot,
-            modifyColorScheme = { colorScheme ->
-                modifyColorSchemeForBlackBackground(colorScheme, isDark, useBlackBackground)
-            },
-        )
+        remember(seedColor, isDark, useBlackBackground) {
+            dynamicColorScheme(
+                primary = seedColor,
+                isDark = isDark,
+                isAmoled = useBlackBackground,
+                style = PaletteStyle.TonalSpot,
+                modifyColorScheme = { colorScheme ->
+                    modifyColorSchemeForBlackBackground(colorScheme, isDark, useBlackBackground)
+                },
+            )
+        }
     }
 }
 

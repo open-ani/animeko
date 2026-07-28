@@ -26,12 +26,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
+import me.him188.ani.app.ui.foundation.theme.LocalDarkOnSurface
 import me.him188.ani.app.ui.foundation.theme.appColorScheme
 
 @Stable
@@ -132,9 +134,14 @@ object CarouselItemDefaults {
         @Composable
         get() = MaterialTheme.shapes.extraLarge
 
+    /**
+     * 文字盖在 [carouselBrush] 的深色遮罩上, 恒定取深色配色的前景色, 与当前明暗无关.
+     */
     @Composable
-    fun colors(): CarouselItemColors = appColorScheme(isDark = true).run {
-        CarouselItemColors(
+    fun colors(): CarouselItemColors {
+        val provided = LocalDarkOnSurface.current
+        val onSurface = if (provided.isSpecified) provided else appColorScheme(isDark = true).onSurface
+        return CarouselItemColors(
             titleColor = onSurface,
             supportingTextColor = onSurface,
         )

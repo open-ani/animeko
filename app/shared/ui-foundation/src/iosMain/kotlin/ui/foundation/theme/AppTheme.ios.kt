@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.foundation.theme
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamicColorScheme
@@ -22,15 +23,18 @@ actual fun appColorScheme(
     useBlackBackground: Boolean,
     isDark: Boolean,
 ): ColorScheme {
-    return dynamicColorScheme(
-        primary = seedColor,
-        isDark = isDark,
-        isAmoled = useBlackBackground,
-        style = PaletteStyle.TonalSpot,
-        modifyColorScheme = { colorScheme ->
-            modifyColorSchemeForBlackBackground(colorScheme, isDark, useBlackBackground)
-        },
-    )
+    // 见 AppTheme.desktop.kt.
+    return remember(seedColor, isDark, useBlackBackground) {
+        dynamicColorScheme(
+            primary = seedColor,
+            isDark = isDark,
+            isAmoled = useBlackBackground,
+            style = PaletteStyle.TonalSpot,
+            modifyColorScheme = { colorScheme ->
+                modifyColorSchemeForBlackBackground(colorScheme, isDark, useBlackBackground)
+            },
+        )
+    }
 }
 
 @Composable
