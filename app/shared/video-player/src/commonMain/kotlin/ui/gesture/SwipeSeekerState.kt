@@ -30,7 +30,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
 import kotlin.math.roundToInt
@@ -43,10 +46,12 @@ fun rememberSwipeSeekerState(
     @UiThread onSeek: (offsetSeconds: Int) -> Unit,
 ): SwipeSeekerState {
     val onSeekState by rememberUpdatedState(onSeek)
-    return remember(swipeSeekerConfig, screenWidthPx) {
+    val density = LocalDensity.current
+    return remember(swipeSeekerConfig, screenWidthPx, density) {
         SwipeSeekerState(
             screenWidthPx,
             swipeSeekerConfig,
+            density,
         ) { onSeekState(it) }
     }
 }
@@ -65,72 +70,92 @@ data class SwipeSeekerConfig(
     // 实测差不多可以滑到 87 秒, 看三秒 op 让他知道他完了 op
     val maxDragSeconds: Int = 97,
     /**
-     * 屏幕顶部作为取消区域的高度占比.
+     * 向上滑动多少距离后取消本次快进.
+     *
+     * 快进过程中手指向上移动超过该距离即取消, 滑回该距离以内恢复.
      */
-    val cancelAreaHeightRatio: Float = 0.25f,
-    /**
-     * 屏幕左右两侧各自作为取消区域的宽度占比.
-     */
-    val cancelAreaWidthRatio: Float = 0.25f,
+    val cancelVerticalDragDistance: Dp = 144.dp,
 ) {
     companion object {
         val Default = SwipeSeekerConfig()
     }
 }
 
-fun SwipeSeekerConfig.isInCancelArea(position: Offset, containerSize: IntSize): Boolean {
-    if (!position.isSpecified || containerSize.width <= 0 || containerSize.height <= 0) return false
-
-    val inTopArea = position.y <= containerSize.height * cancelAreaHeightRatio
-    val inLeftArea = position.x <= containerSize.width * cancelAreaWidthRatio
-    val inRightArea = position.x >= containerSize.width * (1f - cancelAreaWidthRatio)
-    return inTopArea && (inLeftArea || inRightArea)
+internal fun isVerticalDragCancelled(
+    dragStartY: Float,
+    position: Offset,
+    cancelVerticalDragDistancePx: Float,
+): Boolean {
+    return position.isSpecified &&
+        dragStartY - position.y > cancelVerticalDragDistancePx
 }
 
-// draggable 继续负责识别单轴 seek；这里只观察二维位置，并在进入或离开取消区域时通知上层。
 private fun Modifier.trackSwipeSeekCancellation(
     seekerState: SwipeSeekerState,
     onCancellationChanged: (Boolean) -> Unit,
-): Modifier = onPointerEventMultiplatform(
-    PointerEventType.Move,
-    pass = PointerEventPass.Initial,
-) { event ->
-    val change = event.changes.firstOrNull() ?: return@onPointerEventMultiplatform
-    if (seekerState.updateCancellation(change.position, size)) {
-        onCancellationChanged(seekerState.isCancelled)
+): Modifier = this
+    .onPointerEventMultiplatform(
+        PointerEventType.Press,
+        pass = PointerEventPass.Initial,
+    ) { event ->
+        event.changes.firstOrNull()?.let { seekerState.onPointerDown(it.position) }
     }
-}
+    .onPointerEventMultiplatform(
+        PointerEventType.Move,
+        pass = PointerEventPass.Initial,
+    ) { event ->
+        val change = event.changes.firstOrNull() ?: return@onPointerEventMultiplatform
+        if (seekerState.updateCancellation(change.position)) {
+            onCancellationChanged(seekerState.isCancelled)
+        }
+    }
 
 @Stable
-class SwipeSeekerState(
+class SwipeSeekerState internal constructor(
     /**
      * 可滑动区域宽度
      */
     private val screenWidthPx: Int,
-    private val swipeSeekerConfig: SwipeSeekerConfig = SwipeSeekerConfig.Default,
+    private val swipeSeekerConfig: SwipeSeekerConfig,
+    density: Density,
     /**
      * 当一次滑动结束时的回调. `offsetSeconds` 为本次快进的秒数
      */
     @UiThread val onSeek: (offsetSeconds: Int) -> Unit,
 ) {
+    private val cancelVerticalDragDistancePx =
+        with(density) { swipeSeekerConfig.cancelVerticalDragDistance.toPx() }
+
     /**
      * [Float.NaN] iff not dragging
      */
     private var seekDelta: Float by mutableFloatStateOf(Float.NaN)
 
     /**
-     * 当前滑动是否已进入取消区域.
+     * 当前滑动是否已取消, 即手指是否已向上移动超过取消距离.
      */
     var isCancelled: Boolean by mutableStateOf(false)
         private set
 
-    private var lastPointerPosition: Offset = Offset.Unspecified
-    private var lastPointerContainerSize: IntSize = IntSize.Zero
+    /**
+     * 手指按下位置的 Y 坐标, 作为取消判定的基准线. [Float.NaN] 表示未在滑动.
+     *
+     * 基准取按下点而不是拖动手势识别点: 滑动大概率不是直的, 手势识别 (越过 touch slop)
+     * 时手指可能已经有垂直偏移, 以识别点为基准会把这部分偏移吃掉.
+     */
+    private var dragStartY: Float = Float.NaN
+
+    @UiThread
+    internal fun onPointerDown(position: Offset) {
+        if (!isSeeking && position.isSpecified) {
+            dragStartY = position.y
+        }
+    }
 
     @UiThread
     internal fun onSwipeStarted() {
         seekDelta = 0f
-        isCancelled = isInCancelArea(lastPointerPosition, lastPointerContainerSize)
+        isCancelled = false
     }
 
     @UiThread
@@ -141,6 +166,7 @@ class SwipeSeekerState(
         }
         seekDelta = Float.NaN
         isCancelled = false
+        dragStartY = Float.NaN
     }
 
     @UiThread
@@ -149,18 +175,13 @@ class SwipeSeekerState(
     }
 
     @UiThread
-    internal fun updateCancellation(position: Offset, containerSize: IntSize): Boolean {
+    internal fun updateCancellation(position: Offset): Boolean {
         val wasCancelled = isCancelled
-        lastPointerPosition = position
-        lastPointerContainerSize = containerSize
         if (isSeeking) {
-            isCancelled = isInCancelArea(position, containerSize)
+            isCancelled = isVerticalDragCancelled(dragStartY, position, cancelVerticalDragDistancePx)
         }
         return isCancelled != wasCancelled
     }
-
-    private fun isInCancelArea(position: Offset, containerSize: IntSize): Boolean =
-        swipeSeekerConfig.isInCancelArea(position, containerSize)
 
     /**
      * 是否正在快进, 即用户是否正在滑动屏幕
