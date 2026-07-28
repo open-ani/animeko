@@ -51,8 +51,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -878,7 +878,7 @@ private fun SubjectDetailsContentTabRow(
         modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center,
     ) {
-        TabRow(
+        ScrollableTabRow(
             selectedTabIndex = pagerState.currentPage,
             modifier = Modifier.widthIn(max = SubjectDetailsDefaults.TabRowWidth),
             indicator = @Composable { tabPositions ->
@@ -893,15 +893,13 @@ private fun SubjectDetailsContentTabRow(
             SubjectDetailsTab.entries.forEachIndexed { index, tabId ->
                 Tab(
                     selected = pagerState.currentPage == index,
-                    modifier = Modifier.widthIn(max = SubjectDetailsDefaults.TabWidth),
                     onClick = {
                         scope.launch { pagerState.animateScrollToPage(index) }
                     },
                     text = {
                         Text(
                             text = renderSubjectDetailsTab(tabId),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                            softWrap = false,
                         )
                     },
                 )
