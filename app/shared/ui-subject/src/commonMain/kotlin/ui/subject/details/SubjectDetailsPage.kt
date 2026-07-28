@@ -898,7 +898,11 @@ private fun SubjectDetailsContentTabRow(
                         scope.launch { pagerState.animateScrollToPage(index) }
                     },
                     text = {
-                        Text(text = renderSubjectDetailsTab(tabId))
+                        Text(
+                            text = renderSubjectDetailsTab(tabId),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     },
                 )
             }
