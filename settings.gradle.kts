@@ -160,6 +160,7 @@ includeProject(
 
 // ci
 includeProject(":ci-helper", "ci-helper") // 
+includeProject(":ci-helper:sqlite-woa64", "ci-helper/sqlite-woa64") // Windows ARM64 SQLite natives, see its build.gradle.kts
 includeProject(":tools:datasource-test-mcp", "tools/datasource-test-mcp")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")

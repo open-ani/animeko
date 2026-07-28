@@ -522,6 +522,7 @@ run {
 
     releaseMatrixInstances = listOf(
         ghWin, // win installer
+        ghWinArm64, // win ARM64 portable
         selfMac15.copy(
             buildAllAndroidAbis = true,
             uploadApk = false,
@@ -676,8 +677,8 @@ fun getVerifyJobBody(
             `if` = expr { github.isAnimekoRepository and !github.isPullRequest },
             disabledOn = listOf(Runner.GithubWindows11Arm64),
         ),
-        // Windows ARM64 relies on an external SQLite patch (AndroidX does not ship Windows ARM64
-        // natives). On Linux this additionally asserts that the process holds exactly one
+        // Windows ARM64 relies on the SQLite natives built by :ci-helper:sqlite-woa64 (AndroidX does
+        // not ship Windows ARM64 natives). On Linux this additionally asserts that the process holds exactly one
         // libsqliteJni image — the invariant behind #3188 and #3213, both of which crashed the
         // shipped AppImage after the driver had loaded successfully.
         VerifyTask(
@@ -1022,6 +1023,7 @@ workflow(
             deleteLocalProperties()
             writeLocalProperties()
             updateJvmArgsInGradleProperties()
+            setupAndroidSdkForWindowsArm64()
             installJbr21()
             chmod777()
             setupGradle()
@@ -1801,21 +1803,6 @@ class WithMatrix(
     class PackageDesktopAndUploadOutputs {
     }
 
-    fun JobBuilder<*>.patchBundledSqliteForWindowsArm64() {
-        if (matrix.isWindowsAArch64) {
-            // AndroidX does not yet publish the bundled SQLite native library for Windows ARM64.
-            run(
-                name = "Patch AndroidX SQLite bundled runtime for Windows ARM64",
-                shell = Shell.PowerShell,
-                command = shell(
-                    """
-                    powershell.exe -NoProfile -ExecutionPolicy Bypass -File ci-helper/sqlite-woa64/patch-sqlite-bundled-windows-arm64.ps1 app/desktop/build/compose/binaries/main-release/app
-                    """.trimIndent(),
-                ),
-            )
-        }
-    }
-
     fun JobBuilder<*>.packageDesktopAndUpload(): PackageDesktopAndUploadOutputs {
         if (matrix.isWindows) {
             // Windows does not support installers
@@ -1848,7 +1835,6 @@ class WithMatrix(
             )
         }
 
-        patchBundledSqliteForWindowsArm64()
         uploadComposeLogs()
 
         return PackageDesktopAndUploadOutputs().also {
