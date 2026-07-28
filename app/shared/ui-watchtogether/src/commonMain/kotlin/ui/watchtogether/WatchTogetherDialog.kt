@@ -466,7 +466,7 @@ private fun JoinRoomContent(
     }
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-        horizontalArrangement = Arrangement.Center,
+        horizontalArrangement = Arrangement.End,
     ) {
         TextButton(onClick = onDismiss) {
             Text(stringResource(Lang.watch_together_minimize))
@@ -561,7 +561,7 @@ private fun RoomContent(
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TextButton(onClick = onLeave) {
