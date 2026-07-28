@@ -388,6 +388,7 @@ private fun SubjectDetailsPage(
                     onClickTag = onClickTag,
                     onClickLogin = onClickLogin,
                     onShowComments = { showComments = true },
+                    onClickCache = { navigator.navigateSubjectCaches(presentation.subjectId) },
                     modifier = modifier,
                     showTopBar = showTopBar,
                     windowInsets = windowInsets,
@@ -479,6 +480,7 @@ private fun SubjectDetailsPage(
                         onPlay = onPlay,
                         onClickTag = onClickTag,
                         onShowEpisodeList = { showSelectEpisode = true },
+                        onClickCache = { navigator.navigateSubjectCaches(presentation.subjectId) },
                         modifier = Modifier
                             .nestedScrollWorkaround(state.detailsTabLazyListState),
                         listState = state.detailsTabLazyListState,

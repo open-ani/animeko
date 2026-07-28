@@ -56,6 +56,8 @@ data class SubjectDetailsLayoutParams(
     val showInlineRatingHistogram: Boolean = false,
     /** 中栏制作人员网格列数 (双栏用; 三栏的制作人员在右栏为键值列表). */
     val staffGridColumns: Int = 6,
+    /** 选集 header 的缓存管理入口是否带文字标签; 窄双栏中栏放不下 (会挤压标题), 只显示图标. */
+    val showCacheButtonLabel: Boolean = true,
 ) {
     val isMultiColumn: Boolean get() = kind != SubjectDetailsPaneKind.COMPACT
     val showRail: Boolean get() = kind == SubjectDetailsPaneKind.EXPANDED
@@ -107,6 +109,7 @@ data class SubjectDetailsLayoutParams(
             contentBottomPadding = 24.dp,
             sectionSpacing = 24.dp,
             staffGridColumns = 3,
+            showCacheButtonLabel = false,
         )
 
         // 三栏 1600 画板 (1515:336) Body: padTop 12 / padBottom 48 / padLR 48

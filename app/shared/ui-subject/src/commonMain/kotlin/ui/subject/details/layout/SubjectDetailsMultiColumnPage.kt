@@ -96,6 +96,7 @@ import me.him188.ani.app.ui.subject.details.sections.HotReviewsCardContent
 import me.him188.ani.app.ui.subject.details.sections.PagedEpisodesGrid
 import me.him188.ani.app.ui.subject.details.sections.ReviewsPreviewSection
 import me.him188.ani.app.ui.subject.details.sections.SectionHeader
+import me.him188.ani.app.ui.subject.details.sections.SectionHeaderCacheButton
 import me.him188.ani.app.ui.subject.details.sections.StaffSection
 import me.him188.ani.app.ui.subject.details.sections.SubjectCollectionStatsRow
 import me.him188.ani.app.ui.subject.details.sections.SubjectInfoTable
@@ -122,6 +123,7 @@ internal fun SubjectDetailsMultiColumnPage(
     onClickTag: (Tag) -> Unit,
     onClickLogin: () -> Unit,
     onShowComments: () -> Unit,
+    onClickCache: () -> Unit,
     modifier: Modifier = Modifier,
     showTopBar: Boolean = true,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
@@ -204,13 +206,19 @@ internal fun SubjectDetailsMultiColumnPage(
                 onEpisodeClick = { onPlay(it.episodeId) },
                 header = { pager ->
                     SectionHeader(stringResource(Lang.subject_details_episodes)) {
-                        // 分页时分页控件替代集数文案; 不足一页时恢复 (定稿 1610:1003)
-                        pager?.invoke() ?: ProvideContentColor(MaterialTheme.colorScheme.onSurfaceVariant) {
-                            AiringLabel(
-                                state.airingLabelState,
-                                style = MaterialTheme.typography.bodyMedium,
-                                progressColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            SectionHeaderCacheButton(onClickCache, showLabel = layoutParams.showCacheButtonLabel)
+                            // 分页时分页控件替代集数文案; 不足一页时恢复 (定稿 1610:1003)
+                            pager?.invoke() ?: ProvideContentColor(MaterialTheme.colorScheme.onSurfaceVariant) {
+                                AiringLabel(
+                                    state.airingLabelState,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    progressColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
                 },
