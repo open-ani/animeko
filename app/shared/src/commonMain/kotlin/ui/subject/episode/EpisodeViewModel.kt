@@ -280,12 +280,25 @@ class EpisodeViewModel(
     val player: MediampPlayer =
         playerStateFactory.create(context, backgroundScope.coroutineContext)
 
+    /** `null` 表示本次播放尚未调整过倍速, 此时跟随配置. */
+    private val playbackSpeedOverride = MutableStateFlow<Float?>(null)
+
+    /**
+     * 当前生效的倍速. 作用域为一次播放 (本 ViewModel 的生命周期), 播放页内切集保持.
+     */
+    private val playbackSpeedFlow: Flow<Float> = combine(
+        settingsRepository.videoScaffoldConfig.flow,
+        playbackSpeedOverride,
+    ) { config, override ->
+        override ?: config.playbackSpeed
+    }.distinctUntilChanged()
+
     @OptIn(UnsafeEpisodeSessionApi::class)
     private val fetchPlayState = EpisodeFetchSelectPlayState(
         subjectId, initialEpisodeId, player, backgroundScope,
         extensions = listOf(
             AnalyticsExtension,
-            PlaybackSpeedExtension,
+            PlaybackSpeedExtension.Factory(playbackSpeedFlow),
             RememberPlayProgressExtension,
             WatchTogetherPlayerExtension,
             MarkAsWatchedExtension,
@@ -386,11 +399,14 @@ class EpisodeViewModel(
     val playbackSpeedRange: ClosedFloatingPointRange<Float>
         get() = videoScaffoldConfig.minPlaybackSpeed..videoScaffoldConfig.maxPlaybackSpeed
 
-    /** 持久化全局倍速；播放器会通过上方的配置订阅同步该值. */
+    /** 总是对本次播放生效; 仅在开启「记住播放倍速」时才另外写回配置. */
     fun setPlaybackSpeed(speed: Float) {
+        playbackSpeedOverride.value = speed
         launchInBackground {
-            settingsRepository.videoScaffoldConfig.update {
-                copy(playbackSpeed = speed)
+            if (settingsRepository.videoScaffoldConfig.flow.first().rememberPlaybackSpeed) {
+                settingsRepository.videoScaffoldConfig.update {
+                    copy(playbackSpeed = speed)
+                }
             }
         }
     }

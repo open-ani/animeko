@@ -51,7 +51,7 @@ class PlayerFastSkipState(
                     SkipDirection.BACKWARD -> error("Backward skipping is not supported")
                 },
             )
-            gestureIndicatorTicket = gestureIndicatorState.startFastForward()
+            gestureIndicatorTicket = gestureIndicatorState.startFastForward(fastForwardSpeed)
         },
         onStop = {
             playbackSpeed.set(originalSpeed)
