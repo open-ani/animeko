@@ -19,7 +19,10 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
+import me.him188.ani.app.domain.mediasource.MediaSourceEngineHelpers
+import me.him188.ani.app.domain.mediasource.web.BlockReason
 import me.him188.ani.app.domain.mediasource.web.DefaultSelectorMediaSourceEngine
+import me.him188.ani.app.domain.mediasource.web.PageExpectation
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSourceEngine
 import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
@@ -27,6 +30,7 @@ import me.him188.ani.app.domain.mediasource.web.SelectorSearchQuery
 import me.him188.ani.app.domain.mediasource.web.WebPageCaptchaException
 import me.him188.ani.app.domain.mediasource.web.WebSearchEpisodeInfo
 import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
+import me.him188.ani.app.domain.mediasource.web.format.SelectedChannelEpisodes
 import me.him188.ani.app.domain.mediasource.web.format.SelectorChannelFormat
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
@@ -42,6 +46,10 @@ import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.tools.datasourcetestmcp.StageResult
+import me.him188.ani.tools.datasourcetestmcp.captcha.CaptchaUnsolvedException
+import me.him188.ani.tools.datasourcetestmcp.captcha.WebPageFetchResult
+import me.him188.ani.tools.datasourcetestmcp.captcha.WebSourceSession
+import me.him188.ani.tools.datasourcetestmcp.captcha.describe
 import me.him188.ani.tools.datasourcetestmcp.info.AniInfoService
 import me.him188.ani.tools.datasourcetestmcp.resolver.CandidateVideoResolver
 import me.him188.ani.tools.datasourcetestmcp.resolver.ChannelTestExecutor
@@ -49,6 +57,7 @@ import me.him188.ani.tools.datasourcetestmcp.resolver.ResolvedVideoResult
 import me.him188.ani.tools.datasourcetestmcp.video.VideoProbeResult
 import me.him188.ani.tools.datasourcetestmcp.video.VideoUrlProbeEngine
 import me.him188.ani.utils.xml.Document
+import kotlin.time.Duration
 
 private const val MCP_MEDIA_SOURCE_ID = "mcp-selector"
 
@@ -58,9 +67,14 @@ private val REGEX_OVA_TAILING = Regex(".+OVA\\s*\\d*$", RegexOption.IGNORE_CASE)
 /**
  * 数据源能力: 直接驱动 [DefaultSelectorMediaSourceEngine] 跑完整解析流程或单个步骤,
  * 并记录每一步的输入输出, 用于调试 selector 配置.
+ *
+ * 取页统一走 [webSource] (与 App 同一条 `WebSessionManager` 链路), 因此站点开了人机验证时会先自动尝试解决;
+ * 解不掉则终止该数据源的整个流程, 避免把 "被挡" 误报成 "selector 写错了" 而继续对站点发请求.
+ * 页面解析仍由 [engine] 完成, 保证与 App 的解析行为逐字一致.
  */
 class SelectorEngineService(
     private val engine: DefaultSelectorMediaSourceEngine,
+    private val webSource: WebSourceSession,
     private val aniInfoService: AniInfoService,
     private val json: Json,
     private val resolver: CandidateVideoResolver,
@@ -120,136 +134,167 @@ class SelectorEngineService(
         val medias = mutableListOf<DefaultMedia>()
 
         val namesToSearch = context.subjectNames.take(config.searchUseSubjectNamesCount.coerceAtLeast(1))
-        for ((nameIndex, subjectName) in namesToSearch.withIndex()) {
-            if (nameIndex > 0) {
-                delay(config.requestInterval)
-            }
-            val query = SelectorSearchQuery(
-                subjectName = subjectName,
-                episodeSort = if (subjectName.matches(REGEX_OVA_TAILING)) {
-                    EpisodeSort("OVA")
-                } else {
-                    EpisodeSort(context.episodeSort)
-                },
-                allSubjectNames = allSubjectNames,
-                episodeEp = context.episodeEp?.let(::EpisodeSort),
-                episodeName = context.episodeName,
-            )
-
-            val searchResult = runStage(
-                "searchSubjects", steps,
-                describe = { result ->
-                    StageOutput(
-                        summary = when {
-                            result.captchaKind != null ->
-                                "搜索 \"$subjectName\" 被拦截, 需要人机验证 (${result.captchaKind})"
-
-                            result.document == null -> "搜索 \"$subjectName\" 返回 404"
-                            else -> "搜索 \"$subjectName\" 成功"
-                        },
-                        details = buildJsonObject {
-                            put("subjectName", subjectName)
-                            put("finalUrl", result.url.toString())
-                            put("captchaKind", result.captchaKind?.toString() ?: "")
-                            put("documentLength", result.document?.outerHtml()?.length ?: 0)
-                        },
-                        failed = result.document == null,
-                    )
-                },
-            ) {
-                engine.searchSubjects(
-                    searchUrl = config.searchUrl,
+        // 验证码自动解决失败时, 终止整个数据源的流程: 不再换搜索词硬试, 也不对站点继续发请求
+        val captchaAbort: CaptchaUnsolvedException? = try {
+            for ((nameIndex, subjectName) in namesToSearch.withIndex()) {
+                if (nameIndex > 0) {
+                    delay(config.requestInterval)
+                }
+                val query = SelectorSearchQuery(
                     subjectName = subjectName,
-                    useOnlyFirstWord = config.searchUseOnlyFirstWord,
-                    removeSpecial = config.searchRemoveSpecial,
+                    episodeSort = if (subjectName.matches(REGEX_OVA_TAILING)) {
+                        EpisodeSort("OVA")
+                    } else {
+                        EpisodeSort(context.episodeSort)
+                    },
+                    allSubjectNames = allSubjectNames,
+                    episodeEp = context.episodeEp?.let(::EpisodeSort),
+                    episodeName = context.episodeName,
                 )
-            } ?: continue
-            val document = searchResult.document ?: continue
 
-            val subjects = runStage(
-                "selectSubjects", steps,
-                describe = { subjects ->
-                    StageOutput(
-                        summary = "解析出 ${subjects.size} 个条目",
-                        details = buildJsonObject {
-                            put("subjectName", subjectName)
-                            put("count", subjects.size)
-                            put("subjects", subjectsJson(subjects, cap = 20))
+                val searchResult = runStage(
+                    "searchSubjects", steps,
+                    describe = { result: WebPageFetchResult<List<WebSearchSubjectInfo>> ->
+                        val blockReason = result.blockReason
+                        StageOutput(
+                            summary = buildString {
+                                append("搜索 \"$subjectName\" ")
+                                append(blockReason?.let { "被拦截: ${it.describe()}" } ?: "成功")
+                                result.autoSolvedCaptcha?.let { append(" (已自动通过 $it 验证码)") }
+                            },
+                            details = buildJsonObject {
+                                put("subjectName", subjectName)
+                                put("finalUrl", result.url)
+                                put("blockReason", blockReason?.describe() ?: "")
+                                put("autoSolvedCaptcha", result.autoSolvedCaptcha?.toString() ?: "")
+                                put("documentLength", result.document?.outerHtml()?.length ?: 0)
+                            },
+                            failed = result.document == null,
+                        )
+                    },
+                ) {
+                    webSource.fetchPage(
+                        MCP_MEDIA_SOURCE_ID,
+                        searchUrlFor(config, subjectName),
+                        PageExpectation.SearchResults(config),
+                        config.requestInterval,
+                    )
+                } ?: continue
+                val document = searchResult.document ?: continue
+
+                val subjects = runStage(
+                    "selectSubjects", steps,
+                    describe = { subjects ->
+                        StageOutput(
+                            summary = "解析出 ${subjects.size} 个条目",
+                            details = buildJsonObject {
+                                put("subjectName", subjectName)
+                                put("count", subjects.size)
+                                put("subjects", subjectsJson(subjects, cap = 20))
+                            },
+                            failed = subjects.isEmpty(),
+                        )
+                    },
+                ) {
+                    engine.selectSubjects(document, config)
+                        ?: error("配置无效: 条目格式 (subjectFormat) 的必填项为空或 selector 语法错误")
+                } ?: continue
+                if (subjects.isEmpty()) continue
+
+                for (subjectInfo in subjects.take(input.maxSubjectsPerName.coerceAtLeast(1))) {
+                    val episodePage = runStage(
+                        "searchEpisodes", steps,
+                        describe = { result: WebPageFetchResult<SelectedChannelEpisodes> ->
+                            val blockReason = result.blockReason
+                            StageOutput(
+                                summary = buildString {
+                                    append("条目 \"${subjectInfo.name}\" 的详情页")
+                                    append(blockReason?.let { "被拦截: ${it.describe()}" } ?: "已获取")
+                                    result.autoSolvedCaptcha?.let { append(" (已自动通过 $it 验证码)") }
+                                },
+                                details = buildJsonObject {
+                                    put("subjectUrl", subjectInfo.fullUrl)
+                                    put("blockReason", blockReason?.describe() ?: "")
+                                    put("autoSolvedCaptcha", result.autoSolvedCaptcha?.toString() ?: "")
+                                    put("documentLength", result.document?.outerHtml()?.length ?: 0)
+                                },
+                                failed = result.document == null,
+                            )
                         },
-                        failed = subjects.isEmpty(),
-                    )
-                },
-            ) {
-                engine.selectSubjects(document, config)
-                    ?: error("配置无效: 条目格式 (subjectFormat) 的必填项为空或 selector 语法错误")
-            } ?: continue
-            if (subjects.isEmpty()) continue
-
-            for (subjectInfo in subjects.take(input.maxSubjectsPerName.coerceAtLeast(1))) {
-                val episodeDocument = runStage(
-                    "searchEpisodes", steps,
-                    describe = { document: Document ->
-                        StageOutput(
-                            summary = "已获取条目 \"${subjectInfo.name}\" 的详情页",
-                            details = buildJsonObject {
-                                put("subjectUrl", subjectInfo.fullUrl)
-                                put("documentLength", document.outerHtml().length)
-                            },
+                    ) {
+                        webSource.fetchPage(
+                            MCP_MEDIA_SOURCE_ID,
+                            subjectInfo.fullUrl,
+                            PageExpectation.SubjectDetails(config, subjectInfo.fullUrl),
+                            config.requestInterval,
                         )
-                    },
-                ) {
-                    engine.searchEpisodes(subjectInfo.fullUrl)
-                        ?: error("条目详情页返回 404: ${subjectInfo.fullUrl}")
-                } ?: continue
+                    } ?: continue
+                    val episodeDocument = episodePage.document ?: continue
 
-                val selected = runStage(
-                    "selectEpisodes", steps,
-                    describe = { selected ->
-                        StageOutput(
-                            summary = "解析出 ${selected.episodes.size} 个剧集" +
-                                    (selected.channels?.let { ", ${it.size} 条线路" } ?: ""),
-                            details = buildJsonObject {
-                                put("subjectUrl", subjectInfo.fullUrl)
-                                selected.channels?.let { channels ->
-                                    putJsonArray("channels") { channels.forEach { add(JsonPrimitive(it)) } }
-                                }
-                                put("episodes", episodesJson(selected.episodes, cap = 50))
-                            },
-                            failed = selected.episodes.isEmpty(),
-                        )
-                    },
-                ) {
-                    engine.selectEpisodes(episodeDocument, subjectInfo.fullUrl, config)
-                        ?: error("配置无效: 剧集格式 (channelFormat) 的必填项为空或 selector/正则语法错误")
-                } ?: continue
+                    val selected = runStage(
+                        "selectEpisodes", steps,
+                        describe = { selected ->
+                            StageOutput(
+                                summary = "解析出 ${selected.episodes.size} 个剧集" +
+                                        (selected.channels?.let { ", ${it.size} 条线路" } ?: ""),
+                                details = buildJsonObject {
+                                    put("subjectUrl", subjectInfo.fullUrl)
+                                    selected.channels?.let { channels ->
+                                        putJsonArray("channels") { channels.forEach { add(JsonPrimitive(it)) } }
+                                    }
+                                    put("episodes", episodesJson(selected.episodes, cap = 50))
+                                },
+                                failed = selected.episodes.isEmpty(),
+                            )
+                        },
+                    ) {
+                        engine.selectEpisodes(episodeDocument, subjectInfo.fullUrl, config)
+                            ?: error("配置无效: 剧集格式 (channelFormat) 的必填项为空或 selector/正则语法错误")
+                    } ?: continue
 
-                runStage(
-                    "selectMedia", steps,
-                    describe = { result ->
-                        val filteredOut = result.originalList - result.filteredList.toSet()
-                        StageOutput(
-                            summary = "过滤后剩 ${result.filteredList.size}/${result.originalList.size} 个候选 " +
-                                    "(目标: 第 ${query.episodeSort} 话)",
-                            details = buildJsonObject {
-                                put("originalCount", result.originalList.size)
-                                put("filteredCount", result.filteredList.size)
-                                put("filteredOut", mediasJson(filteredOut.map { it.toWebMediaCandidate() }, cap = 20))
-                            },
-                            failed = result.filteredList.isEmpty(),
+                    runStage(
+                        "selectMedia", steps,
+                        describe = { result ->
+                            val filteredOut = result.originalList - result.filteredList.toSet()
+                            StageOutput(
+                                summary = "过滤后剩 ${result.filteredList.size}/${result.originalList.size} 个候选 " +
+                                        "(目标: 第 ${query.episodeSort} 话)",
+                                details = buildJsonObject {
+                                    put("originalCount", result.originalList.size)
+                                    put("filteredCount", result.filteredList.size)
+                                    put(
+                                        "filteredOut",
+                                        mediasJson(filteredOut.map { it.toWebMediaCandidate() }, cap = 20),
+                                    )
+                                },
+                                failed = result.filteredList.isEmpty(),
+                            )
+                        },
+                    ) {
+                        engine.selectMedia(
+                            episodes = selected.episodes.asSequence(),
+                            config = config,
+                            query = query,
+                            mediaSourceId = MCP_MEDIA_SOURCE_ID,
+                            subjectName = subjectInfo.name,
                         )
-                    },
-                ) {
-                    engine.selectMedia(
-                        episodes = selected.episodes.asSequence(),
-                        config = config,
-                        query = query,
-                        mediaSourceId = MCP_MEDIA_SOURCE_ID,
-                        subjectName = subjectInfo.name,
-                    )
-                }?.let { result ->
-                    medias += result.filteredList
+                    }?.let { result ->
+                        medias += result.filteredList
+                    }
                 }
             }
+            null
+        } catch (e: CaptchaUnsolvedException) {
+            e
+        }
+
+        if (captchaAbort != null) {
+            return SelectorResolveEpisodeResult(
+                ok = false,
+                summary = captchaAbort.summary,
+                steps = steps,
+                errors = errors + captchaAbort.message.orEmpty(),
+            )
         }
 
         val distinctMedias = medias.distinctBy { it.mediaId }
@@ -273,7 +318,7 @@ class SelectorEngineService(
             )
         }
 
-        val matcher = SelectorWebVideoMatcher(engine, config.matchVideo)
+        val matcher = selectorWebVideoMatcher(config)
         val extractStart = System.currentTimeMillis()
         val extractResults = channelTestExecutor.execute(
             playableCandidates = distinctMedias
@@ -331,6 +376,14 @@ class SelectorEngineService(
                 SelectorStep.EXTRACT_VIDEO -> stepExtractVideo(input)
             }
             result.copy(durationMillis = System.currentTimeMillis() - start)
+        } catch (e: CaptchaUnsolvedException) {
+            SelectorRunStepResult(
+                step = input.step,
+                ok = false,
+                summary = e.summary,
+                durationMillis = System.currentTimeMillis() - start,
+                errors = listOf(e.message.orEmpty()),
+            )
         } catch (e: WebPageCaptchaException) {
             SelectorRunStepResult(
                 step = input.step,
@@ -353,36 +406,39 @@ class SelectorEngineService(
     private suspend fun stepSearchSubjects(input: SelectorRunStepInput): SelectorRunStepResult {
         val config = requireConfig(input)
         val keyword = requireNotNull(input.keyword) { "searchSubjects 步骤需要 keyword 参数" }
-        val result = engine.searchSubjects(
-            searchUrl = config.searchUrl,
-            subjectName = keyword,
-            useOnlyFirstWord = config.searchUseOnlyFirstWord,
-            removeSpecial = config.searchRemoveSpecial,
+        val result = webSource.fetchPage(
+            MCP_MEDIA_SOURCE_ID,
+            searchUrlFor(config, keyword),
+            PageExpectation.SearchResults(config),
+            config.requestInterval,
         )
         val html = result.document?.outerHtml()
+        val blockReason = result.blockReason
         return SelectorRunStepResult(
             step = input.step,
             ok = result.document != null,
             summary = when {
-                result.captchaKind != null -> "被人机验证拦截 (${result.captchaKind})"
-                result.document == null -> "搜索页返回 404"
-                else -> "搜索成功, HTML 共 ${html!!.length} 字符"
+                blockReason != null -> "被拦截: ${blockReason.describe()}"
+                else -> "搜索成功, HTML 共 ${html!!.length} 字符" +
+                        (result.autoSolvedCaptcha?.let { " (已自动通过 $it 验证码)" }.orEmpty())
             },
             durationMillis = 0,
             details = buildJsonObject {
-                put("finalUrl", result.url.toString())
-                put("captchaKind", result.captchaKind?.toString() ?: "")
+                put("finalUrl", result.url)
+                put("blockReason", blockReason?.describe() ?: "")
+                put("autoSolvedCaptcha", result.autoSolvedCaptcha?.toString() ?: "")
                 put("htmlLength", html?.length ?: 0)
                 put("html", html.orEmpty().truncate(input.maxHtmlLength))
             },
-            errors = result.captchaKind?.let { listOf("Captcha required: $it") }.orEmpty(),
+            errors = blockReason?.let { listOf("Blocked: ${it.describe()}") }.orEmpty(),
         )
     }
 
     private suspend fun stepSelectSubjects(input: SelectorRunStepInput): SelectorRunStepResult {
         val config = requireConfig(input)
-        val (document, pageUrl) = loadDocumentForSearchResult(input, config)
-            ?: return captchaBlockedResult(input)
+        val page = loadPageForSearchResult(input, config)
+        val document = page.document ?: return blockedPageResult(input, page)
+        val pageUrl = page.pageUrl
         val subjects = engine.selectSubjects(document, config)
             ?: return invalidConfigResult(input, "条目格式 (subjectFormat) 的必填项为空或 selector 语法错误")
         return SelectorRunStepResult(
@@ -400,18 +456,29 @@ class SelectorEngineService(
 
     private suspend fun stepSearchEpisodes(input: SelectorRunStepInput): SelectorRunStepResult {
         val url = requireNotNull(input.url) { "searchEpisodes 步骤需要 url 参数 (条目详情页 URL)" }
-        val document = engine.searchEpisodes(url)
-        val html = document?.outerHtml()
+        // 该步骤不强制要求 config, 所以没有 selector 可作为解析期望, 只能用 AnyContent 兜底判决
+        val result = webSource.fetchPage(
+            MCP_MEDIA_SOURCE_ID, url, PageExpectation.AnyContent, requestIntervalOf(input),
+        )
+        val html = result.document?.outerHtml()
+        val blockReason = result.blockReason
         return SelectorRunStepResult(
             step = input.step,
-            ok = document != null,
-            summary = if (document == null) "详情页返回 404" else "已获取详情页, HTML 共 ${html!!.length} 字符",
+            ok = result.document != null,
+            summary = when {
+                blockReason != null -> "被拦截: ${blockReason.describe()}"
+                else -> "已获取详情页, HTML 共 ${html!!.length} 字符" +
+                        (result.autoSolvedCaptcha?.let { " (已自动通过 $it 验证码)" }.orEmpty())
+            },
             durationMillis = 0,
             details = buildJsonObject {
                 put("url", url)
+                put("blockReason", blockReason?.describe() ?: "")
+                put("autoSolvedCaptcha", result.autoSolvedCaptcha?.toString() ?: "")
                 put("htmlLength", html?.length ?: 0)
                 put("html", html.orEmpty().truncate(input.maxHtmlLength))
             },
+            errors = blockReason?.let { listOf("Blocked: ${it.describe()}") }.orEmpty(),
         )
     }
 
@@ -422,8 +489,15 @@ class SelectorEngineService(
         val document = if (input.html != null) {
             engine.parseDocument(subjectUrl, input.html)
         } else {
-            engine.searchEpisodes(subjectUrl)
-                ?: throw IllegalArgumentException("详情页返回 404: $subjectUrl")
+            val fetched = webSource.fetchPage(
+                MCP_MEDIA_SOURCE_ID,
+                subjectUrl,
+                PageExpectation.SubjectDetails(config, subjectUrl),
+                config.requestInterval,
+            )
+            fetched.document ?: throw IllegalArgumentException(
+                "详情页不可用 (${fetched.blockReason?.describe() ?: "空页面"}): $subjectUrl",
+            )
         }
         val selected = engine.selectEpisodes(document, subjectUrl, config)
             ?: return invalidConfigResult(input, "剧集格式 (channelFormat) 的必填项为空或 selector/正则语法错误")
@@ -513,7 +587,7 @@ class SelectorEngineService(
         val matchers = input.config
             ?.let { SelectorConfigSupport.parseSelectorArguments(it, json).arguments }
             ?.searchConfig
-            ?.let { listOf(SelectorWebVideoMatcher(engine, it.matchVideo)) }
+            ?.let { listOf(selectorWebVideoMatcher(it)) }
             .orEmpty()
 
         val media = createWebMediaForPage(url, MCP_MEDIA_SOURCE_ID)
@@ -557,30 +631,70 @@ class SelectorEngineService(
         return SelectorConfigSupport.parseSelectorArguments(element, json).arguments.searchConfig
     }
 
-    /**
-     * @return `null` 表示被人机验证拦截
-     */
-    private suspend fun loadDocumentForSearchResult(
-        input: SelectorRunStepInput,
-        config: SelectorSearchConfig,
-    ): Pair<Document, String>? {
-        return if (input.html != null) {
-            val pageUrl = input.url ?: config.finalBaseUrl
-            val result = engine.parseSearchResult(Url(pageUrl), input.html)
-            result.document?.let { it to pageUrl }
-        } else {
-            val url = requireNotNull(input.url) { "selectSubjects 步骤需要 html 或 url 参数" }
-            engine.doHttpGet(url) to url
+    /** 与 App 的 `SelectorMediaSource` 一致的搜索 URL 拼接. */
+    private fun searchUrlFor(config: SelectorSearchConfig, subjectName: String): String {
+        return config.searchUrl.replace(
+            "{keyword}",
+            MediaSourceEngineHelpers.encodeUrlSegment(
+                MediaSourceEngineHelpers.getSearchKeyword(
+                    subjectName,
+                    config.searchRemoveSpecial,
+                    config.searchUseOnlyFirstWord,
+                ),
+            ),
+        )
+    }
+
+    /** 单步调试时 config 可能缺省, 此时用默认间隔 (只影响限流后的重试等待). */
+    private fun requestIntervalOf(input: SelectorRunStepInput): Duration {
+        return input.config
+            ?.let { runCatching { SelectorConfigSupport.parseSelectorArguments(it, json) }.getOrNull() }
+            ?.arguments?.searchConfig?.requestInterval
+            ?: SelectorSearchConfig.Empty.requestInterval
+    }
+
+    /** 与 App 的 `SelectorMediaSource.matcher` 一致: 配置里的 cookies 之上再叠加验证码会话的 cookies. */
+    private fun selectorWebVideoMatcher(config: SelectorSearchConfig): SelectorWebVideoMatcher {
+        return SelectorWebVideoMatcher(engine, config.matchVideo) {
+            webSource.cookieJar.getCookieHeaderValues(config.searchUrl)
         }
     }
 
-    private fun captchaBlockedResult(input: SelectorRunStepInput): SelectorRunStepResult {
+    private class StepPage(
+        val pageUrl: String,
+        val document: Document?,
+        val blockReason: BlockReason?,
+    )
+
+    private suspend fun loadPageForSearchResult(
+        input: SelectorRunStepInput,
+        config: SelectorSearchConfig,
+    ): StepPage {
+        if (input.html != null) {
+            val pageUrl = input.url ?: config.finalBaseUrl
+            val result = engine.parseSearchResult(Url(pageUrl), input.html)
+            return StepPage(
+                pageUrl = pageUrl,
+                document = result.document,
+                blockReason = result.captchaKind?.let { BlockReason.Captcha(it) },
+            )
+        }
+        val url = requireNotNull(input.url) { "selectSubjects 步骤需要 html 或 url 参数" }
+        val fetched = webSource.fetchPage(
+            MCP_MEDIA_SOURCE_ID, url, PageExpectation.SearchResults(config), config.requestInterval,
+        )
+        return StepPage(url, fetched.document, fetched.blockReason)
+    }
+
+    private fun blockedPageResult(input: SelectorRunStepInput, page: StepPage): SelectorRunStepResult {
+        val reason = page.blockReason
         return SelectorRunStepResult(
             step = input.step,
             ok = false,
-            summary = "页面被人机验证拦截",
+            summary = reason?.let { "页面被拦截: ${it.describe()}" } ?: "页面无内容, 无法解析",
             durationMillis = 0,
-            errors = listOf("Captcha required"),
+            details = buildJsonObject { put("pageUrl", page.pageUrl) },
+            errors = listOf(reason?.let { "Blocked: ${it.describe()}" } ?: "Empty page"),
         )
     }
 
@@ -606,6 +720,9 @@ class SelectorEngineService(
 
     /**
      * 执行 [block] 并把结果 (由 [describe] 描述) 记录到 [steps]. [block] 抛异常时记为 failed 并返回 `null`.
+     *
+     * 例外: [CaptchaUnsolvedException] 记录后继续上抛 —— 验证码过不去时要终止整个数据源的流程,
+     * 而不是当成一次普通的步骤失败继续试下一个搜索词.
      */
     private inline fun <T> runStage(
         name: String,
@@ -616,6 +733,15 @@ class SelectorEngineService(
         val start = System.currentTimeMillis()
         val value = try {
             block()
+        } catch (e: CaptchaUnsolvedException) {
+            steps += StageResult(
+                name = name,
+                status = "failed",
+                summary = e.summary,
+                errors = listOf(e.message.orEmpty()),
+                durationMillis = System.currentTimeMillis() - start,
+            )
+            throw e
         } catch (e: Exception) {
             steps += StageResult(
                 name = name,
@@ -681,6 +807,11 @@ class SelectorEngineService(
 class SelectorWebVideoMatcher(
     private val engine: SelectorMediaSourceEngine,
     private val matchVideoConfig: SelectorSearchConfig.MatchVideoConfig,
+    /**
+     * 该站点已解出的验证码会话 cookies. 与 App 一样, HTTP 与播放器 WebView 共用同一份 cookie 真相,
+     * 播放页才能沿用刚刚解掉验证码的会话.
+     */
+    private val captchaCookies: () -> List<String> = { emptyList() },
 ) : WebVideoMatcher {
     override fun match(
         url: String,
@@ -690,7 +821,9 @@ class SelectorWebVideoMatcher(
     override fun patchConfig(config: WebViewConfig): WebViewConfig {
         val configuredCookies = matchVideoConfig.cookies.lines().filter { it.isNotBlank() }
         // 复用 SelectorMediaSource.matcher 的合并实现: 按 cookie 名去重, 后面的覆盖前面的
-        return config.copy(cookies = SelectorMediaSource.mergeCookies(config.cookies, configuredCookies))
+        return config.copy(
+            cookies = SelectorMediaSource.mergeCookies(config.cookies, configuredCookies, captchaCookies()),
+        )
     }
 }
 
