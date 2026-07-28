@@ -26,6 +26,7 @@ import me.him188.ani.datasources.api.matcher.WebVideoMatcher.MatchResult
 import me.him188.ani.datasources.api.matcher.WebVideoMatcherContext
 import me.him188.ani.datasources.api.matcher.WebViewConfig
 import me.him188.ani.datasources.api.topic.ResourceLocation
+import me.him188.ani.tools.datasourcetestmcp.McpCefApp
 import java.io.File
 import java.util.ServiceLoader
 
@@ -150,14 +151,7 @@ class WebViewVideoResolverEngine(
         }
     }
 
-    private suspend fun initializeCef() {
-        val logsDir = workDir.resolve("logs").also(File::mkdirs)
-        val cacheDir = workDir.resolve("cache").also(File::mkdirs)
-        AniCefApp.initialize(
-            logDir = logsDir,
-            cacheDir = cacheDir,
-        )
-    }
+    private suspend fun initializeCef() = McpCefApp.initialize(workDir)
 
     private fun diagnostics(
         pageUrl: String,
@@ -186,10 +180,7 @@ class WebViewVideoResolverEngine(
     }
 
     companion object {
-        private fun defaultWorkDir(): File {
-            return File(System.getProperty("java.io.tmpdir"))
-                .resolve("ani-datasource-test-mcp")
-                .resolve("cef")
-        }
+        // 与验证码浏览器共用同一个 CefApp 与 cache 目录, 解掉的验证码会话在两边都有效
+        private fun defaultWorkDir(): File = McpCefApp.defaultWorkDir()
     }
 }

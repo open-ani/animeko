@@ -155,7 +155,8 @@ selector_resolve_episode(subjectId, episodeId, config, extractVideo=false)
 |---|---|---|
 | `aniMetadata` | Ani API 拿不到条目/剧集 | 检查 subjectId/episodeId 是否为有效整数;网络问题则重试一次 |
 | `searchSubjects` | 404 | `searchUrl` 模板错误或站点换了搜索路径;有 chrome-devtools 时 `navigate_page`+`list_network_requests` 看站点真实搜索请求的 URL/method,否则 `curl` 人工确认 |
-| `searchSubjects` | `captchaKind` 非空 | **停**。本工具无法过验证码,报告用户改用 App 内设置页的数据源测试器 |
+| `searchSubjects` / `searchEpisodes` | summary 含「已终止该数据源的流程」 | 工具已用 App 同一套策略自动解过验证码但没解开,且已自行停止。**停**,不要换关键词或换步骤重试;报告用户改用 App 内设置页的数据源测试器手动过验证(也可能是当前出口 IP 被站点整体封禁,`errors` 里的页面内容能分辨) |
+| 任意步骤 | `details.autoSolvedCaptcha` 非空 | 该站点有验证码但**已自动解掉**,步骤本身是成功的,照常继续;只需注意会话有时效,长时间调试后可能需要重跑 |
 | `selectSubjects` | 解析出 0 个条目 | 转第 5 步: 拿搜索页 HTML 离线迭代 subjectFormat 的 selector;若 HTML 其实是 JSON,改用 `json-path-indexed`。有 chrome-devtools 时先 `take_snapshot` 对比:浏览器有条目而工具 HTML 没有 → JS 渲染,查 JSON 接口或转第 9 节 |
 | `searchEpisodes` | 条目详情页 404 | 条目链接拼接错误,检查 `rawBaseUrl`(留空时从 searchUrl 推断,details 里能看到实际 URL) |
 | `selectEpisodes` | 0 个剧集 / 0 条线路 | 转第 5 步: 拿详情页 HTML 离线迭代 channelFormat 的 selector;同上,可用 chrome-devtools 的渲染后 DOM 判断是 selector 问题还是 JS 渲染 |
@@ -332,7 +333,8 @@ subagent 返回后由**主会话**闭环:
 
 ## 10. 行为红线
 
-- **验证码**(任何步骤返回 captchaKind)→ 立即停止该站点的重试,报告用户用 App 内测试器,不要换关键词硬试;
+- **验证码**: 工具会自动尝试解(与 App 同一套策略)。一旦某步 summary 说「已终止该数据源的流程」,
+  说明自动解已失败且工具已自行停止 → **不要换关键词硬试、不要换步骤重试**,报告用户用 App 内测试器;
 - **对目标站点保持克制**: 每次 searchSubjects/resolve_episode 都是真实请求。失败后先修配置或转离线,
   不要原样重跑;两次真实搜索之间自然间隔(配置里的 `requestInterval` 语义);
 - **不要把整页 HTML 塞进对话上下文**: 只摘取与 selector 相关的片段;超大页面存临时文件处理;
