@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.serialization.Serializable
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.MediaChapter
 import me.him188.ani.datasources.api.MediaExtraFiles
 import me.him188.ani.datasources.api.MediaProperties
 import me.him188.ani.datasources.api.Subtitle
@@ -160,6 +161,7 @@ abstract class BaseJellyfinMediaSource(
                             ),
                             extraFiles = MediaExtraFiles(
                                 subtitles = getSubtitles(item.Id, item.MediaStreams),
+                                chapters = fetchChaptersAndSegments(item),
                             ),
                             episodeRange = episodeRange,
                             location = MediaSourceLocation.Lan,
@@ -195,6 +197,56 @@ abstract class BaseJellyfinMediaSource(
         return "$baseUrl/Videos/$itemId/$itemId/Subtitles/$index/0/Stream.$codec"
     }
 
+    private suspend fun fetchChaptersAndSegments(item: Item): List<MediaChapter> {
+        val itemId = item.Id
+
+        // 1. Try Jellyfin 10.10+ native MediaSegments API
+        val nativeSegments = runCatching { doGetMediaSegments(itemId) }.getOrNull()
+        if (nativeSegments != null && nativeSegments.Items.isNotEmpty()) {
+            val chapters = nativeSegments.Items.map { segment ->
+                val offsetMillis = segment.StartTicks / 10000
+                val durationMillis = (segment.EndTicks - segment.StartTicks) / 10000
+                val name = when (segment.Type.lowercase()) {
+                    "intro" -> "OP"
+                    "outro" -> "ED"
+                    else -> segment.Type
+                }
+                MediaChapter(name = name, durationMillis = durationMillis, offsetMillis = offsetMillis)
+            }
+            if (chapters.isNotEmpty()) return chapters
+        }
+
+        // 2. Try Intro Skipper plugin API (/Episode/{itemId}/IntroTimestamps)
+        val introTimestamps = runCatching { doGetIntroTimestamps(itemId) }.getOrNull()
+        if (introTimestamps != null && introTimestamps.Valid && introTimestamps.IntroEnd > introTimestamps.IntroStart) {
+            val offsetMillis = (introTimestamps.IntroStart * 1000).toLong()
+            val durationMillis = ((introTimestamps.IntroEnd - introTimestamps.IntroStart) * 1000).toLong()
+            return listOf(
+                MediaChapter(name = "OP", durationMillis = durationMillis, offsetMillis = offsetMillis),
+            )
+        }
+
+        // 3. Fallback to Item embedded Chapters
+        if (item.Chapters.isNotEmpty()) {
+            val sortedChapters = item.Chapters.sortedBy { it.StartPositionTicks }
+            return sortedChapters.mapIndexed { index, chapter ->
+                val startTicks = chapter.StartPositionTicks
+                val endTicks = sortedChapters.getOrNull(index + 1)?.StartPositionTicks ?: item.RunTimeTicks
+                val offsetMillis = startTicks / 10000
+                val durationMillis = if (endTicks != null && endTicks > startTicks) {
+                    (endTicks - startTicks) / 10000
+                } else {
+                    0L
+                }
+                val name = chapter.Name?.takeIf { it.isNotBlank() }
+                    ?: chapter.MarkerType?.takeIf { it.isNotBlank() }
+                    ?: "Ch ${index + 1}"
+                MediaChapter(name = name, durationMillis = durationMillis, offsetMillis = offsetMillis)
+            }
+        }
+
+        return emptyList()
+    }
 
     private data class ParsedSubjectName(
         val baseName: String,
@@ -246,7 +298,7 @@ abstract class BaseJellyfinMediaSource(
     private suspend fun doGetEpisodes(seriesId: String, seasonNum: Int): SearchResponse {
         return authorizedGet("$baseUrl/Shows/$seriesId/Episodes") {
             parameter("Season", seasonNum)
-            parameter("fields", "MediaStreams")
+            parameter("fields", "MediaStreams,Chapters")
         }
     }
 
@@ -259,9 +311,17 @@ abstract class BaseJellyfinMediaSource(
             parameter("enableImages", false)
             parameter("recursive", recursive)
             parameter("searchTerm", subjectName)
-            parameter("fields", "MediaStreams")
+            parameter("fields", "MediaStreams,Chapters")
             parameter("parentId", parentId)
         }
+    }
+
+    private suspend fun doGetMediaSegments(itemId: String): MediaSegmentQueryResult {
+        return authorizedGet("$baseUrl/MediaSegments/$itemId")
+    }
+
+    private suspend fun doGetIntroTimestamps(itemId: String): IntroTimestampsDto {
+        return authorizedGet("$baseUrl/Episode/$itemId/IntroTimestamps")
     }
 
     private suspend inline fun <reified T> authorizedGet(
@@ -325,6 +385,41 @@ private data class MediaStream(
 
 @Serializable
 @Suppress("PropertyName")
+internal data class ChapterInfoDto(
+    val StartPositionTicks: Long,
+    val Name: String? = null,
+    val MarkerType: String? = null,
+)
+
+@Serializable
+@Suppress("PropertyName")
+internal data class MediaSegmentDto(
+    val Id: String? = null,
+    val ItemId: String? = null,
+    val Type: String, // "Intro", "Outro", "Recap", "Preview", "Commercial"
+    val StartTicks: Long,
+    val EndTicks: Long,
+)
+
+@Serializable
+@Suppress("PropertyName")
+internal data class MediaSegmentQueryResult(
+    val Items: List<MediaSegmentDto> = emptyList(),
+)
+
+@Serializable
+@Suppress("PropertyName")
+internal data class IntroTimestampsDto(
+    val EpisodeId: String? = null,
+    val Valid: Boolean = false,
+    val IntroStart: Double = 0.0,
+    val IntroEnd: Double = 0.0,
+    val ShowSkipPromptAt: Double? = null,
+    val HideSkipPromptAt: Double? = null,
+)
+
+@Serializable
+@Suppress("PropertyName")
 private data class Item(
     val Name: String,
     val SeasonName: String? = null,
@@ -335,4 +430,6 @@ private data class Item(
     val ParentIndexNumber: Int? = null,
     val Type: String, // "Episode", "Series", ...
     val MediaStreams: List<MediaStream> = emptyList(),
+    val Chapters: List<ChapterInfoDto> = emptyList(),
+    val RunTimeTicks: Long? = null,
 )

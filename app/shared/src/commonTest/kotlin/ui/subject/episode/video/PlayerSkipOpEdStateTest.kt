@@ -414,4 +414,25 @@ class PlayerSkipOpEdStateTest {
             assertEquals(true, localState.skipped)
         }
     }
+
+    class `OP chapter recognized by name` {
+        @Test
+        fun `intro chapter with non-standard duration is recognized`() {
+            val chapters = listOf(
+                Chapter("Intro", 70_000L, 10_000L),
+                Chapter("Outro", 60_000L, 1_000_000L),
+            )
+            var skippedMillis = 0L
+            val state = PlayerSkipOpEdState(
+                stateOf(chapters),
+                onSkip = { skippedMillis = it },
+                stateOf(24.minutes),
+            )
+            state.update(7_000L)
+            assertEquals(true, state.showSkipTips)
+
+            state.update(10_000L)
+            assertEquals(80_000L, skippedMillis)
+        }
+    }
 }

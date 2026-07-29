@@ -188,8 +188,8 @@ internal fun EpisodeVideoImpl(
     onClickNextEpisode: () -> Unit,
     playerControllerState: PlayerControllerState,
     opEdSkipDuration: Duration = DEFAULT_OP_ED_SKIP_DURATION,
-    onClickSkipOpEd: (currentPositionMillis: Long) -> Unit = {
-        playerState.skip(opEdSkipDuration.inWholeMilliseconds)
+    onClickSkipOpEd: (currentPositionMillis: Long) -> Unit = remember(playerState, opEdSkipDuration) {
+        { playerState.skip(opEdSkipDuration.inWholeMilliseconds) }
     },
     title: @Composable () -> Unit,
     danmakuHost: @Composable () -> Unit,

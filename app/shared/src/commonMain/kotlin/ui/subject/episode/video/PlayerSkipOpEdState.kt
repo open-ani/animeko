@@ -32,9 +32,8 @@ class PlayerSkipOpEdState(
 ) {
     private var currentChapter: CurrentChapter? by mutableStateOf(null)
     private val opEdChapters by derivedStateOf {
-        chapters.value.filter {
-            OpEdLength.fromVideoLengthOrNull(videoLength.value)
-                ?.isOpEdChapter(it.durationMillis.milliseconds) == true
+        chapters.value.filter { chapter ->
+            isOpEdChapter(chapter, videoLength.value)
         }.map { CurrentChapter(chapter = it, false) }
     }
 
@@ -81,6 +80,19 @@ class PlayerSkipOpEdState(
 @Stable
 class CurrentChapter(val chapter: Chapter, skipped: Boolean) {
     var skipped by mutableStateOf(skipped)
+}
+
+private fun isOpEdChapter(chapter: Chapter, videoLength: Duration): Boolean {
+    if (isOpEdName(chapter.name)) return true
+    return OpEdLength.fromVideoLengthOrNull(videoLength)?.isOpEdChapter(chapter.durationMillis.milliseconds) == true
+}
+
+private fun isOpEdName(name: String): Boolean {
+    val trimmed = name.trim().lowercase()
+    if (trimmed.isEmpty()) return false
+    return trimmed == "op" || trimmed == "ed" ||
+            trimmed.contains("intro") || trimmed.contains("outro") ||
+            trimmed.contains("opening") || trimmed.contains("ending")
 }
 
 fun interface OpEdLength {

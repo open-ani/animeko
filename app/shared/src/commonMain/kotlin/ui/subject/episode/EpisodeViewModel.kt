@@ -759,6 +759,20 @@ class EpisodeViewModel(
     }
 
 
+    @OptIn(UnsafeEpisodeSessionApi::class, InternalMediampApi::class)
+    private val mediaChaptersFlow: Flow<List<Chapter>> = fetchPlayState.episodeSessionFlow.flatMapLatest { session ->
+        session.fetchSelectFlow.flatMapLatest { fetchSelect ->
+            fetchSelect?.mediaSelector?.selected?.map { media ->
+                media?.extraFiles?.chapters?.map {
+                    Chapter(it.name, it.durationMillis, it.offsetMillis)
+                } ?: emptyList()
+            } ?: flowOf(emptyList())
+        }
+    }.catch {
+        logger.warn(it) { "Failed to fetch media chapters" }
+    }
+
+    @OptIn(InternalMediampApi::class)
     private val combinedChaptersFlow: Flow<List<Chapter>> =
         combine(
             (player.chapters ?: flowOf(emptyList())),
@@ -766,7 +780,14 @@ class EpisodeViewModel(
                 emit(emptyList()) // 先给个空列表, 避免刚开始时因为等待网络而没有进度
                 emitAll(autoSkipChaptersFlow)
             },
-        ) { a, b -> if (b.isEmpty()) a else (a + b) }
+            flow {
+                emit(emptyList())
+                emitAll(mediaChaptersFlow)
+            },
+        ) { a, b, c ->
+            val extraChapters = if (c.isNotEmpty()) c else b
+            (a + extraChapters).distinctBy { Pair(it.name, it.offsetMillis) }
+        }
 
     // Chapters to be displayed on progress slider (merged with AutoSkip rules)
     val progressChaptersFlow: Flow<List<Chapter>> = combinedChaptersFlow
