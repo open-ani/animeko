@@ -70,13 +70,13 @@ internal class JellyfinPasswordAuthenticator(
                         ),
                     )
                 }
-                if (response.status == HttpStatusCode.Unauthorized) {
+                if (response.status.isLoginRejected()) {
                     throw JellyfinLoginException()
                 }
                 response.body<AuthenticationResult>()
             }
         } catch (e: ClientRequestException) {
-            if (e.response.status == HttpStatusCode.Unauthorized) {
+            if (e.response.status.isLoginRejected()) {
                 throw JellyfinLoginException()
             }
             throw e
@@ -109,8 +109,12 @@ internal class JellyfinPasswordAuthenticator(
 }
 
 internal class JellyfinLoginException(
-    message: String = "Jellyfin rejected the username or password",
+    message: String = "Jellyfin rejected the login request",
 ) : IllegalStateException(message)
+
+private fun HttpStatusCode.isLoginRejected(): Boolean {
+    return this == HttpStatusCode.Unauthorized || this == HttpStatusCode.Forbidden
+}
 
 @Serializable
 private data class AuthenticateUserByNameRequest(

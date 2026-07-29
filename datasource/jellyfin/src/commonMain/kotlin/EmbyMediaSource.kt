@@ -51,7 +51,7 @@ class EmbyMediaSource(
     }
 
     class Factory : MediaSourceFactory {
-        override val factoryId: FactoryId get() = me.him188.ani.datasources.api.source.FactoryId(ID)
+        override val factoryId: FactoryId get() = FactoryId(ID)
 
         override val parameters: MediaSourceParameters = Parameters.build()
         override val info: MediaSourceInfo get() = INFO

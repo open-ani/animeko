@@ -23,6 +23,9 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.OutgoingContent
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -37,6 +40,7 @@ import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.utils.ktor.asScopedHttpClient
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
@@ -92,6 +96,48 @@ class JellyfinMediaSourceAuthenticationTest {
         assertEquals(ConnectionStatus.SUCCESS, source.checkConnection())
         assertEquals(1, loginCount)
         assertEquals(2, itemsCount)
+    }
+
+    @Test
+    fun `concurrent requests share one login session`() = runTest {
+        var loginCount = 0
+        var itemsCount = 0
+        val source = JellyfinMediaSource(
+            config = passwordConfig(),
+            client = mockClient { request ->
+                when (request.url.encodedPath) {
+                    "/Users/AuthenticateByName" -> {
+                        loginCount++
+                        respondJson(
+                            """
+                            {
+                              "AccessToken": "session-token",
+                              "User": { "Id": "session-user-id" }
+                            }
+                            """.trimIndent(),
+                        )
+                    }
+
+                    "/Items" -> {
+                        itemsCount++
+                        respondJson("""{"Items":[]}""")
+                    }
+
+                    else -> error("Unexpected request: ${request.url}")
+                }
+            },
+        )
+
+        coroutineScope {
+            List(8) {
+                async { source.checkConnection() }
+            }.awaitAll().forEach { status ->
+                assertEquals(ConnectionStatus.SUCCESS, status)
+            }
+        }
+
+        assertEquals(1, loginCount)
+        assertEquals(8, itemsCount)
     }
 
     @Test
@@ -291,19 +337,25 @@ class JellyfinMediaSourceAuthenticationTest {
     }
 
     @Test
-    fun `invalid password reports a failed connection without querying items`() = runTest {
-        var loginCount = 0
-        val source = JellyfinMediaSource(
-            config = passwordConfig(),
-            client = mockClient { request ->
-                assertEquals("/Users/AuthenticateByName", request.url.encodedPath)
-                loginCount++
-                respondJson("""{"error":"invalid credentials"}""", HttpStatusCode.Unauthorized)
-            },
-        )
+    fun `rejected login reports a failed connection without querying items`() = runTest {
+        for (status in listOf(HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden)) {
+            var loginCount = 0
+            val source = JellyfinMediaSource(
+                config = passwordConfig(),
+                client = mockClient { request ->
+                    assertEquals("/Users/AuthenticateByName", request.url.encodedPath)
+                    loginCount++
+                    respondJson("""{"error":"invalid credentials"}""", status)
+                },
+            )
 
-        assertEquals(ConnectionStatus.FAILED, source.checkConnection())
-        assertEquals(1, loginCount)
+            assertEquals(ConnectionStatus.FAILED, source.checkConnection())
+            val pagedSource = assertIs<PagedSource<MediaMatch>>(source.fetch(testRequest()))
+            assertFailsWith<JellyfinLoginException> {
+                pagedSource.nextPageOrNull()
+            }
+            assertEquals(2, loginCount)
+        }
     }
 
     private fun passwordConfig() = MediaSourceConfig(
