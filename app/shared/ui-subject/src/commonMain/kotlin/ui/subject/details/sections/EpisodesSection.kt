@@ -9,6 +9,9 @@
 
 package me.him188.ani.app.ui.subject.details.sections
 
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -38,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -45,9 +49,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.GraphicEq
+import me.him188.ani.app.ui.foundation.LongClickProgressFill
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_details_next_page
 import me.him188.ani.app.ui.lang.subject_details_prev_page
+import me.him188.ani.app.ui.lang.subject_episode_mark_watched
+import me.him188.ani.app.ui.lang.subject_episode_unwatch
 import me.him188.ani.app.ui.subject.details.components.EpisodePaging
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import org.jetbrains.compose.resources.stringResource
@@ -65,10 +72,12 @@ fun EpisodeGridCell(
     item: EpisodeListItem,
     isPlaying: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
     height: Dp = 72.dp,
 ) {
     val isWatched = item.isDoneOrDropped
+    val interactionSource = remember { MutableInteractionSource() }
     val containerColor = when {
         isPlaying -> MaterialTheme.colorScheme.primaryContainer
         isWatched -> MaterialTheme.colorScheme.surfaceContainerLow
@@ -81,41 +90,59 @@ fun EpisodeGridCell(
         else -> LocalContentColor.current
     }
     val nameColor = if (isWatched) dimmed else MaterialTheme.colorScheme.onSurfaceVariant
+    val longClickLabel = stringResource(
+        if (isWatched) Lang.subject_episode_unwatch else Lang.subject_episode_mark_watched,
+    )
 
     Surface(
-        onClick = onClick,
-        modifier = modifier.height(height),
+        modifier = modifier
+            .height(height)
+            .combinedClickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                role = Role.Button,
+                onClick = onClick,
+                onLongClickLabel = longClickLabel,
+                onLongClick = onLongClick,
+            ),
         shape = RoundedCornerShape(12.dp),
         color = containerColor,
     ) {
-        Column(
-            Modifier.fillMaxWidth().padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                if (isPlaying) {
-                    Icon(
-                        rememberVectorPainter(Icons.Rounded.GraphicEq),
-                        contentDescription = null,
-                        Modifier.height(16.dp).width(16.dp),
-                        tint = sortColor,
+        Box {
+            LongClickProgressFill(
+                interactionSource = interactionSource,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                modifier = Modifier.matchParentSize(),
+            )
+            Column(
+                Modifier.fillMaxWidth().padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    if (isPlaying) {
+                        Icon(
+                            rememberVectorPainter(Icons.Rounded.GraphicEq),
+                            contentDescription = null,
+                            Modifier.height(16.dp).width(16.dp),
+                            tint = sortColor,
+                        )
+                    }
+                    Text(
+                        item.sort.toString(),
+                        color = sortColor,
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
                 Text(
-                    item.sort.toString(),
-                    color = sortColor,
-                    style = MaterialTheme.typography.titleSmall,
+                    item.nameCn.ifBlank { item.name },
+                    color = nameColor,
+                    style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(
-                item.nameCn.ifBlank { item.name },
-                color = nameColor,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
         }
     }
 }
@@ -132,6 +159,7 @@ fun PagedEpisodesGrid(
     episodes: List<EpisodeListItem>,
     currentEpisodeId: Int?,
     onEpisodeClick: (EpisodeListItem) -> Unit,
+    onEpisodeLongClick: (EpisodeListItem) -> Unit,
     modifier: Modifier = Modifier,
     cellMinWidth: Dp = 96.dp,
     cellSpacing: Dp = 12.dp,
@@ -179,6 +207,7 @@ fun PagedEpisodesGrid(
                             item,
                             isPlaying = item.episodeId == currentEpisodeId,
                             onClick = { onEpisodeClick(item) },
+                            onLongClick = { onEpisodeLongClick(item) },
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -237,6 +266,7 @@ fun EpisodesRow(
     episodes: List<EpisodeListItem>,
     currentEpisodeId: Int?,
     onEpisodeClick: (EpisodeListItem) -> Unit,
+    onEpisodeLongClick: (EpisodeListItem) -> Unit,
     modifier: Modifier = Modifier,
     cellWidth: Dp = 104.dp,
     cellHeight: Dp = 64.dp,
@@ -261,6 +291,7 @@ fun EpisodesRow(
                 item,
                 isPlaying = item.episodeId == currentEpisodeId,
                 onClick = { onEpisodeClick(item) },
+                onLongClick = { onEpisodeLongClick(item) },
                 modifier = Modifier.width(cellWidth),
                 height = cellHeight,
             )
