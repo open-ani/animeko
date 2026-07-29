@@ -25,13 +25,13 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.source.MatchKind
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.utils.ktor.asScopedHttpClient
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class BaseJellyfinMediaSourceTest {
@@ -75,7 +75,7 @@ class BaseJellyfinMediaSourceTest {
                 }
 
                 request.url.parameters["parentId"] == "season-3" -> {
-                    assertNull(request.url.parameters["fields"])
+                    assertEquals("ProviderIds", request.url.parameters["fields"])
                     respondJson(
                         """
                         {
@@ -147,7 +147,7 @@ class BaseJellyfinMediaSourceTest {
         assertFalse(requests.any { it.url.parameters["parentId"] == "series" })
         assertFalse(requests.any { it.url.parameters["searchTerm"] == "unused alias" })
         assertFalse(requests.any { it.url.parameters["sortBy"] != null })
-        assertFalse(requests.any { "ProviderIds" in it.url.parameters["fields"].orEmpty() })
+        assertTrue(requests.any { it.url.parameters["fields"] == "ProviderIds" })
     }
 
     @Test
@@ -407,30 +407,291 @@ class BaseJellyfinMediaSourceTest {
 
         assertEquals("episode-1", result.single().media.mediaId)
         assertEquals("Renamed season", result.single().media.properties.subjectName)
+        assertEquals(MatchKind.FUZZY, result.single().kind)
+    }
+
+    @Test
+    fun `uses episode provider ids to reject a conflicting fallback and mark an exact match`() = runTest {
+        val requests = mutableListOf<HttpRequestData>()
+        val source = createSource { request ->
+            requests += request
+            when {
+                request.url.parameters["searchTerm"] == "Fallback title" -> respondJson(
+                    """
+                    {
+                      "Items": [
+                        {
+                          "Name": "Episode one",
+                          "SeasonName": "Wrong renamed season",
+                          "Id": "wrong-episode",
+                          "IndexNumber": 1,
+                          "Type": "Episode",
+                          "ProviderIds": {
+                            "Bangumi": "999",
+                            "BangumiSubject": "123"
+                          }
+                        },
+                        {
+                          "Name": "Episode one",
+                          "SeasonName": "Right renamed season",
+                          "Id": "right-episode",
+                          "IndexNumber": 1,
+                          "Type": "Episode",
+                          "ProviderIds": {
+                            "Bangumi": "456",
+                            "BangumiSubject": "123"
+                          }
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                request.url.parameters["ids"] == "right-episode" -> respondJson(
+                    """
+                    {
+                      "Items": [
+                        {
+                          "Name": "Episode one",
+                          "SeasonName": "Right renamed season",
+                          "Id": "right-episode",
+                          "IndexNumber": 1,
+                          "Type": "Episode",
+                          "MediaStreams": []
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                else -> error("Unexpected request: ${request.url}")
+            }
+        }
+
+        val result = source.fetch(
+            request(subjectNames = listOf("Fallback title")),
+        ).results.toList()
+
+        assertEquals("right-episode", result.single().media.mediaId)
+        assertEquals(MatchKind.EXACT, result.single().kind)
+        assertFalse(requests.any { it.url.parameters["ids"] == "wrong-episode" })
+    }
+
+    @Test
+    fun `keeps inspecting a multi-season series whose provider id belongs to season one`() = runTest {
+        val requests = mutableListOf<HttpRequestData>()
+        val source = createSource { request ->
+            requests += request
+            when {
+                request.url.parameters["searchTerm"] == "Generic series" -> respondJson(
+                    """
+                    {
+                      "Items": [
+                        {
+                          "Name": "Generic series",
+                          "Id": "series",
+                          "Type": "Series",
+                          "ProviderIds": {
+                            "Bangumi": "first-season-subject"
+                          }
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                request.url.encodedPath == "/Shows/series/Seasons" -> respondJson(
+                    """
+                    {
+                      "Items": [
+                        {
+                          "Name": "Season one",
+                          "Id": "season-1",
+                          "IndexNumber": 1,
+                          "Type": "Season",
+                          "ProviderIds": {
+                            "Bangumi": "first-season-subject"
+                          }
+                        },
+                        {
+                          "Name": "Season three",
+                          "Id": "season-3",
+                          "IndexNumber": 3,
+                          "Type": "Season",
+                          "ProviderIds": {
+                            "Bangumi": "123"
+                          }
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                request.url.encodedPath == "/Shows/series/Episodes" -> {
+                    assertEquals("3", request.url.parameters["Season"])
+                    respondJson(
+                        """
+                        {
+                          "Items": [
+                            {
+                              "Name": "Right season episode",
+                              "SeasonName": "Season three",
+                              "Id": "right-episode",
+                              "IndexNumber": 1,
+                              "Type": "Episode",
+                              "ProviderIds": {
+                                "Bangumi": "456",
+                                "BangumiSubject": "123"
+                              }
+                            }
+                          ]
+                        }
+                        """.trimIndent(),
+                    )
+                }
+
+                request.url.parameters["ids"] == "right-episode" -> respondJson(
+                    """
+                    {
+                      "Items": [
+                        {
+                          "Name": "Right season episode",
+                          "SeasonName": "Season three",
+                          "Id": "right-episode",
+                          "IndexNumber": 1,
+                          "Type": "Episode",
+                          "MediaStreams": []
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                else -> error("Unexpected request: ${request.url}")
+            }
+        }
+
+        val result = source.fetch(
+            request(subjectNames = listOf("Generic series")),
+        ).results.toList()
+
+        assertEquals("right-episode", result.single().media.mediaId)
+        assertEquals(MatchKind.EXACT, result.single().kind)
+        assertFalse(
+            requests.any {
+                it.url.encodedPath == "/Shows/series/Episodes" &&
+                        it.url.parameters["Season"] == "1"
+            },
+        )
+    }
+
+    @Test
+    fun `uses a matching season provider id when episode provider ids are missing`() = runTest {
+        val requests = mutableListOf<HttpRequestData>()
+        val source = createSource { request ->
+            requests += request
+            when {
+                request.url.parameters["searchTerm"] == "Alias" -> respondJson(
+                    """
+                    {
+                      "Items": [
+                        {
+                          "Name": "Wrong renamed season",
+                          "Id": "wrong-season",
+                          "Type": "Season",
+                          "ProviderIds": {
+                            "Bangumi": "999"
+                          }
+                        },
+                        {
+                          "Name": "Right renamed season",
+                          "Id": "right-season",
+                          "Type": "Season",
+                          "ProviderIds": {
+                            "Bangumi": "123"
+                          }
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                request.url.parameters["parentId"] == "right-season" -> respondJson(
+                    """
+                    {
+                      "Items": [
+                        {
+                          "Name": "Episode one",
+                          "SeasonName": "Right renamed season",
+                          "Id": "right-episode",
+                          "IndexNumber": 1,
+                          "Type": "Episode"
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                request.url.parameters["ids"] == "right-episode" -> respondJson(
+                    """
+                    {
+                      "Items": [
+                        {
+                          "Name": "Episode one",
+                          "SeasonName": "Right renamed season",
+                          "Id": "right-episode",
+                          "IndexNumber": 1,
+                          "Type": "Episode",
+                          "MediaStreams": []
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                else -> error("Unexpected request: ${request.url}")
+            }
+        }
+
+        val result = source.fetch(
+            request(subjectNames = listOf("Alias")),
+        ).results.toList()
+
+        assertEquals("right-episode", result.single().media.mediaId)
+        assertEquals(MatchKind.FUZZY, result.single().kind)
+        assertFalse(requests.any { it.url.parameters["parentId"] == "wrong-season" })
     }
 
     @Test
     fun `keeps the season titles for the four affected library entries`() = runTest {
         val cases = listOf(
             TestCase(
+                subjectId = "622206",
+                episodeId = "1701421",
                 subjectName = "ヤニねこ",
                 seriesName = "ヤニねこ",
                 episodeSort = EpisodeSort(1),
                 episodeEp = EpisodeSort(1),
             ),
             TestCase(
+                subjectId = "283643",
+                episodeId = "1296938",
                 subjectName = "響け！ユーフォニアム3",
                 seriesName = "響け！ユーフォニアム",
                 episodeSort = EpisodeSort(1),
                 episodeEp = EpisodeSort(1),
             ),
             TestCase(
+                subjectId = "501963",
+                episodeId = "1704816",
                 subjectName = "無職転生Ⅲ ～異世界行ったら本気だす～",
                 seriesName = "無職転生 ～異世界行ったら本気だす～",
                 episodeSort = EpisodeSort(1),
                 episodeEp = EpisodeSort(1),
             ),
             TestCase(
+                subjectId = "547888",
+                episodeId = "1656866",
                 subjectName = "Re:ゼロから始める異世界生活 4th season 喪失編",
                 seriesName = "Re:ゼロから始める異世界生活",
                 episodeSort = EpisodeSort(67),
@@ -451,7 +712,10 @@ class BaseJellyfinMediaSourceTest {
                               "Name": "${case.subjectName}",
                               "SeriesName": "${case.seriesName}",
                               "Id": "$seasonId",
-                              "Type": "Season"
+                              "Type": "Season",
+                              "ProviderIds": {
+                                "Bangumi": "${case.subjectId}"
+                              }
                             }
                           ]
                         }
@@ -468,7 +732,11 @@ class BaseJellyfinMediaSourceTest {
                               "SeasonName": "${case.subjectName}",
                               "Id": "$episodeId",
                               "IndexNumber": 1,
-                              "Type": "Episode"
+                              "Type": "Episode",
+                              "ProviderIds": {
+                                "Bangumi": "${case.episodeId}",
+                                "BangumiSubject": "${case.subjectId}"
+                              }
                             }
                           ]
                         }
@@ -500,6 +768,8 @@ class BaseJellyfinMediaSourceTest {
             val result = source.fetch(
                 request(
                     subjectNames = listOf(case.subjectName),
+                    subjectId = case.subjectId,
+                    episodeId = case.episodeId,
                     episodeSort = case.episodeSort,
                     episodeEp = case.episodeEp,
                 ),
@@ -510,6 +780,7 @@ class BaseJellyfinMediaSourceTest {
                 result.single().media.properties.subjectName,
                 case.subjectName,
             )
+            assertEquals(MatchKind.EXACT, result.single().kind, case.subjectName)
         }
     }
 
@@ -542,11 +813,13 @@ class BaseJellyfinMediaSourceTest {
 
     private fun request(
         subjectNames: List<String>,
+        subjectId: String = "123",
+        episodeId: String = "456",
         episodeSort: EpisodeSort = EpisodeSort(1),
         episodeEp: EpisodeSort? = EpisodeSort(1),
     ) = MediaFetchRequest(
-        subjectId = "123",
-        episodeId = "456",
+        subjectId = subjectId,
+        episodeId = episodeId,
         subjectNameCN = subjectNames.firstOrNull(),
         subjectNames = subjectNames,
         episodeSort = episodeSort,
@@ -557,7 +830,7 @@ class BaseJellyfinMediaSourceTest {
     private fun assertDiscoveryRequest(request: HttpRequestData) {
         assertEquals("50", request.url.parameters["limit"])
         assertEquals("false", request.url.parameters["enableTotalRecordCount"])
-        assertNull(request.url.parameters["fields"])
+        assertEquals("ProviderIds", request.url.parameters["fields"])
     }
 
     private fun MockRequestHandleScope.respondJson(content: String) = respond(
@@ -567,6 +840,8 @@ class BaseJellyfinMediaSourceTest {
     )
 
     private data class TestCase(
+        val subjectId: String,
+        val episodeId: String,
         val subjectName: String,
         val seriesName: String,
         val episodeSort: EpisodeSort,
