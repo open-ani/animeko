@@ -146,7 +146,8 @@ jobs:
             echo "- Preserve the existing title when it already concisely and specifically describes the report."
             echo "- Otherwise rewrite it to identify the affected feature or context and the concrete problem or requested change."
             echo "- Never use an abstract title such as bug, issue, problem, display problem, 问题, 显示问题, or 功能异常."
-            echo "- Use only facts supported by the report, keep its primary language, and do not add a label, issue type, or issue number."
+            echo "- Use only facts supported by the report and write the normalized title in the same language as the original issue title, even when the body uses another language."
+            echo "- Do not add a label, issue type, or issue number."
             echo "- Keep the title between 4 and 80 characters with no leading or trailing whitespace."
             echo
             echo "Issue type rules:"
