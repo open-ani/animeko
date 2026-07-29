@@ -26,6 +26,8 @@ import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
@@ -61,6 +63,16 @@ expect fun appColorScheme(
 expect fun isPlatformSupportDynamicTheme(): Boolean
 
 /**
+ * 深色配色的 `onSurface`, 供盖在深色遮罩上的内容取前景色: 这类内容与当前明暗无关, 恒定用深色前景.
+ *
+ * 由 [AniTheme] 生成一次向下提供. 取这个颜色要生成整套配色, 而取用方通常在列表项里,
+ * 各自调用会按项重复生成.
+ *
+ * [Color.Unspecified] 表示不在 [AniTheme] 作用域内, 如 Preview, 取用方需自行回退.
+ */
+val LocalDarkOnSurface: ProvidableCompositionLocal<Color> = compositionLocalOf { Color.Unspecified }
+
+/**
  * AniApp MaterialTheme.
  * @param darkModeOverride Used for overriding [DarkMode] in specific situations.
  */
@@ -75,12 +87,18 @@ fun AniTheme(
         DarkMode.DARK -> true
         DarkMode.AUTO -> isSystemInDarkTheme()
     }
+    val colorScheme = appColorScheme(isDark = isDark)
+    // 深色主题直接复用当前配色; 浅色主题需额外生成一套, 界面上没有取用方时这次生成是多余的,
+    // 换来的是取用方不再按列表项各自生成.
+    val darkOnSurface = if (isDark) colorScheme.onSurface else appColorScheme(isDark = true).onSurface
 
-    MaterialTheme(
-        colorScheme = appColorScheme(isDark = isDark),
-        typography = MaterialTheme.typography.copyWithPlatformFontFamily(platformFontFamily),
-        content = content,
-    )
+    CompositionLocalProvider(LocalDarkOnSurface provides darkOnSurface) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = MaterialTheme.typography.copyWithPlatformFontFamily(platformFontFamily),
+            content = content,
+        )
+    }
 }
 
 @Stable
