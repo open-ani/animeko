@@ -167,6 +167,7 @@ import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsState
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListDialog
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
+import me.him188.ani.app.ui.subject.person.PeoplePreviewHost
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
 import me.him188.ani.datasources.api.PackedDate
