@@ -36,6 +36,10 @@ internal class MediaSourceSelectionState(
         }
     }
 
+    fun enterSelection() {
+        inSelection = true
+    }
+
     fun enterSelectionWith(instanceId: String) {
         inSelection = true
         selectedIds = selectedIds + instanceId

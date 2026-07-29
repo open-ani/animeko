@@ -148,9 +148,7 @@ class MediaSourceSubscriptionUpdater(
         logger.info { "updateSubscription diff: $diff" }
 
         // 解决差异
-        for ((save, _) in diff.removed) {
-            mediaSourceManager.removeInstance(save.instanceId)
-        }
+        mediaSourceManager.removeInstances(diff.removed.map { (save, _) -> save.instanceId })
 
         for (argument in diff.added) {
             val id = Uuid.randomString()

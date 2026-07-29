@@ -200,8 +200,8 @@ class EditMediaSourceState(
     private val getConfigFlow: (instanceId: String) -> Flow<MediaSourceConfig>,
     private val onAdd: suspend (factoryId: FactoryId, instanceId: String, config: MediaSourceConfig) -> Unit,
     private val onEdit: suspend (instanceId: String, config: MediaSourceConfig) -> Unit,
-    private val onDelete: suspend (instanceId: String) -> Unit,
-    private val onSetEnabled: suspend (instanceId: String, enabled: Boolean) -> Unit,
+    private val onDelete: suspend (instanceIds: List<String>) -> Unit,
+    private val onSetEnabled: suspend (instanceIds: List<String>, enabled: Boolean) -> Unit,
     private val backgroundScope: CoroutineScope,
 ) {
     var editMediaSourceState by mutableStateOf<EditingMediaSource?>(null)
@@ -281,7 +281,7 @@ class EditMediaSourceState(
 
     fun deleteMediaSources(items: Collection<MediaSourcePresentation>) {
         editTasker.launch {
-            items.forEach { onDelete(it.instanceId) }
+            onDelete(items.map { it.instanceId })
         }
     }
 
@@ -291,7 +291,7 @@ class EditMediaSourceState(
 
     fun setMediaSourcesEnabled(items: Collection<MediaSourcePresentation>, enabled: Boolean) {
         editTasker.launch {
-            items.forEach { onSetEnabled(it.instanceId, enabled) }
+            onSetEnabled(items.map { it.instanceId }, enabled)
         }
     }
 }
