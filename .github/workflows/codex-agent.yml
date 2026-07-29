@@ -66,9 +66,6 @@ jobs:
     runs-on: [self-hosted, macOS, ARM64]
     permissions:
       issues: write
-    concurrency:
-      group: codex-agent
-      cancel-in-progress: false
     env:
       REPO: ${{ github.repository }}
       ISSUE_NUMBER: ${{ github.event.issue.number }}
@@ -312,9 +309,6 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
-    concurrency:            # one codex job at a time on the single machine
-      group: codex-agent
-      cancel-in-progress: false
     env:
       GH_TOKEN: ${{ secrets.OPENANI_BOT_TOKEN }}
       REPO: ${{ github.repository }}
@@ -429,8 +423,10 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    # Keep the active run, but collapse additional feedback on this PR into one pending run.
+    # The single self-hosted runner serializes work across different issues and PRs.
     concurrency:
-      group: codex-agent
+      group: codex-agent-feedback-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: false
     env:
       GH_TOKEN: ${{ secrets.OPENANI_BOT_TOKEN }}
@@ -508,6 +504,8 @@ jobs:
             echo "  PR:       $PR_URL"
             echo "  Feedback: $TRIGGER_URL"
             echo "Read the full context yourself with: gh pr view $PR_NUMBER --comments   (and gh api for review threads)."
+            echo "Review and address all currently unhandled maintainer feedback, not only the triggering event."
+            echo "Multiple comments or reviews may have been coalesced into this run while another run was active."
             echo
             echo "IMPORTANT: Do every GitHub action (PR updates, comments, replies, reactions, reads) with the 'gh' CLI only."
             echo "Do NOT use any GitHub connector / MCP integration — 'gh' authenticates as the CI bot, a connector would act under a personal account."
@@ -577,8 +575,10 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+    # Keep the active run, but collapse additional feedback on this issue into one pending run.
+    # The single self-hosted runner serializes work across different issues and PRs.
     concurrency:
-      group: codex-agent
+      group: codex-agent-feedback-${{ github.event.issue.number }}
       cancel-in-progress: false
     env:
       GH_TOKEN: ${{ secrets.OPENANI_BOT_TOKEN }}
@@ -636,6 +636,8 @@ jobs:
             echo "  Issue:   $ISSUE_URL"
             echo "  Comment: $COMMENT_URL"
             echo "Read the issue and all comments yourself with: gh issue view $ISSUE_NUMBER --comments"
+            echo "Review and address all currently unhandled maintainer feedback, not only the triggering comment."
+            echo "Multiple comments may have been coalesced into this run while another run was active."
             echo
             echo "IMPORTANT: Do every GitHub action (PRs, comments, reactions, issue/PR reads) with the 'gh' CLI only."
             echo "Do NOT use any GitHub connector / MCP integration — 'gh' authenticates as the CI bot, a connector would act under a personal account."
