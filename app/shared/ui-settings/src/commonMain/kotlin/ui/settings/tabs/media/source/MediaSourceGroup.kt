@@ -9,8 +9,6 @@
 
 package me.him188.ani.app.ui.settings.tabs.media.source
 
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -32,11 +30,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
@@ -45,7 +42,6 @@ import androidx.compose.material.icons.rounded.Reorder
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -58,6 +54,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -82,13 +79,12 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.navigation.LocalNavigator
-import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.interaction.onRightClickIfSupported
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_media_source_add
 import me.him188.ani.app.ui.lang.settings_media_source_cancel
-import me.him188.ani.app.ui.lang.settings_media_source_cancel_sort
 import me.him188.ani.app.ui.lang.settings_media_source_delete
 import me.him188.ani.app.ui.lang.settings_media_source_delete_can_readd
 import me.him188.ani.app.ui.lang.settings_media_source_delete_confirm
@@ -105,7 +101,6 @@ import me.him188.ani.app.ui.lang.settings_media_source_from_subscription
 import me.him188.ani.app.ui.lang.settings_media_source_list
 import me.him188.ani.app.ui.lang.settings_media_source_list_description
 import me.him188.ani.app.ui.lang.settings_media_source_more
-import me.him188.ani.app.ui.lang.settings_media_source_save_sort
 import me.him188.ani.app.ui.lang.settings_media_source_select_all
 import me.him188.ani.app.ui.lang.settings_media_source_select_template
 import me.him188.ani.app.ui.lang.settings_media_source_selected_count
@@ -115,7 +110,6 @@ import me.him188.ani.app.ui.lang.settings_media_source_stop_test
 import me.him188.ani.app.ui.settings.framework.ConnectionTesterResultIndicator
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.TextButtonItem
-import me.him188.ani.app.ui.settings.framework.rememberSorterState
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcon
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcons
 import me.him188.ani.datasources.api.source.FactoryId
@@ -125,7 +119,7 @@ import me.him188.ani.datasources.api.source.parameter.MediaSourceParameters
 import me.him188.ani.datasources.api.source.parameter.isEmpty
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorder
-import org.burnoutcrew.reorderable.detectReorderAfterLongPress
+import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
 import org.jetbrains.compose.resources.stringResource
 
@@ -136,6 +130,7 @@ internal val MediaSourcesUsingNewSettings = listOf(
 )
 
 internal object MediaSourceGroupTestTags {
+    const val ENTER_SELECTION = "media_source_enter_selection"
     const val EXIT_SELECTION = "media_source_exit_selection"
     const val SELECT_ALL = "media_source_select_all"
 
@@ -190,14 +185,29 @@ internal fun SettingsScope.MediaSourceGroup(
         EditMediaSourceDialog(it, onDismissRequest = { edit.cancelEdit() })
     }
 
-    val sorter = rememberSorterState<MediaSourcePresentation>(
-        onComplete = { list -> state.reorderMediaSources(newOrder = list.map { it.instanceId }) },
+    // 多选模式下的列表数据. 拖拽排序时先在本地重排, 拖拽结束后再持久化.
+    var reorderData by remember { mutableStateOf(state.mediaSources) }
+    val reorderableState = rememberReorderableLazyListState(
+        onMove = { from, to ->
+            reorderData = reorderData.toMutableList().apply {
+                add(to.index, removeAt(from.index))
+            }
+        },
+        onDragEnd = { _, _ ->
+            state.reorderMediaSources(newOrder = reorderData.map { it.instanceId })
+        },
     )
     val selectionCount = selectionState.selectedIds.size
     val allSelected = state.mediaSources.isNotEmpty() &&
         state.mediaSources.all { it.instanceId in selectionState.selectedIds }
 
+    // 组合在页面导航的 BackHandler 之后, 保证多选模式下返回键优先退出多选, 而不是退出设置页
+    BackHandler(enabled = selectionState.inSelection) {
+        selectionState.clear()
+    }
+
     LaunchedEffect(state.mediaSources, selectionState.inSelection) {
+        reorderData = state.mediaSources
         if (selectionState.inSelection) {
             selectionState.retainSelection(state.mediaSources.mapTo(mutableSetOf()) { it.instanceId })
         }
@@ -252,65 +262,37 @@ internal fun SettingsScope.MediaSourceGroup(
                     }
                 }
             } else {
-                AniAnimatedVisibility(
-                    visible = sorter.isSorting,
-                ) {
-                    Row {
-                        IconButton({ sorter.cancel() }) {
-                            Icon(
-                                Icons.Rounded.Close,
-                                contentDescription = stringResource(Lang.settings_media_source_cancel_sort),
-                            )
-                        }
+                Row {
+                    IconButton(
+                        {
+                            edit.cancelEdit()
+                            showSelectTemplate = true
+                        },
+                    ) {
+                        Icon(Icons.Rounded.Add, contentDescription = stringResource(Lang.settings_media_source_add))
                     }
-                }
-                AniAnimatedVisibility(
-                    visible = !sorter.isSorting,
-                ) {
-                    Row {
-                        IconButton(
-                            {
-                                edit.cancelEdit()
-                                showSelectTemplate = true
-                            },
-                        ) {
-                            Icon(Icons.Rounded.Add, contentDescription = stringResource(Lang.settings_media_source_add))
-                        }
-                    }
-                }
-                Crossfade(sorter.isSorting, Modifier.animateContentSize()) { isSorting ->
-                    if (isSorting) {
-                        Button(
-                            {
-                                sorter.complete()
-                            },
-                        ) {
-                            Icon(
-                                Icons.Rounded.Check,
-                                contentDescription = stringResource(Lang.settings_media_source_save_sort),
-                            )
-                        }
-                    } else {
-                        IconButton(
-                            {
-                                edit.cancelEdit()
-                                sorter.start(state.mediaSources)
-                            },
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Rounded.Sort,
-                                contentDescription = stringResource(Lang.settings_media_source_sort),
-                            )
-                        }
+                    IconButton(
+                        {
+                            edit.cancelEdit()
+                            selectionState.enterSelection()
+                        },
+                        enabled = state.mediaSources.isNotEmpty(),
+                        modifier = Modifier.testTag(MediaSourceGroupTestTags.ENTER_SELECTION),
+                    ) {
+                        Icon(
+                            Icons.Rounded.Checklist,
+                            contentDescription = stringResource(Lang.settings_media_source_enter_selection_mode),
+                        )
                     }
                 }
             }
         },
     ) {
         Box {
+            // 多选模式下仅用于撑起高度, 实际显示与交互由上面的 LazyColumn 承担
             Column(
                 Modifier
-                    .ifThen(sorter.isSorting) { alpha(0f) }
+                    .ifThen(selectionState.inSelection) { alpha(0f) }
                     .wrapContentHeight(),
             ) {
                 state.mediaSources.forEachIndexed { index, item ->
@@ -428,42 +410,54 @@ internal fun SettingsScope.MediaSourceGroup(
                     }
                 }
             }
-            if (sorter.isSorting) {
+            if (selectionState.inSelection) {
                 // 往上面再盖一层, 因为 SettingsTab 已经有 scrollable 了, LazyColumn 如果不加高度限制会出错
                 LazyColumn(
-                    state = sorter.listState,
+                    state = reorderableState.listState,
                     modifier = Modifier
                         .matchParentSize()
-                        .reorderable(sorter.reorderableState)
-                        .detectReorderAfterLongPress(sorter.reorderableState),
+                        .reorderable(reorderableState),
                 ) {
                     itemsIndexed(
-                        sorter.sortingData,
+                        reorderData,
                         key = { _, item -> item.instanceId },
                     ) { index, item ->
                         if (index != 0) {
                             HorizontalDividerItem()
                         }
-                        ReorderableItem(sorter.reorderableState, key = item.instanceId) { isDragging ->
+                        ReorderableItem(reorderableState, key = item.instanceId) { isDragging ->
                             val elevation = animateDpAsState(if (isDragging) 16.dp else 0.dp)
+                            val selected = item.instanceId in selectionState.selectedIds
                             MediaSourceItem(
                                 item,
                                 Modifier
                                     .shadow(elevation.value)
-                                    .background(MaterialTheme.colorScheme.surface), // match card background
+                                    .background(
+                                        if (selected) {
+                                            MaterialTheme.colorScheme.surfaceContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.surface // match card background
+                                        },
+                                    )
+                                    .clickable { selectionState.toggleSelection(item.instanceId) },
+                                selectionMode = true,
+                                selected = selected,
+                                onToggleSelected = { selectionState.toggleSelection(item.instanceId) },
                             ) {
                                 Icon(
                                     Icons.Rounded.Reorder,
-                                    "拖拽排序",
-                                    Modifier.detectReorder(sorter.reorderableState),
+                                    stringResource(Lang.settings_media_source_sort),
+                                    Modifier
+                                        .minimumInteractiveComponentSize()
+                                        .detectReorder(reorderableState),
                                 )
                             }
                         }
                     }
                 }
             } else {
-                // 清空 list 状态, 否则在删除一个项目后再切换到排序状态, 有的项目会消失
-                LazyColumn(Modifier.height(0.dp), sorter.listState) { }
+                // 清空 list 状态, 否则在删除一个项目后再进入多选模式, 有的项目会消失
+                LazyColumn(Modifier.height(0.dp), reorderableState.listState) { }
             }
         }
 
@@ -474,8 +468,6 @@ internal fun SettingsScope.MediaSourceGroup(
             onClick = {
                 state.mediaSourceTesters.toggleTest()
             },
-            Modifier.ifThen(sorter.isSorting) { alpha(0f) },
-            enabled = !sorter.isSorting,
             title = {
                 if (state.mediaSourceTesters.anyTesting) {
                     Text(stringResource(Lang.settings_media_source_stop_test))

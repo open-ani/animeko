@@ -326,8 +326,8 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
             mediaSourceManager.addInstance(instanceId, instanceId, factoryId, config)
         },
         onEdit = { instanceId, config -> mediaSourceManager.updateConfig(instanceId, config) },
-        onDelete = { instanceId -> mediaSourceManager.removeInstance(instanceId) },
-        onSetEnabled = { instanceId, enabled -> mediaSourceManager.setEnabled(instanceId, enabled) },
+        onDelete = { instanceIds -> mediaSourceManager.removeInstances(instanceIds) },
+        onSetEnabled = { instanceIds, enabled -> mediaSourceManager.setEnabled(instanceIds, enabled) },
         backgroundScope,
     )
 
@@ -338,9 +338,9 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
         onAdd = { mediaSourceSubscriptionRepository.add(it) },
         onDelete = {
             launchInBackground {
-                for (save in mediaSourceManager.getListBySubscriptionId(it.subscriptionId)) {
-                    mediaSourceManager.removeInstance(save.instanceId)
-                }
+                mediaSourceManager.removeInstances(
+                    mediaSourceManager.getListBySubscriptionId(it.subscriptionId).map { save -> save.instanceId },
+                )
                 mediaSourceSubscriptionRepository.remove(it)
             }
         },

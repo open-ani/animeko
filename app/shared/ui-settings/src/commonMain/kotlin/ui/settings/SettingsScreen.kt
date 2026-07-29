@@ -107,7 +107,6 @@ import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastExpanded
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paneVerticalPadding
-import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.LocalAppChromeHazeState
 import me.him188.ani.app.ui.foundation.theme.appChromeHazeSource
@@ -208,10 +207,6 @@ fun SettingsScreen(
             mediaSourceSelectionState.clear()
         }
     }
-    BackHandler(
-        enabled = lastSelectedTab == SettingsTab.MEDIA_SOURCE && mediaSourceSelectionState.inSelection,
-        onBack = mediaSourceSelectionState::clear,
-    )
     val coroutineScope = rememberCoroutineScope()
     val browserNavigator = rememberAsyncBrowserNavigator()
     val context = LocalContext.current
