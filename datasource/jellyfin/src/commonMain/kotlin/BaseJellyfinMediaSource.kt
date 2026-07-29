@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -17,10 +17,6 @@ import io.ktor.client.request.parameter
 import io.ktor.http.HttpHeaders
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.flatMapConcat
-import kotlinx.coroutines.flow.toList
 import kotlinx.serialization.Serializable
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
@@ -42,6 +38,13 @@ import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.utils.ktor.ScopedHttpClient
+import me.him188.ani.utils.logging.warn
+
+private const val TYPE_EPISODE = "Episode"
+private const val TYPE_MOVIE = "Movie"
+private const val TYPE_SEASON = "Season"
+private const val TYPE_SERIES = "Series"
+private const val TITLE_SEARCH_LIMIT = 50
 
 abstract class BaseJellyfinMediaSource(
     private val client: ScopedHttpClient,
@@ -52,7 +55,11 @@ abstract class BaseJellyfinMediaSource(
 
     override suspend fun checkConnection(): ConnectionStatus {
         try {
-            doSearch("AA测试BB")
+            doSearch(
+                subjectName = "AA测试BB",
+                limit = 1,
+                enableTotalRecordCount = false,
+            )
             return ConnectionStatus.SUCCESS
         } catch (e: CancellationException) {
             throw e
@@ -63,96 +70,230 @@ abstract class BaseJellyfinMediaSource(
 
     override suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch> {
         return SinglePagePagedSource {
-            query.subjectNames
-                .asFlow()
-                .flatMapConcat { subjectName ->
-                    val (baseName, targetSeason) = parseSubjectName(subjectName)
-
-                    val seriesSearchResp = doSearch(subjectName = baseName)
-                    val seriesItems = seriesSearchResp.Items.filter { it.Type == "Series" }
-
-                    if (seriesItems.isNotEmpty()) {
-                        seriesItems.asFlow().flatMapConcat { series ->
-                            val seasonsResp = doGetSeasons(seriesId = series.Id)
-                            val matchedSeasons = if (targetSeason != null) {
-                                seasonsResp.Items.filter { it.IndexNumber == targetSeason }
-                            } else {
-                                seasonsResp.Items
-                            }
-
-                            if (matchedSeasons.isNotEmpty()) {
-                                matchedSeasons.asFlow().flatMapConcat { season ->
-                                    doGetEpisodes(
-                                        seriesId = series.Id,
-                                        seasonNum = season.IndexNumber
-                                            ?: return@flatMapConcat emptyFlow(),
-                                    ).Items.asFlow()
-                                }
-                            } else {
-                                doSearch(parentId = series.Id).Items.asFlow()
-                            }
-                        }
-                    } else {
-                        val resp = doSearch(subjectName = subjectName)
-                        resp.Items.asFlow()
-                    }
-                }
-                .filter { (it.Type == "Episode" || it.Type == "Movie") }
-                .toList()
+            findBySubjectNames(query)
                 .distinctBy { it.Id }
-                .mapNotNull { item ->
-                    val (originalTitle, episodeRange) = when (item.Type) {
-                        "Episode" -> {
-                            val indexNumber = item.IndexNumber ?: return@mapNotNull null
-                            Pair(
-                                "$indexNumber ${item.Name}",
-                                EpisodeRange.single(EpisodeSort(indexNumber)),
-                            )
-                        }
-
-                        "Movie" -> Pair(
-                            item.Name,
-                            EpisodeRange.unknownSeason(),
-                        )
-
-                        else -> return@mapNotNull null
-                    }
-
-                    MediaMatch(
-                        media = DefaultMedia(
-                            mediaId = item.Id,
-                            mediaSourceId = mediaSourceId,
-                            originalUrl = "$baseUrl/Items/${item.Id}",
-                            download = ResourceLocation.HttpStreamingFile(
-                                uri = getDownloadUri(item.Id),
-                            ),
-                            originalTitle = originalTitle,
-                            publishedTime = 0,
-                            properties = MediaProperties(
-                                subjectName = query.subjectNameCN
-                                    ?: item.SeriesName?.takeIf { it.isNotBlank() }
-                                    ?: item.SeasonName?.takeIf { it.isNotBlank() }
-                                    ?: query.subjectNames.firstOrNull() ?: "",
-                                episodeName = item.Name,
-                                subtitleLanguageIds = listOf("CHS"),
-                                resolution = "1080P",
-                                alliance = mediaSourceId,
-                                size = FileSize.Unspecified,
-                                subtitleKind = SubtitleKind.EXTERNAL_PROVIDED,
-                            ),
-                            extraFiles = MediaExtraFiles(
-                                subtitles = getSubtitles(item.Id, item.MediaStreams),
-                            ),
-                            episodeRange = episodeRange,
-                            location = MediaSourceLocation.Lan,
-                            kind = MediaSourceKind.WEB,
-                        ),
-                        kind = MatchKind.FUZZY,
-                    )
-                }
+                .mapNotNull { it.toMediaMatch(query) }
                 .filter { it.matches(query) != false }
                 .asFlow()
         }
+    }
+
+    /**
+     * Tries all known subject names and their season-less variants in order, but stops once an
+     * exact Jellyfin title yields the requested episode. Results from non-exact title matches are
+     * retained as a fallback.
+     */
+    private suspend fun findBySubjectNames(query: MediaFetchRequest): List<Item> {
+        val fallbackMatches = linkedMapOf<String, Item>()
+
+        for (subjectName in query.subjectNames
+            .asSequence()
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .distinct()) {
+            val parsedSubjectName = parseSubjectName(subjectName)
+            for (searchName in sequenceOf(subjectName, parsedSubjectName.baseName).distinct()) {
+                val searchResults = doSearch(
+                    subjectName = searchName,
+                    limit = TITLE_SEARCH_LIMIT,
+                    enableTotalRecordCount = false,
+                ).Items.filter(Item::isSupportedSearchResult)
+
+                if (searchResults.isEmpty()) {
+                    continue
+                }
+
+                val preferredCandidates = searchResults.preferredCandidatesFor(searchName)
+                val preferredMatches = findRequestedItems(
+                    preferredCandidates,
+                    query,
+                    parsedSubjectName.targetSeason,
+                )
+                val matches = if (preferredMatches.isNotEmpty()) {
+                    preferredMatches
+                } else {
+                    findRequestedItems(
+                        searchResults.filterNot { candidate ->
+                            preferredCandidates.any { it.Id == candidate.Id }
+                        },
+                        query,
+                        parsedSubjectName.targetSeason,
+                    )
+                }
+
+                if (matches.isEmpty()) {
+                    continue
+                }
+
+                hydrateMediaStreams(matches).forEach { item ->
+                    fallbackMatches[item.Id] = item
+                }
+
+                if (
+                    preferredMatches.isNotEmpty() &&
+                    preferredCandidates.any { it.hasExactTitle(searchName) }
+                ) {
+                    return fallbackMatches.values.toList()
+                }
+            }
+        }
+
+        return fallbackMatches.values.toList()
+    }
+
+    /**
+     * Prefer the narrowest exact container so a season title does not expand the whole series.
+     */
+    private fun List<Item>.preferredCandidatesFor(subjectName: String): List<Item> {
+        val exactMatches = filter { it.hasExactTitle(subjectName) }
+        if (exactMatches.isEmpty()) return this
+
+        return exactMatches.filter { it.Type == TYPE_SEASON }
+            .ifEmpty { exactMatches.filter { it.Type == TYPE_MOVIE } }
+            .ifEmpty { exactMatches.filter { it.Type == TYPE_SERIES } }
+            .ifEmpty { exactMatches.filter { it.Type == TYPE_EPISODE } }
+    }
+
+    private suspend fun findRequestedItems(
+        candidates: List<Item>,
+        query: MediaFetchRequest,
+        targetSeason: Int?,
+    ): List<Item> {
+        return buildList {
+            candidates.forEach { candidate ->
+                when (candidate.Type) {
+                    TYPE_SERIES -> {
+                        val seasons = doGetSeasons(seriesId = candidate.Id).Items
+                        val matchedSeasons = if (targetSeason != null) {
+                            seasons.filter { it.IndexNumber == targetSeason }
+                        } else {
+                            seasons
+                        }
+
+                        if (matchedSeasons.isNotEmpty()) {
+                            for (season in matchedSeasons) {
+                                val seasonNumber = season.IndexNumber ?: continue
+                                addAll(
+                                    doGetEpisodes(
+                                        seriesId = candidate.Id,
+                                        seasonNum = seasonNumber,
+                                    ).Items,
+                                )
+                            }
+                        } else {
+                            addAll(
+                                doSearch(
+                                    parentId = candidate.Id,
+                                    enableTotalRecordCount = false,
+                                ).Items,
+                            )
+                        }
+                    }
+
+                    TYPE_SEASON -> {
+                        addAll(
+                            doSearch(
+                                parentId = candidate.Id,
+                                enableTotalRecordCount = false,
+                            ).Items,
+                        )
+                    }
+
+                    TYPE_EPISODE, TYPE_MOVIE -> add(candidate)
+                }
+            }
+        }.distinctBy { it.Id }
+            .filter { it.Type == TYPE_EPISODE || it.Type == TYPE_MOVIE }
+            .filter { it.matchesEpisodeNumber(query) }
+    }
+
+    /**
+     * MediaStreams is large and unnecessary during discovery. Fetch it only for selected items.
+     * If this optional enrichment fails, keep the playable item and continue without subtitles.
+     */
+    private suspend fun hydrateMediaStreams(items: List<Item>): List<Item> {
+        if (items.isEmpty()) return emptyList()
+
+        val hydratedItems = try {
+            doSearch(
+                recursive = false,
+                itemIds = items.joinToString(",") { it.Id },
+                fields = "MediaStreams",
+                limit = items.size,
+                enableTotalRecordCount = false,
+            ).Items.associateBy { it.Id }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            logger.warn(e) {
+                "Failed to load MediaStreams for Jellyfin items; continuing without subtitle metadata"
+            }
+            emptyMap()
+        }
+
+        return items.map { item ->
+            hydratedItems[item.Id]
+                ?.let { item.copy(MediaStreams = it.MediaStreams) }
+                ?: item
+        }
+    }
+
+    private fun Item.matchesEpisodeNumber(query: MediaFetchRequest): Boolean {
+        return when (Type) {
+            TYPE_EPISODE -> {
+                val indexNumber = IndexNumber ?: return false
+                val episodeSort = EpisodeSort(indexNumber)
+                episodeSort == query.episodeSort || episodeSort == query.episodeEp
+            }
+
+            TYPE_MOVIE -> true
+            else -> false
+        }
+    }
+
+    private fun Item.toMediaMatch(query: MediaFetchRequest): MediaMatch? {
+        val (originalTitle, episodeRange) = when (Type) {
+            TYPE_EPISODE -> {
+                val indexNumber = IndexNumber ?: return null
+                "$indexNumber $Name" to EpisodeRange.single(EpisodeSort(indexNumber))
+            }
+
+            TYPE_MOVIE -> Name to EpisodeRange.unknownSeason()
+            else -> return null
+        }
+
+        return MediaMatch(
+            media = DefaultMedia(
+                mediaId = Id,
+                mediaSourceId = mediaSourceId,
+                originalUrl = "$baseUrl/Items/$Id",
+                download = ResourceLocation.HttpStreamingFile(
+                    uri = getDownloadUri(Id),
+                ),
+                originalTitle = originalTitle,
+                publishedTime = 0,
+                properties = MediaProperties(
+                    // SeasonName identifies the current season or arc. SeriesName is often the
+                    // first season's generic title and would be rejected by MediaSelector.
+                    subjectName = SeasonName?.takeIf { it.isNotBlank() }
+                        ?: SeriesName?.takeIf { it.isNotBlank() }
+                        ?: query.subjectNameCN,
+                    episodeName = Name,
+                    subtitleLanguageIds = listOf("CHS"),
+                    resolution = "1080P",
+                    alliance = mediaSourceId,
+                    size = FileSize.Unspecified,
+                    subtitleKind = SubtitleKind.EXTERNAL_PROVIDED,
+                ),
+                extraFiles = MediaExtraFiles(
+                    subtitles = getSubtitles(Id, MediaStreams),
+                ),
+                episodeRange = episodeRange,
+                location = MediaSourceLocation.Lan,
+                kind = MediaSourceKind.WEB,
+            ),
+            kind = MatchKind.FUZZY,
+        )
     }
 
     protected abstract fun getDownloadUri(itemId: String): String
@@ -166,7 +307,7 @@ abstract class BaseJellyfinMediaSource(
                     language = stream.Language,
                     mimeType = when (stream.Codec.lowercase()) {
                         "ass" -> "text/x-ass"
-                        else -> "application/octet-stream"  // 默认二进制流
+                        else -> "application/octet-stream"
                     },
                     label = stream.Title,
                 )
@@ -176,7 +317,6 @@ abstract class BaseJellyfinMediaSource(
     private fun getSubtitleUri(itemId: String, index: Int, codec: String): String {
         return "$baseUrl/Videos/$itemId/$itemId/Subtitles/$index/0/Stream.$codec"
     }
-
 
     private data class ParsedSubjectName(
         val baseName: String,
@@ -241,15 +381,22 @@ abstract class BaseJellyfinMediaSource(
         subjectName: String? = null,
         recursive: Boolean = true,
         parentId: String? = null,
+        itemIds: String? = null,
+        fields: String? = null,
+        limit: Int? = null,
+        enableTotalRecordCount: Boolean? = null,
     ) = client.use {
         get("$baseUrl/Items") {
             configureAuthorizationHeaders()
             parameter("userId", userId)
             parameter("enableImages", false)
             parameter("recursive", recursive)
-            parameter("searchTerm", subjectName)
-            parameter("fields", "MediaStreams")
-            parameter("parentId", parentId)
+            subjectName?.let { parameter("searchTerm", it) }
+            parentId?.let { parameter("parentId", it) }
+            itemIds?.let { parameter("ids", it) }
+            fields?.let { parameter("fields", it) }
+            limit?.let { parameter("limit", it) }
+            enableTotalRecordCount?.let { parameter("enableTotalRecordCount", it) }
         }.body<SearchResponse>()
     }
 
@@ -261,6 +408,16 @@ abstract class BaseJellyfinMediaSource(
     }
 }
 
+private val Item.isSupportedSearchResult: Boolean
+    get() = Type == TYPE_SERIES || Type == TYPE_SEASON || Type == TYPE_EPISODE || Type == TYPE_MOVIE
+
+private fun Item.hasExactTitle(subjectName: String): Boolean {
+    return sequenceOf(Name, SeasonName, SeriesName, OriginalTitle)
+        .filterNotNull()
+        .map(String::trim)
+        .any { it.equals(subjectName, ignoreCase = true) }
+}
+
 @Serializable
 private class SearchResponse(
     val Items: List<Item> = emptyList(),
@@ -269,13 +426,13 @@ private class SearchResponse(
 @Serializable
 @Suppress("PropertyName")
 private data class MediaStream(
-    val Title: String? = null, // 除了字幕以外其他可能没有
-    val Language: String? = null, // 字幕语言代码，如 chs
+    val Title: String? = null,
+    val Language: String? = null,
     val Type: String,
-    val Codec: String? = null, // 除了字幕以外其他可能没有
+    val Codec: String? = null,
     val Index: Int,
-    val IsExternal: Boolean, // 是否为外挂字幕
-    val IsTextSubtitleStream: Boolean, // 是否可下载
+    val IsExternal: Boolean,
+    val IsTextSubtitleStream: Boolean,
 )
 
 @Serializable
@@ -285,9 +442,9 @@ private data class Item(
     val SeasonName: String? = null,
     val SeriesName: String? = null,
     val Id: String,
-    val OriginalTitle: String? = null, // 日文
+    val OriginalTitle: String? = null,
     val IndexNumber: Int? = null,
     val ParentIndexNumber: Int? = null,
-    val Type: String, // "Episode", "Series", ...
+    val Type: String,
     val MediaStreams: List<MediaStream> = emptyList(),
 )
