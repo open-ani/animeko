@@ -61,6 +61,11 @@ class JellyfinMediaSource(
             defaultProvider = { "" },
             description = "仅 API Key 模式使用。可在 Jellyfin \"控制台 - API 秘钥\" 中添加",
         )
+        // SECURITY: Legacy media-source parameters are serialized as plain text in
+        // MediaSourceConfig.arguments. Password authentication intentionally uses the same local
+        // storage path as API-key authentication; neither secret is protected by an OS credential
+        // store. An HTTP base URL also sends the login password without transport encryption.
+        // Code handling logs, exports, or diagnostics must redact both secrets.
         val username = string(
             "username",
             defaultProvider = { "" },
@@ -69,7 +74,7 @@ class JellyfinMediaSource(
         val password = string(
             "password",
             defaultProvider = { "" },
-            description = "仅用户名密码模式使用。当前可行性实现会将密码随数据源配置保存",
+            description = "仅用户名密码模式使用",
         )
     }
 
