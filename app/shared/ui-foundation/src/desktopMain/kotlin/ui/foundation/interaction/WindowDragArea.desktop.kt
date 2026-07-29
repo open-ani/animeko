@@ -9,29 +9,51 @@
 
 package me.him188.ani.app.ui.foundation.interaction
 
+import androidx.compose.foundation.ContextMenuArea
+import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.always_on_top
+import me.him188.ani.app.ui.lang.always_on_top_disable
 import me.him188.ani.utils.platform.Platform
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 actual inline fun WindowDragArea(
     modifier: Modifier,
     crossinline content: @Composable () -> Unit
 ) {
-    if (LocalPlatform.current is Platform.Windows) {
-        Box(modifier) {
-            content()
-        }
-    } else {
-        val windowScope = LocalPlatformWindow.current.windowScope
-        windowScope?.run {
-            WindowDraggableArea(modifier) {
+    val platformWindow = LocalPlatformWindow.current
+    val alwaysOnTopText = stringResource(Lang.always_on_top)
+    val disableAlwaysOnTopText = stringResource(Lang.always_on_top_disable)
+    // 右键顶栏可切换窗口置顶. 置顶是运行时状态, 关闭应用后自动清除.
+    ContextMenuArea(
+        items = {
+            listOf(
+                ContextMenuItem(
+                    if (platformWindow.isAlwaysOnTop) disableAlwaysOnTopText else alwaysOnTopText,
+                ) {
+                    platformWindow.setAlwaysOnTop(!platformWindow.isAlwaysOnTop)
+                },
+            )
+        },
+    ) {
+        if (LocalPlatform.current is Platform.Windows) {
+            Box(modifier) {
                 content()
             }
-        } ?: content()
+        } else {
+            val windowScope = platformWindow.windowScope
+            windowScope?.run {
+                WindowDraggableArea(modifier) {
+                    content()
+                }
+            } ?: content()
+        }
     }
 }

@@ -225,6 +225,8 @@
     <string name="settings_app_close_behavior_exit">Exit application</string>
     <string name="settings_app_close_behavior_minimize_to_tray">Minimize to system tray</string>
     <string name="desktop_tray_open">Open main window</string>
+    <string name="always_on_top">Always on top</string>
+    <string name="always_on_top_disable">Turn off always on top</string>
     <string name="settings_update_software">Software update</string>
     <string name="settings_update_current_version">Current version</string>
     <string name="settings_update_view_changelog">View changelog</string>
