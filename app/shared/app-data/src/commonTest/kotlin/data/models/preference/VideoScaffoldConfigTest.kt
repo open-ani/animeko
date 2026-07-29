@@ -44,6 +44,8 @@ class VideoScaffoldConfigTest {
         assertEquals(1f, config.playbackSpeed)
         assertEquals(0.5f, config.minPlaybackSpeed)
         assertEquals(2.5f, config.maxPlaybackSpeed)
+        // 升级到 6.0 的用户保持原有的全局常驻倍速行为
+        assertEquals(true, config.rememberPlaybackSpeed)
     }
 
     @Test

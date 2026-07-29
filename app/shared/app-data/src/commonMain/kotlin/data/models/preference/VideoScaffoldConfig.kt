@@ -100,19 +100,30 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      */
     val displayModeId: Int = 0,
     /**
-     * 长按快进的速度倍率
+     * 长按期间使用的播放速度. 是绝对速度, 不是相对当前倍速的倍率.
      *
      * @since 4.9
      */
     val fastForwardSpeed: Float = 2.5f, // 3 倍弹幕会跳, 所以慢点, see #1524
     /**
-     * 全局常驻播放倍速. 跨剧集、条目和应用重启保持.
+     * 播放倍速. 语义取决于 [rememberPlaybackSpeed]:
+     *
+     * - [rememberPlaybackSpeed] 为 `true` 时, 这是**全局常驻倍速**: 播放器内的调整会写回这里,
+     *   跨剧集、条目和应用重启保持.
+     * - [rememberPlaybackSpeed] 为 `false` 时, 这是**默认倍速**: 只作为每次进入播放器的起始值,
+     *   播放器内的调整不会写回, 退出播放器后即丢弃.
      *
      * 始终位于 [minPlaybackSpeed]..[maxPlaybackSpeed] 范围内; 量化由 UI 层 (SteppedSlider) 保证.
      *
      * @since 5.8
      */
     val playbackSpeed: Float = 1f,
+    /**
+     * 是否记住播放器内的倍速调整. 见 [playbackSpeed].
+     *
+     * @since 6.0
+     */
+    val rememberPlaybackSpeed: Boolean = true,
     /**
      * 用户可调倍速范围的下界.
      *
