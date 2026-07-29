@@ -20,6 +20,12 @@ kotlin {
     androidLibrary {
         namespace = "me.him188.ani.datasources.jellyfin"
     }
+    sourceSets.commonTest {
+        dependencies {
+            implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.ktor.client.mock)
+        }
+    }
 }
 
 dependencies {
