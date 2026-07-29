@@ -18,6 +18,7 @@ import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.get
 import me.him188.ani.datasources.api.source.parameter.MediaSourceParameters
 import me.him188.ani.datasources.api.source.parameter.MediaSourceParametersBuilder
+import me.him188.ani.datasources.api.source.parameter.hasValue
 import me.him188.ani.utils.ktor.ScopedHttpClient
 
 class JellyfinMediaSource(
@@ -55,11 +56,13 @@ class JellyfinMediaSource(
             "userId",
             defaultProvider = { "" },
             description = "仅 API Key 模式使用。可在 Jellyfin \"控制台 - 用户\" 中选择一个用户, 在浏览器地址栏找到 \"userId=\" 后面的内容",
+            visibleWhen = authMode.hasValue(AUTH_MODE_API_KEY),
         )
         val apikey = string(
             "apikey",
             defaultProvider = { "" },
             description = "仅 API Key 模式使用。可在 Jellyfin \"控制台 - API 秘钥\" 中添加",
+            visibleWhen = authMode.hasValue(AUTH_MODE_API_KEY),
         )
         // SECURITY: Legacy media-source parameters are serialized as plain text in
         // MediaSourceConfig.arguments. Password authentication intentionally uses the same local
@@ -70,11 +73,13 @@ class JellyfinMediaSource(
             "username",
             defaultProvider = { "" },
             description = "仅用户名密码模式使用",
+            visibleWhen = authMode.hasValue(AUTH_MODE_USERNAME_PASSWORD),
         )
         val password = string(
             "password",
             defaultProvider = { "" },
             description = "仅用户名密码模式使用",
+            visibleWhen = authMode.hasValue(AUTH_MODE_USERNAME_PASSWORD),
         )
     }
 

@@ -48,6 +48,30 @@ import kotlin.test.assertTrue
 
 class JellyfinMediaSourceAuthenticationTest {
     @Test
+    fun `authentication parameters are visible only for their mode`() {
+        assertEquals(
+            JellyfinMediaSource.Parameters.authMode.name,
+            JellyfinMediaSource.Parameters.userId.visibleWhen?.parameterName,
+        )
+        assertEquals(
+            setOf(JellyfinMediaSource.AUTH_MODE_API_KEY),
+            JellyfinMediaSource.Parameters.userId.visibleWhen?.acceptedValues,
+        )
+        assertEquals(
+            setOf(JellyfinMediaSource.AUTH_MODE_API_KEY),
+            JellyfinMediaSource.Parameters.apikey.visibleWhen?.acceptedValues,
+        )
+        assertEquals(
+            setOf(JellyfinMediaSource.AUTH_MODE_USERNAME_PASSWORD),
+            JellyfinMediaSource.Parameters.username.visibleWhen?.acceptedValues,
+        )
+        assertEquals(
+            setOf(JellyfinMediaSource.AUTH_MODE_USERNAME_PASSWORD),
+            JellyfinMediaSource.Parameters.password.visibleWhen?.acceptedValues,
+        )
+    }
+
+    @Test
     fun `password mode logs in once and reuses the returned session`() = runTest {
         var loginCount = 0
         var itemsCount = 0
