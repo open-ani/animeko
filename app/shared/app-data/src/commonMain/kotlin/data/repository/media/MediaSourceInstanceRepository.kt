@@ -26,9 +26,19 @@ sealed class MediaSourceInstanceRepository : Repository() {
 
     abstract suspend fun clear()
     abstract suspend fun remove(instanceId: String)
+
+    /**
+     * 一次性移除多个数据源, 只触发一次 [flow] 更新.
+     */
+    abstract suspend fun removeAll(instanceIds: Collection<String>)
     abstract suspend fun add(mediaSourceSave: MediaSourceSave)
 
     abstract suspend fun updateSave(instanceId: String, config: MediaSourceSave.() -> MediaSourceSave): Boolean
+
+    /**
+     * 一次性更新多个数据源, 只触发一次 [flow] 更新.
+     */
+    abstract suspend fun updateSaves(instanceIds: Collection<String>, update: MediaSourceSave.() -> MediaSourceSave)
 
     /**
      * @see partiallyReorderBy
@@ -89,6 +99,13 @@ class MediaSourceInstanceRepositoryImpl(
         }
     }
 
+    override suspend fun removeAll(instanceIds: Collection<String>) {
+        val ids = instanceIds.toSet()
+        dataStore.updateData { current ->
+            current.copy(instances = current.instances.filterNot { it.instanceId in ids })
+        }
+    }
+
     override suspend fun add(mediaSourceSave: MediaSourceSave) {
         dataStore.updateData { current ->
             if (current.instances.any { it.instanceId == mediaSourceSave.instanceId }) {
@@ -117,6 +134,21 @@ class MediaSourceInstanceRepositoryImpl(
             }
         }
         return found
+    }
+
+    override suspend fun updateSaves(instanceIds: Collection<String>, update: MediaSourceSave.() -> MediaSourceSave) {
+        val ids = instanceIds.toSet()
+        dataStore.updateData { current ->
+            current.copy(
+                instances = current.instances.map { save ->
+                    if (save.instanceId in ids) {
+                        save.update()
+                    } else {
+                        save
+                    }
+                },
+            )
+        }
     }
 
     override suspend fun partiallyReorder(newOrderInstanceIds: List<String>) {

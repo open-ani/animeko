@@ -151,6 +151,20 @@ interface MediaSourceManager { // available by inject
     suspend fun setEnabled(instanceId: String, enabled: Boolean)
     suspend fun removeInstance(instanceId: String)
 
+    /**
+     * 批量启用或禁用数据源. 实现应当只触发一次 [allInstances] 更新.
+     */
+    suspend fun setEnabled(instanceIds: Collection<String>, enabled: Boolean) {
+        instanceIds.forEach { setEnabled(it, enabled) }
+    }
+
+    /**
+     * 批量移除数据源. 实现应当只触发一次 [allInstances] 更新.
+     */
+    suspend fun removeInstances(instanceIds: Collection<String>) {
+        instanceIds.forEach { removeInstance(it) }
+    }
+
     fun mediaSourceTiersFlow(): Flow<MediaSelectorSourceTiers>
 }
 
@@ -339,6 +353,16 @@ class MediaSourceManagerImpl(
 
     override suspend fun removeInstance(instanceId: String) {
         instances.remove(instanceId)
+    }
+
+    override suspend fun setEnabled(instanceIds: Collection<String>, enabled: Boolean) {
+        instances.updateSaves(instanceIds) {
+            copy(isEnabled = enabled)
+        }
+    }
+
+    override suspend fun removeInstances(instanceIds: Collection<String>) {
+        instances.removeAll(instanceIds)
     }
 
     override fun mediaSourceTiersFlow(): Flow<MediaSelectorSourceTiers> = instances.flow.map { list ->

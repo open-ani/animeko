@@ -67,11 +67,11 @@ class MediaSourceSelectionTest {
                         onAdd = { _, _, _ -> },
                         onEdit = { _, _ -> },
                         onDelete = { deletedIds += it },
-                        onSetEnabled = { instanceId, enabled ->
+                        onSetEnabled = { instanceIds, enabled ->
                             if (enabled) {
-                                enabledIds += instanceId
+                                enabledIds += instanceIds
                             } else {
-                                disabledIds += instanceId
+                                disabledIds += instanceIds
                             }
                         },
                         backgroundScope = scope,
