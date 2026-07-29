@@ -11,9 +11,10 @@
 #   1. Open an issue                                    -> Codex normalizes its title, assigns labels
 #                                                           and an issue type, and requests logs when useful.
 #   2. Add the `ready-for-dev` label to an issue        -> the agent implements it and opens a PR.
-#   3. A maintainer submits a review on a codex PR      -> the agent addresses it and updates the PR.
+#   3. A maintainer submits a review on a PR            -> the agent addresses it and updates the PR.
 #   4. A maintainer comments `@openanibot ...` on a PR  -> the agent follows it and updates the PR.
 #      On PRs/issues AUTHORED BY openanibot, every maintainer comment triggers — no mention needed.
+#      Fork PRs are checked out read-only: the agent may inspect, test, and comment, but cannot push.
 #   5. A maintainer comments `@openanibot ...` on an issue -> the agent responds (answers, or
 #      implements + opens a PR), resuming the issue's Codex session when one exists.
 #      (Commit comments can't trigger: GitHub Actions no longer supports the commit_comment event.)
@@ -440,7 +441,8 @@ jobs:
                || (github.event_name == 'issue_comment' && github.event.issue.pull_request != null) ) }}
     runs-on: [self-hosted, macOS, ARM64]
     permissions:
-      contents: write
+      contents: read
+      issues: write
       pull-requests: write
     # Keep the active run, but collapse additional feedback on this PR into one pending run.
     # The single self-hosted runner serializes work across different issues and PRs.
@@ -480,8 +482,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.OPENANI_BOT_TOKEN }}
-          persist-credentials: true
-          submodules: recursive
+          persist-credentials: false
+          submodules: false
           fetch-depth: 0
 
       - name: Configure git identity
@@ -494,18 +496,65 @@ jobs:
         id: pr
         run: |
           set -euo pipefail
-          HEAD_REF=$(gh pr view "$PR_NUMBER" --json headRefName --jq .headRefName)
-          CROSS=$(gh pr view "$PR_NUMBER" --json isCrossRepository --jq .isCrossRepository)
+          PR_JSON=$(gh pr view "$PR_NUMBER" \
+            --json headRefName,headRefOid,headRepository,headRepositoryOwner,isCrossRepository)
+          HEAD_REF=$(jq -r '.headRefName' <<< "$PR_JSON")
+          HEAD_SHA=$(jq -r '.headRefOid' <<< "$PR_JSON")
+          HEAD_REPO=$(jq -r '.headRepositoryOwner.login + "/" + .headRepository.name' <<< "$PR_JSON")
+          CROSS=$(jq -r '.isCrossRepository' <<< "$PR_JSON")
+          test -n "$HEAD_REF" && test "$HEAD_REF" != "null" || {
+            echo "::error::PR #$PR_NUMBER has no head branch"
+            exit 1
+          }
+          test -n "$HEAD_SHA" && test "$HEAD_SHA" != "null" || {
+            echo "::error::PR #$PR_NUMBER has no head commit"
+            exit 1
+          }
+
+          gh auth setup-git
           if [ "$CROSS" = "true" ]; then
-            gh pr comment "$PR_NUMBER" --body "🤖 Codex can only iterate on same-repo (non-fork) PRs."
-            echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0
+            test -n "$HEAD_REPO" && test "$HEAD_REPO" != "null/null" || {
+              echo "::error::PR #$PR_NUMBER has no accessible head repository"
+              exit 1
+            }
+            git fetch --no-tags origin \
+              "+refs/pull/$PR_NUMBER/head:refs/remotes/pull/$PR_NUMBER/head"
+            git checkout -B "$HEAD_REF" "refs/remotes/pull/$PR_NUMBER/head"
+            SESSION_KEY="fork-pr-$PR_NUMBER-$HEAD_REPO-$HEAD_REF"
+          else
+            git fetch --no-tags origin \
+              "+refs/heads/$HEAD_REF:refs/remotes/origin/$HEAD_REF"
+            git checkout -B "$HEAD_REF" "refs/remotes/origin/$HEAD_REF"
+            SESSION_KEY="$HEAD_REF"
           fi
-          git fetch origin "$HEAD_REF"
-          git checkout -B "$HEAD_REF" "origin/$HEAD_REF"
+
+          CHECKED_OUT_SHA=$(git rev-parse HEAD)
+          test "$CHECKED_OUT_SHA" = "$HEAD_SHA" || {
+            echo "::error::checked out $CHECKED_OUT_SHA, expected PR head $HEAD_SHA"
+            exit 1
+          }
+
           echo "head_ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
+          echo "head_repo=$HEAD_REPO" >> "$GITHUB_OUTPUT"
+          echo "cross=$CROSS" >> "$GITHUB_OUTPUT"
+          echo "session_key=$SESSION_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Configure PR access and submodules
+        env:
+          CROSS: ${{ steps.pr.outputs.cross }}
+          READ_ONLY_GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ "$CROSS" = "true" ]; then
+            export GH_TOKEN="$READ_ONLY_GH_TOKEN"
+            echo "GH_TOKEN=$READ_ONLY_GH_TOKEN" >> "$GITHUB_ENV"
+            git remote set-url --push origin "no-push://fork-pr/$PR_NUMBER"
+          fi
+          gh auth setup-git
+          git submodule sync --recursive
+          git submodule update --init --recursive
 
       - name: React 👀 to the trigger
-        if: ${{ steps.pr.outputs.skip != 'true' }}
         run: |
           if [ "$EVENT" = "issue_comment" ]; then
             gh api -X POST "repos/$REPO/issues/comments/$COMMENT_ID/reactions" -f content=eyes >/dev/null || true
@@ -514,12 +563,15 @@ jobs:
           fi
 
       - name: Build prompt
-        if: ${{ steps.pr.outputs.skip != 'true' }}
+        env:
+          CROSS: ${{ steps.pr.outputs.cross }}
+          HEAD_REF: ${{ steps.pr.outputs.head_ref }}
+          HEAD_REPO: ${{ steps.pr.outputs.head_repo }}
         run: |
           set -euo pipefail
           {
-            echo "You previously worked on this pull request (Animeko, Kotlin Multiplatform / Compose Multiplatform)."
-            echo "The PR branch with your prior work is already checked out. Address the maintainer's latest feedback."
+            echo "You are handling feedback on this pull request (Animeko, Kotlin Multiplatform / Compose Multiplatform)."
+            echo "The PR branch is already checked out. Address the maintainer's latest feedback."
             echo "  PR:       $PR_URL"
             echo "  Feedback: $TRIGGER_URL"
             echo "Read the full context yourself with: gh pr view $PR_NUMBER --comments   (and gh api for review threads)."
@@ -528,27 +580,38 @@ jobs:
             echo
             echo "IMPORTANT: Do every GitHub action (PR updates, comments, replies, reactions, reads) with the 'gh' CLI only."
             echo "Do NOT use any GitHub connector / MCP integration — 'gh' authenticates as the CI bot, a connector would act under a personal account."
-            echo "GH_TOKEN is already set from the OPENANI_BOT_TOKEN repository secret. Use that existing token; do not run 'gh auth login' or replace it."
+            if [ "$CROSS" = "true" ]; then
+              echo "This is a fork PR from $HEAD_REPO. Repository contents access is read-only and pushes are disabled."
+              echo "Use the existing GH_TOKEN; do not run 'gh auth login', replace the token, change remotes, or attempt any push."
+              echo "You may inspect and modify the local checkout for testing, then report results or actionable changes on the PR."
+            else
+              echo "GH_TOKEN is set from the OPENANI_BOT_TOKEN repository secret. Use it; do not run 'gh auth login' or replace it."
+            fi
             echo
             echo "Follow AGENTS.md. If your change affects any UI, re-verify at runtime with the repo skills (.agents/skills) and refresh"
             echo "the screenshots in the PR — run android-ui-verify AND desktop-ui-verify separately if multiple platforms are affected."
             echo
             echo "You have full access to git and gh — respond to the feedback however you judge best. Options include:"
-            echo "  - adjust the code and update the PR:  git push origin HEAD:${{ steps.pr.outputs.head_ref }}"
+            if [ "$CROSS" = "true" ]; then
+              echo "  - inspect the fork changes, run the requested tests, and comment with the evidence and conclusions"
+              echo "  - if code changes are needed, describe them precisely or provide a patch in the PR discussion; do not push"
+            else
+              echo "  - adjust the code and update the PR:  git push origin HEAD:$HEAD_REF"
+            fi
             echo "  - reply in the specific review thread, resolve that thread, or leave a PR comment (gh / gh api)"
             echo "Do only what the feedback actually calls for — don't over-respond — but make sure you respond in some form."
             echo "Finish by printing a short summary."
           } > "$RUNNER_TEMP/prompt.txt"
 
       - name: Run Codex (resume the PR's conversation)
-        if: ${{ steps.pr.outputs.skip != 'true' }}
+        env:
+          SESSION_KEY: ${{ steps.pr.outputs.session_key }}
         run: |
           set -uo pipefail
-          HEAD_REF="${{ steps.pr.outputs.head_ref }}"
           SDIR="${CODEX_HOME:-$HOME/.codex}/sessions"
           STORE="$HOME/.codex-agent/sessions"; mkdir -p "$STORE"
           LOGDIR="$HOME/.codex-agent/logs"; mkdir -p "$LOGDIR"
-          KEY=$(echo "$HEAD_REF" | tr '/' '_')
+          KEY=$(echo "$SESSION_KEY" | tr '/:' '__')
           LOG="$LOGDIR/${KEY}-${GITHUB_RUN_ID:-0}-${GITHUB_RUN_ATTEMPT:-1}.log"
           SID=""; [ -f "$STORE/$KEY.session" ] && SID=$(cat "$STORE/$KEY.session")
           STAMP="$RUNNER_TEMP/stamp"; : > "$STAMP"
@@ -561,7 +624,7 @@ jobs:
               "$(cat "$RUNNER_TEMP/prompt.txt")" \
               > "$LOG" 2>&1
           else
-            echo "::warning::no remembered session for $HEAD_REF — starting fresh"
+            echo "::warning::no remembered session for PR #$PR_NUMBER — starting fresh"
             codex exec \
               --dangerously-bypass-approvals-and-sandbox \
               ${CODEX_MODEL:+--model "$CODEX_MODEL"} \
