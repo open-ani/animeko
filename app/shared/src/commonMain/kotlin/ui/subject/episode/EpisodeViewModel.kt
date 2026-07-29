@@ -95,7 +95,7 @@ import me.him188.ani.app.domain.player.extension.AutoSelectExtension
 import me.him188.ani.app.domain.player.extension.CacheOnBtPlayExtension
 import me.him188.ani.app.domain.player.extension.MarkAsWatchedExtension
 import me.him188.ani.app.domain.player.extension.ObserveWebMediaSourcePreferenceExtension
-import me.him188.ani.app.domain.player.extension.PlaybackSpeedExtension
+import me.him188.ani.app.domain.player.PlaybackSpeedController
 import me.him188.ani.app.domain.player.extension.RememberPlayProgressExtension
 import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
 import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
@@ -280,12 +280,33 @@ class EpisodeViewModel(
     val player: MediampPlayer =
         playerStateFactory.create(context, backgroundScope.coroutineContext)
 
+    /** `null` 表示本次播放尚未调整过倍速, 此时跟随配置. */
+    private val playbackSpeedOverride = MutableStateFlow<Float?>(null)
+
+    /**
+     * 当前生效的基础倍速. 作用域为一次播放 (本 ViewModel 的生命周期), 播放页内切集保持.
+     */
+    private val playbackSpeedFlow: Flow<Float> = combine(
+        settingsRepository.videoScaffoldConfig.flow,
+        playbackSpeedOverride,
+    ) { config, override ->
+        override ?: config.playbackSpeed
+    }.distinctUntilChanged()
+
+    /**
+     * 倍速的唯一写入者. 与 [player] 同生命周期, 因此长按快进的临时倍速不会随 composition 丢失.
+     */
+    val playbackSpeedController = PlaybackSpeedController(
+        player = player,
+        baseSpeedFlow = playbackSpeedFlow,
+        scope = backgroundScope,
+    )
+
     @OptIn(UnsafeEpisodeSessionApi::class)
     private val fetchPlayState = EpisodeFetchSelectPlayState(
         subjectId, initialEpisodeId, player, backgroundScope,
         extensions = listOf(
             AnalyticsExtension,
-            PlaybackSpeedExtension,
             RememberPlayProgressExtension,
             WatchTogetherPlayerExtension,
             MarkAsWatchedExtension,
@@ -386,11 +407,20 @@ class EpisodeViewModel(
     val playbackSpeedRange: ClosedFloatingPointRange<Float>
         get() = videoScaffoldConfig.minPlaybackSpeed..videoScaffoldConfig.maxPlaybackSpeed
 
-    /** 持久化全局倍速；播放器会通过上方的配置订阅同步该值. */
-    fun setPlaybackSpeed(speed: Float) {
+    /**
+     * 总是对本次播放生效; 仅在 [persist] 且开启「记住播放倍速」时才另外写回配置.
+     *
+     * @param persist 是否写回配置. 拖动 Slider 期间应为 `false`, 否则每一帧都会写一次 DataStore;
+     *   松手或键盘调整这类「提交」动作才为 `true`.
+     */
+    fun setPlaybackSpeed(speed: Float, persist: Boolean = true) {
+        playbackSpeedOverride.value = speed
+        if (!persist) return
         launchInBackground {
-            settingsRepository.videoScaffoldConfig.update {
-                copy(playbackSpeed = speed)
+            if (settingsRepository.videoScaffoldConfig.flow.first().rememberPlaybackSpeed) {
+                settingsRepository.videoScaffoldConfig.update {
+                    copy(playbackSpeed = speed)
+                }
             }
         }
     }

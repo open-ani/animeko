@@ -51,7 +51,8 @@ fun MediaProgressIndicatorText(
             }
             val totalDurationMillis = state.totalDurationMillis
             val totalSecs = if (totalDurationMillis == 0L) null else totalDurationMillis / 1000
-            val currentSpeed = playbackSpeedState?.currentSpeed ?: 1f
+            // 按实际生效的倍速算, 长按快进期间也要反映出来
+            val currentSpeed = playbackSpeedState?.currentEffectiveSpeed ?: 1f
             val remainingSecs = if (kotlin.math.abs(currentSpeed - 1f) > 1e-3f) {
                 totalSecs?.let { total ->
                     ((total - currentPositionMillis / 1000).coerceAtLeast(0) / currentSpeed.coerceIn(0.01f, 100f)).roundToLong()

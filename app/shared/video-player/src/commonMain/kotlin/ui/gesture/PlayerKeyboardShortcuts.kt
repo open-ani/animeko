@@ -20,6 +20,15 @@ import me.him188.ani.app.ui.foundation.effects.ComposeKey
 import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.videoplayer.ui.nextPlaybackSpeed
 
+private val PLAYBACK_SPEED_SHORTCUTS = listOf(
+    ComposeKey.One to 1f,
+    ComposeKey.NumPad1 to 1f,
+    ComposeKey.Two to 2f,
+    ComposeKey.NumPad2 to 2f,
+    ComposeKey.Three to 3f,
+    ComposeKey.NumPad3 to 3f,
+)
+
 /**
  * Installs the player keyboard commands on a single focus target.
  *
@@ -79,6 +88,11 @@ internal fun Modifier.playerKeyboardShortcuts(
             .onKey(ComposeKey.S) {
                 onPlaybackSpeedChanged(1f.coerceIn(playbackSpeedRange))
             }
+        for ((key, speed) in PLAYBACK_SPEED_SHORTCUTS) {
+            result = result.onKey(key) {
+                onPlaybackSpeedChanged(speed.coerceIn(playbackSpeedRange))
+            }
+        }
     }
     return result
         .onKey(ComposeKey.B, onToggleDanmaku)

@@ -152,9 +152,10 @@ fun LockableVideoGestureHost(
     family: GestureFamily = LocalPlatform.current.mouseFamily,
     gestureIndicatorState: GestureIndicatorState = rememberGestureIndicatorState(),
     fastForwardSpeed: Float = 3f,
-    fastSkipState: FastSkipState? = playerState.features[PlaybackSpeed]?.let {
+    // 长按快进与倍速 UI 共用同一个 state, 因而共用同一个倍速 owner, 不存在两条路径各写各的.
+    fastSkipState: FastSkipState? = playbackSpeedControllerState?.let {
         rememberPlayerFastSkipState(
-            playerState = it,
+            playbackSpeedControllerState = it,
             gestureIndicatorState,
             fastForwardSpeed = fastForwardSpeed,
         )

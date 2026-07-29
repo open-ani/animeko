@@ -22,39 +22,44 @@ import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.openani.mediamp.features.PlaybackSpeed
+import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 
 @Composable
 fun rememberPlayerFastSkipState(
-    playerState: PlaybackSpeed,
+    playbackSpeedControllerState: PlaybackSpeedControllerState,
     gestureIndicatorState: GestureIndicatorState,
     fastForwardSpeed: Float = 3f,
 ): FastSkipState {
-    return remember(playerState, fastForwardSpeed) {
-        PlayerFastSkipState(playerState, gestureIndicatorState, fastForwardSpeed).fastSkipState
+    return remember(playbackSpeedControllerState, fastForwardSpeed) {
+        PlayerFastSkipState(playbackSpeedControllerState, gestureIndicatorState, fastForwardSpeed).fastSkipState
     }
 }
 
+/**
+ * 长按临时快进: 按住期间以 [fastForwardSpeed] 播放, 松手回到用户的基础倍速.
+ *
+ * 这里刻意不快照「按下时播放器上的倍速」. 快进倍速是 `PlaybackSpeedController` 意义上的
+ * **临时倍速**, 松手只是把它丢弃, 基础倍速自始至终由 owner 持有.
+ * 快照的做法在 onStart/onStop 不配对时会把快进倍速 (或初值 `0f`) 当成基础倍速存下来.
+ */
 class PlayerFastSkipState(
-    private val playbackSpeed: PlaybackSpeed,
+    private val playbackSpeedControllerState: PlaybackSpeedControllerState,
     private val gestureIndicatorState: GestureIndicatorState,
     private val fastForwardSpeed: Float = 3f,
 ) {
-    private var originalSpeed = 0f
     private var gestureIndicatorTicket = 0
     val fastSkipState: FastSkipState = FastSkipState(
         onStart = { skipDirection ->
-            originalSpeed = playbackSpeed.value
-            playbackSpeed.set(
+            playbackSpeedControllerState.beginTemporarySpeed(
                 when (skipDirection) {
                     SkipDirection.FORWARD -> fastForwardSpeed
                     SkipDirection.BACKWARD -> error("Backward skipping is not supported")
                 },
             )
-            gestureIndicatorTicket = gestureIndicatorState.startFastForward()
+            gestureIndicatorTicket = gestureIndicatorState.startFastForward(fastForwardSpeed)
         },
         onStop = {
-            playbackSpeed.set(originalSpeed)
+            playbackSpeedControllerState.endTemporarySpeed()
             gestureIndicatorState.stopFastForward(gestureIndicatorTicket)
         },
     )
