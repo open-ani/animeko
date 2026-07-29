@@ -114,6 +114,8 @@ tasks.register("uploadIosIpaQR") {
 val zipDesktopDistribution = tasks.register("zipDesktopDistribution", Zip::class) {
     dependsOn(":app:desktop:createReleaseDistributable")
     from(project(":app:desktop").layout.buildDirectory.dir("compose/binaries/main-release/app"))
+    // Preserve launchers and bundled runtime helpers that must remain executable.
+    useFileSystemPermissions()
     archiveBaseName.set("ani")
     archiveVersion.set(ciReleaseFullVersion)
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))
