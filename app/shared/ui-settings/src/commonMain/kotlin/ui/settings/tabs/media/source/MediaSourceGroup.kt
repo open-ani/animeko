@@ -80,6 +80,7 @@ import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.interaction.onRightClickIfSupported
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_media_source_add
@@ -199,6 +200,11 @@ internal fun SettingsScope.MediaSourceGroup(
     val selectionCount = selectionState.selectedIds.size
     val allSelected = state.mediaSources.isNotEmpty() &&
         state.mediaSources.all { it.instanceId in selectionState.selectedIds }
+
+    // 组合在页面导航的 BackHandler 之后, 保证多选模式下返回键优先退出多选, 而不是退出设置页
+    BackHandler(enabled = selectionState.inSelection) {
+        selectionState.clear()
+    }
 
     LaunchedEffect(state.mediaSources, selectionState.inSelection) {
         reorderData = state.mediaSources
