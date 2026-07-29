@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.settings.tabs.media.source
 
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
@@ -21,6 +22,8 @@ import me.him188.ani.datasources.api.source.parameter.buildMediaSourceParameters
 import me.him188.ani.datasources.api.source.parameter.hasValue
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class EditMediaSourceDialogTest {
     @Test
@@ -30,10 +33,10 @@ class EditMediaSourceDialogTest {
         val parameters = buildMediaSourceParameters {
             string("baseUrl", defaultProvider = { "http://localhost:8096" })
             val authMode = simpleEnum("authMode", apiKeyMode, passwordMode, default = apiKeyMode)
-            string("userId", defaultProvider = { "" }, visibleWhen = authMode.hasValue(apiKeyMode))
-            string("apikey", defaultProvider = { "" }, visibleWhen = authMode.hasValue(apiKeyMode))
-            string("username", defaultProvider = { "" }, visibleWhen = authMode.hasValue(passwordMode))
-            string("password", defaultProvider = { "" }, visibleWhen = authMode.hasValue(passwordMode))
+            string("userId", visibleWhen = authMode.hasValue(apiKeyMode))
+            string("apikey", visibleWhen = authMode.hasValue(apiKeyMode))
+            string("username", visibleWhen = authMode.hasValue(passwordMode))
+            string("password", visibleWhen = authMode.hasValue(passwordMode))
         }
         val state = EditingMediaSource(
             editingMediaSourceId = "test",
@@ -61,6 +64,11 @@ class EditMediaSourceDialogTest {
         onNodeWithTag(EditMediaSourceTestTags.argument("apikey")).assertExists()
         onNodeWithTag(EditMediaSourceTestTags.argument("username")).assertDoesNotExist()
         onNodeWithTag(EditMediaSourceTestTags.argument("password")).assertDoesNotExist()
+        assertTrue(state.hasError)
+
+        onNodeWithTag(EditMediaSourceTestTags.argument("userId")).performTextInput("test-user-id")
+        onNodeWithTag(EditMediaSourceTestTags.argument("apikey")).performTextInput("test-api-key")
+        assertFalse(state.hasError)
 
         onNodeWithTag(EditMediaSourceTestTags.argument("authMode")).performClick()
         onNodeWithTag(EditMediaSourceTestTags.enumOption("authMode", passwordMode)).performClick()
@@ -71,6 +79,11 @@ class EditMediaSourceDialogTest {
         onNodeWithTag(EditMediaSourceTestTags.argument("apikey")).assertDoesNotExist()
         onNodeWithTag(EditMediaSourceTestTags.argument("username")).assertExists()
         onNodeWithTag(EditMediaSourceTestTags.argument("password")).assertExists()
+        assertTrue(state.hasError)
+
+        onNodeWithTag(EditMediaSourceTestTags.argument("username")).performTextInput("test-user")
+        onNodeWithTag(EditMediaSourceTestTags.argument("password")).performTextInput("test-password")
+        assertFalse(state.hasError)
 
         state.close()
     }

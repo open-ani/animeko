@@ -54,13 +54,11 @@ class JellyfinMediaSource(
         )
         val userId = string(
             "userId",
-            defaultProvider = { "" },
             description = "仅 API Key 模式使用。可在 Jellyfin \"控制台 - 用户\" 中选择一个用户, 在浏览器地址栏找到 \"userId=\" 后面的内容",
             visibleWhen = authMode.hasValue(AUTH_MODE_API_KEY),
         )
         val apikey = string(
             "apikey",
-            defaultProvider = { "" },
             description = "仅 API Key 模式使用。可在 Jellyfin \"控制台 - API 秘钥\" 中添加",
             visibleWhen = authMode.hasValue(AUTH_MODE_API_KEY),
         )
@@ -71,13 +69,11 @@ class JellyfinMediaSource(
         // Code handling logs, exports, or diagnostics must redact both secrets.
         val username = string(
             "username",
-            defaultProvider = { "" },
             description = "仅用户名密码模式使用",
             visibleWhen = authMode.hasValue(AUTH_MODE_USERNAME_PASSWORD),
         )
         val password = string(
             "password",
-            defaultProvider = { "" },
             description = "仅用户名密码模式使用",
             visibleWhen = authMode.hasValue(AUTH_MODE_USERNAME_PASSWORD),
         )
