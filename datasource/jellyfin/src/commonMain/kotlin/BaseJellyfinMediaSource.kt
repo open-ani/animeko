@@ -137,7 +137,7 @@ abstract class BaseJellyfinMediaSource(
                         else -> return@mapNotNull null
                     }
 
-                    MediaMatch(
+                    val match = MediaMatch(
                         media = DefaultMedia(
                             mediaId = item.Id,
                             mediaSourceId = mediaSourceId,
@@ -161,7 +161,7 @@ abstract class BaseJellyfinMediaSource(
                             ),
                             extraFiles = MediaExtraFiles(
                                 subtitles = getSubtitles(item.Id, item.MediaStreams),
-                                chapters = fetchChaptersAndSegments(item),
+                                chapters = emptyList(),
                             ),
                             episodeRange = episodeRange,
                             location = MediaSourceLocation.Lan,
@@ -169,8 +169,25 @@ abstract class BaseJellyfinMediaSource(
                         ),
                         kind = MatchKind.FUZZY,
                     )
+                    Pair(item, match)
                 }
-                .filter { it.matches(query) != false }
+                .filter { (_, match) -> match.matches(query) != false }
+                .map { (item, match) ->
+                    val chapters = fetchChaptersAndSegments(item)
+                    if (chapters.isEmpty()) {
+                        match
+                    } else {
+                        val media = match.media as DefaultMedia
+                        match.copy(
+                            media = media.copy(
+                                extraFiles = MediaExtraFiles(
+                                    subtitles = media.extraFiles.subtitles,
+                                    chapters = chapters,
+                                ),
+                            ),
+                        )
+                    }
+                }
                 .asFlow()
         }
     }
@@ -203,14 +220,14 @@ abstract class BaseJellyfinMediaSource(
         // 1. Try Jellyfin 10.10+ native MediaSegments API
         val nativeSegments = runCatching { doGetMediaSegments(itemId) }.getOrNull()
         if (nativeSegments != null && nativeSegments.Items.isNotEmpty()) {
-            val chapters = nativeSegments.Items.map { segment ->
-                val offsetMillis = segment.StartTicks / 10000
-                val durationMillis = (segment.EndTicks - segment.StartTicks) / 10000
+            val chapters = nativeSegments.Items.mapNotNull { segment ->
                 val name = when (segment.Type.lowercase()) {
                     "intro" -> "OP"
                     "outro" -> "ED"
-                    else -> segment.Type
+                    else -> return@mapNotNull null
                 }
+                val offsetMillis = segment.StartTicks / 10000
+                val durationMillis = (segment.EndTicks - segment.StartTicks) / 10000
                 MediaChapter(name = name, durationMillis = durationMillis, offsetMillis = offsetMillis)
             }
             if (chapters.isNotEmpty()) return chapters
@@ -317,7 +334,10 @@ abstract class BaseJellyfinMediaSource(
     }
 
     private suspend fun doGetMediaSegments(itemId: String): MediaSegmentQueryResult {
-        return authorizedGet("$baseUrl/MediaSegments/$itemId")
+        return authorizedGet("$baseUrl/MediaSegments/$itemId") {
+            url.parameters.append("includeSegmentTypes", "Intro")
+            url.parameters.append("includeSegmentTypes", "Outro")
+        }
     }
 
     private suspend fun doGetIntroTimestamps(itemId: String): IntroTimestampsDto {

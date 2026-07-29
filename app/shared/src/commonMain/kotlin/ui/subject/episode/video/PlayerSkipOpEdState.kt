@@ -90,9 +90,16 @@ private fun isOpEdChapter(chapter: Chapter, videoLength: Duration): Boolean {
 private fun isOpEdName(name: String): Boolean {
     val trimmed = name.trim().lowercase()
     if (trimmed.isEmpty()) return false
-    return trimmed == "op" || trimmed == "ed" ||
-            trimmed.contains("intro") || trimmed.contains("outro") ||
-            trimmed.contains("opening") || trimmed.contains("ending")
+    return trimmed == "op" ||
+            trimmed == "ed" ||
+            trimmed == "intro" ||
+            trimmed == "outro" ||
+            trimmed.contains("opening") ||
+            trimmed.contains("ending") ||
+            trimmed == "片头" ||
+            trimmed == "片尾" ||
+            trimmed == "片头曲" ||
+            trimmed == "片尾曲"
 }
 
 fun interface OpEdLength {
