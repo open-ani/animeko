@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -345,6 +345,7 @@ class SimpleMediaSelectorTestSuite(
  */
 class FetchMediaSelectorTestSuite(
     private val testDispatcher: CoroutineContext,
+    private val enableCaching: Boolean = false,
 ) : MediaSelectorTestSuite() {
     private lateinit var fetchSession: TestMediaFetchSession<*>
 
@@ -381,7 +382,7 @@ class FetchMediaSelectorTestSuite(
             mediaListNotCached = fetchSession.session.cumulativeResults,
             savedUserPreference = preferenceApi.savedUserPreference,
             savedDefaultPreference = preferenceApi.savedDefaultPreference,
-            enableCaching = false,
+            enableCaching = enableCaching,
             mediaSelectorSettings = preferenceApi.mediaSelectorSettings,
             flowCoroutineContext = testDispatcher,
         )
@@ -512,10 +513,14 @@ fun runSimpleMediaSelectorTestSuite(
  * @see me.him188.ani.app.domain.media.selector.MediaSelectorSourceTierAutoSelectTest
  */
 fun runFetchMediaSelectorTestSuite(
+    enableCaching: Boolean = false,
     buildTest: context(TestScope) FetchMediaSelectorTestSuite.() -> Unit = {},
     thenCheck: suspend context(TestScope) FetchMediaSelectorTestSuite.() -> Unit
 ): TestResult = runTest {
-    FetchMediaSelectorTestSuite(this.coroutineContext[ContinuationInterceptor]!!).apply { buildTest() }.thenCheck()
+    FetchMediaSelectorTestSuite(
+        this.coroutineContext[ContinuationInterceptor]!!,
+        enableCaching,
+    ).apply { buildTest() }.thenCheck()
 }
 
 inline fun DynamicTestsBuilder.addSimpleMediaSelectorTest(

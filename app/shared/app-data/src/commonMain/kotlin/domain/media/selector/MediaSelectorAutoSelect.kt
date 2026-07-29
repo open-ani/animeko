@@ -63,6 +63,7 @@ class MediaSelectorAutoSelect(
      *
      * @param waitForKind 等待此数据源类型完成后, 才执行选择. 如果为 `null`, 则等待所有数据源查询完成.
      */
+    @OptIn(UnsafeOriginalMediaAccess::class)
     suspend fun awaitCompletedAndSelectDefault(
         mediaFetchSession: MediaFetchSession,
         waitForKind: Flow<MediaSourceKind?> = flowOf(null)
@@ -73,11 +74,30 @@ class MediaSelectorAutoSelect(
                 completedConditions[it]
             } ?: completedConditions.allCompleted()
         }
-        if (mediaSelector.selected.value == null) {
-            val selected = mediaSelector.trySelectDefault()
-            return selected
+
+        // 候选流已经吸收查询结果时直接选择, 保持原有时序.
+        if (mediaSelector.selected.value != null) return null
+        mediaSelector.trySelectDefault()?.let { return it }
+
+        // awaitCompletion 只保证数据源查询完成. filteredCandidates / preferredCandidates 是从
+        // cumulativeResults 异步派生的, 此刻 trySelectDefault 可能仍读到 shareIn 回放的旧空快照.
+        val completedResults = mediaFetchSession.cumulativeResults.first()
+        if (completedResults.isEmpty()) return null
+
+        // filterMediaList 会 1:1 地将 Media 包装为 Included 或 Excluded. 等待本次已完成结果全部进入
+        // filteredCandidates 后再重试, 既不会改变过滤结果, 也不会因所有结果都被排除而永久挂起.
+        // cumulativeResults 会按 mediaId 跨源去重. 这里只比较同一身份字段, 避免某个源较晚完成、
+        // 成为重复媒体的保留项时, 因 sourceId 改变而一直等待已经被替换的旧候选.
+        val completedMediaIds = completedResults
+            .mapTo(HashSet(completedResults.size)) { it.mediaId }
+        mediaSelector.filteredCandidates.first { candidates ->
+            val candidateMediaIds = candidates
+                .mapTo(HashSet(candidates.size)) { it.original.mediaId }
+            candidateMediaIds.containsAll(completedMediaIds)
         }
-        return null
+
+        if (mediaSelector.selected.value != null) return null
+        return mediaSelector.trySelectDefault()
     }
 
     /**
