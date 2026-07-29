@@ -166,7 +166,7 @@ import me.him188.ani.app.ui.subject.details.sections.SubjectCommentsSheet
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.details.state.createTestSubjectDetailsState
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListDialog
-import me.him188.ani.app.ui.subject.person.PeoplePreviewHost
+import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
 import me.him188.ani.datasources.api.PackedDate
@@ -317,6 +317,15 @@ private fun SubjectDetailsPage(
     BackHandler(enabled = imageViewer.viewing.value) { imageViewer.clear() }
 
     val presentation by state.presentation.collectAsStateWithLifecycle()
+    val onEpisodeLongClick: (EpisodeListItem) -> Unit = {
+        onEpisodeCollectionUpdate(
+            SetEpisodeCollectionTypeRequest(
+                presentation.subjectId,
+                it.episodeId,
+                it.collectionType.toggleCollected(),
+            ),
+        )
+    }
 
     // 评论中的链接/图片点击 (手机"评价" tab 与桌面评论 sheet 共用)
     val onClickCommentUrl = { url: String ->
@@ -353,15 +362,7 @@ private fun SubjectDetailsPage(
                 onDismissRequest = { showSelectEpisode = false },
                 { navigator.navigateSubjectCaches(presentation.subjectId) },
                 { navigator.navigateEpisodeDetails(presentation.subjectId, it.episodeId) },
-                {
-                    onEpisodeCollectionUpdate(
-                        SetEpisodeCollectionTypeRequest(
-                            presentation.subjectId,
-                            it.episodeId,
-                            it.collectionType.toggleCollected(),
-                        ),
-                    )
-                },
+                onEpisodeLongClick,
             )
         }
 
@@ -386,6 +387,7 @@ private fun SubjectDetailsPage(
                     selfInfo = selfInfo,
                     layoutParams = layoutParams,
                     onPlay = onPlay,
+                    onEpisodeLongClick = onEpisodeLongClick,
                     onClickTag = onClickTag,
                     onClickLogin = onClickLogin,
                     onShowComments = { showComments = true },
@@ -479,6 +481,7 @@ private fun SubjectDetailsPage(
                         state = state,
                         info = state.info,
                         onPlay = onPlay,
+                        onEpisodeLongClick = onEpisodeLongClick,
                         onClickTag = onClickTag,
                         onShowEpisodeList = { showSelectEpisode = true },
                         onClickCache = { navigator.navigateSubjectCaches(presentation.subjectId) },

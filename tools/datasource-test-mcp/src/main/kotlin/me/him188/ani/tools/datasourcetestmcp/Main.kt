@@ -18,8 +18,15 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.serialization.json.Json
+import me.him188.ani.app.domain.foundation.WebSourceIdentityFeatureHandler
 import me.him188.ani.app.domain.mediasource.web.DefaultSelectorMediaSourceEngine
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceCookieJar
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceIdentityRegistry
+import me.him188.ani.tools.datasourcetestmcp.captcha.WebSourceSession
 import me.him188.ani.tools.datasourcetestmcp.info.AniInfoService
 import me.him188.ani.tools.datasourcetestmcp.mcp.McpRequestHandler
 import me.him188.ani.tools.datasourcetestmcp.mcp.buildToolRegistrations
@@ -49,6 +56,11 @@ fun main(args: Array<String>) {
         prettyPrint = true
     }
 
+    // web 数据源的统一身份: 浏览器解完验证码收集到的 cookie / UA 都落到这两处,
+    // 必须先于 HttpClient 建立, 才能作为 client 的 cookie 存储注入
+    val webSourceCookieJar = WebSourceCookieJar()
+    val webSourceIdentityRegistry = WebSourceIdentityRegistry()
+
     val client = HttpClient(OkHttp) {
         install(ContentNegotiation) {
             json(json)
@@ -57,7 +69,9 @@ fun main(args: Array<String>) {
             maxRetries = 1
             delayMillis { 1_000 }
         }
-        install(HttpCookies)
+        install(HttpCookies) {
+            storage = webSourceCookieJar
+        }
         install(HttpTimeout) {
             requestTimeoutMillis = 300.seconds.inWholeMilliseconds
             connectTimeoutMillis = 30.seconds.inWholeMilliseconds
@@ -72,14 +86,26 @@ fun main(args: Array<String>) {
         }
         expectSuccess = true
     }
+    // cf_clearance 等 cookie 绑定 UA: 已解决的 host 用浏览器的真实 UA 发后续 HTTP 请求
+    WebSourceIdentityFeatureHandler.applyToClient(client, webSourceIdentityRegistry)
+
     client.use { client ->
+        val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val scopedClient = client.asScopedHttpClient()
         val resolver = WebViewVideoResolverEngine()
         val probe = VideoProbe(client)
 
+        val webSourceSession = WebSourceSession(
+            client = scopedClient,
+            cookieJar = webSourceCookieJar,
+            identityRegistry = webSourceIdentityRegistry,
+            backgroundScope = backgroundScope,
+        )
+
         val aniInfoService = AniInfoService(client)
         val selectorEngineService = SelectorEngineService(
             engine = DefaultSelectorMediaSourceEngine(scopedClient),
+            webSource = webSourceSession,
             aniInfoService = aniInfoService,
             json = json,
             resolver = resolver,
@@ -92,7 +118,7 @@ fun main(args: Array<String>) {
         )
         val sourceTestService = SourceTestService(
             httpClient = client,
-            registry = DataSourceRegistry(scopedClient),
+            registry = DataSourceRegistry(scopedClient, webSourceSession.sessionManager),
             json = json,
             resolver = resolver,
             probe = probe,

@@ -149,6 +149,9 @@ fun buildToolRegistrations(
                     "searchSubjects -> selectSubjects -> searchEpisodes -> selectEpisodes -> selectMedia, " +
                     "then optionally WebView (CEF) video extraction and a playback probe. " +
                     "Returns a per-step trace (inputs, parsed results, errors) for debugging. " +
+                    "If the site is behind a captcha, it is solved automatically using the same strategies as the app " +
+                    "(reported as details.autoSolvedCaptcha); if it cannot be solved, the whole run stops immediately " +
+                    "with ok=false - do not retry with other keywords. " +
                     "Call get_selector_engine_docs for step semantics.",
             inputSchema = objectSchema(required = listOf("subjectId", "episodeId", "config")) {
                 put("subjectId", integerSchema("Ani subject ID"))
@@ -187,6 +190,7 @@ fun buildToolRegistrations(
                     "selectMedia(config, episodes, query) converts episodes to medias and applies filters; " +
                     "matchWebVideo(config, url) tests whether a URL matches the video/nested-page regexes (offline); " +
                     "extractVideo(url, config?) loads a play page in a real WebView and intercepts the video URL. " +
+                    "Steps that fetch a page solve captchas automatically where possible, and abort the step when they cannot. " +
                     "Call get_selector_engine_docs for details.",
             inputSchema = objectSchema(required = listOf("step")) {
                 put(

@@ -55,10 +55,11 @@ The transport is a stateless subset of the MCP Streamable HTTP spec: JSON-RPC me
 - `mcp/` — HTTP MCP server (Streamable HTTP/JSON-RPC) 与工具注册表
 - `info/` — 信息能力: Ani API 番剧/剧集查询
 - `selector/` — 数据源能力: 配置解析校验 + 引擎全流程/单步执行
+- `captcha/` — web 数据源取页会话: 复用 App 的 `WebSessionManager` 自动过验证码
 - `resolver/` — WebView 视频解析管线 (播放页 → 视频 URL) 与逐线路测试
 - `video/` — 视频能力: HTTP 探测 + mpv 真实播放分析 + HLS 广告分析
 - `source/` — 通用数据源端到端测试 (dmhy/mikan/... 工厂注册, 域名诊断)
-- 根包 — 入口 `Main.kt` 与共享模型 (`StageResult` 等)
+- 根包 — 入口 `Main.kt`、共享模型 (`StageResult` 等) 与共享的 JCEF 初始化入口
 
 ## Typical debugging flow
 
@@ -70,7 +71,22 @@ The transport is a stateless subset of the MCP Streamable HTTP spec: JSON-RPC me
 4. `selector_run_step` 单独重跑该步骤 (支持直接传 HTML 离线迭代 selector);
 5. `probe_video` 验证解析出的视频 URL 真实可播放.
 
-站点开了人机验证 (trace 里 captchaKind 非空) 时, 本工具无法过验证码, 请改用 App 内设置页的数据源测试器.
+## 人机验证 (验证码)
+
+所有取页都走 App 同一条链路 (`WebSessionManager` + `PageEvaluator`), 因此站点开了人机验证时,
+本工具会用与 App **完全相同**的自动策略去解 —— 先是纯 HTTP 的 MacCMS 图片验证码协议,
+再退到 JCEF 浏览器里读验证码图 + ONNX 识别 + 填答案; 解出来的 cookie 与 UA 会同步到 HTTP 侧与
+播放页 WebView, 后续步骤沿用同一个会话.
+
+MCP 是无人值守的, 没有 App 那样的手动兜底对话框, 所以只有两种结局:
+
+- **能自动解** → 解完重试, 该步骤正常返回, `details.autoSolvedCaptcha` 记录解掉的验证码类型;
+- **解不掉** → **立即终止这个数据源的整个流程** (不再换搜索词硬试, 也不再对站点发请求),
+  返回 `ok=false` 且 summary 形如
+  `<host> 开了人机验证 (<kind>), 自动解决失败 (<原因>), 已终止该数据源的流程`.
+
+自动解不掉通常意味着该站点的挑战超出现有 solver 能力 (如 Cloudflare 交互挑战),
+或当前出口 IP 被站点整体封禁 —— 此时改用 App 内设置页的数据源测试器手动过验证.
 
 ## Handshake Failure Hints
 

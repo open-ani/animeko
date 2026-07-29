@@ -51,6 +51,8 @@ dependencies {
     implementation(compose.desktop.currentOs)
 
     runtimeOnly(libs.slf4j.simple)
+    // 验证码浏览器要在 Swing EDT (CEF context) 上取 UA, WebSessionManager 用 Dispatchers.Main 切过去
+    runtimeOnly(libs.kotlinx.coroutines.swing)
 
     testImplementation(kotlin("test"))
     testImplementation(libs.junit5.jupiter.api)

@@ -16,12 +16,8 @@ import me.him188.ani.app.data.persistent.database.dao.WebSearchSubjectInfoDao
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSubjectInfoEntity
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
-import me.him188.ani.app.domain.mediasource.web.PageEvaluator
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
-import me.him188.ani.app.domain.mediasource.web.captcha.UnsupportedCaptchaBrowserFactory
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
-import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceCookieJar
-import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceIdentityRegistry
 import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.datasources.api.source.MediaSource
 import me.him188.ani.datasources.api.source.MediaSourceConfig
@@ -38,21 +34,15 @@ import java.util.concurrent.atomic.AtomicLong
 
 class DataSourceRegistry(
     private val client: ScopedHttpClient,
-    scope: kotlinx.coroutines.CoroutineScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default),
+    /**
+     * 与 `selector_*` 工具共用同一个会话管理器: selector 源在这里也会自动解验证码,
+     * 解不掉时 `SelectorMediaSource` 抛 `BlockedException`, 由调用方作为该源的失败上报.
+     */
+    private val webSessionManager: WebSessionManager,
 ) {
     private val selectorRepository = SelectorMediaSourceEpisodeCacheRepository(
         InMemoryWebSearchSubjectInfoDao(),
         InMemoryWebSearchEpisodeInfoDao(),
-    )
-
-    // 无头环境: 无浏览器, 直连 HTTP; 验证码只会如实上报为 CaptchaRequired
-    private val webSessionManager = WebSessionManager(
-        browserFactory = UnsupportedCaptchaBrowserFactory,
-        evaluator = PageEvaluator(),
-        cookieJar = WebSourceCookieJar(),
-        identityRegistry = WebSourceIdentityRegistry(),
-        client = client,
-        backgroundScope = scope,
     )
 
     private val factories: Map<String, MediaSourceFactory> = buildMap {
