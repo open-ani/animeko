@@ -132,6 +132,13 @@
 -keep class com.jthemedetecor.** { *; } #1404 OsThemeDetector
 -keep class oshi.** { *; } #1404 OsThemeDetector
 
+# ComposeSceneTouchBridge ProGuard rules
+-keep class androidx.compose.ui.awt.ComposeWindow { *; }
+-keep class androidx.compose.ui.awt.ComposePanel { *; }
+-keep class androidx.compose.ui.scene.ComposeContainer { *; }
+-keep class androidx.compose.ui.scene.ComposeSceneMediator { *; }
+-keep interface androidx.compose.ui.scene.ComposeScene { *; }
+
 # LayoutHitTestOwner ProGuard rules
 # 保持被反射调用的类
 -keep class androidx.compose.foundation.HoverableNode { *; }
