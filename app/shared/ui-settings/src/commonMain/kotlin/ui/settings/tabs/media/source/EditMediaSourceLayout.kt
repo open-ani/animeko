@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -40,6 +41,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import io.ktor.utils.io.core.Closeable
@@ -274,6 +278,16 @@ internal fun EditMediaSourceDialog(
                                     supportingText = argument.description?.let { { Text(it) } },
                                     isError = argument.isError,
                                     shape = MaterialTheme.shapes.medium,
+                                    visualTransformation = if (argument.parameter.isSensitive) {
+                                        PasswordVisualTransformation()
+                                    } else {
+                                        VisualTransformation.None
+                                    },
+                                    keyboardOptions = if (argument.parameter.isSensitive) {
+                                        KeyboardOptions(keyboardType = KeyboardType.Password)
+                                    } else {
+                                        KeyboardOptions.Default
+                                    },
                                 )
                             }
                         }
@@ -426,7 +440,7 @@ private fun PreviewEditMediaSourceDialog() {
             ),
             parameters = buildMediaSourceParameters {
                 string("username", description = "用户名")
-                string("password", description = "密码")
+                string("password", description = "密码", isSensitive = true)
                 boolean("Switch", true, description = "这是一个开关")
                 boolean("开关", false, description = "This is a switch")
                 boolean("开关", false, description = "This is a switch.".repeat(10))

@@ -45,6 +45,10 @@ class StringParameter(
      */
     val sanitize: (String) -> String = NoopSanitizer,
     override val visibleWhen: MediaSourceParameterVisibilityCondition? = null,
+    /**
+     * Whether editing UIs should treat this value as sensitive and conceal it from view.
+     */
+    val isSensitive: Boolean = false,
 ) : MediaSourceParameter<String> {
     val validate: (String) -> Boolean = {
         if (isRequired && it.isBlank()) {
