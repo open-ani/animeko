@@ -345,11 +345,7 @@ abstract class BaseJellyfinMediaSource(
                 originalTitle = originalTitle,
                 publishedTime = 0,
                 properties = MediaProperties(
-                    // SeasonName identifies the current season or arc. SeriesName is often the
-                    // first season's generic title and would be rejected by MediaSelector.
-                    subjectName = SeasonName?.takeIf { it.isNotBlank() }
-                        ?: SeriesName?.takeIf { it.isNotBlank() }
-                        ?: query.subjectNameCN,
+                    subjectName = subjectNameFor(query),
                     episodeName = Name,
                     subtitleLanguageIds = listOf("CHS"),
                     resolution = "1080P",
@@ -498,6 +494,23 @@ private fun Item.matchesTargetSeason(targetSeason: Int?): Boolean {
         TYPE_EPISODE -> ParentIndexNumber == targetSeason
         else -> true
     }
+}
+
+private fun Item.subjectNameFor(query: MediaFetchRequest): String? {
+    val matchingSeasonName = SeasonName
+        ?.trim()
+        ?.takeIf(String::isNotEmpty)
+        ?.takeIf { seasonName ->
+            sequenceOf(query.subjectNameCN)
+                .plus(query.subjectNames.asSequence())
+                .filterNotNull()
+                .map(String::trim)
+                .any { it.equals(seasonName, ignoreCase = true) }
+        }
+    return matchingSeasonName
+        ?: query.subjectNames.firstOrNull()?.takeIf(String::isNotBlank)
+        ?: query.subjectNameCN?.takeIf(String::isNotBlank)
+        ?: SeriesName?.takeIf(String::isNotBlank)
 }
 
 private fun Item.hasExactTitle(subjectName: String): Boolean {

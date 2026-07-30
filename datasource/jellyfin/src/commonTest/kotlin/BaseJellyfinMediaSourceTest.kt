@@ -294,7 +294,7 @@ class BaseJellyfinMediaSourceTest {
                             {
                               "Name": "Episode one",
                               "SeriesName": "作品",
-                              "SeasonName": "作品 第三季",
+                              "SeasonName": "Season 3",
                               "Id": "episode-3-1",
                               "IndexNumber": 1,
                               "ParentIndexNumber": 3,
@@ -313,7 +313,7 @@ class BaseJellyfinMediaSourceTest {
                         {
                           "Name": "Episode one",
                           "SeriesName": "作品",
-                          "SeasonName": "作品 第三季",
+                          "SeasonName": "Season 3",
                           "Id": "episode-3-1",
                           "IndexNumber": 1,
                           "ParentIndexNumber": 3,
@@ -333,6 +333,7 @@ class BaseJellyfinMediaSourceTest {
         ).results.toList()
 
         assertEquals("episode-3-1", result.single().media.mediaId)
+        assertEquals("作品 第三季", result.single().media.properties.subjectName)
         assertEquals(listOf("season-3"), requestedParentIds)
     }
 
@@ -553,7 +554,7 @@ class BaseJellyfinMediaSourceTest {
         ).results.toList()
 
         assertEquals("episode-1", result.single().media.mediaId)
-        assertEquals("Renamed season", result.single().media.properties.subjectName)
+        assertEquals("First alias", result.single().media.properties.subjectName)
         assertEquals(MatchKind.FUZZY, result.single().kind)
     }
 
