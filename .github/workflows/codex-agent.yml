@@ -33,7 +33,9 @@
 # Security: issue classification gives Codex no tools and validates its structured output against
 # an allow-list before a separate shell step mutates the issue. In particular, the classifier can
 # never add `ready-for-dev`. Full agent runs remain gated to write/maintain/admin members because
-# they need unrestricted system access for MCP and UI verification.
+# they need unrestricted system access for MCP and UI verification. PRs authored by users without
+# write access to this repository are pinned to the head commit captured when feedback triggers the
+# workflow; PRs from write/maintain/admin authors may use the latest head when the runner starts.
 
 name: Codex Agent
 
@@ -291,6 +293,8 @@ jobs:
       contents: read
     outputs:
       authorized: ${{ steps.check.outputs.authorized }}
+      trigger_head_sha: ${{ steps.check.outputs.trigger_head_sha }}
+      pr_author: ${{ steps.check.outputs.pr_author }}
     steps:
       - id: check
         env:
@@ -298,6 +302,9 @@ jobs:
           BOT_TOKEN: ${{ secrets.OPENANI_BOT_TOKEN }}
           ACTOR: ${{ github.event.sender.login }}
           REPO: ${{ github.repository }}
+          IS_PR: ${{ github.event_name == 'pull_request_review' || (github.event_name == 'issue_comment' && github.event.issue.pull_request != null) }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
           test -n "${BOT_TOKEN:-}" || { echo "::error::OPENANI_BOT_TOKEN is not configured"; exit 1; }
@@ -313,6 +320,23 @@ jobs:
             admin|maintain|write) echo "authorized=true"  >> "$GITHUB_OUTPUT" ;;
             *)                     echo "authorized=false" >> "$GITHUB_OUTPUT" ;;
           esac
+
+          if [ "$IS_PR" = "true" ]; then
+            PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
+            PR_AUTHOR=$(jq -r '.user.login' <<< "$PR_JSON")
+            TRIGGER_HEAD_SHA="${EVENT_HEAD_SHA:-$(jq -r '.head.sha' <<< "$PR_JSON")}"
+            [[ "$TRIGGER_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+              echo "::error::PR #$PR_NUMBER has invalid trigger head SHA: $TRIGGER_HEAD_SHA"
+              exit 1
+            }
+            test -n "$PR_AUTHOR" && test "$PR_AUTHOR" != "null" || {
+              echo "::error::PR #$PR_NUMBER has no author"
+              exit 1
+            }
+            echo "pr=$PR_NUMBER author=$PR_AUTHOR trigger_head=$TRIGGER_HEAD_SHA"
+            echo "trigger_head_sha=$TRIGGER_HEAD_SHA" >> "$GITHUB_OUTPUT"
+            echo "pr_author=$PR_AUTHOR" >> "$GITHUB_OUTPUT"
+          fi
 
   # ---------------------------------------------------------------------------
   # Issue labeled `ready-for-dev`  ->  agent implements & opens a PR.
@@ -457,6 +481,8 @@ jobs:
       COMMENT_ID: ${{ github.event.comment.id }}
       PR_URL: ${{ github.event.pull_request.html_url || github.event.issue.html_url }}
       TRIGGER_URL: ${{ github.event.comment.html_url || github.event.review.html_url }}
+      TRIGGER_HEAD_SHA: ${{ needs.authorize.outputs.trigger_head_sha }}
+      TRIGGER_PR_AUTHOR: ${{ needs.authorize.outputs.pr_author }}
     steps:
       - name: Set up tool PATH
         run: |
@@ -497,19 +523,45 @@ jobs:
         run: |
           set -euo pipefail
           PR_JSON=$(gh pr view "$PR_NUMBER" \
-            --json headRefName,headRefOid,headRepository,headRepositoryOwner,isCrossRepository)
+            --json author,headRefName,headRefOid,headRepository,headRepositoryOwner,isCrossRepository)
+          PR_AUTHOR=$(jq -r '.author.login' <<< "$PR_JSON")
           HEAD_REF=$(jq -r '.headRefName' <<< "$PR_JSON")
-          HEAD_SHA=$(jq -r '.headRefOid' <<< "$PR_JSON")
+          LIVE_HEAD_SHA=$(jq -r '.headRefOid' <<< "$PR_JSON")
           HEAD_REPO=$(jq -r '.headRepositoryOwner.login + "/" + .headRepository.name' <<< "$PR_JSON")
           CROSS=$(jq -r '.isCrossRepository' <<< "$PR_JSON")
+          test "$(printf '%s' "$PR_AUTHOR" | tr '[:upper:]' '[:lower:]')" = \
+               "$(printf '%s' "$TRIGGER_PR_AUTHOR" | tr '[:upper:]' '[:lower:]')" || {
+            echo "::error::PR author changed from $TRIGGER_PR_AUTHOR to $PR_AUTHOR"
+            exit 1
+          }
           test -n "$HEAD_REF" && test "$HEAD_REF" != "null" || {
             echo "::error::PR #$PR_NUMBER has no head branch"
             exit 1
           }
-          test -n "$HEAD_SHA" && test "$HEAD_SHA" != "null" || {
-            echo "::error::PR #$PR_NUMBER has no head commit"
+          [[ "$LIVE_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::PR #$PR_NUMBER has invalid current head SHA: $LIVE_HEAD_SHA"
             exit 1
           }
+          [[ "$TRIGGER_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::PR #$PR_NUMBER has invalid trigger head SHA: $TRIGGER_HEAD_SHA"
+            exit 1
+          }
+
+          AUTHOR_PERMISSION=$(gh api \
+            "repos/$REPO/collaborators/$PR_AUTHOR/permission" \
+            --jq '.permission' 2>/dev/null || echo none)
+          case "$AUTHOR_PERMISSION" in
+            admin|maintain|write)
+              HEAD_SHA="$LIVE_HEAD_SHA"
+              CHECKOUT_POLICY=latest
+              ;;
+            *)
+              HEAD_SHA="$TRIGGER_HEAD_SHA"
+              CHECKOUT_POLICY=pinned
+              ;;
+          esac
+          echo "PR author=$PR_AUTHOR permission=$AUTHOR_PERMISSION policy=$CHECKOUT_POLICY"
+          echo "trigger head=$TRIGGER_HEAD_SHA current head=$LIVE_HEAD_SHA checkout head=$HEAD_SHA"
 
           gh auth setup-git
           if [ "$CROSS" = "true" ]; then
@@ -517,16 +569,13 @@ jobs:
               echo "::error::PR #$PR_NUMBER has no accessible head repository"
               exit 1
             }
-            git fetch --no-tags origin \
-              "+refs/pull/$PR_NUMBER/head:refs/remotes/pull/$PR_NUMBER/head"
-            git checkout -B "$HEAD_REF" "refs/remotes/pull/$PR_NUMBER/head"
             SESSION_KEY="fork-pr-$PR_NUMBER-$HEAD_REPO-$HEAD_REF"
           else
-            git fetch --no-tags origin \
-              "+refs/heads/$HEAD_REF:refs/remotes/origin/$HEAD_REF"
-            git checkout -B "$HEAD_REF" "refs/remotes/origin/$HEAD_REF"
             SESSION_KEY="$HEAD_REF"
           fi
+
+          git fetch --no-tags origin "$HEAD_SHA"
+          git checkout -B "$HEAD_REF" "$HEAD_SHA"
 
           CHECKED_OUT_SHA=$(git rev-parse HEAD)
           test "$CHECKED_OUT_SHA" = "$HEAD_SHA" || {
@@ -538,16 +587,18 @@ jobs:
           echo "head_repo=$HEAD_REPO" >> "$GITHUB_OUTPUT"
           echo "cross=$CROSS" >> "$GITHUB_OUTPUT"
           echo "session_key=$SESSION_KEY" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "live_head_sha=$LIVE_HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "checkout_policy=$CHECKOUT_POLICY" >> "$GITHUB_OUTPUT"
+          echo "pr_author=$PR_AUTHOR" >> "$GITHUB_OUTPUT"
+          echo "author_permission=$AUTHOR_PERMISSION" >> "$GITHUB_OUTPUT"
 
       - name: Configure PR access and submodules
         env:
           CROSS: ${{ steps.pr.outputs.cross }}
-          READ_ONLY_GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           if [ "$CROSS" = "true" ]; then
-            export GH_TOKEN="$READ_ONLY_GH_TOKEN"
-            echo "GH_TOKEN=$READ_ONLY_GH_TOKEN" >> "$GITHUB_ENV"
             git remote set-url --push origin "no-push://fork-pr/$PR_NUMBER"
           fi
           gh auth setup-git
@@ -567,6 +618,11 @@ jobs:
           CROSS: ${{ steps.pr.outputs.cross }}
           HEAD_REF: ${{ steps.pr.outputs.head_ref }}
           HEAD_REPO: ${{ steps.pr.outputs.head_repo }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          LIVE_HEAD_SHA: ${{ steps.pr.outputs.live_head_sha }}
+          CHECKOUT_POLICY: ${{ steps.pr.outputs.checkout_policy }}
+          PR_AUTHOR: ${{ steps.pr.outputs.pr_author }}
+          AUTHOR_PERMISSION: ${{ steps.pr.outputs.author_permission }}
         run: |
           set -euo pipefail
           {
@@ -574,6 +630,14 @@ jobs:
             echo "The PR branch is already checked out. Address the maintainer's latest feedback."
             echo "  PR:       $PR_URL"
             echo "  Feedback: $TRIGGER_URL"
+            if [ "$CHECKOUT_POLICY" = "pinned" ]; then
+              echo "The PR author $PR_AUTHOR does not have write access to $REPO."
+              echo "For safety, the checkout is pinned to the trigger-time commit $HEAD_SHA."
+              echo "The current PR head is $LIVE_HEAD_SHA. Do not fetch, check out, or execute a newer commit during this run."
+            else
+              echo "The PR author $PR_AUTHOR has $AUTHOR_PERMISSION access to $REPO."
+              echo "The latest PR head available when the runner started is checked out at $HEAD_SHA."
+            fi
             echo "Read the full context yourself with: gh pr view $PR_NUMBER --comments   (and gh api for review threads)."
             echo "Review and address all currently unhandled maintainer feedback, not only the triggering event."
             echo "Multiple comments or reviews may have been coalesced into this run while another run was active."
@@ -582,7 +646,7 @@ jobs:
             echo "Do NOT use any GitHub connector / MCP integration — 'gh' authenticates as the CI bot, a connector would act under a personal account."
             if [ "$CROSS" = "true" ]; then
               echo "This is a fork PR from $HEAD_REPO. Repository contents access is read-only and pushes are disabled."
-              echo "Use the existing GH_TOKEN; do not run 'gh auth login', replace the token, change remotes, or attempt any push."
+              echo "GH_TOKEN is set from the OPENANI_BOT_TOKEN repository secret. Use it; do not run 'gh auth login', replace the token, change remotes, or attempt any push."
               echo "You may inspect and modify the local checkout for testing, then report results or actionable changes on the PR."
             else
               echo "GH_TOKEN is set from the OPENANI_BOT_TOKEN repository secret. Use it; do not run 'gh auth login' or replace it."
