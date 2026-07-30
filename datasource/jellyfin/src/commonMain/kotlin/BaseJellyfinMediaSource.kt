@@ -90,54 +90,49 @@ abstract class BaseJellyfinMediaSource(
     private suspend fun findBySubjectNames(query: MediaFetchRequest): List<MatchedItem> {
         val fallbackMatches = linkedMapOf<String, MatchedItem>()
 
-        for (subjectName in query.subjectNames
-            .asSequence()
-            .map(String::trim)
-            .filter(String::isNotBlank)
-            .distinct()) {
-            val parsedSubjectName = parseSubjectName(subjectName)
-            for (searchName in sequenceOf(subjectName, parsedSubjectName.baseName).distinct()) {
-                val searchResults = searchByTitle(searchName)
+        for (subjectSearch in createSubjectSearches(query.subjectNames)) {
+            val searchResults = searchByTitle(subjectSearch.name)
 
-                if (searchResults.isEmpty()) {
-                    continue
-                }
+            if (searchResults.isEmpty()) {
+                continue
+            }
 
-                val preferredCandidates = searchResults.preferredCandidatesFor(searchName)
-                val preferredMatches = findRequestedItems(
-                    preferredCandidates,
+            val preferredCandidates = searchResults.preferredCandidatesFor(subjectSearch.name)
+            val preferredMatches = findRequestedItems(
+                preferredCandidates,
+                query,
+                subjectSearch.targetSeason,
+                subjectSearch.name,
+            )
+            val matches = if (preferredMatches.isNotEmpty()) {
+                preferredMatches
+            } else {
+                findRequestedItems(
+                    searchResults.filterNot { candidate ->
+                        preferredCandidates.any { it.Id == candidate.Id }
+                    },
                     query,
-                    parsedSubjectName.targetSeason,
+                    subjectSearch.targetSeason,
+                    subjectSearch.name,
                 )
-                val matches = if (preferredMatches.isNotEmpty()) {
-                    preferredMatches
-                } else {
-                    findRequestedItems(
-                        searchResults.filterNot { candidate ->
-                            preferredCandidates.any { it.Id == candidate.Id }
-                        },
-                        query,
-                        parsedSubjectName.targetSeason,
-                    )
-                }
+            }
 
-                if (matches.isEmpty()) {
-                    continue
-                }
+            if (matches.isEmpty()) {
+                continue
+            }
 
-                hydrateMediaStreams(matches).forEach { match ->
-                    val existing = fallbackMatches[match.item.Id]
-                    if (existing == null || match.confidence > existing.confidence) {
-                        fallbackMatches[match.item.Id] = match
-                    }
+            hydrateMediaStreams(matches).forEach { match ->
+                val existing = fallbackMatches[match.item.Id]
+                if (existing == null || match.confidence > existing.confidence) {
+                    fallbackMatches[match.item.Id] = match
                 }
+            }
 
-                val exactIdMatches = fallbackMatches.values.filter {
-                    it.confidence == BangumiMatchConfidence.EPISODE
-                }
-                if (exactIdMatches.isNotEmpty()) {
-                    return exactIdMatches
-                }
+            val exactIdMatches = fallbackMatches.values.filter {
+                it.confidence == BangumiMatchConfidence.EPISODE
+            }
+            if (exactIdMatches.isNotEmpty()) {
+                return exactIdMatches
             }
         }
 
@@ -180,15 +175,22 @@ abstract class BaseJellyfinMediaSource(
         candidates: List<Item>,
         query: MediaFetchRequest,
         targetSeason: Int?,
+        searchName: String,
     ): List<MatchedItem> {
         return buildList {
             for (candidate in candidates) {
                 val containerSubjectMatch = candidate.containerSubjectIdMatch(query)
-                if (containerSubjectMatch == ProviderIdMatch.CONFLICT) {
+                val episodeMatch = candidate.episodeIdMatch(query)
+                if (
+                    containerSubjectMatch == ProviderIdMatch.CONFLICT ||
+                    episodeMatch == ProviderIdMatch.CONFLICT
+                ) {
                     continue
                 }
                 if (
                     containerSubjectMatch != ProviderIdMatch.MATCH &&
+                    episodeMatch != ProviderIdMatch.MATCH &&
+                    !candidate.hasExactContainerTitle(searchName) &&
                     !candidate.matchesTargetSeason(targetSeason)
                 ) {
                     continue
@@ -197,17 +199,26 @@ abstract class BaseJellyfinMediaSource(
                 val requestedItems: List<RequestedItem> = when (candidate.Type) {
                     TYPE_SERIES -> {
                         val seasons = doGetSeasons(seriesId = candidate.Id).Items
-                        val matchedSeasons = if (targetSeason != null) {
-                            seasons.filter { it.IndexNumber == targetSeason }
-                        } else {
-                            seasons
+                        val matchedSeasons = seasons.mapNotNull { season ->
+                            val seasonSubjectMatch = season.containerSubjectIdMatch(query)
+                            when {
+                                seasonSubjectMatch == ProviderIdMatch.CONFLICT -> null
+                                seasonSubjectMatch == ProviderIdMatch.MATCH ->
+                                    MatchedSeason(season, inheritedSubjectMatch = true)
+
+                                season.hasExactContainerTitle(searchName) ->
+                                    MatchedSeason(season, inheritedSubjectMatch = false)
+
+                                season.matchesTargetSeason(targetSeason) ->
+                                    MatchedSeason(season, inheritedSubjectMatch = false)
+
+                                else -> null
+                            }
                         }
 
                         if (matchedSeasons.isNotEmpty()) {
                             buildList {
-                                for (season in matchedSeasons) {
-                                    val seasonSubjectMatch = season.containerSubjectIdMatch(query)
-                                    if (seasonSubjectMatch == ProviderIdMatch.CONFLICT) continue
+                                for ((season, inheritedSubjectMatch) in matchedSeasons) {
                                     val seasonNumber = season.IndexNumber ?: continue
                                     doGetEpisodes(
                                         seriesId = candidate.Id,
@@ -218,8 +229,7 @@ abstract class BaseJellyfinMediaSource(
                                             add(
                                                 RequestedItem(
                                                     item = item,
-                                                    inheritedSubjectMatch =
-                                                        seasonSubjectMatch == ProviderIdMatch.MATCH,
+                                                    inheritedSubjectMatch = inheritedSubjectMatch,
                                                 ),
                                             )
                                         }
@@ -233,8 +243,16 @@ abstract class BaseJellyfinMediaSource(
                             ).Items
                                 .filter(Item::isPlayableSearchResult)
                                 .filter { item ->
-                                    item.containerSubjectIdMatch(query) == ProviderIdMatch.MATCH ||
-                                            item.matchesTargetSeason(targetSeason)
+                                    val itemSubjectMatch = item.containerSubjectIdMatch(query)
+                                    val itemEpisodeMatch = item.episodeIdMatch(query)
+                                    when {
+                                        itemSubjectMatch == ProviderIdMatch.CONFLICT -> false
+                                        itemEpisodeMatch == ProviderIdMatch.CONFLICT -> false
+                                        itemSubjectMatch == ProviderIdMatch.MATCH -> true
+                                        itemEpisodeMatch == ProviderIdMatch.MATCH -> true
+                                        item.hasExactContainerTitle(searchName) -> true
+                                        else -> item.matchesTargetSeason(targetSeason)
+                                    }
                                 }
                                 .map { RequestedItem(it, inheritedSubjectMatch = false) }
                         }
@@ -404,6 +422,36 @@ abstract class BaseJellyfinMediaSource(
         val targetSeason: Int?,
     )
 
+    private data class SubjectSearch(
+        val name: String,
+        val targetSeason: Int?,
+    )
+
+    private fun createSubjectSearches(subjectNames: List<String>): List<SubjectSearch> {
+        val parsedNames = subjectNames
+            .asSequence()
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .distinct()
+            .map { name -> name to parseSubjectName(name) }
+            .toList()
+        val sharedTargetSeason = parsedNames
+            .mapNotNull { (_, parsed) -> parsed.targetSeason }
+            .distinct()
+            .singleOrNull()
+
+        return parsedNames
+            .asSequence()
+            .flatMap { (name, parsed) ->
+                val targetSeason = parsed.targetSeason ?: sharedTargetSeason
+                sequenceOf(name, parsed.baseName)
+                    .distinct()
+                    .map { searchName -> SubjectSearch(searchName, targetSeason) }
+            }
+            .distinctBy { search -> search.name.lowercase() to search.targetSeason }
+            .toList()
+    }
+
     private fun parseSubjectName(name: String): ParsedSubjectName {
         // Chinese: "无职转生 第三季 ～到了异世界就拿出真本事～" → base="无职转生", season=3
         val chineseSeasonRegex = Regex("[第]([一二三四五六七八九十]+)季")
@@ -533,6 +581,18 @@ private fun Item.hasExactTitle(subjectName: String): Boolean {
         .any { it.equals(subjectName, ignoreCase = true) }
 }
 
+private fun Item.hasExactContainerTitle(subjectName: String): Boolean {
+    val titles = when (Type) {
+        TYPE_EPISODE -> sequenceOf(SeasonName)
+        TYPE_MOVIE, TYPE_SEASON, TYPE_SERIES -> sequenceOf(Name, OriginalTitle)
+        else -> emptySequence()
+    }
+    return titles
+        .filterNotNull()
+        .map(String::trim)
+        .any { it.equals(subjectName, ignoreCase = true) }
+}
+
 private fun Item.containerSubjectIdMatch(query: MediaFetchRequest): ProviderIdMatch {
     // A Jellyfin Series can contain several Bangumi subjects, one per season. Its provider ID
     // commonly points to the first season, so it cannot authenticate or reject a child episode.
@@ -544,6 +604,11 @@ private fun Item.containerSubjectIdMatch(query: MediaFetchRequest): ProviderIdMa
         else -> null
     }
     return compareProviderId(actualSubjectId, query.subjectId)
+}
+
+private fun Item.episodeIdMatch(query: MediaFetchRequest): ProviderIdMatch {
+    if (Type != TYPE_EPISODE) return ProviderIdMatch.UNKNOWN
+    return compareProviderId(providerId(PROVIDER_ID_BANGUMI), query.episodeId)
 }
 
 private fun Item.bangumiMatchConfidence(
@@ -619,6 +684,11 @@ private data class MatchedItem(
 )
 
 private data class RequestedItem(
+    val item: Item,
+    val inheritedSubjectMatch: Boolean,
+)
+
+private data class MatchedSeason(
     val item: Item,
     val inheritedSubjectMatch: Boolean,
 )
