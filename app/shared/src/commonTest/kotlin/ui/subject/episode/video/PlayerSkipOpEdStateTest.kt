@@ -10,10 +10,14 @@
 package me.him188.ani.app.ui.subject.episode.video
 
 import me.him188.ani.app.ui.foundation.stateOf
+import me.him188.ani.datasources.api.MediaChapter
+import me.him188.ani.datasources.api.MediaChapterKind
 import org.openani.mediamp.InternalMediampApi
 import org.openani.mediamp.metadata.Chapter
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.minutes
 
 @OptIn(InternalMediampApi::class)
@@ -21,17 +25,12 @@ class PlayerSkipOpEdStateTest {
     class `OP chapter on start` {
         private val opChapterOnStart = listOf(
             Chapter("chapter1 op", 80_000L, 0),
-            Chapter("chapter2", 10_000L, 100_000L),
-            Chapter("chapter3", 10_000L, 110_000L),
         )
-
-        private val videoLength = 24.minutes
 
         private fun createState_opChapterOnStart_24minutes(onSkip: (targetMillis: Long) -> Unit = {}): PlayerSkipOpEdState {
             return PlayerSkipOpEdState(
                 stateOf(opChapterOnStart),
                 onSkip = onSkip,
-                stateOf(videoLength),
             )
         }
 
@@ -117,18 +116,13 @@ class PlayerSkipOpEdStateTest {
     class `OP chapter on chapter 2` {
 
         private val opChapterOnChapter2 = listOf(
-            Chapter("chapter1", 10_000L, 0),
             Chapter("chapter2 op", 90_000L, 10_000L),
-            Chapter("chapter3", 10_000L, 110_000L),
         )
-
-        private val videoLength = 24.minutes
 
         private fun createState_opChapterOnChapter2_24minutes(onSkip: (targetMillis: Long) -> Unit = {}): PlayerSkipOpEdState {
             return PlayerSkipOpEdState(
                 stateOf(opChapterOnChapter2),
                 onSkip = onSkip,
-                stateOf(videoLength),
             )
         }
 
@@ -415,9 +409,9 @@ class PlayerSkipOpEdStateTest {
         }
     }
 
-    class `OP chapter recognized by name` {
+    class `explicit OP chapter` {
         @Test
-        fun `intro chapter with non-standard duration is recognized`() {
+        fun `chapter with non-standard duration is skipped`() {
             val chapters = listOf(
                 Chapter("Intro", 70_000L, 10_000L),
                 Chapter("Outro", 60_000L, 1_000_000L),
@@ -426,13 +420,77 @@ class PlayerSkipOpEdStateTest {
             val state = PlayerSkipOpEdState(
                 stateOf(chapters),
                 onSkip = { skippedMillis = it },
-                stateOf(24.minutes),
             )
             state.update(7_000L)
             assertEquals(true, state.showSkipTips)
 
             state.update(10_000L)
             assertEquals(80_000L, skippedMillis)
+        }
+    }
+
+    class `chapter candidate selection` {
+        @Test
+        fun `regular media chapter is never a skip candidate regardless of name or duration`() {
+            val chapter = MediaChapter(
+                name = "Opening Scene",
+                durationMillis = 85_000L,
+                offsetMillis = 10_000L,
+            )
+
+            assertEquals(null, chapter.toSkipChapterCandidateOrNull())
+            assertEquals(null, chapter.copy(name = "Intro").toSkipChapterCandidateOrNull())
+        }
+
+        @Test
+        fun `typed media opening is a skip candidate regardless of duration`() {
+            val chapter = MediaChapter(
+                name = "OP",
+                durationMillis = 70_000L,
+                offsetMillis = 10_000L,
+                kind = MediaChapterKind.OPENING,
+            )
+
+            assertEquals(MediaChapterKind.OPENING, chapter.toSkipChapterCandidateOrNull()?.kind)
+        }
+
+        @Test
+        fun `player chapter heuristic uses duration but never name`() {
+            assertTrue(
+                isLikelyOpEdChapter(
+                    Chapter("Anything", 85_000L, 10_000L),
+                    24.minutes,
+                ),
+            )
+            assertFalse(
+                isLikelyOpEdChapter(
+                    Chapter("Opening Scene", 7 * 60_000L, 10_000L),
+                    24.minutes,
+                ),
+            )
+        }
+
+        @Test
+        fun `media opening only replaces online opening`() {
+            val mediaOpening = SkipChapterCandidate(
+                Chapter("OP", 70_000L, 10_000L),
+                MediaChapterKind.OPENING,
+            )
+            val onlineOpening = SkipChapterCandidate(
+                Chapter("OP", 85_000L, 12_000L),
+                MediaChapterKind.OPENING,
+            )
+            val onlineEnding = SkipChapterCandidate(
+                Chapter("ED", 85_000L, 1_200_000L),
+                MediaChapterKind.ENDING,
+            )
+
+            val merged = mergeSkipChapterCandidates(
+                primary = listOf(mediaOpening),
+                fallback = listOf(onlineOpening, onlineEnding),
+            )
+
+            assertEquals(listOf(mediaOpening, onlineEnding), merged)
         }
     }
 }

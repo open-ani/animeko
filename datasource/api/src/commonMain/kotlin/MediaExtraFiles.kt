@@ -29,7 +29,15 @@ data class MediaChapter(
     val name: String,
     val durationMillis: Long,
     val offsetMillis: Long,
+    val kind: MediaChapterKind = MediaChapterKind.CHAPTER,
 )
+
+@Serializable
+enum class MediaChapterKind {
+    CHAPTER,
+    OPENING,
+    ENDING,
+}
 
 @Serializable
 data class Subtitle(

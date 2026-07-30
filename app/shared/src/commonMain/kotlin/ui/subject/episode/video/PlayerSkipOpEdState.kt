@@ -16,6 +16,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.datasources.api.MediaChapter
+import me.him188.ani.datasources.api.MediaChapterKind
+import org.openani.mediamp.InternalMediampApi
 import org.openani.mediamp.metadata.Chapter
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -28,13 +31,10 @@ internal val DEFAULT_OP_ED_SKIP_DURATION = VideoScaffoldConfig.Default.opEdSkipD
 class PlayerSkipOpEdState(
     chapters: State<List<Chapter>>,
     private val onSkip: (targetMillis: Long) -> Unit,
-    videoLength: State<Duration>,
 ) {
     private var currentChapter: CurrentChapter? by mutableStateOf(null)
     private val opEdChapters by derivedStateOf {
-        chapters.value.filter { chapter ->
-            isOpEdChapter(chapter, videoLength.value)
-        }.map { CurrentChapter(chapter = it, false) }
+        chapters.value.map { CurrentChapter(chapter = it, false) }
     }
 
     val skipped: Boolean by derivedStateOf {
@@ -82,24 +82,42 @@ class CurrentChapter(val chapter: Chapter, skipped: Boolean) {
     var skipped by mutableStateOf(skipped)
 }
 
-private fun isOpEdChapter(chapter: Chapter, videoLength: Duration): Boolean {
-    if (isOpEdName(chapter.name)) return true
-    return OpEdLength.fromVideoLengthOrNull(videoLength)?.isOpEdChapter(chapter.durationMillis.milliseconds) == true
+internal data class SkipChapterCandidate(
+    val chapter: Chapter,
+    val kind: MediaChapterKind? = null,
+)
+
+@OptIn(InternalMediampApi::class)
+internal fun MediaChapter.toSkipChapterCandidateOrNull(): SkipChapterCandidate? {
+    if (kind == MediaChapterKind.CHAPTER) return null
+    return SkipChapterCandidate(
+        chapter = Chapter(name, durationMillis, offsetMillis),
+        kind = kind,
+    )
 }
 
-private fun isOpEdName(name: String): Boolean {
-    val trimmed = name.trim().lowercase()
-    if (trimmed.isEmpty()) return false
-    return trimmed == "op" ||
-            trimmed == "ed" ||
-            trimmed == "intro" ||
-            trimmed == "outro" ||
-            trimmed.contains("opening") ||
-            trimmed.contains("ending") ||
-            trimmed == "片头" ||
-            trimmed == "片尾" ||
-            trimmed == "片头曲" ||
-            trimmed == "片尾曲"
+internal fun mergeSkipChapterCandidates(
+    primary: List<SkipChapterCandidate>,
+    fallback: List<SkipChapterCandidate>,
+): List<SkipChapterCandidate> = buildList {
+    addAll(primary)
+    fallback.forEach { candidate ->
+        val alreadyCovered = candidate.kind?.let { kind ->
+            any { it.kind == kind }
+        } ?: any { chaptersOverlap(it.chapter, candidate.chapter) }
+        if (!alreadyCovered) add(candidate)
+    }
+}
+
+private fun chaptersOverlap(first: Chapter, second: Chapter): Boolean {
+    val firstEnd = first.offsetMillis + first.durationMillis
+    val secondEnd = second.offsetMillis + second.durationMillis
+    return first.offsetMillis < secondEnd && second.offsetMillis < firstEnd
+}
+
+internal fun isLikelyOpEdChapter(chapter: Chapter, videoLength: Duration): Boolean {
+    return OpEdLength.fromVideoLengthOrNull(videoLength)
+        ?.isOpEdChapter(chapter.durationMillis.milliseconds) == true
 }
 
 fun interface OpEdLength {
