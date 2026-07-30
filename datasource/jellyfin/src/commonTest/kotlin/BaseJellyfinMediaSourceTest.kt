@@ -253,6 +253,153 @@ class BaseJellyfinMediaSourceTest {
     }
 
     @Test
+    fun `filters direct season candidates by parsed target season without provider ids`() = runTest {
+        val requestedParentIds = mutableListOf<String>()
+        val source = createSource { request ->
+            when {
+                request.url.parameters["searchTerm"] == "作品 第三季" ->
+                    respondJson("""{ "Items": [] }""")
+
+                request.url.parameters["searchTerm"] == "作品" -> respondJson(
+                    """
+                    {
+                      "Items": [
+                        {
+                          "Name": "Season 2",
+                          "SeriesName": "作品",
+                          "Id": "season-2",
+                          "IndexNumber": 2,
+                          "Type": "Season"
+                        },
+                        {
+                          "Name": "Season 3",
+                          "SeriesName": "作品",
+                          "Id": "season-3",
+                          "IndexNumber": 3,
+                          "Type": "Season"
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                request.url.parameters["parentId"] != null -> {
+                    val parentId = request.url.parameters["parentId"]!!
+                    requestedParentIds += parentId
+                    assertEquals("season-3", parentId)
+                    respondJson(
+                        """
+                        {
+                          "Items": [
+                            {
+                              "Name": "Episode one",
+                              "SeriesName": "作品",
+                              "SeasonName": "作品 第三季",
+                              "Id": "episode-3-1",
+                              "IndexNumber": 1,
+                              "ParentIndexNumber": 3,
+                              "Type": "Episode"
+                            }
+                          ]
+                        }
+                        """.trimIndent(),
+                    )
+                }
+
+                request.url.parameters["ids"] == "episode-3-1" -> respondJson(
+                    """
+                    {
+                      "Items": [
+                        {
+                          "Name": "Episode one",
+                          "SeriesName": "作品",
+                          "SeasonName": "作品 第三季",
+                          "Id": "episode-3-1",
+                          "IndexNumber": 1,
+                          "ParentIndexNumber": 3,
+                          "Type": "Episode"
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                else -> error("Unexpected request: ${request.url}")
+            }
+        }
+
+        val result = source.fetch(
+            request(subjectNames = listOf("作品 第三季")),
+        ).results.toList()
+
+        assertEquals("episode-3-1", result.single().media.mediaId)
+        assertEquals(listOf("season-3"), requestedParentIds)
+    }
+
+    @Test
+    fun `filters direct episode candidates by parsed target season without provider ids`() = runTest {
+        val source = createSource { request ->
+            when {
+                request.url.parameters["searchTerm"] == "作品 第三季" ->
+                    respondJson("""{ "Items": [] }""")
+
+                request.url.parameters["searchTerm"] == "作品" -> respondJson(
+                    """
+                    {
+                      "Items": [
+                        {
+                          "Name": "Episode one",
+                          "SeriesName": "作品",
+                          "SeasonName": "作品 第二季",
+                          "Id": "episode-2-1",
+                          "IndexNumber": 1,
+                          "ParentIndexNumber": 2,
+                          "Type": "Episode"
+                        },
+                        {
+                          "Name": "Episode one",
+                          "SeriesName": "作品",
+                          "SeasonName": "作品 第三季",
+                          "Id": "episode-3-1",
+                          "IndexNumber": 1,
+                          "ParentIndexNumber": 3,
+                          "Type": "Episode"
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                request.url.parameters["ids"] == "episode-3-1" -> respondJson(
+                    """
+                    {
+                      "Items": [
+                        {
+                          "Name": "Episode one",
+                          "SeriesName": "作品",
+                          "SeasonName": "作品 第三季",
+                          "Id": "episode-3-1",
+                          "IndexNumber": 1,
+                          "ParentIndexNumber": 3,
+                          "Type": "Episode"
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                else -> error("Unexpected request: ${request.url}")
+            }
+        }
+
+        val result = source.fetch(
+            request(subjectNames = listOf("作品 第三季")),
+        ).results.toList()
+
+        assertEquals("episode-3-1", result.single().media.mediaId)
+    }
+
+    @Test
     fun `continues with the next alias when an exact season lacks the requested episode`() = runTest {
         val searchedNames = mutableListOf<String>()
         val source = createSource { request ->

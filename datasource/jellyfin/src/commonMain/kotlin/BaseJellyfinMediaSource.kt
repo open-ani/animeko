@@ -178,6 +178,12 @@ abstract class BaseJellyfinMediaSource(
                 if (containerSubjectMatch == ProviderIdMatch.CONFLICT) {
                     continue
                 }
+                if (
+                    containerSubjectMatch != ProviderIdMatch.MATCH &&
+                    !candidate.matchesTargetSeason(targetSeason)
+                ) {
+                    continue
+                }
 
                 val requestedItems: List<RequestedItem> = when (candidate.Type) {
                     TYPE_SERIES -> {
@@ -217,6 +223,10 @@ abstract class BaseJellyfinMediaSource(
                                 enableTotalRecordCount = false,
                             ).Items
                                 .filter(Item::isPlayableSearchResult)
+                                .filter { item ->
+                                    item.containerSubjectIdMatch(query) == ProviderIdMatch.MATCH ||
+                                            item.matchesTargetSeason(targetSeason)
+                                }
                                 .map { RequestedItem(it, inheritedSubjectMatch = false) }
                         }
                     }
@@ -480,6 +490,15 @@ private val Item.isSupportedSearchResult: Boolean
 
 private val Item.isPlayableSearchResult: Boolean
     get() = Type == TYPE_EPISODE || Type == TYPE_MOVIE
+
+private fun Item.matchesTargetSeason(targetSeason: Int?): Boolean {
+    if (targetSeason == null) return true
+    return when (Type) {
+        TYPE_SEASON -> IndexNumber == targetSeason
+        TYPE_EPISODE -> ParentIndexNumber == targetSeason
+        else -> true
+    }
+}
 
 private fun Item.hasExactTitle(subjectName: String): Boolean {
     return sequenceOf(Name, SeasonName, SeriesName, OriginalTitle)
