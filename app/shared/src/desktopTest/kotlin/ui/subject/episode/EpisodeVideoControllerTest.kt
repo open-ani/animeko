@@ -435,7 +435,7 @@ class EpisodeVideoControllerTest {
         }
 
         mainClock.autoAdvance = false
-        onRoot().performClick()
+        onRoot().performTouchInput { click() }
         runOnIdle {
             mainClock.advanceTimeBy(1000L)
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
@@ -460,14 +460,14 @@ class EpisodeVideoControllerTest {
 
         val root = onAllNodes(isRoot()).onFirst()
         mainClock.autoAdvance = false
-        root.performClick()
+        root.performTouchInput { click() }
         runOnIdle {
             mainClock.advanceTimeBy(1000L)
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
             assertEquals(NORMAL_VISIBLE, controllerState.visibility)
         }
 
-        root.performClick()
+        root.performTouchInput { click() }
         runOnIdle {
             mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
@@ -476,7 +476,98 @@ class EpisodeVideoControllerTest {
     }
 
     /**
-     * @see GestureFamily.swipeMidForFullscreen
+     * 混合输入设备 (带触屏的 Windows 二合一、接了鼠标的 Android 平板) 上, 点击语义必须按本次事件的
+     * 指针类型解析, 而不是按当前的 [GestureFamily].
+     *
+     * 这里刻意把 family 固定成 [GestureFamily.MOUSE], 相当于用户一路用鼠标走到播放页;
+     * 随后的第一次触摸就必须立刻是触摸语义 (显隐控制器), 而不是鼠标语义 (暂停/恢复) ——
+     * 不允许出现「先点一次预热、第二次才生效」.
+     *
+     * @see tapGestureFamilyOf
+     */
+    @Test
+    fun `hybrid - first touch after mouse uses touch semantics immediately`() = runAniComposeUiTest {
+        lateinit var playerState: TestMediampPlayer
+        setContent {
+            Player(GestureFamily.MOUSE, onPlayerStateCreated = { playerState = it })
+        }
+        runOnIdle {
+            playerState.playbackState.value = PlaybackState.PAUSED
+            assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
+        }
+
+        val root = onAllNodes(isRoot()).onFirst()
+        mainClock.autoAdvance = false
+
+        // 鼠标点击: 鼠标语义 = 播放/暂停, 控制器不显示
+        root.performMouseInput { click() }
+        mainClock.advanceTimeBy(1000L)
+        runOnIdle {
+            assertEquals(PlaybackState.PLAYING, playerState.playbackState.value)
+            assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
+        }
+
+        // 紧接着的第一次触摸: 必须立刻显示控制器, 且不能再切换播放状态
+        root.performTouchInput { click() }
+        mainClock.advanceTimeBy(1000L)
+        runOnIdle {
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
+            assertEquals(NORMAL_VISIBLE, controllerState.visibility)
+            assertEquals(PlaybackState.PLAYING, playerState.playbackState.value)
+        }
+    }
+
+    @Test
+    fun `hybrid - touch drag works while mouse gesture family is mounted`() = runAniComposeUiTest {
+        setContent {
+            Player(GestureFamily.MOUSE)
+        }
+        waitForIdle()
+
+        val root = onAllNodes(isRoot()).onFirst()
+
+        runOnIdle {
+            assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
+            detachedProgressSlider.assertDoesNotExist()
+        }
+
+        // 不做触摸预热, 第一次触摸直接拖动就必须进入 seek.
+        root.performTouchInput {
+            down(centerLeft)
+            moveBy(Offset(width / 2f, 0f))
+        }
+        runOnIdle {
+            assertEquals(true, progressSliderState.isPreviewing)
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { detachedProgressSlider.exists() }
+            assertEquals(PREVIEW_DETACHED_SLIDER, controllerState.visibility)
+        }
+
+        root.performTouchInput { up() }
+    }
+
+    @Test
+    fun `hybrid - first mouse move after touch shows controller immediately`() = runAniComposeUiTest {
+        setContent {
+            Player(GestureFamily.TOUCH)
+        }
+        waitForIdle()
+
+        val root = onAllNodes(isRoot()).onFirst()
+        root.performTouchInput { click() }
+        root.performTouchInput { click() }
+        runOnIdle {
+            assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
+        }
+
+        root.slightlyMoveFromCenterToRight()
+        runOnIdle {
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
+            assertEquals(NORMAL_VISIBLE, controllerState.visibility)
+        }
+    }
+
+    /**
+     * @see swipeToFullscreen
      */
     @Test
     fun `touch - swipeMidForFullscreen - swipe up enters and swipe down exits`() = runAniComposeUiTest {
@@ -740,7 +831,7 @@ class EpisodeVideoControllerTest {
             assertEquals(PlaybackState.PAUSED, playerState.playbackState.value)
         }
 
-        videoGestureHost.performClick()
+        videoGestureHost.performTouchInput { click() }
         videoGestureHost.assertIsFocused()
         videoGestureHost.performKeyInput {
             pressKey(Key.B)
@@ -962,7 +1053,7 @@ class EpisodeVideoControllerTest {
         waitForIdle()
         onNodeWithText("Playback Info", substring = true).doesNotExist()
 
-        videoGestureHost.performClick()
+        videoGestureHost.performMouseInput { click() }
         videoGestureHost.performKeyInput {
             pressKey(Key.I)
         }
@@ -1060,7 +1151,7 @@ class EpisodeVideoControllerTest {
         // 点击来显示控制器
         runOnIdle {
             mainClock.autoAdvance = false // 三秒后会自动隐藏, 这里不能让他自动前进时间
-            onRoot().performClick()
+            onRoot().performTouchInput { click() }
         }
         runOnIdle {
             mainClock.advanceTimeBy(1000L)
@@ -1144,7 +1235,7 @@ class EpisodeVideoControllerTest {
         val root = onAllNodes(isRoot()).onFirst()
 
         mainClock.autoAdvance = false // 三秒后会自动隐藏, 这里不能让他自动前进时间
-        root.performClick()
+        root.performTouchInput { click() }
         mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
         runOnIdle {
             assertEquals(
@@ -1153,7 +1244,7 @@ class EpisodeVideoControllerTest {
             )
         }
 
-        root.performClick()
+        root.performTouchInput { click() }
         mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
         runOnIdle {
             assertEquals(
@@ -1163,7 +1254,7 @@ class EpisodeVideoControllerTest {
         }
         // 过了 1 秒用户又点击显示
         mainClock.advanceTimeBy(1000L)
-        root.performClick()
+        root.performTouchInput { click() }
         mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
         runOnIdle {
             assertEquals(
@@ -1206,7 +1297,7 @@ class EpisodeVideoControllerTest {
         val root = onAllNodes(isRoot()).onFirst()
 
         mainClock.autoAdvance = false
-        root.performClick()
+        root.performTouchInput { click() }
         mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { danmakuEditor.exists() }
         runOnIdle {
             assertEquals(NORMAL_VISIBLE, controllerState.visibility)
@@ -1234,13 +1325,14 @@ class EpisodeVideoControllerTest {
             val root = onAllNodes(isRoot()).onFirst()
 
             mainClock.autoAdvance = false
-            root.performClick()
+            root.performTouchInput { click() }
             mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
             runOnIdle {
                 assertEquals(NORMAL_VISIBLE, controllerState.visibility)
             }
-            danmakuIconButton.performClick()
-            root.performClick()
+            // 必须也用触摸: 鼠标点击会让指针停在按钮上持续 hover, alwaysOn 不释放, 控制器就不会隐藏
+            danmakuIconButton.performTouchInput { click() }
+            root.performTouchInput { click() }
             mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
             runOnIdle {
                 assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
@@ -1248,7 +1340,7 @@ class EpisodeVideoControllerTest {
         }
 
     /**
-     * @see GestureFamily.swipeToSeek
+     * @see SwipeSeekerState.Companion.swipeToSeek
      */
     @Test
     fun `touch - swipeToSeek shows detached slider when controller is hidden`() = runAniComposeUiTest {
@@ -1349,7 +1441,7 @@ class EpisodeVideoControllerTest {
     }
 
     /**
-     * @see GestureFamily.swipeToSeek
+     * @see SwipeSeekerState.Companion.swipeToSeek
      */
     @Test
     fun `touch - swipe hides visible controls without moving slider`() = runAniComposeUiTest {
@@ -1361,7 +1453,7 @@ class EpisodeVideoControllerTest {
 
         runOnUiThread {
             mainClock.autoAdvance = false
-            root.performClick() // 显示全部控制器 
+            root.performTouchInput { click() } // 显示全部控制器
         }
         runOnIdle {
             mainClock.advanceTimeBy(1000L)
@@ -1448,7 +1540,7 @@ class EpisodeVideoControllerTest {
         val root = onAllNodes(isRoot()).onFirst()
 
         mainClock.autoAdvance = false
-        root.performClick() // 显示全部控制器
+        root.performTouchInput { click() } // 显示全部控制器
         mainClock.advanceTimeBy(1000L)
         waitForIdle()
 
@@ -1490,7 +1582,7 @@ class EpisodeVideoControllerTest {
             val root = onAllNodes(isRoot()).onFirst()
 
             mainClock.autoAdvance = false
-            root.performClick() // 显示全部控制器
+            root.performTouchInput { click() } // 显示全部控制器
             runOnIdle {
                 mainClock.advanceTimeBy(1000L)
                 waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
@@ -1542,15 +1634,14 @@ class EpisodeVideoControllerTest {
         }
 
     @Test
-    fun `touch - progress slider drag can be cancelled`() = runAniComposeUiTest {
+    fun `hybrid - first touch progress slider drag after mouse can be cancelled`() = runAniComposeUiTest {
         setContent {
-            Player(GestureFamily.TOUCH)
+            Player(GestureFamily.MOUSE)
         }
         waitForIdle()
-        val root = onAllNodes(isRoot()).onFirst()
 
         mainClock.autoAdvance = false
-        root.performClick()
+        player.slightlyMoveFromCenterToRight()
         mainClock.advanceTimeBy(1000L)
         waitForIdle()
 
@@ -1632,7 +1723,7 @@ class EpisodeVideoControllerTest {
     }
 
     /**
-     * @see GestureFamily.swipeToSeek
+     * @see SwipeSeekerState.Companion.swipeToSeek
      */
     @Test // https://github.com/open-ani/ani/issues/720
     fun `touch - swipeToSeek shows detached slider and can still play`() = runAniComposeUiTest {
@@ -1678,7 +1769,7 @@ class EpisodeVideoControllerTest {
         currentPositionMillis += 5000L // 播放 5 秒
 
         mainClock.autoAdvance = false
-        root.performClick()
+        root.performTouchInput { click() }
         runOnIdle {
             mainClock.advanceTimeBy(1000L)
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
@@ -1730,7 +1821,7 @@ class EpisodeVideoControllerTest {
                 onCommitPlaybackSpeed = { committed.add(it) },
             )
         }
-        onRoot().performClick()
+        onRoot().performTouchInput { click() }
         runOnIdle {
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_SPEED_SWITCHER_TEXT_BUTTON).exists() }
         }
@@ -1789,7 +1880,7 @@ class EpisodeVideoControllerTest {
     /**
      * [GestureFamily.MOUSE] 在屏幕中间滑动鼠标, 会临时显示几秒控制器. 几秒后自动隐藏.
      *
-     * @see GestureFamily.mouseHoverForController
+     * @see hasPointerDevice
      */
     @Test
     fun `mouse - mouseHoverForController - center screen`() = runAniComposeUiTest {
@@ -1809,9 +1900,7 @@ class EpisodeVideoControllerTest {
         // 移动鼠标来显示控制器
         runOnIdle {
             mainClock.autoAdvance = false // 三秒后会自动隐藏, 这里不能让他自动前进时间
-            onRoot().performTouchInput { // Move 事件才能触发 
-                swipe(centerLeft, center)
-            }
+            player.slightlyMoveFromCenterToRight()
         }
         runOnIdle {
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
@@ -1840,7 +1929,7 @@ class EpisodeVideoControllerTest {
      * [GestureFamily.MOUSE] 在屏幕中间滑动鼠标, 会临时显示几秒控制器. 几秒后自动隐藏.
      * 隐藏后再次移动鼠标, 应当能重新显示几秒然后隐藏.
      *
-     * @see GestureFamily.mouseHoverForController
+     * @see hasPointerDevice
      */
     @Test
     fun `mouse - mouseHoverForController - center screen twice`() = runAniComposeUiTest {
@@ -1934,11 +2023,8 @@ class EpisodeVideoControllerTest {
             root.performTouchInput {
                 click(center)
             }
-            // 目前的 controller mouseHoverForController 依赖 Move 事件, 但 compose 似乎有点问题
-            // 所以额外广播一个事件
-            root.performTouchInput {
-                swipe(center, center - Offset(1f, 1f))
-            }
+            // 关闭面板后移动鼠标, 触发控制器的自动隐藏计时.
+            root.slightlyMoveFromCenterToRight()
         }
         runOnIdle {
             waitForSideSheetClose()
@@ -2075,7 +2161,8 @@ class EpisodeVideoControllerTest {
         if (gestureFamily == GestureFamily.MOUSE) {
             player.slightlyMoveFromCenterToRight()
         } else {
-            player.performMouseInput {
+            // 必须是触摸点击: 点击语义按事件自身的指针类型解析, 鼠标点击在这里是「暂停」而不是「显隐控制器」
+            player.performTouchInput {
                 click()
             }
         }

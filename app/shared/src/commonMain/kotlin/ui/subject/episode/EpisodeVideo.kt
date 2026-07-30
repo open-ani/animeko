@@ -79,6 +79,7 @@ import me.him188.ani.app.ui.foundation.icons.RightPanelClose
 import me.him188.ani.app.ui.foundation.icons.RightPanelOpen
 import me.him188.ani.app.ui.foundation.icons.SubtitleGear
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.foundation.theme.AniTheme
@@ -130,6 +131,8 @@ import me.him188.ani.app.videoplayer.ui.gesture.LockableVideoGestureHost
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.ScreenshotButton
 import me.him188.ani.app.videoplayer.ui.gesture.SwipeSeekerConfig
+import me.him188.ani.app.videoplayer.ui.gesture.gestureFamilyOf
+import me.him188.ani.app.videoplayer.ui.gesture.hasPointerDevice
 import me.him188.ani.app.videoplayer.ui.gesture.mouseFamily
 import me.him188.ani.app.videoplayer.ui.gesture.rememberGestureIndicatorState
 import me.him188.ani.app.videoplayer.ui.gesture.rememberSwipeSeekerState
@@ -220,7 +223,10 @@ internal fun EpisodeVideoImpl(
     modifier: Modifier = Modifier,
     maintainAspectRatio: Boolean = !expanded,
     isFullscreen: Boolean = expanded,
-    gestureFamily: GestureFamily = LocalPlatform.current.mouseFamily,
+    gestureFamily: GestureFamily = gestureFamilyOf(
+        LocalActiveInputSource.current.current,
+        LocalPlatform.current.mouseFamily,
+    ),
     fastForwardSpeed: Float = 3f,
     contentWindowInsets: WindowInsets = WindowInsets(0.dp),
 ) {
@@ -244,11 +250,7 @@ internal fun EpisodeVideoImpl(
     }
     val indicatorState = rememberGestureIndicatorState()
     val swipeSeekerConfig = SwipeSeekerConfig.Default
-    // 桌面设备可能同时支持鼠标和触摸；当前 GestureFamily 不能按单次输入来源分流，
-    // 因此桌面端仍使用 MOUSE 分支。后续实现来源级分流时再支持桌面触摸手势。
-    // TODO: 根据触控能力与平台特性建立设备抽象，并据此选择手势策略。
     val touchSeekState = rememberPlayerTouchSeekState(
-        enabled = gestureFamily == GestureFamily.TOUCH,
         controllerState = playerControllerState,
         indicatorState = indicatorState,
         swipeSeekerConfig = swipeSeekerConfig,
@@ -453,7 +455,12 @@ internal fun EpisodeVideoImpl(
                         )
 
                         val audioLevelController = audioController as? MediampAudioLevelController
-                        if (expanded && audioLevelController != null && gestureFamily == GestureFamily.MOUSE) {
+                        // 用「有没有鼠标」而不是「此刻在用鼠标」: 后者会让这个常驻控件随输入方式反复显隐.
+                        val hasMouse = hasPointerDevice(
+                            LocalPlatform.current,
+                            LocalActiveInputSource.current.hasSeenMouse,
+                        )
+                        if (expanded && audioLevelController != null && hasMouse) {
                             val level by audioLevelController.levelFlow.collectAsState()
                             val isMute by audioLevelController.muteFlow.collectAsState()
 
@@ -547,17 +554,17 @@ internal fun EpisodeVideoImpl(
 
 /**
  * 将进度条的通用触摸状态机接入播放器 UI：拖动期间保留 inline progress slider，
- * 手指向上滑过取消阈值时持续显示取消提示。非触屏分支返回 `null`，不改变原有交互。
+ * 手指向上滑过取消阈值时持续显示取消提示。
+ *
+ * 状态始终存在，是否响应触摸由 [MediaProgressSlider] 按本次指针事件判断，避免输入设备切换后的
+ * 第一次拖动仍受组合期 [GestureFamily] 影响。
  */
 @Composable
 private fun rememberPlayerTouchSeekState(
-    enabled: Boolean,
     controllerState: PlayerControllerState,
     indicatorState: GestureIndicatorState,
     swipeSeekerConfig: SwipeSeekerConfig,
-): TouchSeekState? {
-    if (!enabled) return null
-
+): TouchSeekState {
     val density = LocalDensity.current
     return remember(controllerState, indicatorState, swipeSeekerConfig, density) {
         // 同一 TouchSeekState 生命周期内，每次请求都由固定 requester 和 indicator ticket 撤销。
