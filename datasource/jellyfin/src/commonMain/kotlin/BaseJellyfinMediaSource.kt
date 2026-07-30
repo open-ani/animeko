@@ -44,7 +44,9 @@ private const val TYPE_EPISODE = "Episode"
 private const val TYPE_MOVIE = "Movie"
 private const val TYPE_SEASON = "Season"
 private const val TYPE_SERIES = "Series"
-private const val TITLE_SEARCH_LIMIT = 50
+private const val TITLE_SEARCH_PAGE_SIZE = 50
+private const val TITLE_SEARCH_MAX_PAGES = 4
+private const val TITLE_SEARCH_ITEM_TYPES = "$TYPE_SERIES,$TYPE_SEASON,$TYPE_EPISODE,$TYPE_MOVIE"
 private const val FIELD_PROVIDER_IDS = "ProviderIds"
 private const val PROVIDER_ID_BANGUMI = "Bangumi"
 private const val PROVIDER_ID_BANGUMI_SUBJECT = "BangumiSubject"
@@ -95,12 +97,7 @@ abstract class BaseJellyfinMediaSource(
             .distinct()) {
             val parsedSubjectName = parseSubjectName(subjectName)
             for (searchName in sequenceOf(subjectName, parsedSubjectName.baseName).distinct()) {
-                val searchResults = doSearch(
-                    subjectName = searchName,
-                    fields = FIELD_PROVIDER_IDS,
-                    limit = TITLE_SEARCH_LIMIT,
-                    enableTotalRecordCount = false,
-                ).Items.filter(Item::isSupportedSearchResult)
+                val searchResults = searchByTitle(searchName)
 
                 if (searchResults.isEmpty()) {
                     continue
@@ -145,6 +142,25 @@ abstract class BaseJellyfinMediaSource(
         }
 
         return fallbackMatches.values.sortedByDescending { it.confidence }
+    }
+
+    private suspend fun searchByTitle(subjectName: String): List<Item> {
+        val results = mutableListOf<Item>()
+        for (page in 0 until TITLE_SEARCH_MAX_PAGES) {
+            val pageItems = doSearch(
+                subjectName = subjectName,
+                fields = FIELD_PROVIDER_IDS,
+                includeItemTypes = TITLE_SEARCH_ITEM_TYPES,
+                startIndex = page * TITLE_SEARCH_PAGE_SIZE,
+                limit = TITLE_SEARCH_PAGE_SIZE,
+                enableTotalRecordCount = false,
+            ).Items
+            results += pageItems.filter(Item::isSupportedSearchResult)
+            if (pageItems.size < TITLE_SEARCH_PAGE_SIZE) {
+                break
+            }
+        }
+        return results.distinctBy(Item::Id)
     }
 
     /**
@@ -449,6 +465,8 @@ abstract class BaseJellyfinMediaSource(
         parentId: String? = null,
         itemIds: String? = null,
         fields: String? = null,
+        includeItemTypes: String? = null,
+        startIndex: Int? = null,
         limit: Int? = null,
         enableTotalRecordCount: Boolean? = null,
     ) = client.use {
@@ -461,6 +479,8 @@ abstract class BaseJellyfinMediaSource(
             parentId?.let { parameter("parentId", it) }
             itemIds?.let { parameter("ids", it) }
             fields?.let { parameter("fields", it) }
+            includeItemTypes?.let { parameter("includeItemTypes", it) }
+            startIndex?.let { parameter("startIndex", it) }
             limit?.let { parameter("limit", it) }
             enableTotalRecordCount?.let { parameter("enableTotalRecordCount", it) }
         }.body<SearchResponse>()

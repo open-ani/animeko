@@ -582,6 +582,107 @@ class BaseJellyfinMediaSourceTest {
     }
 
     @Test
+    fun `paginates typed title searches past the first 50 results`() = runTest {
+        val startIndexes = mutableListOf<String>()
+        val source = createSource { request ->
+            when {
+                request.url.parameters["searchTerm"] == "Paged title" -> {
+                    startIndexes += checkNotNull(request.url.parameters["startIndex"])
+                    when (request.url.parameters["startIndex"]) {
+                        "0" -> {
+                            val unrelatedItems = (1..50).joinToString(",") { index ->
+                                """
+                                {
+                                  "Name": "Unrelated $index",
+                                  "Id": "unrelated-$index",
+                                  "Type": "Audio"
+                                }
+                                """.trimIndent()
+                            }
+                            respondJson("""{ "Items": [$unrelatedItems] }""")
+                        }
+
+                        "50" -> respondJson(
+                            """
+                            {
+                              "Items": [
+                                {
+                                  "Name": "Episode one",
+                                  "SeriesName": "Paged title",
+                                  "SeasonName": "Paged title",
+                                  "Id": "episode-1",
+                                  "IndexNumber": 1,
+                                  "Type": "Episode",
+                                  "ProviderIds": {
+                                    "Bangumi": "456",
+                                    "BangumiSubject": "123"
+                                  }
+                                }
+                              ]
+                            }
+                            """.trimIndent(),
+                        )
+
+                        else -> error("Unexpected page: ${request.url}")
+                    }
+                }
+
+                request.url.parameters["ids"] == "episode-1" -> respondJson(
+                    """
+                    {
+                      "Items": [
+                        {
+                          "Name": "Episode one",
+                          "SeriesName": "Paged title",
+                          "SeasonName": "Paged title",
+                          "Id": "episode-1",
+                          "IndexNumber": 1,
+                          "Type": "Episode"
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                else -> error("Unexpected request: ${request.url}")
+            }
+        }
+
+        val result = source.fetch(
+            request(subjectNames = listOf("Paged title")),
+        ).results.toList()
+
+        assertEquals(listOf("0", "50"), startIndexes)
+        assertEquals("episode-1", result.single().media.mediaId)
+    }
+
+    @Test
+    fun `bounds paginated title searches`() = runTest {
+        val startIndexes = mutableListOf<String>()
+        val source = createSource { request ->
+            val startIndex = checkNotNull(request.url.parameters["startIndex"])
+            startIndexes += startIndex
+            val unrelatedItems = (1..50).joinToString(",") { index ->
+                """
+                {
+                  "Name": "Unrelated $startIndex-$index",
+                  "Id": "unrelated-$startIndex-$index",
+                  "Type": "Audio"
+                }
+                """.trimIndent()
+            }
+            respondJson("""{ "Items": [$unrelatedItems] }""")
+        }
+
+        val result = source.fetch(
+            request(subjectNames = listOf("Paged title")),
+        ).results.toList()
+
+        assertTrue(result.isEmpty())
+        assertEquals(listOf("0", "50", "100", "150"), startIndexes)
+    }
+
+    @Test
     fun `retains a non-exact title result as fallback while trying remaining aliases`() = runTest {
         val source = createSource { request ->
             when {
@@ -1032,7 +1133,14 @@ class BaseJellyfinMediaSourceTest {
             MockEngine { request ->
                 assertEquals("MediaBrowser Token=\"api-key\"", request.headers[HttpHeaders.Authorization])
                 assertEquals("user-id", request.url.parameters["userId"])
-                assertFalse(request.url.parameters.contains("includeItemTypes"))
+                if (request.url.parameters["searchTerm"] != null) {
+                    assertEquals(
+                        "Series,Season,Episode,Movie",
+                        request.url.parameters["includeItemTypes"],
+                    )
+                } else {
+                    assertFalse(request.url.parameters.contains("includeItemTypes"))
+                }
                 handler(request)
             },
         ) {
@@ -1070,6 +1178,7 @@ class BaseJellyfinMediaSourceTest {
 
     private fun assertDiscoveryRequest(request: HttpRequestData) {
         assertEquals("50", request.url.parameters["limit"])
+        assertTrue(request.url.parameters.contains("startIndex"))
         assertEquals("false", request.url.parameters["enableTotalRecordCount"])
         assertEquals("ProviderIds", request.url.parameters["fields"])
     }
