@@ -9,37 +9,39 @@
 
 package me.him188.ani.app.domain.player.extension
 
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
-import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.episode.EpisodeSession
 import org.koin.core.Koin
 import org.openani.mediamp.features.PlaybackSpeed
 
 /**
- * 将全局持久化的倍速同步到播放器, 并持续跟随设置变更.
+ * 将当前生效的倍速同步到播放器, 并持续跟随其变更.
+ *
+ * [playbackSpeedFlow] 由调用方 (通常是播放页 ViewModel) 提供, 其作用域即为一次播放:
+ * 播放页内切集时本扩展会随新的 [EpisodeSession] 重新应用当前值, 因此倍速在切集后保持;
+ * 播放页退出后该 flow 随之消失.
  */
 class PlaybackSpeedExtension(
     private val context: PlayerExtensionContext,
-    koin: Koin
+    private val playbackSpeedFlow: Flow<Float>,
 ) : PlayerExtension("PlaybackSpeed") {
-    private val settingsRepository: SettingsRepository by koin.inject()
-
     override fun onStart(
         episodeSession: EpisodeSession,
         backgroundTaskScope: ExtensionBackgroundTaskScope
     ) {
         backgroundTaskScope.launch("PlaybackSpeed") {
-            settingsRepository.videoScaffoldConfig.flow
-                .map { it.playbackSpeed }
+            playbackSpeedFlow
                 .distinctUntilChanged()
                 .collect { context.player.features[PlaybackSpeed]?.set(it) }
         }
     }
 
-    companion object : EpisodePlayerExtensionFactory<PlaybackSpeedExtension> {
+    class Factory(
+        private val playbackSpeedFlow: Flow<Float>,
+    ) : EpisodePlayerExtensionFactory<PlaybackSpeedExtension> {
         override fun create(context: PlayerExtensionContext, koin: Koin): PlaybackSpeedExtension {
-            return PlaybackSpeedExtension(context, koin)
+            return PlaybackSpeedExtension(context, playbackSpeedFlow)
         }
     }
 }

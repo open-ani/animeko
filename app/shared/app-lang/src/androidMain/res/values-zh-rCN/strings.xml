@@ -234,6 +234,8 @@
     <string name="settings_app_close_behavior_exit">关闭应用</string>
     <string name="settings_app_close_behavior_minimize_to_tray">最小化到系统托盘</string>
     <string name="desktop_tray_open">显示主窗口</string>
+    <string name="always_on_top">窗口置顶</string>
+    <string name="always_on_top_disable">取消窗口置顶</string>
 
     <!-- SoftwareUpdateGroup -->
     <string name="settings_update_software">软件更新</string>
@@ -289,9 +291,13 @@
     <string name="settings_player_experimental_hls_segment_filter">过滤贴片广告（实验性）</string>
     <string name="settings_player_experimental_hls_segment_filter_description">尝试过滤部分在线源插入的贴片广告。只对以独立片段插入的广告有效，识别错误时可能跳过正常内容。</string>
     <string name="settings_player_long_press_fast_forward_speed">长按播放速度</string>
-    <string name="settings_player_long_press_fast_forward_speed_description">长按时使用的播放倍率</string>
+    <string name="settings_player_long_press_fast_forward_speed_description">长按时使用的播放速度</string>
     <string name="settings_player_playback_speed_range">倍速范围</string>
     <string name="settings_player_playback_speed_range_description">影响播放页倍速滑块和长按播放速度的可调范围</string>
+    <string name="settings_player_remember_playback_speed">记住播放倍速</string>
+    <string name="settings_player_remember_playback_speed_description">在播放器内调整的倍速跨剧集和重启保持。关闭后仅对本次播放生效，退出播放器即回到默认倍速。</string>
+    <string name="settings_player_default_playback_speed">默认倍速</string>
+    <string name="settings_player_default_playback_speed_description">每次进入播放器时的起始倍速</string>
 
     <!-- Version Expired Overlay -->
     <string name="settings_update_version_expired_title">版本过期</string>

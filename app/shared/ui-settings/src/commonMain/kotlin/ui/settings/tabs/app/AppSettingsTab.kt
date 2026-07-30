@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.settings.tabs.app
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material.icons.Icons
@@ -51,6 +52,7 @@ import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.SteppedSlider
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
+import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.quantizeSliderValue
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_app_close_behavior
@@ -81,6 +83,8 @@ import me.him188.ani.app.ui.lang.settings_player_auto_skip_op_ed
 import me.him188.ani.app.ui.lang.settings_player_auto_skip_op_ed_description
 import me.him188.ani.app.ui.lang.settings_player_auto_switch_media_on_error
 import me.him188.ani.app.utils.formatSpeedValue
+import me.him188.ani.app.ui.lang.settings_player_default_playback_speed
+import me.him188.ani.app.ui.lang.settings_player_default_playback_speed_description
 import me.him188.ani.app.ui.lang.settings_player_experimental_hls_segment_filter
 import me.him188.ani.app.ui.lang.settings_player_experimental_hls_segment_filter_description
 import me.him188.ani.app.ui.lang.settings_player_enable_regex_filter
@@ -99,6 +103,8 @@ import me.him188.ani.app.ui.lang.settings_player_op_ed_skip_duration_seconds
 import me.him188.ani.app.ui.lang.settings_player_pause_on_edit_danmaku
 import me.him188.ani.app.ui.lang.settings_player_playback_speed_range
 import me.him188.ani.app.ui.lang.settings_player_playback_speed_range_description
+import me.him188.ani.app.ui.lang.settings_player_remember_playback_speed
+import me.him188.ani.app.ui.lang.settings_player_remember_playback_speed_description
 import me.him188.ani.app.ui.lang.settings_update_auto_check
 import me.him188.ani.app.ui.lang.settings_update_auto_check_description
 import me.him188.ani.app.ui.lang.settings_update_auto_download
@@ -597,9 +603,9 @@ fun SettingsScope.PlayerGroup(
 }
 
 /**
- * 倍速范围 + 长按倍速两个设置项.
+ * 倍速范围 + 记住倍速 + 默认倍速 + 长按播放速度.
  *
- * 两者共享范围拖动状态: 拖动范围 RangeSlider 期间, 下方长按倍速 Slider 的范围和 clamp 后的值
+ * 各条 Slider 共享范围拖动状态: 拖动范围 RangeSlider 期间, 下方各条 Slider 的范围和 clamp 后的值
  * 实时跟随, 被 clamp 时通过动画过渡, 避免松手后数值「突变」.
  */
 @Composable
@@ -643,24 +649,81 @@ private fun SettingsScope.PlaybackSpeedItems(
         description = { Text(stringResource(Lang.settings_player_playback_speed_range_description)) },
     )
 
-    HorizontalDividerItem()
-
-    var speedDragOverride by remember { mutableStateOf<Float?>(null) }
-    var speedDragging by remember { mutableStateOf(false) }
     // 范围变化以动画过渡, 避免 thumb 映射位置瞬移
     val animatedRangeStart by animateFloatAsState(effectiveRange.start, label = "playbackSpeedRangeStart")
     val animatedRangeEnd by animateFloatAsState(effectiveRange.endInclusive, label = "playbackSpeedRangeEnd")
     val displayRange =
         if (animatedRangeStart < animatedRangeEnd) animatedRangeStart..animatedRangeEnd else effectiveRange
-    val displayValue = (speedDragOverride ?: config.fastForwardSpeed).coerceIn(displayRange)
-    LaunchedEffect(config.fastForwardSpeed, speedDragOverride, speedDragging) {
-        if (!speedDragging && speedDragOverride == config.fastForwardSpeed) {
-            speedDragOverride = null
+
+    HorizontalDividerItem()
+
+    SwitchItem(
+        checked = config.rememberPlaybackSpeed,
+        onCheckedChange = {
+            videoScaffoldConfig.update(config.copy(rememberPlaybackSpeed = it))
+        },
+        title = { Text(stringResource(Lang.settings_player_remember_playback_speed)) },
+        description = { Text(stringResource(Lang.settings_player_remember_playback_speed_description)) },
+    )
+
+    // 此处没有 ColumnScope 接收者, 不显式指定就会落到 fadeIn/fadeOut 的重载上, 高度瞬间撑开、下方条目跳位.
+    val motionScheme = LocalAniMotionScheme.current.animatedVisibility
+    AniAnimatedVisibility(
+        visible = !config.rememberPlaybackSpeed,
+        enter = motionScheme.columnEnter,
+        exit = motionScheme.columnExit,
+    ) {
+        Column {
+            HorizontalDividerItem()
+            SpeedSliderItem(
+                value = config.playbackSpeed,
+                displayRange = displayRange,
+                commitRange = effectiveRange,
+                onCommit = { videoScaffoldConfig.update(config.copy(playbackSpeed = it)) },
+                title = { Text(stringResource(Lang.settings_player_default_playback_speed)) },
+                description = { Text(stringResource(Lang.settings_player_default_playback_speed_description)) },
+            )
+        }
+    }
+
+    HorizontalDividerItem()
+
+    SpeedSliderItem(
+        value = config.fastForwardSpeed,
+        displayRange = displayRange,
+        commitRange = effectiveRange,
+        onCommit = { videoScaffoldConfig.update(config.copy(fastForwardSpeed = it)) },
+        title = { Text(stringResource(Lang.settings_player_long_press_fast_forward_speed)) },
+        description = { Text(stringResource(Lang.settings_player_long_press_fast_forward_speed_description)) },
+    )
+}
+
+/**
+ * 一条倍速 Slider. 拖动期间使用瞬态值实时预览, 松手后量化到 [commitRange] 再提交.
+ *
+ * @param displayRange 渲染用范围, 可能正处于动画过渡中
+ * @param commitRange 提交用范围, 即用户配置的真实范围
+ */
+@Composable
+private fun SettingsScope.SpeedSliderItem(
+    value: Float,
+    displayRange: ClosedFloatingPointRange<Float>,
+    commitRange: ClosedFloatingPointRange<Float>,
+    onCommit: (Float) -> Unit,
+    title: @Composable RowScope.() -> Unit,
+    description: @Composable (() -> Unit)? = null,
+) {
+    var dragOverride by remember { mutableStateOf<Float?>(null) }
+    var dragging by remember { mutableStateOf(false) }
+    val displayValue = (dragOverride ?: value).coerceIn(displayRange)
+    LaunchedEffect(value, dragOverride, dragging) {
+        if (!dragging && dragOverride == value) {
+            dragOverride = null
         }
     }
     SliderItem(
-        title = { Text(stringResource(Lang.settings_player_long_press_fast_forward_speed)) },
-        description = { Text(stringResource(Lang.settings_player_long_press_fast_forward_speed_description)) },
+        title = title,
+        description = description,
         valueLabel = {
             Text("${quantizeSliderValue(displayValue, displayRange).formatSpeedValue()}x")
         },
@@ -668,19 +731,15 @@ private fun SettingsScope.PlaybackSpeedItems(
         SteppedSlider(
             value = displayValue,
             onValueChange = {
-                speedDragging = true
-                speedDragOverride = quantizeSliderValue(it, displayRange)
+                dragging = true
+                dragOverride = quantizeSliderValue(it, displayRange)
             },
             onValueChangeFinished = { displayedValue ->
-                val finalValue = speedDragOverride ?: displayedValue
-                val committedValue = quantizeSliderValue(finalValue, effectiveRange)
-                speedDragging = false
-                speedDragOverride = committedValue
-                videoScaffoldConfig.update(
-                    config.copy(
-                        fastForwardSpeed = committedValue,
-                    ),
-                )
+                val finalValue = dragOverride ?: displayedValue
+                val committedValue = quantizeSliderValue(finalValue, commitRange)
+                dragging = false
+                dragOverride = committedValue
+                onCommit(committedValue)
             },
             valueRange = displayRange,
             valueIndicator = { Text(it.formatSpeedValue(), maxLines = 1, softWrap = false) },

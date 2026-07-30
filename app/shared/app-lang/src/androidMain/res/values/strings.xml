@@ -225,6 +225,8 @@
     <string name="settings_app_close_behavior_exit">Exit application</string>
     <string name="settings_app_close_behavior_minimize_to_tray">Minimize to system tray</string>
     <string name="desktop_tray_open">Open main window</string>
+    <string name="always_on_top">Always on top</string>
+    <string name="always_on_top_disable">Turn off always on top</string>
     <string name="settings_update_software">Software update</string>
     <string name="settings_update_current_version">Current version</string>
     <string name="settings_update_view_changelog">View changelog</string>
@@ -279,6 +281,10 @@
     <string name="settings_player_long_press_fast_forward_speed_description">Playback speed used while long-pressing</string>
     <string name="settings_player_playback_speed_range">Playback speed range</string>
     <string name="settings_player_playback_speed_range_description">Range for the in-player speed slider and long-press playback speed</string>
+    <string name="settings_player_remember_playback_speed">Remember playback speed</string>
+    <string name="settings_player_remember_playback_speed_description">Keep the speed you set in the player across episodes and restarts. When off, it applies only until you leave the player, then returns to the default speed.</string>
+    <string name="settings_player_default_playback_speed">Default playback speed</string>
+    <string name="settings_player_default_playback_speed_description">Speed to start at each time you open the player</string>
     <string name="settings_storage_title">Storage settings</string>
     <string name="settings_storage_bt_cache_location">BT video cache location</string>
     <string name="settings_storage_bt_cache_location_description">Changing this won\'t automatically migrate data nor delete old data.\nIf you want to remove old data, please click &quot;Open BT cache directory&quot; before making changes and remove all files in that directory.\n\nRestart required to take effect.</string>

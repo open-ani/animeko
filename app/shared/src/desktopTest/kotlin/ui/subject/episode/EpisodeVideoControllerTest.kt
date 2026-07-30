@@ -665,6 +665,49 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
+    fun `touch - keyboard shortcuts - digit keys jump to speed presets`() = runAniComposeUiTest {
+        lateinit var playbackSpeed: TestPlaybackSpeed
+        val committedPlaybackSpeeds = mutableListOf<Float>()
+        setContent {
+            CompositionLocalProvider(LocalPlatform provides Platform.Android(Arch.ARMV8A)) {
+                playbackSpeed = remember { TestPlaybackSpeed(1f) }
+                Player(
+                    GestureFamily.TOUCH,
+                    playbackSpeed = playbackSpeed,
+                    onCommitPlaybackSpeed = { committedPlaybackSpeeds.add(it) },
+                )
+            }
+        }
+        waitForIdle()
+
+        videoGestureHost.performKeyInput {
+            pressKey(Key.Two)
+        }
+        waitForIdle()
+        runOnIdle {
+            assertEquals(2f, playbackSpeed.value)
+        }
+
+        // 3x 超出默认范围 0.5x..2.5x, clamp 到上界而不是不响应
+        videoGestureHost.performKeyInput {
+            pressKey(Key.Three)
+        }
+        waitForIdle()
+        runOnIdle {
+            assertEquals(2.5f, playbackSpeed.value)
+        }
+
+        videoGestureHost.performKeyInput {
+            pressKey(Key.NumPad1)
+        }
+        waitForIdle()
+        runOnIdle {
+            assertEquals(1f, playbackSpeed.value)
+            assertEquals(listOf(2f, 2.5f, 1f), committedPlaybackSpeeds)
+        }
+    }
+
+    @Test
     fun `touch - keyboard shortcuts - yield focus to editor and reclaim it from video click`() = runAniComposeUiTest {
         lateinit var playerState: TestMediampPlayer
         var toggleDanmakuCount = 0

@@ -231,9 +231,12 @@ class GestureIndicatorState {
         stopShow(ticket)
     }
 
+    /**
+     * @param speed 长按期间使用的播放速度, 会显示在指示器上.
+     */
     @UiThread
-    fun startFastForward(): Int {
-        startShow(FAST_FORWARD, setup = { })
+    fun startFastForward(speed: Float): Int {
+        startShow(FAST_FORWARD, setup = { playbackSpeed = speed })
         return counter
     }
 
@@ -398,6 +401,7 @@ fun GestureIndicator(
 
                         FAST_FORWARD -> {
                             Icon(Icons.Rounded.FastForward, null, Modifier.size(iconSize))
+                            Text("${state.playbackSpeed.formatSpeedValue()}x", maxLines = 1)
                         }
 
                         FAST_BACKWARD -> {
