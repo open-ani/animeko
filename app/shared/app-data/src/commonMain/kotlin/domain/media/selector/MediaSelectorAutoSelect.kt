@@ -15,10 +15,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.takeWhile
@@ -26,6 +30,7 @@ import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.selects.onTimeout
 import kotlinx.coroutines.selects.select
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
+import me.him188.ani.app.domain.media.fetch.CompletedConditions
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
@@ -68,36 +73,78 @@ class MediaSelectorAutoSelect(
         mediaFetchSession: MediaFetchSession,
         waitForKind: Flow<MediaSourceKind?> = flowOf(null)
     ): Media? {
-        // 等全部加载完成
-        mediaFetchSession.awaitCompletion { completedConditions ->
-            return@awaitCompletion waitForKind.first()?.let {
+        suspend fun isTargetCompleted(completedConditions: CompletedConditions): Boolean {
+            return waitForKind.first()?.let {
                 completedConditions[it]
             } ?: completedConditions.allCompleted()
         }
 
-        // 候选流已经吸收查询结果时直接选择, 保持原有时序.
-        if (mediaSelector.selected.value != null) return null
-        mediaSelector.trySelectDefault()?.let { return it }
-
-        // awaitCompletion 只保证数据源查询完成. filteredCandidates / preferredCandidates 是从
-        // cumulativeResults 异步派生的, 此刻 trySelectDefault 可能仍读到 shareIn 回放的旧空快照.
-        val completedResults = mediaFetchSession.cumulativeResults.first()
-        if (completedResults.isEmpty()) return null
-
-        // filterMediaList 会 1:1 地将 Media 包装为 Included 或 Excluded. 等待本次已完成结果全部进入
-        // filteredCandidates 后再重试, 既不会改变过滤结果, 也不会因所有结果都被排除而永久挂起.
-        // cumulativeResults 会按 mediaId 跨源去重. 这里只比较同一身份字段, 避免某个源较晚完成、
-        // 成为重复媒体的保留项时, 因 sourceId 改变而一直等待已经被替换的旧候选.
-        val completedMediaIds = completedResults
-            .mapTo(HashSet(completedResults.size)) { it.mediaId }
-        mediaSelector.filteredCandidates.first { candidates ->
-            val candidateMediaIds = candidates
-                .mapTo(HashSet(candidates.size)) { it.original.mediaId }
-            candidateMediaIds.containsAll(completedMediaIds)
+        fun sourceStates(): List<MediaSourceFetchState> {
+            return mediaFetchSession.mediaSourceResults.map { it.state.value }
         }
 
-        if (mediaSelector.selected.value != null) return null
-        return mediaSelector.trySelectDefault()
+        fun sourceStateChanges(
+            expected: List<MediaSourceFetchState>,
+        ): Flow<PropagationWaitResult> {
+            if (mediaFetchSession.mediaSourceResults.isEmpty()) return emptyFlow()
+            return combine(mediaFetchSession.mediaSourceResults.map { it.state }) {
+                it.toList()
+            }.filter {
+                it != expected
+            }.map {
+                PropagationWaitResult.QueryChanged
+            }
+        }
+
+        while (true) {
+            // 等当前目标数据源加载完成. 查询可能被 restart/restartAll 开启新一轮, 因此下方会在
+            // 传播等待期间监听完成条件和每个数据源的具体状态, 失效时重新取得快照.
+            mediaFetchSession.awaitCompletion(::isTargetCompleted)
+            if (mediaSelector.selected.value != null) return null
+
+            val completedSourceStates = sourceStates()
+            val completedResults = mediaFetchSession.cumulativeResults.first()
+
+            // 获取结果期间若查询轮次已经变化, 不得使用这一旧快照.
+            if (sourceStates() != completedSourceStates) continue
+            if (!isTargetCompleted(mediaFetchSession.hasCompleted.first())) continue
+            if (completedResults.isEmpty()) return null
+
+            val waitResult = merge(
+                // filterMediaList 会 1:1 地将 Media 包装为 Included 或 Excluded. 必须等待本轮实际
+                // Media 全部进入候选流；仅比较 mediaId 会把同 ID、不同服务器或资源版本的旧候选误认
+                // 为当前结果.
+                mediaSelector.filteredCandidates.filter { candidates ->
+                    completedResults.all { completed ->
+                        candidates.any { it.original == completed }
+                    }
+                }.map {
+                    PropagationWaitResult.Propagated
+                },
+                // restart 会让完成条件暂时失效；即使新一轮很快完成，Completed 中的 restart ID
+                // 也会让 sourceStateChanges 检测到轮次变化.
+                mediaFetchSession.hasCompleted.filter {
+                    !isTargetCompleted(it)
+                }.map {
+                    PropagationWaitResult.QueryChanged
+                },
+                sourceStateChanges(completedSourceStates),
+                mediaSelector.selected.filterNotNull().map {
+                    PropagationWaitResult.SelectedElsewhere
+                },
+            ).first()
+
+            when (waitResult) {
+                PropagationWaitResult.QueryChanged -> continue
+                PropagationWaitResult.SelectedElsewhere -> return null
+                PropagationWaitResult.Propagated -> {
+                    if (mediaSelector.selected.value != null) return null
+                    if (sourceStates() != completedSourceStates) continue
+                    if (!isTargetCompleted(mediaFetchSession.hasCompleted.first())) continue
+                    return mediaSelector.trySelectDefault()
+                }
+            }
+        }
     }
 
     /**
@@ -303,6 +350,12 @@ class MediaSelectorAutoSelect(
          */
         val InstantSelectTierThreshold = MediaSourceTier(0u)
     }
+}
+
+private enum class PropagationWaitResult {
+    Propagated,
+    QueryChanged,
+    SelectedElsewhere,
 }
 
 private const val STOP = true
