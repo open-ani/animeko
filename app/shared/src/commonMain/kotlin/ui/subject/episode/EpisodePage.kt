@@ -135,6 +135,7 @@ import me.him188.ani.app.ui.lang.episode_send_danmaku
 import me.him188.ani.app.ui.lang.foundation_richtext_external_app_link_warning_prefix
 import me.him188.ani.app.ui.lang.foundation_richtext_open_failed_prefix
 import me.him188.ani.app.ui.lang.subject_details_tab_details
+import me.him188.ani.app.ui.lang.video_player_quality_switch_failed
 import me.him188.ani.app.ui.richtext.RichTextDefaults
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeCommentColumn
 import me.him188.ani.app.ui.subject.episode.comments.EpisodeEditCommentSheet
@@ -157,6 +158,7 @@ import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.asLevelController
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.rememberRandomDanmakuPlaceholder
+import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSnapshot
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.danmaku.api.DanmakuContent
@@ -912,9 +914,16 @@ private fun EpisodeVideo(
         vm.onUIReady()
     }
 
+    val jellyfinPlaybackProgressSnapshot by vm.jellyfinPlaybackProgressSnapshot.collectAsStateWithLifecycle()
     val progressSliderState = rememberMediaProgressSliderState(
         vm.player,
         vm.progressChaptersFlow,
+        progressSnapshot = jellyfinPlaybackProgressSnapshot?.let {
+            PlayerProgressSnapshot(
+                positionMillis = it.positionMillis,
+                durationMillis = it.durationMillis,
+            )
+        },
         onPreview = {
             // not yet supported
         },
@@ -928,6 +937,9 @@ private fun EpisodeVideo(
         null
     }
     val scope = rememberCoroutineScope()
+    val toaster = LocalToaster.current
+    val jellyfinPlaybackQualityState by vm.jellyfinPlaybackQualityState.collectAsStateWithLifecycle()
+    val qualitySwitchFailedText = stringResource(Lang.video_player_quality_switch_failed)
 
     // 必须在 UI 里, 跟随 context 变化. 否则 #958
     val platformComponents by remember {
@@ -954,6 +966,14 @@ private fun EpisodeVideo(
         expanded = expanded,
         hasNextEpisode = vm.episodeSelectorState.hasNextEpisode,
         onClickNextEpisode = { vm.episodeSelectorState.selectNext() },
+        jellyfinPlaybackQualityState = jellyfinPlaybackQualityState,
+        onSelectJellyfinPlaybackQuality = { quality ->
+            scope.launch {
+                vm.switchJellyfinPlaybackQuality(quality).onFailure {
+                    toaster.toast(qualitySwitchFailedText)
+                }
+            }
+        },
         playerControllerState = playerControllerState,
         opEdSkipDuration = vm.videoScaffoldConfig.opEdSkipDuration,
         onClickSkipOpEd = { vm.onClickSkipOpEd(it) },

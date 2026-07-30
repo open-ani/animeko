@@ -35,6 +35,7 @@ import me.him188.ani.app.domain.episode.player
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.TestUniversalMediaResolver
+import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.utils.coroutines.childScope
 import org.openani.mediamp.PlaybackState
 import org.openani.mediamp.metadata.MediaProperties
@@ -211,6 +212,37 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         assertEquals("", history.subjectImageUrl)
         assertEquals("Nita O'Donnell", history.episodeName)
         assertEquals(100_000, history.durationMillis)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `does not overwrite progress during a transient media replacement`() = runTest {
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+
+        loadSelectedMedia(suite, state)
+        suite.player.seekTo(42_000)
+        suite.player.playbackState.value = PlaybackState.PAUSED
+        advanceUntilIdle()
+        assertSingleSavedHistoryList(42_000)
+
+        val automationGate = suite.koin.get<PlaybackAutomationGate>()
+        automationGate.suppressDuring {
+            suite.player.playbackState.value = PlaybackState.PLAYING
+            runCurrent()
+            suite.player.seekTo(1_000)
+            suite.player.playbackState.value = PlaybackState.PAUSED
+            advanceUntilIdle()
+        }
+        assertSingleSavedHistoryList(42_000)
+
+        suite.player.playbackState.value = PlaybackState.PLAYING
+        runCurrent()
+        suite.player.seekTo(2_000)
+        suite.player.playbackState.value = PlaybackState.PAUSED
+        advanceUntilIdle()
+        assertSingleSavedHistoryList(2_000)
 
         testScope.cancel()
     }

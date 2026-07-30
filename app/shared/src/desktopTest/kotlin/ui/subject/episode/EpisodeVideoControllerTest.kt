@@ -52,6 +52,7 @@ import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
+import me.him188.ani.app.domain.media.resolver.JellyfinPlaybackQualityState
 import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.app.ui.danmaku.PlayerDanmakuEditor
@@ -103,6 +104,7 @@ import me.him188.ani.app.videoplayer.ui.progress.TAG_SPEED_SWITCHER_SLIDER
 import me.him188.ani.app.videoplayer.ui.progress.TAG_SPEED_SWITCHER_TEXT_BUTTON
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 import me.him188.ani.danmaku.ui.DanmakuConfig
+import me.him188.ani.datasources.jellyfin.JellyfinPlaybackQuality
 import me.him188.ani.utils.platform.Arch
 import me.him188.ani.utils.platform.Platform
 import org.junit.jupiter.api.Disabled
@@ -222,6 +224,8 @@ class EpisodeVideoControllerTest {
         expanded: Boolean = true,
         framePreview: MediaProgressFramePreviewState? = null,
         cacheChunkState: ChunkState = ChunkState.NONE,
+        jellyfinPlaybackQualityState: JellyfinPlaybackQualityState? = null,
+        onSelectJellyfinPlaybackQuality: (JellyfinPlaybackQuality) -> Unit = {},
     ) {
         ProvideCompositionLocalsForPreview(darkMode = DarkMode.DARK) {
             val platformWindow = platformWindowOverride ?: LocalPlatformWindow.current
@@ -237,6 +241,8 @@ class EpisodeVideoControllerTest {
                 expanded = expanded,
                 hasNextEpisode = true,
                 onClickNextEpisode = {},
+                jellyfinPlaybackQualityState = jellyfinPlaybackQualityState,
+                onSelectJellyfinPlaybackQuality = onSelectJellyfinPlaybackQuality,
                 playerControllerState = playerControllerState,
                 opEdSkipDuration = opEdSkipDuration,
                 title = { PlayerTopBar() },
@@ -417,6 +423,168 @@ class EpisodeVideoControllerTest {
                 assertEquals((durationSeconds + 5) * 1_000L, playerState.currentPositionMillis.value)
             }
         }
+    }
+
+    @Test
+    fun `desktop - jellyfin quality is selected from bottom controller`() = runAniComposeUiTest {
+        var selected: JellyfinPlaybackQuality? = null
+        val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+        val qualityState = jellyfinQualityState()
+        setContent {
+            Player(
+                GestureFamily.MOUSE,
+                playerControllerState = visibleControllerState,
+                jellyfinPlaybackQualityState = qualityState,
+                onSelectJellyfinPlaybackQuality = { selected = it },
+            )
+        }
+
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            onNodeWithTag(TAG_JELLYFIN_QUALITY_TEXT_BUTTON).exists()
+        }
+        onNodeWithTag(TAG_JELLYFIN_QUALITY_TEXT_BUTTON).performClick()
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            onNodeWithTag(TAG_JELLYFIN_QUALITY_DROPDOWN_MENU).exists()
+        }
+        onNodeWithText("Auto · 20 Mbps").assertExists()
+        onNodeWithText("8 Mbps").performClick()
+
+        runOnIdle {
+            assertEquals(JellyfinPlaybackQuality.fixed(8_000_000), selected)
+        }
+    }
+
+    @Test
+    fun `compact - jellyfin quality is selected from more menu`() = runAniComposeUiTest {
+        var selected: JellyfinPlaybackQuality? = null
+        val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+        val qualityState = jellyfinQualityState()
+        setContent {
+            CompositionLocalProvider(LocalPlatform provides Platform.Android(Arch.ARMV8A)) {
+                Player(
+                    GestureFamily.TOUCH,
+                    expanded = false,
+                    playerControllerState = visibleControllerState,
+                    jellyfinPlaybackQualityState = qualityState,
+                    onSelectJellyfinPlaybackQuality = { selected = it },
+                )
+            }
+        }
+
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            onNodeWithTag(TAG_EPISODE_VIDEO_MORE).exists()
+        }
+        assertTrue(onNodeWithTag(TAG_JELLYFIN_QUALITY_TEXT_BUTTON).doesNotExist())
+        onNodeWithTag(TAG_EPISODE_VIDEO_MORE).performClick()
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            onNodeWithTag(TAG_JELLYFIN_QUALITY_MORE_ITEM).exists()
+        }
+        onNodeWithTag(TAG_JELLYFIN_QUALITY_MORE_ITEM).performClick()
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            onNodeWithTag(TAG_JELLYFIN_QUALITY_DROPDOWN_MENU).exists()
+        }
+        onNodeWithText("Auto · 20 Mbps").assertExists()
+        onNodeWithText("4 Mbps").performClick()
+
+        runOnIdle {
+            assertEquals(JellyfinPlaybackQuality.fixed(4_000_000), selected)
+        }
+    }
+
+    @Test
+    fun `desktop - fixed quality is not shown as automatic bitrate`() = runAniComposeUiTest {
+        val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+        val qualityState = jellyfinQualityState(
+            selected = JellyfinPlaybackQuality.fixed(720_000),
+            effectiveMaxBitrate = 720_000,
+        )
+        setContent {
+            Player(
+                GestureFamily.MOUSE,
+                playerControllerState = visibleControllerState,
+                jellyfinPlaybackQualityState = qualityState,
+            )
+        }
+
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            onNodeWithTag(TAG_JELLYFIN_QUALITY_TEXT_BUTTON).exists()
+        }
+        onNodeWithTag(TAG_JELLYFIN_QUALITY_TEXT_BUTTON).performClick()
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            onNodeWithTag(TAG_JELLYFIN_QUALITY_DROPDOWN_MENU).exists()
+        }
+
+        onNodeWithText("Auto").assertExists()
+        onNodeWithText("Auto · 720 Kbps").assertDoesNotExist()
+    }
+
+    @Test
+    fun `compact - fixed quality is not shown as automatic bitrate`() = runAniComposeUiTest {
+        val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+        val qualityState = jellyfinQualityState(
+            selected = JellyfinPlaybackQuality.fixed(720_000),
+            effectiveMaxBitrate = 720_000,
+        )
+        setContent {
+            CompositionLocalProvider(LocalPlatform provides Platform.Android(Arch.ARMV8A)) {
+                Player(
+                    GestureFamily.TOUCH,
+                    expanded = false,
+                    playerControllerState = visibleControllerState,
+                    jellyfinPlaybackQualityState = qualityState,
+                )
+            }
+        }
+
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            onNodeWithTag(TAG_EPISODE_VIDEO_MORE).exists()
+        }
+        onNodeWithTag(TAG_EPISODE_VIDEO_MORE).performClick()
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            onNodeWithTag(TAG_JELLYFIN_QUALITY_MORE_ITEM).exists()
+        }
+        onNodeWithTag(TAG_JELLYFIN_QUALITY_MORE_ITEM).performClick()
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            onNodeWithTag(TAG_JELLYFIN_QUALITY_DROPDOWN_MENU).exists()
+        }
+
+        onNodeWithText("Auto").assertExists()
+        onNodeWithText("Auto · 720 Kbps").assertDoesNotExist()
+    }
+
+    private fun jellyfinQualityState(
+        selected: JellyfinPlaybackQuality = JellyfinPlaybackQuality.Auto,
+        effectiveMaxBitrate: Int? = 20_000_000,
+    ) = JellyfinPlaybackQualityState(
+        selected = selected,
+        options = listOf(
+            JellyfinPlaybackQuality.Auto,
+            JellyfinPlaybackQuality.Original,
+            JellyfinPlaybackQuality.fixed(8_000_000),
+            JellyfinPlaybackQuality.fixed(4_000_000),
+            JellyfinPlaybackQuality.fixed(720_000),
+        ),
+        effectiveMaxBitrate = effectiveMaxBitrate,
+        sourceBitrate = 24_000_000,
+    )
+
+    @Test
+    fun `non-jellyfin playback does not expose quality controls`() = runAniComposeUiTest {
+        val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+        setContent {
+            Player(
+                GestureFamily.MOUSE,
+                playerControllerState = visibleControllerState,
+            )
+        }
+
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            onNodeWithTag(TAG_EPISODE_VIDEO_MORE).exists()
+        }
+        assertTrue(onNodeWithTag(TAG_JELLYFIN_QUALITY_TEXT_BUTTON).doesNotExist())
+        onNodeWithTag(TAG_EPISODE_VIDEO_MORE).performClick()
+        waitForIdle()
+        assertTrue(onNodeWithTag(TAG_JELLYFIN_QUALITY_MORE_ITEM).doesNotExist())
     }
 
     /**

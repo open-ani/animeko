@@ -10,19 +10,29 @@
 package me.him188.ani.datasources.jellyfin
 
 import io.ktor.client.call.body
+import io.ktor.client.HttpClient
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.Serializable
 import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.EpisodeSort
@@ -44,11 +54,22 @@ import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.ResourceLocation
 import me.him188.ani.utils.ktor.ScopedHttpClient
+import me.him188.ani.utils.ktor.UrlHelpers
+import me.him188.ani.utils.logging.debug
+import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
+import kotlin.math.min
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 
 abstract class BaseJellyfinMediaSource(
     private val client: ScopedHttpClient,
 ) : HttpMediaSource() {
     abstract val baseUrl: String
+
+    private val bitrateDetectionMutex = Mutex()
+    private var detectedBitrateCache: DetectedBitrate? = null
 
     protected data class Authorization(
         val userId: String,
@@ -64,6 +85,236 @@ abstract class BaseJellyfinMediaSource(
      * @return `true` when the request can be retried with a newly acquired authorization.
      */
     protected open suspend fun invalidateAuthorization(authorization: Authorization): Boolean = false
+
+    /**
+     * Negotiates a stream for one physical Jellyfin media source.
+     *
+     * [mediaSourceId] is deliberately retained across quality changes. Jellyfin may return
+     * multiple physical versions in PlaybackInfo, but Animeko continues to treat those as media
+     * source selection rather than quality selection.
+     */
+    suspend fun createPlaybackPlan(
+        itemId: String,
+        quality: JellyfinPlaybackQuality,
+        mediaSourceId: String? = null,
+        startPositionMillis: Long = 0,
+        forceAutoDetection: Boolean = false,
+    ): JellyfinPlaybackPlan {
+        val effectiveMaxBitrate = when (quality.mode) {
+            JellyfinPlaybackQualityMode.AUTO -> detectMaxStreamingBitrate(forceAutoDetection)
+            JellyfinPlaybackQualityMode.ORIGINAL -> Int.MAX_VALUE
+            JellyfinPlaybackQualityMode.FIXED -> checkNotNull(quality.maxBitrate)
+        }
+        val defaultDeviceProfile = JellyfinDeviceProfile(
+            maxStreamingBitrate = effectiveMaxBitrate,
+            maxStaticBitrate = effectiveMaxBitrate,
+        )
+
+        suspend fun requestPlaybackInfo(
+            requestedMediaSourceId: String?,
+            maxStreamingBitrate: Int,
+            audioStreamIndex: Int?,
+            deviceProfile: JellyfinDeviceProfile,
+        ) = authorizedRequest { httpClient, authorization ->
+            val response = httpClient.post("$baseUrl/Items/$itemId/PlaybackInfo") {
+                header(HttpHeaders.Authorization, authorization.headerValue)
+                contentType(ContentType.Application.Json)
+                setBody(
+                    JellyfinPlaybackInfoRequest(
+                        userId = authorization.userId,
+                        maxStreamingBitrate = maxStreamingBitrate,
+                        startTimeTicks = startPositionMillis.coerceAtLeast(0) * TICKS_PER_MILLISECOND,
+                        mediaSourceId = requestedMediaSourceId,
+                        audioStreamIndex = audioStreamIndex,
+                        deviceProfile = deviceProfile,
+                    ),
+                )
+            }
+            if (response.status == HttpStatusCode.Unauthorized) {
+                throw JellyfinAuthorizationException()
+            }
+            response.body<JellyfinPlaybackInfoResponse>() to authorization
+        }
+
+        fun selectSource(
+            response: JellyfinPlaybackInfoResponse,
+            requestedMediaSourceId: String?,
+        ): JellyfinPlaybackMediaSource {
+            check(response.errorCode == null) {
+                "Jellyfin could not create playback info: ${response.errorCode}"
+            }
+            return requestedMediaSourceId
+                ?.let { requested -> response.mediaSources.firstOrNull { it.id == requested } }
+                ?: response.mediaSources.firstOrNull()
+                ?: error("Jellyfin PlaybackInfo did not include a media source")
+        }
+
+        var negotiatedMaxBitrate = effectiveMaxBitrate
+        var playbackResult = requestPlaybackInfo(
+            requestedMediaSourceId = mediaSourceId,
+            maxStreamingBitrate = negotiatedMaxBitrate,
+            audioStreamIndex = null,
+            deviceProfile = defaultDeviceProfile,
+        )
+        var response = playbackResult.first
+        var source = selectSource(response, mediaSourceId)
+
+        val defaultAudioStream = source.defaultAudioStreamIndex?.let { index ->
+            source.mediaStreams.firstOrNull {
+                it.index == index && it.type.equals("Audio", ignoreCase = true)
+            }
+        }
+        // Jellyfin can approve Direct Play because a compatible alternate audio stream exists,
+        // while still returning an incompatible default stream. Explicitly selecting that default
+        // makes the server negotiate the required audio conversion instead of handing it to the
+        // player unchanged.
+        val incompatibleDefaultAudioIndex = defaultAudioStream
+            ?.takeUnless { defaultDeviceProfile.supportsDirectAudioCodec(it.codec) }
+            ?.index
+        val originalDeviceProfile = if (quality.mode == JellyfinPlaybackQualityMode.ORIGINAL) {
+            defaultDeviceProfile.withOriginalVideoCodec(source.videoCodec)
+        } else {
+            defaultDeviceProfile
+        }
+        val shouldRenegotiateOriginal = quality.mode == JellyfinPlaybackQualityMode.ORIGINAL &&
+                !source.supportsDirectPlay &&
+                originalDeviceProfile != defaultDeviceProfile
+        if (incompatibleDefaultAudioIndex != null || shouldRenegotiateOriginal) {
+            logger.debug {
+                "Renegotiating Jellyfin playback for compatibility: mode=${quality.mode}, " +
+                        "audioStreamIndex=$incompatibleDefaultAudioIndex, " +
+                        "preserveOriginalVideo=${originalDeviceProfile != defaultDeviceProfile}"
+            }
+            playbackResult = requestPlaybackInfo(
+                requestedMediaSourceId = source.id,
+                maxStreamingBitrate = negotiatedMaxBitrate,
+                audioStreamIndex = incompatibleDefaultAudioIndex,
+                deviceProfile = originalDeviceProfile.copy(
+                    maxStreamingBitrate = negotiatedMaxBitrate,
+                    maxStaticBitrate = negotiatedMaxBitrate,
+                ),
+            )
+            response = playbackResult.first
+            source = selectSource(response, source.id)
+        }
+
+        val canDirectPlay = source.supportsDirectPlay
+        val transcodingUrl = source.transcodingUrl?.takeIf(String::isNotBlank)
+        val isTranscoding = !canDirectPlay && transcodingUrl != null
+        val videoStream = source.videoStream
+        val transcodingParameters = transcodingUrl?.queryParameters()
+        logger.debug {
+            "Jellyfin playback plan: mode=${quality.mode}, maxBitrate=$negotiatedMaxBitrate, " +
+                    "directPlay=${source.supportsDirectPlay}, directStream=${source.supportsDirectStream}, " +
+                    "supportsTranscoding=${source.supportsTranscoding}, sourceBitrate=${source.bitrate}, " +
+                    "hasTranscodingUrl=${transcodingUrl != null}, " +
+                    "isTranscoding=$isTranscoding, " +
+                    "videoBitrate=${transcodingParameters?.get("VideoBitrate")}, " +
+                    "audioBitrate=${transcodingParameters?.get("AudioBitrate")}"
+        }
+        if (!canDirectPlay && !isTranscoding) {
+            throw JellyfinPlaybackUnavailableException(
+                quality = quality,
+                supportsTranscoding = source.supportsTranscoding || source.supportsDirectStream,
+            )
+        }
+        val uri = if (isTranscoding) {
+            UrlHelpers.computeAbsoluteUrl(baseUrl, checkNotNull(transcodingUrl))
+        } else {
+            getDownloadUri(itemId, playbackResult.second.accessToken)
+        }
+
+        return JellyfinPlaybackPlan(
+            uri = uri,
+            quality = quality,
+            effectiveMaxBitrate = negotiatedMaxBitrate
+                .takeUnless { quality.mode == JellyfinPlaybackQualityMode.ORIGINAL },
+            sourceBitrate = source.totalBitrate(),
+            sourceVideoCodec = videoStream?.codec,
+            mediaSourceId = source.id,
+            playSessionId = response.playSessionId,
+            isTranscoding = isTranscoding,
+        )
+    }
+
+    /**
+     * Stops only the transcoder associated with [playSessionId]. Direct playback is unaffected.
+     */
+    suspend fun stopActiveEncoding(playSessionId: String) {
+        authorizedRequest { httpClient, authorization ->
+            val response = httpClient.delete("$baseUrl/Videos/ActiveEncodings") {
+                header(HttpHeaders.Authorization, authorization.headerValue)
+                parameter("deviceId", playbackDeviceId)
+                parameter("playSessionId", playSessionId)
+            }
+            if (response.status == HttpStatusCode.Unauthorized) {
+                throw JellyfinAuthorizationException()
+            }
+        }
+    }
+
+    private val playbackDeviceId: String
+        get() = "animeko-$mediaSourceId"
+
+    private suspend fun detectMaxStreamingBitrate(force: Boolean): Int {
+        return bitrateDetectionMutex.withLock {
+            val cached = detectedBitrateCache
+            if (!force && cached != null && cached.createdAt.elapsedNow() <= BITRATE_CACHE_DURATION) {
+                return@withLock cached.bitrate
+            }
+
+            val endpointInfo = try {
+                authorizedGet<JellyfinEndpointInfo>("$baseUrl/System/Endpoint")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Throwable) {
+                JellyfinEndpointInfo()
+            }
+
+            var measuredBitrate: Int? = null
+            for (test in BITRATE_TESTS) {
+                val mark = TimeSource.Monotonic.markNow()
+                val bytes = try {
+                    withTimeout(BITRATE_TEST_TIMEOUT) {
+                        authorizedRequest { httpClient, authorization ->
+                            val response = httpClient.get("$baseUrl/Playback/BitrateTest") {
+                                header(HttpHeaders.Authorization, authorization.headerValue)
+                                header(HttpHeaders.CacheControl, "no-cache, no-store")
+                                parameter("Size", test.bytes)
+                            }
+                            if (response.status == HttpStatusCode.Unauthorized) {
+                                throw JellyfinAuthorizationException()
+                            }
+                            response.body<ByteArray>()
+                        }
+                    }
+                } catch (_: TimeoutCancellationException) {
+                    break
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Throwable) {
+                    break
+                }
+                val elapsedSeconds = mark.elapsedNow().inWholeNanoseconds / 1_000_000_000.0
+                if (elapsedSeconds <= 0.0) continue
+                measuredBitrate = min(
+                    (bytes.size * 8 / elapsedSeconds).toLong(),
+                    Int.MAX_VALUE.toLong(),
+                ).toInt()
+                if (measuredBitrate < test.threshold) break
+            }
+
+            var normalized = measuredBitrate
+                ?.let { (it * BITRATE_SAFETY_FACTOR).toInt().coerceAtLeast(1) }
+                ?: cached?.bitrate
+                ?: DEFAULT_AUTO_BITRATE
+            if (endpointInfo.isInNetwork) {
+                normalized = maxOf(normalized, LAN_AUTO_BITRATE)
+            }
+            detectedBitrateCache = DetectedBitrate(normalized, TimeSource.Monotonic.markNow())
+            normalized
+        }
+    }
 
     override suspend fun checkConnection(): ConnectionStatus {
         try {
@@ -301,7 +552,117 @@ abstract class BaseJellyfinMediaSource(
             authorization = getAuthorization()
         }
     }
+
+    private suspend fun <T> authorizedRequest(
+        request: suspend (HttpClient, Authorization) -> T,
+    ): T {
+        var authorization = getAuthorization()
+        var hasRetried = false
+
+        while (true) {
+            try {
+                return client.use {
+                    request(this, authorization)
+                }
+            } catch (e: Throwable) {
+                val isUnauthorized = e is JellyfinAuthorizationException ||
+                        (e is ClientRequestException && e.response.status == HttpStatusCode.Unauthorized)
+                if (!isUnauthorized || hasRetried || !invalidateAuthorization(authorization)) {
+                    throw e
+                }
+
+                hasRetried = true
+                authorization = getAuthorization()
+            }
+        }
+    }
+
+    private data class DetectedBitrate(
+        val bitrate: Int,
+        val createdAt: TimeSource.Monotonic.ValueTimeMark,
+    )
+
+    private data class BitrateTest(
+        val bytes: Int,
+        val threshold: Int,
+    )
+
+    private companion object {
+        const val TICKS_PER_MILLISECOND = 10_000L
+        const val BITRATE_SAFETY_FACTOR = 0.7
+        const val DEFAULT_AUTO_BITRATE = 8_000_000
+        const val LAN_AUTO_BITRATE = 140_000_000
+        val BITRATE_TEST_TIMEOUT = 5.seconds
+        val BITRATE_CACHE_DURATION = 1.hours
+        val BITRATE_TESTS = listOf(
+            BitrateTest(bytes = 500_000, threshold = 500_000),
+            BitrateTest(bytes = 1_000_000, threshold = 20_000_000),
+            BitrateTest(bytes = 3_000_000, threshold = 50_000_000),
+        )
+    }
 }
+
+private val JellyfinPlaybackMediaSource.videoStream: JellyfinPlaybackMediaStream?
+    get() = mediaStreams.firstOrNull { it.type.equals("Video", ignoreCase = true) }
+
+private val JellyfinPlaybackMediaSource.videoCodec: String?
+    get() = videoStream?.codec
+
+private fun JellyfinPlaybackMediaSource.totalBitrate(): Int? {
+    bitrate?.takeIf { it > 0 }?.let { return it }
+    return mediaStreams
+        .sumOf { (it.bitrate ?: 0).toLong() }
+        .takeIf { it > 0 }
+        ?.coerceAtMost(Int.MAX_VALUE.toLong())
+        ?.toInt()
+}
+
+private fun JellyfinDeviceProfile.supportsDirectAudioCodec(codec: String?): Boolean {
+    if (codec.isNullOrBlank()) return true
+    return directPlayProfiles.any { it.audioCodec.supportsCodec(codec) }
+}
+
+private fun JellyfinDeviceProfile.supportsDirectVideoCodec(codec: String): Boolean {
+    return directPlayProfiles.any { it.videoCodec.supportsCodec(codec) }
+}
+
+private fun JellyfinDeviceProfile.withOriginalVideoCodec(sourceVideoCodec: String?): JellyfinDeviceProfile {
+    val codec = sourceVideoCodec?.takeIf { it.isNotBlank() } ?: return this
+    if (!supportsDirectVideoCodec(codec)) return this
+
+    return copy(
+        transcodingProfiles = transcodingProfiles.map { profile ->
+            if (!profile.type.equals("Video", ignoreCase = true)) return@map profile
+            profile.copy(
+                videoCodec = buildList {
+                    add(codec)
+                    addAll(profile.videoCodec.codecNames())
+                }.distinctBy(String::lowercase).joinToString(","),
+            )
+        },
+    )
+}
+
+private fun String.supportsCodec(codec: String): Boolean {
+    return isBlank() || codecNames().any { it.equals(codec, ignoreCase = true) }
+}
+
+private fun String.codecNames(): List<String> {
+    return split(',').map(String::trim).filter(String::isNotEmpty)
+}
+
+private fun String.queryParameters(): Map<String, String> {
+    return substringAfter('?', "")
+        .split('&')
+        .mapNotNull { parameter ->
+            val separator = parameter.indexOf('=')
+            if (separator <= 0) return@mapNotNull null
+            parameter.substring(0, separator) to parameter.substring(separator + 1)
+        }
+        .toMap()
+}
+
+private val logger = logger<BaseJellyfinMediaSource>()
 
 private class JellyfinAuthorizationException :
     IllegalStateException("Jellyfin rejected the configured authorization")

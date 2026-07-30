@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.openani.mediamp.ExperimentalMediampApi
 import org.openani.mediamp.InternalForInheritanceMediampApi
 import org.openani.mediamp.MediampPlayer
@@ -117,6 +118,11 @@ class LibassExoPlayerMediampPlayer private constructor(
             TrackingSeekableInputMediaData(data)
         } else {
             data
+        }
+        // MediaMP 0.2.1 prepares media on Dispatchers.Default and stops active playback there.
+        // Stop first on ExoPlayer's application thread so MediaMP only prepares the replacement.
+        stopPlaybackOnMain {
+            exoMediampPlayer.stopPlayback()
         }
         exoMediampPlayer.setMediaData(playerData)
 
@@ -292,6 +298,12 @@ class LibassExoPlayerMediampPlayer private constructor(
         const val DEFAULT_USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
                 "(KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+    }
+}
+
+internal suspend fun stopPlaybackOnMain(stopPlayback: () -> Unit) {
+    withContext(Dispatchers.Main.immediate) {
+        stopPlayback()
     }
 }
 

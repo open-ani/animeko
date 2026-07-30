@@ -34,6 +34,11 @@ class MediaProgressIndicatorTextTest {
     }
 
     @Test
+    fun `negative player sentinels render as unknown zero timeline`() {
+        assertEquals("00:00 / 00:00", renderSeconds(Long.MIN_VALUE, -1L))
+    }
+
+    @Test
     fun `reserve only includes remaining time in expanded mode`() {
         assertEquals("88:88 / 88:88", renderSecondsReserve(100, includeRemaining = false))
         assertEquals("88:88 / 88:88 (-88:88)", renderSecondsReserve(100, includeRemaining = true))
