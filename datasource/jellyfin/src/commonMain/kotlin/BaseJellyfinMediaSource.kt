@@ -141,13 +141,6 @@ abstract class BaseJellyfinMediaSource(
                 if (exactIdMatches.isNotEmpty()) {
                     return exactIdMatches
                 }
-
-                if (
-                    preferredMatches.isNotEmpty() &&
-                    preferredCandidates.any { it.hasExactTitle(searchName) }
-                ) {
-                    return fallbackMatches.values.sortedByDescending { it.confidence }
-                }
             }
         }
 

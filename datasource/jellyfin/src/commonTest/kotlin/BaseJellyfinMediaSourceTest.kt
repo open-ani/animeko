@@ -86,7 +86,11 @@ class BaseJellyfinMediaSourceTest {
                               "SeasonName": "響け！ユーフォニアム3",
                               "Id": "episode-1",
                               "IndexNumber": 1,
-                              "Type": "Episode"
+                              "Type": "Episode",
+                              "ProviderIds": {
+                                "Bangumi": "456",
+                                "BangumiSubject": "123"
+                              }
                             }
                           ]
                         }
@@ -450,7 +454,11 @@ class BaseJellyfinMediaSourceTest {
                           "SeasonName": "Second alias",
                           "Id": "episode-1",
                           "IndexNumber": 1,
-                          "Type": "Episode"
+                          "Type": "Episode",
+                          "ProviderIds": {
+                            "Bangumi": "456",
+                            "BangumiSubject": "123"
+                          }
                         }
                       ]
                     }
@@ -486,6 +494,91 @@ class BaseJellyfinMediaSourceTest {
         assertEquals(listOf("First alias", "Second alias"), searchedNames)
         assertEquals("episode-1", result.single().media.mediaId)
         assertEquals("Second alias", result.single().media.properties.subjectName)
+    }
+
+    @Test
+    fun `continues past an exact title without provider evidence`() = runTest {
+        val searchedNames = mutableListOf<String>()
+        val source = createSource { request ->
+            when {
+                request.url.parameters["searchTerm"] != null -> {
+                    val searchName = request.url.parameters["searchTerm"]!!
+                    searchedNames += searchName
+                    when (searchName) {
+                        "Shared title" -> respondJson(
+                            """
+                            {
+                              "Items": [
+                                {
+                                  "Name": "Episode one",
+                                  "SeriesName": "Shared title",
+                                  "SeasonName": "Shared title",
+                                  "Id": "unverified-episode",
+                                  "IndexNumber": 1,
+                                  "Type": "Episode"
+                                }
+                              ]
+                            }
+                            """.trimIndent(),
+                        )
+
+                        "Verified alias" -> respondJson(
+                            """
+                            {
+                              "Items": [
+                                {
+                                  "Name": "Episode one",
+                                  "SeriesName": "Verified alias",
+                                  "SeasonName": "Verified alias",
+                                  "Id": "verified-episode",
+                                  "IndexNumber": 1,
+                                  "Type": "Episode",
+                                  "ProviderIds": {
+                                    "Bangumi": "456",
+                                    "BangumiSubject": "123"
+                                  }
+                                }
+                              ]
+                            }
+                            """.trimIndent(),
+                        )
+
+                        else -> error("Unexpected search name: $searchName")
+                    }
+                }
+
+                request.url.parameters["ids"] != null -> {
+                    val id = request.url.parameters["ids"]!!
+                    val title = if (id == "verified-episode") "Verified alias" else "Shared title"
+                    respondJson(
+                        """
+                        {
+                          "Items": [
+                            {
+                              "Name": "Episode one",
+                              "SeriesName": "$title",
+                              "SeasonName": "$title",
+                              "Id": "$id",
+                              "IndexNumber": 1,
+                              "Type": "Episode"
+                            }
+                          ]
+                        }
+                        """.trimIndent(),
+                    )
+                }
+
+                else -> error("Unexpected request: ${request.url}")
+            }
+        }
+
+        val result = source.fetch(
+            request(subjectNames = listOf("Shared title", "Verified alias")),
+        ).results.toList()
+
+        assertEquals(listOf("Shared title", "Verified alias"), searchedNames)
+        assertEquals("verified-episode", result.single().media.mediaId)
+        assertEquals(MatchKind.EXACT, result.single().kind)
     }
 
     @Test
