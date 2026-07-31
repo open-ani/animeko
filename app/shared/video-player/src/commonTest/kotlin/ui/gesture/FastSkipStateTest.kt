@@ -11,6 +11,9 @@ package me.him188.ani.app.videoplayer.ui.gesture
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runTest
+import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import org.openani.mediamp.InternalForInheritanceMediampApi
 import org.openani.mediamp.features.PlaybackSpeed
 import kotlin.test.Test
@@ -32,17 +35,26 @@ private class TestPlaybackSpeed(initial: Float) : PlaybackSpeed {
  * Unit tests for [PlayerFastSkipState] / [FastSkipState].
  */
 class FastSkipStateTest {
-    private fun createState(
+    private fun TestScope.createState(
         speed: TestPlaybackSpeed,
         fastForwardSpeed: Float = 2.5f,
-    ): FastSkipState = PlayerFastSkipState(
-        playbackSpeed = speed,
-        gestureIndicatorState = GestureIndicatorState(),
-        fastForwardSpeed = fastForwardSpeed,
-    ).fastSkipState
+    ): FastSkipState {
+        val baseSpeed = MutableStateFlow(speed.value)
+        return PlayerFastSkipState(
+            playbackSpeedControllerState = PlaybackSpeedControllerState(
+                baseSpeed = baseSpeed,
+                effectiveSpeed = MutableStateFlow(speed.value),
+                onBeginTemporarySpeed = speed::set,
+                onEndTemporarySpeed = { speed.set(baseSpeed.value) },
+                scope = backgroundScope,
+            ),
+            gestureIndicatorState = GestureIndicatorState(),
+            fastForwardSpeed = fastForwardSpeed,
+        ).fastSkipState
+    }
 
     @Test
-    fun `start switches to absolute fast forward speed`() {
+    fun `start switches to absolute fast forward speed`() = runTest {
         val speed = TestPlaybackSpeed(initial = 1.3f)
         val state = createState(speed, fastForwardSpeed = 2.5f)
 
@@ -51,7 +63,7 @@ class FastSkipStateTest {
     }
 
     @Test
-    fun `stop restores global speed`() {
+    fun `stop restores global speed`() = runTest {
         val speed = TestPlaybackSpeed(initial = 1.3f)
         val state = createState(speed)
 

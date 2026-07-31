@@ -24,10 +24,7 @@ class PlaybackSpeedControlsTest {
 
     @Test
     fun `preview speed immediately updates the shared UI state`() = runTest {
-        val state = PlaybackSpeedControllerState(
-            NoOpPlaybackSpeedController,
-            scope = backgroundScope,
-        )
+        val state = PlaybackSpeedControllerState(scope = backgroundScope)
 
         state.previewSpeed(1.75f)
 

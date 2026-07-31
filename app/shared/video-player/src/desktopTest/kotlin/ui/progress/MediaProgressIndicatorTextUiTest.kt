@@ -17,7 +17,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.onNodeWithTag
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
-import me.him188.ani.app.videoplayer.ui.NoOpPlaybackSpeedController
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -39,7 +38,7 @@ class MediaProgressIndicatorTextUiTest {
         setContent {
             val scope = rememberCoroutineScope()
             playbackSpeedState = remember {
-                PlaybackSpeedControllerState(NoOpPlaybackSpeedController, scope = scope)
+                PlaybackSpeedControllerState(scope = scope)
             }
             MediaProgressIndicatorText(
                 progressState,
@@ -77,7 +76,7 @@ class MediaProgressIndicatorTextUiTest {
         setContent {
             val scope = rememberCoroutineScope()
             playbackSpeedState = remember {
-                PlaybackSpeedControllerState(NoOpPlaybackSpeedController, scope = scope)
+                PlaybackSpeedControllerState(scope = scope)
             }
             MediaProgressIndicatorText(state, playbackSpeedState = playbackSpeedState)
         }

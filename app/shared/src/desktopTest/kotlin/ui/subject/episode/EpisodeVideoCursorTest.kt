@@ -47,7 +47,6 @@ import me.him188.ani.app.ui.framework.exists
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
-import me.him188.ani.app.videoplayer.ui.NoOpPlaybackSpeedController
 import me.him188.ani.app.videoplayer.ui.NoOpVideoAspectRatio
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
@@ -127,7 +126,7 @@ class EpisodeVideoCursorTest {
                     audioController = NoOpLevelController,
                     brightnessController = NoOpLevelController,
                     playbackSpeedControllerState = remember {
-                        PlaybackSpeedControllerState(NoOpPlaybackSpeedController, scope = scope)
+                        PlaybackSpeedControllerState(scope = scope)
                     },
                     videoAspectRatioControllerState = remember {
                         VideoAspectRatioControllerState(NoOpVideoAspectRatio, scope)

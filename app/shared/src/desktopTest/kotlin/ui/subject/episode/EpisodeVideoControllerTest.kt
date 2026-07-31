@@ -78,7 +78,6 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeSelectorState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
-import me.him188.ani.app.videoplayer.ui.NoOpPlaybackSpeedController
 import me.him188.ani.app.videoplayer.ui.NoOpVideoAspectRatio
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
@@ -211,7 +210,7 @@ class EpisodeVideoControllerTest {
         onExitFullscreen: () -> Unit = {},
         onToggleDanmaku: () -> Unit = {},
         audioController: LevelController = NoOpLevelController,
-        playbackSpeed: PlaybackSpeed = NoOpPlaybackSpeedController,
+        playbackSpeed: TestPlaybackSpeed? = null,
         onCommitPlaybackSpeed: (Float) -> Unit = {},
         opEdSkipDuration: Duration = 85.seconds,
         onPlayerStateCreated: (TestMediampPlayer) -> Unit = {},
@@ -281,9 +280,14 @@ class EpisodeVideoControllerTest {
                 audioController = audioController,
                 brightnessController = NoOpLevelController,
                 playbackSpeedControllerState = remember(playbackSpeed) {
+                    val speed = playbackSpeed ?: TestPlaybackSpeed(1f)
                     PlaybackSpeedControllerState(
-                        playbackSpeed = playbackSpeed,
-                        onCommitSpeed = onCommitPlaybackSpeed,
+                        baseSpeed = speed.valueFlow,
+                        effectiveSpeed = speed.valueFlow,
+                        onSetSpeed = { value, persist ->
+                            speed.set(value)
+                            if (persist) onCommitPlaybackSpeed(value)
+                        },
                         scope = scope,
                     )
                 },
