@@ -1597,6 +1597,88 @@ class BaseJellyfinMediaSourceTest {
     }
 
     @Test
+    fun `supports one series per mushoku tensei season with local season numbering`() = runTest {
+        val cases = listOf(
+            IsolatedSeriesCase(
+                subjectId = "444557",
+                episodeId = "1233194",
+                subjectName = "无职转生 第二季 下半",
+                seriesName = "无职转生 第二季 下半",
+                seriesProviderId = null,
+                episodeSort = EpisodeSort(13),
+                episodeEp = EpisodeSort(1),
+                jellyfinEpisodeId = "isolated-mushoku-season-2-cour-2-episode-1",
+                jellyfinEpisodeName = "夢のマイホーム",
+            ),
+            IsolatedSeriesCase(
+                subjectId = "501963",
+                episodeId = "1704816",
+                subjectName = "无职转生 第三季",
+                seriesName = "無職転生Ⅲ ～異世界行ったら本気だす～",
+                seriesProviderId = "501963",
+                episodeSort = EpisodeSort(1),
+                episodeEp = EpisodeSort(1),
+                jellyfinEpisodeId = "isolated-mushoku-season-3-episode-1",
+                jellyfinEpisodeName = "燃えよ狂犬",
+            ),
+        )
+
+        cases.forEach { case ->
+            assertIsolatedSeriesCase(case)
+        }
+    }
+
+    @Test
+    fun `does not treat a generic one season series as the requested later season`() = runTest {
+        val source = createSource { request ->
+            when {
+                request.url.parameters["searchTerm"] == "作品 第三季" ->
+                    respondJson("""{ "Items": [] }""")
+
+                request.url.parameters["searchTerm"] == "作品" -> respondJson(
+                    """
+                    {
+                      "Items": [
+                        {
+                          "Name": "作品",
+                          "Id": "generic-isolated-series",
+                          "Type": "Series"
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                request.url.encodedPath == "/Shows/generic-isolated-series/Seasons" -> respondJson(
+                    """
+                    {
+                      "Items": [
+                        {
+                          "Name": "Season 1",
+                          "Id": "generic-season-1",
+                          "IndexNumber": 1,
+                          "Type": "Season"
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                request.url.parameters["parentId"] == "generic-isolated-series" ->
+                    respondJson("""{ "Items": [] }""")
+
+                else -> error("Unexpected request: ${request.url}")
+            }
+        }
+
+        val result = source.fetch(
+            request(subjectNames = listOf("作品 第三季")),
+        ).results.toList()
+
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
     fun `keeps inspecting a multi-season series whose provider id belongs to season one`() = runTest {
         val requests = mutableListOf<HttpRequestData>()
         val source = createSource { request ->
@@ -1966,6 +2048,113 @@ class BaseJellyfinMediaSourceTest {
         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
     )
 
+    private suspend fun assertIsolatedSeriesCase(case: IsolatedSeriesCase) {
+        val requestedSeasonNumbers = mutableListOf<String>()
+        val seriesProviderIds = case.seriesProviderId?.let { providerId ->
+            """
+            ,
+            "ProviderIds": {
+              "Bangumi": "$providerId"
+            }
+            """.trimIndent()
+        }.orEmpty()
+        val source = createSource { request ->
+            when {
+                request.url.parameters["searchTerm"] == case.subjectName -> respondJson(
+                    """
+                    {
+                      "Items": [
+                        {
+                          "Name": "${case.seriesName}",
+                          "Id": "isolated-series",
+                          "Type": "Series"
+                          $seriesProviderIds
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                request.url.parameters["searchTerm"] == "无职转生" ->
+                    respondJson("""{ "Items": [] }""")
+
+                request.url.encodedPath == "/Shows/isolated-series/Seasons" -> respondJson(
+                    """
+                    {
+                      "Items": [
+                        {
+                          "Name": "Season 1",
+                          "Id": "isolated-season-1",
+                          "IndexNumber": 1,
+                          "Type": "Season"
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                request.url.parameters["parentId"] == "isolated-series" ->
+                    respondJson("""{ "Items": [] }""")
+
+                request.url.encodedPath == "/Shows/isolated-series/Episodes" -> {
+                    val seasonNumber = checkNotNull(request.url.parameters["Season"])
+                    requestedSeasonNumbers += seasonNumber
+                    assertEquals("1", seasonNumber)
+                    respondJson(
+                        """
+                        {
+                          "Items": [
+                            {
+                              "Name": "${case.jellyfinEpisodeName}",
+                              "SeriesName": "${case.seriesName}",
+                              "SeasonName": "Season 1",
+                              "Id": "${case.jellyfinEpisodeId}",
+                              "IndexNumber": 1,
+                              "ParentIndexNumber": 1,
+                              "Type": "Episode"
+                            }
+                          ]
+                        }
+                        """.trimIndent(),
+                    )
+                }
+
+                request.url.parameters["ids"] == case.jellyfinEpisodeId -> respondJson(
+                    """
+                    {
+                      "Items": [
+                        {
+                          "Name": "${case.jellyfinEpisodeName}",
+                          "SeriesName": "${case.seriesName}",
+                          "SeasonName": "Season 1",
+                          "Id": "${case.jellyfinEpisodeId}",
+                          "IndexNumber": 1,
+                          "ParentIndexNumber": 1,
+                          "Type": "Episode"
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+
+                else -> error("Unexpected request: ${request.url}")
+            }
+        }
+
+        val result = source.fetch(
+            request(
+                subjectNames = listOf(case.subjectName),
+                subjectId = case.subjectId,
+                episodeId = case.episodeId,
+                episodeSort = case.episodeSort,
+                episodeEp = case.episodeEp,
+            ),
+        ).results.toList()
+
+        assertEquals(case.jellyfinEpisodeId, result.single().media.mediaId)
+        assertEquals(listOf("1"), requestedSeasonNumbers)
+    }
+
     private data class TestCase(
         val subjectId: String,
         val episodeId: String,
@@ -1980,6 +2169,18 @@ class BaseJellyfinMediaSourceTest {
         val episodeId: String,
         val subjectNames: List<String>,
         val seasonNumber: Int,
+        val episodeSort: EpisodeSort,
+        val episodeEp: EpisodeSort?,
+        val jellyfinEpisodeId: String,
+        val jellyfinEpisodeName: String,
+    )
+
+    private data class IsolatedSeriesCase(
+        val subjectId: String,
+        val episodeId: String,
+        val subjectName: String,
+        val seriesName: String,
+        val seriesProviderId: String?,
         val episodeSort: EpisodeSort,
         val episodeEp: EpisodeSort?,
         val jellyfinEpisodeId: String,

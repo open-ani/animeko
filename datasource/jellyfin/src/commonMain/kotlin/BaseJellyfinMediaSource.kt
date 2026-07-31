@@ -103,6 +103,7 @@ abstract class BaseJellyfinMediaSource(
                 query,
                 subjectSearch.targetSeason,
                 subjectSearch.name,
+                subjectSearch.isExplicitSeasonTitle,
             )
             val matches = if (preferredMatches.isNotEmpty()) {
                 preferredMatches
@@ -114,6 +115,7 @@ abstract class BaseJellyfinMediaSource(
                     query,
                     subjectSearch.targetSeason,
                     subjectSearch.name,
+                    subjectSearch.isExplicitSeasonTitle,
                 )
             }
 
@@ -176,6 +178,7 @@ abstract class BaseJellyfinMediaSource(
         query: MediaFetchRequest,
         targetSeason: Int?,
         searchName: String,
+        isExplicitSeasonTitle: Boolean,
     ): List<MatchedItem> {
         return buildList {
             for (candidate in candidates) {
@@ -206,12 +209,26 @@ abstract class BaseJellyfinMediaSource(
                 val requestedItems: List<RequestedItem> = when (candidate.Type) {
                     TYPE_SERIES -> {
                         val seasons = doGetSeasons(seriesId = candidate.Id).Items
+                        val seriesSubjectMatch = candidate.seriesSubjectIdMatch(query)
+                        val matchesExplicitSeasonTitle =
+                            isExplicitSeasonTitle && candidate.hasExactContainerTitle(searchName)
+                        val hasIsolatedSeriesEvidence =
+                            seriesSubjectMatch == ProviderIdMatch.MATCH || matchesExplicitSeasonTitle
+                        val usesLocalSeasonNumbering =
+                            seasons.size == 1 && hasIsolatedSeriesEvidence
                         val matchedSeasons = seasons.mapNotNull { season ->
                             val seasonSubjectMatch = season.containerSubjectIdMatch(query)
                             when {
                                 seasonSubjectMatch == ProviderIdMatch.CONFLICT -> null
                                 seasonSubjectMatch == ProviderIdMatch.MATCH ->
                                     MatchedSeason(season, inheritedSubjectMatch = true)
+
+                                usesLocalSeasonNumbering ->
+                                    MatchedSeason(
+                                        season,
+                                        inheritedSubjectMatch =
+                                            seriesSubjectMatch == ProviderIdMatch.MATCH,
+                                    )
 
                                 season.hasConflictingTargetSeason(targetSeason) -> null
 
@@ -454,6 +471,7 @@ abstract class BaseJellyfinMediaSource(
     private data class SubjectSearch(
         val name: String,
         val targetSeason: Int?,
+        val isExplicitSeasonTitle: Boolean,
     )
 
     private fun createSubjectSearches(subjectNames: List<String>): List<SubjectSearch> {
@@ -473,9 +491,24 @@ abstract class BaseJellyfinMediaSource(
             .asSequence()
             .flatMap { (name, parsed) ->
                 val targetSeason = parsed.targetSeason ?: sharedTargetSeason
-                sequenceOf(name, parsed.baseName)
-                    .distinct()
-                    .map { searchName -> SubjectSearch(searchName, targetSeason) }
+                sequence {
+                    yield(
+                        SubjectSearch(
+                            name = name,
+                            targetSeason = targetSeason,
+                            isExplicitSeasonTitle = parsed.targetSeason != null,
+                        ),
+                    )
+                    if (parsed.baseName != name) {
+                        yield(
+                            SubjectSearch(
+                                name = parsed.baseName,
+                                targetSeason = targetSeason,
+                                isExplicitSeasonTitle = false,
+                            ),
+                        )
+                    }
+                }
             }
             .distinctBy { search -> search.name.lowercase() to search.targetSeason }
             .toList()
@@ -643,6 +676,11 @@ private fun Item.containerSubjectIdMatch(query: MediaFetchRequest): ProviderIdMa
         else -> null
     }
     return compareProviderId(actualSubjectId, query.subjectId)
+}
+
+private fun Item.seriesSubjectIdMatch(query: MediaFetchRequest): ProviderIdMatch {
+    if (Type != TYPE_SERIES) return ProviderIdMatch.UNKNOWN
+    return compareProviderId(providerId(PROVIDER_ID_BANGUMI), query.subjectId)
 }
 
 private fun Item.episodeIdMatch(query: MediaFetchRequest): ProviderIdMatch {
