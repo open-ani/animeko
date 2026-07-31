@@ -62,6 +62,8 @@ data class JellyfinPlaybackPlan(
     val mediaSourceId: String,
     val playSessionId: String?,
     val isTranscoding: Boolean,
+    val audioStreamIndices: List<Int> = emptyList(),
+    val selectedAudioStreamIndex: Int? = null,
 )
 
 /**

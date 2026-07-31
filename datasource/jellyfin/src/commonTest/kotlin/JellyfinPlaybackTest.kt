@@ -110,6 +110,49 @@ class JellyfinPlaybackTest {
     }
 
     @Test
+    fun `selected audio stream is retained across PlaybackInfo renegotiation`() = runTest {
+        var playbackInfoCount = 0
+        val source = source { request ->
+            assertEquals("/Items/movie-1/PlaybackInfo", request.url.encodedPath)
+            playbackInfoCount++
+            val body = request.jsonBody()
+            assertEquals("3", body.getValue("AudioStreamIndex").jsonPrimitive.content)
+
+            respondJson(
+                """
+                {
+                  "PlaySessionId": "play-session-$playbackInfoCount",
+                  "MediaSources": [{
+                    "Id": "physical-version-1",
+                    "Bitrate": 24000000,
+                    "SupportsDirectPlay": false,
+                    "SupportsDirectStream": false,
+                    "SupportsTranscoding": true,
+                    "DefaultAudioStreamIndex": 1,
+                    "TranscodingUrl": "/Videos/movie-1/master.m3u8?AudioStreamIndex=3",
+                    "MediaStreams": [
+                      { "Index": 0, "Type": "Video", "Codec": "hevc", "BitRate": 22000000 },
+                      { "Index": 1, "Type": "Audio", "Codec": "aac", "BitRate": 1000000 },
+                      { "Index": 3, "Type": "Audio", "Codec": "aac", "BitRate": 1000000 }
+                    ]
+                  }]
+                }
+                """.trimIndent(),
+            )
+        }
+
+        val plan = source.createPlaybackPlan(
+            itemId = "movie-1",
+            quality = JellyfinPlaybackQuality.Original,
+            audioStreamIndex = 3,
+        )
+
+        assertEquals(2, playbackInfoCount)
+        assertEquals(listOf(1, 3), plan.audioStreamIndices)
+        assertEquals(3, plan.selectedAudioStreamIndex)
+    }
+
+    @Test
     fun `original uses Jellyfin compatibility stream instead of forcing direct download`() = runTest {
         var playbackInfoCount = 0
         val source = source { request ->

@@ -137,6 +137,7 @@ class JellyfinMediaDataProvider internal constructor(
         quality: JellyfinPlaybackQuality,
         startPositionMillis: Long,
         forceAutoDetection: Boolean = false,
+        audioStreamIndex: Int? = null,
     ): PreparedJellyfinPlayback {
         val plan = source.createPlaybackPlan(
             itemId = itemId,
@@ -144,6 +145,7 @@ class JellyfinMediaDataProvider internal constructor(
             mediaSourceId = currentPlan?.mediaSourceId,
             startPositionMillis = startPositionMillis,
             forceAutoDetection = forceAutoDetection,
+            audioStreamIndex = audioStreamIndex,
         )
         return PreparedJellyfinPlayback(
             data = UriMediaData(plan.uri, emptyMap(), extraFiles),
@@ -179,6 +181,21 @@ class JellyfinMediaDataProvider internal constructor(
         _qualityState.value = _qualityState.value?.copy(isSwitching = isSwitching)
     }
 
+    internal fun audioStreamIndexForQualitySwitch(
+        playerAudioTrackCount: Int?,
+        selectedPlayerAudioTrackIndex: Int?,
+    ): Int? {
+        val plan = checkNotNull(currentPlan) { "Jellyfin playback has not been opened" }
+        if (plan.isTranscoding || playerAudioTrackCount == null || selectedPlayerAudioTrackIndex == null) {
+            return plan.selectedAudioStreamIndex
+        }
+        check(playerAudioTrackCount == plan.audioStreamIndices.size) {
+            "Player audio tracks do not match the Jellyfin media streams"
+        }
+        return plan.audioStreamIndices.getOrNull(selectedPlayerAudioTrackIndex)
+            ?: error("The selected player audio track index is out of bounds")
+    }
+
     internal suspend fun stopEncoding(plan: JellyfinPlaybackPlan?) {
         if (plan?.isTranscoding != true) return
         val playSessionId = plan.playSessionId ?: return
@@ -192,10 +209,14 @@ class JellyfinMediaDataProvider internal constructor(
     }
 
     internal suspend fun stopCurrentEncoding() {
+        stopEncoding(takeCurrentPlan())
+    }
+
+    internal fun takeCurrentPlan(): JellyfinPlaybackPlan? {
         val plan = currentPlan
         currentPlan = null
         _qualityState.value = null
-        stopEncoding(plan)
+        return plan
     }
 
     private companion object {

@@ -99,6 +99,7 @@ abstract class BaseJellyfinMediaSource(
         mediaSourceId: String? = null,
         startPositionMillis: Long = 0,
         forceAutoDetection: Boolean = false,
+        audioStreamIndex: Int? = null,
     ): JellyfinPlaybackPlan {
         val effectiveMaxBitrate = when (quality.mode) {
             JellyfinPlaybackQualityMode.AUTO -> detectMaxStreamingBitrate(forceAutoDetection)
@@ -150,10 +151,11 @@ abstract class BaseJellyfinMediaSource(
         }
 
         var negotiatedMaxBitrate = effectiveMaxBitrate
+        var negotiatedAudioStreamIndex = audioStreamIndex
         var playbackResult = requestPlaybackInfo(
             requestedMediaSourceId = mediaSourceId,
             maxStreamingBitrate = negotiatedMaxBitrate,
-            audioStreamIndex = null,
+            audioStreamIndex = negotiatedAudioStreamIndex,
             deviceProfile = defaultDeviceProfile,
         )
         var response = playbackResult.first
@@ -168,9 +170,13 @@ abstract class BaseJellyfinMediaSource(
         // while still returning an incompatible default stream. Explicitly selecting that default
         // makes the server negotiate the required audio conversion instead of handing it to the
         // player unchanged.
-        val incompatibleDefaultAudioIndex = defaultAudioStream
-            ?.takeUnless { defaultDeviceProfile.supportsDirectAudioCodec(it.codec) }
-            ?.index
+        val incompatibleDefaultAudioIndex = if (negotiatedAudioStreamIndex == null) {
+            defaultAudioStream
+                ?.takeUnless { defaultDeviceProfile.supportsDirectAudioCodec(it.codec) }
+                ?.index
+        } else {
+            null
+        }
         val originalDeviceProfile = if (quality.mode == JellyfinPlaybackQualityMode.ORIGINAL) {
             defaultDeviceProfile.withOriginalVideoCodec(source.videoCodec)
         } else {
@@ -179,16 +185,18 @@ abstract class BaseJellyfinMediaSource(
         val shouldRenegotiateOriginal = quality.mode == JellyfinPlaybackQualityMode.ORIGINAL &&
                 !source.supportsDirectPlay &&
                 originalDeviceProfile != defaultDeviceProfile
+        val compatibilityAudioStreamIndex = negotiatedAudioStreamIndex ?: incompatibleDefaultAudioIndex
         if (incompatibleDefaultAudioIndex != null || shouldRenegotiateOriginal) {
+            negotiatedAudioStreamIndex = compatibilityAudioStreamIndex
             logger.debug {
                 "Renegotiating Jellyfin playback for compatibility: mode=${quality.mode}, " +
-                        "audioStreamIndex=$incompatibleDefaultAudioIndex, " +
+                        "audioStreamIndex=$negotiatedAudioStreamIndex, " +
                         "preserveOriginalVideo=${originalDeviceProfile != defaultDeviceProfile}"
             }
             playbackResult = requestPlaybackInfo(
                 requestedMediaSourceId = source.id,
                 maxStreamingBitrate = negotiatedMaxBitrate,
-                audioStreamIndex = incompatibleDefaultAudioIndex,
+                audioStreamIndex = negotiatedAudioStreamIndex,
                 deviceProfile = originalDeviceProfile.copy(
                     maxStreamingBitrate = negotiatedMaxBitrate,
                     maxStaticBitrate = negotiatedMaxBitrate,
@@ -202,6 +210,14 @@ abstract class BaseJellyfinMediaSource(
         val transcodingUrl = source.transcodingUrl?.takeIf(String::isNotBlank)
         val isTranscoding = !canDirectPlay && transcodingUrl != null
         val videoStream = source.videoStream
+        val audioStreamIndices = source.mediaStreams
+            .filter { it.type.equals("Audio", ignoreCase = true) && it.index >= 0 }
+            .map { it.index }
+            .sorted()
+        val selectedAudioStreamIndex = negotiatedAudioStreamIndex ?: source.defaultAudioStreamIndex
+        check(selectedAudioStreamIndex == null || selectedAudioStreamIndex in audioStreamIndices) {
+            "Jellyfin selected audio stream $selectedAudioStreamIndex, but it is not present in MediaStreams"
+        }
         val transcodingParameters = transcodingUrl?.queryParameters()
         logger.debug {
             "Jellyfin playback plan: mode=${quality.mode}, maxBitrate=$negotiatedMaxBitrate, " +
@@ -234,6 +250,8 @@ abstract class BaseJellyfinMediaSource(
             mediaSourceId = source.id,
             playSessionId = response.playSessionId,
             isTranscoding = isTranscoding,
+            audioStreamIndices = audioStreamIndices,
+            selectedAudioStreamIndex = selectedAudioStreamIndex,
         )
     }
 
