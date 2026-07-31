@@ -9,7 +9,7 @@
 
 package me.him188.ani.app.domain.mediasource
 
-import me.him188.ani.app.data.network.toIntArray
+import androidx.collection.IntSet
 import me.him188.ani.app.domain.mediasource.MediaListFilters.charsToDelete
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.EpisodeRange
@@ -19,6 +19,13 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class MediaListFiltersTest {
+    private fun IntSet.toIntArray(): IntArray {
+        val array = IntArray(size)
+        var i = 0
+        forEach { array[i++] = it }
+        return array
+    }
+
     @Test
     fun `charsToDelete does not contains space`() {
         // 不能意外地删除空格

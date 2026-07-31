@@ -398,7 +398,6 @@ private fun EpisodeScreenContent(
     if (showEditCommentSheet) {
         EpisodeEditCommentSheet(
             state = vm.commentEditorState,
-            turnstileState = vm.turnstileState,
             onDismiss = {
                 showEditCommentSheet = false
                 vm.commentEditorState.cancelSend()

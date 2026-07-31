@@ -31,7 +31,6 @@ import me.him188.ani.app.data.network.AnimeScheduleService
 import me.him188.ani.app.data.network.AutoSkipRepository
 import me.him188.ani.app.data.network.BangumiBangumiCommentServiceImpl
 import me.him188.ani.app.data.network.BangumiCommentService
-import me.him188.ani.app.data.network.BangumiProfileService
 import me.him188.ani.app.data.network.BangumiRelatedPeopleService
 import me.him188.ani.app.data.network.DefaultWatchTogetherApiService
 import me.him188.ani.app.data.network.EpisodeService
@@ -81,7 +80,6 @@ import me.him188.ani.app.data.repository.user.AccessTokenSession
 import me.him188.ani.app.data.repository.user.PreferencesRepositoryImpl
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.TokenRepository
-import me.him188.ani.app.domain.comment.TurnstileState
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeature
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeatureHandler
@@ -144,7 +142,6 @@ import me.him188.ani.app.ui.subject.details.state.DefaultSubjectDetailsStateFact
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.datasources.bangumi.BangumiClientImpl
-import me.him188.ani.datasources.bangumi.turnstileBaseUrl
 import me.him188.ani.utils.coroutines.IO_
 import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.coroutines.childScopeContext
@@ -156,7 +153,6 @@ import org.koin.core.KoinApplication
 import org.koin.core.scope.Scope
 import org.koin.dsl.module
 import kotlin.time.Duration.Companion.minutes
-import me.him188.ani.app.ui.comment.TurnstileState as CreateTurnstileState
 
 private val Scope.client get() = get<BangumiClient>()
 private val Scope.database get() = get<AniDatabase>()
@@ -426,9 +422,8 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             builtinPeerFilterRuleApi = get<AniApiProvider>().pfRuleApi,
         )
     }
-    single<BangumiProfileService> { BangumiProfileService() }
     single<AnimeScheduleService> { AnimeScheduleService(get<AniApiProvider>().scheduleApi) }
-    single<TrendsRepository> { TrendsRepository(get<AniApiProvider>().trendsApi, get<BangumiClient>().nextTrendingApi) }
+    single<TrendsRepository> { TrendsRepository(get<AniApiProvider>().trendsApi) }
     single<RecommendationRepository> { RecommendationRepository(get<AniApiProvider>().homeApi) }
     single<AutoSkipRepository> { AutoSkipRepository(get<AniApiProvider>().episodesApi) }
 
@@ -567,16 +562,6 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     // Caching
     single<MeteredNetworkDetector> { createMeteredNetworkDetector(getContext()) }
     single<SubjectDetailsStateFactory> { DefaultSubjectDetailsStateFactory() }
-
-    factory<TurnstileState> {
-        CreateTurnstileState(
-            buildString {
-                append(get<BangumiClient>().turnstileBaseUrl)
-                append("?redirect_uri=")
-                append(TurnstileState.CALLBACK_INTERCEPTION_PREFIX)
-            },
-        )
-    }
 }
 
 /**

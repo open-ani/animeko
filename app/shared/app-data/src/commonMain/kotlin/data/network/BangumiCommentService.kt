@@ -23,7 +23,6 @@ import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.client.models.AniSubjectReview
 import me.him188.ani.datasources.api.paging.Paged
 import me.him188.ani.datasources.bangumi.BangumiClient
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextCreateEpisodeCommentRequest
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.coroutines.IO_
 import kotlin.coroutines.CoroutineContext
@@ -39,14 +38,6 @@ interface BangumiCommentService {
      * @return `null` if [episodeId] is invalid
      */
     suspend fun getSubjectEpisodeComments(episodeId: Long): List<EpisodeComment>?
-
-    // comment.id 会被忽略
-    suspend fun postEpisodeComment(
-        episodeId: Long,
-        content: String,
-        cfTurnstileResponse: String,
-        replyToCommentId: Int? = null
-    )
 
     suspend fun submitEpisodeCommentReaction(
         commentId: String,
@@ -72,27 +63,6 @@ class BangumiBangumiCommentServiceImpl(
                 hasMore = offset + list.size < response.total,
                 page = list,
             )
-        }
-    }
-
-    override suspend fun postEpisodeComment(
-        episodeId: Long,
-        content: String,
-        cfTurnstileResponse: String,
-        replyToCommentId: Int?
-    ) {
-        withContext(ioDispatcher) {
-            client.nextEpisodeApi {
-                createEpisodeComment(
-                    episodeId,
-                    BangumiNextCreateEpisodeCommentRequest(
-                        content,
-                        cfTurnstileResponse,
-                        replyToCommentId,
-                    ),
-                )
-                Unit // suppress inspection
-            }
         }
     }
 

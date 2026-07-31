@@ -64,7 +64,6 @@ import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.comment.PostCommentUseCase
-import me.him188.ani.app.domain.comment.TurnstileState
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
@@ -262,7 +261,6 @@ class EpisodeViewModel(
     private val setDanmakuEnabledUseCase: SetDanmakuEnabledUseCase by inject()
     private val postCommentUseCase: PostCommentUseCase by inject()
     private val autoSkipRepository: AutoSkipRepository by inject()
-    val turnstileState: TurnstileState by inject()
     private val getMediaSelectorSettings: GetMediaSelectorSettingsUseCase by inject()
     private val getMediaSourceInstances: GetMediaSourceInstancesUseCase by inject()
     val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase by inject()
@@ -1060,7 +1058,6 @@ class EpisodeViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        turnstileState.cancel()
         webSessionManager.cancelAutoSolves()
         backgroundScope.launch(NonCancellable + CoroutineName("EpisodeViewModel#onCleared")) {
             fetchPlayState.onClose()

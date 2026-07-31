@@ -104,13 +104,6 @@ class DualSourceEpisodeCommentPagingSourceTest {
                     )
                 }
 
-                override suspend fun postEpisodeComment(
-                    episodeId: Long,
-                    content: String,
-                    cfTurnstileResponse: String,
-                    replyToCommentId: Int?,
-                ) = error("unused")
-
                 override suspend fun submitEpisodeCommentReaction(
                     commentId: String,
                     value: String,
@@ -186,13 +179,6 @@ class DualSourceEpisodeCommentPagingSourceTest {
                     return listOf(bangumiComment(id = "bangumi:250", createdAt = 250))
                 }
 
-                override suspend fun postEpisodeComment(
-                    episodeId: Long,
-                    content: String,
-                    cfTurnstileResponse: String,
-                    replyToCommentId: Int?,
-                ) = error("unused")
-
                 override suspend fun submitEpisodeCommentReaction(
                     commentId: String,
                     value: String,
@@ -250,13 +236,6 @@ class DualSourceEpisodeCommentPagingSourceTest {
                     throw IOException("bangumi boom")
                 }
 
-                override suspend fun postEpisodeComment(
-                    episodeId: Long,
-                    content: String,
-                    cfTurnstileResponse: String,
-                    replyToCommentId: Int?,
-                ) = error("unused")
-
                 override suspend fun submitEpisodeCommentReaction(
                     commentId: String,
                     value: String,
@@ -293,13 +272,6 @@ class DualSourceEpisodeCommentPagingSourceTest {
                 override suspend fun getSubjectEpisodeComments(episodeId: Long): List<EpisodeComment> {
                     return listOf(bangumiComment(id = "bangumi:100", createdAt = 100))
                 }
-
-                override suspend fun postEpisodeComment(
-                    episodeId: Long,
-                    content: String,
-                    cfTurnstileResponse: String,
-                    replyToCommentId: Int?,
-                ) = error("unused")
 
                 override suspend fun submitEpisodeCommentReaction(
                     commentId: String,
@@ -338,13 +310,6 @@ class DualSourceEpisodeCommentPagingSourceTest {
             override suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int) = error("unused")
 
             override suspend fun getSubjectEpisodeComments(episodeId: Long): List<EpisodeComment>? = bangumiComments
-
-            override suspend fun postEpisodeComment(
-                episodeId: Long,
-                content: String,
-                cfTurnstileResponse: String,
-                replyToCommentId: Int?,
-            ) = error("unused")
 
             override suspend fun submitEpisodeCommentReaction(
                 commentId: String,
