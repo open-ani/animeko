@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.domain.danmaku
 
+import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -28,6 +29,7 @@ import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.fail
 
 class DanmakuLoaderTest {
     @Test
@@ -81,12 +83,55 @@ class DanmakuLoaderTest {
         }
     }
 
+    @Test
+    fun `manual override survives resubscription`() = runTest {
+        val localResults = MutableSharedFlow<List<DanmakuFetchResult>>()
+        val remoteResults = MutableSharedFlow<List<DanmakuFetchResult>>()
+        val loader = createLoader(localResults, remoteResults)
+
+        loader.fetchResultFlow.test {
+            assertEquals(emptyList(), awaitItem())
+
+            remoteResults.emit(listOf(remoteResult()))
+            assertResultIds(listOf("remote"), awaitItem())
+
+            loader.overrideResults(DanmakuProviderId.Animeko, listOf(overrideResult()))
+            assertResultIds(listOf("override"), awaitItem())
+        }
+
+        // UI 停止收集后重新订阅 (切换全屏、进出内嵌详情页等), 手动匹配的结果不应丢失
+        loader.fetchResultFlow.test {
+            awaitResultIds(listOf("override"))
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `manual override is dropped after switching episode`() = runTest {
+        val localResults = MutableSharedFlow<List<DanmakuFetchResult>>()
+        val remoteResults = MutableSharedFlow<List<DanmakuFetchResult>>()
+        val requestFlow = MutableStateFlow(createRequest())
+        val loader = createLoader(localResults, remoteResults, requestFlow)
+
+        loader.fetchResultFlow.test {
+            assertEquals(emptyList(), awaitItem())
+
+            loader.overrideResults(DanmakuProviderId.Animeko, listOf(overrideResult()))
+            assertResultIds(listOf("override"), awaitItem())
+
+            requestFlow.value = createRequest(episodeId = OTHER_EPISODE_ID)
+            awaitResultIds(emptyList())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private fun TestScope.createLoader(
         localResults: Flow<List<DanmakuFetchResult>>,
         remoteResults: Flow<List<DanmakuFetchResult>>,
+        requestFlow: Flow<SearchDanmakuRequest?> = MutableStateFlow(createRequest()),
     ): DanmakuLoaderImpl {
         return DanmakuLoaderImpl(
-            requestFlow = MutableStateFlow(createRequest()),
+            requestFlow = requestFlow,
             flowScope = backgroundScope,
             fetchFromLocal = { localResults },
             fetchFromAllRemotes = { remoteResults },
@@ -98,11 +143,22 @@ class DanmakuLoaderTest {
         assertEquals(expected, actual.orEmpty().flatMap { result -> result.list.map { it.id } })
     }
 
-    private fun createRequest(): SearchDanmakuRequest {
+    /**
+     * 等待直到收到 [expected]. 切换剧集与重新订阅都可能先重放上一个状态, 这些中间值不是本测试关心的.
+     */
+    private suspend fun ReceiveTurbine<List<DanmakuFetchResult>?>.awaitResultIds(expected: List<String>) {
+        repeat(10) {
+            val actual = awaitItem().orEmpty().flatMap { result -> result.list.map { it.id } }
+            if (actual == expected) return
+        }
+        fail("Expected $expected but never received it")
+    }
+
+    private fun createRequest(episodeId: Int = EPISODE_ID): SearchDanmakuRequest {
         return SearchDanmakuRequest(
             subjectInfo = SubjectInfo.createPlaceholder(SUBJECT_ID, "Subject", image = ""),
-            episodeInfo = EpisodeInfo.Empty.copy(episodeId = EPISODE_ID, name = "Episode 1"),
-            episodeId = EPISODE_ID,
+            episodeInfo = EpisodeInfo.Empty.copy(episodeId = episodeId, name = "Episode 1"),
+            episodeId = episodeId,
         )
     }
 
@@ -130,6 +186,18 @@ class DanmakuLoaderTest {
         )
     }
 
+    private fun overrideResult(): DanmakuFetchResult {
+        return DanmakuFetchResult(
+            providerId = DanmakuProviderId.Animeko,
+            matchInfo = DanmakuMatchInfo(
+                serviceId = DanmakuServiceId.Animeko,
+                count = 1,
+                method = DanmakuMatchMethod.ExactId(SUBJECT_ID, EPISODE_ID),
+            ),
+            list = listOf(danmakuInfo("override", DanmakuServiceId.Animeko)),
+        )
+    }
+
     private fun noMatchResults(): List<DanmakuFetchResult> {
         return listOf(
             DanmakuFetchResult.noMatch(DanmakuProviderId.Animeko, DanmakuServiceId.Animeko),
@@ -154,5 +222,6 @@ class DanmakuLoaderTest {
     private companion object {
         private const val SUBJECT_ID = 101
         private const val EPISODE_ID = 202
+        private const val OTHER_EPISODE_ID = 203
     }
 }
