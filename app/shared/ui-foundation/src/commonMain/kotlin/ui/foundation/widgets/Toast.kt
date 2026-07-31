@@ -13,13 +13,13 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -29,7 +29,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -167,14 +166,16 @@ fun Toast(
             }
         },
     ) {
-        val isDarkTheme = isSystemInDarkTheme()
+        // 配色取自主题 (同更新提示气泡的 surfaceContainerHigh): 之前按 isSystemInDarkTheme()
+        // 在纯黑/纯白之间二选一 —— 那是**系统**的深浅色, 与应用内的主题设置 (深色/浅色/主题色)
+        // 无关, 于是应用切了主题 toast 还是同一套黑白, 在 TV 上尤其突兀
         Surface(
             modifier = Modifier.padding(horizontal = 60.dp),
             shape = RoundedCornerShape(15.dp),
-            color = (if (isDarkTheme) Color.White else Color.Black).copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
             shadowElevation = 4.dp,
         ) {
-            CompositionLocalProvider(LocalContentColor provides (if (isDarkTheme) Color.Black else Color.White)) {
+            CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
                 Row(modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)) {
                     currentContent()
                 }
