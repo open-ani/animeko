@@ -74,6 +74,11 @@ class DanmakuHostState(
     private val uiContext: UIContext = UIContext()
 
     /**
+     * 排版结果和位图的 LRU 缓存. 只在 UI 线程访问, 见 [DanmakuRenderCache].
+     */
+    private val renderCache = DanmakuRenderCache()
+
+    /**
      * The width of this DanmakuHost. Measured in pixels. Updated when the Composable hosting it changes size.
      */
     private val hostWidthState = mutableIntStateOf(0)
@@ -545,16 +550,19 @@ class DanmakuHostState(
         placeFrameTimeNanos: Long = DanmakuTrack.NOT_PLACED
     ): Boolean {
         uiContext.await()
-        val styledDanmaku = StyledDanmaku(
-            presentation = danmaku,
-            measurer = uiContext.textMeasurer,
-            baseStyle = uiContext.baseStyle,
-            style = danmakuConfig.style,
-            enableColor = danmakuConfig.enableColor,
-            isDebug = danmakuConfig.isDebug,
-        )
 
         return withContext(Dispatchers.Main.immediate) {
+            // 测量和缓存查找都必须在 UI 线程上做: TextMeasurer 和 renderCache 都不是线程安全的.
+            val styledDanmaku = StyledDanmaku(
+                presentation = danmaku,
+                measurer = uiContext.textMeasurer,
+                baseStyle = uiContext.baseStyle,
+                style = danmakuConfig.style,
+                enableColor = danmakuConfig.enableColor,
+                isDebug = danmakuConfig.isDebug,
+                renderCache = renderCache,
+            )
+
             when (danmaku.danmaku.location) {
                 DanmakuLocation.NORMAL -> {
                     val floatingDanmaku = floatingTrack.firstNotNullOfOrNull {
@@ -599,6 +607,7 @@ class DanmakuHostState(
                 style = danmakuConfig.style,
                 enableColor = danmakuConfig.enableColor,
                 isDebug = danmakuConfig.isDebug,
+                renderCache = renderCache,
             )
 
             if (danmaku.danmaku.location == DanmakuLocation.NORMAL) {

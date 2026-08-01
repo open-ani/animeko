@@ -47,7 +47,8 @@ data class StyledDanmaku(
     internal val baseStyle: TextStyle,
     internal val style: DanmakuStyle,
     internal val enableColor: Boolean,
-    internal val isDebug: Boolean
+    internal val isDebug: Boolean,
+    internal val renderCache: DanmakuRenderCache? = null,
 ) : SizeSpecifiedDanmaku {
     private val danmakuText = presentation.danmaku.run {
         val seconds = playTimeMillis.toFloat().div(1000)
@@ -55,29 +56,49 @@ data class StyledDanmaku(
     }
 
     // 描边和填充的排版结果完全一致, 只测量一次, 光栅化时用 drawStyle 覆盖画两遍.
-    private val textLayout = measurer.measure(
-        text = danmakuText,
-        style = baseStyle.merge(
+    // 内容和样式相同的弹幕共用同一个 entry (排版结果 + 位图), 刷屏弹幕因此不会重复测量和光栅化.
+    private val renderEntry: DanmakuRenderEntry = run {
+        val resolvedStyle = baseStyle.merge(
             style.styleForText(
                 color = if (enableColor) {
                     Color(0xFF_00_00_00L or presentation.danmaku.color.toUInt().toLong())
                 } else Color.White,
             ).copy(textDecoration = if (presentation.isSelf) TextDecoration.Underline else null),
-        ),
-        overflow = TextOverflow.Clip,
-        maxLines = 1,
-        softWrap = false,
-    )
+        )
+        val measure = {
+            measurer.measure(
+                text = danmakuText,
+                style = resolvedStyle,
+                overflow = TextOverflow.Clip,
+                maxLines = 1,
+                softWrap = false,
+            )
+        }
+        val cache = renderCache
+        if (cache == null) {
+            DanmakuRenderEntry(measure())
+        } else {
+            cache.getOrPut(
+                DanmakuRenderKey(
+                    text = danmakuText,
+                    textStyle = resolvedStyle,
+                    strokeColor = style.strokeColor,
+                    strokeWidth = style.strokeWidth,
+                    shadow = style.shadow,
+                ),
+                measure,
+            )
+        }
+    }
 
-    private var imageBitmap: ImageBitmapWithOffset? = null
-
-    override val danmakuWidth: Int = textLayout.size.width.coerceAtLeast(1)
-    override val danmakuHeight: Int = textLayout.size.height.coerceAtLeast(1)
+    override val danmakuWidth: Int = renderEntry.textLayout.size.width.coerceAtLeast(1)
+    override val danmakuHeight: Int = renderEntry.textLayout.size.height.coerceAtLeast(1)
 
     internal fun DrawScope.draw(screenPosX: Float, screenPosY: Float) {
-        val cachedImage = imageBitmap
-            ?: createDanmakuImageBitmap(textLayout, style.strokeColor, style.strokeWidth, style.shadow)
-                .also { imageBitmap = it }
+        val entry = renderEntry
+        val cachedImage = entry.imageBitmap
+            ?: createDanmakuImageBitmap(entry.textLayout, style.strokeColor, style.strokeWidth, style.shadow)
+                .also { entry.imageBitmap = it }
 
         drawImage(cachedImage.bitmap, Offset(screenPosX, screenPosY) + cachedImage.offset)
     }
