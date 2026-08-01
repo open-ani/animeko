@@ -1601,7 +1601,9 @@ class WithMatrix(
         if (matrix.uploadApk) {
             runGradle(
                 name = "Build Android Debug APKs",
-                tasks = arrayOf("assembleDefaultDebug"),
+                // assembleTvDebug 兼作交集源集纯净性的编译期验证, verifyTvManifestPurity 为清单守护
+                // (atv-architecture.md §10.2)
+                tasks = arrayOf("assembleDefaultDebug", "assembleTvDebug", "verifyTvManifestPurity"),
             )
         }
 

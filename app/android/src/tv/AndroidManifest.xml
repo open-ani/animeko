@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+  ~ Copyright (C) 2024-2026 OpenAni and contributors.
+  ~
+  ~ 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+  ~ Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+  ~
+  ~ https://github.com/open-ani/ani/blob/main/LICENSE
+  -->
+
+<!-- tv flavor 增量 manifest, 与 src/main 交集做加法合并 (atv-architecture.md §6.2).
+     模块 namespace 为 me.him188.ani, TV 源集包为 me.him188.ani.tv, 因此类名写全限定.
+     合并结果不含任何 <service> (BT 已裁剪, 单进程) 与 oauth callback (网页 OAuth 已裁剪). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- TV 形态声明 -->
+    <uses-feature
+            android:name="android.software.leanback"
+            android:required="true" />
+    <uses-feature
+            android:name="android.hardware.touchscreen"
+            android:required="false" />
+
+    <!-- android:name / banner 覆写 main 交集的 <application> (flavor 增量优先级更高) -->
+    <application
+            android:name="me.him188.ani.tv.TvAniApplication"
+            android:banner="@drawable/tv_banner">
+
+        <activity
+                android:name="me.him188.ani.tv.MainActivity"
+                android:exported="true"
+                android:launchMode="singleTask"
+                android:screenOrientation="landscape">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+
+            <!-- 与手机端同 scheme deep link: ani://subjects/{id} (M1 接线 handleStartIntent) -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                        android:host="subjects"
+                        android:scheme="ani" />
+            </intent-filter>
+        </activity>
+
+    </application>
+</manifest>

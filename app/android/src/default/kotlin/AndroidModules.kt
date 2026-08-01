@@ -15,7 +15,6 @@ import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.runBlocking
@@ -33,8 +32,6 @@ import me.him188.ani.app.domain.media.cache.engine.TorrentEngineAccess
 import me.him188.ani.app.domain.media.cache.engine.TorrentMediaCacheEngine
 import me.him188.ani.app.domain.media.cache.storage.MediaSaveDirProvider
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
-import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
-import me.him188.ani.app.domain.media.hls.PlatformHlsPlaybackPreparer
 import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
@@ -61,17 +58,14 @@ import me.him188.ani.app.domain.torrent.service.TorrentServiceConnection
 import me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.AndroidContextFiles
-import me.him188.ani.app.platform.AndroidPermissionManager
 import me.him188.ani.app.platform.AppTerminator
 import me.him188.ani.app.platform.BaseComponentActivity
 import me.him188.ani.app.platform.ContextMP
-import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.files
 import me.him188.ani.app.platform.findActivity
 import me.him188.ani.app.tools.update.AndroidUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.ui.exprovider.ExternalContentProviderFactory
-import me.him188.ani.app.videoplayer.media.LibassExoPlayerMediampPlayerFactory
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.deleteRecursively
@@ -85,25 +79,20 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
-import org.openani.mediamp.MediampPlayerFactory
-import org.openani.mediamp.MediampPlayerFactoryLoader
-import org.openani.mediamp.compose.MediampPlayerSurfaceProviderLoader
-import org.openani.mediamp.exoplayer.compose.ExoPlayerMediampPlayerSurfaceProvider
 import java.io.File
 import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 
+/**
+ * 手机 flavor 专属绑定; 与 TV 共用的绑定见交集源集 `src/main` 的 [getCommonAndroidModules].
+ */
 fun getAndroidModules(
     serviceConnectionManager: TorrentServiceConnectionManager,
     coroutineScope: CoroutineScope,
 ) = module {
-    single<PermissionManager> {
-        AndroidPermissionManager()
-    }
     single<BrowserNavigator> { AndroidBrowserNavigator() }
     single<CaptchaBrowserFactory> { AndroidCaptchaBrowserFactory(androidContext()) }
     single<ImageCaptchaRecognizer> { AndroidOnnxImageCaptchaRecognizer() }
-    single<HlsPlaybackPreparer> { PlatformHlsPlaybackPreparer(get()) }
 
     single<TorrentEngineAccess> { serviceConnectionManager }
     single<TorrentServiceConnection<IRemoteAniTorrentEngine>> { serviceConnectionManager.connection }
@@ -175,19 +164,6 @@ fun getAndroidModules(
             saveDir = saveDir,
             mediaResolver = get<MediaResolver>(),
         )
-    }
-
-    single<MediampPlayerFactory<*>> {
-        val videoScaffoldConfig = get<SettingsRepository>().videoScaffoldConfig
-        MediampPlayerFactoryLoader.register(
-            LibassExoPlayerMediampPlayerFactory {
-                // 音频处理链在 ExoPlayer 构造时确定, 无法在已创建的播放器上切换.
-                // 工厂接口是同步的, 因此每次创建播放器时在此读取 DataStore 中的当前值.
-                runBlocking { videoScaffoldConfig.flow.first().enableHighQualityAudioTimeStretch }
-            },
-        )
-        MediampPlayerSurfaceProviderLoader.register(ExoPlayerMediampPlayerSurfaceProvider())
-        MediampPlayerFactoryLoader.first()
     }
 
     single<OfflineDownloadEngine> {

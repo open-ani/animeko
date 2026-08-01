@@ -143,6 +143,7 @@ class AniApplication : Application() {
             androidContext(this@AniApplication)
             modules(getCommonKoinModule({ this@AniApplication }, scope))
 
+            modules(getCommonAndroidModules(scope))
             modules(getAndroidModules(connectionManager, scope))
         }.startCommonKoinModule(this@AniApplication, scope)
         startupTimeMonitor.mark(StepName.Modules)

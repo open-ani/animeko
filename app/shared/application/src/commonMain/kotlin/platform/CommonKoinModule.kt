@@ -163,8 +163,29 @@ private val Scope.database get() = get<AniDatabase>()
 private val Scope.settingsRepository get() = get<SettingsRepository>()
 private val Scope.aniApiProvider get() = get<AniApiProvider>()
 
+/**
+ * 手机/desktop/iOS 完整装配, 行为与历史版本一致 (含完整缓存/BT 模块).
+ */
 fun KoinApplication.getCommonKoinModule(getContext: () -> Context, coroutineScope: CoroutineScope) =
-    listOf(useCaseModules(), repositoryModules(getContext().dataStores), otherModules(getContext, coroutineScope))
+    getCommonKoinModuleWithoutMediaCache(getContext, coroutineScope) +
+        getMediaCacheKoinModule(getContext, coroutineScope)
+
+/**
+ * TV variant 装配 (flavor 门控, 见 atv-architecture.md §1.2/D9).
+ *
+ * 与手机唯一的差异是缓存/BT: [MediaCacheManager] 绑定为空引擎实现 ([getDisabledMediaCacheKoinModule]),
+ * 选源池无本地缓存源, [startCommonKoinModule] 的缓存恢复自动跳过. 其余绑定与手机完全一致 ——
+ * 包括 UI 绑定 (SubjectDetailsStateFactory / TurnstileState): Koin 绑定是惰性的, TV 不使用即不实例化;
+ * TV 代码**约定**不得引用手机 UI (androidx.compose.material3 / me.him188.ani.app.ui.*), 由 Konsist 守护.
+ */
+fun KoinApplication.getTvCommonKoinModule(getContext: () -> Context, coroutineScope: CoroutineScope) =
+    getCommonKoinModuleWithoutMediaCache(getContext, coroutineScope) +
+        getDisabledMediaCacheKoinModule(coroutineScope)
+
+private fun KoinApplication.getCommonKoinModuleWithoutMediaCache(
+    getContext: () -> Context,
+    coroutineScope: CoroutineScope,
+) = listOf(useCaseModules(), repositoryModules(getContext().dataStores), otherModules(getContext, coroutineScope))
 
 private fun KoinApplication.otherModules(getContext: () -> Context, coroutineScope: CoroutineScope) = module {
     // Repositories
@@ -467,76 +488,9 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             .build()
     }
 
-    single<HttpDownloader> {
-        KtorPersistentHttpDownloader(
-            dao = database.httpCacheDownloadStateDao(),
-            get<HttpClientProvider>().get(),
-            fileSystem = SystemFileSystem,
-            baseSaveDir = get<MediaSaveDirProvider>().saveDir
-                .let { Path(it).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR) },
-            scope = coroutineScope,
-        )
-    }
-
     // Media
-    single<MediaCacheManager> {
-        val id = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
-        val engines = get<TorrentManager>().engines
-        val metadataStore = getContext().dataStores.mediaCacheMetadataStore
-
-        MediaCacheManagerImpl(
-            storagesIncludingDisabled = buildList(capacity = engines.size) {
-                /*if (currentAniBuildConfig.isDebug) {
-                    // 注意, 这个必须要在第一个, 见 [DefaultTorrentManager.engines] 注释
-                    add(
-                        @Suppress("DEPRECATION")
-                        TorrentMediaCacheStorage(
-                            mediaSourceId = "test-in-memory",
-                            store = metadataStore,
-                            engine = DummyMediaCacheEngine("test-in-memory"),
-                            "[debug]dummy",
-                            coroutineScope.childScopeContext(),
-                        ),
-                    )
-                }*/
-                for (engine in engines) {
-                    add(
-                        @Suppress("DEPRECATION")
-                        TorrentMediaCacheStorage(
-                            mediaSourceId = id,
-                            store = metadataStore,
-                            torrentEngine = TorrentMediaCacheEngine(
-                                mediaSourceId = id,
-                                engineKey = MediaCacheEngineKey(engine.type.id),
-                                torrentEngine = engine,
-                                engineAccess = get(),
-                                dao = database.torrentCacheInfoDao(),
-                                baseSaveDirProvider = get(),
-                            ),
-                            displayName = "LocalTorrent",
-                            parentCoroutineContext = coroutineScope.childScopeContext(),
-                            shareRatioLimitFlow = settingsRepository.anitorrentConfig.flow
-                                .map { it.shareRatioLimit },
-                        ),
-                    )
-                }
-                add(
-                    @Suppress("DEPRECATION")
-                    HttpMediaCacheStorage(
-                        mediaSourceId = id,
-                        store = metadataStore,
-                        dao = database.httpCacheDownloadStateDao(),
-                        httpEngine = get<HttpMediaCacheEngine>(),
-                        displayName = "LocalWebM3u",
-                        coroutineScope.childScopeContext(),
-                    ),
-                )
-            },
-            backgroundScope = coroutineScope.childScope(),
-        )
-    }
-
-
+    // MediaCacheManager / HttpDownloader 绑定在 getMediaCacheKoinModule() (手机/desktop 装配)
+    // 或 getDisabledMediaCacheKoinModule() (TV 装配, 空引擎) 中, 见文件末尾.
     single<MediaSourceCodecManager> {
         MediaSourceCodecManager()
     }
@@ -598,10 +552,12 @@ fun KoinApplication.startCommonKoinModule(
     // Now, the proxy settings is ready. Other components can use http clients.
 
     coroutineScope.launch {
-        koin.get<HttpDownloader>().init() // restore http download states first
-        val manager = koin.get<MediaCacheManager>()
-        for (storage in manager.storagesIncludingDisabled) {
-            storage.restorePersistedCaches()
+        // TV 不装配缓存模块: HttpDownloader 无绑定时跳过; 空引擎 MediaCacheManager 的循环自然为空.
+        koin.getOrNull<HttpDownloader>()?.init() // restore http download states first
+        koin.getOrNull<MediaCacheManager>()?.let { manager ->
+            for (storage in manager.storagesIncludingDisabled) {
+                storage.restorePersistedCaches()
+            }
         }
     }
 
@@ -668,4 +624,96 @@ fun createAppRootCoroutineScope(): CoroutineScope {
             }
         } + SupervisorJob() + Dispatchers.Default,
     )
+}
+
+/**
+ * 完整缓存/BT 装配 (手机/desktop 使用): [MediaCacheManager] (torrent + HTTP 引擎) 与 [HttpDownloader].
+ *
+ * TV 端不装配本模块, 改装 [getDisabledMediaCacheKoinModule] —— 选源池将没有本地缓存源,
+ * [startCommonKoinModule] 的缓存恢复段也会自动跳过.
+ */
+fun getMediaCacheKoinModule(getContext: () -> Context, coroutineScope: CoroutineScope) = module {
+    single<HttpDownloader> {
+        KtorPersistentHttpDownloader(
+            dao = database.httpCacheDownloadStateDao(),
+            get<HttpClientProvider>().get(),
+            fileSystem = SystemFileSystem,
+            baseSaveDir = get<MediaSaveDirProvider>().saveDir
+                .let { Path(it).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR) },
+            scope = coroutineScope,
+        )
+    }
+
+    single<MediaCacheManager> {
+        val id = MediaCacheManager.LOCAL_FS_MEDIA_SOURCE_ID
+        val engines = get<TorrentManager>().engines
+        val metadataStore = getContext().dataStores.mediaCacheMetadataStore
+
+        MediaCacheManagerImpl(
+            storagesIncludingDisabled = buildList(capacity = engines.size) {
+                /*if (currentAniBuildConfig.isDebug) {
+                    // 注意, 这个必须要在第一个, 见 [DefaultTorrentManager.engines] 注释
+                    add(
+                        @Suppress("DEPRECATION")
+                        TorrentMediaCacheStorage(
+                            mediaSourceId = "test-in-memory",
+                            store = metadataStore,
+                            engine = DummyMediaCacheEngine("test-in-memory"),
+                            "[debug]dummy",
+                            coroutineScope.childScopeContext(),
+                        ),
+                    )
+                }*/
+                for (engine in engines) {
+                    add(
+                        @Suppress("DEPRECATION")
+                        TorrentMediaCacheStorage(
+                            mediaSourceId = id,
+                            store = metadataStore,
+                            torrentEngine = TorrentMediaCacheEngine(
+                                mediaSourceId = id,
+                                engineKey = MediaCacheEngineKey(engine.type.id),
+                                torrentEngine = engine,
+                                engineAccess = get(),
+                                dao = database.torrentCacheInfoDao(),
+                                baseSaveDirProvider = get(),
+                            ),
+                            displayName = "LocalTorrent",
+                            parentCoroutineContext = coroutineScope.childScopeContext(),
+                            shareRatioLimitFlow = settingsRepository.anitorrentConfig.flow
+                                .map { it.shareRatioLimit },
+                        ),
+                    )
+                }
+                add(
+                    @Suppress("DEPRECATION")
+                    HttpMediaCacheStorage(
+                        mediaSourceId = id,
+                        store = metadataStore,
+                        dao = database.httpCacheDownloadStateDao(),
+                        httpEngine = get<HttpMediaCacheEngine>(),
+                        displayName = "LocalWebM3u",
+                        coroutineScope.childScopeContext(),
+                    ),
+                )
+            },
+            backgroundScope = coroutineScope.childScope(),
+        )
+    }
+}
+
+/**
+ * 空缓存装配 (TV 使用): [MediaCacheManager] 绑定为空引擎实现.
+ *
+ * [me.him188.ani.app.domain.media.fetch.MediaSourceManager] 的本地缓存源、
+ * [me.him188.ani.app.data.repository.episode.EpisodeProgressRepository] 等注入点照常工作,
+ * 只是没有任何缓存存储 —— 纯在线播放端 (atv-architecture.md §1.2).
+ */
+fun getDisabledMediaCacheKoinModule(coroutineScope: CoroutineScope) = module {
+    single<MediaCacheManager> {
+        MediaCacheManagerImpl(
+            storagesIncludingDisabled = emptyList(),
+            backgroundScope = coroutineScope.childScope(),
+        )
+    }
 }
