@@ -184,7 +184,7 @@ class DanmakuLoaderImpl internal constructor(
     /**
      * 手动匹配得到的弹幕结果, 以及它属于哪一集.
      */
-    private class OverrideResults(
+    private data class OverrideResults(
         val requestKey: DanmakuRequestKey?,
         val results: Map<DanmakuProviderId, List<DanmakuFetchResult>>,
     ) {
