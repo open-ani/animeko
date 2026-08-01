@@ -804,8 +804,8 @@ D1 放弃编译期隔离后，**Konsist 是 §4.2 约定边界的主要机械守
 | **M0 骨架**（前置重构 + 可运行空壳）✅ 已完成 | R1/R2 重构（`application` 装配双入口 + `:app:android` 源集重排 + manifest 三层分治）；`tv` flavor + `ui-main-tv`/`ui-foundation-tv` 库模块；banner；`AniTvTheme` + `TvFocusDefaults`；主壳 NavigationDrawer + 空页面路由；CI 增加 `assembleTvDebug` 与清单守护 | 手机 APK 二进制行为不变（default variant 合并 manifest 与基线语义等价 78 元素一致）；TV APK 真机安装通过、抽屉焦点导航/返回语义正常（魅族 18X 实测） |
 | **M1 看番主链路** 🔶 主链路已通（真机验证） | ✅ 探索页（hero 聚焦驱动 + 趋势/推荐行真实数据）；✅ 详情页（评分/简介/选集/续播按钮）；✅ 播放器 MVP（自动选源 WEB→WebView 解析→ExoPlayer+libass 渲染→弹幕显示→控制层/暂停/seek/进度条）；扩展已挂载（自动连播/进度记忆/倍速）。**未完**：R3 TMDB 数据合入（backdrop 仍用海报）、锚点行吸附（现为普通 LazyRow）、拖拽预览、数据源选择弹窗、选集条、hero 轮播自动播、返回后焦点恢复（focusRestorer）、冷启动初始焦点治理 | 从打开 TV 应用到「选番→看完一集→自动下一集」全程仅遥控器完成（自动连播完整周期待整集实测） |
 | **M2 内容面完整** 🔶 三页已通（真机验证） | ✅ 追番（五 tab 聚焦即选中+数量角标+Adaptive 网格+空态）；✅ 搜索（TvTextField 精简版+软键盘 Search 提交+Paging 结果网格）；✅ 时间表（15 天胶囊行聚焦即换天+初始焦点落今天+当天网格）；主壳三态重构+时间表抽屉入口。**未完**：行对齐跨页、长按收藏管理、搜索历史/补全/筛选弹窗、播放历史续播、播放键全局语义、BrowserNavigator 二维码 | PR UX 附录 A 的交互清单逐项对照通过 |
-| **M3 账号与管理** | 邮箱 OTP 登录；设置子集；弹幕设置面板/弹幕源管理/时间校准；帧预览（FramePreview 能力接入）；低端机降级开关 | 未登录/登录/弱网/无源等状态全覆盖 |
-| **M4 系统集成与收尾** | 屏保 DreamService、主屏频道（Watch Next/热门）——纯 Android 服务，可参考 PR 对应实现移植；应用内更新（依赖服务端 `android-tv` 支持）；性能调优；发布流水线全量（release 出双 APK） | 正式版随手机版同步发布 |
+| **M3 账号与管理** 🔶 核心已通（真机验证） | ✅ 邮箱 OTP 登录（两步式，抽屉账号条目显示昵称）；✅ 设置子集（弹幕开关+播放三开关+版本+手机端占位）；✅ Toaster（原生 Toast 实现 provide LocalToaster）；✅ Konsist 边界守护三条（§11.1 落地，scopeFromExternalDirectories 绕过根探测被 app/gradlew 误导的问题）。**未完**：弹幕设置面板（TvSlider 7 项）/弹幕源管理/时间校准、帧预览、低端机降级开关、登录后各页数据联动实测 | 未登录/登录/弱网/无源等状态全覆盖 |
+| **M4 系统集成与收尾** 🔶 发布流水线已通 | ✅ 发布流水线全量（release 双 APK：`assembleTvRelease` 同 job 构建 + `uploadAndroidTvApk` 发布 `ani-tv-*` 资产 + workflow artifacts）。**跳过**（维护者指示）：应用内更新（依赖服务端 `android-tv` 支持，TV 端保持关闭）。**未做**：屏保 DreamService、主屏频道（Watch Next）、性能调优、真 TV 设备（盒子/模拟器）验证 | 正式版随手机版同步发布 |
 
 依赖关系：M0 是唯一动共享代码（`application` 装配重构、`:app:android` 源集重排）的阶段，须单独成 PR 先行合入；M1 起全部改动局限在 `app/android/ui-*-tv/**`、`app/android/src/tv/**` 与 `app-lang` 文案。
 
