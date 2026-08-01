@@ -79,10 +79,25 @@ class SubtitleAdjustmentState(
         )
     }
 
+    /**
+     * 拖动滑条时调用: 立即应用, 字幕直接跟手. 拖动本身是连续的, 无需再插值.
+     */
     fun setVerticalPosition(position: Float) {
         val quantized = (position * 100).roundToInt() / 100f
         _verticalPosition = quantized
-        // Animatable 自带互斥: 新目标会取消进行中的动画, 拖动时表现为持续追赶.
+        scope.launch {
+            // snapTo 会取消可能仍在进行的重置动画, 避免与拖动互相争抢.
+            appliedPosition.snapTo(quantized)
+            subtitleAdjustment.setVerticalPosition(quantized)
+        }
+    }
+
+    /**
+     * 非交互式的跳变 (如重置) 用平滑动画过渡, 避免字幕在画面上瞬移.
+     */
+    fun animateVerticalPositionTo(position: Float) {
+        val quantized = (position * 100).roundToInt() / 100f
+        _verticalPosition = quantized
         scope.launch {
             appliedPosition.animateTo(quantized, PositionAnimationSpec) {
                 subtitleAdjustment.setVerticalPosition(value)
@@ -93,7 +108,7 @@ class SubtitleAdjustmentState(
     fun reset() {
         if (supportsDelay) subtitleAdjustment.setDelayMillis(DefaultDelayMillis)
         if (supportsFontScale) subtitleAdjustment.setFontScale(DefaultFontScale)
-        if (supportsVerticalPosition) setVerticalPosition(DefaultVerticalPosition)
+        if (supportsVerticalPosition) animateVerticalPositionTo(DefaultVerticalPosition)
     }
 
     companion object {
