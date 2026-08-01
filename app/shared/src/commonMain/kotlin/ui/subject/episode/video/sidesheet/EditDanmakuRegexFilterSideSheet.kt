@@ -53,6 +53,9 @@ import me.him188.ani.app.data.models.danmaku.DanmakuRegexFilter
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_episode_close
+import me.him188.ani.app.ui.lang.subject_episode_keyword_filter_example
+import me.him188.ani.app.ui.lang.subject_episode_keyword_filter_label
+import me.him188.ani.app.ui.lang.subject_episode_keyword_filter_placeholder
 import me.him188.ani.app.ui.lang.subject_episode_regex_filter_add
 import me.him188.ani.app.ui.lang.subject_episode_regex_filter_delete
 import me.him188.ani.app.ui.lang.subject_episode_regex_filter_example
@@ -172,6 +175,78 @@ fun DanmakuRegexFilterContent(
                     ),
                 )
             }
+        }
+
+        KeywordFilterSection(state)
+    }
+}
+
+/**
+ * 纯文本关键词屏蔽. 对大多数人来说比正则好写得多.
+ */
+@Composable
+private fun KeywordFilterSection(state: DanmakuRegexFilterState) {
+    val focusManager = LocalFocusManager.current
+    var input by rememberSaveable { mutableStateOf("") }
+    val isBlank by remember { derivedStateOf { input.isBlank() } }
+    val keywordLabelText = stringResource(Lang.subject_episode_keyword_filter_label)
+    val keywordPlaceholderText = stringResource(Lang.subject_episode_keyword_filter_placeholder)
+    val keywordExampleText = stringResource(Lang.subject_episode_keyword_filter_example)
+    val addText = stringResource(Lang.subject_episode_regex_filter_add)
+    val deleteText = stringResource(Lang.subject_episode_regex_filter_delete)
+
+    fun add() {
+        if (!isBlank) {
+            state.addKeyword(input.trim())
+            input = ""
+        }
+        focusManager.clearFocus()
+    }
+
+    OutlinedTextField(
+        value = input,
+        onValueChange = { input = it },
+        placeholder = { Text(keywordPlaceholderText) },
+        label = { Text(keywordLabelText) },
+        supportingText = { Text(keywordExampleText) },
+        singleLine = true,
+        modifier = Modifier
+            .fillMaxWidth()
+            .onPreviewKeyEvent {
+                if (it.key == Key.Enter && it.type == KeyEventType.KeyUp) {
+                    add(); true
+                } else false
+            },
+        trailingIcon = {
+            IconButton(onClick = { add() }, enabled = !isBlank) {
+                Icon(Icons.Rounded.Add, contentDescription = addText)
+            }
+        },
+        keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { add() }),
+    )
+
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        state.keywords.forEach { keyword ->
+            AssistChip(
+                onClick = { state.removeKeyword(keyword) },
+                label = { Text(keyword, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                trailingIcon = {
+                    IconButton(
+                        onClick = { state.removeKeyword(keyword) },
+                        modifier = Modifier.size(24.dp),
+                    ) {
+                        Icon(Icons.Rounded.Close, contentDescription = deleteText, modifier = Modifier.size(16.dp))
+                    }
+                },
+                colors = AssistChipDefaults.assistChipColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ),
+            )
         }
     }
 }

@@ -101,28 +101,15 @@ class TimeBasedDanmakuSession private constructor(
 
 
         /**
-         * 输入一个 [DanmakuInfo] list 和一个 [DanmakuFilterSpec], 返回一个过滤后的 [DanmakuInfo] list
+         * 输入一个 [DanmakuInfo] list 和一个 [DanmakuFilterSpec], 返回一个过滤后的 [DanmakuInfo] list.
+         *
+         * 每次调用都会新建一个 [DanmakuFilterer], 因此没有正则缓存. 实际播放时用的是
+         * [at] 里长期持有的那个 [DanmakuFilterer].
          */
         fun filterList(
             list: List<DanmakuInfo>,
             spec: DanmakuFilterSpec,
-        ): List<DanmakuInfo> {
-            if (spec.isEmpty) {
-                return list
-            }
-
-            // 弹幕文本在加载时已经被转换成目标字形, 所以正则也要转换成同一种字形.
-            // 转换表只含 CJK 字符, 不会影响正则的元字符.
-            val regexFilters = spec.regexPatterns
-                .map { Regex(ZhConverter.convert(it, spec.zhConversion), option = RegexOption.IGNORE_CASE) }
-
-            return list.filter { danmaku ->
-                // 所有过滤器都没有匹配到, 才算通过
-                regexFilters.none { regex ->
-                    regex.find(danmaku.text) != null
-                }
-            }
-        }
+        ): List<DanmakuInfo> = DanmakuFilterer().filter(list, spec)
     }
 
 
@@ -141,6 +128,8 @@ class TimeBasedDanmakuSession private constructor(
             repopulateMaxCount = Int.MAX_VALUE,
         )
         val algorithm = DanmakuSessionAlgorithm(state)
+        // 整个会话共用一个 filterer, 复用已编译的正则
+        val filterer = DanmakuFilterer()
         return object : DanmakuSession {
             override val events: Flow<DanmakuEvent> = channelFlow {
 
@@ -159,7 +148,7 @@ class TimeBasedDanmakuSession private constructor(
 
                                 logger.debug("danmaku filter updated: danmaku size: ${currentList.size}")
 
-                                state.updateList(filterList(currentList, currentFilterSpec))
+                                state.updateList(filterer.filter(currentList, currentFilterSpec))
                                 state.requestRepopulate()
                             }
                             danmakuChannel.onReceive {
@@ -167,7 +156,7 @@ class TimeBasedDanmakuSession private constructor(
 
                                 logger.debug("Danmaku list updated, size=${it.size}")
 
-                                state.updateList(filterList(currentList, currentFilterSpec))
+                                state.updateList(filterer.filter(currentList, currentFilterSpec))
                                 // reset indexing, 这里 reset 后下一次 tick 会从头索引一次.
                                 state.lastIndex = -1
                             }

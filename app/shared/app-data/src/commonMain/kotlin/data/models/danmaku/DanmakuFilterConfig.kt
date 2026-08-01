@@ -22,6 +22,10 @@ data class DanmakuFilterConfig @SerializationOnly constructor(
      * 弹幕的简繁转换方式. 会同时作用于显示和过滤词匹配.
      */
     val zhConversion: ZhConversion = ZhConversion.NONE,
+    /**
+     * 纯文本关键词屏蔽. 归一化之后按子串匹配, 比正则好写得多.
+     */
+    val keywordBlocklist: List<String> = emptyList(),
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0
 ) {
     companion object {

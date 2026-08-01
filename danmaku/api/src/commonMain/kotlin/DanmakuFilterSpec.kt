@@ -18,12 +18,19 @@ data class DanmakuFilterSpec(
      */
     val regexPatterns: List<String> = emptyList(),
     /**
+     * 纯文本关键词过滤. 归一化之后按子串匹配, 比正则好写得多.
+     *
+     * @see DanmakuTextNormalizer
+     */
+    val keywords: List<String> = emptyList(),
+    /**
      * 简繁转换方式. 弹幕文本在加载时已经被转换过 ([DanmakuPreprocessConfig.zhConversion]),
-     * 所以这里也要把 [regexPatterns] 转换成同一种字形, 否则用简体写的屏蔽词就拦不住繁体弹幕.
+     * 所以这里也要把 [regexPatterns] 和 [keywords] 转换成同一种字形,
+     * 否则用简体写的屏蔽词就拦不住繁体弹幕.
      */
     val zhConversion: ZhConversion = ZhConversion.NONE,
 ) {
-    val isEmpty: Boolean get() = regexPatterns.isEmpty()
+    val isEmpty: Boolean get() = regexPatterns.isEmpty() && keywords.isEmpty()
 
     companion object {
         val Empty = DanmakuFilterSpec()

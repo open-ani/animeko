@@ -26,8 +26,15 @@ class DanmakuRegexFilterState(
     val switch: (filter: DanmakuRegexFilter) -> Unit,
     val onExport: suspend () -> String,
     val onImport: suspend (String) -> Boolean,
+    /**
+     * 纯文本关键词屏蔽列表. 比正则好写得多, 见 https://github.com/open-ani/animeko/issues/919
+     */
+    keywords: State<List<String>> = mutableStateOf(emptyList()),
+    val addKeyword: (keyword: String) -> Unit = {},
+    val removeKeyword: (keyword: String) -> Unit = {},
 ) {
     val list by list
+    val keywords by keywords
 }
 
 @TestOnly
@@ -63,6 +70,8 @@ fun createTestDanmakuRegexFilterState(): DanmakuRegexFilterState {
         }
     }
 
+    val localKeywordsState = mutableStateOf(listOf("测试关键词"))
+
     return DanmakuRegexFilterState(
         list = localListState,
         add = defaultAdd,
@@ -71,6 +80,9 @@ fun createTestDanmakuRegexFilterState(): DanmakuRegexFilterState {
         switch = defaultSwitch,
         onExport = { "[]" },
         onImport = { true },
+        keywords = localKeywordsState,
+        addKeyword = { localKeywordsState.value += it },
+        removeKeyword = { localKeywordsState.value -= it },
     )
 }
 

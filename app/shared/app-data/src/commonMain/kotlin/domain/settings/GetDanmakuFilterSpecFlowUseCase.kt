@@ -44,6 +44,7 @@ class GetDanmakuFilterSpecFlowUseCaseImpl(
             DanmakuFilterSpec(
                 regexPatterns = if (!config.enableRegexFilter) emptyList()
                 else list.filter { it.enabled }.map { it.regex },
+                keywords = config.keywordBlocklist,
                 zhConversion = config.zhConversion,
             )
         }.distinctUntilChanged()

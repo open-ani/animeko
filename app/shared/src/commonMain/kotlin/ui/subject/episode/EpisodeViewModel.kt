@@ -441,6 +441,23 @@ class EpisodeViewModel(
         },
         onExport = { danmakuRegexFilterRepository.export() },
         onImport = { danmakuRegexFilterRepository.import(it) },
+        keywords = settingsRepository.danmakuFilterConfig.flow
+            .map { it.keywordBlocklist }
+            .produceState(emptyList()),
+        addKeyword = { keyword ->
+            launchInBackground {
+                settingsRepository.danmakuFilterConfig.update {
+                    copy(keywordBlocklist = (keywordBlocklist + keyword).distinct())
+                }
+            }
+        },
+        removeKeyword = { keyword ->
+            launchInBackground {
+                settingsRepository.danmakuFilterConfig.update {
+                    copy(keywordBlocklist = keywordBlocklist - keyword)
+                }
+            }
+        },
     )
 
 

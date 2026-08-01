@@ -571,7 +571,13 @@
     <!-- DanmakuRegexFilterGroup -->
     <string name="settings_danmaku_regex_filter_group">弹幕正则过滤器管理</string>
     <string name="settings_danmaku_add_regex_filter">添加正则过滤器</string>
+    <string name="settings_danmaku_add_keyword">添加关键词</string>
+    <string name="settings_danmaku_add_keyword_filter">添加关键词过滤</string>
     <string name="settings_danmaku_add_regex">添加正则</string>
+    <string name="settings_danmaku_keyword">关键词</string>
+    <string name="settings_danmaku_keyword_description">含有该文字的弹幕会被屏蔽。忽略大小写、全半角和结尾标点。</string>
+    <string name="settings_danmaku_keyword_filter_description">比正则简单：弹幕里含有关键词就会被屏蔽</string>
+    <string name="settings_danmaku_keyword_filter_group">关键词过滤</string>
     <string name="settings_danmaku_confirm">确认</string>
     <string name="settings_danmaku_cancel">取消</string>
     <string name="settings_danmaku_regex_expression">正则表达式</string>
@@ -1298,6 +1304,9 @@
     <string name="subject_episode_regex_filter_placeholder">输入要屏蔽的弹幕关键词（正则）</string>
     <string name="subject_episode_regex_filter_label">正则表达式</string>
     <string name="subject_episode_regex_filter_invalid">正则表达式语法不正确。</string>
+    <string name="subject_episode_keyword_filter_label">关键词</string>
+    <string name="subject_episode_keyword_filter_placeholder">直接填文字，不用写正则</string>
+    <string name="subject_episode_keyword_filter_example">含有该文字的弹幕会被屏蔽。忽略大小写和全半角。</string>
     <string name="subject_episode_regex_filter_example">例如：‘签’ 会屏蔽含文字‘签’的弹幕。</string>
     <string name="subject_episode_regex_filter_add">添加</string>
     <string name="subject_episode_regex_filter_delete">删除</string>

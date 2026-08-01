@@ -531,7 +531,13 @@
     <!-- DanmakuRegexFilterGroup -->
     <string name="settings_danmaku_regex_filter_group">Danmaku Regex Filter Management</string>
     <string name="settings_danmaku_add_regex_filter">Add Regex Filter</string>
+    <string name="settings_danmaku_add_keyword">Add keyword</string>
+    <string name="settings_danmaku_add_keyword_filter">Add keyword filter</string>
     <string name="settings_danmaku_add_regex">Add Regex</string>
+    <string name="settings_danmaku_keyword">Keyword</string>
+    <string name="settings_danmaku_keyword_description">Danmaku containing this text are hidden. Case, full/half width and trailing punctuation are ignored.</string>
+    <string name="settings_danmaku_keyword_filter_description">Simpler than regex: any danmaku containing the keyword is hidden</string>
+    <string name="settings_danmaku_keyword_filter_group">Keyword filters</string>
     <string name="settings_danmaku_confirm">Confirm</string>
     <string name="settings_danmaku_cancel">Cancel</string>
     <string name="settings_danmaku_regex_expression">Regular Expression</string>
@@ -1258,6 +1264,9 @@
     <string name="subject_episode_regex_filter_placeholder">Enter a regex keyword to filter danmaku</string>
     <string name="subject_episode_regex_filter_label">Regular expression</string>
     <string name="subject_episode_regex_filter_invalid">The regular expression is invalid.</string>
+    <string name="subject_episode_keyword_filter_label">Keyword</string>
+    <string name="subject_episode_keyword_filter_placeholder">Plain text, no regex needed</string>
+    <string name="subject_episode_keyword_filter_example">Danmaku containing this text are hidden. Case and full/half width are ignored.</string>
     <string name="subject_episode_regex_filter_example">Example: \'sign\' filters danmaku containing \'sign\'.</string>
     <string name="subject_episode_regex_filter_add">Add</string>
     <string name="subject_episode_regex_filter_delete">Delete</string>

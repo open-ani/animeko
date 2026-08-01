@@ -131,6 +131,7 @@ import me.him188.ani.app.ui.lang.settings_watch_together_description
 import me.him188.ani.app.ui.lang.settings_watch_together_social
 import me.him188.ani.app.ui.lang.watch_together_title
 import me.him188.ani.app.ui.settings.SettingsTab
+import me.him188.ani.app.ui.settings.danmaku.DanmakuKeywordFilterGroup
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterGroup
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
@@ -491,6 +492,10 @@ fun SettingsScope.PlayerGroup(
         )
         HorizontalDividerItem()
         DanmakuRegexFilterGroup(
+            state = danmakuRegexFilterState,
+        )
+        HorizontalDividerItem()
+        DanmakuKeywordFilterGroup(
             state = danmakuRegexFilterState,
         )
         HorizontalDividerItem()

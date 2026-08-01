@@ -58,6 +58,8 @@ import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.setClipEntryText
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_danmaku_add_keyword
+import me.him188.ani.app.ui.lang.settings_danmaku_add_keyword_filter
 import me.him188.ani.app.ui.lang.settings_danmaku_add_regex
 import me.him188.ani.app.ui.lang.settings_danmaku_add_regex_filter
 import me.him188.ani.app.ui.lang.settings_danmaku_cancel
@@ -68,6 +70,10 @@ import me.him188.ani.app.ui.lang.settings_danmaku_import_failed
 import me.him188.ani.app.ui.lang.settings_danmaku_import_from_clipboard
 import me.him188.ani.app.ui.lang.settings_danmaku_import_success
 import me.him188.ani.app.ui.lang.settings_danmaku_import_title
+import me.him188.ani.app.ui.lang.settings_danmaku_keyword
+import me.him188.ani.app.ui.lang.settings_danmaku_keyword_description
+import me.him188.ani.app.ui.lang.settings_danmaku_keyword_filter_description
+import me.him188.ani.app.ui.lang.settings_danmaku_keyword_filter_group
 import me.him188.ani.app.ui.lang.settings_danmaku_regex_description
 import me.him188.ani.app.ui.lang.settings_danmaku_regex_expression
 import me.him188.ani.app.ui.lang.settings_danmaku_regex_filter_group
@@ -192,6 +198,131 @@ internal fun SettingsScope.DanmakuRegexFilterGroup(
             }
         }
     }
+}
+
+@Composable
+internal fun SettingsScope.DanmakuKeywordFilterGroup(
+    state: DanmakuRegexFilterState,
+) {
+    var showAdd by rememberSaveable { mutableStateOf(false) }
+
+    if (showAdd) {
+        AddKeywordFilterDialog(
+            onDismissRequest = { showAdd = false },
+            onAdd = state.addKeyword,
+        )
+    }
+
+    Group(
+        title = {
+            Text(
+                stringResource(Lang.settings_danmaku_keyword_filter_group),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        },
+        description = { Text(stringResource(Lang.settings_danmaku_keyword_filter_description)) },
+        actions = {
+            Row {
+                IconButton({ showAdd = true }) {
+                    Icon(
+                        Icons.Rounded.Add,
+                        contentDescription = stringResource(Lang.settings_danmaku_add_keyword),
+                    )
+                }
+            }
+        },
+    ) {
+        FlowRow(
+            Modifier.fillMaxWidth().padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            state.keywords.forEach { keyword ->
+                ElevatedFilterChip(
+                    selected = true,
+                    onClick = { state.removeKeyword(keyword) },
+                    label = {
+                        Text(
+                            keyword,
+                            maxLines = 1,
+                            overflow = Ellipsis,
+                            textAlign = TextAlign.Center,
+                        )
+                    },
+                    trailingIcon = {
+                        Icon(
+                            Icons.Rounded.Close,
+                            contentDescription = null,
+                            Modifier.clickable { state.removeKeyword(keyword) },
+                        )
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddKeywordFilterDialog(
+    onDismissRequest: () -> Unit,
+    onAdd: (String) -> Unit,
+) {
+    val focusManager = LocalFocusManager.current
+    val focusRequester = remember { FocusRequester() }
+    var text by rememberSaveable { mutableStateOf("") }
+    val isBlank by remember { derivedStateOf { text.isBlank() } }
+
+    fun handleAdd() {
+        if (!isBlank) {
+            onAdd(text.trim())
+            text = ""
+            onDismissRequest()
+        }
+        focusManager.clearFocus()
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = {
+            TextButton(onClick = { handleAdd() }, enabled = !isBlank) {
+                Text(stringResource(Lang.settings_danmaku_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text(stringResource(Lang.settings_danmaku_cancel))
+            }
+        },
+        title = { Text(stringResource(Lang.settings_danmaku_add_keyword_filter)) },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                label = { Text(stringResource(Lang.settings_danmaku_keyword)) },
+                modifier = Modifier.fillMaxWidth()
+                    .focusRequester(focusRequester)
+                    .onKeyEvent { event: KeyEvent ->
+                        if (event.key == Key.Enter) {
+                            handleAdd()
+                            true
+                        } else {
+                            false
+                        }
+                    },
+                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { handleAdd() }),
+                supportingText = {
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = stringResource(Lang.settings_danmaku_keyword_description),
+                    )
+                },
+                singleLine = true,
+            )
+            LaunchedEffect(Unit) {
+                focusRequester.requestFocus()
+            }
+        },
+    )
 }
 
 private const val DISABLED_ALPHA = 0.38f

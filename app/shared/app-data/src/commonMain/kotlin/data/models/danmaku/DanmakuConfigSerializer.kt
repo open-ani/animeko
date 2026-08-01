@@ -9,7 +9,9 @@
 
 package me.him188.ani.app.data.models.danmaku
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,6 +48,21 @@ object DanmakuConfigSerializer : KSerializer<DanmakuConfig> {
         val alpha: Float = DanmakuStyle.Default.alpha,
         val strokeColor: ULong = DanmakuStyle.Default.strokeColor.value,
         val strokeWidth: Float = DanmakuStyle.Default.strokeWidth,
+        /**
+         * `null` 表示不画阴影. 旧版本的配置里没有这个字段, 默认就是 `null`.
+         */
+        val shadow: DanmakuShadowData? = null,
+    )
+
+    /**
+     * @see Shadow
+     */
+    @Serializable
+    private class DanmakuShadowData(
+        val color: ULong,
+        val offsetX: Float,
+        val offsetY: Float,
+        val blurRadius: Float,
     )
 
     override val descriptor: SerialDescriptor = DanmakuConfigData.serializer().descriptor
@@ -60,6 +77,13 @@ object DanmakuConfigSerializer : KSerializer<DanmakuConfig> {
                 alpha = value.style.alpha,
                 strokeColor = Color(value.style.strokeColor),
                 strokeWidth = value.style.strokeWidth,
+                shadow = value.style.shadow?.let {
+                    Shadow(
+                        color = Color(it.color),
+                        offset = Offset(it.offsetX, it.offsetY),
+                        blurRadius = it.blurRadius,
+                    )
+                },
             ),
             speed = value.speed,
             safeSeparation = value.safeSeparation.dp,
@@ -80,6 +104,14 @@ object DanmakuConfigSerializer : KSerializer<DanmakuConfig> {
                 alpha = value.style.alpha,
                 strokeColor = value.style.strokeColor.value,
                 strokeWidth = value.style.strokeWidth,
+                shadow = value.style.shadow?.let {
+                    DanmakuShadowData(
+                        color = it.color.value,
+                        offsetX = it.offset.x,
+                        offsetY = it.offset.y,
+                        blurRadius = it.blurRadius,
+                    )
+                },
             ),
             speed = value.speed,
             safeSeparation = value.safeSeparation.value,

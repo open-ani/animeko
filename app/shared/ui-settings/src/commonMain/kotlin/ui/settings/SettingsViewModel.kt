@@ -273,6 +273,19 @@ class SettingsViewModel : AbstractSettingsViewModel(), KoinComponent {
         },
         onExport = { danmakuRegexFilterRepository.export() },
         onImport = { danmakuRegexFilterRepository.import(it) },
+        keywords = derivedStateOf { danmakuFilterConfigState.value.keywordBlocklist },
+        addKeyword = { keyword ->
+            danmakuFilterConfigState.value.let {
+                danmakuFilterConfigState.update(
+                    it.copy(keywordBlocklist = (it.keywordBlocklist + keyword).distinct()),
+                )
+            }
+        },
+        removeKeyword = { keyword ->
+            danmakuFilterConfigState.value.let {
+                danmakuFilterConfigState.update(it.copy(keywordBlocklist = it.keywordBlocklist - keyword))
+            }
+        },
     )
 
     val danmakuServerTesters = DefaultConnectionTesterRunner(
