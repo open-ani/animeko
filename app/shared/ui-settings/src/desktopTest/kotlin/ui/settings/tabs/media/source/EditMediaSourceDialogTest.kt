@@ -9,13 +9,9 @@
 
 package me.him188.ani.app.ui.settings.tabs.media.source
 
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.text.AnnotatedString
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
@@ -40,7 +36,7 @@ class EditMediaSourceDialogTest {
             string("userId", visibleWhen = authMode.hasValue(apiKeyMode))
             string("apikey", visibleWhen = authMode.hasValue(apiKeyMode))
             string("username", visibleWhen = authMode.hasValue(passwordMode))
-            string("password", visibleWhen = authMode.hasValue(passwordMode), isSensitive = true)
+            string("password", visibleWhen = authMode.hasValue(passwordMode))
         }
         val state = EditingMediaSource(
             editingMediaSourceId = "test",
@@ -87,12 +83,6 @@ class EditMediaSourceDialogTest {
 
         onNodeWithTag(EditMediaSourceTestTags.argument("username")).performTextInput("test-user")
         onNodeWithTag(EditMediaSourceTestTags.argument("password")).performTextInput("test-password")
-        onNodeWithTag(EditMediaSourceTestTags.argument("password")).assert(
-            SemanticsMatcher.expectValue(
-                SemanticsProperties.EditableText,
-                AnnotatedString("•".repeat("test-password".length)),
-            ),
-        )
         assertFalse(state.hasError)
 
         state.close()

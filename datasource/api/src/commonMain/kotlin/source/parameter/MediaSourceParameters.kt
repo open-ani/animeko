@@ -29,7 +29,6 @@ open class MediaSourceParametersBuilder {
         description: String? = null,
         placeholder: String? = null,
         visibleWhen: MediaSourceParameterVisibilityCondition? = null,
-        isSensitive: Boolean = false,
     ): StringParameter {
         val param = StringParameter(
             name, description,
@@ -37,7 +36,6 @@ open class MediaSourceParametersBuilder {
             isRequired = defaultProvider == null,
             placeholder = placeholder,
             visibleWhen = visibleWhen,
-            isSensitive = isSensitive,
         )
         add(param)
         return param

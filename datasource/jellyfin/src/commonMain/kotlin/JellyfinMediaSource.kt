@@ -76,7 +76,6 @@ class JellyfinMediaSource(
             "password",
             description = "仅用户名密码模式使用",
             visibleWhen = authMode.hasValue(AUTH_MODE_USERNAME_PASSWORD),
-            isSensitive = true,
         )
     }
 

@@ -70,7 +70,6 @@ class JellyfinMediaSourceAuthenticationTest {
             setOf(JellyfinMediaSource.AUTH_MODE_USERNAME_PASSWORD),
             JellyfinMediaSource.Parameters.password.visibleWhen?.acceptedValues,
         )
-        assertTrue(JellyfinMediaSource.Parameters.password.isSensitive)
     }
 
     @Test
