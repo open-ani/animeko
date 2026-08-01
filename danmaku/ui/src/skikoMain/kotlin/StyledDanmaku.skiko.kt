@@ -10,31 +10,39 @@
 package me.him188.ani.danmaku.ui
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.asComposeCanvas
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.TextLayoutResult
 import org.jetbrains.skia.Surface
-import kotlin.math.max
 
 internal actual fun createDanmakuImageBitmap(
-    solidTextLayout: TextLayoutResult,
-    borderTextLayout: TextLayoutResult?,
+    textLayout: TextLayoutResult,
+    strokeColor: Color,
+    strokeWidth: Float,
+    shadow: Shadow?,
 ): ImageBitmapWithOffset {
     // We must ensure the size is at least 1x1, otherwise there may be an exception, see #1838.
-    val width = max(borderTextLayout?.size?.width ?: 0, solidTextLayout.size.width).coerceAtLeast(1)
-    val height = max(borderTextLayout?.size?.height ?: 0, solidTextLayout.size.height).coerceAtLeast(1)
-    val extraMargin = height shr 1
-    val extraMarginFloat = extraMargin.toFloat()
+    val width = textLayout.size.width.coerceAtLeast(1)
+    val height = textLayout.size.height.coerceAtLeast(1)
+    val margin = computeDanmakuBitmapMargin(strokeWidth, shadow)
+    val marginFloat = margin.toFloat()
 
-    val destSurface = Surface.makeRasterN32Premul(width + extraMargin * 2, height + extraMargin * 2)
+    val bitmapWidth = width + margin * 2
+    val bitmapHeight = height + margin * 2
+
+    val destSurface = Surface.makeRasterN32Premul(bitmapWidth, bitmapHeight)
     val destCanvas = destSurface.canvas.asComposeCanvas()
 
-    destCanvas.translate(extraMarginFloat, extraMarginFloat)
-    borderTextLayout?.let { destCanvas.paintIfNotEmpty(it) }
-    destCanvas.paintIfNotEmpty(solidTextLayout)
+    destCanvas.paintDanmaku(
+        textLayout, strokeColor, strokeWidth, shadow, marginFloat,
+        Size(bitmapWidth.toFloat(), bitmapHeight.toFloat()),
+    )
 
     return ImageBitmapWithOffset(
         destSurface.makeImageSnapshot().toComposeImageBitmap().apply { prepareToDraw() },
-        Offset(-extraMarginFloat, -extraMarginFloat),
+        Offset(-marginFloat, -marginFloat),
     )
 }
