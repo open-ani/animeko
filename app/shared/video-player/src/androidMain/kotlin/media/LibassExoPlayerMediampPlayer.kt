@@ -23,6 +23,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.extractor.DefaultExtractorsFactory
+import io.github.peerless2012.ass.AssRender
 import io.github.peerless2012.ass.media.AssHandler
 import io.github.peerless2012.ass.media.AssHandlerConfig
 import io.github.peerless2012.ass.media.kt.withAssMkvSupport
@@ -35,6 +36,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -45,6 +49,9 @@ import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.PlaybackState
 import org.openani.mediamp.exoplayer.ExoPlayerAudioTimeStretch
 import org.openani.mediamp.exoplayer.ExoPlayerMediampPlayer
+import org.openani.mediamp.features.PlayerFeatures
+import org.openani.mediamp.features.SubtitleAdjustment
+import org.openani.mediamp.features.overriding
 import org.openani.mediamp.io.SeekableInput
 import org.openani.mediamp.source.MediaData
 import org.openani.mediamp.source.SeekableInputMediaData
@@ -94,17 +101,39 @@ class LibassExoPlayerMediampPlayer private constructor(
     private var pendingMediaSource: MediaSource? = null
     private var closed = false
 
+    private val subtitleAdjustment = SubtitleAdjustmentImpl()
+
+    override val features: PlayerFeatures =
+        exoMediampPlayer.features.overriding(SubtitleAdjustment, subtitleAdjustment)
+
     init {
         assHandler.init(exoPlayer)
         backgroundScope.launch(Dispatchers.Main.immediate) {
+            // The render is created once an ASS track is detected and dropped again on media
+            // transitions, so the font scale has to be re-applied to each new instance.
+            var scaledRender: AssRender? = null
+            var appliedScale = 1f
             while (isActive) {
                 // AssRenderer normally supplies this timestamp. MediaMP owns the ExoPlayer
                 // builder, so drive the overlay from the same playback clock here instead.
-                assHandler.videoTime = exoPlayer.currentPosition * 1_000
+                assHandler.videoTime = assVideoTimeUs(exoPlayer.currentPosition)
+
+                val render = assHandler.render
+                val scale = subtitleAdjustment.fontScale.value
+                if (render !== scaledRender || scale != appliedScale) {
+                    render?.setFontScale(scale)
+                    scaledRender = render
+                    appliedScale = scale
+                }
+
                 delay(16.milliseconds)
             }
         }
     }
+
+    /** Playback position translated into the libass clock, with the subtitle delay applied. */
+    private fun assVideoTimeUs(positionMillis: Long): Long =
+        (positionMillis - subtitleAdjustment.delayMillis.value) * 1_000
 
     override val mediaData: Flow<MediaData?> = exoMediampPlayer.mediaData.map { data ->
         (data as? TrackingSeekableInputMediaData)?.source ?: data
@@ -152,7 +181,7 @@ class LibassExoPlayerMediampPlayer private constructor(
         exoMediampPlayer.seekTo(positionMillis)
         // ExoPlayer applies a seek asynchronously. Update libass immediately as well so the
         // paused overlay does not retain the subtitle from the previous playback position.
-        val positionUs = positionMillis * 1_000
+        val positionUs = assVideoTimeUs(positionMillis)
         assHandler.videoTime = positionUs
         // AssHandler throttles clock callbacks while video is playing. A paused seek only
         // produces one distinct timestamp, so request that frame explicitly as well.
@@ -220,6 +249,52 @@ class LibassExoPlayerMediampPlayer private constructor(
             is UriMediaData -> uri
             is SeekableInputMediaData -> uri
         }
+
+    /**
+     * Subtitle adjustments for the libass overlay and, for [verticalPosition] and [fontScale],
+     * for the Media3 `SubtitleView` that renders non-ASS cues (wired up in `VideoPlayer.android.kt`).
+     *
+     * [delayMillis] only shifts the libass clock: cue-based subtitles are timed by ExoPlayer's
+     * renderers, which offer no timing offset, so they are unaffected.
+     *
+     * [verticalPosition] conversely only moves cue-based subtitles. ASS events carry their own
+     * positioning from the subtitle file, which libass has no API to override.
+     */
+    @OptIn(InternalForInheritanceMediampApi::class)
+    private inner class SubtitleAdjustmentImpl : SubtitleAdjustment {
+        override val supportsDelay: Boolean get() = true
+        override val supportsFontScale: Boolean get() = true
+        override val supportsVerticalPosition: Boolean get() = true
+
+        private val _delayMillis = MutableStateFlow(0L)
+        override val delayMillis: StateFlow<Long> = _delayMillis.asStateFlow()
+
+        override fun setDelayMillis(delayMillis: Long) {
+            if (_delayMillis.value == delayMillis) return
+            _delayMillis.value = delayMillis
+            // While paused the clock loop produces no new timestamp, so the overlay would keep
+            // showing the subtitle of the previous delay until playback resumes.
+            val positionUs = assVideoTimeUs(exoPlayer.currentPosition)
+            assHandler.videoTime = positionUs
+            assHandler.videoTimeCallback?.invoke(positionUs)
+        }
+
+        private val _fontScale = MutableStateFlow(1f)
+        override val fontScale: StateFlow<Float> = _fontScale.asStateFlow()
+
+        override fun setFontScale(scale: Float) {
+            require(scale > 0f) { "scale must be positive, but was $scale" }
+            // The libass render may not exist yet; the clock loop applies the scale to it.
+            _fontScale.value = scale
+        }
+
+        private val _verticalPosition = MutableStateFlow(1f)
+        override val verticalPosition: StateFlow<Float> = _verticalPosition.asStateFlow()
+
+        override fun setVerticalPosition(position: Float) {
+            _verticalPosition.value = position.coerceIn(0f, 1f)
+        }
+    }
 
     @OptIn(ExperimentalMediampApi::class)
     private class TrackingSeekableInputMediaData(

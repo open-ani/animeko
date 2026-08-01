@@ -298,6 +298,7 @@ mediamp-source-ktxio = { module = "org.openani.mediamp:mediamp-source-ktxio", ve
 mediamp-test = { module = "org.openani.mediamp:mediamp-test", version.ref = "mediamp" }
 mediamp-vlc = { module = "org.openani.mediamp:mediamp-vlc", version.ref = "mediamp" }
 libass-media = { module = "io.github.peerless2012:ass-media", version.ref = "libass-android" }
+libass-kt = { module = "io.github.peerless2012:ass-kt", version.ref = "libass-android" }
 
 ### All other libraries ###
 

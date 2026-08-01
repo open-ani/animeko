@@ -42,6 +42,8 @@ kotlin {
         implementation(libs.androidx.media3.exoplayer.dash)
         implementation(libs.androidx.media3.exoplayer.hls)
         implementation(libs.libass.media)
+        // ass-media只在运行时依赖ass-kt, 但AssRender在编译期也要用到 (字幕字体缩放).
+        implementation(libs.libass.kt)
         api(libs.mediamp.exoplayer)
     }
     sourceSets.desktopMain.dependencies {
