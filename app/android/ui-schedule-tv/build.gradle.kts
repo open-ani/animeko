@@ -14,7 +14,7 @@ plugins {
 }
 
 android {
-    namespace = "me.him188.ani.tv.ui"
+    namespace = "me.him188.ani.tv.ui.schedule"
     compileSdk = getIntProperty("android.compile.sdk")
     defaultConfig {
         minSdk = getIntProperty("android.min.sdk")
@@ -26,16 +26,8 @@ android {
 
 dependencies {
     api(projects.app.android.uiFoundationTv)
-    implementation(projects.app.android.uiExplorationTv)
-    implementation(projects.app.android.uiSubjectTv)
-    implementation(projects.app.android.uiEpisodeTv)
-    implementation(projects.app.android.uiCollectionTv)
-    implementation(projects.app.android.uiSearchTv)
-    implementation(projects.app.android.uiScheduleTv)
-    implementation(projects.app.shared.appPlatform)
-    implementation(libs.compose.navigation.compose)
-    implementation(libs.compose.lifecycle.viewmodel.compose)
+    implementation(projects.app.shared.appData)
+    api(projects.app.shared.uiFoundation) // 仅白名单基建: AsyncImage / AbstractViewModel (§4.2)
     implementation(libs.koin.core)
-    implementation(compose.materialIconsExtended)
-    implementation(libs.androidx.activity.compose) // BackHandler
+    implementation(libs.kotlinx.datetime)
 }

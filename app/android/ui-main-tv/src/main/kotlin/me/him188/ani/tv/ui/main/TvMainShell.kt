@@ -17,11 +17,12 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,8 +39,13 @@ import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.navigation.getIcon
 import me.him188.ani.app.navigation.getText
+import me.him188.ani.app.navigation.NavRoutes
+import me.him188.ani.tv.ui.collection.TvCollectionScreen
+import me.him188.ani.tv.ui.collection.TvCollectionViewModel
 import me.him188.ani.tv.ui.exploration.TvExplorationScreen
 import me.him188.ani.tv.ui.exploration.TvExplorationViewModel
+import me.him188.ani.tv.ui.search.TvSearchScreen
+import me.him188.ani.tv.ui.search.TvSearchViewModel
 
 /**
  * TV 主壳 (atv-architecture.md §6.4): 左侧 NavigationDrawer + 内容区.
@@ -47,16 +53,19 @@ import me.him188.ani.tv.ui.exploration.TvExplorationViewModel
  * 条目: 搜索 -> 探索 -> 追番 -> 设置 (无缓存条目, §1.2 裁剪).
  * M0 为空壳占位; 返回语义 (非探索 tab -> 回探索, 探索 -> 退出) 已按 §6.3 接线.
  */
+/** 主壳内容区: 探索/追番 (MainScreenPage 子集) + 搜索 (TV 额外 tab). */
+private enum class TvShellContent { Search, Exploration, Collection }
+
 @Composable
 fun TvMainShell(modifier: Modifier = Modifier) {
-    // TV 端仅探索/追番两个 tab (CacheManagement 已裁剪, §1.2)
-    val pages = listOf(MainScreenPage.Exploration, MainScreenPage.Collection)
-    var selectedIndex by rememberSaveable { mutableIntStateOf(0) }
+    var content by rememberSaveable { mutableStateOf(TvShellContent.Exploration) }
 
-    // 返回语义: 非探索 tab 先回探索; 探索 tab 交给系统 (退出应用)
-    BackHandler(enabled = selectedIndex != 0) {
-        selectedIndex = 0
+    // 返回语义: 非探索内容先回探索; 探索交给系统 (退出应用)
+    BackHandler(enabled = content != TvShellContent.Exploration) {
+        content = TvShellContent.Exploration
     }
+
+    val navigator = LocalNavigator.current
 
     NavigationDrawer(
         modifier = modifier,
@@ -68,19 +77,41 @@ fun TvMainShell(modifier: Modifier = Modifier) {
             ) {
                 NavigationDrawerItem(
                     selected = false,
-                    onClick = { /* M2: TvSearchScreen */ },
+                    onClick = { content = TvShellContent.Search },
                     leadingContent = { Icon(Icons.Rounded.Search, contentDescription = "搜索") },
                 ) {
                     Text("搜索")
                 }
-                for ((index, page) in pages.withIndex()) {
-                    NavigationDrawerItem(
-                        selected = false, // 当前 tab 不做常驻高亮 (PR 结论: 聚焦高亮与选中高亮并存会误导)
-                        onClick = { selectedIndex = index },
-                        leadingContent = { Icon(page.getIcon(), contentDescription = page.getText()) },
-                    ) {
-                        Text(page.getText())
-                    }
+                NavigationDrawerItem(
+                    selected = false, // 当前 tab 不做常驻高亮 (PR 结论: 聚焦高亮与选中高亮并存会误导)
+                    onClick = { content = TvShellContent.Exploration },
+                    leadingContent = {
+                        Icon(
+                            MainScreenPage.Exploration.getIcon(),
+                            contentDescription = MainScreenPage.Exploration.getText(),
+                        )
+                    },
+                ) {
+                    Text(MainScreenPage.Exploration.getText())
+                }
+                NavigationDrawerItem(
+                    selected = false,
+                    onClick = { navigator.navigateSchedule() },
+                    leadingContent = { Icon(Icons.Rounded.CalendarMonth, contentDescription = "时间表") },
+                ) {
+                    Text("时间表")
+                }
+                NavigationDrawerItem(
+                    selected = false,
+                    onClick = { content = TvShellContent.Collection },
+                    leadingContent = {
+                        Icon(
+                            MainScreenPage.Collection.getIcon(),
+                            contentDescription = MainScreenPage.Collection.getText(),
+                        )
+                    },
+                ) {
+                    Text(MainScreenPage.Collection.getText())
                 }
                 NavigationDrawerItem(
                     selected = false,
@@ -94,34 +125,51 @@ fun TvMainShell(modifier: Modifier = Modifier) {
     ) {
         // 内容区左缘 = 侧栏收起宽 48dp (附录 A 度量)
         Box(Modifier.fillMaxSize().padding(start = 48.dp)) {
-            when (pages[selectedIndex]) {
-                MainScreenPage.Exploration -> {
-                    val navigator = LocalNavigator.current
-                    TvExplorationScreen(
-                        viewModel { TvExplorationViewModel() },
-                        onClickSubject = { hero ->
-                            navigator.navigateSubjectDetails(
-                                hero.subjectId,
-                                SubjectDetailPlaceholder(
-                                    id = hero.subjectId,
-                                    nameCN = hero.title,
-                                    coverUrl = hero.imageUrl,
-                                ),
-                            )
-                        },
-                    )
-                }
+            when (content) {
+                TvShellContent.Exploration -> TvExplorationScreen(
+                    viewModel { TvExplorationViewModel() },
+                    onClickSubject = { hero ->
+                        navigator.navigateSubjectDetails(
+                            hero.subjectId,
+                            SubjectDetailPlaceholder(
+                                id = hero.subjectId,
+                                nameCN = hero.title,
+                                coverUrl = hero.imageUrl,
+                            ),
+                        )
+                    },
+                )
 
-                MainScreenPage.Collection -> TvPagePlaceholder("追番页 · M2 实装")
-                MainScreenPage.CacheManagement -> error("unreachable: TV 无缓存 (§1.2)")
+                TvShellContent.Collection -> TvCollectionScreen(
+                    viewModel { TvCollectionViewModel() },
+                    onClickSubject = { info ->
+                        navigator.navigateSubjectDetails(
+                            info.subjectId,
+                            SubjectDetailPlaceholder(
+                                id = info.subjectId,
+                                name = info.subjectInfo.name,
+                                nameCN = info.subjectInfo.nameCn,
+                                coverUrl = info.subjectInfo.imageLarge,
+                            ),
+                        )
+                    },
+                )
+
+                TvShellContent.Search -> TvSearchScreen(
+                    viewModel { TvSearchViewModel() },
+                    onClickSubject = { details ->
+                        navigator.navigateSubjectDetails(
+                            details.subjectInfo.subjectId,
+                            SubjectDetailPlaceholder(
+                                id = details.subjectInfo.subjectId,
+                                name = details.subjectInfo.name,
+                                nameCN = details.subjectInfo.nameCn,
+                                coverUrl = details.subjectInfo.imageLarge,
+                            ),
+                        )
+                    },
+                )
             }
         }
-    }
-}
-
-@Composable
-private fun TvPagePlaceholder(text: String, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text, style = MaterialTheme.typography.headlineMedium)
     }
 }

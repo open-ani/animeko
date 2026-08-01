@@ -27,6 +27,8 @@ import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.tv.ui.episode.TvEpisodeScreen
 import me.him188.ani.tv.ui.episode.TvEpisodeViewModel
+import me.him188.ani.tv.ui.schedule.TvScheduleScreen
+import me.him188.ani.tv.ui.schedule.TvScheduleViewModel
 import me.him188.ani.tv.ui.subject.TvSubjectDetailsScreen
 import me.him188.ani.tv.ui.subject.TvSubjectDetailsViewModel
 import kotlin.reflect.typeOf
@@ -81,6 +83,16 @@ fun TvAniAppContent(
                         TvEpisodeViewModel(route.subjectId, route.episodeId, context)
                     }
                     TvEpisodeScreen(vm)
+                }
+
+                composable<NavRoutes.Schedule> {
+                    val vm = viewModel<TvScheduleViewModel> { TvScheduleViewModel() }
+                    TvScheduleScreen(
+                        vm,
+                        onClickSubject = { subjectId ->
+                            aniNavigator.navigateSubjectDetails(subjectId, null)
+                        },
+                    )
                 }
             }
         }
