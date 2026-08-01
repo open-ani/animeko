@@ -152,6 +152,7 @@ import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerFocusState
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
+import me.him188.ani.app.videoplayer.ui.createSubtitleAdjustmentState
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.asLevelController
@@ -930,6 +931,10 @@ private fun EpisodeVideo(
     }
     val scope = rememberCoroutineScope()
 
+    val subtitleAdjustmentState = remember(vm.player, scope) {
+        vm.player.createSubtitleAdjustmentState(scope)
+    }
+
     // 必须在 UI 里, 跟随 context 变化. 否则 #958
     val platformComponents by remember {
         derivedStateOf {
@@ -1088,6 +1093,7 @@ private fun EpisodeVideo(
                         onNavigateToFilterSettings = {
                             sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
                         },
+                        subtitleAdjustmentState = subtitleAdjustmentState,
                     )
                 },
                 editDanmakuRegexFilterPage = {

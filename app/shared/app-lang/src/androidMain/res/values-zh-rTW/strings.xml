@@ -1292,6 +1292,14 @@
     <string name="subject_episode_video_settings_enable_regex_filter">啟用正則彈幕過濾器</string>
     <string name="subject_episode_video_settings_manage_regex_filter">管理正則彈幕過濾器</string>
     <string name="subject_episode_video_settings_debug_mode">彈幕除錯模式</string>
+    <string name="subject_episode_video_settings_subtitle">字幕</string>
+    <string name="subject_episode_video_settings_subtitle_reset">重設</string>
+    <string name="subject_episode_video_settings_subtitle_delay">延遲</string>
+    <string name="subject_episode_video_settings_subtitle_delay_decrease">字幕提前</string>
+    <string name="subject_episode_video_settings_subtitle_delay_increase">字幕延後</string>
+    <string name="subject_episode_video_settings_subtitle_font_scale">字型大小</string>
+    <string name="subject_episode_video_settings_subtitle_position">位置</string>
+    <string name="subject_episode_video_settings_subtitle_position_description">帶有自帶定位的字幕不受位置調整影響</string>
 
     <!-- 人物/角色詳情頁 -->
     <string name="person_details_basic_info">基本資訊</string>

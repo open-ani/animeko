@@ -1327,6 +1327,14 @@
     <string name="subject_episode_video_settings_enable_regex_filter">启用正则弹幕过滤器</string>
     <string name="subject_episode_video_settings_manage_regex_filter">管理正则弹幕过滤器</string>
     <string name="subject_episode_video_settings_debug_mode">弹幕调试模式</string>
+    <string name="subject_episode_video_settings_subtitle">字幕</string>
+    <string name="subject_episode_video_settings_subtitle_reset">重置</string>
+    <string name="subject_episode_video_settings_subtitle_delay">延迟</string>
+    <string name="subject_episode_video_settings_subtitle_delay_decrease">字幕提前</string>
+    <string name="subject_episode_video_settings_subtitle_delay_increase">字幕延后</string>
+    <string name="subject_episode_video_settings_subtitle_font_scale">字号</string>
+    <string name="subject_episode_video_settings_subtitle_position">位置</string>
+    <string name="subject_episode_video_settings_subtitle_position_description">带有自带定位的字幕不受位置调整影响</string>
 
     <!-- 人物/角色详情页 -->
     <string name="person_details_basic_info">基本信息</string>

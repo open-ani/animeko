@@ -1287,6 +1287,14 @@
     <string name="subject_episode_video_settings_enable_regex_filter">Enable regex danmaku filters</string>
     <string name="subject_episode_video_settings_manage_regex_filter">Manage regex danmaku filters</string>
     <string name="subject_episode_video_settings_debug_mode">Danmaku debug mode</string>
+    <string name="subject_episode_video_settings_subtitle">Subtitles</string>
+    <string name="subject_episode_video_settings_subtitle_reset">Reset</string>
+    <string name="subject_episode_video_settings_subtitle_delay">Delay</string>
+    <string name="subject_episode_video_settings_subtitle_delay_decrease">Show subtitles earlier</string>
+    <string name="subject_episode_video_settings_subtitle_delay_increase">Show subtitles later</string>
+    <string name="subject_episode_video_settings_subtitle_font_scale">Subtitle size</string>
+    <string name="subject_episode_video_settings_subtitle_position">Vertical position</string>
+    <string name="subject_episode_video_settings_subtitle_position_description">Subtitles with their own positioning are not affected.</string>
 
     <!-- Person / character details pages -->
     <string name="person_details_basic_info">Basic info</string>

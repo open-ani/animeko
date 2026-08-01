@@ -40,6 +40,7 @@ import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettingsV
 import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSettings
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.SubtitleAdjustmentState
 import me.him188.ani.app.videoplayer.ui.VideoSideSheetScope
 import me.him188.ani.app.videoplayer.ui.VideoSideSheets
 import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
@@ -109,7 +110,8 @@ object EpisodeVideoSideSheets {
         expanded: Boolean,
         state: DanmakuRegexFilterState,
         onDismissRequest: () -> Unit,
-        onNavigateToFilterSettings: () -> Unit
+        onNavigateToFilterSettings: () -> Unit,
+        subtitleAdjustmentState: SubtitleAdjustmentState? = null,
     ) {
         val danmakuSettingsText = stringResource(Lang.subject_episode_danmaku_settings_title)
         val closeText = stringResource(Lang.subject_episode_close)
@@ -127,7 +129,11 @@ object EpisodeVideoSideSheets {
                     }
                 },
             ) {
-                EpisodeVideoSettings(viewModel, onNavigateToFilterSettings)
+                EpisodeVideoSettings(
+                    viewModel,
+                    onNavigateToFilterSettings,
+                    subtitleAdjustmentState = subtitleAdjustmentState,
+                )
             }
             return
         }
@@ -152,6 +158,7 @@ object EpisodeVideoSideSheets {
                         EpisodeVideoSettings(
                             viewModel,
                             onNavigateToFilterSettings = { currentPage = DanmakuSettingsPage.REGEX_FILTER },
+                            subtitleAdjustmentState = subtitleAdjustmentState,
                         )
                     }
 
@@ -181,6 +188,7 @@ fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
 
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    subtitleAdjustmentState: SubtitleAdjustmentState? = null,
 ) {
     val danmakuSettingsText = stringResource(Lang.subject_episode_danmaku_settings_title)
     val closeText = stringResource(Lang.subject_episode_close)
@@ -201,6 +209,7 @@ fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
             enableRegexFilter,
             onNavigateToFilterSettings,
             switchDanmakuRegexFilterCompletely,
+            subtitleAdjustmentState = subtitleAdjustmentState,
         )
     }
 }
