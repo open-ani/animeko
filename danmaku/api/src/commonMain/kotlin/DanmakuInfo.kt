@@ -66,6 +66,13 @@ value class DanmakuServiceId(
         val Baha = DanmakuServiceId("Baha")
         val Bilibili = DanmakuServiceId("Bilibili")
         val Dandanplay = DanmakuServiceId("Dandanplay")
+
+        /**
+         * 用户从本地文件导入的弹幕. 只在当前播放会话内有效, 不会被持久化.
+         *
+         * @see me.him188.ani.danmaku.api.DanmakuFileParser
+         */
+        val LocalFile = DanmakuServiceId("LocalFile")
         val Tucao = DanmakuServiceId("Tucao")
     }
 }

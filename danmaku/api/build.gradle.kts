@@ -22,6 +22,7 @@ kotlin {
         dependencies {
             api(libs.kotlinx.coroutines.core)
             api(libs.kotlinx.serialization.core)
+            implementation(libs.kotlinx.serialization.json)
 
             api(projects.utils.ktorClient)
             api(projects.utils.logging)

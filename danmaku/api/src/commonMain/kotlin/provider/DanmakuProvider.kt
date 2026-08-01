@@ -45,6 +45,12 @@ value class DanmakuProviderId(
         val Animeko = DanmakuProviderId("animeko")
         val Dandanplay = DanmakuProviderId("dandanplay")
         val Local = DanmakuProviderId("local")
+
+        /**
+         * 用户手动导入的本地弹幕文件. 不对应任何真实的 provider 实现,
+         * 只是用来在 `DanmakuLoader` 里占一个独立的槽位.
+         */
+        val LocalFile = DanmakuProviderId("local-file")
     }
 }
 
