@@ -13,8 +13,8 @@ package me.him188.ani.danmaku.api
  * 简繁转换的单字映射表.
  *
  * 数据来源: [OpenCC](https://github.com/BYVoid/OpenCC) 的 `TSCharacters.txt` 与 `STCharacters.txt` (Apache-2.0),
- * 只抽取其中 "单字 -> 单字" 的部分 (一对多时取第一个候选). 不做词组分词,
- * 因此像 "头发/頭髮" 这类需要上下文的转换可能不完全准确, 但对弹幕这种短文本已经够用.
+ * 只抽取其中 "单字 -> 单字" 的部分 (一对多时取第一个候选). 逐字转换弄不对的地方 (如 "头发/頭髮")
+ * 由词组表 [ZhPhraseConversionTable] 修正, [ZhConverter] 会先查词组表再回落到这张表.
  *
  * 表以 "成对字符串" 的形式存储: 下标 2i 为源字符, 下标 2i+1 为目标字符. 这比 Map 字面量省很多代码体积.
  */
