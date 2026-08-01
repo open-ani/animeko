@@ -9,16 +9,9 @@
 
 package me.him188.ani.datasources.bangumi
 
-import io.ktor.client.request.delete
 import io.ktor.client.request.get
-import io.ktor.client.request.put
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.contentType
 import io.ktor.http.isSuccess
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import me.him188.ani.datasources.api.source.ConnectionStatus
 import me.him188.ani.datasources.bangumi.next.apis.EpisodeBangumiNextApi
 import me.him188.ani.utils.ktor.ApiInvoker
@@ -28,10 +21,6 @@ interface BangumiClient {
     // Bangumi open API: https://github.com/bangumi/api/blob/master/open-api/api.yml
 
     val nextEpisodeApi: ApiInvoker<EpisodeBangumiNextApi>
-
-    suspend fun likeEpisodeComment(commentId: Int, value: Int)
-
-    suspend fun unlikeEpisodeComment(commentId: Int)
 
     /**
      * 测试与 Bangumi 主站的连接
@@ -53,25 +42,6 @@ class BangumiClientImpl(
      */
     private val client: ScopedHttpClient,
 ) : BangumiClient {
-    override suspend fun likeEpisodeComment(commentId: Int, value: Int) {
-        client.use {
-            put("$BANGUMI_NEXT_API_HOST/p1/episodes/-/comments/$commentId/like") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    buildJsonObject {
-                        put("value", value)
-                    },
-                )
-            }
-        }
-    }
-
-    override suspend fun unlikeEpisodeComment(commentId: Int) {
-        client.use {
-            delete("$BANGUMI_NEXT_API_HOST/p1/episodes/-/comments/$commentId/like")
-        }
-    }
-
     override suspend fun testConnectionMaster(): ConnectionStatus {
         return testConnection(BANGUMI_API_HOST)
     }

@@ -103,12 +103,6 @@ class DualSourceEpisodeCommentPagingSourceTest {
                         bangumiComment(id = "bangumi:060", createdAt = 60),
                     )
                 }
-
-                override suspend fun submitEpisodeCommentReaction(
-                    commentId: String,
-                    value: String,
-                    selected: Boolean,
-                ) = error("unused")
             },
             pageSize = 2,
         )
@@ -178,12 +172,6 @@ class DualSourceEpisodeCommentPagingSourceTest {
                     bangumiRequestCount += 1
                     return listOf(bangumiComment(id = "bangumi:250", createdAt = 250))
                 }
-
-                override suspend fun submitEpisodeCommentReaction(
-                    commentId: String,
-                    value: String,
-                    selected: Boolean,
-                ) = error("unused")
             },
             pageSize = 2,
         )
@@ -235,12 +223,6 @@ class DualSourceEpisodeCommentPagingSourceTest {
                 override suspend fun getSubjectEpisodeComments(episodeId: Long): List<EpisodeComment> {
                     throw IOException("bangumi boom")
                 }
-
-                override suspend fun submitEpisodeCommentReaction(
-                    commentId: String,
-                    value: String,
-                    selected: Boolean,
-                ) = error("unused")
             },
             pageSize = 2,
         )
@@ -272,12 +254,6 @@ class DualSourceEpisodeCommentPagingSourceTest {
                 override suspend fun getSubjectEpisodeComments(episodeId: Long): List<EpisodeComment> {
                     return listOf(bangumiComment(id = "bangumi:100", createdAt = 100))
                 }
-
-                override suspend fun submitEpisodeCommentReaction(
-                    commentId: String,
-                    value: String,
-                    selected: Boolean,
-                ) = error("unused")
             },
             pageSize = 2,
             onAniLoadFailed = { failures += it },
@@ -310,12 +286,6 @@ class DualSourceEpisodeCommentPagingSourceTest {
             override suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int) = error("unused")
 
             override suspend fun getSubjectEpisodeComments(episodeId: Long): List<EpisodeComment>? = bangumiComments
-
-            override suspend fun submitEpisodeCommentReaction(
-                commentId: String,
-                value: String,
-                selected: Boolean,
-            ) = error("unused")
         },
         onAniLoadFailed: (Throwable) -> Unit = {},
     ): DualSourceEpisodeCommentPagingSource {

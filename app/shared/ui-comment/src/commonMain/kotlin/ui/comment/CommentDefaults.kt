@@ -70,7 +70,8 @@ object CommentDefaults {
     fun Reaction(
         reaction: UICommentReaction,
         onClick: () -> Unit,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        clickEnabled: Boolean = true,
     ) {
         val backgroundColor by animateColorAsState(
             if (reaction.selected) {
@@ -83,7 +84,7 @@ object CommentDefaults {
             onClick = onClick,
             modifier = Modifier
                 .then(modifier),
-            enabled = true,
+            enabled = clickEnabled,
             shape = CircleShape,
             color = backgroundColor,
             border = SuggestionChipDefaults.suggestionChipBorder(true),
@@ -120,6 +121,7 @@ object CommentDefaults {
         list: List<UICommentReaction>,
         onClickItem: (reactionValue: String) -> Unit,
         modifier: Modifier = Modifier,
+        clickEnabled: Boolean = true,
     ) {
         FlowRow(
             modifier = modifier,
@@ -129,6 +131,7 @@ object CommentDefaults {
                 Reaction(
                     reaction = it,
                     onClick = { onClickItem(it.value) },
+                    clickEnabled = clickEnabled,
                 )
             }
         }

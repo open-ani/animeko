@@ -679,16 +679,15 @@ class EpisodeViewModel(
             }.cachedIn(backgroundScope),
         countState = stateOf(null),
         onSubmitCommentReaction = { comment, value, selected ->
-            episodeCommentRepository.submitReaction(
-                episodeId = episodeIdFlow.first().toLong(),
-                source = when (comment.source) {
-                    UICommentSource.ANI -> me.him188.ani.app.data.models.episode.EpisodeCommentSource.ANI
-                    UICommentSource.BANGUMI -> me.him188.ani.app.data.models.episode.EpisodeCommentSource.BANGUMI
-                },
-                commentId = comment.sourceCommentId,
-                value = value,
-                selected = selected,
-            )
+            // Bangumi 评论只读, 不支持提交表情回应
+            if (comment.source == UICommentSource.ANI) {
+                episodeCommentRepository.submitReaction(
+                    episodeId = episodeIdFlow.first().toLong(),
+                    commentId = comment.sourceCommentId,
+                    value = value,
+                    selected = selected,
+                )
+            }
         },
         backgroundScope = backgroundScope,
         commentLoadFailures = commentLoadFailureChannel.receiveAsFlow(),

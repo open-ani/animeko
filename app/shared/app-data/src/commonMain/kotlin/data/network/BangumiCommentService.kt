@@ -38,12 +38,6 @@ interface BangumiCommentService {
      * @return `null` if [episodeId] is invalid
      */
     suspend fun getSubjectEpisodeComments(episodeId: Long): List<EpisodeComment>?
-
-    suspend fun submitEpisodeCommentReaction(
-        commentId: String,
-        value: String,
-        selected: Boolean,
-    )
 }
 
 class BangumiBangumiCommentServiceImpl(
@@ -85,22 +79,6 @@ class BangumiBangumiCommentServiceImpl(
         }
     }
 
-    override suspend fun submitEpisodeCommentReaction(
-        commentId: String,
-        value: String,
-        selected: Boolean,
-    ) {
-        val bangumiCommentId = commentId.toIntOrNull() ?: return
-        if (!value.startsWith("bgm")) return
-        val bangumiReactionId = value.removePrefix("bgm").toIntOrNull() ?: return
-        withContext(ioDispatcher) {
-            if (selected) {
-                client.likeEpisodeComment(bangumiCommentId, bangumiReactionId)
-            } else {
-                client.unlikeEpisodeComment(bangumiCommentId)
-            }
-        }
-    }
 }
 
 private fun AniSubjectReview.toSubjectReview() = SubjectReview(
