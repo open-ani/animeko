@@ -1292,6 +1292,14 @@
     <string name="subject_episode_enable">启用</string>
     <string name="subject_episode_danmaku_rematch">重新匹配</string>
     <string name="subject_episode_danmaku_time_shift_item">时间校准 (%1$s)</string>
+    <string name="subject_episode_danmaku_service_local_file">本地文件</string>
+    <string name="subject_episode_danmaku_import_file">导入弹幕文件…</string>
+    <string name="subject_episode_danmaku_import_reading">读取中…</string>
+    <string name="subject_episode_danmaku_import_success">已导入 %1$d 条弹幕</string>
+    <string name="subject_episode_danmaku_import_error_unsupported">不支持的文件，目前只支持哔哩哔哩 XML 和弹弹 JSON</string>
+    <string name="subject_episode_danmaku_import_error_malformed">文件已损坏，无法读取</string>
+    <string name="subject_episode_danmaku_import_error_empty">文件里没有弹幕</string>
+    <string name="subject_episode_danmaku_import_error_unknown">导入失败</string>
     <string name="subject_episode_danmaku_service_bilibili_short">哔</string>
     <string name="subject_episode_danmaku_service_dandanplay_short">弹</string>
     <string name="subject_episode_danmaku_service_baha_short">巴</string>

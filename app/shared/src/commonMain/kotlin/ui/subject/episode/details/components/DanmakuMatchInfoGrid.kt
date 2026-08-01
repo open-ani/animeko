@@ -64,6 +64,7 @@ import me.him188.ani.app.ui.lang.subject_episode_danmaku_match_none
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_match_semi_fuzzy
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_service_bilibili
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_service_dandanplay
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_service_local_file
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_settings_for
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_time_shift_item
 import me.him188.ani.app.ui.lang.subject_episode_disable
@@ -217,6 +218,7 @@ internal fun renderDanmakuServiceId(serviceId: DanmakuServiceId): String = when 
     DanmakuServiceId.Baha -> "Baha"
     DanmakuServiceId.Bilibili -> stringResource(Lang.subject_episode_danmaku_service_bilibili)
     DanmakuServiceId.Dandanplay -> stringResource(Lang.subject_episode_danmaku_service_dandanplay)
+    DanmakuServiceId.LocalFile -> stringResource(Lang.subject_episode_danmaku_service_local_file)
     DanmakuServiceId.Tucao -> "Tucao"
 
     // `else` should not reach in production

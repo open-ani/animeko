@@ -241,6 +241,39 @@ class EpisodeDanmakuLoader(
     }
 
     /**
+     * 把用户从本地文件导入的弹幕挂到当前剧集上.
+     *
+     * 导入的弹幕会占用 [DanmakuProviderId.LocalFile] 这个独立的槽位, 因此和其他弹幕源一样
+     * 出现在弹幕源列表里, 支持开关和时间轴调整, 并且会走一遍完整的预处理流程. 它只在当前
+     * 播放会话内有效: 切换剧集时会被清空, 也不会写进本地缓存.
+     *
+     * 再次调用会替换掉上一次导入的弹幕.
+     *
+     * @param fileName 用于在弹幕源详情里显示导入的是哪个文件.
+     */
+    fun setImportedDanmaku(fileName: String, list: List<DanmakuInfo>) {
+        logger.info { "Importing ${list.size} danmaku from file: $fileName" }
+        overrideResults(
+            DanmakuProviderId.LocalFile,
+            listOf(
+                DanmakuFetchResult(
+                    providerId = DanmakuProviderId.LocalFile,
+                    matchInfo = DanmakuMatchInfo(
+                        serviceId = DanmakuServiceId.LocalFile,
+                        count = list.size,
+                        // 用户自己选的文件, 算精确匹配
+                        method = DanmakuMatchMethod.Exact(
+                            subjectTitle = fileName,
+                            episodeTitle = fileName,
+                        ),
+                    ),
+                    list = list,
+                ),
+            ),
+        )
+    }
+
+    /**
      * 获取所有弹幕数据的流，用于弹幕列表显示
      */
     val allDanmakuFlow: Flow<List<DanmakuInfo>> = combine(

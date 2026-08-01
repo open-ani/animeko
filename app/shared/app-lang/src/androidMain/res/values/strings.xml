@@ -1252,6 +1252,14 @@
     <string name="subject_episode_enable">Enable</string>
     <string name="subject_episode_danmaku_rematch">Rematch</string>
     <string name="subject_episode_danmaku_time_shift_item">Time shift (%1$s)</string>
+    <string name="subject_episode_danmaku_service_local_file">Local file</string>
+    <string name="subject_episode_danmaku_import_file">Import danmaku file…</string>
+    <string name="subject_episode_danmaku_import_reading">Reading…</string>
+    <string name="subject_episode_danmaku_import_success">Imported %1$d danmaku</string>
+    <string name="subject_episode_danmaku_import_error_unsupported">Unsupported file. Only Bilibili XML and dandanplay JSON are supported.</string>
+    <string name="subject_episode_danmaku_import_error_malformed">The file is damaged and cannot be read.</string>
+    <string name="subject_episode_danmaku_import_error_empty">No danmaku found in this file.</string>
+    <string name="subject_episode_danmaku_import_error_unknown">Failed to import the file.</string>
     <string name="subject_episode_danmaku_service_bilibili_short">B</string>
     <string name="subject_episode_danmaku_service_dandanplay_short">D</string>
     <string name="subject_episode_danmaku_service_baha_short">BA</string>

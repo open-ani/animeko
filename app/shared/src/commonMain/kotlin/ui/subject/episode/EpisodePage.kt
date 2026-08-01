@@ -556,6 +556,9 @@ private fun EpisodeScreenTabletVeryWide(
                                     onManualMatchDanmaku = {
                                         vm.startMatchingDanmaku(it)
                                     },
+                                    onImportDanmakuFile = { fileName, danmaku ->
+                                        vm.onImportDanmakuFile(fileName, danmaku)
+                                    },
                                     onEpisodeCollectionUpdate = { request ->
                                         scope.launch {
                                             vm.setEpisodeCollectionType.invokeSafe(request)?.let {
@@ -723,6 +726,9 @@ private fun EpisodeScreenContentPhone(
                     onClickTag = { navigator.navigateSubjectSearch(it.name) },
                     onManualMatchDanmaku = {
                         vm.startMatchingDanmaku(it)
+                    },
+                    onImportDanmakuFile = { fileName, danmaku ->
+                        vm.onImportDanmakuFile(fileName, danmaku)
                     },
                     onEpisodeCollectionUpdate = { request ->
                         scope.launch {

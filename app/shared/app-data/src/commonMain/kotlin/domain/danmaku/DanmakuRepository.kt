@@ -135,7 +135,9 @@ class DanmakuRepository(
         list: List<DanmakuFetchResult>
     ) {
         val entriesWithoutLocalSource = list
-            .filter { it.providerId != DanmakuProviderId.Local }
+            // Local: 本来就是从数据库读出来的.
+            // LocalFile: 用户导入的文件只在当前播放会话内有效, 不写进缓存.
+            .filter { it.providerId != DanmakuProviderId.Local && it.providerId != DanmakuProviderId.LocalFile }
             .flatMap { it.toEntityList(subjectId, episodeId) }
         logger.info { "saveToLocal, subjectId: $subjectId, episodeId: $episodeId, danmaku size: ${entriesWithoutLocalSource.size}" }
 

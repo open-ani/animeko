@@ -1110,6 +1110,13 @@ class EpisodeViewModel(
         cancelMatchingDanmaku()
     }
 
+    /**
+     * 用户导入了一个本地弹幕文件. 文件的读取和解析已经在 UI 层完成.
+     */
+    fun onImportDanmakuFile(fileName: String, danmaku: List<DanmakuInfo>) {
+        episodeDanmakuLoader.setImportedDanmaku(fileName, danmaku)
+    }
+
     fun updateFetchRequest(request: MediaFetchRequest) {
         launchInBackground {
             fetchPlayState.episodeSessionFlow

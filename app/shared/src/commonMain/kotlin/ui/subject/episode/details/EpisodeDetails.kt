@@ -156,6 +156,7 @@ import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.createTestDanmakuStatistics
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.ui.user.TestSelfInfoUiState
+import me.him188.ani.danmaku.api.DanmakuInfo
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuProviderId
 import me.him188.ani.datasources.api.Media
@@ -214,6 +215,7 @@ fun EpisodeDetails(
     onClickLogin: () -> Unit,
     onClickTag: (Tag) -> Unit,
     onManualMatchDanmaku: (DanmakuProviderId) -> Unit,
+    onImportDanmakuFile: (fileName: String, danmaku: List<DanmakuInfo>) -> Unit,
     onEpisodeCollectionUpdate: (SetEpisodeCollectionTypeRequest) -> Unit,
     loadError: EpisodePageLoadError?,
     onRetryLoad: () -> Unit,
@@ -555,6 +557,7 @@ fun EpisodeDetails(
                     onAdjustShift = { serviceId ->
                         editingShiftServiceId = serviceId
                     },
+                    onImportDanmakuFile = onImportDanmakuFile,
                 )
             }
         } else null,
@@ -654,6 +657,7 @@ fun EpisodeDetails(
                             onAdjustShift = { serviceId ->
                                 editingShiftServiceId = serviceId
                             },
+                            onImportDanmakuFile = onImportDanmakuFile,
                             modifier = Modifier.padding(horizontal = 8.dp),
                         )
                     }
@@ -1125,6 +1129,7 @@ private fun PreviewEpisodeDetailsImpl(
             onClickTag = {},
             onManualMatchDanmaku = {
             },
+            onImportDanmakuFile = { _, _ -> },
             onEpisodeCollectionUpdate = {},
             null, {},
             modifier

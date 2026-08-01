@@ -1257,6 +1257,14 @@
     <string name="subject_episode_enable">啟用</string>
     <string name="subject_episode_danmaku_rematch">重新匹配</string>
     <string name="subject_episode_danmaku_time_shift_item">時間校準 (%1$s)</string>
+    <string name="subject_episode_danmaku_service_local_file">本機檔案</string>
+    <string name="subject_episode_danmaku_import_file">匯入彈幕檔案…</string>
+    <string name="subject_episode_danmaku_import_reading">讀取中…</string>
+    <string name="subject_episode_danmaku_import_success">已匯入 %1$d 條彈幕</string>
+    <string name="subject_episode_danmaku_import_error_unsupported">不支援的檔案，目前只支援囉哩囉哩 XML 和彈彈 JSON</string>
+    <string name="subject_episode_danmaku_import_error_malformed">檔案已損壞，無法讀取</string>
+    <string name="subject_episode_danmaku_import_error_empty">檔案裡沒有彈幕</string>
+    <string name="subject_episode_danmaku_import_error_unknown">匯入失敗</string>
     <string name="subject_episode_danmaku_service_bilibili_short">嗶</string>
     <string name="subject_episode_danmaku_service_dandanplay_short">彈</string>
     <string name="subject_episode_danmaku_service_baha_short">巴</string>

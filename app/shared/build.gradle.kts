@@ -98,6 +98,10 @@ kotlin {
         implementation(libs.compose.components.resources)
         implementation(projects.app.shared.reorderable)
 
+        // 导入本地弹幕文件的文件选择器
+        implementation(libs.filekit.dialogs)
+        implementation(libs.filekit.dialogs.compose)
+
         // Data sources
         api(projects.datasource.datasourceApi)
         api(projects.datasource.datasourceCore)

@@ -38,10 +38,13 @@ import androidx.compose.material.icons.automirrored.outlined.FeaturedPlayList
 import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -59,6 +62,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -71,11 +77,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.vinceglb.filekit.dialogs.FileKitType
+import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.name
+import io.github.vinceglb.filekit.readBytes
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.ui.foundation.Res
 import me.him188.ani.app.ui.foundation.a
 import me.him188.ani.app.ui.foundation.lists.LazyListVerticalScrollbar
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_episode_collapse
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_import_error_empty
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_import_error_malformed
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_import_error_unknown
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_import_error_unsupported
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_import_file
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_import_reading
+import me.him188.ani.app.ui.lang.subject_episode_danmaku_import_success
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_list_empty
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_list_empty_filtered
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_list_title
@@ -90,7 +111,12 @@ import me.him188.ani.app.ui.lang.subject_episode_expand
 import me.him188.ani.app.ui.lang.subject_episode_more_options
 import me.him188.ani.app.ui.subject.episode.details.components.formatDanmakuShiftMillis
 import me.him188.ani.app.ui.subject.episode.details.components.renderDanmakuServiceId
+import me.him188.ani.danmaku.api.DanmakuFileParseException
+import me.him188.ani.danmaku.api.DanmakuFileParser
+import me.him188.ani.danmaku.api.DanmakuInfo
 import me.him188.ani.danmaku.api.DanmakuServiceId
+import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -106,6 +132,7 @@ fun DanmakuListSection(
     onSetEnabled: (DanmakuServiceId, Boolean) -> Unit,
     onManualMatch: (DanmakuServiceId) -> Unit,
     onAdjustShift: (DanmakuServiceId) -> Unit,
+    onImportDanmakuFile: (fileName: String, danmaku: List<DanmakuInfo>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listTitleText = stringResource(Lang.subject_episode_danmaku_list_title)
@@ -131,6 +158,7 @@ fun DanmakuListSection(
                         onSetEnabled = onSetEnabled,
                         onManualMatch = onManualMatch,
                         onAdjustShift = onAdjustShift,
+                        onImportDanmakuFile = onImportDanmakuFile,
                         modifier = Modifier.padding(top = 64.dp),
                     )
                 }
@@ -175,6 +203,7 @@ fun DanmakuListContent(
     onSetEnabled: (DanmakuServiceId, Boolean) -> Unit,
     onManualMatch: (DanmakuServiceId) -> Unit,
     onAdjustShift: (DanmakuServiceId) -> Unit,
+    onImportDanmakuFile: (fileName: String, danmaku: List<DanmakuInfo>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val emptyText = if (state.isEmpty) {
@@ -184,16 +213,15 @@ fun DanmakuListContent(
     }
 
     Column(modifier = modifier) {
-        // 弹幕源chips
-        if (state.sourceItems.isNotEmpty()) {
-            DanmakuSourceChips(
-                sourceItems = state.sourceItems,
-                onToggleSource = onSetEnabled,
-                onManualMatch = onManualMatch,
-                onAdjustShift = onAdjustShift,
-                modifier = Modifier.padding(horizontal = 8.dp),
-            )
-        }
+        // 弹幕源 chips. 即使一个源都没有, 也要显示导入按钮.
+        DanmakuSourceChips(
+            sourceItems = state.sourceItems,
+            onToggleSource = onSetEnabled,
+            onManualMatch = onManualMatch,
+            onAdjustShift = onAdjustShift,
+            onImportDanmakuFile = onImportDanmakuFile,
+            modifier = Modifier.padding(horizontal = 8.dp),
+        )
 
         // 弹幕列表
         if (state.danmakuItems.isEmpty()) {
@@ -255,6 +283,7 @@ private fun DanmakuSourceChips(
     onToggleSource: (DanmakuServiceId, Boolean) -> Unit,
     onManualMatch: (DanmakuServiceId) -> Unit,
     onAdjustShift: (DanmakuServiceId) -> Unit,
+    onImportDanmakuFile: (fileName: String, danmaku: List<DanmakuInfo>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     FlowRow(
@@ -270,6 +299,105 @@ private fun DanmakuSourceChips(
                 onAdjustShift = { onAdjustShift(sourceItem.serviceId) },
             )
         }
+
+        DanmakuFileImportChip(onImportDanmakuFile)
+    }
+}
+
+private val logger = logger("DanmakuListSection")
+
+/**
+ * 导入结果, 就地显示在「导入弹幕文件…」按钮旁边, 不需要额外的 snackbar.
+ */
+private sealed interface DanmakuImportResult {
+    class Success(val count: Int) : DanmakuImportResult
+    class Failure(val message: String) : DanmakuImportResult
+}
+
+/**
+ * 「导入弹幕文件…」按钮. 选择文件, 读取, 解析都在这里完成, 只把解析好的弹幕交给上层.
+ */
+@Composable
+private fun DanmakuFileImportChip(
+    onImportDanmakuFile: (fileName: String, danmaku: List<DanmakuInfo>) -> Unit,
+) {
+    val importFileText = stringResource(Lang.subject_episode_danmaku_import_file)
+    val readingText = stringResource(Lang.subject_episode_danmaku_import_reading)
+
+    val unsupportedText = stringResource(Lang.subject_episode_danmaku_import_error_unsupported)
+    val malformedText = stringResource(Lang.subject_episode_danmaku_import_error_malformed)
+    val noDanmakuText = stringResource(Lang.subject_episode_danmaku_import_error_empty)
+    val unknownErrorText = stringResource(Lang.subject_episode_danmaku_import_error_unknown)
+
+    val scope = rememberCoroutineScope()
+    var importing by remember { mutableStateOf(false) }
+    var result by remember { mutableStateOf<DanmakuImportResult?>(null) }
+
+    val onImportDanmakuFileUpdated by rememberUpdatedState(onImportDanmakuFile)
+
+    val filePicker = rememberFilePickerLauncher(
+        type = FileKitType.File(extensions = listOf("xml", "json")),
+    ) { file ->
+        if (file == null) return@rememberFilePickerLauncher
+        result = null
+        importing = true
+        scope.launch {
+            try {
+                val bytes = file.readBytes()
+                val parsed = withContext(Dispatchers.Default) { DanmakuFileParser.parse(bytes) }
+                onImportDanmakuFileUpdated(file.name, parsed.list)
+                result = DanmakuImportResult.Success(parsed.list.size)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: DanmakuFileParseException) {
+                logger.warn(e) { "Failed to parse danmaku file ${file.name}" }
+                result = DanmakuImportResult.Failure(
+                    when (e.reason) {
+                        DanmakuFileParseException.Reason.UnsupportedFormat -> unsupportedText
+                        DanmakuFileParseException.Reason.Malformed -> malformedText
+                        DanmakuFileParseException.Reason.NoDanmaku -> noDanmakuText
+                    },
+                )
+            } catch (e: Throwable) {
+                logger.warn(e) { "Failed to read danmaku file ${file.name}" }
+                result = DanmakuImportResult.Failure(unknownErrorText)
+            } finally {
+                importing = false
+            }
+        }
+    }
+
+    AssistChip(
+        onClick = { filePicker.launch() },
+        enabled = !importing,
+        label = { Text(if (importing) readingText else importFileText) },
+        leadingIcon = {
+            if (importing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                Icon(Icons.Outlined.FileOpen, contentDescription = null)
+            }
+        },
+    )
+
+    result?.let {
+        Text(
+            text = when (it) {
+                is DanmakuImportResult.Success ->
+                    stringResource(Lang.subject_episode_danmaku_import_success, it.count)
+
+                is DanmakuImportResult.Failure -> it.message
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = when (it) {
+                is DanmakuImportResult.Success -> MaterialTheme.colorScheme.onSurfaceVariant
+                is DanmakuImportResult.Failure -> MaterialTheme.colorScheme.error
+            },
+            modifier = Modifier.padding(horizontal = 8.dp),
+        )
     }
 }
 
@@ -285,6 +413,8 @@ private fun DanmakuSourceChip(
 ) {
     var showDropdown by rememberSaveable { mutableStateOf(false) }
     val isAnimeko = sourceItem.serviceId == DanmakuServiceId.Animeko
+    // Animeko 和本地导入的文件都没有"重新匹配"的概念
+    val canRematch = !isAnimeko && sourceItem.serviceId != DanmakuServiceId.LocalFile
     val moreOptionsText = stringResource(Lang.subject_episode_more_options)
     val disableText = stringResource(Lang.subject_episode_disable)
     val enableText = stringResource(Lang.subject_episode_enable)
@@ -372,7 +502,7 @@ private fun DanmakuSourceChip(
                         showDropdown = false
                     },
                 )
-                if (!isAnimeko) {
+                if (canRematch) {
                     DropdownMenuItem(
                         text = { Text(rematchText) },
                         leadingIcon = { Icon(Icons.Outlined.Refresh, null) },
@@ -410,6 +540,25 @@ private fun DanmakuServiceIcon(
                     .size(size.dp)
                     .clip(CircleShape),
             )
+        }
+
+        DanmakuServiceId.LocalFile -> {
+            Box(
+                modifier = modifier
+                    .size(size.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = CircleShape,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.Description,
+                    contentDescription = renderDanmakuServiceId(serviceId),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size((size * 0.65).dp),
+                )
+            }
         }
 
         else -> {
