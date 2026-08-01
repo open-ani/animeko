@@ -26,7 +26,12 @@ android {
 
 dependencies {
     api(projects.app.android.uiFoundationTv)
+    implementation(projects.app.android.uiExplorationTv)
+    implementation(projects.app.android.uiSubjectTv)
+    implementation(projects.app.android.uiEpisodeTv)
+    implementation(projects.app.shared.appPlatform)
     implementation(libs.compose.navigation.compose)
+    implementation(libs.compose.lifecycle.viewmodel.compose)
     implementation(libs.koin.core)
     implementation(compose.materialIconsExtended)
     implementation(libs.androidx.activity.compose) // BackHandler

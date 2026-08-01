@@ -12,8 +12,11 @@ package me.him188.ani.tv.ui.foundation.focus
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
+import androidx.tv.material3.ClickableSurfaceBorder
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Glow
 import androidx.tv.material3.MaterialTheme
 
@@ -35,4 +38,15 @@ object TvFocusDefaults {
 
     /** 不使用 glow. */
     fun cardGlow(): Glow = Glow.None
+
+    /** [cardBorder] 的 tv Surface(clickable) 包装. */
+    @Composable
+    fun clickableCardBorder(shape: Shape = RoundedCornerShape(11.dp)): ClickableSurfaceBorder =
+        ClickableSurfaceDefaults.border(
+            focusedBorder = Border(
+                border = BorderStroke(2.5.dp, MaterialTheme.colorScheme.primary),
+                inset = 3.dp,
+                shape = shape,
+            ),
+        )
 }

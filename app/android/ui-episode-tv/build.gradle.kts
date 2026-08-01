@@ -14,7 +14,7 @@ plugins {
 }
 
 android {
-    namespace = "me.him188.ani.tv.ui.foundation"
+    namespace = "me.him188.ani.tv.ui.episode"
     compileSdk = getIntProperty("android.compile.sdk")
     defaultConfig {
         minSdk = getIntProperty("android.min.sdk")
@@ -25,11 +25,10 @@ android {
 }
 
 dependencies {
-    api(libs.androidx.tv.material)
-    api(projects.app.shared.appPlatform)
-    api(compose.foundation)
-    implementation(projects.app.shared.uiFoundation) // 仅白名单基建: AsyncImage (§4.2)
-    // materialkolor 生成 m3 ColorScheme, 由 TvColorMapping 逐字段映射到 tv-material ColorScheme.
-    // 这是 TV 代码中唯一允许接触 androidx.compose.material3 类型的位置 (atv-architecture.md §4.2).
-    implementation(libs.materialkolor)
+    api(projects.app.android.uiFoundationTv)
+    implementation(projects.app.shared.appData)
+    api(projects.app.shared.uiFoundation) // 仅白名单基建: AbstractViewModel (§4.2)
+    implementation(projects.app.shared.videoPlayer) // expect VideoPlayer (ExoPlayer surface + libass)
+    implementation(projects.danmaku.danmakuUi) // DanmakuHost 纯 Canvas 渲染
+    implementation(libs.koin.core)
 }

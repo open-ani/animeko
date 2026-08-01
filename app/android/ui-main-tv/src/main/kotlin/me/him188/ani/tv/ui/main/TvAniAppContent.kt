@@ -13,20 +13,27 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import androidx.tv.material3.Surface
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
+import me.him188.ani.app.navigation.SubjectDetailPlaceholder
+import me.him188.ani.tv.ui.episode.TvEpisodeScreen
+import me.him188.ani.tv.ui.episode.TvEpisodeViewModel
+import me.him188.ani.tv.ui.subject.TvSubjectDetailsScreen
+import me.him188.ani.tv.ui.subject.TvSubjectDetailsViewModel
 import kotlin.reflect.typeOf
 
 /**
  * TV 端根内容: 注册 TV 支持的 [NavRoutes] 子集 (atv-architecture.md §6.3).
  *
- * M0 仅注册 [NavRoutes.Main] 空壳; M1 起补充 SubjectDetail/EpisodeDetail 等.
  * `Caches`/`BangumiAuthorize` 等按 §1.2 裁剪永不注册.
  */
 @Composable
@@ -48,6 +55,32 @@ fun TvAniAppContent(
                     typeMap = mapOf(typeOf<MainScreenPage>() to MainScreenPage.NavType),
                 ) {
                     TvMainShell()
+                }
+
+                composable<NavRoutes.SubjectDetail>(
+                    typeMap = mapOf(
+                        typeOf<SubjectDetailPlaceholder?>() to SubjectDetailPlaceholder.NavType,
+                    ),
+                ) { backStackEntry ->
+                    val route = backStackEntry.toRoute<NavRoutes.SubjectDetail>()
+                    val vm = viewModel<TvSubjectDetailsViewModel>(key = route.subjectId.toString()) {
+                        TvSubjectDetailsViewModel(route.subjectId)
+                    }
+                    TvSubjectDetailsScreen(
+                        vm,
+                        onPlayEpisode = { episodeId ->
+                            aniNavigator.navigateEpisodeDetails(route.subjectId, episodeId)
+                        },
+                    )
+                }
+
+                composable<NavRoutes.EpisodeDetail> { backStackEntry ->
+                    val route = backStackEntry.toRoute<NavRoutes.EpisodeDetail>()
+                    val context = LocalContext.current.applicationContext
+                    val vm = viewModel<TvEpisodeViewModel>(key = route.episodeId.toString()) {
+                        TvEpisodeViewModel(route.subjectId, route.episodeId, context)
+                    }
+                    TvEpisodeScreen(vm)
                 }
             }
         }

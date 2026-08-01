@@ -27,14 +27,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.NavigationDrawer
 import androidx.tv.material3.NavigationDrawerItem
 import androidx.tv.material3.Text
+import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.MainScreenPage
+import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.navigation.getIcon
 import me.him188.ani.app.navigation.getText
+import me.him188.ani.tv.ui.exploration.TvExplorationScreen
+import me.him188.ani.tv.ui.exploration.TvExplorationViewModel
 
 /**
  * TV 主壳 (atv-architecture.md §6.4): 左侧 NavigationDrawer + 内容区.
@@ -90,7 +95,23 @@ fun TvMainShell(modifier: Modifier = Modifier) {
         // 内容区左缘 = 侧栏收起宽 48dp (附录 A 度量)
         Box(Modifier.fillMaxSize().padding(start = 48.dp)) {
             when (pages[selectedIndex]) {
-                MainScreenPage.Exploration -> TvPagePlaceholder("探索页 · M1 实装")
+                MainScreenPage.Exploration -> {
+                    val navigator = LocalNavigator.current
+                    TvExplorationScreen(
+                        viewModel { TvExplorationViewModel() },
+                        onClickSubject = { hero ->
+                            navigator.navigateSubjectDetails(
+                                hero.subjectId,
+                                SubjectDetailPlaceholder(
+                                    id = hero.subjectId,
+                                    nameCN = hero.title,
+                                    coverUrl = hero.imageUrl,
+                                ),
+                            )
+                        },
+                    )
+                }
+
                 MainScreenPage.Collection -> TvPagePlaceholder("追番页 · M2 实装")
                 MainScreenPage.CacheManagement -> error("unreachable: TV 无缓存 (§1.2)")
             }
