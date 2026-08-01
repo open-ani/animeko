@@ -75,7 +75,7 @@ private fun matchScore(track: SubtitleTrack, preference: SubtitleTrackPreference
     }
 
     val preferredLanguage = SubtitleTrackLanguage.parse(preference.language)
-        ?: SubtitleTrackLanguage.parse(preference.label)
+        ?: SubtitleTrackLanguage.parseLoose(preference.label)
     if (preferredLanguage == null) {
         // 语言代码无法规范化时只能比字面, 例如某些冷门语言.
         val raw = preference.language?.trim()?.takeIf { it.isNotEmpty() } ?: return 0
@@ -83,7 +83,7 @@ private fun matchScore(track: SubtitleTrack, preference: SubtitleTrackPreference
     }
 
     val trackLanguage = SubtitleTrackLanguage.parse(track.language)
-        ?: track.labels.firstNotNullOfOrNull { SubtitleTrackLanguage.parse(it.value) }
+        ?: track.labels.firstNotNullOfOrNull { SubtitleTrackLanguage.parseLoose(it.value) }
         ?: return 0
     return when {
         trackLanguage == preferredLanguage -> SCORE_LANGUAGE_EXACT

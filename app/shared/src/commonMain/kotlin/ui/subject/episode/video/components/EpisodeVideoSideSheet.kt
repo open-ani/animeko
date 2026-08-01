@@ -32,7 +32,7 @@ import kotlinx.serialization.Serializable
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_episode_close
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_settings_title
+import me.him188.ani.app.ui.lang.subject_episode_player_settings_title
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.EpisodeVideoDefaults
 import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettings
@@ -113,14 +113,14 @@ object EpisodeVideoSideSheets {
         onNavigateToFilterSettings: () -> Unit,
         subtitleAdjustmentState: SubtitleAdjustmentState? = null,
     ) {
-        val danmakuSettingsText = stringResource(Lang.subject_episode_danmaku_settings_title)
+        val playerSettingsText = stringResource(Lang.subject_episode_player_settings_title)
         val closeText = stringResource(Lang.subject_episode_close)
 
         // 全屏：直接展示主设置 SideSheet
         if (expanded) {
             val viewModel = remember { EpisodeVideoSettingsViewModel() }
             SideSheetLayout(
-                title = { Text(danmakuSettingsText) },
+                title = { Text(playerSettingsText) },
                 onDismissRequest = onDismissRequest,
                 modifier = Modifier,
                 closeButton = {
@@ -190,11 +190,11 @@ fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
     modifier: Modifier = Modifier,
     subtitleAdjustmentState: SubtitleAdjustmentState? = null,
 ) {
-    val danmakuSettingsText = stringResource(Lang.subject_episode_danmaku_settings_title)
+    val playerSettingsText = stringResource(Lang.subject_episode_player_settings_title)
     val closeText = stringResource(Lang.subject_episode_close)
 
     SideSheetLayout(
-        title = { Text(text = danmakuSettingsText) },
+        title = { Text(text = playerSettingsText) },
         onDismissRequest = onDismissRequest,
         modifier,
         closeButton = {

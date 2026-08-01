@@ -695,6 +695,7 @@
     <string name="video_player_subtitle">Subtitle</string>
     <string name="video_player_subtitle_track_unnamed">Track %1$d</string>
     <string name="video_player_subtitle_track_indexed">%1$s %2$d</string>
+    <string name="video_player_subtitle_track_language_with_note">%1$s (%2$s)</string>
     <string name="video_player_subtitle_language_chinese">Chinese</string>
     <string name="video_player_subtitle_language_chinese_simplified">Simplified Chinese</string>
     <string name="video_player_subtitle_language_chinese_traditional">Traditional Chinese</string>
@@ -1269,6 +1270,7 @@
     <string name="subject_episode_danmaku_service_baha_short">BA</string>
     <string name="subject_episode_now_playing">Now playing</string>
     <string name="subject_episode_danmaku_settings_title">Danmaku settings</string>
+    <string name="subject_episode_player_settings_title">Player settings</string>
     <string name="subject_episode_fast_forward_seconds">Fast forward %1$d seconds</string>
     <string name="subject_episode_collapse_sidebar">Collapse sidebar</string>
     <string name="subject_episode_expand_sidebar">Expand sidebar</string>

@@ -710,6 +710,7 @@
     <string name="video_player_subtitle">字幕</string>
     <string name="video_player_subtitle_track_unnamed">軌道 %1$d</string>
     <string name="video_player_subtitle_track_indexed">%1$s %2$d</string>
+    <string name="video_player_subtitle_track_language_with_note">%1$s（%2$s）</string>
     <string name="video_player_subtitle_language_chinese">中文</string>
     <string name="video_player_subtitle_language_chinese_simplified">簡體中文</string>
     <string name="video_player_subtitle_language_chinese_traditional">繁體中文</string>
@@ -1284,6 +1285,7 @@
     <string name="subject_episode_danmaku_service_baha_short">巴</string>
     <string name="subject_episode_now_playing">正在播放</string>
     <string name="subject_episode_danmaku_settings_title">彈幕設置</string>
+    <string name="subject_episode_player_settings_title">播放設置</string>
     <string name="subject_episode_fast_forward_seconds">快進 %1$d 秒</string>
     <string name="subject_episode_collapse_sidebar">摺疊側邊欄</string>
     <string name="subject_episode_expand_sidebar">展開側邊欄</string>

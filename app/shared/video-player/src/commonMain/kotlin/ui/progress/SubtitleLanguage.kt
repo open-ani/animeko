@@ -83,6 +83,59 @@ enum class SubtitleTrackLanguage(
             }
             return null
         }
+
+        /**
+         * 从 "chs[KitaujiSub]"、"[Sakurato] CHT" 这类标题中提取语言指代词并清洗掉, 返回
+         * (识别出的语言, 清洗后的剩余文本). 没有指代词时语言为 `null`, 文本原样返回.
+         *
+         * 只清除作为独立词出现的指代词, 不会拆开 "UHA-WINGS" 这类恰好包含语言字母的组名.
+         */
+        fun extractFromTitle(title: String): Pair<SubtitleTrackLanguage?, String> {
+            var found: SubtitleTrackLanguage? = null
+            val stripped = WORD_RUN_REGEX.replace(title) { match ->
+                val language = parse(match.value) ?: return@replace match.value
+                found = moreSpecificOf(found, language)
+                ""
+            }
+            if (found == null) return null to title.trim()
+            var tidied = stripped
+                .replace(EMPTY_BRACKETS_REGEX, " ")
+                .trim { it.isWhitespace() || it in SEPARATOR_CHARS }
+                .replace(WHITESPACE_RUN_REGEX, " ")
+            // 剩余文本整体被一层括号包裹时 (如 "chs[KitaujiSub]" 清掉 chs 后剩 "[KitaujiSub]") 解开括号.
+            WRAPPING_BRACKETS_REGEX.matchEntire(tidied)?.let { tidied = it.groupValues[1].trim() }
+            return found to tidied
+        }
+
+        /**
+         * [parse] 的宽松版: 纯语言代码或含指代词的复合标题 ("chs[KitaujiSub]") 都能识别出语言.
+         */
+        fun parseLoose(value: String?): SubtitleTrackLanguage? {
+            if (value == null) return null
+            parse(value)?.let { return it }
+            return extractFromTitle(value).first
+        }
+
+        /**
+         * 取两个语言中更具体的一个: 简中/繁中/粤语比笼统的 "中文" 更具体.
+         * 都非空且不相容时取 [a] (先识别到的优先).
+         */
+        fun moreSpecificOf(a: SubtitleTrackLanguage?, b: SubtitleTrackLanguage?): SubtitleTrackLanguage? {
+            if (a == null) return b
+            if (b == null) return a
+            if (a == CHINESE && b.isChineseVariant) return b
+            return a
+        }
+
+        private val SubtitleTrackLanguage.isChineseVariant: Boolean
+            get() = this == CHINESE_SIMPLIFIED || this == CHINESE_TRADITIONAL || this == CANTONESE
+
+        // 连续的字母/数字/连字符/下划线作为一个词; "zh-Hans" 整体匹配, "UHA-WINGS" 也整体匹配而不会被拆开.
+        private val WORD_RUN_REGEX = Regex("""[A-Za-z][A-Za-z0-9_-]*""")
+        private val EMPTY_BRACKETS_REGEX = Regex("""[\[(（【]\s*[])）】]""")
+        private val WRAPPING_BRACKETS_REGEX = Regex("""[\[(（【]([^\[\]()（）【】]+)[])）】]""")
+        private val WHITESPACE_RUN_REGEX = Regex("""\s+""")
+        private const val SEPARATOR_CHARS = "-·|/_.,、"
     }
 }
 
@@ -105,6 +158,13 @@ sealed class SubtitleTrackName {
         override val index: Int? = null,
     ) : SubtitleTrackName()
 
+    /** 由 "chs[KitaujiSub]" 这类复合标签解析而来: 语言 + 备注 (通常是字幕组名). */
+    data class LanguageWithNote(
+        val language: SubtitleTrackLanguage,
+        val note: String,
+        override val index: Int? = null,
+    ) : SubtitleTrackName()
+
     /** 既无可读标签也无法识别语言, 按轨道在列表中的位置编号. */
     data class Unnamed(val number: Int) : SubtitleTrackName() {
         override val index: Int? get() = null
@@ -119,20 +179,29 @@ sealed class SubtitleTrackName {
  */
 fun subtitleTrackNamesOf(tracks: List<SubtitleTrack>): List<SubtitleTrackName> {
     val raw = tracks.mapIndexed { position, track ->
-        val humanLabel = track.labels.firstOrNull {
-            it.value.isNotBlank() && SubtitleTrackLanguage.parse(it.value) == null
+        val metadataLanguage = SubtitleTrackLanguage.parse(track.language)
+        val label = track.labels.firstOrNull { it.value.isNotBlank() }?.value?.trim()
+        if (label == null) {
+            return@mapIndexed if (metadataLanguage != null) {
+                SubtitleTrackName.Language(metadataLanguage)
+            } else {
+                SubtitleTrackName.Unnamed(position + 1)
+            }
         }
+
+        val (labelLanguage, note) = SubtitleTrackLanguage.extractFromTitle(label)
         when {
-            humanLabel != null -> SubtitleTrackName.Label(humanLabel.value.trim())
-            else -> {
-                val language = SubtitleTrackLanguage.parse(track.language)
-                    ?: track.labels.firstNotNullOfOrNull { SubtitleTrackLanguage.parse(it.value) }
-                if (language != null) {
+            // 标签含 chs/cht 这类指代词: 语言取标签与 metadata 中更具体的一方, 剩余文本作为备注.
+            labelLanguage != null -> {
+                val language = SubtitleTrackLanguage.moreSpecificOf(labelLanguage, metadataLanguage)!!
+                if (note.isEmpty()) {
                     SubtitleTrackName.Language(language)
                 } else {
-                    SubtitleTrackName.Unnamed(position + 1)
+                    SubtitleTrackName.LanguageWithNote(language, note)
                 }
             }
+            // 人工可读标签 (如 "简日双语") 原样展示.
+            else -> SubtitleTrackName.Label(label)
         }
     }
 
@@ -147,6 +216,7 @@ fun subtitleTrackNamesOf(tracks: List<SubtitleTrack>): List<SubtitleTrackName> {
         when (name) {
             is SubtitleTrackName.Label -> name.copy(index = index)
             is SubtitleTrackName.Language -> name.copy(index = index)
+            is SubtitleTrackName.LanguageWithNote -> name.copy(index = index)
             is SubtitleTrackName.Unnamed -> name // 已按位置编号, 不会重复
         }
     }
@@ -157,6 +227,10 @@ fun SubtitleTrackName.asString(): String {
     val base = when (this) {
         is SubtitleTrackName.Label -> value
         is SubtitleTrackName.Language -> stringResource(language.displayNameRes)
+        is SubtitleTrackName.LanguageWithNote -> stringResource(
+            Lang.video_player_subtitle_track_language_with_note,
+            stringResource(language.displayNameRes), note,
+        )
         is SubtitleTrackName.Unnamed -> stringResource(Lang.video_player_subtitle_track_unnamed, number)
     }
     val index = index ?: return base
@@ -167,6 +241,10 @@ suspend fun SubtitleTrackName.resolveString(): String {
     val base = when (this) {
         is SubtitleTrackName.Label -> value
         is SubtitleTrackName.Language -> getString(language.displayNameRes)
+        is SubtitleTrackName.LanguageWithNote -> getString(
+            Lang.video_player_subtitle_track_language_with_note,
+            getString(language.displayNameRes), note,
+        )
         is SubtitleTrackName.Unnamed -> getString(Lang.video_player_subtitle_track_unnamed, number)
     }
     val index = index ?: return base

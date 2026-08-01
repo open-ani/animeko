@@ -142,6 +142,45 @@ class SubtitleTrackNamesOfTest {
     }
 
     @Test
+    fun `language designator in label is stripped into a note`() {
+        assertEquals(
+            listOf(
+                SubtitleTrackName.LanguageWithNote(SubtitleTrackLanguage.CHINESE_SIMPLIFIED, "KitaujiSub"),
+                SubtitleTrackName.LanguageWithNote(SubtitleTrackLanguage.CHINESE_TRADITIONAL, "Sakurato"),
+                SubtitleTrackName.LanguageWithNote(SubtitleTrackLanguage.JAPANESE, "Netflix"),
+            ),
+            subtitleTrackNamesOf(
+                listOf(
+                    track(language = "chi", labels = listOf("chs[KitaujiSub]")),
+                    track(language = "chi", labels = listOf("cht[Sakurato]")),
+                    track(language = "jpn", labels = listOf("jpn[Netflix]")),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `metadata refines a generic designator, group name with language letters is kept intact`() {
+        assertEquals(
+            listOf(
+                SubtitleTrackName.LanguageWithNote(SubtitleTrackLanguage.CHINESE_SIMPLIFIED, "UHA-WINGS"),
+            ),
+            subtitleTrackNamesOf(
+                listOf(track(language = "zh-Hans", labels = listOf("chi [UHA-WINGS]"))),
+            ),
+        )
+    }
+
+    @Test
+    fun `extractFromTitle - no designator returns title unchanged`() {
+        assertEquals(null to "简日双语", SubtitleTrackLanguage.extractFromTitle("简日双语"))
+        assertEquals(
+            SubtitleTrackLanguage.CHINESE_SIMPLIFIED to "",
+            SubtitleTrackLanguage.extractFromTitle("CHS"),
+        )
+    }
+
+    @Test
     fun `duplicate labels get a numeric suffix`() {
         assertEquals(
             listOf(

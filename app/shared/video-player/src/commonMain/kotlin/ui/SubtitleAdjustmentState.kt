@@ -9,6 +9,9 @@
 
 package me.him188.ani.app.videoplayer.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -31,7 +34,7 @@ import kotlin.math.roundToLong
 @Stable
 class SubtitleAdjustmentState(
     private val subtitleAdjustment: SubtitleAdjustment,
-    scope: CoroutineScope,
+    private val scope: CoroutineScope,
 ) {
     val supportsDelay: Boolean get() = subtitleAdjustment.supportsDelay
     val supportsFontScale: Boolean get() = subtitleAdjustment.supportsFontScale
@@ -47,15 +50,16 @@ class SubtitleAdjustmentState(
     val fontScale: Float get() = _fontScale
     val verticalPosition: Float get() = _verticalPosition
 
+    // 位置的实际应用值经此平滑过渡到目标值, 避免字幕在画面上瞬移.
+    // UI 状态 (_verticalPosition) 则立即更新, 保证滑条跟手.
+    private val appliedPosition = Animatable(subtitleAdjustment.verticalPosition.value)
+
     init {
         scope.launch {
             subtitleAdjustment.delayMillis.collect { _delayMillis = it }
         }
         scope.launch {
             subtitleAdjustment.fontScale.collect { _fontScale = it }
-        }
-        scope.launch {
-            subtitleAdjustment.verticalPosition.collect { _verticalPosition = it }
         }
     }
 
@@ -76,13 +80,20 @@ class SubtitleAdjustmentState(
     }
 
     fun setVerticalPosition(position: Float) {
-        subtitleAdjustment.setVerticalPosition((position * 100).roundToInt() / 100f)
+        val quantized = (position * 100).roundToInt() / 100f
+        _verticalPosition = quantized
+        // Animatable 自带互斥: 新目标会取消进行中的动画, 拖动时表现为持续追赶.
+        scope.launch {
+            appliedPosition.animateTo(quantized, PositionAnimationSpec) {
+                subtitleAdjustment.setVerticalPosition(value)
+            }
+        }
     }
 
     fun reset() {
         if (supportsDelay) subtitleAdjustment.setDelayMillis(DefaultDelayMillis)
         if (supportsFontScale) subtitleAdjustment.setFontScale(DefaultFontScale)
-        if (supportsVerticalPosition) subtitleAdjustment.setVerticalPosition(DefaultVerticalPosition)
+        if (supportsVerticalPosition) setVerticalPosition(DefaultVerticalPosition)
     }
 
     companion object {
@@ -95,6 +106,8 @@ class SubtitleAdjustmentState(
 
         const val FontScaleStep: Float = 0.1f
         val FontScaleRange: ClosedFloatingPointRange<Float> = 0.5f..3f
+
+        private val PositionAnimationSpec = tween<Float>(durationMillis = 250, easing = FastOutSlowInEasing)
     }
 }
 

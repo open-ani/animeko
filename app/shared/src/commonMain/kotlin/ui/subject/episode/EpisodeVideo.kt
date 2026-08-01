@@ -86,7 +86,7 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.always_on_top
 import me.him188.ani.app.ui.lang.subject_episode_cache
 import me.him188.ani.app.ui.lang.subject_episode_collapse_sidebar
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_settings_title
+import me.him188.ani.app.ui.lang.subject_episode_player_settings_title
 import me.him188.ani.app.ui.lang.subject_episode_expand_sidebar
 import me.him188.ani.app.ui.lang.subject_episode_external_links
 import me.him188.ani.app.ui.lang.subject_episode_fast_forward_seconds
@@ -620,7 +620,7 @@ private fun EpisodeVideoTopBarActions(
     val skipDurationSeconds = opEdSkipDuration.inWholeSeconds
     val fastForwardSecondsText = stringResource(Lang.subject_episode_fast_forward_seconds, skipDurationSeconds)
     val selectMediaSourceText = stringResource(Lang.subject_episode_select_media_source)
-    val danmakuSettingsTitleText = stringResource(Lang.subject_episode_danmaku_settings_title)
+    val playerSettingsTitleText = stringResource(Lang.subject_episode_player_settings_title)
     val moreOptionsText = stringResource(Lang.subject_episode_more_options)
     val externalLinksText = stringResource(Lang.subject_episode_external_links)
     val cacheText = stringResource(Lang.subject_episode_cache)
@@ -664,7 +664,7 @@ private fun EpisodeVideoTopBarActions(
         { sheetsController.navigateTo(EpisodeVideoSideSheetPage.PLAYER_SETTINGS) },
         Modifier.testTag(TAG_SHOW_SETTINGS),
     ) {
-        Icon(AniIcons.SubtitleGear, contentDescription = danmakuSettingsTitleText)
+        Icon(AniIcons.SubtitleGear, contentDescription = playerSettingsTitleText)
     }
 
     if (LocalPlatform.current.isDesktop() && onToggleAlwaysOnTop != null) {
