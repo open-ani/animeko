@@ -29,6 +29,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import kotlinx.serialization.Serializable
+import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_episode_close
@@ -181,6 +182,8 @@ fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
 
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    enableMerge: Boolean = DanmakuFilterConfig.Default.enableMerge,
+    switchDanmakuMerge: () -> Unit = {},
 ) {
     val danmakuSettingsText = stringResource(Lang.subject_episode_danmaku_settings_title)
     val closeText = stringResource(Lang.subject_episode_close)
@@ -201,6 +204,8 @@ fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
             enableRegexFilter,
             onNavigateToFilterSettings,
             switchDanmakuRegexFilterCompletely,
+            enableMerge = enableMerge,
+            switchDanmakuMerge = switchDanmakuMerge,
         )
     }
 }

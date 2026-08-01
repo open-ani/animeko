@@ -88,9 +88,13 @@ class TimeBasedDanmakuSession private constructor(
         fun create(
             listFlow: Flow<List<DanmakuInfo>>,
             coroutineContext: CoroutineContext = EmptyCoroutineContext,
+            preprocessConfig: DanmakuPreprocessConfig = DanmakuPreprocessConfig.Default,
         ): DanmakuCollection {
             val list = listFlow.map { list ->
-                list.map { DanmakuSanitizer.sanitize(it) }.sortedBy { it.playTimeMillis }
+                DanmakuPreprocessor.preprocess(
+                    list.map { DanmakuSanitizer.sanitize(it) }.sortedBy { it.playTimeMillis },
+                    preprocessConfig,
+                )
             }
             return TimeBasedDanmakuSession(list, coroutineContext)
         }

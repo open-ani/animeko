@@ -58,6 +58,8 @@ import me.him188.ani.app.ui.lang.subject_episode_video_settings_display_area_one
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_display_area_one_quarter
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_display_area_one_sixth
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_display_area_three_quarters
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_enable_merge
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_enable_merge_description
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_enable_regex_filter
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_floating
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_font_size
@@ -116,6 +118,12 @@ class EpisodeVideoSettingsViewModel : AbstractSettingsViewModel(), KoinComponent
             danmakuFilterConfig.copy(enableRegexFilter = !danmakuFilterConfig.enableRegexFilter),
         )
     }
+
+    fun switchDanmakuMerge() {
+        danmakuFilterConfigState.update(
+            danmakuFilterConfig.copy(enableMerge = !danmakuFilterConfig.enableMerge),
+        )
+    }
 }
 
 @Composable
@@ -133,6 +141,8 @@ fun EpisodeVideoSettings(
         onManageRegexFilters = onNavigateToFilterSettings,
         enableRegexFilter = vm.danmakuFilterConfig.enableRegexFilter,
         switchDanmakuRegexFilterCompletely = vm::switchDanmakuRegexFilterCompletely,
+        enableMerge = vm.danmakuFilterConfig.enableMerge,
+        switchDanmakuMerge = vm::switchDanmakuMerge,
     )
 }
 
@@ -144,7 +154,9 @@ fun EpisodeVideoSettings(
     onManageRegexFilters: () -> Unit,
     switchDanmakuRegexFilterCompletely: () -> Unit,
     modifier: Modifier = Modifier,
-    useThinSlider: Boolean = true
+    useThinSlider: Boolean = true,
+    enableMerge: Boolean = DanmakuFilterConfig.Default.enableMerge,
+    switchDanmakuMerge: () -> Unit = {},
 ) {
     val topText = stringResource(Lang.subject_episode_video_settings_top)
     val floatingText = stringResource(Lang.subject_episode_video_settings_floating)
@@ -168,6 +180,9 @@ fun EpisodeVideoSettings(
     val displayAreaHalfText = stringResource(Lang.subject_episode_video_settings_display_area_half)
     val displayAreaThreeQuartersText = stringResource(Lang.subject_episode_video_settings_display_area_three_quarters)
     val displayAreaFullText = stringResource(Lang.subject_episode_video_settings_display_area_full)
+    val enableMergeText = stringResource(Lang.subject_episode_video_settings_enable_merge)
+    val enableMergeDescriptionText =
+        stringResource(Lang.subject_episode_video_settings_enable_merge_description)
     val enableRegexFilterText = stringResource(Lang.subject_episode_video_settings_enable_regex_filter)
     val manageRegexFilterText = stringResource(Lang.subject_episode_video_settings_manage_regex_filter)
     val debugModeText = stringResource(Lang.subject_episode_video_settings_debug_mode)
@@ -369,6 +384,15 @@ fun EpisodeVideoSettings(
                     }
                 },
                 useThinSlider = useThinSlider,
+            )
+
+            SwitchItem(
+                enableMerge,
+                onCheckedChange = {
+                    switchDanmakuMerge()
+                },
+                title = { Text(enableMergeText) },
+                description = { Text(enableMergeDescriptionText) },
             )
 
             SwitchItem(

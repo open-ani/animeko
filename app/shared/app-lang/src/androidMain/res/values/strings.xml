@@ -1284,6 +1284,8 @@
     <string name="subject_episode_video_settings_display_area_half">Half screen</string>
     <string name="subject_episode_video_settings_display_area_three_quarters">3/4 screen</string>
     <string name="subject_episode_video_settings_display_area_full">Full screen</string>
+    <string name="subject_episode_video_settings_enable_merge">Merge duplicate danmaku</string>
+    <string name="subject_episode_video_settings_enable_merge_description">Danmaku with the same content within 40 seconds are merged into one, marked with ×N</string>
     <string name="subject_episode_video_settings_enable_regex_filter">Enable regex danmaku filters</string>
     <string name="subject_episode_video_settings_manage_regex_filter">Manage regex danmaku filters</string>
     <string name="subject_episode_video_settings_debug_mode">Danmaku debug mode</string>

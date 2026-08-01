@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
@@ -34,10 +35,12 @@ import me.him188.ani.app.domain.danmaku.DanmakuLoaderImpl
 import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.media.player.data.filenameOrNull
+import me.him188.ani.app.domain.settings.GetDanmakuPreprocessConfigFlowUseCase
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
 import me.him188.ani.danmaku.api.DanmakuCollection
 import me.him188.ani.danmaku.api.DanmakuEvent
 import me.him188.ani.danmaku.api.DanmakuInfo
+import me.him188.ani.danmaku.api.DanmakuPreprocessConfig
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.DanmakuSession
 import me.him188.ani.danmaku.api.TimeBasedDanmakuSession
@@ -70,6 +73,8 @@ class EpisodeDanmakuLoader(
     getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase,
     backgroundScope: CoroutineScope,
     sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(),
+    getDanmakuPreprocessConfigFlowUseCase: GetDanmakuPreprocessConfigFlowUseCase =
+        GetDanmakuPreprocessConfigFlowUseCase { flowOf(DanmakuPreprocessConfig.Default) },
 ) {
     private val flowScope = backgroundScope
 
@@ -123,8 +128,13 @@ class EpisodeDanmakuLoader(
     val configFlow = config.asStateFlow()
 
 
-    private val danmakuSessionFlow: Flow<DanmakuSession> = config.mapLatest { configMap ->
-        createDanmakuCollection(danmakuLoader.fetchResultFlow, configMap).at(
+    private val danmakuSessionFlow: Flow<DanmakuSession> = combine(
+        config,
+        getDanmakuPreprocessConfigFlowUseCase(),
+    ) { configMap, preprocessConfig ->
+        configMap to preprocessConfig
+    }.mapLatest { (configMap, preprocessConfig) ->
+        createDanmakuCollection(danmakuLoader.fetchResultFlow, configMap, preprocessConfig).at(
             progress = player.currentPositionMillis.map { it.milliseconds },
             playbackSpeed = { player.features[PlaybackSpeed]?.value ?: 1f },
             danmakuRegexFilterList = getDanmakuRegexFilterListFlowUseCase(),
@@ -181,7 +191,8 @@ class EpisodeDanmakuLoader(
 
     private fun createDanmakuCollection(
         danmakuListFlow: Flow<List<DanmakuFetchResult>?>,
-        config: Map<DanmakuServiceId, DanmakuOriginConfig>
+        config: Map<DanmakuServiceId, DanmakuOriginConfig>,
+        preprocessConfig: DanmakuPreprocessConfig,
     ): DanmakuCollection {
         return TimeBasedDanmakuSession.create(
             danmakuListFlow.map {
@@ -204,6 +215,7 @@ class EpisodeDanmakuLoader(
                         }
                 } ?: emptyList()
             },
+            preprocessConfig = preprocessConfig,
         )
     }
 

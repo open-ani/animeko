@@ -1324,6 +1324,8 @@
     <string name="subject_episode_video_settings_display_area_half">半屏</string>
     <string name="subject_episode_video_settings_display_area_three_quarters">3/4 屏</string>
     <string name="subject_episode_video_settings_display_area_full">全屏</string>
+    <string name="subject_episode_video_settings_enable_merge">合并重复弹幕</string>
+    <string name="subject_episode_video_settings_enable_merge_description">40 秒内内容相同的弹幕合并为一条, 并标注 ×N</string>
     <string name="subject_episode_video_settings_enable_regex_filter">启用正则弹幕过滤器</string>
     <string name="subject_episode_video_settings_manage_regex_filter">管理正则弹幕过滤器</string>
     <string name="subject_episode_video_settings_debug_mode">弹幕调试模式</string>

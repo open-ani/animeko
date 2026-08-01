@@ -101,6 +101,7 @@ import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
 import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
 import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
 import me.him188.ani.app.domain.player.extension.WatchTogetherPlayerExtension
+import me.him188.ani.app.domain.settings.GetDanmakuPreprocessConfigFlowUseCase
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsUseCase
 import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
@@ -268,6 +269,7 @@ class EpisodeViewModel(
     val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase by inject()
     private val getSubjectRecommendations: GetSubjectRecommendationUseCase by inject()
     private val getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase by inject()
+    private val getDanmakuPreprocessConfigFlowUseCase: GetDanmakuPreprocessConfigFlowUseCase by inject()
     private val setSubjectCollectionTypeOrDeleteUseCase: SetSubjectCollectionTypeOrDeleteUseCase by inject()
     private val getPreferredWebMediaSource: GetPreferredWebMediaSourceUseCase by inject()
     private val webSessionManager: WebSessionManager by inject()
@@ -601,6 +603,7 @@ class EpisodeViewModel(
         getDanmakuRegexFilterListFlowUseCase = getDanmakuRegexFilterListFlowUseCase,
         backgroundScope,
         sharingStarted = SharingStarted.WhileSubscribed(5_000),
+        getDanmakuPreprocessConfigFlowUseCase = getDanmakuPreprocessConfigFlowUseCase,
     )
 
     /**
