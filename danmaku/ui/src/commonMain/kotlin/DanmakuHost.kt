@@ -60,7 +60,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -124,10 +123,12 @@ fun DanmakuHost(
         // Canvas only subscribes `danmakuUpdateSubscription` and `hostHeight` to re-draw.
         Canvas(
             modifier = Modifier.fillMaxSize()
-                .clipToBounds()
-                .alpha(state.canvasAlpha),
+                .clipToBounds(),
         ) {
             state.danmakuUpdateSubscription // subscribe changes
+
+            // 逐张应用 alpha, 而不是 Modifier.alpha, 后者会给整个 Canvas 开一层全屏离屏合成层
+            val alpha = state.canvasAlpha
 
             state.forEachFloatingDanmaku {
                 // don't draw uninitialized danmaku
@@ -137,6 +138,7 @@ fun DanmakuHost(
                     draw(
                         screenPosX = hostWidth - it.distanceX,
                         screenPosY = it.y,
+                        alpha = alpha,
                     )
                 }
             }
@@ -148,6 +150,7 @@ fun DanmakuHost(
                     draw(
                         screenPosX = (hostWidth - danmakuWidth) / 2f,
                         screenPosY = it.y,
+                        alpha = alpha,
                     )
                 }
             }

@@ -94,13 +94,16 @@ data class StyledDanmaku(
     override val danmakuWidth: Int = renderEntry.textLayout.size.width.coerceAtLeast(1)
     override val danmakuHeight: Int = renderEntry.textLayout.size.height.coerceAtLeast(1)
 
-    internal fun DrawScope.draw(screenPosX: Float, screenPosY: Float) {
+    /**
+     * [alpha] 逐张应用到位图上, 而不是给整个 Canvas 加一层 alpha, 以避免全屏的离屏合成层.
+     */
+    internal fun DrawScope.draw(screenPosX: Float, screenPosY: Float, alpha: Float = 1f) {
         val entry = renderEntry
         val cachedImage = entry.imageBitmap
             ?: createDanmakuImageBitmap(entry.textLayout, style.strokeColor, style.strokeWidth, style.shadow)
                 .also { entry.imageBitmap = it }
 
-        drawImage(cachedImage.bitmap, Offset(screenPosX, screenPosY) + cachedImage.offset)
+        drawImage(cachedImage.bitmap, Offset(screenPosX, screenPosY) + cachedImage.offset, alpha = alpha)
     }
 }
 
