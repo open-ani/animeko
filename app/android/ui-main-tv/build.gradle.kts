@@ -32,10 +32,18 @@ dependencies {
     implementation(projects.app.android.uiCollectionTv)
     implementation(projects.app.android.uiSearchTv)
     implementation(projects.app.android.uiScheduleTv)
+    implementation(projects.app.android.uiLoginTv)
+    implementation(projects.app.android.uiSettingsTv)
+    implementation(projects.app.shared.appData) // SelfInfo (抽屉登录态)
     implementation(projects.app.shared.appPlatform)
     implementation(libs.compose.navigation.compose)
     implementation(libs.compose.lifecycle.viewmodel.compose)
     implementation(libs.koin.core)
     implementation(compose.materialIconsExtended)
     implementation(libs.androidx.activity.compose) // BackHandler
+
+    // 约定边界守护 (atv-architecture.md §11.1)
+    testImplementation(libs.konsist)
+    testImplementation(libs.junit5.jupiter.engine)
+    testImplementation(kotlin("test-junit5"))
 }

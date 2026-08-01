@@ -103,6 +103,8 @@ includeProject(":app:android:ui-episode-tv", "app/android/ui-episode-tv") // TV 
 includeProject(":app:android:ui-collection-tv", "app/android/ui-collection-tv") // TV 追番页
 includeProject(":app:android:ui-search-tv", "app/android/ui-search-tv") // TV 搜索页
 includeProject(":app:android:ui-schedule-tv", "app/android/ui-schedule-tv") // TV 新番时间表
+includeProject(":app:android:ui-login-tv", "app/android/ui-login-tv") // TV 邮箱 OTP 登录
+includeProject(":app:android:ui-settings-tv", "app/android/ui-settings-tv") // TV 设置子集
 includeProject(":app:shared:app-platform")
 includeProject(":app:shared:app-data")
 includeProject(":app:shared:app-data-aidl")

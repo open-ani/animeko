@@ -17,10 +17,12 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -44,8 +46,12 @@ import me.him188.ani.tv.ui.collection.TvCollectionScreen
 import me.him188.ani.tv.ui.collection.TvCollectionViewModel
 import me.him188.ani.tv.ui.exploration.TvExplorationScreen
 import me.him188.ani.tv.ui.exploration.TvExplorationViewModel
+import me.him188.ani.tv.ui.login.TvLoginScreen
+import me.him188.ani.tv.ui.login.TvLoginViewModel
 import me.him188.ani.tv.ui.search.TvSearchScreen
 import me.him188.ani.tv.ui.search.TvSearchViewModel
+import me.him188.ani.tv.ui.settings.TvSettingsScreen
+import me.him188.ani.tv.ui.settings.TvSettingsViewModel
 
 /**
  * TV 主壳 (atv-architecture.md §6.4): 左侧 NavigationDrawer + 内容区.
@@ -53,8 +59,8 @@ import me.him188.ani.tv.ui.search.TvSearchViewModel
  * 条目: 搜索 -> 探索 -> 追番 -> 设置 (无缓存条目, §1.2 裁剪).
  * M0 为空壳占位; 返回语义 (非探索 tab -> 回探索, 探索 -> 退出) 已按 §6.3 接线.
  */
-/** 主壳内容区: 探索/追番 (MainScreenPage 子集) + 搜索 (TV 额外 tab). */
-private enum class TvShellContent { Search, Exploration, Collection }
+/** 主壳内容区: 探索/追番 (MainScreenPage 子集) + 搜索/登录/设置 (TV 额外 tab). */
+private enum class TvShellContent { Search, Exploration, Collection, Login, Settings }
 
 @Composable
 fun TvMainShell(modifier: Modifier = Modifier) {
@@ -67,6 +73,9 @@ fun TvMainShell(modifier: Modifier = Modifier) {
 
     val navigator = LocalNavigator.current
 
+    val loginViewModel = viewModel { TvLoginViewModel() }
+    val selfInfo by loginViewModel.selfInfo.collectAsState()
+
     NavigationDrawer(
         modifier = modifier,
         drawerContent = {
@@ -75,6 +84,13 @@ fun TvMainShell(modifier: Modifier = Modifier) {
                 Modifier.fillMaxHeight().padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically),
             ) {
+                NavigationDrawerItem(
+                    selected = false,
+                    onClick = { content = TvShellContent.Login },
+                    leadingContent = { Icon(Icons.Rounded.AccountCircle, contentDescription = "账号") },
+                ) {
+                    Text(selfInfo?.nickname?.takeIf { it.isNotBlank() } ?: "登录")
+                }
                 NavigationDrawerItem(
                     selected = false,
                     onClick = { content = TvShellContent.Search },
@@ -115,7 +131,7 @@ fun TvMainShell(modifier: Modifier = Modifier) {
                 }
                 NavigationDrawerItem(
                     selected = false,
-                    onClick = { /* M3: TvSettingsScreen */ },
+                    onClick = { content = TvShellContent.Settings },
                     leadingContent = { Icon(Icons.Rounded.Settings, contentDescription = "设置") },
                 ) {
                     Text("设置")
@@ -168,6 +184,15 @@ fun TvMainShell(modifier: Modifier = Modifier) {
                             ),
                         )
                     },
+                )
+
+                TvShellContent.Login -> TvLoginScreen(
+                    loginViewModel,
+                    onLoggedIn = { content = TvShellContent.Exploration },
+                )
+
+                TvShellContent.Settings -> TvSettingsScreen(
+                    viewModel { TvSettingsViewModel() },
                 )
             }
         }

@@ -10,6 +10,7 @@
 package me.him188.ani.tv
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
@@ -21,6 +22,8 @@ import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.platform.BaseComponentActivity
 import me.him188.ani.app.ui.foundation.LocalImageLoader
 import me.him188.ani.app.ui.foundation.createDefaultImageLoader
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.tv.ui.foundation.theme.AniTvTheme
 import me.him188.ani.tv.ui.main.TvAniAppContent
 import org.koin.android.ext.android.getKoin
@@ -46,7 +49,20 @@ class MainActivity : BaseComponentActivity() {
                         getKoin().get<HttpClientProvider>().get(ScopedHttpClientUserAgent.ANI),
                     )
                 }
-                CompositionLocalProvider(LocalImageLoader provides imageLoader) {
+                val toaster = remember {
+                    // TV 端 Toaster: 原生 Toast (10-foot 下自绘胶囊 M4 视觉阶段再换, §5.3)
+                    object : Toaster {
+                        override fun toast(text: String) {
+                            runOnUiThread {
+                                Toast.makeText(this@MainActivity, text, Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
+                CompositionLocalProvider(
+                    LocalImageLoader provides imageLoader,
+                    LocalToaster provides toaster,
+                ) {
                     TvAniAppContent(aniNavigator)
                 }
             }
