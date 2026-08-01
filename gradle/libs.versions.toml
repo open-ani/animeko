@@ -298,7 +298,10 @@ mediamp-source-ktxio = { module = "org.openani.mediamp:mediamp-source-ktxio", ve
 mediamp-test = { module = "org.openani.mediamp:mediamp-test", version.ref = "mediamp" }
 mediamp-vlc = { module = "org.openani.mediamp:mediamp-vlc", version.ref = "mediamp" }
 libass-media = { module = "io.github.peerless2012:ass-media", version.ref = "libass-android" }
-libass-kt = { module = "io.github.peerless2012:ass-kt", version.ref = "libass-android" }
+# strictly: 覆盖 ass-media 传递依赖的 0.5.0-beta01. -ani.1 是本地补丁版 (mavenLocal, 见
+# https://github.com/NihilDigit 的 libass-android fork feature/line-position 分支), 增加了
+# AssRender.setLinePosition 用于调整 ASS 字幕垂直位置.
+libass-kt = { module = "io.github.peerless2012:ass-kt", version = { strictly = "0.5.0-beta01-ani.1" } }
 
 ### All other libraries ###
 

@@ -110,9 +110,10 @@ class LibassExoPlayerMediampPlayer private constructor(
         assHandler.init(exoPlayer)
         backgroundScope.launch(Dispatchers.Main.immediate) {
             // The render is created once an ASS track is detected and dropped again on media
-            // transitions, so the font scale has to be re-applied to each new instance.
-            var scaledRender: AssRender? = null
+            // transitions, so adjustments have to be re-applied to each new instance.
+            var adjustedRender: AssRender? = null
             var appliedScale = 1f
+            var appliedPosition = 1f
             while (isActive) {
                 // AssRenderer normally supplies this timestamp. MediaMP owns the ExoPlayer
                 // builder, so drive the overlay from the same playback clock here instead.
@@ -120,10 +121,14 @@ class LibassExoPlayerMediampPlayer private constructor(
 
                 val render = assHandler.render
                 val scale = subtitleAdjustment.fontScale.value
-                if (render !== scaledRender || scale != appliedScale) {
+                val position = subtitleAdjustment.verticalPosition.value
+                if (render !== adjustedRender || scale != appliedScale || position != appliedPosition) {
                     render?.setFontScale(scale)
-                    scaledRender = render
+                    // Ours: 0 = top, 1 = bottom (default); libass: 0 = bottom (default), 100 = top.
+                    render?.setLinePosition(((1f - position) * 100f).toDouble())
+                    adjustedRender = render
                     appliedScale = scale
+                    appliedPosition = position
                 }
 
                 delay(16.milliseconds)
@@ -257,8 +262,9 @@ class LibassExoPlayerMediampPlayer private constructor(
      * [delayMillis] only shifts the libass clock: cue-based subtitles are timed by ExoPlayer's
      * renderers, which offer no timing offset, so they are unaffected.
      *
-     * [verticalPosition] conversely only moves cue-based subtitles. ASS events carry their own
-     * positioning from the subtitle file, which libass has no API to override.
+     * [verticalPosition] moves cue-based subtitles and, via [AssRender.setLinePosition]
+     * (a local ass-kt patch, see libs.versions.toml), ASS events that carry no explicit
+     * positioning of their own — explicitly positioned events keep their authored placement.
      */
     @OptIn(InternalForInheritanceMediampApi::class)
     private inner class SubtitleAdjustmentImpl : SubtitleAdjustment {
