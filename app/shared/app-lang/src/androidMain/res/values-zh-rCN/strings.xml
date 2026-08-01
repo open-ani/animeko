@@ -1324,6 +1324,11 @@
     <string name="subject_episode_video_settings_display_area_half">半屏</string>
     <string name="subject_episode_video_settings_display_area_three_quarters">3/4 屏</string>
     <string name="subject_episode_video_settings_display_area_full">全屏</string>
+    <string name="subject_episode_video_settings_zh_conversion">简繁转换</string>
+    <string name="subject_episode_video_settings_zh_conversion_description">同时作用于过滤词, 用简体写的屏蔽词也能拦住繁体弹幕</string>
+    <string name="subject_episode_video_settings_zh_conversion_none">关闭</string>
+    <string name="subject_episode_video_settings_zh_conversion_simplified">转换为简体</string>
+    <string name="subject_episode_video_settings_zh_conversion_traditional">转换为繁体</string>
     <string name="subject_episode_video_settings_enable_merge">合并重复弹幕</string>
     <string name="subject_episode_video_settings_enable_merge_description">40 秒内内容相同的弹幕合并为一条, 并标注 ×N</string>
     <string name="subject_episode_video_settings_enable_regex_filter">启用正则弹幕过滤器</string>

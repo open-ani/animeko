@@ -35,8 +35,8 @@ import me.him188.ani.app.domain.danmaku.DanmakuLoaderImpl
 import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.media.player.data.filenameOrNull
+import me.him188.ani.app.domain.settings.GetDanmakuFilterSpecFlowUseCase
 import me.him188.ani.app.domain.settings.GetDanmakuPreprocessConfigFlowUseCase
-import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
 import me.him188.ani.danmaku.api.DanmakuCollection
 import me.him188.ani.danmaku.api.DanmakuEvent
 import me.him188.ani.danmaku.api.DanmakuInfo
@@ -70,7 +70,7 @@ class EpisodeDanmakuLoader(
     private val selectedMedia: Flow<Media?>,
     private val bundleFlow: Flow<SubjectEpisodeInfoBundle>,
     private val danmakuRepository: DanmakuRepository,
-    getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase,
+    getDanmakuFilterSpecFlowUseCase: GetDanmakuFilterSpecFlowUseCase,
     backgroundScope: CoroutineScope,
     sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(),
     getDanmakuPreprocessConfigFlowUseCase: GetDanmakuPreprocessConfigFlowUseCase =
@@ -137,7 +137,7 @@ class EpisodeDanmakuLoader(
         createDanmakuCollection(danmakuLoader.fetchResultFlow, configMap, preprocessConfig).at(
             progress = player.currentPositionMillis.map { it.milliseconds },
             playbackSpeed = { player.features[PlaybackSpeed]?.value ?: 1f },
-            danmakuRegexFilterList = getDanmakuRegexFilterListFlowUseCase(),
+            filterSpec = getDanmakuFilterSpecFlowUseCase(),
         )
     }.shareIn(flowScope, started = sharingStarted, replay = 1)
 

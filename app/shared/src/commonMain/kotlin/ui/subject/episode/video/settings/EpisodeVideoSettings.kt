@@ -70,13 +70,20 @@ import me.him188.ani.app.ui.lang.subject_episode_video_settings_speed
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_speed_description
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_stroke_width
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_top
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_zh_conversion
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_zh_conversion_description
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_zh_conversion_none
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_zh_conversion_simplified
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_zh_conversion_traditional
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.AbstractSettingsViewModel
 import me.him188.ani.app.ui.settings.framework.SettingsState
+import me.him188.ani.app.ui.settings.framework.components.DropdownItem
 import me.him188.ani.app.ui.settings.framework.components.SettingsDefaults
 import me.him188.ani.app.ui.settings.framework.components.SliderItem
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
+import me.him188.ani.danmaku.api.ZhConversion
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuStyle
 import me.him188.ani.utils.platform.isDesktop
@@ -124,6 +131,12 @@ class EpisodeVideoSettingsViewModel : AbstractSettingsViewModel(), KoinComponent
             danmakuFilterConfig.copy(enableMerge = !danmakuFilterConfig.enableMerge),
         )
     }
+
+    fun setZhConversion(conversion: ZhConversion) {
+        danmakuFilterConfigState.update(
+            danmakuFilterConfig.copy(zhConversion = conversion),
+        )
+    }
 }
 
 @Composable
@@ -143,6 +156,8 @@ fun EpisodeVideoSettings(
         switchDanmakuRegexFilterCompletely = vm::switchDanmakuRegexFilterCompletely,
         enableMerge = vm.danmakuFilterConfig.enableMerge,
         switchDanmakuMerge = vm::switchDanmakuMerge,
+        zhConversion = vm.danmakuFilterConfig.zhConversion,
+        setZhConversion = vm::setZhConversion,
     )
 }
 
@@ -157,6 +172,8 @@ fun EpisodeVideoSettings(
     useThinSlider: Boolean = true,
     enableMerge: Boolean = DanmakuFilterConfig.Default.enableMerge,
     switchDanmakuMerge: () -> Unit = {},
+    zhConversion: ZhConversion = DanmakuFilterConfig.Default.zhConversion,
+    setZhConversion: (ZhConversion) -> Unit = {},
 ) {
     val topText = stringResource(Lang.subject_episode_video_settings_top)
     val floatingText = stringResource(Lang.subject_episode_video_settings_floating)
@@ -180,6 +197,21 @@ fun EpisodeVideoSettings(
     val displayAreaHalfText = stringResource(Lang.subject_episode_video_settings_display_area_half)
     val displayAreaThreeQuartersText = stringResource(Lang.subject_episode_video_settings_display_area_three_quarters)
     val displayAreaFullText = stringResource(Lang.subject_episode_video_settings_display_area_full)
+    val zhConversionTitleText = stringResource(Lang.subject_episode_video_settings_zh_conversion)
+    val zhConversionDescriptionText =
+        stringResource(Lang.subject_episode_video_settings_zh_conversion_description)
+    val zhConversionNoneText = stringResource(Lang.subject_episode_video_settings_zh_conversion_none)
+    val zhConversionSimplifiedText =
+        stringResource(Lang.subject_episode_video_settings_zh_conversion_simplified)
+    val zhConversionTraditionalText =
+        stringResource(Lang.subject_episode_video_settings_zh_conversion_traditional)
+    val zhConversionText = { conversion: ZhConversion ->
+        when (conversion) {
+            ZhConversion.NONE -> zhConversionNoneText
+            ZhConversion.TO_SIMPLIFIED -> zhConversionSimplifiedText
+            ZhConversion.TO_TRADITIONAL -> zhConversionTraditionalText
+        }
+    }
     val enableMergeText = stringResource(Lang.subject_episode_video_settings_enable_merge)
     val enableMergeDescriptionText =
         stringResource(Lang.subject_episode_video_settings_enable_merge_description)
@@ -384,6 +416,15 @@ fun EpisodeVideoSettings(
                     }
                 },
                 useThinSlider = useThinSlider,
+            )
+
+            DropdownItem(
+                selected = { zhConversion },
+                values = { ZhConversion.entries },
+                itemText = { Text(zhConversionText(it)) },
+                onSelect = { setZhConversion(it) },
+                title = { Text(zhConversionTitleText) },
+                description = { Text(zhConversionDescriptionText) },
             )
 
             SwitchItem(

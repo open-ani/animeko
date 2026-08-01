@@ -53,10 +53,10 @@ import me.him188.ani.app.domain.mediasource.SetPreferredWebMediaSourceUseCase
 import me.him188.ani.app.domain.mediasource.SetPreferredWebMediaSourceUseCaseImpl
 import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseCase
 import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseCaseImpl
+import me.him188.ani.app.domain.settings.GetDanmakuFilterSpecFlowUseCase
+import me.him188.ani.app.domain.settings.GetDanmakuFilterSpecFlowUseCaseImpl
 import me.him188.ani.app.domain.settings.GetDanmakuPreprocessConfigFlowUseCase
 import me.him188.ani.app.domain.settings.GetDanmakuPreprocessConfigFlowUseCaseImpl
-import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
-import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCaseImpl
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCase
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsFlowUseCaseImpl
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsUseCase
@@ -69,7 +69,7 @@ import org.koin.mp.KoinPlatform
 
 fun KoinApplication.useCaseModules() = module {
     single<GetEpisodeCollectionInfoFlowUseCase> { GetEpisodeCollectionInfoFlowUseCaseImpl() }
-    single<GetDanmakuRegexFilterListFlowUseCase> { GetDanmakuRegexFilterListFlowUseCaseImpl() }
+    single<GetDanmakuFilterSpecFlowUseCase> { GetDanmakuFilterSpecFlowUseCaseImpl() }
     single<GetDanmakuPreprocessConfigFlowUseCase> { GetDanmakuPreprocessConfigFlowUseCaseImpl() }
     single<MediaSelectorAutoSelectUseCase> { MediaSelectorAutoSelectUseCaseImpl() }
     single<MediaSelectorEventSavePreferenceUseCase> { MediaSelectorEventSavePreferenceUseCaseImpl }

@@ -101,8 +101,8 @@ import me.him188.ani.app.domain.player.extension.SaveMediaPreferenceExtension
 import me.him188.ani.app.domain.player.extension.SwitchMediaOnPlayerErrorExtension
 import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
 import me.him188.ani.app.domain.player.extension.WatchTogetherPlayerExtension
+import me.him188.ani.app.domain.settings.GetDanmakuFilterSpecFlowUseCase
 import me.him188.ani.app.domain.settings.GetDanmakuPreprocessConfigFlowUseCase
-import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsUseCase
 import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.app.domain.usecase.GlobalKoin
@@ -268,7 +268,7 @@ class EpisodeViewModel(
     private val getMediaSourceInstances: GetMediaSourceInstancesUseCase by inject()
     val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase by inject()
     private val getSubjectRecommendations: GetSubjectRecommendationUseCase by inject()
-    private val getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase by inject()
+    private val getDanmakuFilterSpecFlowUseCase: GetDanmakuFilterSpecFlowUseCase by inject()
     private val getDanmakuPreprocessConfigFlowUseCase: GetDanmakuPreprocessConfigFlowUseCase by inject()
     private val setSubjectCollectionTypeOrDeleteUseCase: SetSubjectCollectionTypeOrDeleteUseCase by inject()
     private val getPreferredWebMediaSource: GetPreferredWebMediaSourceUseCase by inject()
@@ -600,7 +600,7 @@ class EpisodeViewModel(
         },
         bundleFlow = fetchPlayState.infoBundleFlow.filterNotNull().distinctUntilChanged(),
         danmakuRepository = danmakuRepository,
-        getDanmakuRegexFilterListFlowUseCase = getDanmakuRegexFilterListFlowUseCase,
+        getDanmakuFilterSpecFlowUseCase = getDanmakuFilterSpecFlowUseCase,
         backgroundScope,
         sharingStarted = SharingStarted.WhileSubscribed(5_000),
         getDanmakuPreprocessConfigFlowUseCase = getDanmakuPreprocessConfigFlowUseCase,

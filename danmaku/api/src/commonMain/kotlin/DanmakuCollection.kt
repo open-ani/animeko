@@ -47,7 +47,7 @@ interface DanmakuCollection {
     fun at(
         progress: Flow<Duration>,
         playbackSpeed: () -> Float,
-        danmakuRegexFilterList: Flow<List<String>>,
+        filterSpec: Flow<DanmakuFilterSpec>,
     ): DanmakuSession
 }
 
@@ -71,7 +71,7 @@ fun emptyDanmakuCollection(): DanmakuCollection {
         override fun at(
             progress: Flow<Duration>,
             playbackSpeed: () -> Float,
-            danmakuRegexFilterList: Flow<List<String>>,
+            filterSpec: Flow<DanmakuFilterSpec>,
         ): DanmakuSession = emptyDanmakuSession()
     }
 }
@@ -101,19 +101,20 @@ class TimeBasedDanmakuSession private constructor(
 
 
         /**
-         * 输入一个[DanmakuInfo] list. 和一个[List<String>]，返回一个过滤后的[DanmakuInfo] list
+         * 输入一个 [DanmakuInfo] list 和一个 [DanmakuFilterSpec], 返回一个过滤后的 [DanmakuInfo] list
          */
         fun filterList(
             list: List<DanmakuInfo>,
-            danmakuRegexFilterList: List<String>,
+            spec: DanmakuFilterSpec,
         ): List<DanmakuInfo> {
-            if (danmakuRegexFilterList.isEmpty()) {
+            if (spec.isEmpty) {
                 return list
             }
 
-            // 预编译所有启用的正则表达式 
-            val regexFilters = danmakuRegexFilterList
-                .map { Regex(it, option = RegexOption.IGNORE_CASE) }
+            // 弹幕文本在加载时已经被转换成目标字形, 所以正则也要转换成同一种字形.
+            // 转换表只含 CJK 字符, 不会影响正则的元字符.
+            val regexFilters = spec.regexPatterns
+                .map { Regex(ZhConverter.convert(it, spec.zhConversion), option = RegexOption.IGNORE_CASE) }
 
             return list.filter { danmaku ->
                 // 所有过滤器都没有匹配到, 才算通过
@@ -126,12 +127,12 @@ class TimeBasedDanmakuSession private constructor(
 
 
     /**
-     * 接收一个视频的播放进度[Duration]. 和一个[List<String>]，根据视频进度和过滤后的弹幕列表，通过call [DanmakuSessionAlgorithm] 的 [tick] 函数发送弹幕
+     * 接收一个视频的播放进度[Duration]. 和一个 [DanmakuFilterSpec]，根据视频进度和过滤后的弹幕列表，通过call [DanmakuSessionAlgorithm] 的 [tick] 函数发送弹幕
      */
     override fun at(
         progress: Flow<Duration>,
         playbackSpeed: () -> Float,
-        danmakuRegexFilterList: Flow<List<String>>,
+        filterSpec: Flow<DanmakuFilterSpec>,
     ): DanmakuSession {
         val state = DanmakuSessionFlowState(
             initialList = emptyList(),
@@ -145,20 +146,20 @@ class TimeBasedDanmakuSession private constructor(
 
                 launch(start = CoroutineStart.UNDISPATCHED) {
                     var currentList: List<DanmakuInfo> = emptyList()
-                    var currentFilterList: List<String> = emptyList()
+                    var currentFilterSpec: DanmakuFilterSpec = DanmakuFilterSpec.Empty
 
-                    val filterChannel = danmakuRegexFilterList.produceIn(this)
+                    val filterChannel = filterSpec.produceIn(this)
                     val danmakuChannel = listFlow.produceIn(this)
 
                     while (true) {
                         select {
-                            filterChannel.onReceive { filterList ->
+                            filterChannel.onReceive { spec ->
                                 listFlow.firstOrNull()?.let { currentList = it }
-                                currentFilterList = filterList
+                                currentFilterSpec = spec
 
-                                logger.debug("danmaku regex filter updated: danmaku size: ${currentList.size}")
+                                logger.debug("danmaku filter updated: danmaku size: ${currentList.size}")
 
-                                state.updateList(filterList(currentList, currentFilterList))
+                                state.updateList(filterList(currentList, currentFilterSpec))
                                 state.requestRepopulate()
                             }
                             danmakuChannel.onReceive {
@@ -166,7 +167,7 @@ class TimeBasedDanmakuSession private constructor(
 
                                 logger.debug("Danmaku list updated, size=${it.size}")
 
-                                state.updateList(filterList(currentList, currentFilterList))
+                                state.updateList(filterList(currentList, currentFilterSpec))
                                 // reset indexing, 这里 reset 后下一次 tick 会从头索引一次.
                                 state.lastIndex = -1
                             }

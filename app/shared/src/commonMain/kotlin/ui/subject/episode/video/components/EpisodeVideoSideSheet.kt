@@ -47,6 +47,7 @@ import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.hasPageAsState
 import me.him188.ani.app.videoplayer.ui.rememberAlwaysOnRequester
 import me.him188.ani.app.videoplayer.ui.rememberVideoSideSheetsController
+import me.him188.ani.danmaku.api.ZhConversion
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import org.jetbrains.compose.resources.stringResource
 
@@ -184,6 +185,8 @@ fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
     modifier: Modifier = Modifier,
     enableMerge: Boolean = DanmakuFilterConfig.Default.enableMerge,
     switchDanmakuMerge: () -> Unit = {},
+    zhConversion: ZhConversion = DanmakuFilterConfig.Default.zhConversion,
+    setZhConversion: (ZhConversion) -> Unit = {},
 ) {
     val danmakuSettingsText = stringResource(Lang.subject_episode_danmaku_settings_title)
     val closeText = stringResource(Lang.subject_episode_close)
@@ -206,6 +209,8 @@ fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
             switchDanmakuRegexFilterCompletely,
             enableMerge = enableMerge,
             switchDanmakuMerge = switchDanmakuMerge,
+            zhConversion = zhConversion,
+            setZhConversion = setZhConversion,
         )
     }
 }

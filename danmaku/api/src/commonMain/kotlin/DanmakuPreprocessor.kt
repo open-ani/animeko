@@ -21,6 +21,10 @@ data class DanmakuPreprocessConfig(
      * 合并重复弹幕的时间窗口.
      */
     val mergeWindowMillis: Long = DanmakuMerger.DEFAULT_WINDOW_MILLIS,
+    /**
+     * 简繁转换. 在合并之前做, 这样 "前方高能" 和 "前方高能" 的简繁两种写法可以合并到一起.
+     */
+    val zhConversion: ZhConversion = ZhConversion.NONE,
 ) {
     companion object {
         val Default = DanmakuPreprocessConfig()
@@ -39,9 +43,23 @@ object DanmakuPreprocessor {
         config: DanmakuPreprocessConfig,
     ): List<DanmakuInfo> {
         var result = list
+        // 先做简繁转换, 再合并, 这样简繁两种写法的同一句话可以合并到一起
+        result = convertZh(result, config.zhConversion)
         if (config.enableMerge) {
             result = DanmakuMerger.merge(result, config.mergeWindowMillis)
         }
         return result
+    }
+
+    private fun convertZh(list: List<DanmakuInfo>, conversion: ZhConversion): List<DanmakuInfo> {
+        if (conversion == ZhConversion.NONE) return list
+        return list.map { danmaku ->
+            val converted = ZhConverter.convert(danmaku.text, conversion)
+            if (converted == danmaku.text) {
+                danmaku
+            } else {
+                danmaku.copy(content = danmaku.content.copy(text = converted))
+            }
+        }
     }
 }

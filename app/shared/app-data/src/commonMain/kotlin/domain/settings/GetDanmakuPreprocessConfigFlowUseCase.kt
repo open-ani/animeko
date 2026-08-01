@@ -42,6 +42,7 @@ class GetDanmakuPreprocessConfigFlowUseCaseImpl(
             .map { config ->
                 DanmakuPreprocessConfig(
                     enableMerge = config.enableMerge,
+                    zhConversion = config.zhConversion,
                 )
             }
             .distinctUntilChanged()

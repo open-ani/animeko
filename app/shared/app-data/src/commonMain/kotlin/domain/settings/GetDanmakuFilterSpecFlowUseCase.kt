@@ -13,10 +13,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.usecase.UseCase
+import me.him188.ani.danmaku.api.DanmakuFilterSpec
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
 import org.koin.core.component.KoinComponent
@@ -25,32 +27,36 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * Obtains the regex filters to be applied to danmaku collection, according to the user's settings.
+ * Obtains the filters to be applied to danmaku collection, according to the user's settings.
  */
-fun interface GetDanmakuRegexFilterListFlowUseCase : UseCase {
-    operator fun invoke(): Flow<List<String>>
+fun interface GetDanmakuFilterSpecFlowUseCase : UseCase {
+    operator fun invoke(): Flow<DanmakuFilterSpec>
 }
 
-class GetDanmakuRegexFilterListFlowUseCaseImpl(
+class GetDanmakuFilterSpecFlowUseCaseImpl(
     private val flowContext: CoroutineContext = Dispatchers.Default,
-) : GetDanmakuRegexFilterListFlowUseCase, KoinComponent {
+) : GetDanmakuFilterSpecFlowUseCase, KoinComponent {
     private val settingsRepository: SettingsRepository by inject()
     private val danmakuRegexFilterRepository: DanmakuRegexFilterRepository by inject()
 
-    override fun invoke(): Flow<List<String>> {
+    override fun invoke(): Flow<DanmakuFilterSpec> {
         return combine(settingsRepository.danmakuFilterConfig.flow, danmakuRegexFilterRepository.flow) { config, list ->
-            if (!config.enableRegexFilter) emptyList()
-            else list.filter { it.enabled }.map { it.regex }
-        }.flowOn(flowContext)
+            DanmakuFilterSpec(
+                regexPatterns = if (!config.enableRegexFilter) emptyList()
+                else list.filter { it.enabled }.map { it.regex },
+                zhConversion = config.zhConversion,
+            )
+        }.distinctUntilChanged()
+            .flowOn(flowContext)
             .catch { e ->
                 if (e !is CancellationException) {
-                    logger.error(e) { "Failed to get danmaku regex filter list" }
+                    logger.error(e) { "Failed to get danmaku filter spec" }
                 }
-                emit(listOf())
+                emit(DanmakuFilterSpec.Empty)
                 throw e
             }
     }
 
 
-    private val logger = logger<GetDanmakuRegexFilterListFlowUseCaseImpl>()
+    private val logger = logger<GetDanmakuFilterSpecFlowUseCaseImpl>()
 }

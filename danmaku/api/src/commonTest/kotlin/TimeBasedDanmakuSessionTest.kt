@@ -46,7 +46,7 @@ internal class TimeBasedDanmakuSessionTest {
         val list = instance.at(
             flowOf(0.seconds),
             { 1f },
-            danmakuRegexFilterList = flowOf(emptyList()),
+            filterSpec = flowOf(DanmakuFilterSpec.Empty),
         ).events.toList()
         assertEquals(0, list.size)
     }
@@ -58,8 +58,37 @@ internal class TimeBasedDanmakuSessionTest {
             dummyDanmaku(2.0, "2"),
             dummyDanmaku(3.0, "3"),
         )
-        val filteredList = TimeBasedDanmakuSession.filterList(danmakuList, listOf(".*"))
+        val filteredList = TimeBasedDanmakuSession.filterList(
+            danmakuList,
+            DanmakuFilterSpec(regexPatterns = listOf(".*")),
+        )
         assertEquals(emptyList(), filteredList)
+    }
+
+    @Test
+    fun `regex filter is converted to the same script as the danmaku`() {
+        val danmakuList = listOf(
+            dummyDanmaku(1.0, "剧透警告"), // 加载时已经转成简体
+            dummyDanmaku(2.0, "无关弹幕"),
+        )
+        // 用繁体写的过滤器也应该拦得住简体弹幕
+        val filtered = TimeBasedDanmakuSession.filterList(
+            danmakuList,
+            DanmakuFilterSpec(
+                regexPatterns = listOf("劇透"),
+                zhConversion = ZhConversion.TO_SIMPLIFIED,
+            ),
+        )
+        assertEquals(listOf("无关弹幕"), filtered.map { it.text })
+
+        // 不开简繁转换时就拦不住
+        assertEquals(
+            listOf("剧透警告", "无关弹幕"),
+            TimeBasedDanmakuSession.filterList(
+                danmakuList,
+                DanmakuFilterSpec(regexPatterns = listOf("劇透")),
+            ).map { it.text },
+        )
     }
 
     private fun dummyDanmaku(timeSecs: Double, text: String = "$timeSecs") =
