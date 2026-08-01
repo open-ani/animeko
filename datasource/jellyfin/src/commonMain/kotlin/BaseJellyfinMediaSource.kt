@@ -284,16 +284,21 @@ abstract class BaseJellyfinMediaSource(
                     }
                     response.body()
                 }
-            } catch (e: Throwable) {
-                val isUnauthorized = e is JellyfinAuthorizationException ||
-                        (e is ClientRequestException && e.response.status == HttpStatusCode.Unauthorized)
-                if (!isUnauthorized || hasRetried || !invalidateAuthorization(authorization)) {
+            } catch (e: JellyfinAuthorizationException) {
+                if (hasRetried || !invalidateAuthorization(authorization)) {
                     throw e
                 }
-
-                hasRetried = true
-                authorization = getAuthorization()
+            } catch (e: ClientRequestException) {
+                if (e.response.status != HttpStatusCode.Unauthorized ||
+                    hasRetried ||
+                    !invalidateAuthorization(authorization)
+                ) {
+                    throw e
+                }
             }
+
+            hasRetried = true
+            authorization = getAuthorization()
         }
     }
 }

@@ -23,6 +23,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.OutgoingContent
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -217,6 +218,54 @@ class JellyfinMediaSourceAuthenticationTest {
 
         assertEquals(ConnectionStatus.SUCCESS, source.checkConnection())
         assertEquals(2, loginCount)
+        assertEquals(2, itemsCount)
+    }
+
+    @Test
+    fun `cancellation propagates without reauthentication or retry`() = runTest {
+        var loginCount = 0
+        var itemsCount = 0
+        val cancellation = CancellationException("test cancellation")
+        val source = JellyfinMediaSource(
+            config = passwordConfig(),
+            client = mockClient { request ->
+                when (request.url.encodedPath) {
+                    "/Users/AuthenticateByName" -> {
+                        loginCount++
+                        respondJson(
+                            """
+                            {
+                              "AccessToken": "session-token",
+                              "User": { "Id": "session-user-id" }
+                            }
+                            """.trimIndent(),
+                        )
+                    }
+
+                    "/Items" -> {
+                        itemsCount++
+                        if (itemsCount == 1) {
+                            throw cancellation
+                        }
+                        respondJson("""{"Items":[]}""")
+                    }
+
+                    else -> error("Unexpected request: ${request.url}")
+                }
+            },
+        )
+
+        val pagedSource = assertIs<PagedSource<MediaMatch>>(source.fetch(testRequest()))
+        val thrown = assertFailsWith<CancellationException> {
+            pagedSource.nextPageOrNull()
+        }
+
+        assertEquals(cancellation.message, thrown.message)
+        assertEquals(1, loginCount)
+        assertEquals(1, itemsCount)
+
+        assertEquals(ConnectionStatus.SUCCESS, source.checkConnection())
+        assertEquals(1, loginCount)
         assertEquals(2, itemsCount)
     }
 
