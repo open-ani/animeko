@@ -16,7 +16,11 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retry
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.filterNotNull
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
+import me.him188.ani.app.data.network.TmdbImageService
+import me.him188.ani.app.data.network.matchToEpisodes
+import me.him188.ani.app.data.network.newestAiredDateStringOrNull
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.utils.logging.logger
@@ -33,6 +37,7 @@ class TvSubjectDetailsViewModel(
     val subjectId: Int,
 ) : AbstractViewModel(), KoinComponent {
     private val subjectCollectionRepository: SubjectCollectionRepository by inject()
+    private val tmdbImageService: TmdbImageService by inject()
 
     val subject: StateFlow<SubjectCollectionInfo?> = subjectCollectionRepository
         .subjectCollectionFlow(subjectId)
@@ -40,6 +45,40 @@ class TvSubjectDetailsViewModel(
         .catch { logger.warn(it) { "Failed to load subject $subjectId" } }
         .map<SubjectCollectionInfo, SubjectCollectionInfo?> { it }
         .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** TMDB 横版 backdrop (§4.3-R3); 无 token / 无图时为 null, UI 退化为竖版海报. */
+    val backdropUrl: StateFlow<String?> = subject
+        .filterNotNull()
+        .map { info ->
+            runCatching {
+                tmdbImageService.getBackdropUrl(
+                    subjectId = info.subjectId,
+                    originalName = info.subjectInfo.name,
+                    activeAsOfDate = info.subjectInfo.airDate.takeIf { it.isValid }
+                        ?.let { "%04d-%02d-%02d".format(it.year, it.month, it.day) },
+                )
+            }.getOrNull()
+        }
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** TMDB 分集剧照: episodeId -> still url. 匹配沿用 PR 的 [matchToEpisodes] (日期优先 + 集号/集名兜底). */
+    val episodeStills: StateFlow<Map<Int, String>> = subject
+        .filterNotNull()
+        .map { info ->
+            val stills = runCatching {
+                tmdbImageService.getEpisodeStills(
+                    subjectId = info.subjectId,
+                    originalName = info.subjectInfo.name,
+                    language = "zh-CN",
+                    newestWantedAirDate = info.episodes.newestAiredDateStringOrNull(),
+                )
+            }.getOrNull() ?: return@map emptyMap()
+
+            stills.matchToEpisodes(info.episodes)
+                .mapNotNull { (episodeId, media) -> media.stillUrl?.let { episodeId to it } }
+                .toMap()
+        }
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     private companion object {
         private val logger = logger<TvSubjectDetailsViewModel>()

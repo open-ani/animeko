@@ -28,6 +28,8 @@ import me.him188.ani.app.data.network.AniEpisodeCommentService
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AniSubjectSearchService
 import me.him188.ani.app.data.network.AnimeScheduleService
+import me.him188.ani.app.data.network.BangumiSummaryService
+import me.him188.ani.app.data.network.TmdbImageService
 import me.him188.ani.app.data.network.AutoSkipRepository
 import me.him188.ani.app.data.network.BangumiBangumiCommentServiceImpl
 import me.him188.ani.app.data.network.BangumiCommentService
@@ -449,6 +451,9 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
     single<BangumiProfileService> { BangumiProfileService() }
     single<AnimeScheduleService> { AnimeScheduleService(get<AniApiProvider>().scheduleApi) }
+    // TV 横版 backdrop / 分集剧照; 未配置 ani.tmdb.api.token 时自动关闭 (atv-architecture.md §4.3-R3)
+    single<TmdbImageService> { TmdbImageService(get(), getContext().dataStores.tmdbImageCacheStore) }
+    single<BangumiSummaryService> { BangumiSummaryService(get()) }
     single<TrendsRepository> { TrendsRepository(get<AniApiProvider>().trendsApi, get<BangumiClient>().nextTrendingApi) }
     single<RecommendationRepository> { RecommendationRepository(get<AniApiProvider>().homeApi) }
     single<AutoSkipRepository> { AutoSkipRepository(get<AniApiProvider>().episodesApi) }

@@ -65,6 +65,8 @@ fun TvSubjectDetailsScreen(
     modifier: Modifier = Modifier,
 ) {
     val subject by viewModel.subject.collectAsState()
+    val backdropUrl by viewModel.backdropUrl.collectAsState()
+    val episodeStills by viewModel.episodeStills.collectAsState()
 
     Box(modifier.fillMaxSize()) {
         val info = subject
@@ -75,7 +77,7 @@ fun TvSubjectDetailsScreen(
                 style = MaterialTheme.typography.titleMedium,
             )
         } else {
-            SubjectContent(info, onPlayEpisode)
+            SubjectContent(info, backdropUrl, episodeStills, onPlayEpisode)
         }
     }
 }
@@ -83,6 +85,8 @@ fun TvSubjectDetailsScreen(
 @Composable
 private fun SubjectContent(
     info: SubjectCollectionInfo,
+    backdropUrl: String?,
+    episodeStills: Map<Int, String>,
     onPlayEpisode: (episodeId: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -94,9 +98,9 @@ private fun SubjectContent(
         ?: info.episodes.firstOrNull()
 
     Box(modifier.fillMaxSize()) {
-        // 全屏 backdrop (M1 以海报 Crop 充当, TMDB 横版图待 R3)
+        // 全屏 backdrop: TMDB 横版图优先, 无图时退化为竖版海报 Crop
         AsyncImage(
-            model = subjectInfo.imageLarge,
+            model = backdropUrl ?: subjectInfo.imageLarge,
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
@@ -225,8 +229,9 @@ private fun SubjectContent(
                 items(info.episodes, key = { it.episodeId }) { episode ->
                     TvEpisodeCard(
                         episode = episode,
-                        // TODO(R3): TMDB 分集剧照; 暂以条目图占位
-                        imageUrl = subjectInfo.imageLarge,
+                        imageUrl = episodeStills[episode.episodeId]
+                            ?: backdropUrl
+                            ?: subjectInfo.imageLarge,
                         onClick = { onPlayEpisode(episode.episodeId) },
                     )
                 }

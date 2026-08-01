@@ -81,6 +81,7 @@ fun TvExplorationScreen(
     val trends by viewModel.trends.collectAsState()
     val recommendations = viewModel.recommendations.collectAsLazyPagingItems()
     val details by viewModel.focusedDetails.collectAsState()
+    val tmdbBackdrop by viewModel.focusedBackdropUrl.collectAsState()
 
     var focusedHero by remember { mutableStateOf<TvHeroSubject?>(null) }
     var focusedIndexInTrends by remember { mutableStateOf(0) }
@@ -100,9 +101,12 @@ fun TvExplorationScreen(
 
     val surfaceColor = MaterialTheme.colorScheme.surface
 
+    // TMDB 横版图优先; 未配置 token / 无图时退化为竖版海报 Crop
+    val backdropUrl = tmdbBackdrop?.takeIf { details?.subjectId == hero?.subjectId } ?: hero?.imageUrl
+
     Box(modifier.fillMaxSize()) {
         // Backdrop: 右半屏全高 + 左缘/下缘渐隐 (参考版布局), 600ms crossfade (附录 A)
-        Crossfade(hero?.imageUrl, animationSpec = tween(600), label = "backdrop") { url ->
+        Crossfade(backdropUrl, animationSpec = tween(600), label = "backdrop") { url ->
             if (url != null) {
                 Box(Modifier.fillMaxSize()) {
                     AsyncImage(
@@ -235,14 +239,15 @@ private fun TvExplorationHero(
     val info = details?.takeIf { it.subjectId == hero?.subjectId }
 
     BoxWithConstraints(modifier) {
-        // 简介行数按可用高度自适应: TV 1080p 给 4 行, 手机横屏等矮屏优先保证按钮可见
+        // 简介始终展示; 行数与按钮排布按可用高度自适应
+        // (TV 1080p: 4 行 + 纵向按钮; 手机横屏等矮屏: 2 行 + 横向按钮以腾出高度)
+        val tall = maxHeight >= 340.dp
         val summaryMaxLines = when {
             maxHeight >= 380.dp -> 4
             maxHeight >= 300.dp -> 3
-            maxHeight >= 250.dp -> 2
-            else -> 0
+            else -> 2
         }
-        TvExplorationHeroContent(hero, info, summaryMaxLines, onPlay, onDetails)
+        TvExplorationHeroContent(hero, info, summaryMaxLines, verticalButtons = tall, onPlay, onDetails)
     }
 }
 
@@ -251,6 +256,7 @@ private fun TvExplorationHeroContent(
     hero: TvHeroSubject?,
     info: SubjectCollectionInfo?,
     summaryMaxLines: Int,
+    verticalButtons: Boolean,
     onPlay: () -> Unit,
     onDetails: () -> Unit,
     modifier: Modifier = Modifier,
@@ -303,32 +309,46 @@ private fun TvExplorationHeroContent(
             }
         }
 
-        // 简介 (行数随可用高度自适应, 矮屏优先保证按钮可见)
-        if (summaryMaxLines > 0) {
-            Text(
-                info?.subjectInfo?.summary.orEmpty(),
-                Modifier
-                    .padding(top = 10.dp)
-                    .fillMaxWidth(0.42f),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = summaryMaxLines,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        // 条目简介 (行数随可用高度自适应)
+        Text(
+            info?.subjectInfo?.summary.orEmpty(),
+            Modifier
+                .padding(top = 10.dp)
+                .fillMaxWidth(0.42f),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = summaryMaxLines,
+            overflow = TextOverflow.Ellipsis,
+        )
 
-        // 纵向按钮组 (参考版为竖排, 带图标)
-        Column(
-            Modifier.padding(top = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+        // 按钮组: 参考版为竖排; 矮屏改横排腾出高度给简介
+        val playButton: @Composable () -> Unit = {
             Button(onClick = onPlay) {
                 Icon(Icons.Rounded.PlayArrow, contentDescription = null, Modifier.size(20.dp))
                 Text("立即观看", Modifier.padding(start = 8.dp))
             }
+        }
+        val detailsButton: @Composable () -> Unit = {
             Button(onClick = onDetails) {
                 Icon(Icons.Rounded.Info, contentDescription = null, Modifier.size(20.dp))
                 Text("更多详细内容", Modifier.padding(start = 8.dp))
+            }
+        }
+        if (verticalButtons) {
+            Column(
+                Modifier.padding(top = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                playButton()
+                detailsButton()
+            }
+        } else {
+            Row(
+                Modifier.padding(top = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                playButton()
+                detailsButton()
             }
         }
     }

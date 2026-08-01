@@ -29,6 +29,7 @@ import me.him188.ani.app.data.models.recommend.RecommendedItemInfo
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
 import me.him188.ani.app.data.network.RecommendationRepository
+import me.him188.ani.app.data.network.TmdbImageService
 import me.him188.ani.app.data.network.TrendsRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.ui.foundation.AbstractViewModel
@@ -46,6 +47,7 @@ class TvExplorationViewModel : AbstractViewModel(), KoinComponent {
     private val trendsRepository: TrendsRepository by inject()
     private val recommendationRepository: RecommendationRepository by inject()
     private val subjectCollectionRepository: SubjectCollectionRepository by inject()
+    private val tmdbImageService: TmdbImageService by inject()
 
     private val _trends = MutableStateFlow(emptyList<TrendingSubjectInfo>())
     val trends: StateFlow<List<TrendingSubjectInfo>> = _trends.asStateFlow()
@@ -62,6 +64,24 @@ class TvExplorationViewModel : AbstractViewModel(), KoinComponent {
                     .map<SubjectCollectionInfo, SubjectCollectionInfo?> { it }
                     .catch { emit(null) }
             }
+        }
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /**
+     * 聚焦条目的 TMDB 横版 backdrop (§4.3-R3). 未配置 token 或 TMDB 无图时为 null,
+     * UI 退化为竖版海报 Crop.
+     */
+    val focusedBackdropUrl: StateFlow<String?> = focusedDetails
+        .map { info ->
+            info ?: return@map null
+            runCatching {
+                tmdbImageService.getBackdropUrl(
+                    subjectId = info.subjectId,
+                    originalName = info.subjectInfo.name,
+                    activeAsOfDate = info.subjectInfo.airDate.takeIf { it.isValid }
+                        ?.let { "%04d-%02d-%02d".format(it.year, it.month, it.day) },
+                )
+            }.getOrNull()
         }
         .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), null)
 
