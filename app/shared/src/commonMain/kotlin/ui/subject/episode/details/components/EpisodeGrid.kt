@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.subject.episode.details.components
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import me.him188.ani.app.ui.foundation.aniCombinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -183,7 +184,7 @@ private fun EpisodeGridItem(
         modifier = modifier
             .fillMaxWidth()
             .height(72.dp)
-            .combinedClickable(
+            .aniCombinedClickable(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,
                 onClick = onClick,

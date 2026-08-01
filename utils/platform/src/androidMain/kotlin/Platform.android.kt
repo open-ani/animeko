@@ -12,16 +12,15 @@ package me.him188.ani.utils.platform
 import android.os.Build
 
 internal actual fun currentPlatformImpl(): Platform {
-    if (Build.SUPPORTED_ABIS == null) {
-        // unit testing
-        return Platform.Android(Arch.ARMV8A)
+    val abis = Build.SUPPORTED_ABIS?.toList()
+        ?: return Platform.Android(Arch.ARMV8A) // unit testing
+    // arch 只是首选 ABI, 且只能取 Arch 里的值 (x86 这类不认识的一律记成 ARMV8A);
+    // 完整列表一并带上, 判断"装得上哪个包"必须用它, 见 Platform.Android.supportedAbis
+    val arch = when (abis.firstOrNull()?.lowercase()) {
+        "armeabi-v7a" -> Arch.ARMV7A
+        "arm64-v8a" -> Arch.ARMV8A
+        "x86_64" -> Arch.X86_64
+        else -> Arch.ARMV8A
     }
-    return Build.SUPPORTED_ABIS.getOrNull(0)?.let { abi ->
-        when (abi.lowercase()) {
-            "armeabi-v7a" -> Platform.Android(Arch.ARMV7A)
-            "arm64-v8a" -> Platform.Android(Arch.ARMV8A)
-            "x86_64" -> Platform.Android(Arch.X86_64)
-            else -> Platform.Android(Arch.ARMV8A)
-        }
-    } ?: Platform.Android(Arch.ARMV8A)
+    return Platform.Android(arch, abis)
 }

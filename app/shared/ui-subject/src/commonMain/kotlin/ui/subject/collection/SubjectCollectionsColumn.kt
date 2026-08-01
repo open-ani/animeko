@@ -45,6 +45,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -101,6 +103,8 @@ fun SubjectCollectionsColumn(
     gridState: LazyGridState = rememberLazyGridState(),
     enableAnimation: Boolean = true,
     contentPadding: PaddingValues = PaddingValues(0.dp),
+    /** TV: 挂到第一张卡片, 供上方 tab 行按下键时直接把焦点请求进列表 (方向搜索跨 Scaffold slot 不可靠). */
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     val isCompact = currentWindowAdaptiveInfo1().windowSizeClass.isWidthCompact
     val spacedBy = if (isCompact) 16.dp else 24.dp
@@ -134,6 +138,12 @@ fun SubjectCollectionsColumn(
                 Box(
                     Modifier
                         .padding(all = spacedBy / 2)
+                        // 首张卡片挂焦点请求器. 不加 focusGroup: 请求器要直接委托给子树里的
+                        // Card (第一个真焦点目标); 加了 focusGroup 请求会落在组节点 (canFocus=false)
+                        // 上, 不一定转进子节点, 且不抛异常 —— tab 行的下键会被无效消费.
+                        .ifThen(firstItemFocusRequester != null && index == 0) {
+                            focusRequester(firstItemFocusRequester!!)
+                        }
                         .ifThen(enableAnimation) {
                             animateItem(
                                 fadeInSpec = aniMotionScheme.feedItemFadeInSpec,

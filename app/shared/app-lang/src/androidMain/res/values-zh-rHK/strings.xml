@@ -580,6 +580,7 @@
     <string name="settings_network_proxy_service_danmaku">彈幕服務</string>
     <string name="settings_network_proxy_service_collection">收藏數據服務</string>
     <string name="settings_network_proxy_service_comment">評論服務</string>
+    <string name="settings_network_proxy_service_tmdb">背景圖與劇照服務</string>
     <string name="settings_network_proxy_test_success">連接成功</string>
     <string name="settings_network_proxy_test_failed">連接失敗</string>
     <string name="settings_network_proxy_current_disabled">未啟用代理</string>
@@ -792,6 +793,7 @@
     <string name="subject_rendering_season_year_month">%1$s 年 %2$s 月</string>
 
     <!-- Subject Episode -->
+    <string name="subject_episode_duration_minutes">%1$d 分鐘</string>
     <string name="subject_episode_unwatch">取消看過</string>
     <string name="subject_episode_watched">已看過</string>
     <string name="subject_episode_dropped">已拋棄</string>
@@ -949,6 +951,8 @@
     <string name="subject_details_view_all">查看全部</string>
     <string name="subject_details_episodes">選集</string>
     <string name="subject_details_manage_cache">緩存管理</string>
+    <string name="subject_details_nav_home">主頁</string>
+    <string name="subject_details_no_summary">暫無信息</string>
     <string name="subject_details_rating">評分</string>
     <string name="subject_details_hot_reviews">熱門評價</string>
     <string name="subject_details_info">作品資訊</string>
@@ -1173,6 +1177,9 @@
     <string name="comment_send_comment">發送評論</string>
     <string name="comment_rendering">渲染中...</string>
     <string name="comment_reply">回覆評論</string>
+    <string name="comment_reply_to">回覆 %1$s</string>
+    <string name="comment_view_comment">查看評論</string>
+    <string name="comment_reply_unsupported">此評論不支援回覆，僅可查看</string>
     <string name="comment_view_more_replies">查看更多 %1$d 條回覆&gt;</string>
     <string name="comment_add_emoji">添加表情</string>
     <string name="comment_bold">粗體</string>

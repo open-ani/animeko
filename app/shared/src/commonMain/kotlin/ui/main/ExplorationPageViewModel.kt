@@ -26,6 +26,8 @@ import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.ui.exploration.ExplorationPageState
 import me.him188.ani.app.ui.foundation.AbstractViewModel
+import me.him188.ani.utils.coroutines.flows.FlowRestarter
+import me.him188.ani.utils.coroutines.flows.restartable
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
@@ -40,6 +42,10 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
     private val nsfwSettingFlow = settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode }
     private val horizontalScrollTipFlow =
         settingsRepository.oneshotActionConfig.flow.map { it.horizontalScrollTip }
+
+    // 继续观看栏目的强制刷新 (TV 端长按播放键). 它平时只跟着仓库里一小时一跳的 ticker 走 ——
+    // 那一跳会先同步服务器最近改动的收藏再重算每部的播放进度, restart 等价于立刻走一遍
+    private val followedSubjectsRestarter = FlowRestarter()
 
     val explorationPageState: ExplorationPageState = ExplorationPageState(
         trendingSubjectInfoPager = trendsRepository.trendsInfoPager()
@@ -57,11 +63,12 @@ class ExplorationPageViewModel : AbstractViewModel(), KoinComponent {
 //        ),
         followedSubjectsPager = combine(
             settingsRepository.uiSettings.flow.map { it.searchSettings.nsfwMode },
-            followedSubjectsRepository.followedSubjectsPager(),
+            followedSubjectsRepository.followedSubjectsPager().restartable(followedSubjectsRestarter),
         ) { nsfwMode, subjects ->
             if (nsfwMode != NsfwMode.HIDE) return@combine subjects
             subjects.filter { !it.subjectInfo.nsfw }
         }.cachedIn(backgroundScope),
+        onRefreshFollowedSubjects = { followedSubjectsRestarter.restart() },
         recommendationPager = recommendationRepository.recommendedSubjectsPager().cachedIn(backgroundScope),
         horizontalScrollTipFlow = horizontalScrollTipFlow,
         onSetDisableHorizontalScrollTip = {

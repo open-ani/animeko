@@ -11,9 +11,44 @@ package me.him188.ani.app.ui.foundation
 
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
+import coil3.EventListener
 import coil3.Image
 import coil3.asImage
+import coil3.fetch.FetchResult
+import coil3.fetch.Fetcher
+import coil3.request.ErrorResult
+import coil3.request.ImageRequest
+import coil3.request.Options
+import coil3.request.SuccessResult
 
 actual fun ImageBitmap.asCoilImage(): Image {
     return this.asAndroidBitmap().asImage()
+}
+
+internal actual fun imageLoadIssueEventListenerFactory(): EventListener.Factory =
+    EventListener.Factory { ImageLoadIssueEventListener() }
+
+private class ImageLoadIssueEventListener : EventListener() {
+    private val tracker = ImageLoadIssueTracker()
+
+    override fun fetchStart(request: ImageRequest, fetcher: Fetcher, options: Options) {
+        tracker.fetchStart()
+    }
+
+    override fun fetchEnd(
+        request: ImageRequest,
+        fetcher: Fetcher,
+        options: Options,
+        result: FetchResult?,
+    ) {
+        tracker.fetchEnd()
+    }
+
+    override fun onSuccess(request: ImageRequest, result: SuccessResult) {
+        tracker.success(request, result)
+    }
+
+    override fun onError(request: ImageRequest, result: ErrorResult) {
+        tracker.error(request, result)
+    }
 }

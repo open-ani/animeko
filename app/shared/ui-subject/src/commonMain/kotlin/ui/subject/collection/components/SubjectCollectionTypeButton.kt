@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -62,6 +63,7 @@ fun SubjectCollectionTypeButton(
     onEdit: (newType: UnifiedCollectionType) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    shape: Shape = ButtonDefaults.shape,
 ) {
     val action = remember(type) {
         SubjectCollectionActionsForCollect.find { it.type == type }
@@ -78,6 +80,7 @@ fun SubjectCollectionTypeButton(
             OutlinedButton(
                 onClick = onClick,
                 enabled = enabled,
+                shape = shape,
 //                border = BorderStroke(
 //                    width = 1.dp,
 //                    color = if (enabled) {
@@ -100,6 +103,7 @@ fun SubjectCollectionTypeButton(
             Button(
                 onClick = onClick,
                 enabled = enabled,
+                shape = shape,
             ) {
                 if (action != null) {
                     action.icon()
@@ -126,7 +130,7 @@ fun SubjectCollectionTypeButton(
 
 @Composable
 @Stable
-private fun renderCollectionTypeAsCurrent(type: UnifiedCollectionType): String {
+fun renderCollectionTypeAsCurrent(type: UnifiedCollectionType): String {
     return when (type) {
         UnifiedCollectionType.WISH -> stringResource(Lang.subject_collection_current_wish)
         UnifiedCollectionType.DOING -> stringResource(Lang.subject_collection_current_doing)

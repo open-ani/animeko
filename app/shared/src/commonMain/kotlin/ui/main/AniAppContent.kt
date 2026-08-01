@@ -13,6 +13,7 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -35,14 +36,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import androidx.navigation.toRoute
 import androidx.window.core.layout.WindowSizeClass
 import me.him188.ani.app.data.models.subject.SubjectInfo
@@ -51,6 +60,7 @@ import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.navigation.MAIN_REQUESTED_PAGE_KEY
 import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.OverrideNavigation
@@ -71,6 +81,11 @@ import me.him188.ani.app.ui.exploration.schedule.ScheduleScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLocals
+import androidx.compose.ui.graphics.Color
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
+import me.him188.ani.app.ui.foundation.watchtogether.LocalWatchTogetherEntry
+import me.him188.ani.app.ui.foundation.watchtogether.WatchTogetherEntryState
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
@@ -123,10 +138,18 @@ fun AniAppContent(aniNavigator: AniNavigator) {
     val navigator = rememberNavController()
     aniNavigator.setNavController(navigator)
 
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    // 根底色: 页面切换过渡的淡入淡出间隙会露出它, 见 AniUiBehavior.blackRootBackground
+    val rootBackground =
+        if (LocalAniUiBehavior.current.blackRootBackground) Color.Black
+        else MaterialTheme.colorScheme.background
+    // "一起看" 入口把手: 弹窗本体在下面的 WatchTogetherOverlayHost 里 (与 NavHost 同级),
+    // 入口按钮在 NavHost 内的各页面上 (TV 侧边栏 / 播放器胶囊行), 两边隔着 NavHost 靠它通气
+    val watchTogetherEntry = remember { WatchTogetherEntryState() }
+    Box(Modifier.fillMaxSize().background(rootBackground)) {
         CompositionLocalProvider(
             LocalNavigator provides aniNavigator,
             LocalBrowserNavigator providesDefault aniAppViewModel.browserNavigator,
+            LocalWatchTogetherEntry provides watchTogetherEntry,
         ) {
             ProvideAniMotionCompositionLocals {
                 AniAppContentImpl(
@@ -166,7 +189,38 @@ private fun AniAppContentImpl(
     val navMotionScheme by rememberUpdatedState(NavigationMotionScheme.current)
     val emailLoginViewModel = viewModel<EmailLoginViewModel> { EmailLoginViewModel() }
 
-    NavHost(navController, startDestination = initialRoute, modifier) {
+    val navHostModifier = modifier.ifThen(LocalAniUiBehavior.current.focusDrivenNavigation) {
+        // 焦点导航的通用兜底 (无需任何页面单独配合): 没有任何焦点时 Compose 不会自动分配,
+        // 方向键会完全失效 (按键只会派发到根部的 onKeyEvent). 这里常驻监视 —— 只要本窗口
+        // 持有窗口焦点而 NavHost 内没有任何焦点 (刚导航到的页面只有加载动画、聚焦元素被
+        // 数据刷新移除、内容迟到等), 就持续把焦点送入当前页面 (requestFocus 挂在 focusGroup
+        // 上会进入默认可聚焦子元素), 直到成功为止. 页面自己的焦点锚点 (如详情页播放按钮,
+        // 播放器画面) 优先: 已有焦点时这里不动作.
+        // 弹窗/对话框 (独立窗口) 打开期间本窗口失去窗口焦点, 兜底自动暂停 ——
+        // 不会与弹窗关闭后的焦点恢复逻辑竞争.
+        val focusRequester = remember { FocusRequester() }
+        var hasFocusInside by remember { mutableStateOf(false) }
+        val windowInfo = LocalWindowInfo.current
+        val currentEntry by navController.currentBackStackEntryAsState()
+        LaunchedEffect(currentEntry) {
+            if (currentEntry == null) return@LaunchedEffect
+            snapshotFlow { hasFocusInside to windowInfo.isWindowFocused }
+                .collectLatest { (focused, windowFocused) ->
+                    if (focused || !windowFocused) return@collectLatest
+                    // 持续重试 (状态一变 collectLatest 即取消): 转场动画期间请求可能落在
+                    // 将被移除的旧页面上, 旧页面销毁后焦点再次丢失会自动再触发
+                    while (true) {
+                        runCatching { focusRequester.requestFocus() }
+                        delay(100)
+                    }
+                }
+        }
+        onFocusChanged { hasFocusInside = it.hasFocus }
+            .focusRequester(focusRequester)
+            .focusGroup()
+    }
+
+    NavHost(navController, startDestination = initialRoute, navHostModifier) {
         val enterTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition? =
             { navMotionScheme.enterTransition }
         val exitTransition: AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition? =
@@ -339,6 +393,17 @@ private fun AniAppContentImpl(
                 val vm = viewModel { MainScreenSharedViewModel() }
                 var currentPage by rememberSaveable { mutableStateOf(route.initialPage) }
 
+                // 从其他页面 (如详情页侧边栏) 弹回主页时切到指定 tab: 弹回不会重建 Main,
+                // route.initialPage 不会重新生效, 故经 SavedStateHandle 传递 (见 requestMainPage).
+                val requestedPage by backStack.savedStateHandle
+                    .getStateFlow<String?>(MAIN_REQUESTED_PAGE_KEY, null)
+                    .collectAsState()
+                LaunchedEffect(requestedPage) {
+                    val name = requestedPage ?: return@LaunchedEffect
+                    runCatching { MainScreenPage.valueOf(name) }.getOrNull()?.let { currentPage = it }
+                    backStack.savedStateHandle[MAIN_REQUESTED_PAGE_KEY] = null
+                }
+
                 OverrideNavigation(
                     {
                         object : AniNavigator by it {
@@ -417,21 +482,24 @@ private fun AniAppContentImpl(
                     onClickTag = { aniNavigator.navigateSubjectSearch(NavRoutes.SubjectSearch(tags = listOf(it.name))) },
                     windowInsets = windowInsets,
                     navigationIcon = {
-                        Row {
-                            BackNavigationIconButton(
-                                {
-                                    aniNavigator.popBackStack(details, inclusive = true)
-                                },
-                            )
-                            TopAppBarActionButton(
-                                {
-                                    aniNavigator.popBackOrNavigateToMain(mainSceneInitialPage)
-                                },
-                            ) {
-                                Icon(
-                                    Icons.Rounded.Home,
-                                    contentDescription = null,
+                        // 有硬件返回键的设备上不显示返回/主页按钮: 连按返回即可回到主页
+                        if (LocalAniUiBehavior.current.showBackNavigationButton) {
+                            Row {
+                                BackNavigationIconButton(
+                                    {
+                                        aniNavigator.popBackStack(details, inclusive = true)
+                                    },
                                 )
+                                TopAppBarActionButton(
+                                    {
+                                        aniNavigator.popBackOrNavigateToMain(mainSceneInitialPage)
+                                    },
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Home,
+                                        contentDescription = null,
+                                    )
+                                }
                             }
                         }
                     },
@@ -627,8 +695,12 @@ private fun AniAppContentImpl(
                 popExitTransition = popExitTransition,
             ) { backStackEntry ->
                 val route = backStackEntry.toRoute<NavRoutes.SubjectCaches>()
-                // Don't use rememberViewModel to save memory
-                val vm = remember(route.subjectId) { SubjectCacheViewModelImpl(route.subjectId) }
+                // viewModel (而非 remember): 从更深页面 (管理全部缓存) 返回时本页整个重新
+                // 组合, remember 会重建 VM —— TV 的播放器暂停帧背景是一次性消费的,
+                // 重建后就丢了 (页面退回浅色白底). VM 存活于返回栈, 随路由退出销毁.
+                val vm = viewModel(key = "SubjectCaches-${route.subjectId}") {
+                    SubjectCacheViewModelImpl(route.subjectId)
+                }
                 SubjectCacheScreen(
                     vm, Modifier.fillMaxSize(), windowInsets,
                     navigationIcon = {

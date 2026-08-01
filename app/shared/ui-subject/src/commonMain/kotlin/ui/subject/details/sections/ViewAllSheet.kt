@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.foundation.layout.plus
@@ -41,6 +42,9 @@ import me.him188.ani.app.ui.foundation.layout.plus
  * "查看全部" 的全量列表 sheet: 标题 + 自适应网格 (按 [cellMinWidth] 自动分列).
  *
  * 用于角色/制作人员 (全量 pager, 行卡) 与关联作品 (封面卡, 传较小 [cellMinWidth]).
+ *
+ * TV 上改为大号居中弹窗 (底部抽屉遥控器不好用): 条目包一层聚焦高亮卡容器,
+ * 方向键导航, 返回键关闭.
  */
 @Composable
 internal fun <T : Any> ViewAllSheet(
@@ -49,8 +53,22 @@ internal fun <T : Any> ViewAllSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     cellMinWidth: Dp = 240.dp,
+    /** 居中弹窗形态下的固定列数 (卡宽 = 网格均分); null 按 [cellMinWidth] 自适应. */
+    gridColumns: Int? = null,
     itemContent: @Composable (T) -> Unit,
 ) {
+    if (LocalAniUiBehavior.current.panelsAsCenteredDialogs) {
+        ViewAllGridDialog(
+            title = title,
+            items = items,
+            onDismissRequest = onDismissRequest,
+            cellMinWidth = cellMinWidth,
+            columns = gridColumns,
+        ) { item, cellModifier ->
+            FocusHighlightCard(cellModifier) { itemContent(item) }
+        }
+        return
+    }
     ModalBottomSheet(
         onDismissRequest,
         modifier = modifier.desktopTitleBarPadding().statusBarsPadding(),

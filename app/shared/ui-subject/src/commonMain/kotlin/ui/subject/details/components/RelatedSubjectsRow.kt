@@ -9,7 +9,11 @@
 
 package me.him188.ani.app.ui.subject.details.components
 
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -23,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -101,15 +106,21 @@ fun RelatedSubjectsLazyRow(
     }
 }
 
-/** 单张关联作品卡; 供横滑/网格与"查看全部" sheet 复用. */
+/** 单张关联作品卡; 供横滑/网格与"查看全部" sheet 复用. 聚焦 (遥控器/键盘) 时标题跑马灯. */
 @Composable
 fun RelatedSubjectCard(
     info: RelatedSubjectInfo,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
     Column(
-        modifier.clip(MaterialTheme.shapes.small).clickable(onClick = onClick),
+        modifier.clip(MaterialTheme.shapes.small).clickable(
+            interactionSource = interactionSource,
+            indication = LocalIndication.current,
+            onClick = onClick,
+        ),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Surface(
@@ -128,9 +139,10 @@ fun RelatedSubjectCard(
         Column {
             Text(
                 info.displayName,
+                if (focused) Modifier.basicMarquee(iterations = Int.MAX_VALUE) else Modifier,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = if (focused) TextOverflow.Clip else TextOverflow.Ellipsis,
             )
             info.relation?.let { relation ->
                 Text(

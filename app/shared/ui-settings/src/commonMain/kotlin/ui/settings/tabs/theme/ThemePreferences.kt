@@ -22,6 +22,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.preference.ThemeSettings
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.isPlatformSupportDynamicTheme
@@ -40,6 +41,14 @@ import me.him188.ani.app.ui.lang.settings_theme_high_contrast
 import me.him188.ani.app.ui.lang.settings_theme_high_contrast_description
 import me.him188.ani.app.ui.lang.settings_theme_palette
 import me.him188.ani.app.ui.lang.settings_theme_title
+import me.him188.ani.app.ui.lang.settings_theme_tv_full_visual_effects
+import me.him188.ani.app.ui.lang.settings_theme_tv_full_visual_effects_description
+import me.him188.ani.app.ui.lang.settings_theme_tv_immersive_details
+import me.him188.ani.app.ui.lang.settings_theme_tv_immersive_details_description
+import me.him188.ani.app.ui.lang.settings_theme_tv_immersive_exploration
+import me.him188.ani.app.ui.lang.settings_theme_tv_immersive_exploration_description
+import me.him188.ani.app.ui.lang.settings_theme_tv_immersive_schedule
+import me.him188.ani.app.ui.lang.settings_theme_tv_immersive_schedule_description
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
@@ -117,6 +126,45 @@ fun SettingsScope.ThemeGroup(
                 },
                 title = { Text(stringResource(Lang.settings_theme_frosted_glass)) },
                 description = { Text(stringResource(Lang.settings_theme_frosted_glass_description)) },
+            )
+        }
+
+        // 沉浸式外壳专属: 沉浸式布局开关 (关闭可回退默认布局, 降低低端设备渲染开销)
+        if (LocalAniUiBehavior.current.immersiveShell) {
+            SwitchItem(
+                checked = themeSettings.tvImmersiveExploration,
+                onCheckedChange = { checked ->
+                    state.update(themeSettings.copy(tvImmersiveExploration = checked))
+                },
+                title = { Text(stringResource(Lang.settings_theme_tv_immersive_exploration)) },
+                description = { Text(stringResource(Lang.settings_theme_tv_immersive_exploration_description)) },
+            )
+
+            SwitchItem(
+                checked = themeSettings.tvImmersiveDetails,
+                onCheckedChange = { checked ->
+                    state.update(themeSettings.copy(tvImmersiveDetails = checked))
+                },
+                title = { Text(stringResource(Lang.settings_theme_tv_immersive_details)) },
+                description = { Text(stringResource(Lang.settings_theme_tv_immersive_details_description)) },
+            )
+
+            SwitchItem(
+                checked = themeSettings.tvImmersiveSchedule,
+                onCheckedChange = { checked ->
+                    state.update(themeSettings.copy(tvImmersiveSchedule = checked))
+                },
+                title = { Text(stringResource(Lang.settings_theme_tv_immersive_schedule)) },
+                description = { Text(stringResource(Lang.settings_theme_tv_immersive_schedule_description)) },
+            )
+
+            SwitchItem(
+                checked = themeSettings.tvFullVisualEffects,
+                onCheckedChange = { checked ->
+                    state.update(themeSettings.copy(tvFullVisualEffects = checked))
+                },
+                title = { Text(stringResource(Lang.settings_theme_tv_full_visual_effects)) },
+                description = { Text(stringResource(Lang.settings_theme_tv_full_visual_effects_description)) },
             )
         }
     }

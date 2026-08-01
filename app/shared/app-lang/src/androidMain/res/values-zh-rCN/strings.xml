@@ -309,6 +309,9 @@
 
     <!-- Storage Settings -->
     <string name="settings_storage_title">存储设置</string>
+    <string name="settings_storage_image_cache">清理图片缓存</string>
+    <string name="settings_storage_image_cache_usage">海报、剧照等图片。当前占用 %1$s，超出上限自动淘汰旧图，一般无需手动清理</string>
+    <string name="settings_storage_image_cache_cleared">已清理图片缓存</string>
     <string name="settings_storage_bt_cache_location">BT 视频缓存位置</string>
     <string name="settings_storage_bt_cache_location_description">修改后不会自动迁移数据，也不会自动删除旧数据。\n如需删除旧数据，请在修改之前点击 "打开 BT 缓存目录" 并删除该目录下的所有文件。\n\n重启生效</string>
     <string name="settings_storage_choose_directory">选择视频保存目录</string>
@@ -529,6 +532,34 @@
     <string name="exploration_schedule_next_weekday">下周%1$s</string>
     <string name="exploration_continue_watching">继续观看</string>
     <string name="exploration_recommendations">推荐</string>
+    <string name="exploration_tv_watch_now">立即观看</string>
+    <string name="exploration_tv_more_details">更多详细内容</string>
+    <string name="exploration_tv_air_date">%1$d年%2$d月</string>
+    <string name="exploration_tv_next_episode">下一集: %1$s</string>
+    <string name="exploration_tv_minutes_left">剩余 %1$d 分钟</string>
+    <string name="exploration_tv_all_caught_up">已看完</string>
+    <string name="exploration_tv_watched_latest">已看完最新一集</string>
+    <string name="exploration_tv_schedule_today">今天</string>
+    <string name="exploration_tv_schedule_now">现在 %1$s</string>
+    <string name="exploration_tv_schedule_total">共 %1$d 部</string>
+    <string name="exploration_tv_schedule_upcoming">待播 %1$d 部</string>
+    <string name="exploration_tv_schedule_following">你追的 %1$d 部</string>
+    <string name="exploration_tv_schedule_empty">这一天没有新番</string>
+    <string name="collection_tv_rewatch">重温</string>
+    <string name="collection_tv_empty">这个分类下还没有条目</string>
+    <string name="tv_card_remote_hint">播放键继续播放 · 长按选择键编辑收藏</string>
+    <string name="tv_force_refresh_toast">正在刷新…</string>
+    <string name="search_tv_input_hint">搜索动画</string>
+    <string name="search_tv_results_title">“%1$s”的搜索结果</string>
+    <string name="search_tv_results_all">搜索结果</string>
+    <string name="search_tv_filter">筛选</string>
+    <string name="search_tv_filter_sort">排序</string>
+    <string name="search_tv_filter_rating_min">最低评分</string>
+    <string name="search_tv_filter_any">不限</string>
+    <string name="search_tv_filter_confirm">确认</string>
+    <string name="search_tv_filter_cancel">取消</string>
+    <string name="search_tv_empty">没有找到相关条目</string>
+    <string name="search_tv_remote_hint">播放键直接播放 · 长按选择键编辑收藏</string>
     <string name="exploration_horizontal_scroll_tip">按住 Shift + 鼠标滚轮 同样可以水平滚动</string>
 
     <!-- MainScreenPage -->
@@ -550,6 +581,14 @@
     <string name="settings_theme_animated_gradient_subject_description">根据封面生成动态渐变背景。开启后可能导致设备发热和耗电增加</string>
     <string name="settings_theme_frosted_glass">顶栏和导航栏毛玻璃效果</string>
     <string name="settings_theme_frosted_glass_description">为顶栏和导航栏使用模糊的半透明背景</string>
+    <string name="settings_theme_tv_immersive_exploration">沉浸式探索页 / 追番页</string>
+    <string name="settings_theme_tv_immersive_exploration_description">探索页与追番页使用沉浸布局。关闭则回退到原布局，降低低端设备的渲染负担</string>
+    <string name="settings_theme_tv_immersive_details">沉浸式详情页</string>
+    <string name="settings_theme_tv_immersive_details_description">条目详情使用沉浸式 Hero 布局。关闭则回退到通用多栏布局</string>
+    <string name="settings_theme_tv_immersive_schedule">沉浸式新番时间表</string>
+    <string name="settings_theme_tv_immersive_schedule_description">新番时间表使用日期胶囊 + 海报网格布局。关闭则回退到 15 天并排的纵向列表</string>
+    <string name="settings_theme_tv_full_visual_effects">完整视觉效果</string>
+    <string name="settings_theme_tv_full_visual_effects_description">切换追番分类时卡片滑动过渡、加载占位脉动、长标题持续滚动、背景剧照用原图。默认关闭以保证低端设备流畅，设备性能充裕可开启</string>
     <string name="settings_theme_palette">调色板</string>
     <string name="settings_theme_mode_light">浅色</string>
     <string name="settings_theme_mode_dark">深色</string>
@@ -613,6 +652,7 @@
     <string name="settings_network_proxy_service_danmaku">弹幕服务</string>
     <string name="settings_network_proxy_service_collection">收藏数据服务</string>
     <string name="settings_network_proxy_service_comment">评论服务</string>
+    <string name="settings_network_proxy_service_tmdb">背景图与剧照服务</string>
     <string name="settings_network_proxy_test_success">连接成功</string>
     <string name="settings_network_proxy_test_failed">连接失败</string>
     <string name="settings_network_proxy_current_disabled">未启用代理</string>
@@ -663,6 +703,7 @@
     <string name="onboarding_theme_color">色彩</string>
     <string name="onboarding_theme_dynamic_color">动态色彩</string>
     <string name="onboarding_theme_dynamic_color_desc">使用系统强调色</string>
+    <string name="onboarding_theme_tv_layout">TV 布局</string>
     <string name="onboarding_bittorrent_play_while_downloading">Ani 支持边下边播 BT 资源，BT 下载速度取决于网络质量</string>
     <string name="onboarding_bittorrent_notification_permission_hint">允许通知权限，在缓存时查看下载进度</string>
     <string name="onboarding_bittorrent_enable">启用 BitTorrent 功能</string>
@@ -732,6 +773,8 @@
     <string name="video_player_auto">自动</string>
     <string name="video_player_audio_track">音轨</string>
     <string name="video_player_off">关闭</string>
+    <string name="video_player_tv_restart">从头开始</string>
+    <string name="video_player_tv_collection">收藏</string>
     <string name="video_player_subtitle">字幕</string>
     <string name="video_player_disable_danmaku">禁用弹幕</string>
     <string name="video_player_enable_danmaku">启用弹幕</string>
@@ -817,6 +860,7 @@
     <string name="subject_rendering_season_year_month">%1$s 年 %2$s 月</string>
 
     <!-- Subject Episode -->
+    <string name="subject_episode_duration_minutes">%1$d 分钟</string>
     <string name="subject_episode_unwatch">取消看过</string>
     <string name="subject_episode_watched">已看过</string>
     <string name="subject_episode_dropped">已抛弃</string>
@@ -974,6 +1018,8 @@
     <string name="subject_details_view_all">查看全部</string>
     <string name="subject_details_episodes">选集</string>
     <string name="subject_details_manage_cache">缓存管理</string>
+    <string name="subject_details_nav_home">主页</string>
+    <string name="subject_details_no_summary">暂无信息</string>
     <string name="subject_details_rating">评分</string>
     <string name="subject_details_hot_reviews">热门评价</string>
     <string name="subject_details_info">作品信息</string>
@@ -1198,6 +1244,9 @@
     <string name="comment_send_comment">发送评论</string>
     <string name="comment_rendering">渲染中...</string>
     <string name="comment_reply">回复评论</string>
+    <string name="comment_reply_to">回复 %1$s</string>
+    <string name="comment_view_comment">查看评论</string>
+    <string name="comment_reply_unsupported">该评论不支持回复，仅可查看</string>
     <string name="comment_view_more_replies">查看更多 %1$d 条回复&gt;</string>
     <string name="comment_add_emoji">添加表情</string>
     <string name="comment_bold">加粗</string>

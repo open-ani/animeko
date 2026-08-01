@@ -50,6 +50,7 @@ import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.ImageViewer
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.layout.rememberConnectedScrollState
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
@@ -79,6 +80,7 @@ import me.him188.ani.app.ui.subject.details.components.COVER_WIDTH_TO_HEIGHT_RAT
 import me.him188.ani.app.ui.subject.details.components.SubjectCommentColumn
 import me.him188.ani.app.ui.subject.details.components.SubjectDetailsDefaults
 import me.him188.ani.app.ui.subject.details.sections.SectionHeader
+import me.him188.ani.app.ui.subject.details.sections.CommentsGridDialog
 import me.him188.ani.app.ui.subject.details.sections.groupThousands
 import me.him188.ani.app.ui.subject.details.sections.toPlainText
 import org.jetbrains.compose.resources.stringResource
@@ -492,6 +494,8 @@ private fun PersonCommentPreviewItem(
 /**
  * 全量评论 sheet: 复用剧集/条目评论列 ([SubjectCommentColumn]), 支持 BBCode 表情/图片/链接.
  * 与条目评论 sheet 的差别: 人物评论无评分, 也没有 "写评价" 入口.
+ *
+ * TV 上改为大号居中弹窗 (可导航的纯文本评论卡片网格, 确认键展开全文, 返回键关闭).
  */
 @Composable
 internal fun PersonCommentsSheet(
@@ -499,6 +503,18 @@ internal fun PersonCommentsSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (LocalAniUiBehavior.current.panelsAsCenteredDialogs) {
+        val gridComments = state.list.collectAsLazyPagingItemsWithLifecycle()
+        CommentsGridDialog(
+            title = state.count?.takeIf { it > 0 }?.let {
+                stringResource(Lang.person_details_comments) + " · " + remember(it) { groupThousands(it) }
+            } ?: stringResource(Lang.person_details_comments),
+            comments = gridComments,
+            onDismissRequest = onDismissRequest,
+            showRating = false,
+        )
+        return
+    }
     val browserNavigator = LocalUriHandler.current
     val toaster = LocalToaster.current
     val externalAppLinkWarningPrefix = stringResource(Lang.foundation_richtext_external_app_link_warning_prefix)

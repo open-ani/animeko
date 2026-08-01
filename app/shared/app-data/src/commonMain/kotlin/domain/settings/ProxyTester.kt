@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
 import me.him188.ani.app.data.network.AniApiProvider
+import me.him188.ani.app.data.network.TmdbImageService
 import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.ServerListFeature
 import me.him188.ani.app.domain.foundation.ServerListFeatureConfig
@@ -40,6 +41,7 @@ private val isFirstTestResult = AtomicBoolean(true)
 class ProxyTester(
     clientProvider: HttpClientProvider,
     flowScope: CoroutineScope,
+    tmdbImageService: TmdbImageService,
     serviceIds: Set<String> = ServiceConnectionTesters.DefaultServiceIds,
 ) {
     private val proxyTestRunning = FlowRunning()
@@ -53,6 +55,9 @@ class ProxyTester(
         ServiceConnectionTesters.createDefault(
             bangumiClient = BangumiClientImpl(client),
             aniClient = AniApiProvider(client).trendsApi,
+            // 与上面两个不同, 这里复用单例而不是新建客户端: 它自己那份 ScopedHttpClient
+            // 就是从同一个池子借的, 代理变了池子会重建, 不需要在这里再包一层
+            tmdbImageService = tmdbImageService,
             serviceIds = serviceIds,
         )
     }

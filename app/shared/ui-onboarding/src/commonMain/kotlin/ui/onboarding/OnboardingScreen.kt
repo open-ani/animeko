@@ -140,6 +140,9 @@ fun OnboardingScreen(
                 onUpdateUseDarkMode = { state.themeSelectState.onUpdateUseDarkMode(it) },
                 onUpdateUseDynamicTheme = { state.themeSelectState.onUpdateUseDynamicTheme(it) },
                 onUpdateSeedColor = { state.themeSelectState.onUpdateSeedColor(it) },
+                onUpdateTvImmersiveExploration = { state.themeSelectState.onUpdateTvImmersiveExploration(it) },
+                onUpdateTvImmersiveDetails = { state.themeSelectState.onUpdateTvImmersiveDetails(it) },
+                onUpdateTvFullVisualEffects = { state.themeSelectState.onUpdateTvFullVisualEffects(it) },
             )
         }
         step(
@@ -250,6 +253,9 @@ internal fun createTestOnboardingPresentationState(scope: CoroutineScope): Onboa
             onUpdateUseDarkMode = { },
             onUpdateUseDynamicTheme = { },
             onUpdateSeedColor = { },
+            onUpdateTvImmersiveExploration = { },
+            onUpdateTvImmersiveDetails = { },
+            onUpdateTvFullVisualEffects = { },
         ),
         configureProxyState = ConfigureProxyState(
             state = flowOf(

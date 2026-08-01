@@ -33,6 +33,25 @@ data class ThemeSettings(
     val seedColorValue: ULong = DefaultSeedColor.value,
     val enableAnimatedGradientSubjectPage: Boolean = false,
     val enableFrostedGlassEffect: Boolean = false,
+    /** TV: 探索页使用沉浸式布局 (Hero 轮播); 关闭则回退上游原布局 (低端机可关以降低开销). */
+    val tvImmersiveExploration: Boolean = true,
+    /** TV: 条目详情页使用沉浸式布局 (Hero 首屏); 关闭则回退上游通用多栏布局. */
+    val tvImmersiveDetails: Boolean = true,
+    /** TV: 新番时间表使用日期胶囊 + 海报网格布局; 关闭则回退上游 15 天并排的纵向列表. */
+    val tvImmersiveSchedule: Boolean = true,
+    /**
+     * TV: 完整视觉效果 (**默认关**), 即不为低端设备让步的那一档.
+     *
+     * 一个开关打包全部"好看但费机器"的取舍, 因为需要其中一项的设备通常三项都扛得住:
+     * - 过渡动画: 跨分类切换的卡片滑动 (关 = 渐隐渐现);
+     * - 常驻装饰动画: 加载占位脉动、hero 长标题无限跑马灯 (关 = 静态 / 滚固定次数即停);
+     * - 图片档位: "继续观看"hero 背景剧照用 TMDB 原图 (关 = w1280).
+     *
+     * 默认关: 实测这三项分别贡献了换分类的掉帧、页面永远进不了静止态的常驻底噪、
+     * 每次换卡 8-33MB 的位图解码 —— 而收益在 10-foot 观看距离上本就不明显.
+     * 高性能盒子的用户在设置里一键开回完整档.
+     */
+    val tvFullVisualEffects: Boolean = false,
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     @Transient

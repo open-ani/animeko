@@ -19,6 +19,9 @@ import coil3.network.NetworkResponse
 import coil3.network.NetworkResponseBody
 import coil3.network.ktor3.internal.writeTo
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.retry
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.prepareRequest
 import io.ktor.client.request.setBody
@@ -30,6 +33,7 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.takeFrom
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.cancel
+import kotlinx.io.IOException
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import okio.Buffer
 import okio.BufferedSink
@@ -71,6 +75,22 @@ private suspend fun NetworkRequest.toHttpRequestBuilder(): HttpRequestBuilder {
     request.url.takeFrom(url)
     request.method = HttpMethod.parse(method)
     request.headers.takeFrom(headers)
+    // 图床 (image.tmdb.org 等) 解析出的部分 IP 直连不通, 全局默认 30s 连接超时会让
+    // 单张图挂满半分钟才轮到重试; 短超时快速失败, 交给下面的重试换连接
+    request.timeout {
+        connectTimeoutMillis = 8_000
+    }
+    // 覆盖全局重试 (只认 IOException 且仅 1 次): HTTP/2 连接复用可能把请求发到
+    // 同 IP 的错误主机 (421 Misdirected Request, 实测 lain.bangumi.one 封面偶发),
+    // 换新连接重试即可恢复 —— 421 无论以响应还是异常形态出现都要重试
+    request.retry {
+        maxRetries = 2
+        retryIf { _, response -> response.status.value == 421 }
+        retryOnExceptionIf { _, cause ->
+            cause is IOException || (cause as? ClientRequestException)?.response?.status?.value == 421
+        }
+        constantDelay(500)
+    }
     body?.readByteArray()?.let(request::setBody)
     return request
 }

@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.media_selector_filter_alliance
@@ -71,6 +72,8 @@ fun MediaSelectorFilters(
     alliance: MediaPreferenceItemState<String>,
     modifier: Modifier = Modifier,
     singleLine: Boolean = false,
+    /** 追加在字幕组筛选之后的尾部内容 (焦点驱动形态的"显示已被排除"胶囊); null 无. */
+    trailingContent: (@Composable () -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     val mediaDetailsStrings = rememberMediaDetailsStrings()
@@ -111,6 +114,7 @@ fun MediaSelectorFilters(
     if (singleLine) {
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             content()
+            trailingContent?.invoke()
         }
     } else {
         FlowRow(
@@ -118,6 +122,7 @@ fun MediaSelectorFilters(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             content()
+            trailingContent?.invoke()
         }
     }
 }
@@ -149,6 +154,21 @@ private fun <T : Any> MediaSelectorFilterChip(
     label: @Composable (T) -> Unit = { MediaSelectorFilterChipText(it.toString()) },
     leadingIcon: @Composable ((T?) -> Unit)? = null,
 ) {
+    // 焦点驱动形态: 胶囊按钮 + 居中网格弹窗 (InputChip 无聚焦视觉, DropdownMenu 焦点交接
+    // 不可靠且长列表难翻), 见 FocusMediaSelectorFilterChip
+    if (LocalAniUiBehavior.current.focusDrivenNavigation) {
+        FocusMediaSelectorFilterChip(
+            selected = selected,
+            allValues = allValues,
+            onSelect = onSelect,
+            onDeselect = onDeselect,
+            name = name,
+            modifier = modifier,
+            label = label,
+        )
+        return
+    }
+
     var showDropdown by rememberSaveable {
         mutableStateOf(false)
     }

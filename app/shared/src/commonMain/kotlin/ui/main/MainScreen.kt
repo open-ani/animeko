@@ -50,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.LinkAnnotation
@@ -74,6 +75,7 @@ import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteLayout
 import me.him188.ani.app.ui.cache.CacheManagementScreen
 import me.him188.ani.app.ui.cache.CacheManagementViewModel
 import me.him188.ani.app.ui.exploration.ExplorationScreen
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.ifThen
@@ -103,6 +105,7 @@ import me.him188.ani.app.ui.lang.settings_update_version_expired_message
 import me.him188.ani.app.ui.lang.settings_update_version_expired_message_with_latest
 import me.him188.ani.app.ui.lang.settings_update_version_expired_title
 import me.him188.ani.app.ui.settings.SettingsViewModel
+import me.him188.ani.app.ui.settings.account.AccountLogoutDialog
 import me.him188.ani.app.ui.settings.account.ProfilePopup
 import me.him188.ani.app.ui.settings.account.ProfileViewModel
 import me.him188.ani.app.ui.subject.collection.CollectionPage
@@ -164,6 +167,7 @@ private fun MainScreenContent(
     val cacheManagementViewModel = viewModel { CacheManagementViewModel() }
 
     var showAccountSettingsPopup: Boolean by remember { mutableStateOf(false) }
+    var showLogoutDialog: Boolean by remember { mutableStateOf(false) }
     val profileViewModel = viewModel { ProfileViewModel() }
 
     val navigatorState = rememberUpdatedState(LocalNavigator.current)
@@ -179,6 +183,7 @@ private fun MainScreenContent(
             onNavigateToSettings = onNavigateToSettings,
             onNavigateToSearch = onNavigateToSearch,
             onLogin = { showAccountSettingsPopup = true },
+            onLogout = { showLogoutDialog = true },
             explorationPageViewModel = explorationPageViewModel,
             userCollectionsViewModel = userCollectionsViewModel,
             cacheManagementViewModel = cacheManagementViewModel,
@@ -209,6 +214,20 @@ private fun MainScreenContent(
             },
         )
     }
+
+    if (showLogoutDialog) {
+        val asyncHandler = rememberAsyncHandler()
+        AccountLogoutDialog(
+            onConfirm = {
+                asyncHandler.launch {
+                    profileViewModel.logout()
+                    showLogoutDialog = false
+                }
+            },
+            onCancel = { showLogoutDialog = false },
+            confirmEnabled = !asyncHandler.isWorking,
+        )
+    }
 }
 
 @Composable
@@ -219,6 +238,7 @@ private fun MainScreenNavigationLayout(
     onNavigateToSettings: (tab: SettingsTab?) -> Unit,
     onNavigateToSearch: () -> Unit,
     onLogin: () -> Unit,
+    onLogout: () -> Unit,
     explorationPageViewModel: ExplorationPageViewModel,
     userCollectionsViewModel: UserCollectionsViewModel,
     cacheManagementViewModel: CacheManagementViewModel,
@@ -231,77 +251,12 @@ private fun MainScreenNavigationLayout(
     val navigatorState = rememberUpdatedState(LocalNavigator.current)
     val navigator by navigatorState
 
-    AniNavigationSuiteLayout(
-        navigationSuite = {
-            AniNavigationSuite(
-                layoutType = navigationLayoutType,
-                colors = NavigationSuiteDefaults.colors(
-                    navigationDrawerContainerColor = AniThemeDefaults.navigationContainerColor,
-                    navigationBarContainerColor = AniThemeDefaults.navigationContainerColor,
-                    navigationRailContainerColor = AniThemeDefaults.navigationContainerColor,
-                ),
-                navigationRailHeader = {
-                    FloatingActionButton(
-                        onNavigateToSearch,
-                        Modifier
-                            .desktopTitleBarPadding()
-                            .ifThen(currentWindowAdaptiveInfo1().windowSizeClass.isHeightAtLeastMedium) {
-                                // 移动端横屏不增加额外 padding
-                                padding(vertical = 48.dp)
-                            },
-                        elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
-                    ) {
-                        Icon(Icons.Rounded.Search, stringResource(Lang.exploration_search))
-                    }
-                },
-                navigationRailFooter = {
-                    NavigationRailItem(
-                        modifier = Modifier.padding(bottom = itemSpacing)
-                            .ifThen(currentWindowAdaptiveInfo1().windowSizeClass.isHeightAtLeastMedium) {
-                                // 移动端横屏不增加额外 padding
-                                padding(vertical = 16.dp)
-                            },
-                        selected = false,
-                        onClick = { onNavigateToSettings(null) },
-                        icon = { Icon(Icons.Rounded.Settings, null) },
-                        enabled = true,
-                        label = { Text(stringResource(Lang.settings)) },
-                        alwaysShowLabel = true,
-                        colors = itemColors,
-                    )
-                },
-                navigationRailItemSpacing = 8.dp,
-            ) {
-                for (entry in MainScreenPage.visibleEntries) {
-                    item(
-                        page == entry,
-                        onClick = { onNavigateToPage(entry) },
-                        onDoubleClick = {
-                            scope.launch {
-                                when (entry) {
-                                    MainScreenPage.Exploration ->
-                                        explorationPageViewModel.explorationPageState.pageScrollState.animateScrollToItem(
-                                            0,
-                                        )
+    // 外壳变体 (如遥控器形态的沉浸式侧边栏布局); null 用默认外壳.
+    // 进入主页的初始焦点由各页面自理 (探索页把焦点落到最高热点第一张卡, 见 ExplorationScreen).
+    val shellVariant = LocalMainScreenShellVariant.current
 
-                                    MainScreenPage.Collection ->
-                                        userCollectionsViewModel.state.scrollToTop()
-
-                                    MainScreenPage.CacheManagement -> {
-                                        // cacheManagementViewModel.lazyGridState.animateScrollToItem(0)
-                                    }
-                                }
-                            }
-                        },
-                        icon = { Icon(entry.getIcon(), null) },
-                        label = { Text(text = entry.getText()) },
-                    )
-                }
-            }
-        },
-        modifier,
-        layoutType = navigationLayoutType,
-    ) {
+    // 页面内容 (三个 tab 的 AnimatedContent). 两种外壳共用同一份内容.
+    val pageContent: @Composable () -> Unit = {
         val coroutineScope = rememberCoroutineScope()
         // Windows caption button 在右侧, 没有足够空间放置按钮, 需要保留 title bar insets
         val isRightCaptionButton = WindowInsets.desktopCaptionButton.isTopRight()
@@ -377,8 +332,96 @@ private fun MainScreenNavigationLayout(
             }
         }
     }
-}
 
+    if (shellVariant != null) {
+        shellVariant.Shell(
+            page = page,
+            selfInfo = selfInfo,
+            navigator = navigator,
+            onNavigateToPage = onNavigateToPage,
+            onNavigateToSettings = onNavigateToSettings,
+            onNavigateToSearch = onNavigateToSearch,
+            onLogout = onLogout,
+            modifier = modifier,
+            pageContent = pageContent,
+        )
+        return
+    }
+
+    AniNavigationSuiteLayout(
+        navigationSuite = {
+            AniNavigationSuite(
+                layoutType = navigationLayoutType,
+                colors = NavigationSuiteDefaults.colors(
+                    navigationDrawerContainerColor = AniThemeDefaults.navigationContainerColor,
+                    navigationBarContainerColor = AniThemeDefaults.navigationContainerColor,
+                    navigationRailContainerColor = AniThemeDefaults.navigationContainerColor,
+                ),
+                navigationRailHeader = {
+                    FloatingActionButton(
+                        onNavigateToSearch,
+                        Modifier
+                            .desktopTitleBarPadding()
+                            .ifThen(currentWindowAdaptiveInfo1().windowSizeClass.isHeightAtLeastMedium) {
+                                // 移动端横屏不增加额外 padding
+                                padding(vertical = 48.dp)
+                            },
+                        elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
+                    ) {
+                        Icon(Icons.Rounded.Search, stringResource(Lang.exploration_search))
+                    }
+                },
+                navigationRailFooter = {
+                    NavigationRailItem(
+                        modifier = Modifier.padding(bottom = itemSpacing)
+                            .ifThen(currentWindowAdaptiveInfo1().windowSizeClass.isHeightAtLeastMedium) {
+                                // 移动端横屏不增加额外 padding
+                                padding(vertical = 16.dp)
+                            },
+                        selected = false,
+                        onClick = { onNavigateToSettings(null) },
+                        icon = { Icon(Icons.Rounded.Settings, null) },
+                        enabled = true,
+                        label = { Text(stringResource(Lang.settings)) },
+                        alwaysShowLabel = true,
+                        colors = itemColors,
+                    )
+                },
+                navigationRailItemSpacing = 8.dp,
+            ) {
+                for (entry in MainScreenPage.visibleEntries) {
+                    item(
+                        page == entry,
+                        onClick = { onNavigateToPage(entry) },
+                        onDoubleClick = {
+                            scope.launch {
+                                when (entry) {
+                                    MainScreenPage.Exploration ->
+                                        explorationPageViewModel.explorationPageState.pageScrollState.animateScrollToItem(
+                                            0,
+                                        )
+
+                                    MainScreenPage.Collection ->
+                                        userCollectionsViewModel.state.scrollToTop()
+
+                                    MainScreenPage.CacheManagement -> {
+                                        // cacheManagementViewModel.lazyGridState.animateScrollToItem(0)
+                                    }
+                                }
+                            }
+                        },
+                        icon = { Icon(entry.getIcon(), null) },
+                        label = { Text(text = entry.getText()) },
+                    )
+                }
+            }
+        },
+        modifier = modifier,
+        layoutType = navigationLayoutType,
+    ) {
+        pageContent()
+    }
+}
 
 @Composable
 private fun TabContent(
@@ -386,7 +429,9 @@ private fun TabContent(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val shape = when (layoutType) {
+    // 沉浸式外壳: 不套自身圆角白 Surface, 直角 + 透明, 透出外壳统一的全屏背景
+    val immersiveShell = LocalAniUiBehavior.current.immersiveShell
+    val shape = if (immersiveShell) RectangleShape else when (layoutType) {
         NavigationSuiteType.NavigationBar,
         NavigationSuiteType.None -> RectangleShape
 
@@ -401,7 +446,10 @@ private fun TabContent(
     Surface(
         modifier.clip(shape),
         shape = shape,
-        color = AniThemeDefaults.pageContentBackgroundColor,
+        color = if (immersiveShell) Color.Transparent else AniThemeDefaults.pageContentBackgroundColor,
+        // color 透明会使 contentColorFor(Transparent)=Unspecified, 令内部文字退回默认黑色;
+        // 显式指定内容色 (onSurface) 保证深色主题下文字可读. 不透明时与原默认一致.
+        contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
         Box(Modifier.fillMaxWidth()) {
             content()

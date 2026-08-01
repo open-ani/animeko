@@ -56,6 +56,7 @@ import me.him188.ani.app.ui.foundation.getClipEntryText
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.setClipEntryText
+import me.him188.ani.app.ui.foundation.widgets.dismissDialogButton
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_danmaku_add_regex
@@ -132,10 +133,8 @@ internal fun SettingsScope.DanmakuRegexFilterGroup(
                     Text(stringResource(Lang.settings_danmaku_confirm), color = MaterialTheme.colorScheme.error)
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { showImportDialog = false }) {
-                    Text(stringResource(Lang.settings_danmaku_cancel))
-                }
+            dismissButton = dismissDialogButton(stringResource(Lang.settings_danmaku_cancel)) {
+                showImportDialog = false
             },
         )
     }
@@ -297,11 +296,7 @@ fun AddRegexFilterDialog(
                 Text(stringResource(Lang.settings_danmaku_confirm))
             }
         },
-        dismissButton = {
-            TextButton(onClick = onDismissRequest) {
-                Text(stringResource(Lang.settings_danmaku_cancel))
-            }
-        },
+        dismissButton = dismissDialogButton(stringResource(Lang.settings_danmaku_cancel), onDismissRequest),
         title = title,
         text = {
             OutlinedTextField(

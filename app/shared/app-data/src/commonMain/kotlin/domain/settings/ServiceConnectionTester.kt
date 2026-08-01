@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import me.him188.ani.app.data.network.TmdbImageService
 import me.him188.ani.app.domain.settings.ServiceConnectionTester.Service
 import me.him188.ani.client.apis.TrendsAniApi
 import me.him188.ani.datasources.api.source.ConnectionStatus
@@ -196,12 +197,14 @@ object ServiceConnectionTesters {
     const val ID_BANGUMI = "BANGUMI"
     const val ID_BANGUMI_NEXT = "BANGUMI_NEXT"
     const val ID_ANI = "ANI"
+    const val ID_TMDB = "TMDB"
 
-    val DefaultServiceIds = setOf(ID_BANGUMI, ID_BANGUMI_NEXT, ID_ANI)
+    val DefaultServiceIds = setOf(ID_BANGUMI, ID_BANGUMI_NEXT, ID_ANI, ID_TMDB)
 
     fun createDefault(
         bangumiClient: BangumiClient,
         aniClient: ApiInvoker<TrendsAniApi>,
+        tmdbImageService: TmdbImageService,
         serviceIds: Set<String> = DefaultServiceIds,
         defaultDispatcher: CoroutineContext = Dispatchers.Default,
     ): ServiceConnectionTester {
@@ -220,6 +223,10 @@ object ServiceConnectionTesters {
                             getTrends().response.status.isSuccess()
                         }
                     }.getOrElse { false }
+                },
+                // 详情页背景图与选集卡片剧照的来源; 接口与图片 CDN 两个域名都探, 见 testConnection
+                Service(ID_TMDB) {
+                    tmdbImageService.testConnection()
                 },
             ).filter { it.id in serviceIds },
             defaultDispatcher,

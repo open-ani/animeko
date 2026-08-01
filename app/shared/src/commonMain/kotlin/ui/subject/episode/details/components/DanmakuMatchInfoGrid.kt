@@ -211,7 +211,7 @@ fun DanmakuSourceCard(
 }
 
 @Composable
-internal fun renderDanmakuServiceId(serviceId: DanmakuServiceId): String = when (serviceId) {
+fun renderDanmakuServiceId(serviceId: DanmakuServiceId): String = when (serviceId) {
     DanmakuServiceId.Animeko -> "Animeko"
     DanmakuServiceId.AcFun -> "AcFun"
     DanmakuServiceId.Baha -> "Baha"
