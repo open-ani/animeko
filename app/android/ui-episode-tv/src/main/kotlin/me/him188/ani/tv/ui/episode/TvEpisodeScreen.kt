@@ -162,114 +162,22 @@ fun TvEpisodeScreen(
             enter = fadeIn(),
             exit = fadeOut(),
         ) {
-            TvPlayerControlsOverlay(viewModel, title)
-        }
-    }
-}
-
-@Composable
-private fun TvPlayerControlsOverlay(
-    viewModel: TvEpisodeViewModel,
-    title: String,
-    modifier: Modifier = Modifier,
-) {
-    val player = viewModel.player
-    val playbackState by player.playbackState.collectAsState()
-    val mediaProperties by player.mediaProperties.collectAsState()
-    val durationMillis = mediaProperties?.durationMillis ?: 0L
-
-    var positionMillis by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(player) {
-        while (isActive) {
-            positionMillis = player.getCurrentPositionMillis()
-            delay(500)
-        }
-    }
-
-    Box(modifier.fillMaxSize()) {
-        // 顶部 scrim + 标题
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(120.dp)
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color.Black.copy(alpha = 0.72f),
-                        1f to Color.Transparent,
-                    ),
-                ),
-        ) {
-            Text(
-                title,
-                Modifier.padding(start = 48.dp, top = 28.dp),
-                style = MaterialTheme.typography.titleLarge,
-                color = Color.White,
+            val mediaProperties by player.mediaProperties.collectAsState()
+            val mediaLabel by viewModel.currentMediaLabel.collectAsState()
+            var positionMillis by remember { mutableLongStateOf(0L) }
+            LaunchedEffect(player) {
+                while (isActive) {
+                    positionMillis = player.getCurrentPositionMillis()
+                    delay(500)
+                }
+            }
+            TvPlayerControlsOverlay(
+                title = title,
+                mediaLabel = mediaLabel,
+                positionMillis = positionMillis,
+                durationMillis = mediaProperties?.durationMillis ?: 0L,
+                isPlaying = playbackState.isPlaying,
             )
         }
-
-        // 底部 scrim + 进度
-        Column(
-            Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        1f to Color.Black.copy(alpha = 0.8f),
-                    ),
-                )
-                .padding(start = 48.dp, end = 48.dp, top = 48.dp, bottom = 28.dp),
-        ) {
-            // 进度条: 6dp 轨 (附录 A), 已播分色
-            val fraction = if (durationMillis > 0) {
-                (positionMillis.toFloat() / durationMillis).coerceIn(0f, 1f)
-            } else {
-                0f
-            }
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(Color.White.copy(alpha = 0.24f)),
-            ) {
-                Box(
-                    Modifier
-                        .fillMaxWidth(fraction)
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(MaterialTheme.colorScheme.primary),
-                )
-            }
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    "${formatTime(positionMillis)} / ${formatTime(durationMillis)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White,
-                )
-                Text(
-                    if (playbackState.isPlaying) "播放中" else "已暂停",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.72f),
-                )
-            }
-        }
-    }
-}
-
-private fun formatTime(millis: Long): String {
-    val totalSeconds = (millis / 1000).coerceAtLeast(0)
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    val seconds = totalSeconds % 60
-    return if (hours > 0) {
-        "%d:%02d:%02d".format(hours, minutes, seconds)
-    } else {
-        "%02d:%02d".format(minutes, seconds)
     }
 }

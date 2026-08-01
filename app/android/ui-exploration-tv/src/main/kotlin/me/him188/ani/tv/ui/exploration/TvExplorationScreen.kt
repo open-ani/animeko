@@ -14,19 +14,28 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,15 +43,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.tv.material3.Button
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import me.him188.ani.app.data.models.recommend.RecommendedSubjectInfo
+import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
 
@@ -54,9 +66,11 @@ data class TvHeroSubject(
 )
 
 /**
- * TV 探索页 (atv-architecture.md §7.1, M1 精简版):
- * 层叠 = backdrop (聚焦条目, 右上 16:9, 左/下缘渐隐) -> hero 信息块 + 按钮 -> 热门趋势行 + 推荐行.
- * M1 用海报图作 backdrop, TMDB 横版图 (R3) 后补.
+ * TV 探索页 (atv-architecture.md §7.1):
+ * 层叠 = backdrop (右半屏全高, 左缘渐隐) -> hero 信息块 (标题/元信息行/简介/纵向按钮组)
+ * -> 轮播指示器 -> 卡片行 (纯图海报) -> 底部按键提示.
+ *
+ * 布局对齐参考实现 (第三方 TV 版实机效果).
  */
 @Composable
 fun TvExplorationScreen(
@@ -66,15 +80,28 @@ fun TvExplorationScreen(
 ) {
     val trends by viewModel.trends.collectAsState()
     val recommendations = viewModel.recommendations.collectAsLazyPagingItems()
+    val details by viewModel.focusedDetails.collectAsState()
 
     var focusedHero by remember { mutableStateOf<TvHeroSubject?>(null) }
+    var focusedIndexInTrends by remember { mutableStateOf(0) }
     val hero = focusedHero
         ?: trends.firstOrNull()?.let { TvHeroSubject(it.bangumiId, it.nameCn, it.imageLarge) }
+
+    fun focus(subject: TvHeroSubject, indexInTrends: Int = -1) {
+        focusedHero = subject
+        if (indexInTrends >= 0) focusedIndexInTrends = indexInTrends
+        viewModel.setFocusedSubject(subject.subjectId)
+    }
+
+    // 首帧 hero 取自趋势首项, 同样需要拉详情 (评分/连载/简介)
+    LaunchedEffect(hero?.subjectId) {
+        hero?.let { viewModel.setFocusedSubject(it.subjectId) }
+    }
 
     val surfaceColor = MaterialTheme.colorScheme.surface
 
     Box(modifier.fillMaxSize()) {
-        // Backdrop 层: 右上 16:9, 600ms crossfade (附录 A)
+        // Backdrop: 右半屏全高 + 左缘/下缘渐隐 (参考版布局), 600ms crossfade (附录 A)
         Crossfade(hero?.imageUrl, animationSpec = tween(600), label = "backdrop") { url ->
             if (url != null) {
                 Box(Modifier.fillMaxSize()) {
@@ -82,33 +109,32 @@ fun TvExplorationScreen(
                         model = url,
                         contentDescription = null,
                         modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .fillMaxWidth(0.66f)
-                            .aspectRatio(16f / 9f),
+                            .align(Alignment.CenterEnd)
+                            .fillMaxWidth(0.56f)
+                            .fillMaxHeight(),
                         contentScale = ContentScale.Crop,
                     )
-                    // 左缘渐隐
                     Box(
                         Modifier
                             .fillMaxSize()
                             .background(
                                 Brush.horizontalGradient(
                                     0.0f to surfaceColor,
-                                    0.45f to surfaceColor,
-                                    0.75f to surfaceColor.copy(alpha = 0.2f),
+                                    0.36f to surfaceColor,
+                                    0.62f to surfaceColor.copy(alpha = 0.25f),
                                     1.0f to surfaceColor.copy(alpha = 0f),
                                 ),
                             ),
                     )
-                    // 下缘渐隐
                     Box(
                         Modifier
                             .fillMaxSize()
                             .background(
                                 Brush.verticalGradient(
                                     0.0f to surfaceColor.copy(alpha = 0f),
-                                    0.45f to surfaceColor.copy(alpha = 0f),
-                                    0.8f to surfaceColor,
+                                    0.42f to surfaceColor.copy(alpha = 0f),
+                                    0.78f to surfaceColor.copy(alpha = 0.9f),
+                                    1.0f to surfaceColor,
                                 ),
                             ),
                     )
@@ -116,104 +142,241 @@ fun TvExplorationScreen(
             }
         }
 
-        // 手机横屏仅 ~400dp 高, 内容必须可滚动; 焦点驱动 LazyColumn 滚动 (M2 换 pivot 吸顶, §5.4)
-        LazyColumn(
-            Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 32.dp, bottom = 24.dp),
-        ) {
-            item("hero") {
-                Column {
-                    Column(
-                        Modifier
-                            .padding(start = 48.dp)
-                            .fillMaxWidth(0.5f)
-                            .height(120.dp),
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        Text(
-                            hero?.title.orEmpty(),
-                            style = MaterialTheme.typography.displaySmall,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    Row(
-                        Modifier.padding(start = 48.dp, top = 8.dp, bottom = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Button(onClick = { hero?.let(onClickSubject) }) {
-                            Text("立即观看")
-                        }
-                        Button(onClick = { hero?.let(onClickSubject) }) {
-                            Text("更多详情")
-                        }
-                    }
+        // hero 常驻 (不随卡片行滚动), 卡片区独立滚动 —— 对齐参考版
+        Column(Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxWidth().weight(0.52f).padding(top = 18.dp)) {
+                TvExplorationHero(
+                    hero = hero,
+                    details = details,
+                    onPlay = { hero?.let(onClickSubject) },
+                    onDetails = { hero?.let(onClickSubject) },
+                    modifier = Modifier.weight(1f),
+                )
+                if (trends.isNotEmpty()) {
+                    TvCarouselIndicator(
+                        count = trends.size.coerceAtMost(12),
+                        selectedIndex = focusedIndexInTrends.coerceAtMost(11),
+                        modifier = Modifier.padding(start = 48.dp, bottom = 6.dp),
+                    )
                 }
             }
 
-            item("trends") {
-                Column {
-                    Text(
-                        "热门趋势",
-                        Modifier.padding(start = 48.dp, bottom = 8.dp),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        contentPadding = PaddingValues(start = 48.dp, end = 48.dp),
-                    ) {
-                        items(trends, key = { it.bangumiId }) { subject ->
-                            TvPosterCard(
-                                imageUrl = subject.imageLarge,
-                                title = subject.nameCn,
-                                onClick = {
-                                    onClickSubject(
-                                        TvHeroSubject(subject.bangumiId, subject.nameCn, subject.imageLarge),
-                                    )
-                                },
-                                onFocused = {
-                                    focusedHero =
-                                        TvHeroSubject(subject.bangumiId, subject.nameCn, subject.imageLarge)
-                                },
-                            )
-                        }
+            LazyColumn(
+                Modifier.fillMaxWidth().weight(0.48f),
+                contentPadding = PaddingValues(bottom = 16.dp),
+            ) {
+                item("trends") {
+                TvSubjectRow(
+                    title = "热门趋势",
+                    modifier = Modifier.padding(top = 8.dp),
+                ) {
+                    itemsIndexed(trends, key = { _, it -> it.bangumiId }) { index, subject ->
+                        val item = TvHeroSubject(subject.bangumiId, subject.nameCn, subject.imageLarge)
+                        TvPosterCard(
+                            imageUrl = subject.imageLarge,
+                            title = subject.nameCn,
+                            onClick = { onClickSubject(item) },
+                            onFocused = { focus(item, index) },
+                            width = 124.dp,
+                            showTitle = false,
+                        )
                     }
                 }
             }
 
             item("recommendations") {
-                Column(Modifier.padding(top = 16.dp)) {
-                    Text(
-                        "为你推荐",
-                        Modifier.padding(start = 48.dp, bottom = 8.dp),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        contentPadding = PaddingValues(start = 48.dp, end = 48.dp),
-                    ) {
-                        items(recommendations.itemCount) { index ->
-                            when (val item = recommendations[index]) {
-                                is RecommendedSubjectInfo -> TvPosterCard(
-                                    imageUrl = item.imageLarge,
-                                    title = item.nameCn,
-                                    onClick = {
-                                        onClickSubject(
-                                            TvHeroSubject(item.bangumiId, item.nameCn, item.imageLarge),
-                                        )
-                                    },
-                                    onFocused = {
-                                        focusedHero =
-                                            TvHeroSubject(item.bangumiId, item.nameCn, item.imageLarge)
-                                    },
+                TvSubjectRow(
+                    title = "推荐",
+                    modifier = Modifier.padding(top = 20.dp),
+                ) {
+                    items(recommendations.itemCount) { index ->
+                        when (val info = recommendations[index]) {
+                            is RecommendedSubjectInfo -> {
+                                val item = TvHeroSubject(info.bangumiId, info.nameCn, info.imageLarge)
+                                TvPosterCard(
+                                    imageUrl = info.imageLarge,
+                                    title = info.nameCn,
+                                    onClick = { onClickSubject(item) },
+                                    onFocused = { focus(item) },
+                                    width = 124.dp,
+                                    showTitle = false,
                                 )
-
-                                else -> {}
                             }
+
+                            else -> {}
                         }
                     }
                 }
+                }
             }
         }
+
+        // 底部按键提示 (参考版右下角)
+        Text(
+            "▶ 播放键继续播放 · 长按选择键编辑收藏",
+            Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 48.dp, bottom = 10.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+        )
+    }
+}
+
+@Composable
+private fun TvExplorationHero(
+    hero: TvHeroSubject?,
+    details: SubjectCollectionInfo?,
+    onPlay: () -> Unit,
+    onDetails: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // 详情与当前 hero 不一致时 (仍在加载) 不显示旧数据
+    val info = details?.takeIf { it.subjectId == hero?.subjectId }
+
+    BoxWithConstraints(modifier) {
+        // 简介行数按可用高度自适应: TV 1080p 给 4 行, 手机横屏等矮屏优先保证按钮可见
+        val summaryMaxLines = when {
+            maxHeight >= 380.dp -> 4
+            maxHeight >= 300.dp -> 3
+            maxHeight >= 250.dp -> 2
+            else -> 0
+        }
+        TvExplorationHeroContent(hero, info, summaryMaxLines, onPlay, onDetails)
+    }
+}
+
+@Composable
+private fun TvExplorationHeroContent(
+    hero: TvHeroSubject?,
+    info: SubjectCollectionInfo?,
+    summaryMaxLines: Int,
+    onPlay: () -> Unit,
+    onDetails: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier.padding(start = 48.dp)) {
+        Text(
+            hero?.title.orEmpty(),
+            Modifier.fillMaxWidth(0.44f),
+            style = MaterialTheme.typography.headlineLarge,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+
+        // 元信息行: ★评分 · 连载进度 · 话数 · 年月
+        Row(
+            Modifier.padding(top = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            info?.subjectInfo?.ratingInfo?.score?.takeIf { it.isNotBlank() && it != "0" }?.let { score ->
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("★", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+                    Text("$score/10", style = MaterialTheme.typography.titleMedium)
+                }
+            }
+            info?.let { collection ->
+                val latest = collection.airingInfo.latestSort
+                val total = collection.subjectInfo.totalEpisodes.takeIf { it > 0 }
+                val progressText = buildString {
+                    if (latest != null) append("连载至 $latest")
+                    if (total != null) {
+                        if (isNotEmpty()) append(" · ")
+                        append("预定全 $total 话")
+                    }
+                }
+                if (progressText.isNotEmpty()) {
+                    Text(
+                        progressText,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                collection.subjectInfo.airDate.takeIf { it.isValid }?.let { date ->
+                    Text(
+                        "${date.year}年${date.month}月",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        // 简介 (行数随可用高度自适应, 矮屏优先保证按钮可见)
+        if (summaryMaxLines > 0) {
+            Text(
+                info?.subjectInfo?.summary.orEmpty(),
+                Modifier
+                    .padding(top = 10.dp)
+                    .fillMaxWidth(0.42f),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = summaryMaxLines,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+
+        // 纵向按钮组 (参考版为竖排, 带图标)
+        Column(
+            Modifier.padding(top = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Button(onClick = onPlay) {
+                Icon(Icons.Rounded.PlayArrow, contentDescription = null, Modifier.size(20.dp))
+                Text("立即观看", Modifier.padding(start = 8.dp))
+            }
+            Button(onClick = onDetails) {
+                Icon(Icons.Rounded.Info, contentDescription = null, Modifier.size(20.dp))
+                Text("更多详细内容", Modifier.padding(start = 8.dp))
+            }
+        }
+    }
+}
+
+/** hero 轮播指示器: 当前项为拉长胶囊, 其余为小圆点 (参考版视觉). */
+@Composable
+private fun TvCarouselIndicator(
+    count: Int,
+    selectedIndex: Int,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        repeat(count) { index ->
+            val selected = index == selectedIndex
+            Box(
+                Modifier
+                    .height(6.dp)
+                    .width(if (selected) 26.dp else 6.dp)
+                    .clip(if (selected) RoundedCornerShape(3.dp) else CircleShape)
+                    .background(
+                        if (selected) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.32f)
+                        },
+                    ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun TvSubjectRow(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit,
+) {
+    Column(modifier) {
+        Text(
+            title,
+            Modifier.padding(start = 48.dp, bottom = 8.dp),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(start = 48.dp, end = 48.dp),
+            content = content,
+        )
     }
 }

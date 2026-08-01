@@ -137,15 +137,36 @@ class TvEpisodeViewModel(
 
     // region 页面状态
 
+    /** 播放页顶部两行标题: 条目名 / 「第 NN 集 集标题」(对齐参考版). */
+    data class TitleInfo(val subjectName: String, val episodeLine: String)
+
     @OptIn(UnsafeEpisodeSessionApi::class)
-    val titleFlow: StateFlow<String> = fetchPlayState.infoBundleFlow
+    val titleFlow: StateFlow<TitleInfo> = fetchPlayState.infoBundleFlow
         .filterNotNull()
         .map { bundle ->
-            val subjectName = bundle.subjectCollectionInfo.subjectInfo.displayName
             val episode = bundle.episodeCollectionInfo.episodeInfo
-            "$subjectName  第 ${episode.sort} 话"
+            TitleInfo(
+                subjectName = bundle.subjectCollectionInfo.subjectInfo.displayName,
+                episodeLine = buildString {
+                    append("第 ${episode.sort} 集")
+                    val name = episode.nameCn.ifBlank { episode.name }
+                    if (name.isNotBlank()) append("  $name")
+                },
+            )
         }
-        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), "")
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), TitleInfo("", ""))
+
+    /** 当前选中数据源名 (播放器底栏展示). */
+    @OptIn(UnsafeEpisodeSessionApi::class)
+    val currentMediaLabel: StateFlow<String?> = fetchPlayState.mediaSelectorFlow
+        .transformLatest { selector ->
+            if (selector == null) {
+                emit(null)
+            } else {
+                emitAll(selector.selected.map { it?.properties?.alliance })
+            }
+        }
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val videoLoadingState: StateFlow<VideoLoadingState> =
         fetchPlayState.playerSession.videoLoadingState

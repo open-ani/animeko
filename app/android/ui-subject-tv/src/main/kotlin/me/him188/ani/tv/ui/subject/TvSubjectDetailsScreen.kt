@@ -15,27 +15,33 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -47,8 +53,10 @@ import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
 
 /**
- * TV 条目详情页 (atv-architecture.md §7.5, M1 精简版):
- * 全屏 backdrop + 贴底信息带 (标题/评分/简介) + 播放按钮 + 选集行.
+ * TV 条目详情页 (atv-architecture.md §7.5):
+ * 全屏 backdrop + Hero 首屏 (标题/原名 + 贴底三列信息带) + 选集横版剧照轮播.
+ *
+ * 布局对齐参考实现 (第三方 TV 版实机效果).
  */
 @Composable
 fun TvSubjectDetailsScreen(
@@ -86,7 +94,7 @@ private fun SubjectContent(
         ?: info.episodes.firstOrNull()
 
     Box(modifier.fillMaxSize()) {
-        // 全屏 backdrop (M1 以海报 Crop 充当, TMDB 横版图后补)
+        // 全屏 backdrop (M1 以海报 Crop 充当, TMDB 横版图待 R3)
         AsyncImage(
             model = subjectInfo.imageLarge,
             contentDescription = null,
@@ -98,75 +106,127 @@ private fun SubjectContent(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        0.0f to surfaceColor.copy(alpha = 0.55f),
-                        0.55f to surfaceColor.copy(alpha = 0.86f),
-                        1.0f to surfaceColor,
+                        0.0f to surfaceColor.copy(alpha = 0.5f),
+                        0.5f to surfaceColor.copy(alpha = 0.72f),
+                        1.0f to surfaceColor.copy(alpha = 0.95f),
                     ),
                 ),
         )
 
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(start = 48.dp, end = 48.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.Bottom,
-        ) {
+        Column(Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 20.dp)) {
+            // 标题 + 日文原名
             Text(
                 subjectInfo.displayName,
-                style = MaterialTheme.typography.displaySmall,
-                maxLines = 2,
+                style = MaterialTheme.typography.headlineLarge,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Row(
-                Modifier.padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                if (subjectInfo.ratingInfo.score.isNotBlank()) {
-                    Text(
-                        "★ ${subjectInfo.ratingInfo.score}",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
+            if (subjectInfo.name.isNotBlank() && subjectInfo.name != subjectInfo.displayName) {
                 Text(
-                    "全 ${subjectInfo.totalEpisodes} 话",
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            }
-            if (subjectInfo.summary.isNotBlank()) {
-                Text(
-                    subjectInfo.summary,
-                    Modifier
-                        .padding(top = 10.dp)
-                        .fillMaxWidth(0.55f),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
+                    subjectInfo.name,
+                    Modifier.padding(top = 2.dp),
+                    style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
 
-            if (playTarget != null) {
-                Button(
-                    onClick = { onPlayEpisode(playTarget.episodeId) },
-                    Modifier.padding(top = 16.dp),
-                ) {
-                    Text("立即播放 第 ${playTarget.episodeInfo.sort} 话")
+            Box(Modifier.weight(1f))
+
+            // 贴底三列信息带 (参考版核心布局)
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(36.dp),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                // 左列: 播放按钮
+                Column(Modifier.width(210.dp)) {
+                    if (playTarget != null) {
+                        Button(onClick = { onPlayEpisode(playTarget.episodeId) }) {
+                            Icon(Icons.Rounded.PlayArrow, contentDescription = null, Modifier.size(20.dp))
+                            Text("开始观看", Modifier.padding(start = 8.dp))
+                        }
+                    }
                 }
+
+                // 中列: 年月/连载进度 + 收藏统计三列
+                Column(Modifier.width(230.dp)) {
+                    subjectInfo.airDate.takeIf { it.isValid }?.let { date ->
+                        Text(
+                            "${date.year} 年 ${date.month} 月",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                    }
+                    val latest = info.airingInfo.latestSort
+                    val total = subjectInfo.totalEpisodes.takeIf { it > 0 }
+                    val progress = buildString {
+                        if (latest != null) append("连载至 $latest")
+                        if (total != null) {
+                            if (isNotEmpty()) append(" · ")
+                            append("预定全 $total 话")
+                        }
+                    }
+                    if (progress.isNotEmpty()) {
+                        Text(
+                            progress,
+                            Modifier.padding(top = 2.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Row(
+                        Modifier.padding(top = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
+                    ) {
+                        val stats = subjectInfo.collectionStats
+                        StatColumn(stats.collect, "收藏")
+                        StatColumn(stats.doing, "在看")
+                        StatColumn(stats.wish, "想看")
+                    }
+                }
+
+                // 标签墙
+                Column(
+                    Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    subjectInfo.tags.take(10).chunked(5).forEach { row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            row.forEach { tag ->
+                                Text(
+                                    tag.name,
+                                    Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(Color.White.copy(alpha = 0.12f))
+                                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 右列: 评分直方图 + 分数
+                RatingBlock(info)
             }
 
+            // 选集: 横版剧照卡 (参考版 16:9, 卡内左下角序号 + 标题)
             Text(
                 "选集",
-                Modifier.padding(top = 20.dp, bottom = 8.dp),
+                Modifier.padding(top = 18.dp, bottom = 8.dp),
                 style = MaterialTheme.typography.titleMedium,
             )
             LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(end = 48.dp),
             ) {
                 items(info.episodes, key = { it.episodeId }) { episode ->
                     TvEpisodeCard(
                         episode = episode,
+                        // TODO(R3): TMDB 分集剧照; 暂以条目图占位
+                        imageUrl = subjectInfo.imageLarge,
                         onClick = { onPlayEpisode(episode.episodeId) },
                     )
                 }
@@ -176,47 +236,149 @@ private fun SubjectContent(
 }
 
 @Composable
+private fun StatColumn(value: Int, label: String, modifier: Modifier = Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            formatCount(value),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** 评分直方图 (1..10 竖条) + 分数 + 评分人数, 对齐参考版右下角布局. */
+@Composable
+private fun RatingBlock(info: SubjectCollectionInfo, modifier: Modifier = Modifier) {
+    val rating = info.subjectInfo.ratingInfo
+    val counts = (1..10).map { rating.count.get(it) }
+    val max = (counts.maxOrNull() ?: 0).coerceAtLeast(1)
+
+    Column(modifier.width(250.dp), horizontalAlignment = Alignment.End) {
+        Row(
+            Modifier.height(46.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            counts.forEach { count ->
+                val fraction = (count.toFloat() / max).coerceIn(0.04f, 1f)
+                Box(
+                    Modifier
+                        .width(14.dp)
+                        .height((46 * fraction).dp)
+                        .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)),
+                )
+            }
+        }
+        Row(
+            Modifier.padding(top = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            (1..10).forEach {
+                Text(
+                    "$it",
+                    Modifier.width(14.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Row(
+            Modifier.padding(top = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                rating.score.takeIf { it.isNotBlank() } ?: "-",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                buildString {
+                    if (rating.rank > 0) append("#${rating.rank} · ")
+                    append("${formatCount(rating.total)} 人评分")
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
 private fun TvEpisodeCard(
     episode: EpisodeCollectionInfo,
+    imageUrl: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val watched = episode.collectionType.isDoneOrDropped()
     Surface(
         onClick = onClick,
-        modifier = modifier.width(180.dp),
+        modifier = modifier.width(228.dp),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(11.dp)),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+            containerColor = Color.Transparent,
+            focusedContainerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onSurface,
             focusedContentColor = MaterialTheme.colorScheme.onSurface,
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = TvFocusDefaults.FocusedScale),
         border = TvFocusDefaults.clickableCardBorder(),
     ) {
-        Column(
+        Box(
             Modifier
-                .padding(horizontal = 12.dp, vertical = 10.dp)
-                .height(52.dp),
-            verticalArrangement = Arrangement.Center,
+                .padding(3.dp)
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(8.dp)),
         ) {
-            Text(
-                episode.episodeInfo.sort.toString(),
-                style = MaterialTheme.typography.titleLarge,
-                color = if (watched) {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                } else {
-                    Color.Unspecified
-                },
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
             )
-            Text(
-                episode.episodeInfo.displayName,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            // 底部渐变 + 序号/标题 (参考版卡内布局)
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0.35f to Color.Transparent,
+                            1f to Color.Black.copy(alpha = 0.82f),
+                        ),
+                    ),
             )
+            Row(
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    episode.episodeInfo.sort.toString(),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (watched) Color.White.copy(alpha = 0.55f) else Color.White,
+                )
+                Text(
+                    episode.episodeInfo.displayName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (watched) Color.White.copy(alpha = 0.55f) else Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
+}
+
+private fun formatCount(value: Int): String = when {
+    value >= 1000 -> "%,d".format(value)
+    else -> value.toString()
 }

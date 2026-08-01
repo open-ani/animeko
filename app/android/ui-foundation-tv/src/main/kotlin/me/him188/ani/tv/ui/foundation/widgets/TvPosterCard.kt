@@ -43,6 +43,8 @@ fun TvPosterCard(
     modifier: Modifier = Modifier,
     onFocused: () -> Unit = {},
     width: Dp = 112.dp,
+    /** 参考版探索页卡片行为纯图, 标题只在网格页展示 */
+    showTitle: Boolean = true,
 ) {
     Surface(
         onClick = onClick,
@@ -69,15 +71,17 @@ fun TvPosterCard(
                     .clip(RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop,
             )
-            Text(
-                title,
-                Modifier
-                    .fillMaxWidth()
-                    .padding(top = 6.dp, start = 2.dp, end = 2.dp, bottom = 2.dp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodySmall,
-            )
+            if (showTitle) {
+                Text(
+                    title,
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 6.dp, start = 2.dp, end = 2.dp, bottom = 2.dp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         }
     }
 }

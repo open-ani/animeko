@@ -19,10 +19,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import me.him188.ani.app.data.models.recommend.RecommendedItemInfo
+import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.data.models.trending.TrendingSubjectInfo
 import me.him188.ani.app.data.network.RecommendationRepository
 import me.him188.ani.app.data.network.TrendsRepository
+import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
@@ -37,9 +45,29 @@ import kotlin.time.Duration.Companion.seconds
 class TvExplorationViewModel : AbstractViewModel(), KoinComponent {
     private val trendsRepository: TrendsRepository by inject()
     private val recommendationRepository: RecommendationRepository by inject()
+    private val subjectCollectionRepository: SubjectCollectionRepository by inject()
 
     private val _trends = MutableStateFlow(emptyList<TrendingSubjectInfo>())
     val trends: StateFlow<List<TrendingSubjectInfo>> = _trends.asStateFlow()
+
+    /** 当前聚焦条目 id; hero 区按需拉取完整详情 (评分/连载进度/简介), 对齐参考版 */
+    private val focusedSubjectId = MutableStateFlow<Int?>(null)
+
+    val focusedDetails: StateFlow<SubjectCollectionInfo?> = focusedSubjectId
+        .flatMapLatest { id ->
+            if (id == null) {
+                flowOf(null)
+            } else {
+                subjectCollectionRepository.subjectCollectionFlow(id)
+                    .map<SubjectCollectionInfo, SubjectCollectionInfo?> { it }
+                    .catch { emit(null) }
+            }
+        }
+        .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun setFocusedSubject(subjectId: Int) {
+        focusedSubjectId.value = subjectId
+    }
 
     val recommendations: Flow<PagingData<RecommendedItemInfo>> =
         recommendationRepository.recommendedSubjectsPager().cachedIn(backgroundScope)
