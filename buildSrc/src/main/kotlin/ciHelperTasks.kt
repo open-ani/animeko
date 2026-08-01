@@ -101,6 +101,9 @@ object ReleaseArtifactNames {
 
     fun androidApp(fullVersion: String, arch: String): String = "$appName-$fullVersion-$arch.apk"
 
+    // TV APK 独立命名, 避免与手机 arch 资产冲突 (atv-architecture.md §10.2)
+    fun androidTvApp(fullVersion: String, arch: String): String = "$appName-tv-$fullVersion-$arch.apk"
+
     fun androidAppQr(fullVersion: String, arch: String, server: String): String =
         "${androidApp(fullVersion, arch)}.$server.qrcode.png"
 
@@ -359,9 +362,18 @@ abstract class UploadAndroidApksTask : ReleaseUploadTask() {
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val apkDirectory: DirectoryProperty
 
+    /** 产物 flavor: "default" (手机) 或 "tv"; 决定文件名解析前缀与发布资产命名. */
+    @get:Input
+    abstract val flavor: Property<String>
+
+    init {
+        flavor.convention("default")
+    }
+
     @TaskAction
     fun uploadApks() {
         val fullVersion = releaseFullVersion.get()
+        val flavorName = flavor.get()
         val apkFiles = apkDirectory.asFileTree.files
             .filter { it.isFile && it.extension == "apk" && it.name.contains("release") }
             .sortedBy { it.name }
@@ -372,13 +384,16 @@ abstract class UploadAndroidApksTask : ReleaseUploadTask() {
 
         apkFiles.forEach { file ->
             val arch = file.name
-                .removePrefix("android-default-")
+                .removePrefix("android-$flavorName-")
                 .removeSuffix("-release.apk")
                 .takeIf { it != file.name }
                 ?: throw GradleException("Cannot infer Android architecture from file name '${file.name}'")
 
             uploadReleaseAsset(
-                name = ReleaseArtifactNames.androidApp(fullVersion, arch),
+                name = when (flavorName) {
+                    "tv" -> ReleaseArtifactNames.androidTvApp(fullVersion, arch)
+                    else -> ReleaseArtifactNames.androidApp(fullVersion, arch)
+                },
                 contentType = "application/vnd.android.package-archive",
                 file = file,
             )

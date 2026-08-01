@@ -729,7 +729,7 @@ jobs:
         signing_release_keyPassword: '${{ secrets.SIGNING_RELEASE_KEYPASSWORD }}'
       continue-on-error: true
       timeout-minutes: 180
-      run: './gradlew assembleDefaultRelease "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+      run: './gradlew assembleDefaultRelease assembleTvRelease "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
       if: '${{ (github.repository == ''open-ani/animeko'') && (!(github.event_name == ''pull_request'')) }}'
     - id: 'step-36'
       name: 'Build Android Release APKs (Attempt #2)'
@@ -740,7 +740,7 @@ jobs:
         signing_release_keyPassword: '${{ secrets.SIGNING_RELEASE_KEYPASSWORD }}'
       continue-on-error: false
       timeout-minutes: 180
-      run: './gradlew assembleDefaultRelease "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
+      run: './gradlew assembleDefaultRelease assembleTvRelease "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
       if: '${{ steps.step-35.outcome == ''failure'' }}'
     - id: 'step-37'
       name: 'Upload Android Release APK arm64-v8a (Attempt #1)'
@@ -769,6 +769,32 @@ jobs:
         overwrite: 'true'
       if: '${{ steps.step-38.outcome == ''failure'' }}'
     - id: 'step-40'
+      name: 'Upload Android TV Release APK arm64-v8a (Attempt #1)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-android-tv-arm64-v8a-release'
+        path: 'app/android/build/outputs/apk/tv/release/android-tv-arm64-v8a-release.apk'
+        overwrite: 'true'
+    - id: 'step-41'
+      name: 'Upload Android TV Release APK arm64-v8a (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-android-tv-arm64-v8a-release'
+        path: 'app/android/build/outputs/apk/tv/release/android-tv-arm64-v8a-release.apk'
+        overwrite: 'true'
+      if: '${{ steps.step-40.outcome == ''failure'' }}'
+    - id: 'step-42'
+      name: 'Upload Android TV Release APK arm64-v8a (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-android-tv-arm64-v8a-release'
+        path: 'app/android/build/outputs/apk/tv/release/android-tv-arm64-v8a-release.apk'
+        overwrite: 'true'
+      if: '${{ steps.step-41.outcome == ''failure'' }}'
+    - id: 'step-43'
       name: 'Upload Android Release APK x86_64 (Attempt #1)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v4'
@@ -776,7 +802,7 @@ jobs:
         name: 'ani-android-x86_64-release'
         path: 'app/android/build/outputs/apk/default/release/android-default-x86_64-release.apk'
         overwrite: 'true'
-    - id: 'step-41'
+    - id: 'step-44'
       name: 'Upload Android Release APK x86_64 (Attempt #2)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v4'
@@ -784,8 +810,8 @@ jobs:
         name: 'ani-android-x86_64-release'
         path: 'app/android/build/outputs/apk/default/release/android-default-x86_64-release.apk'
         overwrite: 'true'
-      if: '${{ steps.step-40.outcome == ''failure'' }}'
-    - id: 'step-42'
+      if: '${{ steps.step-43.outcome == ''failure'' }}'
+    - id: 'step-45'
       name: 'Upload Android Release APK x86_64 (Attempt #3)'
       continue-on-error: false
       uses: 'actions/upload-artifact@v4'
@@ -793,8 +819,34 @@ jobs:
         name: 'ani-android-x86_64-release'
         path: 'app/android/build/outputs/apk/default/release/android-default-x86_64-release.apk'
         overwrite: 'true'
-      if: '${{ steps.step-41.outcome == ''failure'' }}'
-    - id: 'step-43'
+      if: '${{ steps.step-44.outcome == ''failure'' }}'
+    - id: 'step-46'
+      name: 'Upload Android TV Release APK x86_64 (Attempt #1)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-android-tv-x86_64-release'
+        path: 'app/android/build/outputs/apk/tv/release/android-tv-x86_64-release.apk'
+        overwrite: 'true'
+    - id: 'step-47'
+      name: 'Upload Android TV Release APK x86_64 (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-android-tv-x86_64-release'
+        path: 'app/android/build/outputs/apk/tv/release/android-tv-x86_64-release.apk'
+        overwrite: 'true'
+      if: '${{ steps.step-46.outcome == ''failure'' }}'
+    - id: 'step-48'
+      name: 'Upload Android TV Release APK x86_64 (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-android-tv-x86_64-release'
+        path: 'app/android/build/outputs/apk/tv/release/android-tv-x86_64-release.apk'
+        overwrite: 'true'
+      if: '${{ steps.step-47.outcome == ''failure'' }}'
+    - id: 'step-49'
       name: 'Upload Android Release APK armeabi-v7a (Attempt #1)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v4'
@@ -802,7 +854,7 @@ jobs:
         name: 'ani-android-armeabi-v7a-release'
         path: 'app/android/build/outputs/apk/default/release/android-default-armeabi-v7a-release.apk'
         overwrite: 'true'
-    - id: 'step-44'
+    - id: 'step-50'
       name: 'Upload Android Release APK armeabi-v7a (Attempt #2)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v4'
@@ -810,8 +862,8 @@ jobs:
         name: 'ani-android-armeabi-v7a-release'
         path: 'app/android/build/outputs/apk/default/release/android-default-armeabi-v7a-release.apk'
         overwrite: 'true'
-      if: '${{ steps.step-43.outcome == ''failure'' }}'
-    - id: 'step-45'
+      if: '${{ steps.step-49.outcome == ''failure'' }}'
+    - id: 'step-51'
       name: 'Upload Android Release APK armeabi-v7a (Attempt #3)'
       continue-on-error: false
       uses: 'actions/upload-artifact@v4'
@@ -819,8 +871,34 @@ jobs:
         name: 'ani-android-armeabi-v7a-release'
         path: 'app/android/build/outputs/apk/default/release/android-default-armeabi-v7a-release.apk'
         overwrite: 'true'
-      if: '${{ steps.step-44.outcome == ''failure'' }}'
-    - id: 'step-46'
+      if: '${{ steps.step-50.outcome == ''failure'' }}'
+    - id: 'step-52'
+      name: 'Upload Android TV Release APK armeabi-v7a (Attempt #1)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-android-tv-armeabi-v7a-release'
+        path: 'app/android/build/outputs/apk/tv/release/android-tv-armeabi-v7a-release.apk'
+        overwrite: 'true'
+    - id: 'step-53'
+      name: 'Upload Android TV Release APK armeabi-v7a (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-android-tv-armeabi-v7a-release'
+        path: 'app/android/build/outputs/apk/tv/release/android-tv-armeabi-v7a-release.apk'
+        overwrite: 'true'
+      if: '${{ steps.step-52.outcome == ''failure'' }}'
+    - id: 'step-54'
+      name: 'Upload Android TV Release APK armeabi-v7a (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-android-tv-armeabi-v7a-release'
+        path: 'app/android/build/outputs/apk/tv/release/android-tv-armeabi-v7a-release.apk'
+        overwrite: 'true'
+      if: '${{ steps.step-53.outcome == ''failure'' }}'
+    - id: 'step-55'
       name: 'Upload Android Release APK universal (Attempt #1)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v4'
@@ -828,7 +906,7 @@ jobs:
         name: 'ani-android-universal-release'
         path: 'app/android/build/outputs/apk/default/release/android-default-universal-release.apk'
         overwrite: 'true'
-    - id: 'step-47'
+    - id: 'step-56'
       name: 'Upload Android Release APK universal (Attempt #2)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v4'
@@ -836,8 +914,8 @@ jobs:
         name: 'ani-android-universal-release'
         path: 'app/android/build/outputs/apk/default/release/android-default-universal-release.apk'
         overwrite: 'true'
-      if: '${{ steps.step-46.outcome == ''failure'' }}'
-    - id: 'step-48'
+      if: '${{ steps.step-55.outcome == ''failure'' }}'
+    - id: 'step-57'
       name: 'Upload Android Release APK universal (Attempt #3)'
       continue-on-error: false
       uses: 'actions/upload-artifact@v4'
@@ -845,26 +923,52 @@ jobs:
         name: 'ani-android-universal-release'
         path: 'app/android/build/outputs/apk/default/release/android-default-universal-release.apk'
         overwrite: 'true'
-      if: '${{ steps.step-47.outcome == ''failure'' }}'
-    - id: 'step-49'
+      if: '${{ steps.step-56.outcome == ''failure'' }}'
+    - id: 'step-58'
+      name: 'Upload Android TV Release APK universal (Attempt #1)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-android-tv-universal-release'
+        path: 'app/android/build/outputs/apk/tv/release/android-tv-universal-release.apk'
+        overwrite: 'true'
+    - id: 'step-59'
+      name: 'Upload Android TV Release APK universal (Attempt #2)'
+      continue-on-error: true
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-android-tv-universal-release'
+        path: 'app/android/build/outputs/apk/tv/release/android-tv-universal-release.apk'
+        overwrite: 'true'
+      if: '${{ steps.step-58.outcome == ''failure'' }}'
+    - id: 'step-60'
+      name: 'Upload Android TV Release APK universal (Attempt #3)'
+      continue-on-error: false
+      uses: 'actions/upload-artifact@v4'
+      with:
+        name: 'ani-android-tv-universal-release'
+        path: 'app/android/build/outputs/apk/tv/release/android-tv-universal-release.apk'
+        overwrite: 'true'
+      if: '${{ steps.step-59.outcome == ''failure'' }}'
+    - id: 'step-61'
       name: 'Package Desktop (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew createReleaseDistributable "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
-    - id: 'step-50'
+    - id: 'step-62'
       name: 'Package Desktop (Attempt #2)'
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew createReleaseDistributable "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
-      if: '${{ steps.step-49.outcome == ''failure'' }}'
-    - id: 'step-51'
+      if: '${{ steps.step-61.outcome == ''failure'' }}'
+    - id: 'step-63'
       name: 'Upload compose logs'
       uses: 'actions/upload-artifact@v4'
       with:
         name: 'compose-logs-github-ubuntu-2404'
         path: 'app/desktop/build/compose/logs'
       if: '${{ always() }}'
-    - id: 'step-52'
+    - id: 'step-64'
       name: 'Build AppImage'
       run: |-
         # Download appimagetool
@@ -909,7 +1013,7 @@ jobs:
         sed -i "s|^URL:.*|URL: $releaseAsset|" "$releaseAsset.zsync"
         mv "$releaseAsset" Animeko-x86_64.AppImage
         mv "$releaseAsset.zsync" Animeko-x86_64.AppImage.zsync
-    - id: 'step-53'
+    - id: 'step-65'
       name: 'Upload Linux packages (Attempt #1)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v4'
@@ -920,7 +1024,7 @@ jobs:
           Animeko-x86_64.AppImage.zsync
         if-no-files-found: 'error'
         overwrite: 'true'
-    - id: 'step-54'
+    - id: 'step-66'
       name: 'Upload Linux packages (Attempt #2)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v4'
@@ -931,8 +1035,8 @@ jobs:
           Animeko-x86_64.AppImage.zsync
         if-no-files-found: 'error'
         overwrite: 'true'
-      if: '${{ steps.step-53.outcome == ''failure'' }}'
-    - id: 'step-55'
+      if: '${{ steps.step-65.outcome == ''failure'' }}'
+    - id: 'step-67'
       name: 'Upload Linux packages (Attempt #3)'
       continue-on-error: false
       uses: 'actions/upload-artifact@v4'
@@ -943,7 +1047,7 @@ jobs:
           Animeko-x86_64.AppImage.zsync
         if-no-files-found: 'error'
         overwrite: 'true'
-      if: '${{ steps.step-54.outcome == ''failure'' }}'
+      if: '${{ steps.step-66.outcome == ''failure'' }}'
   build_github-macos-15-intel:
     name: 'Build (macOS 15 x86_64 (GitHub))'
     runs-on:

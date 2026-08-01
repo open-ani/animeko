@@ -59,6 +59,12 @@ tasks.register("uploadAndroidApk", UploadAndroidApksTask::class) {
     apkDirectory.set(project(":app:android").layout.buildDirectory.dir("outputs/apk/default/release"))
 }
 
+tasks.register("uploadAndroidTvApk", UploadAndroidApksTask::class) {
+    configureReleaseUploadInputs()
+    apkDirectory.set(project(":app:android").layout.buildDirectory.dir("outputs/apk/tv/release"))
+    flavor.set("tv") // 资产命名 ani-tv-<ver>-<arch>.apk (atv-architecture.md §10.2)
+}
+
 val uploadAndroidApkGithubQr = tasks.register("uploadAndroidApkGithubQr", UploadReleaseAssetTask::class) {
     configureReleaseUploadInputs()
     artifactFile.set(rootProject.layout.projectDirectory.file("apk-qrcode-github.png"))
