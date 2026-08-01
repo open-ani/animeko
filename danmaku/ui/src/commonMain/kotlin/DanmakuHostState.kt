@@ -10,6 +10,7 @@
 package me.him188.ani.danmaku.ui
 
 import androidx.compose.runtime.LongState
+import androidx.compose.runtime.MonotonicFrameClock
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
@@ -29,10 +30,12 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import me.him188.ani.danmaku.api.DanmakuInfo
 import me.him188.ani.danmaku.api.DanmakuLocation
 import me.him188.ani.utils.logging.logger
@@ -158,8 +161,18 @@ class DanmakuHostState(
 
     private val danmakuRepopulator = DanmakuRepopulator(
         currentFrameTimeNanosState = elapsedFrameTimeNanoState,
+        awaitChunkBoundary = { awaitNextFrameOrYield() },
         onSend = { danmaku, placeFrameTimeNanos -> trySend(danmaku, placeFrameTimeNanos) },
     )
+
+    /**
+     * 让出到下一帧. seek 时 repopulate 会一次性测量数百条弹幕, 分批让出可以避免主线程被测量风暴阻塞.
+     * 没有 [MonotonicFrameClock] (例如测试环境) 时退化为 [yield].
+     */
+    private suspend fun awaitNextFrameOrYield() {
+        val clock = currentCoroutineContext()[MonotonicFrameClock]
+        if (clock == null) yield() else clock.withFrameNanos { }
+    }
 
     /**
      * Sets the [UIContext] required for text layout, styling, and density.
@@ -770,10 +783,14 @@ class DanmakuHostState(
 /**
  * A class that manages the repopulation of danmakus on the screen.
  *
+ * @param chunkSize 每放置多少条弹幕就在 [awaitChunkBoundary] 处让出一次.
+ * @param awaitChunkBoundary 分批边界. 每一批之间挂起, 避免一次 seek 的测量风暴阻塞主线程一整帧.
  * @param onSend A callback to send a danmaku to the screen.
  */
 internal class DanmakuRepopulator(
     private val currentFrameTimeNanosState: LongState,
+    private val chunkSize: Int = DEFAULT_CHUNK_SIZE,
+    private val awaitChunkBoundary: suspend () -> Unit = { yield() },
     private val onSend: suspend (DanmakuPresentation, placeFrameTimeNanos: Long) -> Unit
 ) {
     /**
@@ -790,6 +807,12 @@ internal class DanmakuRepopulator(
         val currentElapsedFrameTimeNanos = currentFrameTimeNanosState.longValue // take snapshot
         val sortedList = list.sortedBy { it.danmaku.playTimeMillis }
 
+        var sentCount = 0
+        suspend fun dispatch(danmaku: DanmakuPresentation, placeFrameTimeNanos: Long) {
+            onSend(danmaku, placeFrameTimeNanos)
+            if (++sentCount % chunkSize == 0) awaitChunkBoundary()
+        }
+
         val isFloatingDanmaku = { danmaku: DanmakuPresentation ->
             danmaku.danmaku.location == DanmakuLocation.NORMAL
         }
@@ -801,10 +824,10 @@ internal class DanmakuRepopulator(
             val firstDanmakuPlaceFrameTimeNanos = currentElapsedFrameTimeNanos -
                     (currentPlayMillis - firstDanmakuTimeMillis) * 1_000_000L
 
-            floatingDanmaku.forEach { danmaku ->
+            for (danmaku in floatingDanmaku) {
                 val placeFrameTimeNanos = firstDanmakuPlaceFrameTimeNanos +
                         (danmaku.danmaku.playTimeMillis - firstDanmakuTimeMillis) * 1_000_000L
-                if (placeFrameTimeNanos >= 0) onSend(danmaku, placeFrameTimeNanos)
+                if (placeFrameTimeNanos >= 0) dispatch(danmaku, placeFrameTimeNanos)
             }
         }
 
@@ -816,12 +839,16 @@ internal class DanmakuRepopulator(
                     (currentPlayMillis - lastDanmakuTimeMillis) * 1_000_000L
 
             // 浮动弹幕倒序 place 进 presentDanmaku 里
-            fixedDanmaku.asReversed().forEach { danmaku ->
+            for (danmaku in fixedDanmaku.asReversed()) {
                 val placeFrameTimeNanos = lastDanmakuPlaceFrameTimeNanos -
                         (lastDanmakuTimeMillis - danmaku.danmaku.playTimeMillis) * 1_000_000L
-                if (placeFrameTimeNanos >= 0) onSend(danmaku, placeFrameTimeNanos)
+                if (placeFrameTimeNanos >= 0) dispatch(danmaku, placeFrameTimeNanos)
             }
         }
+    }
+
+    internal companion object {
+        const val DEFAULT_CHUNK_SIZE = 20
     }
 }
 

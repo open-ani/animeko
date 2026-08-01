@@ -504,6 +504,53 @@ class DanmakuRepopulatorTest {
         assertTrue(calls.isEmpty())
     }
 
+    @Test
+    fun `repopulate - placement is chunked at chunk boundaries`() = runTest {
+        val longState = mutableLongStateOf(value = 10_000_000_000L) // 10s
+        val events = mutableListOf<String>()
+        val repopulator = DanmakuRepopulator(
+            currentFrameTimeNanosState = longState,
+            chunkSize = 3,
+            awaitChunkBoundary = { events += "boundary" },
+        ) { presentation, _ -> events += presentation.danmaku.id }
+
+        // 10 floating danmaku, all within the window so all get placed
+        val list = (0 until 10).map { i ->
+            DanmakuPresentation(
+                DanmakuInfo("$i", "p", 1_000L + i, "s", DanmakuLocation.NORMAL, "text$i", 0xFFFFFF),
+                isSelf = false,
+            )
+        }
+
+        repopulator.repopulate(list, currentPlayMillis = 1_009)
+
+        assertEquals(10, events.count { it != "boundary" })
+        // 每 3 条一批, 10 条 -> 在第 3, 6, 9 条之后各让出一次
+        assertEquals(3, events.count { it == "boundary" })
+        assertEquals(listOf(3, 7, 11), events.mapIndexedNotNull { i, e -> i.takeIf { e == "boundary" } })
+    }
+
+    @Test
+    fun `repopulate - no chunk boundary when fewer than chunk size`() = runTest {
+        val longState = mutableLongStateOf(value = 10_000_000_000L)
+        var boundaries = 0
+        val repopulator = DanmakuRepopulator(
+            currentFrameTimeNanosState = longState,
+            chunkSize = 20,
+            awaitChunkBoundary = { boundaries++ },
+        ) { _, _ -> }
+
+        val list = (0 until 5).map { i ->
+            DanmakuPresentation(
+                DanmakuInfo("$i", "p", 1_000L + i, "s", DanmakuLocation.NORMAL, "text$i", 0xFFFFFF),
+                isSelf = false,
+            )
+        }
+        repopulator.repopulate(list, currentPlayMillis = 1_004)
+
+        assertEquals(0, boundaries)
+    }
+
     // For compatibility
     @Suppress("TestFunctionName")
     private fun DanmakuInfo(
