@@ -151,6 +151,9 @@ import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.progress.SubtitleTrackSelection
+import me.him188.ani.app.videoplayer.ui.progress.subtitleTrackSelectionFor
+import me.him188.ani.app.videoplayer.ui.progress.toSubtitleTrackPreference
 import me.him188.ani.danmaku.api.DanmakuContent
 import me.him188.ani.danmaku.api.DanmakuEvent
 import me.him188.ani.danmaku.api.DanmakuInfo
@@ -181,7 +184,9 @@ import org.openani.mediamp.InternalMediampApi
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.features.chapters
+import org.openani.mediamp.features.subtitleTracks
 import org.openani.mediamp.metadata.Chapter
+import org.openani.mediamp.metadata.SubtitleTrack
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -1055,6 +1060,33 @@ class EpisodeViewModel(
                         if (!playbackAutomationGate.suppressed.value) playerSkipOpEdState.update(pos)
                     }.collect()
                 }
+        }
+
+        // 按用户偏好自动选择内嵌字幕轨道
+        launchInBackground {
+            val tracks = player.subtitleTracks ?: return@launchInBackground
+            player.mediaData.collectLatest { mediaData ->
+                if (mediaData == null) return@collectLatest
+                val preference = settingsRepository.subtitleTrackPreference.flow.first()
+                if (!preference.isRecorded) return@collectLatest
+                // 每次加载新视频只应用一次: 播放器后端会反复刷新候选列表, 再次应用会覆盖用户此后的手动选择.
+                val candidates = tracks.candidates.first { it.isNotEmpty() }
+                when (val selection = subtitleTrackSelectionFor(candidates, preference)) {
+                    SubtitleTrackSelection.KeepCurrent -> {}
+                    SubtitleTrackSelection.Off -> tracks.select(null)
+                    is SubtitleTrackSelection.Select -> tracks.select(selection.track)
+                }
+            }
+        }
+    }
+
+    /**
+     * 用户在播放器内手动切换字幕轨道. `null` 表示关闭字幕.
+     */
+    fun selectSubtitleTrack(track: SubtitleTrack?) {
+        player.subtitleTracks?.select(track)
+        launchInBackground {
+            settingsRepository.subtitleTrackPreference.set(track.toSubtitleTrackPreference())
         }
     }
 

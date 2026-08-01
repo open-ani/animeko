@@ -963,6 +963,7 @@ private fun EpisodeVideo(
         playerControllerState = playerControllerState,
         opEdSkipDuration = vm.videoScaffoldConfig.opEdSkipDuration,
         onClickSkipOpEd = { vm.onClickSkipOpEd(it) },
+        onSelectSubtitleTrack = { vm.selectSubtitleTrack(it) },
         title = {
             val episode = page.episodePresentation
             val subject = page.subjectPresentation

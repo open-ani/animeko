@@ -162,6 +162,7 @@ import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.audioTracks
 import org.openani.mediamp.features.subtitleTracks
 import org.openani.mediamp.isPlaying
+import org.openani.mediamp.metadata.SubtitleTrack
 import org.openani.mediamp.test.TestMediampPlayer
 import org.openani.mediamp.togglePause
 import kotlin.time.Duration
@@ -191,6 +192,7 @@ internal fun EpisodeVideoImpl(
     onClickSkipOpEd: (currentPositionMillis: Long) -> Unit = {
         playerState.skip(opEdSkipDuration.inWholeMilliseconds)
     },
+    onSelectSubtitleTrack: (SubtitleTrack?) -> Unit = { playerState.subtitleTracks?.select(it) },
     title: @Composable () -> Unit,
     danmakuHost: @Composable () -> Unit,
     danmakuEnabled: Boolean,
@@ -501,7 +503,7 @@ internal fun EpisodeVideoImpl(
                             }
 
                             playerState.subtitleTracks?.let {
-                                PlayerControllerDefaults.SubtitleSwitcher(it)
+                                PlayerControllerDefaults.SubtitleSwitcher(it, onSelect = onSelectSubtitleTrack)
                             }
 
                             val videoAspectRatioAlwaysOnRequester =
