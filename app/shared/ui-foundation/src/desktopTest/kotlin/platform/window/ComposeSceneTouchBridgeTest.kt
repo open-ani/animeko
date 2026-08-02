@@ -38,7 +38,7 @@ class ComposeSceneTouchBridgeTest {
     fun `current CMP exposes one list pointer event overload`() {
         val methods = ComposeScene::class.java.methods.filter { method ->
             method.name.startsWith("sendPointerEvent-") &&
-                method.parameterTypes.size == 8 &&
+                method.parameterTypes.size == 10 &&
                 method.parameterTypes[1] == List::class.java
         }
 
@@ -46,5 +46,7 @@ class ComposeSceneTouchBridgeTest {
         assertEquals(Int::class.javaPrimitiveType, methods.single().parameterTypes[0])
         assertEquals(Long::class.javaPrimitiveType, methods.single().parameterTypes[4])
         assertEquals(Long::class.javaPrimitiveType, methods.single().parameterTypes[5])
+        assertEquals(Float::class.javaPrimitiveType, methods.single().parameterTypes[8])
+        assertEquals(Long::class.javaPrimitiveType, methods.single().parameterTypes[9])
     }
 }
