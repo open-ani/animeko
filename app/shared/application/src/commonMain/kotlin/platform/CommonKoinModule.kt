@@ -359,7 +359,6 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<BangumiCommentRepository> {
         BangumiCommentRepository(
             get(),
-            database.episodeCommentDao(),
             database.subjectReviews(),
         )
     }
@@ -380,14 +379,9 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         )
     }
     single<EpisodeScreenshotRepository> { WhatslinkEpisodeScreenshotRepository() }
-    single<BangumiCommentService> { BangumiBangumiCommentServiceImpl(get(), get(), get<AniApiProvider>().subjectApi) }
+    single<BangumiCommentService> { BangumiBangumiCommentServiceImpl(get<AniApiProvider>().subjectApi) }
     single<AniEpisodeCommentService> { AniEpisodeCommentService(get<AniApiProvider>().episodesApi) }
-    single<EpisodeCommentRepository> {
-        EpisodeCommentRepository(
-            aniCommentService = get(),
-            bangumiCommentService = get(),
-        )
-    }
+    single<EpisodeCommentRepository> { EpisodeCommentRepository(aniCommentService = get()) }
     single<MediaSourceInstanceRepository> {
         MediaSourceInstanceRepositoryImpl(getContext().dataStores.mediaSourceSaveStore)
     }

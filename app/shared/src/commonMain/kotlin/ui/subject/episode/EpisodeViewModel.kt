@@ -60,6 +60,7 @@ import me.him188.ani.app.data.models.subject.nameCnOrName
 import me.him188.ani.app.data.network.AutoSkipRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
+import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -673,7 +674,12 @@ class EpisodeViewModel(
             .flatMapLatest { episodeId ->
                 episodeCommentRepository.subjectEpisodeCommentsPager(
                     episodeId.toLong(),
-                    onAniLoadFailed = { commentLoadFailureChannel.trySend(it) },
+                    // Ani 评论正常但服务端没取到 Bangumi 评论: 列表照常显示, 额外提示一次, 免得看起来像"没有评论"
+                    onBangumiUnavailable = {
+                        commentLoadFailureChannel.trySend(
+                            RepositoryServiceUnavailableException("Bangumi episode comments unavailable"),
+                        )
+                    },
                 )
                     .map { page -> page.map { it.parseToUIComment() } }
             }.cachedIn(backgroundScope),

@@ -13,33 +13,28 @@ import androidx.paging.Pager
 import androidx.paging.PagingData
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.episode.EpisodeComment
-import me.him188.ani.app.data.models.episode.EpisodeCommentSource
 import me.him188.ani.app.data.network.AniEpisodeCommentService
-import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.app.data.network.toEpisodeComment
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.runWrappingExceptionAsLoadResult
-import me.him188.ani.utils.logging.logger
-import me.him188.ani.utils.logging.warn
 
 class EpisodeCommentRepository(
     private val aniCommentService: AniEpisodeCommentService,
-    private val bangumiCommentService: BangumiCommentService,
 ) : Repository() {
+    /**
+     * @param onBangumiUnavailable 首屏拿到了 Ani 评论但服务端没能取到 Bangumi 评论时调用一次
+     */
     fun subjectEpisodeCommentsPager(
         episodeId: Long,
-        onAniLoadFailed: (Throwable) -> Unit = {},
+        onBangumiUnavailable: () -> Unit = {},
     ): Flow<PagingData<EpisodeComment>> {
         return Pager(defaultPagingConfig) {
-            DualSourceEpisodeCommentPagingSource(
+            EpisodeCommentPagingSource(
                 episodeId = episodeId,
                 aniCommentService = aniCommentService,
-                bangumiCommentService = bangumiCommentService,
-                pageSize = defaultPagingConfig.pageSize,
-                onAniLoadFailed = onAniLoadFailed,
+                onBangumiUnavailable = onBangumiUnavailable,
             )
         }.flow
     }
@@ -58,129 +53,37 @@ class EpisodeCommentRepository(
     }
 }
 
-internal class DualSourceEpisodeCommentPagingSource(
+/**
+ * 剧集评论翻页. Ani 与 Bangumi 的评论已由服务端合并排序好, 客户端只按游标顺序取.
+ */
+internal class EpisodeCommentPagingSource(
     private val episodeId: Long,
     private val aniCommentService: AniEpisodeCommentService,
-    private val bangumiCommentService: BangumiCommentService,
-    private val pageSize: Int,
-    private val onAniLoadFailed: (Throwable) -> Unit = {},
-) : PagingSource<DualSourceEpisodeCommentPagingSource.Cursor, EpisodeComment>() {
-    private var initialized = false
-    private var bangumiComments: List<EpisodeComment> = emptyList()
-    private var bangumiOffset: Int = 0
-    private var aniNextOffset: Int = 0
-    private var aniTotal: Int = Int.MAX_VALUE
-    private val aniBuffer = ArrayDeque<EpisodeComment>()
+    private val onBangumiUnavailable: () -> Unit = {},
+) : PagingSource<String, EpisodeComment>() {
+    override fun getRefreshKey(state: PagingState<String, EpisodeComment>): String? = null
 
-    override fun getRefreshKey(state: PagingState<Cursor, EpisodeComment>): Cursor? = null
-
-    override suspend fun load(params: LoadParams<Cursor>): LoadResult<Cursor, EpisodeComment> {
+    override suspend fun load(params: LoadParams<String>): LoadResult<String, EpisodeComment> {
         return runWrappingExceptionAsLoadResult {
-            if (params is LoadParams.Refresh || !initialized) {
-                reset()
-                initialize()
+            val response = aniCommentService.listEpisodeComments(
+                episodeId = episodeId,
+                after = params.key,
+                limit = params.loadSize.coerceAtMost(MAX_LIMIT),
+            )
+            // 只在首屏报一次, 免得每翻一页都提示
+            if (response.bangumiUnavailable && params.key == null) {
+                onBangumiUnavailable()
             }
-
-            val data = mutableListOf<EpisodeComment>()
-            while (data.size < params.loadSize) {
-                ensureAniCandidate(params.loadSize)
-
-                val nextAni = aniBuffer.firstOrNull()
-                val nextBangumi = bangumiComments.getOrNull(bangumiOffset)
-                val nextComment = newerOf(nextAni, nextBangumi) ?: break
-
-                if (nextComment === nextAni) {
-                    data += aniBuffer.removeFirst()
-                } else {
-                    data += nextBangumi!!
-                    bangumiOffset += 1
-                }
-            }
-
-            val hasMore = aniBuffer.isNotEmpty() || aniNextOffset < aniTotal || bangumiOffset < bangumiComments.size
             LoadResult.Page(
-                data = data,
+                data = response.items.map { it.toEpisodeComment() },
                 prevKey = null,
-                nextKey = if (hasMore) Cursor(aniOffset = aniNextOffset, bangumiOffset = bangumiOffset) else null,
+                nextKey = response.nextCursor,
             )
         }
     }
 
-    private suspend fun initialize() {
-        bangumiComments = try {
-            bangumiCommentService.getSubjectEpisodeComments(episodeId)
-                .orEmpty()
-                .sortedWith(COMMENT_COMPARATOR)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.warn(e) { "Failed to load Bangumi episode comments for episode $episodeId, falling back to Ani comments only" }
-            emptyList()
-        }
-        initialized = true
-    }
-
-    private suspend fun ensureAniCandidate(loadSize: Int) {
-        while (aniBuffer.isEmpty() && aniNextOffset < aniTotal) {
-            val response = try {
-                aniCommentService.listEpisodeComments(
-                    episodeId = episodeId,
-                    offset = aniNextOffset,
-                    limit = maxOf(pageSize, loadSize),
-                )
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                logger.warn(e) { "Failed to load Ani episode comments for episode $episodeId" }
-                aniTotal = aniNextOffset
-                onAniLoadFailed(e)
-                break
-            }
-            aniTotal = response.total.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-
-            val items = response.items
-                .map { it.toEpisodeComment() }
-                .sortedWith(COMMENT_COMPARATOR)
-            aniBuffer.addAll(items)
-            aniNextOffset += items.size
-
-            if (items.isEmpty()) {
-                aniNextOffset = aniTotal
-                break
-            }
-        }
-    }
-
-    private fun newerOf(
-        ani: EpisodeComment?,
-        bangumi: EpisodeComment?,
-    ): EpisodeComment? {
-        return when {
-            ani == null -> bangumi
-            bangumi == null -> ani
-            COMMENT_COMPARATOR.compare(ani, bangumi) <= 0 -> ani
-            else -> bangumi
-        }
-    }
-
-    private fun reset() {
-        initialized = false
-        bangumiComments = emptyList()
-        bangumiOffset = 0
-        aniNextOffset = 0
-        aniTotal = Int.MAX_VALUE
-        aniBuffer.clear()
-    }
-
-    data class Cursor(
-        val aniOffset: Int,
-        val bangumiOffset: Int,
-    )
-
     private companion object {
-        val logger = logger<DualSourceEpisodeCommentPagingSource>()
-        val COMMENT_COMPARATOR = compareByDescending<EpisodeComment> { it.createdAt }
-            .thenBy { if (it.source == EpisodeCommentSource.ANI) 0 else 1 }
-            .thenByDescending { it.stableId }
+        /** 服务端 `limit` 的上限, 超过会 400 */
+        const val MAX_LIMIT = 100
     }
 }

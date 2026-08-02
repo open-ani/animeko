@@ -13,15 +13,12 @@ import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
 import me.him188.ani.datasources.api.source.ConnectionStatus
-import me.him188.ani.datasources.bangumi.next.apis.EpisodeBangumiNextApi
-import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.ktor.ScopedHttpClient
 
+/**
+ * 只用于连通性探测. 客户端已不再直接请求 Bangumi 的任何数据接口 —— 剧集评论等内容由 Ani 服务器合并后下发.
+ */
 interface BangumiClient {
-    // Bangumi open API: https://github.com/bangumi/api/blob/master/open-api/api.yml
-
-    val nextEpisodeApi: ApiInvoker<EpisodeBangumiNextApi>
-
     /**
      * 测试与 Bangumi 主站的连接
      */
@@ -42,6 +39,7 @@ class BangumiClientImpl(
      */
     private val client: ScopedHttpClient,
 ) : BangumiClient {
+
     override suspend fun testConnectionMaster(): ConnectionStatus {
         return testConnection(BANGUMI_API_HOST)
     }
@@ -59,6 +57,4 @@ class BangumiClientImpl(
             }
         }
     }
-
-    override val nextEpisodeApi = ApiInvoker(client) { EpisodeBangumiNextApi(BANGUMI_NEXT_API_HOST, it) }
 }

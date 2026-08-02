@@ -10,7 +10,6 @@
 package me.him188.ani.app.data.models.episode
 
 import me.him188.ani.app.data.models.UserInfo
-import me.him188.ani.datasources.bangumi.next.models.BangumiNextGetEpisodeComments200ResponseInner
 
 enum class EpisodeCommentSource {
     ANI,
@@ -39,60 +38,4 @@ data class EpisodeCommentReaction(
     val value: String,
     val count: Int,
     val selected: Boolean,
-)
-
-fun BangumiNextGetEpisodeComments200ResponseInner.toEpisodeComment(
-    episodeId: Long,
-    selfBangumiUsername: String? = null,
-) = EpisodeComment(
-    stableId = "bangumi:$id",
-    source = EpisodeCommentSource.BANGUMI,
-    sourceCommentId = id.toString(),
-    commentId = id.toString(),
-    episodeId = episodeId,
-    createdAt = createdAt * 1000L,
-    content = content,
-    author = user?.let { u ->
-        UserInfo(
-            id = u.id.toString(),
-            nickname = u.nickname,
-            username = null,
-            avatarUrl = u.avatar.large,
-        ) // 没有username
-    },
-    reactions = reactions.orEmpty().map { reaction ->
-        EpisodeCommentReaction(
-            value = "bgm${reaction.value}",
-            count = reaction.users.size,
-            selected = selfBangumiUsername != null && reaction.users.any { it.username == selfBangumiUsername },
-        )
-    },
-    replies = replies.map { r ->
-        EpisodeComment(
-            stableId = "bangumi:${r.id}",
-            source = EpisodeCommentSource.BANGUMI,
-            sourceCommentId = r.id.toString(),
-            commentId = r.id.toString(),
-            episodeId = episodeId,
-            createdAt = r.createdAt * 1000L,
-            content = r.content,
-            author = r.user?.let { u ->
-                UserInfo(
-                    id = u.id.toString(),
-                    nickname = u.nickname,
-                    username = null,
-                    avatarUrl = u.avatar.large,
-                )
-            },
-            reactions = r.reactions.orEmpty().map { reaction ->
-                EpisodeCommentReaction(
-                    value = "bgm${reaction.value}",
-                    count = reaction.users.size,
-                    selected = selfBangumiUsername != null && reaction.users.any { it.username == selfBangumiUsername },
-                )
-            },
-            canReply = false,
-        )
-    },
-    canReply = false,
 )

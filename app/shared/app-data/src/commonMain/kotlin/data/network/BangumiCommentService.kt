@@ -9,20 +9,13 @@
 
 package me.him188.ani.app.data.network
 
-import io.ktor.client.plugins.ClientRequestException
-import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.UserInfo
-import me.him188.ani.app.data.models.episode.EpisodeComment
-import me.him188.ani.app.data.models.episode.toEpisodeComment
 import me.him188.ani.app.data.models.subject.SubjectReview
-import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.client.models.AniSubjectReview
 import me.him188.ani.datasources.api.paging.Paged
-import me.him188.ani.datasources.bangumi.BangumiClient
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.coroutines.IO_
 import kotlin.coroutines.CoroutineContext
@@ -33,16 +26,9 @@ interface BangumiCommentService {
      * @return `null` if [subjectId] is invalid
      */
     suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int): Paged<SubjectReview>?
-
-    /**
-     * @return `null` if [episodeId] is invalid
-     */
-    suspend fun getSubjectEpisodeComments(episodeId: Long): List<EpisodeComment>?
 }
 
 class BangumiBangumiCommentServiceImpl(
-    private val client: BangumiClient,
-    private val userRepository: UserRepository,
     private val subjectsApi: ApiInvoker<SubjectsAniApi>,
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) : BangumiCommentService {
@@ -60,24 +46,6 @@ class BangumiBangumiCommentServiceImpl(
         }
     }
 
-    override suspend fun getSubjectEpisodeComments(episodeId: Long): List<EpisodeComment>? {
-        return withContext(ioDispatcher) {
-            val selfBangumiUsername = userRepository.selfInfoFlow.firstOrNull()?.bangumiUsername
-            val response = try {
-                client.nextEpisodeApi {
-                    getEpisodeComments(episodeId)
-                        .body()
-                        .map { it.toEpisodeComment(episodeId, selfBangumiUsername) }
-                }
-            } catch (e: ClientRequestException) {
-                if (e.response.status == HttpStatusCode.NotFound || e.response.status == HttpStatusCode.BadRequest) {
-                    return@withContext null
-                }
-                throw e
-            }
-            response
-        }
-    }
 
 }
 
