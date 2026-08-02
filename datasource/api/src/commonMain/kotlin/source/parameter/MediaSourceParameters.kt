@@ -28,12 +28,14 @@ open class MediaSourceParametersBuilder {
         defaultProvider: (() -> String)? = null,
         description: String? = null,
         placeholder: String? = null,
+        visibleWhen: MediaSourceParameterVisibilityCondition? = null,
     ): StringParameter {
         val param = StringParameter(
             name, description,
             default = defaultProvider ?: { "" },
             isRequired = defaultProvider == null,
             placeholder = placeholder,
+            visibleWhen = visibleWhen,
         )
         add(param)
         return param
@@ -46,8 +48,14 @@ open class MediaSourceParametersBuilder {
         name: String,
         default: Boolean,
         description: String? = null,
+        visibleWhen: MediaSourceParameterVisibilityCondition? = null,
     ): BooleanParameter {
-        val param = BooleanParameter(name, description) { default }
+        val param = BooleanParameter(
+            name = name,
+            description = description,
+            default = { default },
+            visibleWhen = visibleWhen,
+        )
         add(param)
         return param
     }
@@ -60,8 +68,15 @@ open class MediaSourceParametersBuilder {
         oneOf: List<String>,
         default: String,
         description: String? = null,
+        visibleWhen: MediaSourceParameterVisibilityCondition? = null,
     ): SimpleEnumParameter {
-        val param = SimpleEnumParameter(name, oneOf, description) { default }
+        val param = SimpleEnumParameter(
+            name = name,
+            oneOf = oneOf,
+            description = description,
+            default = { default },
+            visibleWhen = visibleWhen,
+        )
         add(param)
         return param
     }
@@ -74,7 +89,8 @@ open class MediaSourceParametersBuilder {
         vararg oneOf: String,
         default: String,
         description: String? = null,
-    ) = simpleEnum(name, oneOf.toList(), default, description)
+        visibleWhen: MediaSourceParameterVisibilityCondition? = null,
+    ) = simpleEnum(name, oneOf.toList(), default, description, visibleWhen)
 
     fun <T> add(parameter: MediaSourceParameter<T>): MediaSourceParameter<T> {
         list.add(parameter)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -51,7 +51,7 @@ class EmbyMediaSource(
     }
 
     class Factory : MediaSourceFactory {
-        override val factoryId: FactoryId get() = me.him188.ani.datasources.api.source.FactoryId(ID)
+        override val factoryId: FactoryId get() = FactoryId(ID)
 
         override val parameters: MediaSourceParameters = Parameters.build()
         override val info: MediaSourceInfo get() = INFO
@@ -67,10 +67,18 @@ class EmbyMediaSource(
     override val info: MediaSourceInfo get() = INFO
     override val mediaSourceId: String get() = ID
     override val baseUrl = config[Parameters.baseUrl].removeSuffix("/")
-    override val userId = config[Parameters.userId]
-    override val apiKey = config[Parameters.apikey]
+    private val userId = config[Parameters.userId]
+    private val apiKey = config[Parameters.apikey]
 
-    override fun getDownloadUri(itemId: String): String {
-        return "$baseUrl/Items/$itemId/Download?api_key=$apiKey"
+    override suspend fun getAuthorization(): Authorization {
+        return Authorization(
+            userId = userId,
+            accessToken = apiKey,
+            headerValue = """MediaBrowser Token="$apiKey"""",
+        )
+    }
+
+    override fun getDownloadUri(itemId: String, accessToken: String): String {
+        return "$baseUrl/Items/$itemId/Download?api_key=$accessToken"
     }
 }
