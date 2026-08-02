@@ -48,6 +48,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -87,6 +88,8 @@ import org.jetbrains.compose.resources.getString
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
+
+val LocalWatchTogetherPlayerEntryAction = staticCompositionLocalOf<() -> Unit> { {} }
 
 @Composable
 fun BoxScope.WatchTogetherOverlayHost(
@@ -220,6 +223,12 @@ fun BoxScope.WatchTogetherOverlayHost(
 
     LaunchedEffect(state.featureEnabled) {
         if (!state.featureEnabled) dialogVisible = false
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.dialogOpenRequests.collect {
+            dialogVisible = true
+        }
     }
 
     if (!state.featureEnabled) return

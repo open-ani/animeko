@@ -214,6 +214,7 @@ class EpisodeVideoControllerTest {
         playbackSpeed: PlaybackSpeed = NoOpPlaybackSpeedController,
         onCommitPlaybackSpeed: (Float) -> Unit = {},
         opEdSkipDuration: Duration = 85.seconds,
+        onClickWatchTogether: () -> Unit = {},
         onPlayerStateCreated: (TestMediampPlayer) -> Unit = {},
         onPlatformWindow: (PlatformWindow) -> Unit = {},
         platformWindowOverride: PlatformWindow? = null,
@@ -352,6 +353,7 @@ class EpisodeVideoControllerTest {
                 gestureFamily = gestureFamily,
                 shareData = MediaShareData(null, null),
                 onClickCache = {},
+                onClickWatchTogether = onClickWatchTogether,
                 modifier = Modifier.testTag("PLAYER"),
                 )
             }
@@ -417,6 +419,37 @@ class EpisodeVideoControllerTest {
                 assertEquals((durationSeconds + 5) * 1_000L, playerState.currentPositionMillis.value)
             }
         }
+    }
+
+    @Test
+    fun `player menu shows watch together first and dispatches click`() = runAniComposeUiTest {
+        var watchTogetherClicks = 0
+        val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+        setContent {
+            Player(
+                GestureFamily.MOUSE,
+                playerControllerState = visibleControllerState,
+                onClickWatchTogether = { watchTogetherClicks++ },
+            )
+        }
+
+        onNodeWithContentDescription("More options").performClick()
+
+        val watchTogetherItem = onNodeWithTag(TAG_WATCH_TOGETHER_MENU_ITEM)
+        val playerStatsItem = onNodeWithText("Show Playback Info")
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            watchTogetherItem.exists() && playerStatsItem.exists()
+        }
+        val watchTogetherTop = watchTogetherItem.fetchSemanticsNode().boundsInRoot.top
+        val playerStatsTop = playerStatsItem.fetchSemanticsNode().boundsInRoot.top
+        assertTrue(watchTogetherTop < playerStatsTop)
+
+        watchTogetherItem.performClick()
+
+        runOnIdle {
+            assertEquals(1, watchTogetherClicks)
+        }
+        watchTogetherItem.doesNotExist()
     }
 
     /**
