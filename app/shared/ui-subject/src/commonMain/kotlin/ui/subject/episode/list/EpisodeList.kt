@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.subject.episode.list
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -40,9 +41,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.lang.*
+import me.him188.ani.app.ui.foundation.lists.ScrollStateVerticalScrollbar
+import me.him188.ani.app.ui.foundation.lists.hasScrollableContent
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
 import me.him188.ani.app.ui.foundation.theme.weaken
+import me.him188.ani.app.ui.lang.*
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.jetbrains.compose.resources.*
 
@@ -56,6 +59,8 @@ fun EpisodeListDialog(
     onSubjectDetailsClick: (() -> Unit)? = null,
     properties: DialogProperties = DialogProperties(),
 ) {
+    val scrollState = rememberScrollState()
+    val scrollbarEndPadding = if (scrollState.hasScrollableContent()) 16.dp else 0.dp
     Dialog(onDismissRequest, properties) {
         Card {
             Box {
@@ -76,28 +81,40 @@ fun EpisodeListDialog(
 
                     Spacer(Modifier.height(16.dp))
 
-                    Column(
+                    Box(
                         Modifier.weight(1f, fill = false)
-                            .heightIn(max = 360.dp) // 特别长需要限制高度并且滚动, #182
-                            .verticalScroll(rememberScrollState()),
+                            .heightIn(max = 360.dp), // 特别长需要限制高度并且滚动, #182
                     ) {
-                        EpisodeListFlowRow(
-                            state.mainEpisodes,
-                            onEpisodeClick,
-                            onCollectionUpdate,
-                        )
-
-                        if (state.otherEpisodes.isNotEmpty()) {
-                            HorizontalDivider(Modifier.padding(vertical = 16.dp))
-
+                        Column(
+                            Modifier.verticalScroll(scrollState).padding(end = scrollbarEndPadding),
+                        ) {
                             EpisodeListFlowRow(
-                                state.otherEpisodes,
+                                state.mainEpisodes,
                                 onEpisodeClick,
                                 onCollectionUpdate,
                             )
+
+                            if (state.otherEpisodes.isNotEmpty()) {
+                                HorizontalDivider(Modifier.padding(vertical = 16.dp))
+
+                                EpisodeListFlowRow(
+                                    state.otherEpisodes,
+                                    onEpisodeClick,
+                                    onCollectionUpdate,
+                                )
+                            }
+
+                            Spacer(Modifier.height(16.dp))
                         }
 
-                        Spacer(Modifier.height(16.dp))
+                        Box(Modifier.matchParentSize()) {
+                            ScrollStateVerticalScrollbar(
+                                state = scrollState,
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .fillMaxHeight(),
+                            )
+                        }
                     }
 
                     HorizontalDivider()

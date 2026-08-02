@@ -106,6 +106,11 @@ actual class PlatformWindow(
 
     actual fun floating() {
     }
+
+    actual val isAlwaysOnTop: Boolean get() = false
+
+    actual fun setAlwaysOnTop(alwaysOnTop: Boolean) {
+    }
 }
 
 @Suppress("DEPRECATION")

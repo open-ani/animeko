@@ -257,7 +257,7 @@ class MediaSelectorAutoSelectUseCaseTest {
 
     @Test
     fun `fallback waits for cached candidate flows to receive completed results`() =
-        runFetchMediaSelectorTestSuite(enableCaching = true) {
+        runFetchMediaSelectorTestSuite(cachingEnabled = true) {
             initSubject()
             preferenceApi.savedUserPreference.value = MediaPreference.Any
             preferenceApi.mediaSelectorSettings.value = autoSelectSettings(fastSelectWebKind = false)
@@ -283,7 +283,7 @@ class MediaSelectorAutoSelectUseCaseTest {
 
     @Test
     fun `fallback recomputes preferences after cached preferred candidates stop with stale replay`() =
-        runFetchMediaSelectorTestSuite(enableCaching = true) {
+        runFetchMediaSelectorTestSuite(cachingEnabled = true) {
             initSubject()
             preferenceApi.savedUserPreference.value = MediaPreference.Any
             preferenceApi.mediaSelectorSettings.value = autoSelectSettings(fastSelectWebKind = false)
@@ -318,7 +318,7 @@ class MediaSelectorAutoSelectUseCaseTest {
 
     @Test
     fun `fallback keeps preferred kind after cached candidate propagation`() =
-        runFetchMediaSelectorTestSuite(enableCaching = true) {
+        runFetchMediaSelectorTestSuite(cachingEnabled = true) {
             initSubject()
             preferenceApi.savedUserPreference.value = MediaPreference.Any
             preferenceApi.mediaSelectorSettings.value = autoSelectSettings(
@@ -349,7 +349,7 @@ class MediaSelectorAutoSelectUseCaseTest {
 
     @Test
     fun `fallback completes when propagated candidates are excluded`() =
-        runFetchMediaSelectorTestSuite(enableCaching = true) {
+        runFetchMediaSelectorTestSuite(cachingEnabled = true) {
             initSubject()
             preferenceApi.savedUserPreference.value = MediaPreference.Any
             preferenceApi.mediaSelectorSettings.value = autoSelectSettings(fastSelectWebKind = false)
@@ -375,7 +375,7 @@ class MediaSelectorAutoSelectUseCaseTest {
 
     @Test
     fun `fallback preserves manual selection while cached candidates are pending`() =
-        runFetchMediaSelectorTestSuite(enableCaching = true) {
+        runFetchMediaSelectorTestSuite(cachingEnabled = true) {
             initSubject()
             preferenceApi.savedUserPreference.value = MediaPreference.Any
             preferenceApi.mediaSelectorSettings.value = autoSelectSettings(fastSelectWebKind = false)

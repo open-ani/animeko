@@ -19,6 +19,7 @@ package me.him188.ani.client.apis
 import me.him188.ani.client.models.AniBangumiSyncStateEntity
 import me.him188.ani.client.models.AniBatchUpdateEpisodeCollectionsRequest
 import me.him188.ani.client.models.AniCollectionType
+import me.him188.ani.client.models.AniCommentVoteValue
 import me.him188.ani.client.models.AniEpisodeCollection
 import me.him188.ani.client.models.AniNsfwFilter
 import me.him188.ani.client.models.AniPaginatedResponse2SubjectSearch
@@ -540,6 +541,40 @@ open class SubjectsAniApi : ApiClient {
     }
 
     /**
+     * Remove vote on Ani subject review
+     * 撤销点赞或点踩. 没投过时也返回 204.
+     * @param subjectId
+     * @param reviewId
+     * @return kotlin.Any
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun removeSubjectReviewVote(subjectId: kotlin.Long, reviewId: kotlin.String): HttpResponse<kotlin.Any> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.DELETE,
+            "/v2/subjects/{subjectId}/reviews/{reviewId}/vote".replace("{" + "subjectId" + "}", "$subjectId").replace("{" + "reviewId" + "}", "$reviewId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
      * 搜索条目
      * 搜索条目
      * @param q
@@ -658,6 +693,41 @@ open class SubjectsAniApi : ApiClient {
         ).wrap()
     }
 
+
+
+    /**
+     * Vote on Ani subject review
+     * 对 Ani 条目评价点赞或点踩. 赞与踩互斥, 重复调用同一个值是幂等的. &#x60;reviewId&#x60; 传响应里的 &#x60;id&#x60; 原值 (形如 &#x60;ani:&lt;uuid&gt;&#x60;); Bangumi 来源的评价不可投票, 传它会返回 400.
+     * @param subjectId
+     * @param reviewId
+     * @param vote
+     * @return kotlin.Any
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun voteSubjectReview(subjectId: kotlin.Long, reviewId: kotlin.String, vote: AniCommentVoteValue): HttpResponse<kotlin.Any> {
+
+        val localVariableAuthNames = listOf<String>("auth-jwt")
+
+        val localVariableBody =
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.PUT,
+            "/v2/subjects/{subjectId}/reviews/{reviewId}/vote/{vote}".replace("{" + "subjectId" + "}", "$subjectId").replace("{" + "reviewId" + "}", "$reviewId").replace("{" + "vote" + "}", "${ vote.value }"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
 
 
 }

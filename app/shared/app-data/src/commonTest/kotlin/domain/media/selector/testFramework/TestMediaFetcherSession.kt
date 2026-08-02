@@ -74,6 +74,7 @@ class TestMediaFetchSessionBuilder {
             mediaSourceId = propertyName,
             kind = kind,
             fetch = {
+                handle.onFetch()
                 SinglePagePagedSource {
                     handle.result.await().asFlow()
                 }
@@ -117,6 +118,16 @@ class Handle(
     val instance: MediaSourceInstance,
 ) {
     val result = CompletableDeferred<List<MediaMatch>>()
+
+    /**
+     * [TestMediaSource.fetch] 被调用的次数, 即该源的查询被驱动的次数.
+     */
+    var fetchCount: Int = 0
+        private set
+
+    internal fun onFetch() {
+        fetchCount++
+    }
 
     fun complete(vararg medias: Media) = complete(medias.toList())
 

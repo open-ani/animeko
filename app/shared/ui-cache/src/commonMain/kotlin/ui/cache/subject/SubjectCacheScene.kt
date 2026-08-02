@@ -9,10 +9,13 @@
 
 package me.him188.ani.app.ui.cache.subject
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -26,8 +29,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -67,6 +72,8 @@ import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.launchInBackground
+import me.him188.ani.app.ui.foundation.lists.ScrollStateVerticalScrollbar
+import me.him188.ani.app.ui.foundation.lists.hasScrollableContent
 import me.him188.ani.app.ui.foundation.produceState
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
@@ -344,6 +351,8 @@ fun SubjectCachePageScaffold(
     navigationIcon: @Composable () -> Unit = {},
 ) {
     val appBarColors = AniThemeDefaults.topAppBarColors()
+    val scrollState = rememberScrollState()
+    val scrollbarEndPadding = if (scrollState.hasScrollableContent()) 16.dp else 0.dp
     Scaffold(
         modifier,
         topBar = {
@@ -360,23 +369,32 @@ fun SubjectCachePageScaffold(
         },
         contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal),
     ) { paddingValues ->
-        Column(Modifier.padding(paddingValues).verticalScroll(rememberScrollState())) {
-//            Surface(Modifier.fillMaxWidth(), color = appBarColors.containerColor) {
-//                Row(Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
-//                    ProvideTextStyle(MaterialTheme.typography.titleMedium) {
-//                        title()
+        Box(Modifier.padding(paddingValues).fillMaxSize()) {
+            Column(Modifier.fillMaxSize().verticalScroll(scrollState).padding(end = scrollbarEndPadding)) {
+//                Surface(Modifier.fillMaxWidth(), color = appBarColors.containerColor) {
+//                    Row(Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+//                        ProvideTextStyle(MaterialTheme.typography.titleMedium) {
+//                            title()
+//                        }
 //                    }
 //                }
-//            }
 
-            SettingsTab {
-                Spacer(Modifier.fillMaxWidth()) // tab has spacedBy arrangement
-                autoCacheGroup()
-                cacheListGroup()
-                Spacer(Modifier.fillMaxWidth()) // tab has spacedBy arrangement
+                SettingsTab {
+                    Spacer(Modifier.fillMaxWidth()) // tab has spacedBy arrangement
+                    autoCacheGroup()
+                    cacheListGroup()
+                    Spacer(Modifier.fillMaxWidth()) // tab has spacedBy arrangement
+                }
+
+                Spacer(Modifier.windowInsetsBottomHeight(windowInsets))
             }
 
-            Spacer(Modifier.windowInsetsBottomHeight(windowInsets))
+            ScrollStateVerticalScrollbar(
+                state = scrollState,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight(),
+            )
         }
     }
 }

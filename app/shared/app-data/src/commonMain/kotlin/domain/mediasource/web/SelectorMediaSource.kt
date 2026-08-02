@@ -282,14 +282,15 @@ class SelectorMediaSource(
     ): List<DefaultMedia> = withContext(Dispatchers.Default) {
         delayUntilNextAllowedSearch()
 
-        val currentPlayerName = when (currentPlatform()) {
-            is Platform.Desktop -> "vlc"
-            is Platform.Android -> "exoplayer"
-            Platform.Ios -> "avkit"
+        val currentPlayerNames = when (currentPlatform()) {
+            // 桌面端已迁移至 mpv, 但许多现有订阅仍声明 "vlc", 暂时保持兼容
+            is Platform.Desktop -> listOf("mpv", "vlc")
+            is Platform.Android -> listOf("exoplayer")
+            Platform.Ios -> listOf("avkit")
         }
         if (
             searchConfig.onlySupportsPlayers.isNotEmpty()
-            && currentPlayerName !in searchConfig.onlySupportsPlayers
+            && currentPlayerNames.none { it in searchConfig.onlySupportsPlayers }
         ) {
             logger.warn {
                 val supports =
@@ -297,7 +298,7 @@ class SelectorMediaSource(
 
                 "SelectorMediaSource '${info.displayName}' is not supported by the platform player. " +
                         "Declared supported players: $supports, " +
-                        "current player: $currentPlayerName"
+                        "current players: $currentPlayerNames"
             }
             return@withContext emptyList()
         }

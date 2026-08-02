@@ -25,13 +25,11 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.comment.CommentSendResult
-import me.him188.ani.app.domain.comment.TurnstileState
 import me.him188.ani.app.ui.comment.CommentEditorState
 import me.him188.ani.app.ui.comment.CommentMapperContext
 import me.him188.ani.app.ui.comment.EditComment
 import me.him188.ani.app.ui.comment.EditCommentDefaults
 import me.him188.ani.app.ui.comment.EditCommentSticker
-import me.him188.ani.app.ui.comment.createPreviewTurnstileState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.interaction.rememberImeMaxHeight
@@ -42,7 +40,6 @@ import me.him188.ani.app.ui.foundation.widgets.rememberModalBottomImeAwareSheetS
 @Composable
 fun EpisodeEditCommentSheet(
     state: CommentEditorState,
-    turnstileState: TurnstileState,
     onDismiss: () -> Unit,
     onSendComplete: () -> Unit,
     modifier: Modifier = Modifier,
@@ -63,7 +60,6 @@ fun EpisodeEditCommentSheet(
     ) {
         EditComment(
             state = state,
-            turnstileState = turnstileState,
             onCloseRequest = onDismiss,
             modifier = modifier
                 .ifThen(state.editExpanded) { statusBarsPadding() }
@@ -104,7 +100,6 @@ fun PreviewEditComment() {
                     backgroundScope = scope.backgroundScope,
                 )
             },
-            turnstileState = remember { createPreviewTurnstileState() },
         )
     }
 }

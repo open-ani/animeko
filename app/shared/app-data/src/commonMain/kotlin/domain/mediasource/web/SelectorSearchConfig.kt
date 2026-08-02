@@ -93,7 +93,9 @@ data class SelectorSearchConfig(
      */
     val defaultSubtitleLanguage: SubtitleLanguage = SubtitleLanguage.ChineseSimplified,
     /**
-     * `vlc`, `exoplayer`, `avkit`
+     * `mpv`, `vlc`, `exoplayer`, `avkit`
+     *
+     * 桌面端匹配 `mpv` 或 `vlc` (兼容旧订阅).
      *
      * @since 4.9
      */

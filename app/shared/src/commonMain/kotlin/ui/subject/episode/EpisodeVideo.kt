@@ -21,15 +21,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.Analytics
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.rounded.DisplaySettings
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
@@ -77,6 +83,7 @@ import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.always_on_top
 import me.him188.ani.app.ui.lang.subject_episode_cache
 import me.him188.ani.app.ui.lang.subject_episode_collapse_sidebar
 import me.him188.ani.app.ui.lang.subject_episode_danmaku_settings_title
@@ -191,6 +198,8 @@ internal fun EpisodeVideoImpl(
     videoLoadingStateFlow: Flow<VideoLoadingState>,
     onClickFullScreen: () -> Unit,
     onExitFullscreen: () -> Unit,
+    alwaysOnTop: Boolean = false,
+    onToggleAlwaysOnTop: (() -> Unit)? = null,
     danmakuEditor: @Composable() (RowScope.() -> Unit),
     onClickScreenshot: () -> Unit,
     detachedProgressSlider: @Composable () -> Unit,
@@ -279,6 +288,8 @@ internal fun EpisodeVideoImpl(
                                 onToggleSidebar = onToggleSidebar,
                                 playerStatsVisible = showPlayerStats,
                                 onTogglePlayerStats = { showPlayerStats = !showPlayerStats },
+                                alwaysOnTop = alwaysOnTop,
+                                onToggleAlwaysOnTop = onToggleAlwaysOnTop,
                             )
                         },
                         // VideoScaffold already applies top/horizontal insets around the top bar.
@@ -597,6 +608,8 @@ private fun EpisodeVideoTopBarActions(
     onToggleSidebar: (isCollapsed: Boolean) -> Unit,
     playerStatsVisible: Boolean,
     onTogglePlayerStats: () -> Unit,
+    alwaysOnTop: Boolean = false,
+    onToggleAlwaysOnTop: (() -> Unit)? = null,
 ) {
     var showShareDropdown by rememberSaveable { mutableStateOf(false) }
     var showMoreDropdown by rememberSaveable { mutableStateOf(false) }
@@ -650,6 +663,22 @@ private fun EpisodeVideoTopBarActions(
         Modifier.testTag(TAG_SHOW_SETTINGS),
     ) {
         Icon(AniIcons.SubtitleGear, contentDescription = danmakuSettingsTitleText)
+    }
+
+    if (LocalPlatform.current.isDesktop() && onToggleAlwaysOnTop != null) {
+        val alwaysOnTopText = stringResource(Lang.always_on_top)
+        TooltipBox(
+            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
+            tooltip = { PlainTooltip { Text(alwaysOnTopText) } },
+            state = rememberTooltipState(),
+        ) {
+            IconButton(onToggleAlwaysOnTop) {
+                Icon(
+                    if (alwaysOnTop) Icons.Rounded.PushPin else Icons.Outlined.PushPin,
+                    contentDescription = alwaysOnTopText,
+                )
+            }
+        }
     }
 
     Box {

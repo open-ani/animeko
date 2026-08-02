@@ -15,11 +15,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -52,7 +52,10 @@ object SettingsDefaults {
         modifier: Modifier = Modifier,
         content: @Composable () -> Unit,
     ) {
-        Box(modifier.size(28.dp), contentAlignment = Alignment.Center) {
+        Box(
+            modifier.defaultMinSize(minWidth = 28.dp, minHeight = 28.dp),
+            contentAlignment = Alignment.Center,
+        ) {
             CompositionLocalProvider(LocalContentColor providesDefault MaterialTheme.colorScheme.onSurface) {
                 content()
             }

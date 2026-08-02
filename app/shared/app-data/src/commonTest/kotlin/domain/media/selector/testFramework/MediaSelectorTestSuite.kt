@@ -9,7 +9,9 @@
 
 package me.him188.ani.app.domain.media.selector.testFramework
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
@@ -277,7 +279,32 @@ sealed class MediaSelectorTestSuite {
  * 使用 [List] 存储待选 [me.him188.ani.datasources.api.Media].
  */
 class SimpleMediaSelectorTestSuite(
-    val testScope: TestScope
+    val testScope: TestScope,
+    /**
+     * 传给 [DefaultMediaSelector] 的 `enableCaching` (INFRA-01). 生产默认是 `true`, 本夹具默认 `false`.
+     *
+     * ## 只保证终值语义等价, 不保证时序等价
+     *
+     * **禁止在 `cachingEnabled = true` 下写时序断言.** 本夹具能保证的只有"同一段断言在两种配置下得到同样的终值"
+     * (见 [me.him188.ani.app.domain.media.selector.MediaSelectorCachingEnabledTest] 的双跑用例);
+     * "第几拍能读到新值""要不要 `runCurrent`"这类观测全部是夹具与虚拟时间的产物, 不是生产语义.
+     *
+     * ## 夹具与生产的三处差异
+     *
+     * 1. `cachingEnabled = true` 时 `flowCoroutineContext` 被换成 **test dispatcher**
+     *    (见下方构造 [selector] 处), 而生产传的是 [Dispatchers.Default] 真实线程池.
+     *    也就是说, 生产上 INFRA-01 的传播延迟是多线程竞态 (`MediaSelectorAutoSelect.kt` 的 PREF-04 workaround
+     *    正是在描述它), 在本夹具里被虚拟时间压成了"确定的一拍".
+     * 2. `cachingScope` 恒传 [TestScope.backgroundScope], 因此生产真正走的另一半分支 ——
+     *    `cachingScope == null` 时每个 `cached()` 各建一个无人 cancel 的 `CoroutineScope(flowCoroutineContext)`,
+     *    即 INFRA-01 陈述里"scope 生命周期无人管理"那一半 —— 在测试中**永远不被执行**, 仍是零覆盖.
+     * 3. 承 2: `cachingScope` 上派发的任务是 **background dispatch event**
+     *    (`TestCoroutineScheduler` 按 `context[BackgroundWork] == null` 判定 `isForeground`).
+     *    而 `advanceUntilIdle()` 的停止条件是 `events.none { it.isForeground }`,
+     *    所以当队列里只剩缓存流的传播任务时, **`advanceUntilIdle()` 一步都不跑, 虚拟时间也不前进**.
+     *    要推进缓存流请用 `runCurrent()` / `advanceTimeBy()`, 它们没有 foreground 过滤.
+     */
+    private val cachingEnabled: Boolean = false,
 ) : MediaSelectorTestSuite() {
     val mediaApi = MediaApi()
 
@@ -331,8 +358,14 @@ class SimpleMediaSelectorTestSuite(
         mediaListNotCached = mediaApi.mediaList,
         savedUserPreference = preferenceApi.savedUserPreference,
         savedDefaultPreference = preferenceApi.savedDefaultPreference,
-        enableCaching = false,
+        enableCaching = cachingEnabled,
         mediaSelectorSettings = preferenceApi.mediaSelectorSettings,
+        flowCoroutineContext = if (cachingEnabled) {
+            testScope.coroutineContext[ContinuationInterceptor]!!
+        } else {
+            Dispatchers.Default
+        },
+        cachingScope = testScope.backgroundScope,
     )
 }
 
@@ -345,7 +378,18 @@ class SimpleMediaSelectorTestSuite(
  */
 class FetchMediaSelectorTestSuite(
     private val testDispatcher: CoroutineContext,
-    private val enableCaching: Boolean = false,
+    /**
+     * 见 [SimpleMediaSelectorTestSuite.cachingEnabled]: 只保证终值语义等价, 不保证时序等价, 禁止写时序断言.
+     *
+     * 注意本类无论 `cachingEnabled` 取值如何, `flowCoroutineContext` 都是 test dispatcher
+     * (生产是 [Dispatchers.Default]), 差异只在 `cached()` 是否真的 `shareIn`.
+     */
+    private val cachingEnabled: Boolean = false,
+    /**
+     * `cached()` 使用的 scope. [runFetchMediaSelectorTestSuite] 恒传 [TestScope.backgroundScope],
+     * 因此生产的 `null` 分支 (每个 `cached()` 各建一个无人 cancel 的 scope) 在测试中不被覆盖.
+     */
+    private val cachingScope: CoroutineScope? = null,
 ) : MediaSelectorTestSuite() {
     private lateinit var fetchSession: TestMediaFetchSession<*>
 
@@ -353,9 +397,15 @@ class FetchMediaSelectorTestSuite(
      * 配置 [MediaFetchSession], 并且在后台启动, 开始收集结果.
      *
      * 必须在 [initSubject] 之后调用.
+     *
+     * @param startInBackground 是否在后台自动收集 [MediaFetchSession.cumulativeResults].
+     * 传 `false` 时 fixture 不自驱查询, 用于测试被测代码自身是否驱动查询.
      */
     context(scope: TestScope)
-    fun <R> configureFetchSession(block: TestMediaFetchSessionBuilder.() -> R): TestMediaFetchSession<R> {
+    fun <R> configureFetchSession(
+        startInBackground: Boolean = true,
+        block: TestMediaFetchSessionBuilder.() -> R,
+    ): TestMediaFetchSession<R> {
         return buildTestMediaFetchSession(
             dispatcher = testDispatcher,
         ) {
@@ -372,7 +422,9 @@ class FetchMediaSelectorTestSuite(
             block()
         }.also {
             fetchSession = it
-            it.session.startInBackground()
+            if (startInBackground) {
+                it.session.startInBackground()
+            }
         }
     }
 
@@ -382,9 +434,10 @@ class FetchMediaSelectorTestSuite(
             mediaListNotCached = fetchSession.session.cumulativeResults,
             savedUserPreference = preferenceApi.savedUserPreference,
             savedDefaultPreference = preferenceApi.savedDefaultPreference,
-            enableCaching = enableCaching,
+            enableCaching = cachingEnabled,
             mediaSelectorSettings = preferenceApi.mediaSelectorSettings,
             flowCoroutineContext = testDispatcher,
+            cachingScope = cachingScope,
         )
     }
 
@@ -501,10 +554,11 @@ fun Handle.channelTiers(vararg pairs: Pair<String, Int>) {
 
 
 fun runSimpleMediaSelectorTestSuite(
+    cachingEnabled: Boolean = false,
     buildTest: SimpleMediaSelectorTestSuite.() -> Unit = {},
     thenCheck: suspend SimpleMediaSelectorTestSuite.() -> Unit
 ): TestResult = runTest {
-    val suite = SimpleMediaSelectorTestSuite(this)
+    val suite = SimpleMediaSelectorTestSuite(this, cachingEnabled)
     suite.apply(buildTest)
     suite.thenCheck()
 }
@@ -513,13 +567,14 @@ fun runSimpleMediaSelectorTestSuite(
  * @see me.him188.ani.app.domain.media.selector.MediaSelectorSourceTierAutoSelectTest
  */
 fun runFetchMediaSelectorTestSuite(
-    enableCaching: Boolean = false,
+    cachingEnabled: Boolean = false,
     buildTest: context(TestScope) FetchMediaSelectorTestSuite.() -> Unit = {},
     thenCheck: suspend context(TestScope) FetchMediaSelectorTestSuite.() -> Unit
 ): TestResult = runTest {
     FetchMediaSelectorTestSuite(
         this.coroutineContext[ContinuationInterceptor]!!,
-        enableCaching,
+        cachingEnabled = cachingEnabled,
+        cachingScope = backgroundScope,
     ).apply { buildTest() }.thenCheck()
 }
 

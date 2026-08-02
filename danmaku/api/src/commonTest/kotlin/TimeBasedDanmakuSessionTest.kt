@@ -10,13 +10,18 @@
 package me.him188.ani.danmaku.api
 
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import kotlin.coroutines.ContinuationInterceptor
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -49,6 +54,42 @@ internal class TimeBasedDanmakuSessionTest {
             danmakuRegexFilterList = flowOf(emptyList()),
         ).events.toList()
         assertEquals(0, list.size)
+    }
+
+    /**
+     * 弹幕列表迟于播放进度到达时 (每次 DanmakuSession 重建都会如此), 应当重新装填屏幕,
+     * 而不是把当前时间之前的所有弹幕逐条当作新弹幕发出.
+     */
+    @Test
+    fun `list arriving after progress repopulates`() = runTest {
+        val listFlow = MutableSharedFlow<List<DanmakuInfo>>(replay = 1)
+        listFlow.emit(emptyList())
+        val session = TimeBasedDanmakuSession.create(
+            listFlow,
+            coroutineContext = currentCoroutineContext()[ContinuationInterceptor] ?: EmptyCoroutineContext,
+        ).at(
+            MutableStateFlow(60.seconds),
+            { 1f },
+            danmakuRegexFilterList = MutableStateFlow(emptyList()),
+        )
+
+        val events = mutableListOf<DanmakuEvent>()
+        val job = launch { session.events.collect { events.add(it) } }
+
+        // 列表还没到, 先清空屏幕
+        advanceTimeBy(100)
+        assertEquals(emptyList(), assertIs<DanmakuEvent.Repopulate>(events.last()).list)
+        events.clear()
+
+        listFlow.emit((1..50).map { dummyDanmaku(it.toDouble()) })
+        advanceTimeBy(100)
+
+        // 只装填 repopulateDistance (20s) 以内的弹幕, 而不是 50 条 Add
+        assertEquals(
+            (41..50).map { it * 1000L },
+            assertIs<DanmakuEvent.Repopulate>(events.single()).list.map { it.playTimeMillis },
+        )
+        job.cancel()
     }
 
     @Test
