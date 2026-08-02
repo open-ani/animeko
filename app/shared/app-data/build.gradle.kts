@@ -101,6 +101,9 @@ kotlin {
     }
     sourceSets.desktopTest {
         resources.srcDir("src/androidDeviceTest/assets")
+        dependencies {
+            implementation("androidx.room:room-testing:${libs.versions.room.get()}")
+        }
     }
     sourceSets.androidMain.dependencies {
         implementation(libs.androidx.browser)
