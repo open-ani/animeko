@@ -1280,7 +1280,7 @@ class WithMatrix(
                     actionVersion = "v3",
                     inputs = mapOf(
                         "accept-android-sdk-licenses" to "true",
-                        "packages" to "platform-tools platforms;android-36 build-tools;36.0.0",
+                        "packages" to "platform-tools platforms;android-37 build-tools;36.0.0",
                     ),
                 ),
             )

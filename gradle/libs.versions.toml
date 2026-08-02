@@ -1,6 +1,6 @@
 [versions]
 kotlin = "2.4.10"
-android-gradle-plugin = "9.0.1"
+android-gradle-plugin = "9.1.1"
 
 ### KOTLINX ###
 kotlinx-coroutines = "1.11.0" # https://github.com/Kotlin/kotlinx.coroutines/releases
