@@ -35,15 +35,8 @@ dependencies {
     implementation(libs.bytebuddy)
     implementation(libs.mediamp.ffmpeg.desktop)
 
-    when (val triple = getOsTriple()) {
-        "windows-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.windows.x64)
-        "linux-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.linux.x64)
-        "macos-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.macos.x64)
-        "macos-arm64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.macos.arm64)
-        "windows-arm64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.windows.arm64)
-        else -> throw UnsupportedOperationException("Unknown os: $triple")
-    }
-
+    // mpv runtime 必须声明在 ffmpeg runtime 之前: 两个 runtime jar 的 libav* 同名且不同构建,
+    // dev run 的 natives 提取按 classpath 首匹配, mpv 需要命中自己 jar 里的全功能 libav.
     if (getLocalProperty("ani.build.mediamp.path") != null) {
         runtimeOnly(libs.mediamp.mpv) {
             capabilities {
@@ -58,6 +51,15 @@ dependencies {
             "macos-arm64" -> runtimeOnly(libs.mediamp.mpv.runtime.macos.arm64)
             else -> {}
         }
+    }
+
+    when (val triple = getOsTriple()) {
+        "windows-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.windows.x64)
+        "linux-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.linux.x64)
+        "macos-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.macos.x64)
+        "macos-arm64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.macos.arm64)
+        "windows-arm64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.windows.arm64)
+        else -> throw UnsupportedOperationException("Unknown os: $triple")
     }
 
     // vlcj 依赖里没有 native libraries，依赖是手动放的
