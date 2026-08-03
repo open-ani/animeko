@@ -107,8 +107,9 @@ import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
 import me.him188.ani.app.ui.subject.episode.EpisodeScreen
 import me.him188.ani.app.ui.subject.episode.EpisodeViewModel
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
-import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerEntryAction
+import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
 import me.him188.ani.app.ui.watchtogether.WatchTogetherOverlayHost
+import me.him188.ani.app.ui.watchtogether.WatchTogetherPlayerController
 import me.him188.ani.app.ui.watchtogether.WatchTogetherViewModel
 import me.him188.ani.datasources.api.source.FactoryId
 import kotlin.reflect.typeOf
@@ -121,8 +122,8 @@ fun AniAppContent(aniNavigator: AniNavigator) {
     val aniAppViewModel = viewModel<AniAppViewModel>()
     val appState = aniAppViewModel.appState.collectAsStateWithLifecycle(null).value ?: return
     val watchTogetherViewModel = viewModel { WatchTogetherViewModel() }
-    val onWatchTogetherPlayerEntryClick = remember(watchTogetherViewModel) {
-        { watchTogetherViewModel.onPlayerEntryClick() }
+    val watchTogetherPlayerController = remember(watchTogetherViewModel) {
+        WatchTogetherPlayerController(watchTogetherViewModel::onPlayerEntryClick)
     }
 
     val navigator = rememberNavController()
@@ -132,7 +133,7 @@ fun AniAppContent(aniNavigator: AniNavigator) {
         CompositionLocalProvider(
             LocalNavigator provides aniNavigator,
             LocalBrowserNavigator providesDefault aniAppViewModel.browserNavigator,
-            LocalWatchTogetherPlayerEntryAction provides onWatchTogetherPlayerEntryClick,
+            LocalWatchTogetherPlayerController provides watchTogetherPlayerController,
         ) {
             ProvideAniMotionCompositionLocals {
                 AniAppContentImpl(

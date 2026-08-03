@@ -39,6 +39,7 @@ import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -48,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -115,6 +117,7 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeSelectorState
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
+import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.NoOpVideoAspectRatio
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
@@ -220,7 +223,6 @@ internal fun EpisodeVideoImpl(
     sideSheets: @Composable (controller: VideoSideSheetsController<EpisodeVideoSideSheetPage>) -> Unit,
     shareData: MediaShareData,
     onClickCache: () -> Unit,
-    onClickWatchTogether: () -> Unit = {},
     modifier: Modifier = Modifier,
     maintainAspectRatio: Boolean = !expanded,
     isFullscreen: Boolean = expanded,
@@ -235,6 +237,22 @@ internal fun EpisodeVideoImpl(
     val sheetsController = rememberVideoSideSheetsController<EpisodeVideoSideSheetPage>()
     val anySideSheetVisible by sheetsController.hasPageAsState()
     val previewModeText = stringResource(Lang.subject_episode_preview_mode)
+    val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
+
+    LaunchedEffect(isFullscreen, playerControllerState, watchTogetherPlayerController) {
+        if (isFullscreen) {
+            snapshotFlow { playerControllerState.visibility.topBar }.collect {
+                watchTogetherPlayerController.setDraggablePopupVisibility(it)
+            }
+        } else {
+            watchTogetherPlayerController.setDraggablePopupVisibility(true)
+        }
+    }
+    DisposableEffect(watchTogetherPlayerController) {
+        onDispose {
+            watchTogetherPlayerController.setDraggablePopupVisibility(true)
+        }
+    }
 
     // auto hide cursor
     val videoInteractionSource = remember { MutableInteractionSource() }
@@ -287,7 +305,7 @@ internal fun EpisodeVideoImpl(
                                 sheetsController = sheetsController,
                                 shareData = shareData,
                                 onClickCache = onClickCache,
-                                onClickWatchTogether = onClickWatchTogether,
+                                onClickWatchTogether = watchTogetherPlayerController::toggle,
                                 playerControllerState = playerControllerState,
                                 sidebarVisible = sidebarVisible,
                                 onToggleSidebar = onToggleSidebar,

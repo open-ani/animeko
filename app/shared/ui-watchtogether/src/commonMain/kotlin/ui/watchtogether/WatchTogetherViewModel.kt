@@ -119,11 +119,10 @@ class WatchTogetherViewModel : AbstractViewModel(), KoinComponent {
     fun onPlayerEntryClick() {
         launchInBackground {
             val settings = settingsRepository.watchTogetherSettings.flow.first()
-            if (settings.enabled) {
-                dialogOpenRequestChannel.send(Unit)
-            } else {
+            if (!settings.enabled) {
                 settingsRepository.watchTogetherSettings.update { copy(enabled = true) }
             }
+            dialogOpenRequestChannel.send(Unit)
         }
     }
 

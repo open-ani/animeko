@@ -48,7 +48,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -89,14 +88,13 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
-val LocalWatchTogetherPlayerEntryAction = staticCompositionLocalOf<() -> Unit> { {} }
-
 @Composable
 fun BoxScope.WatchTogetherOverlayHost(
     viewModel: WatchTogetherViewModel,
     aniNavigator: AniNavigator,
 ) {
     val state by viewModel.uiStateFlow.collectAsStateWithLifecycle()
+    val playerController = LocalWatchTogetherPlayerController.current
     var dialogVisible by rememberSaveable { mutableStateOf(false) }
     val toastHostState = remember { SnackbarHostState() }
 
@@ -233,11 +231,13 @@ fun BoxScope.WatchTogetherOverlayHost(
 
     if (!state.featureEnabled) return
 
-    DraggableWatchTogetherBubble(
-        state = state,
-        onClick = { dialogVisible = true },
-        modifier = Modifier.fillMaxSize(),
-    )
+    if (playerController.isDraggablePopupVisible) {
+        DraggableWatchTogetherBubble(
+            state = state,
+            onClick = { dialogVisible = true },
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
 
     if (dialogVisible) {
         WatchTogetherDialog(
