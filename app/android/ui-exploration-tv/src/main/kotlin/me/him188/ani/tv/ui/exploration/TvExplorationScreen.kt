@@ -19,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -161,7 +162,6 @@ fun TvExplorationScreen(
     var carouselInteraction by remember { mutableIntStateOf(0) }
     // 焦点是否在 hero 按钮区 (轮播态); 焦点下移进卡片区后 hero 由聚焦卡驱动
     var heroFocused by remember { mutableStateOf(true) }
-    var focusedCardSubject by remember { mutableStateOf<TvHeroSubject?>(null) }
     // 统一焦点框架: 锚点声明 + 显式链接 + 初始焦点共用一个调度器
     val listState = rememberLazyListState()
     val uiScope = rememberCoroutineScope()
@@ -169,11 +169,11 @@ fun TvExplorationScreen(
     focus.Resolver()
     focus.InitialFocus(TvExplorationFocus.Play)
 
-    val carouselItem = (if (carouselSize > 0) {
+    // hero 只展示最高热度轮播条目 (用户裁定: 卡片聚焦不再改 hero)
+    val hero = (if (carouselSize > 0) {
         trendsPager[carouselIndex.coerceIn(0, carouselSize - 1)]
     } else null)
         ?.let { TvHeroSubject(it.bangumiId, it.nameCn, it.imageLarge) }
-    val hero = (if (heroFocused) carouselItem else focusedCardSubject) ?: carouselItem
 
     // hero 变化驱动异步加载 (collectLatest: 换卡取消在途请求; 防抖 300ms 快速划过不发请求)
     var heroTarget by remember { mutableStateOf<TvHeroSubject?>(null) }
@@ -228,7 +228,9 @@ fun TvExplorationScreen(
         label = "bottomFade",
     )
 
-    Box(modifier.fillMaxSize().background(shellBackground).tvFocusNavSignal(focus)) {
+    BoxWithConstraints(modifier.fillMaxSize().background(shellBackground).tvFocusNavSignal(focus)) {
+        // 为你推荐网格的可用行宽 (减去内容区左缘留白与右缘留白)
+        val recAvailableWidth = maxWidth - TV_EXPLORATION_START_PAD - TV_PAGE_END_PAD
         // ── 整页单 LazyColumn (用户指定): hero 与卡片区一同纵向滚动 ──
         LazyColumn(
             Modifier.fillMaxSize().padding(start = TV_EXPLORATION_START_PAD),
@@ -474,20 +476,25 @@ fun TvExplorationScreen(
                                 info.subjectInfo.displayName,
                                 info.subjectInfo.imageLarge,
                             )
-                            TvPortraitCard(
-                                imageUrl = info.subjectInfo.imageLarge,
-                                contentDescription = info.subjectInfo.displayName,
-                                onClick = { onClickSubject(item) },
-                                onFocused = {
-                                    heroFocused = false
-                                    focusedCardSubject = item
-                                },
-                                modifier = Modifier.width(TV_PAGE_CARD_WIDTH).then(
-                                    if (index == 0) {
+                            Column(Modifier.width(TV_PAGE_CARD_WIDTH)) {
+                                TvPortraitCard(
+                                    imageUrl = info.subjectInfo.imageLarge,
+                                    contentDescription = info.subjectInfo.displayName,
+                                    onClick = { onClickSubject(item) },
+                                    onFocused = { heroFocused = false },
+                                    modifier = if (index == 0) {
                                         Modifier.tvFocusAnchor(focus, TvExplorationFocus.FirstCard)
                                     } else Modifier,
-                                ),
-                            )
+                                )
+                                Text(
+                                    info.subjectInfo.displayName,
+                                    Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = tvHeroSecondaryContentColor(),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
                         }
                     }
                 }
@@ -500,37 +507,49 @@ fun TvExplorationScreen(
                     color = tvHeroContentColor(),
                 )
             }
-            // 为你推荐: 纵向网格 (compose 同款语义); LazyColumn 内不能嵌同向滚动网格,
-            // 按固定列数分行铺 (行 = Row), 随页面整体纵向滚动
-            val recColumns = TV_REC_GRID_COLUMNS
+            // 为你推荐: 纵向网格 (手机 GridCells.Adaptive 同语义) —— 列数按可用宽自适应,
+            // 行内 weight 等分拉伸 (不会出现固定宽度下最右侧最后一项被压缩), 尾行空位 Spacer 占住
+            val recColumns = (
+                (recAvailableWidth + TV_PAGE_CARD_SPACING) / (TV_PAGE_CARD_WIDTH + TV_PAGE_CARD_SPACING)
+            ).toInt().coerceAtLeast(1)
             val recRows = (recommendations.itemCount + recColumns - 1) / recColumns
             items(recRows, key = { "rec-row-$it" }) { rowIndex ->
-                Row(horizontalArrangement = Arrangement.spacedBy(TV_PAGE_CARD_SPACING)) {
+                Row(
+                    Modifier.fillMaxWidth().padding(end = TV_PAGE_END_PAD),
+                    horizontalArrangement = Arrangement.spacedBy(TV_PAGE_CARD_SPACING),
+                ) {
                     repeat(recColumns) { colIndex ->
                         val index = rowIndex * recColumns + colIndex
                         if (index < recommendations.itemCount) {
                             when (val rec = recommendations[index]) {
                                 is RecommendedSubjectInfo -> {
                                     val item = TvHeroSubject(rec.bangumiId, rec.nameCn, rec.imageLarge)
-                                    TvPortraitCard(
-                                        imageUrl = rec.imageLarge,
-                                        contentDescription = rec.nameCn,
-                                        onClick = { onClickSubject(item) },
-                                        onFocused = {
-                                            heroFocused = false
-                                            focusedCardSubject = item
-                                        },
-                                        modifier = Modifier.width(TV_PAGE_CARD_WIDTH).then(
-                                            if (followed.itemCount == 0 && index == 0) {
+                                    Column(Modifier.weight(1f)) {
+                                        TvPortraitCard(
+                                            imageUrl = rec.imageLarge,
+                                            contentDescription = rec.nameCn,
+                                            onClick = { onClickSubject(item) },
+                                            onFocused = { heroFocused = false },
+                                            modifier = if (followed.itemCount == 0 && index == 0) {
                                                 // 未登录无继续观看行时, 首卡兼任 FirstCard 锚点
                                                 Modifier.tvFocusAnchor(focus, TvExplorationFocus.FirstCard)
                                             } else Modifier,
-                                        ),
-                                    )
+                                        )
+                                        Text(
+                                            rec.nameCn,
+                                            Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = tvHeroSecondaryContentColor(),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
                                 }
 
-                                else -> {}
+                                else -> Spacer(Modifier.weight(1f))
                             }
+                        } else {
+                            Spacer(Modifier.weight(1f))
                         }
                     }
                 }
