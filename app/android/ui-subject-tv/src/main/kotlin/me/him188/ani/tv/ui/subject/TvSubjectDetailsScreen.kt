@@ -94,6 +94,7 @@ import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.nameCn
 import me.him188.ani.tv.ui.foundation.widgets.TvPortraitCard
+import me.him188.ani.tv.ui.foundation.widgets.TvTitledCardColumn
 import me.him188.ani.app.ui.foundation.AsyncImage
 import kotlinx.coroutines.flow.first
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
@@ -839,20 +840,17 @@ private fun TvRelatedSubjectCard(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.width(112.dp)) {
-        TvPortraitCard(
-            imageUrl = info.image,
-            contentDescription = info.nameCn,
-            onClick = { onClick(info.subjectId) },
-            onFocused = {},
-        )
-        Text(
-            info.nameCn.ifBlank { info.name.orEmpty() },
-            Modifier.padding(top = 4.dp, start = 4.dp),
-            style = MaterialTheme.typography.labelMedium,
-            color = tvHeroContentColor(),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        TvTitledCardColumn(
+            title = info.nameCn.ifBlank { info.name.orEmpty() },
+        ) { onCardFocusChanged ->
+            TvPortraitCard(
+                imageUrl = info.image,
+                contentDescription = info.nameCn,
+                onClick = { onClick(info.subjectId) },
+                onFocused = {},
+                onFocusChangedExtra = onCardFocusChanged,
+            )
+        }
         Text(
             info.relation?.let { renderSubjectRelation(it) }.orEmpty(),
             Modifier.padding(start = 4.dp),

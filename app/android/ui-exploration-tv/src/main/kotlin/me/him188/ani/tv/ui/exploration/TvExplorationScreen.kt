@@ -106,6 +106,7 @@ import me.him188.ani.tv.ui.foundation.widgets.TV_PAGE_CARD_WIDTH
 import me.him188.ani.tv.ui.foundation.widgets.TV_PAGE_END_PAD
 import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
 import me.him188.ani.tv.ui.foundation.widgets.TvPortraitCard
+import me.him188.ani.tv.ui.foundation.widgets.TvTitledCardColumn
 import me.him188.ani.tv.ui.foundation.widgets.tvBackdropFadeFromBlackStops
 import me.him188.ani.tv.ui.foundation.widgets.tvBackdropFadeToBlackStops
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
@@ -476,23 +477,19 @@ fun TvExplorationScreen(
                                 info.subjectInfo.displayName,
                                 info.subjectInfo.imageLarge,
                             )
-                            Column(Modifier.width(TV_PAGE_CARD_WIDTH)) {
+                            TvTitledCardColumn(
+                                title = info.subjectInfo.displayName,
+                                modifier = Modifier.width(TV_PAGE_CARD_WIDTH),
+                            ) { onCardFocusChanged ->
                                 TvPortraitCard(
                                     imageUrl = info.subjectInfo.imageLarge,
                                     contentDescription = info.subjectInfo.displayName,
                                     onClick = { onClickSubject(item) },
                                     onFocused = { heroFocused = false },
+                                    onFocusChangedExtra = onCardFocusChanged,
                                     modifier = if (index == 0) {
                                         Modifier.tvFocusAnchor(focus, TvExplorationFocus.FirstCard)
                                     } else Modifier,
-                                )
-                                Text(
-                                    info.subjectInfo.displayName,
-                                    Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = tvHeroSecondaryContentColor(),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
                                 )
                             }
                         }
@@ -524,24 +521,20 @@ fun TvExplorationScreen(
                             when (val rec = recommendations[index]) {
                                 is RecommendedSubjectInfo -> {
                                     val item = TvHeroSubject(rec.bangumiId, rec.nameCn, rec.imageLarge)
-                                    Column(Modifier.weight(1f)) {
+                                    TvTitledCardColumn(
+                                        title = rec.nameCn,
+                                        modifier = Modifier.weight(1f),
+                                    ) { onCardFocusChanged ->
                                         TvPortraitCard(
                                             imageUrl = rec.imageLarge,
                                             contentDescription = rec.nameCn,
                                             onClick = { onClickSubject(item) },
                                             onFocused = { heroFocused = false },
+                                            onFocusChangedExtra = onCardFocusChanged,
                                             modifier = if (followed.itemCount == 0 && index == 0) {
                                                 // 未登录无继续观看行时, 首卡兼任 FirstCard 锚点
                                                 Modifier.tvFocusAnchor(focus, TvExplorationFocus.FirstCard)
                                             } else Modifier,
-                                        )
-                                        Text(
-                                            rec.nameCn,
-                                            Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp),
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = tvHeroSecondaryContentColor(),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
                                         )
                                     }
                                 }

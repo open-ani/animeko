@@ -9,6 +9,7 @@
 
 package me.him188.ani.tv.ui.foundation.widgets
 
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +17,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
@@ -46,11 +51,15 @@ fun TvPosterCard(
     /** 参考版探索页卡片行为纯图, 标题只在网格页展示 */
     showTitle: Boolean = true,
 ) {
+    var selfFocused by remember { mutableStateOf(false) }
     Surface(
         onClick = onClick,
         modifier = modifier
             .width(width)
-            .onFocusChanged { if (it.isFocused) onFocused() },
+            .onFocusChanged {
+                selfFocused = it.isFocused
+                if (it.isFocused) onFocused()
+            },
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(11.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
@@ -76,7 +85,11 @@ fun TvPosterCard(
                     title,
                     Modifier
                         .fillMaxWidth()
-                        .padding(top = 6.dp, start = 2.dp, end = 2.dp, bottom = 2.dp),
+                        .padding(top = 6.dp, start = 2.dp, end = 2.dp, bottom = 2.dp)
+                        .then(
+                            // 聚焦时跑马灯滚动: 完整标题信息优先 (失焦即停)
+                            if (selfFocused) Modifier.basicMarquee(iterations = Int.MAX_VALUE) else Modifier,
+                        ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodySmall,
