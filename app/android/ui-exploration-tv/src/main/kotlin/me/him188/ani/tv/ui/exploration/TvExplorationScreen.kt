@@ -252,7 +252,8 @@ fun TvExplorationScreen(
                     if (url != null) {
                         Box(
                             Modifier
-                                .fillMaxHeight(TV_EXPLORATION_BACKDROP_HEIGHT_FRACTION)
+                                // 外层 hero Box 已限高 0.66 屏, 这里占满它 (再乘 fraction 会双重缩小)
+                                .fillMaxHeight()
                                 .aspectRatio(16f / 9f, matchHeightConstraintsFirst = true)
                                 .drawWithContent {
                                     drawContent()
@@ -294,150 +295,124 @@ fun TvExplorationScreen(
                         }
                     }
                 }
-                Column(Modifier.padding(top = 24.dp)) {
-                    // ── Hero 信息块 (固定高度, 换条目时下方卡片区不跳动) ──
-                    Column(Modifier.height(TV_HERO_INFO_HEIGHT)) {
-                        // 标题: 定高一行, 长标题跑马灯; 换条目 crossfade
-                        Crossfade(hero?.title, animationSpec = tween(TV_HERO_TEXT_FADE_MILLIS), label = "title") { title ->
-                            Text(
-                                title.orEmpty(),
-                                Modifier.fillMaxWidth(TV_HERO_TITLE_WIDTH_FRACTION).basicMarquee(iterations = 3),
-                                style = MaterialTheme.typography.headlineLarge,
-                                color = tvHeroContentColor(),
-                                maxLines = 1,
-                            )
-                        }
-                        // 评分 + 连载信息行
-                        Row(
-                            Modifier.padding(top = 8.dp).height(TV_HERO_STATUS_ROW_HEIGHT),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            info?.subjectInfo?.ratingInfo?.score
-                                ?.takeIf { it.isNotBlank() && it != "0" && it != "0.0" }
-                                ?.let { score ->
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Text(
-                                            "★",
-                                            color = MaterialTheme.colorScheme.primary,
-                                            style = MaterialTheme.typography.titleMedium,
-                                        )
-                                        Text(
-                                            "$score/10",
-                                            color = tvHeroContentColor(),
-                                            style = MaterialTheme.typography.titleMedium,
-                                        )
-                                    }
-                                }
-                            val latest = info?.airingInfo?.latestSort
-                            val total = info?.subjectInfo?.totalEpisodes?.takeIf { it > 0 }
-                            val progressText = buildString {
-                                if (latest != null) append("连载至 $latest")
-                                if (total != null) {
-                                    if (isNotEmpty()) append(" · ")
-                                    append("预定全 $total 话")
+                // 左侧信息列: 占满 hero 高度 —— 标题/评分(固定) + 简介(weight=1 弹性) +
+                // 按钮 Row + 指示器(底部, 信息列宽内居中). 按钮与指示器常驻 (不再随焦点隐藏,
+                // 之前被固定高度信息块挤出裁掉)
+                Column(Modifier.fillMaxSize().padding(top = 24.dp, bottom = 10.dp)) {
+                    // 标题: 定高一行, 长标题跑马灯; 换条目 crossfade
+                    Crossfade(hero?.title, animationSpec = tween(TV_HERO_TEXT_FADE_MILLIS), label = "title") { title ->
+                        Text(
+                            title.orEmpty(),
+                            Modifier.fillMaxWidth(TV_HERO_TITLE_WIDTH_FRACTION).basicMarquee(iterations = 3),
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = tvHeroContentColor(),
+                            maxLines = 1,
+                        )
+                    }
+                    // 评分 + 连载信息行
+                    Row(
+                        Modifier.padding(top = 8.dp).height(TV_HERO_STATUS_ROW_HEIGHT),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        info?.subjectInfo?.ratingInfo?.score
+                            ?.takeIf { it.isNotBlank() && it != "0" && it != "0.0" }
+                            ?.let { score ->
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        "★",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        style = MaterialTheme.typography.titleMedium,
+                                    )
+                                    Text(
+                                        "$score/10",
+                                        color = tvHeroContentColor(),
+                                        style = MaterialTheme.typography.titleMedium,
+                                    )
                                 }
                             }
-                            if (progressText.isNotEmpty()) {
-                                Text(
-                                    progressText,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = tvHeroSecondaryContentColor(),
-                                )
-                            }
-                            info?.subjectInfo?.airDate?.takeIf { it.isValid }?.let { date ->
-                                Text(
-                                    "${date.year}年${date.month}月",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = tvHeroSecondaryContentColor(),
-                                )
+                        val latest = info?.airingInfo?.latestSort
+                        val total = info?.subjectInfo?.totalEpisodes?.takeIf { it > 0 }
+                        val progressText = buildString {
+                            if (latest != null) append("连载至 $latest")
+                            if (total != null) {
+                                if (isNotEmpty()) append(" · ")
+                                append("预定全 $total 话")
                             }
                         }
-                        // 简介: weight 填满信息块剩余空间
-                        val summary = info?.subjectInfo?.summary?.takeIf { it.isNotBlank() }
-                            ?: hero?.let { summaryFallbackCache[it.subjectId] }
-                        Crossfade(
-                            summary,
-                            Modifier.padding(top = 8.dp).weight(1f),
-                            animationSpec = tween(TV_HERO_TEXT_FADE_MILLIS),
-                            label = "summary",
-                        ) { text ->
+                        if (progressText.isNotEmpty()) {
                             Text(
-                                text.orEmpty().trim(),
-                                Modifier.fillMaxWidth(TV_HERO_SUMMARY_WIDTH_FRACTION),
-                                style = MaterialTheme.typography.bodyMedium,
+                                progressText,
+                                style = MaterialTheme.typography.titleSmall,
                                 color = tvHeroSecondaryContentColor(),
-                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        info?.subjectInfo?.airDate?.takeIf { it.isValid }?.let { date ->
+                            Text(
+                                "${date.year}年${date.month}月",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = tvHeroSecondaryContentColor(),
                             )
                         }
                     }
-
-                    // ── 操作按钮块 (焦点在 hero 时展示; 移到卡片区后消失, 卡片区上移) ──
-                    AnimatedVisibility(heroFocused, enter = fadeIn(), exit = fadeOut()) {
-                        Column {
-                            Spacer(Modifier.height(TV_HERO_INFO_TO_BUTTONS_GAP))
-                            Column(
-                                // 焦点在按钮上时左右键切轮播; 在第一个条目按左不消费 (交给侧边栏)
-                                Modifier.onPreviewKeyEvent { event ->
-                                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                                    when (event.key) {
-                                        Key.DirectionRight -> {
-                                            carouselIndex = (carouselIndex + 1) % carouselSize.coerceAtLeast(1)
-                                            carouselInteraction++
-                                            true
-                                        }
-
-                                        Key.DirectionLeft -> {
-                                            if (carouselIndex > 0) {
-                                                carouselIndex--
-                                                carouselInteraction++
-                                                true
-                                            } else false
-                                        }
-
-                                        else -> false
-                                    }
-                                },
-                                verticalArrangement = Arrangement.spacedBy(TV_HERO_BUTTON_GAP),
-                            ) {
-                                TvHeroButton(
-                                    text = "立即观看",
-                                    icon = Icons.Rounded.PlayArrow,
-                                    filled = true,
-                                    onClick = {
-                                        hero?.let { h ->
-                                            // 有进度接着播下一集, 没有则第一集; 分集未加载退化进详情
-                                            val info = infoCache[h.subjectId]
-                                            val episodeId = info?.progressInfo?.nextEpisodeIdToPlay
-                                                ?: info?.episodes?.firstOrNull()?.episodeId
-                                            onPlaySubject(h, episodeId)
-                                        }
-                                    },
-                                    onFocused = { heroFocused = true },
-                                    modifier = Modifier.tvFocusAnchor(focus, TvExplorationFocus.Play),
-                                )
-                                TvHeroButton(
-                                    text = "更多详细内容",
-                                    icon = Icons.Outlined.Info,
-                                    filled = false,
-                                    onClick = { hero?.let(onClickSubject) },
-                                    onFocused = { heroFocused = true },
-                                    // 跨过指示器/标题直达首卡 (空间搜索跨大间距不可靠)
-                                    modifier = Modifier.tvFocusLink(focus, down = TvExplorationFocus.FirstCard),
-                                )
-                            }
-                            Spacer(Modifier.height(TV_HERO_BUTTONS_TO_CONTENT_GAP))
-                        }
+                    // 简介: 弹性占据剩余空间 (用户指定 weight=1)
+                    val summary = info?.subjectInfo?.summary?.takeIf { it.isNotBlank() }
+                        ?: hero?.let { summaryFallbackCache[it.subjectId] }
+                    Crossfade(
+                        summary,
+                        Modifier.padding(top = 8.dp).weight(1f),
+                        animationSpec = tween(TV_HERO_TEXT_FADE_MILLIS),
+                        label = "summary",
+                    ) { text ->
+                        Text(
+                            text.orEmpty().trim(),
+                            Modifier.fillMaxWidth(TV_HERO_SUMMARY_WIDTH_FRACTION),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = tvHeroSecondaryContentColor(),
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
-
-                    // ── 轮播指示器 (不可聚焦, 纯展示): 当前项拉长胶囊 ──
-                    if (heroFocused && carouselSize >= 2) {
+                    // 操作按钮: 同一 Row (用户指定)
+                    Row(
+                        Modifier.padding(top = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        TvHeroButton(
+                            text = "立即观看",
+                            icon = Icons.Rounded.PlayArrow,
+                            filled = true,
+                            onClick = {
+                                hero?.let { h ->
+                                    // 有进度接着播下一集, 没有则第一集; 分集未加载退化进详情
+                                    val heroInfo = infoCache[h.subjectId]
+                                    val episodeId = heroInfo?.progressInfo?.nextEpisodeIdToPlay
+                                        ?: heroInfo?.episodes?.firstOrNull()?.episodeId
+                                    onPlaySubject(h, episodeId)
+                                }
+                            },
+                            onFocused = { heroFocused = true },
+                            modifier = Modifier.tvFocusAnchor(focus, TvExplorationFocus.Play),
+                        )
+                        TvHeroButton(
+                            text = "更多详细内容",
+                            icon = Icons.Outlined.Info,
+                            filled = false,
+                            onClick = { hero?.let(onClickSubject) },
+                            onFocused = { heroFocused = true },
+                            // 跨过指示器/标题直达首卡 (空间搜索跨大间距不可靠)
+                            modifier = Modifier.tvFocusLink(focus, down = TvExplorationFocus.FirstCard),
+                        )
+                    }
+                    // 轮播指示器: hero 底部, 信息列宽内居中 (不可聚焦, 纯展示; 由自动轮播驱动)
+                    if (carouselSize >= 2) {
                         Row(
-                            Modifier.padding(bottom = 10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(7.dp),
+                            Modifier
+                                .padding(top = 12.dp)
+                                .fillMaxWidth(TV_HERO_SUMMARY_WIDTH_FRACTION),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             repeat(carouselSize) { index ->
@@ -454,8 +429,6 @@ fun TvExplorationScreen(
                             }
                         }
                     }
-
-                    // ── 卡片区: 推荐纵向行 (竖版纯图卡, 聚焦色圈) ──
                 }
                 }
             }
