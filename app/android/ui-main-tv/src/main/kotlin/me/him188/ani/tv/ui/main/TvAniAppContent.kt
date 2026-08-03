@@ -71,6 +71,9 @@ fun TvAniAppContent(
                         onPlayEpisode = { episodeId ->
                             aniNavigator.navigateEpisodeDetails(route.subjectId, episodeId)
                         },
+                        onClickRelated = { relatedId ->
+                            aniNavigator.navigateSubjectDetails(relatedId, null)
+                        },
                     )
                 }
 

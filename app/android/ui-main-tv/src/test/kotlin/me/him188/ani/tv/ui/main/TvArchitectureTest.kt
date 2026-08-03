@@ -46,6 +46,9 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.subject.details.",
         // 选集列表数据类 (EpisodeListUiState/EpisodeListItem, 详情页选集卡数据)
         "me.him188.ani.app.ui.subject.episode.list.",
+        // 评论状态类 (UIComment/UIRichText) 与富文本元素 (纯数据, 渲染 TV 自绘)
+        "me.him188.ani.app.ui.comment.",
+        "me.him188.ani.app.ui.richtext.",
         // 登录状态层复用 (D3: EmailLoginViewModel/EmailLoginUiState)
         "me.him188.ani.app.ui.login.",
         // 探索/搜索状态层复用 (D3: 精确到类, ui.main 包下还有手机壳 UI)

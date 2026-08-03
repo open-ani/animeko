@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -81,6 +82,18 @@ import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
 import me.him188.ani.app.ui.subject.details.SubjectDetailsUIState
 import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
+import me.him188.ani.app.ui.comment.UIComment
+import me.him188.ani.app.ui.richtext.UIRichElement
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.rememberScrollState as rememberDialogScrollState
+import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
+import me.him188.ani.app.data.models.subject.RelatedPersonInfo
+import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
+import me.him188.ani.app.data.models.subject.nameCn
+import me.him188.ani.tv.ui.foundation.widgets.TvPortraitCard
 import me.him188.ani.app.ui.foundation.AsyncImage
 import kotlinx.coroutines.flow.first
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
@@ -94,9 +107,15 @@ import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
 
 /** 详情页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private enum class TvDetailsFocus : TvFocusKey {
-    /** Hero 播放按钮 (进页初始焦点 / 选集区返回键分层目标). */
+    /** Hero 播放按钮 (进页初始焦点 / 返回键回顶目标). */
     Play,
+
+    /** 选集轮播行 (下方区块按返回的归还目标). */
+    EpisodesCarousel,
 }
+
+/** 返回键分层的区块层级 (PR 的 backLevel 语义). */
+private enum class TvDetailsBackLevel { Hero, Episodes, Below }
 
 /*
  * TV 条目详情页. 布局对齐上游 PR#3217 的 SubjectDetailsTvPage (本实现为其首屏简化版):
@@ -113,6 +132,7 @@ fun TvSubjectDetailsScreen(
     subjectId: Int,
     placeholder: SubjectInfo?,
     onPlayEpisode: (episodeId: Int) -> Unit,
+    onClickRelated: (subjectId: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // 状态层复用手机 SubjectDetailsViewModel (D3): info/选集列表/续播目标/角色/评论 pagers
@@ -177,7 +197,7 @@ fun TvSubjectDetailsScreen(
             }
 
             is SubjectDetailsUIState.Ok -> SubjectContent(
-                state.value, airingCollection, backdropState, episodeStills, onPlayEpisode,
+                state.value, airingCollection, backdropState, episodeStills, onPlayEpisode, onClickRelated,
             )
         }
     }
@@ -190,6 +210,7 @@ private fun SubjectContent(
     backdropState: TvBackdropState?,
     episodeStills: Map<Int, String>,
     onPlayEpisode: (episodeId: Int) -> Unit,
+    onClickRelated: (subjectId: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val subjectInfo = details.info ?: SubjectInfo.Empty
@@ -208,14 +229,26 @@ private fun SubjectContent(
 
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
-    // 统一焦点框架: 进页初始焦点落播放按钮; 选集区返回键分层也经同一调度器归还
+    // 统一焦点框架: 进页初始焦点落播放按钮
     val focus = rememberTvFocusScope()
     focus.Resolver()
     focus.InitialFocus(TvDetailsFocus.Play)
-    var episodesFocused by remember { mutableStateOf(false) }
-    BackHandler(enabled = episodesFocused) {
-        scope.launch { scrollState.animateScrollTo(0) }
-        focus.request(TvDetailsFocus.Play)
+    // 返回键三级分层 (PR 语义): 选集之下区块 -> 回选集; 选集 -> 回 Hero; Hero -> 退出.
+    // 层级用"最后持有过焦点的区块"记忆 (各区块 onFocusChanged 上报), 不读瞬时焦点
+    var backLevel by remember { mutableStateOf(TvDetailsBackLevel.Hero) }
+    BackHandler(enabled = backLevel != TvDetailsBackLevel.Hero) {
+        when (backLevel) {
+            TvDetailsBackLevel.Below -> {
+                backLevel = TvDetailsBackLevel.Episodes
+                focus.request(TvDetailsFocus.EpisodesCarousel)
+            }
+
+            else -> {
+                scope.launch { scrollState.animateScrollTo(0) }
+                backLevel = TvDetailsBackLevel.Hero
+                focus.request(TvDetailsFocus.Play)
+            }
+        }
     }
 
     BoxWithConstraints(modifier.fillMaxSize().tvFocusNavSignal(focus)) {
@@ -379,20 +412,64 @@ private fun SubjectContent(
                 }
             }
 
-            // ── 选集: 横向剧照卡轮播 (色圈焦点) ──
+            // ── 选集整页 (PR 布局): 标题 + 截断简介 (展开弹窗) + 右侧竖版封面 + 选集轮播 ──
+            val episodesPageHeight = heroHeight
+            val episodesCoverHeight = episodesPageHeight * 0.62f
+            var summaryDialogOpen by remember { mutableStateOf(false) }
             Column(
                 Modifier
-                    .padding(bottom = 24.dp)
-                    .onFocusChanged { episodesFocused = it.hasFocus },
+                    .height(episodesPageHeight)
+                    .onFocusChanged { if (it.hasFocus) backLevel = TvDetailsBackLevel.Episodes },
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Text(
-                    "选集",
-                    Modifier.padding(start = TV_DETAILS_PAD, bottom = 10.dp),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = tvHeroContentColor(),
-                )
+                Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = TV_DETAILS_PAD)) {
+                    val textEndReserve = if (subjectInfo.imageLarge.isNotBlank()) {
+                        episodesCoverHeight * (0.72f) + 32.dp
+                    } else 0.dp
+                    Column(
+                        Modifier.fillMaxSize().padding(end = textEndReserve),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            subjectInfo.displayName,
+                            Modifier.padding(top = 12.dp),
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = tvHeroContentColor(),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        // 截断简介: 正文不可聚焦 (TV 惯例, 全文放显式入口后的弹窗)
+                        Text(
+                            subjectInfo.summary.ifBlank { "暂无简介" },
+                            Modifier.weight(1f).fillMaxWidth(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = tvHeroSecondaryContentColor(),
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        TvHeroButton(
+                            text = "展开简介",
+                            icon = Icons.Rounded.Refresh,
+                            filled = false,
+                            onClick = { summaryDialogOpen = true },
+                            onFocused = {},
+                        )
+                    }
+                    if (subjectInfo.imageLarge.isNotBlank()) {
+                        AsyncImage(
+                            subjectInfo.imageLarge,
+                            contentDescription = null,
+                            Modifier
+                                .align(Alignment.TopEnd)
+                                .height(episodesCoverHeight)
+                                .aspectRatio(0.72f)
+                                .clip(RoundedCornerShape(16.dp)),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
+                }
                 LazyRow(
                     state = rememberLazyListState(),
+                    modifier = Modifier.tvFocusAnchor(focus, TvDetailsFocus.EpisodesCarousel),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(start = TV_DETAILS_PAD, end = TV_DETAILS_PAD),
                 ) {
@@ -404,6 +481,82 @@ private fun SubjectContent(
                                 ?: subjectInfo.imageLarge,
                             onClick = { onPlayEpisode(episode.episodeId) },
                         )
+                    }
+                }
+            }
+            if (summaryDialogOpen) {
+                AlertDialog(
+                    onDismissRequest = { summaryDialogOpen = false },
+                    title = { Text(subjectInfo.displayName) },
+                    text = {
+                        Column(
+                            Modifier.verticalScroll(rememberDialogScrollState()),
+                        ) {
+                            Text(subjectInfo.summary, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    },
+                    confirmButton = {
+                        TextButton({ summaryDialogOpen = false }) { Text("关闭") }
+                    },
+                )
+            }
+
+            // ── 角色 / 制作人员 / 关联条目 / 评价 (数据来自复用的 SubjectDetailsState pagers) ──
+            Column(
+                Modifier
+                    .padding(top = 8.dp, bottom = 32.dp)
+                    .onFocusChanged { if (it.hasFocus) backLevel = TvDetailsBackLevel.Below },
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
+                val characters = details.exposedCharactersPager.collectAsLazyPagingItems()
+                if (characters.itemCount > 0) {
+                    TvDetailsSectionHeader("角色", details.totalCharactersCountState.value)
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(start = TV_DETAILS_PAD, end = TV_DETAILS_PAD),
+                    ) {
+                        items(characters.itemCount, key = { characters.peek(it)?.character?.id ?: it }) { i ->
+                            characters[i]?.let { TvCharacterCard(it) }
+                        }
+                    }
+                }
+
+                val staff = details.exposedStaffPager.collectAsLazyPagingItems()
+                if (staff.itemCount > 0) {
+                    TvDetailsSectionHeader("制作人员", details.totalStaffCountState.value)
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(start = TV_DETAILS_PAD, end = TV_DETAILS_PAD),
+                    ) {
+                        items(staff.itemCount, key = { staff.peek(it)?.personInfo?.id ?: it }) { i ->
+                            staff[i]?.let { TvStaffCard(it) }
+                        }
+                    }
+                }
+
+                val related = details.relatedSubjectsPager.collectAsLazyPagingItems()
+                if (related.itemCount > 0) {
+                    TvDetailsSectionHeader("关联条目", null)
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(start = TV_DETAILS_PAD, end = TV_DETAILS_PAD),
+                    ) {
+                        items(related.itemCount, key = { related.peek(it)?.subjectId ?: it }) { i ->
+                            related[i]?.let { TvRelatedSubjectCard(it, onClickRelated) }
+                        }
+                    }
+                }
+
+                val comments = details.subjectCommentState.list.collectAsLazyPagingItems()
+                if (comments.itemCount > 0) {
+                    TvDetailsSectionHeader("评价", details.subjectCommentState.count)
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(start = TV_DETAILS_PAD, end = TV_DETAILS_PAD),
+                    ) {
+                        items(comments.itemCount, key = { comments.peek(it)?.stableId ?: it.toString() }) { i ->
+                            comments[i]?.let { TvCommentCard(it) }
+                        }
                     }
                 }
             }
@@ -575,3 +728,200 @@ private val HERO_BACKDROP_FADE_DISTANCE = 400.dp
 private const val HERO_BACKDROP_MIN_ALPHA = 0.25f
 
 private val TV_TAG_SHAPE = RoundedCornerShape(6.dp)
+
+// ── 下方区块组件 (数据 = 复用的 SubjectDetailsState pagers; UI 为 TV 自绘) ──
+
+@Composable
+private fun TvDetailsSectionHeader(title: String, count: Int?, modifier: Modifier = Modifier) {
+    Row(
+        modifier.padding(start = TV_DETAILS_PAD),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, style = MaterialTheme.typography.titleMedium, color = tvHeroContentColor())
+        count?.let {
+            Text(
+                "$it",
+                style = MaterialTheme.typography.labelLarge,
+                color = tvHeroSecondaryContentColor(),
+            )
+        }
+    }
+}
+
+/** 角色卡: 头像 + 角色名 + 声优名 (色圈聚焦). */
+@Composable
+private fun TvCharacterCard(info: RelatedCharacterInfo, modifier: Modifier = Modifier) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+    Column(
+        modifier
+            .width(96.dp)
+            .then(
+                if (focused) {
+                    Modifier.border(2.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(11.dp))
+                } else Modifier,
+            )
+            .clickable(interactionSource = interactionSource, indication = LocalIndication.current) {}
+            .padding(6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        AsyncImage(
+            info.character.imageMedium,
+            contentDescription = null,
+            Modifier.size(72.dp).clip(CircleShape),
+            contentScale = ContentScale.Crop,
+        )
+        Text(
+            info.character.nameCn.ifBlank { info.character.name },
+            Modifier.padding(top = 6.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = tvHeroContentColor(),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            info.character.actors.firstOrNull()?.displayName.orEmpty(),
+            style = MaterialTheme.typography.labelSmall,
+            color = tvHeroSecondaryContentColor(),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** 制作人员卡: 头像 + 名字 + 职位. */
+@Composable
+private fun TvStaffCard(info: RelatedPersonInfo, modifier: Modifier = Modifier) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+    Column(
+        modifier
+            .width(96.dp)
+            .then(
+                if (focused) {
+                    Modifier.border(2.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(11.dp))
+                } else Modifier,
+            )
+            .clickable(interactionSource = interactionSource, indication = LocalIndication.current) {}
+            .padding(6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        AsyncImage(
+            info.personInfo.imageMedium,
+            contentDescription = null,
+            Modifier.size(72.dp).clip(CircleShape),
+            contentScale = ContentScale.Crop,
+        )
+        Text(
+            info.personInfo.displayName,
+            Modifier.padding(top = 6.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = tvHeroContentColor(),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            info.position.nameCn.orEmpty(),
+            style = MaterialTheme.typography.labelSmall,
+            color = tvHeroSecondaryContentColor(),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** 关联条目卡: 竖版海报 + 关系标注. */
+@Composable
+private fun TvRelatedSubjectCard(
+    info: RelatedSubjectInfo,
+    onClick: (subjectId: Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier.width(112.dp)) {
+        TvPortraitCard(
+            imageUrl = info.image,
+            contentDescription = info.nameCn,
+            onClick = { onClick(info.subjectId) },
+            onFocused = {},
+        )
+        Text(
+            info.nameCn.ifBlank { info.name.orEmpty() },
+            Modifier.padding(top = 4.dp, start = 4.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = tvHeroContentColor(),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            info.relation?.let { renderSubjectRelation(it) }.orEmpty(),
+            Modifier.padding(start = 4.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = tvHeroSecondaryContentColor(),
+            maxLines = 1,
+        )
+    }
+}
+
+/** 评价卡: 昵称 + 评分 + 内容 4 行截断 (富文本取纯文本). */
+@Composable
+private fun TvCommentCard(comment: UIComment, modifier: Modifier = Modifier) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+    Column(
+        modifier
+            .width(320.dp)
+            .then(
+                if (focused) {
+                    Modifier.border(2.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(11.dp))
+                } else Modifier,
+            )
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f))
+            .clickable(interactionSource = interactionSource, indication = LocalIndication.current) {}
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                comment.author?.nickname ?: "匿名",
+                style = MaterialTheme.typography.labelLarge,
+                color = tvHeroContentColor(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            comment.rating?.takeIf { it > 0 }?.let { rating ->
+                Text(
+                    "★ $rating",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        Text(
+            comment.content.elements
+                .filterIsInstance<UIRichElement.AnnotatedText>()
+                .flatMap { it.slice }
+                .filterIsInstance<UIRichElement.Annotated.Text>()
+                .joinToString("") { it.content }
+                .ifBlank { "…" },
+            style = MaterialTheme.typography.bodySmall,
+            color = tvHeroSecondaryContentColor(),
+            maxLines = 4,
+            minLines = 4,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** 关联关系渲染 (手机 renderSubjectRelation 同语义, TV 侧自绘). */
+private fun renderSubjectRelation(relation: me.him188.ani.app.data.models.subject.SubjectRelation): String =
+    when (relation) {
+        me.him188.ani.app.data.models.subject.SubjectRelation.PREQUEL -> "前传"
+        me.him188.ani.app.data.models.subject.SubjectRelation.SEQUEL -> "续集"
+        me.him188.ani.app.data.models.subject.SubjectRelation.DERIVED -> "衍生"
+        me.him188.ani.app.data.models.subject.SubjectRelation.SPECIAL -> "番外篇"
+    }
