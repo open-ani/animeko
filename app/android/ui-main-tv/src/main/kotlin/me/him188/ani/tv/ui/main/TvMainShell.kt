@@ -124,16 +124,21 @@ fun TvMainShell(modifier: Modifier = Modifier) {
                                 ),
                             )
                         },
-                        onPlaySubject = { hero ->
-                            // 分集信息未加载时退化为进详情页 (保证点击总有响应)
-                            navigator.navigateSubjectDetails(
-                                hero.subjectId,
-                                SubjectDetailPlaceholder(
-                                    id = hero.subjectId,
-                                    nameCN = hero.title,
-                                    coverUrl = hero.imageUrl,
-                                ),
-                            )
+                        onPlaySubject = { hero, episodeId ->
+                            if (episodeId != null) {
+                                // 立即观看直接进播放页 (有进度接着播, 无进度第一集)
+                                navigator.navigateEpisodeDetails(hero.subjectId, episodeId)
+                            } else {
+                                // 分集信息未加载到, 退化为进详情页 (保证点击总有响应)
+                                navigator.navigateSubjectDetails(
+                                    hero.subjectId,
+                                    SubjectDetailPlaceholder(
+                                        id = hero.subjectId,
+                                        nameCN = hero.title,
+                                        coverUrl = hero.imageUrl,
+                                    ),
+                                )
+                            }
                         },
                     )
 

@@ -82,6 +82,8 @@ import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.ui.main.ExplorationPageViewModel
 import me.him188.ani.app.data.models.recommend.RecommendedSubjectInfo
+import me.him188.ani.app.data.models.subject.FollowedSubjectInfo
+import me.him188.ani.app.data.models.subject.subjectInfo
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
@@ -135,7 +137,8 @@ private enum class TvExplorationFocus : TvFocusKey {
 @Composable
 fun TvExplorationScreen(
     onClickSubject: (TvHeroSubject) -> Unit,
-    onPlaySubject: (TvHeroSubject) -> Unit,
+    /** 立即观看: [episodeId] 非 null 直接进播放页; null (分集信息未加载到) 退化进详情页. */
+    onPlaySubject: (TvHeroSubject, episodeId: Int?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // 状态层复用手机 ExplorationPageViewModel/ExplorationPageState (D3)
@@ -143,6 +146,8 @@ fun TvExplorationScreen(
     val pageState = pageViewModel.explorationPageState
     val trendsPager = pageState.trendingSubjectInfoPager.collectWithLifecycle()
     val recommendations = pageState.recommendationPager.collectAsLazyPagingItems()
+    // 继续观看 (compose 探索页同款数据源): 在看条目 + 播放进度
+    val followed = pageState.followedSubjectsPager.collectAsLazyPagingItems()
 
     // hero 异步加载缓存 (TV 特有, 按上游 PR 模式放页内): 标题即时, 详情/backdrop/简介兜底异步
     val collectionRepo = remember { GlobalKoin.get<SubjectCollectionRepository>() }
@@ -276,183 +281,216 @@ fun TvExplorationScreen(
             }
         }
 
-        Column(Modifier.fillMaxSize().padding(start = TV_EXPLORATION_START_PAD, top = 24.dp)) {
-            // ── Hero 信息块 (固定高度, 换条目时下方卡片区不跳动) ──
-            Column(Modifier.height(TV_HERO_INFO_HEIGHT)) {
-                // 标题: 定高一行, 长标题跑马灯; 换条目 crossfade
-                Crossfade(hero?.title, animationSpec = tween(TV_HERO_TEXT_FADE_MILLIS), label = "title") { title ->
-                    Text(
-                        title.orEmpty(),
-                        Modifier.fillMaxWidth(TV_HERO_TITLE_WIDTH_FRACTION).basicMarquee(iterations = 3),
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = tvHeroContentColor(),
-                        maxLines = 1,
-                    )
-                }
-                // 评分 + 连载信息行
-                Row(
-                    Modifier.padding(top = 8.dp).height(TV_HERO_STATUS_ROW_HEIGHT),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    info?.subjectInfo?.ratingInfo?.score
-                        ?.takeIf { it.isNotBlank() && it != "0" && it != "0.0" }
-                        ?.let { score ->
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    "★",
-                                    color = MaterialTheme.colorScheme.primary,
-                                    style = MaterialTheme.typography.titleMedium,
-                                )
-                                Text(
-                                    "$score/10",
-                                    color = tvHeroContentColor(),
-                                    style = MaterialTheme.typography.titleMedium,
-                                )
-                            }
-                        }
-                    val latest = info?.airingInfo?.latestSort
-                    val total = info?.subjectInfo?.totalEpisodes?.takeIf { it > 0 }
-                    val progressText = buildString {
-                        if (latest != null) append("连载至 $latest")
-                        if (total != null) {
-                            if (isNotEmpty()) append(" · ")
-                            append("预定全 $total 话")
-                        }
-                    }
-                    if (progressText.isNotEmpty()) {
-                        Text(
-                            progressText,
-                            style = MaterialTheme.typography.titleSmall,
-                            color = tvHeroSecondaryContentColor(),
-                        )
-                    }
-                    info?.subjectInfo?.airDate?.takeIf { it.isValid }?.let { date ->
-                        Text(
-                            "${date.year}年${date.month}月",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = tvHeroSecondaryContentColor(),
-                        )
-                    }
-                }
-                // 简介: weight 填满信息块剩余空间
-                val summary = info?.subjectInfo?.summary?.takeIf { it.isNotBlank() }
-                    ?: hero?.let { summaryFallbackCache[it.subjectId] }
-                Crossfade(
-                    summary,
-                    Modifier.padding(top = 8.dp).weight(1f),
-                    animationSpec = tween(TV_HERO_TEXT_FADE_MILLIS),
-                    label = "summary",
-                ) { text ->
-                    Text(
-                        text.orEmpty().trim(),
-                        Modifier.fillMaxWidth(TV_HERO_SUMMARY_WIDTH_FRACTION),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = tvHeroSecondaryContentColor(),
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-
-            // ── 操作按钮块 (焦点在 hero 时展示; 移到卡片区后消失, 卡片区上移) ──
-            AnimatedVisibility(heroFocused, enter = fadeIn(), exit = fadeOut()) {
+        // ── 整页单 LazyColumn (用户指定): hero 与卡片区一同纵向滚动 ──
+        LazyColumn(
+            Modifier.fillMaxSize().padding(start = TV_EXPLORATION_START_PAD),
+            contentPadding = PaddingValues(top = 24.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(TV_SECTION_HEADER_TO_ROW_GAP),
+        ) {
+            item(key = "hero") {
                 Column {
-                    Spacer(Modifier.height(TV_HERO_INFO_TO_BUTTONS_GAP))
-                    Column(
-                        // 焦点在按钮上时左右键切轮播; 在第一个条目按左不消费 (交给侧边栏)
-                        Modifier.onPreviewKeyEvent { event ->
-                            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                            when (event.key) {
-                                Key.DirectionRight -> {
-                                    carouselIndex = (carouselIndex + 1) % carouselSize.coerceAtLeast(1)
-                                    carouselInteraction++
-                                    true
+                    // ── Hero 信息块 (固定高度, 换条目时下方卡片区不跳动) ──
+                    Column(Modifier.height(TV_HERO_INFO_HEIGHT)) {
+                        // 标题: 定高一行, 长标题跑马灯; 换条目 crossfade
+                        Crossfade(hero?.title, animationSpec = tween(TV_HERO_TEXT_FADE_MILLIS), label = "title") { title ->
+                            Text(
+                                title.orEmpty(),
+                                Modifier.fillMaxWidth(TV_HERO_TITLE_WIDTH_FRACTION).basicMarquee(iterations = 3),
+                                style = MaterialTheme.typography.headlineLarge,
+                                color = tvHeroContentColor(),
+                                maxLines = 1,
+                            )
+                        }
+                        // 评分 + 连载信息行
+                        Row(
+                            Modifier.padding(top = 8.dp).height(TV_HERO_STATUS_ROW_HEIGHT),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            info?.subjectInfo?.ratingInfo?.score
+                                ?.takeIf { it.isNotBlank() && it != "0" && it != "0.0" }
+                                ?.let { score ->
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            "★",
+                                            color = MaterialTheme.colorScheme.primary,
+                                            style = MaterialTheme.typography.titleMedium,
+                                        )
+                                        Text(
+                                            "$score/10",
+                                            color = tvHeroContentColor(),
+                                            style = MaterialTheme.typography.titleMedium,
+                                        )
+                                    }
                                 }
-
-                                Key.DirectionLeft -> {
-                                    if (carouselIndex > 0) {
-                                        carouselIndex--
-                                        carouselInteraction++
-                                        true
-                                    } else false
+                            val latest = info?.airingInfo?.latestSort
+                            val total = info?.subjectInfo?.totalEpisodes?.takeIf { it > 0 }
+                            val progressText = buildString {
+                                if (latest != null) append("连载至 $latest")
+                                if (total != null) {
+                                    if (isNotEmpty()) append(" · ")
+                                    append("预定全 $total 话")
                                 }
-
-                                else -> false
                             }
-                        },
-                        verticalArrangement = Arrangement.spacedBy(TV_HERO_BUTTON_GAP),
-                    ) {
-                        TvHeroButton(
-                            text = "立即观看",
-                            icon = Icons.Rounded.PlayArrow,
-                            filled = true,
-                            onClick = { hero?.let(onPlaySubject) },
-                            onFocused = { heroFocused = true },
-                            modifier = Modifier.tvFocusAnchor(focus, TvExplorationFocus.Play),
-                        )
-                        TvHeroButton(
-                            text = "更多详细内容",
-                            icon = Icons.Outlined.Info,
-                            filled = false,
-                            onClick = { hero?.let(onClickSubject) },
-                            onFocused = { heroFocused = true },
-                            // 跨过指示器/标题直达首卡 (空间搜索跨大间距不可靠)
-                            modifier = Modifier.tvFocusLink(focus, down = TvExplorationFocus.FirstCard),
-                        )
+                            if (progressText.isNotEmpty()) {
+                                Text(
+                                    progressText,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = tvHeroSecondaryContentColor(),
+                                )
+                            }
+                            info?.subjectInfo?.airDate?.takeIf { it.isValid }?.let { date ->
+                                Text(
+                                    "${date.year}年${date.month}月",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = tvHeroSecondaryContentColor(),
+                                )
+                            }
+                        }
+                        // 简介: weight 填满信息块剩余空间
+                        val summary = info?.subjectInfo?.summary?.takeIf { it.isNotBlank() }
+                            ?: hero?.let { summaryFallbackCache[it.subjectId] }
+                        Crossfade(
+                            summary,
+                            Modifier.padding(top = 8.dp).weight(1f),
+                            animationSpec = tween(TV_HERO_TEXT_FADE_MILLIS),
+                            label = "summary",
+                        ) { text ->
+                            Text(
+                                text.orEmpty().trim(),
+                                Modifier.fillMaxWidth(TV_HERO_SUMMARY_WIDTH_FRACTION),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = tvHeroSecondaryContentColor(),
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
-                    Spacer(Modifier.height(TV_HERO_BUTTONS_TO_CONTENT_GAP))
+
+                    // ── 操作按钮块 (焦点在 hero 时展示; 移到卡片区后消失, 卡片区上移) ──
+                    AnimatedVisibility(heroFocused, enter = fadeIn(), exit = fadeOut()) {
+                        Column {
+                            Spacer(Modifier.height(TV_HERO_INFO_TO_BUTTONS_GAP))
+                            Column(
+                                // 焦点在按钮上时左右键切轮播; 在第一个条目按左不消费 (交给侧边栏)
+                                Modifier.onPreviewKeyEvent { event ->
+                                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                                    when (event.key) {
+                                        Key.DirectionRight -> {
+                                            carouselIndex = (carouselIndex + 1) % carouselSize.coerceAtLeast(1)
+                                            carouselInteraction++
+                                            true
+                                        }
+
+                                        Key.DirectionLeft -> {
+                                            if (carouselIndex > 0) {
+                                                carouselIndex--
+                                                carouselInteraction++
+                                                true
+                                            } else false
+                                        }
+
+                                        else -> false
+                                    }
+                                },
+                                verticalArrangement = Arrangement.spacedBy(TV_HERO_BUTTON_GAP),
+                            ) {
+                                TvHeroButton(
+                                    text = "立即观看",
+                                    icon = Icons.Rounded.PlayArrow,
+                                    filled = true,
+                                    onClick = {
+                                        hero?.let { h ->
+                                            // 有进度接着播下一集, 没有则第一集; 分集未加载退化进详情
+                                            val info = infoCache[h.subjectId]
+                                            val episodeId = info?.progressInfo?.nextEpisodeIdToPlay
+                                                ?: info?.episodes?.firstOrNull()?.episodeId
+                                            onPlaySubject(h, episodeId)
+                                        }
+                                    },
+                                    onFocused = { heroFocused = true },
+                                    modifier = Modifier.tvFocusAnchor(focus, TvExplorationFocus.Play),
+                                )
+                                TvHeroButton(
+                                    text = "更多详细内容",
+                                    icon = Icons.Outlined.Info,
+                                    filled = false,
+                                    onClick = { hero?.let(onClickSubject) },
+                                    onFocused = { heroFocused = true },
+                                    // 跨过指示器/标题直达首卡 (空间搜索跨大间距不可靠)
+                                    modifier = Modifier.tvFocusLink(focus, down = TvExplorationFocus.FirstCard),
+                                )
+                            }
+                            Spacer(Modifier.height(TV_HERO_BUTTONS_TO_CONTENT_GAP))
+                        }
+                    }
+
+                    // ── 轮播指示器 (不可聚焦, 纯展示): 当前项拉长胶囊 ──
+                    if (heroFocused && carouselSize >= 2) {
+                        Row(
+                            Modifier.padding(bottom = 10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            repeat(carouselSize) { index ->
+                                val selected = index == carouselIndex
+                                Box(
+                                    Modifier
+                                        .height(5.dp)
+                                        .width(if (selected) 22.dp else 5.dp)
+                                        .clip(if (selected) RoundedCornerShape(2.5.dp) else CircleShape)
+                                        .background(
+                                            tvHeroContentColor().copy(alpha = if (selected) 0.95f else 0.35f),
+                                        ),
+                                )
+                            }
+                        }
+                    }
+
+                    // ── 卡片区: 推荐纵向行 (竖版纯图卡, 聚焦色圈) ──
                 }
             }
 
-            // ── 轮播指示器 (不可聚焦, 纯展示): 当前项拉长胶囊 ──
-            if (heroFocused && carouselSize >= 2) {
-                Row(
-                    Modifier.padding(bottom = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    repeat(carouselSize) { index ->
-                        val selected = index == carouselIndex
-                        Box(
-                            Modifier
-                                .height(5.dp)
-                                .width(if (selected) 22.dp else 5.dp)
-                                .clip(if (selected) RoundedCornerShape(2.5.dp) else CircleShape)
-                                .background(
-                                    tvHeroContentColor().copy(alpha = if (selected) 0.95f else 0.35f),
-                                ),
-                        )
-                    }
-                }
-            }
-
-            // ── 卡片区: 推荐纵向行 (竖版纯图卡, 聚焦色圈) ──
-            LazyColumn(
-                Modifier.fillMaxWidth().weight(1f),
-                verticalArrangement = Arrangement.spacedBy(TV_SECTION_HEADER_TO_ROW_GAP),
-                contentPadding = PaddingValues(bottom = 16.dp),
-            ) {
-                item("recommendations-header") {
+            if (followed.itemCount > 0) {
+                item(key = "followed-header") {
                     Text(
-                        "推荐",
+                        "继续观看",
                         style = MaterialTheme.typography.titleMedium,
                         color = tvHeroContentColor(),
                     )
                 }
-                item("recommendations-row") {
+                item(key = "followed-row") {
                     LazyRow(
+                        // 单行横向列表, 行内无纵向导航, 容器拦上键安全: 按上先让 hero 按钮块
+                        // 重新组合 (焦点在卡片时它已退场, 直接链接指向未附着节点会没反应),
+                        // 再经框架轮询聚焦 —— 修复"第一排按上回不到 hero 按钮"
+                        Modifier.onPreviewKeyEvent { event ->
+                            if (event.key == Key.DirectionUp) {
+                                if (event.type == KeyEventType.KeyDown) {
+                                    heroFocused = true
+                                    focus.request(TvExplorationFocus.Play)
+                                }
+                                true
+                            } else false
+                        },
                         horizontalArrangement = Arrangement.spacedBy(TV_PAGE_CARD_SPACING),
                         contentPadding = PaddingValues(end = TV_PAGE_END_PAD),
                     ) {
-                        items(trendsPager.itemCount, key = { trendsPager.peek(it)?.bangumiId ?: it }) { index ->
-                            val subject = trendsPager[index] ?: return@items
-                            val item = TvHeroSubject(subject.bangumiId, subject.nameCn, subject.imageLarge)
+                        items(
+                            followed.itemCount,
+                            key = { followed.peek(it)?.subjectInfo?.subjectId ?: it },
+                        ) { index ->
+                            val info = followed[index] ?: return@items
+                            val item = TvHeroSubject(
+                                info.subjectInfo.subjectId,
+                                info.subjectInfo.displayName,
+                                info.subjectInfo.imageLarge,
+                            )
                             TvPortraitCard(
-                                imageUrl = subject.imageLarge,
-                                contentDescription = subject.nameCn,
+                                imageUrl = info.subjectInfo.imageLarge,
+                                contentDescription = info.subjectInfo.displayName,
                                 onClick = { onClickSubject(item) },
                                 onFocused = {
                                     heroFocused = false
@@ -467,19 +505,24 @@ fun TvExplorationScreen(
                         }
                     }
                 }
-                item("more-header") {
-                    Text(
-                        "为你推荐",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = tvHeroContentColor(),
-                    )
-                }
-                item("more-row") {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(TV_PAGE_CARD_SPACING),
-                        contentPadding = PaddingValues(end = TV_PAGE_END_PAD),
-                    ) {
-                        items(recommendations.itemCount) { index ->
+            }
+
+            item(key = "rec-header") {
+                Text(
+                    "为你推荐",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = tvHeroContentColor(),
+                )
+            }
+            // 为你推荐: 纵向网格 (compose 同款语义); LazyColumn 内不能嵌同向滚动网格,
+            // 按固定列数分行铺 (行 = Row), 随页面整体纵向滚动
+            val recColumns = TV_REC_GRID_COLUMNS
+            val recRows = (recommendations.itemCount + recColumns - 1) / recColumns
+            items(recRows, key = { "rec-row-$it" }) { rowIndex ->
+                Row(horizontalArrangement = Arrangement.spacedBy(TV_PAGE_CARD_SPACING)) {
+                    repeat(recColumns) { colIndex ->
+                        val index = rowIndex * recColumns + colIndex
+                        if (index < recommendations.itemCount) {
                             when (val rec = recommendations[index]) {
                                 is RecommendedSubjectInfo -> {
                                     val item = TvHeroSubject(rec.bangumiId, rec.nameCn, rec.imageLarge)
@@ -491,7 +534,12 @@ fun TvExplorationScreen(
                                             heroFocused = false
                                             focusedCardSubject = item
                                         },
-                                        modifier = Modifier.width(TV_PAGE_CARD_WIDTH),
+                                        modifier = Modifier.width(TV_PAGE_CARD_WIDTH).then(
+                                            if (followed.itemCount == 0 && index == 0) {
+                                                // 未登录无继续观看行时, 首卡兼任 FirstCard 锚点
+                                                Modifier.tvFocusAnchor(focus, TvExplorationFocus.FirstCard)
+                                            } else Modifier,
+                                        ),
                                     )
                                 }
 
@@ -539,6 +587,9 @@ private const val TV_BACKDROP_STATE_ANIM_MILLIS = 400
 
 /** 内容左侧额外留白 (外层已让开侧边栏收起宽 48dp, 总左缘 = 48 + 16 = 64). */
 private val TV_EXPLORATION_START_PAD = 16.dp
+
+/** 为你推荐纵向网格列数 (1080p 横屏: 内容区宽约 (1080dp*2-64-48), 112dp 卡 + 10dp 距). */
+private const val TV_REC_GRID_COLUMNS = 14
 
 /** backdrop 高度占屏高比例 (Prime 实测: 图占屏顶约 66%). */
 private const val TV_EXPLORATION_BACKDROP_HEIGHT_FRACTION = 0.66f
