@@ -34,7 +34,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.lifecycle.viewmodel.compose.viewModel
 import me.him188.ani.app.navigation.LocalNavigator
@@ -83,7 +90,22 @@ fun TvMainShell(modifier: Modifier = Modifier) {
     val loginViewModel = viewModel { TvLoginViewModel() }
     val selfInfo by loginViewModel.selfInfo.collectAsState()
 
-    Box(modifier.fillMaxSize().background(tvShellBackgroundColor())) {
+    // 菜单键从页面任意位置直达侧边栏 (焦点落到"探索"条目, rail 随 hasFocus 自动展开):
+    // rail 的常规进入是"按左", 焦点在卡片行深处时要连按多次, 菜单键是一步到位的快捷路径
+    val railEnterFocus = remember { FocusRequester() }
+
+    Box(
+        modifier
+            .fillMaxSize()
+            .background(tvShellBackgroundColor())
+            .onPreviewKeyEvent { event ->
+                if (event.key != Key.Menu) return@onPreviewKeyEvent false
+                if (event.type == KeyEventType.KeyDown) {
+                    runCatching { railEnterFocus.requestFocus() }
+                }
+                true // KeyUp 一并消费, 不让残余触发别处
+            },
+    ) {
         // 内容区: 让开侧边栏收起态宽度
         Box(Modifier.fillMaxSize().padding(start = TvNavigationRailDefaults.CollapsedWidth)) {
             AnimatedContent(
@@ -173,6 +195,7 @@ fun TvMainShell(modifier: Modifier = Modifier) {
                 TvNavRailItem(Icons.Rounded.Settings, "设置") { content = TvShellContent.Settings },
             ),
             modifier = Modifier.align(Alignment.CenterStart),
+            enterFocus = railEnterFocus,
         )
     }
 }

@@ -96,6 +96,8 @@ data class TvNavRailItem(
  * @param onExitFocus 非 null 时: 条目上按返回键/右键调用它并吞掉按键 (如详情页把焦点送回
  *   Hero 播放按钮); null 时不拦截.
  * @param scrimColor 展开面板底色覆盖; null 用 [tvShellBackgroundColor].
+ * @param enterFocus 进入侧边栏时聚焦的 defaultFocus 条目的请求器; 传入后调用方可在任意时刻
+ *   requestFocus 把焦点直接送进侧边栏 (如全局菜单键), 不传则内部自建.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -107,6 +109,7 @@ fun TvNavigationSideRail(
     showAvatar: Boolean = true,
     onExitFocus: (() -> Unit)? = null,
     scrimColor: Color? = null,
+    enterFocus: FocusRequester? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box(modifier.fillMaxHeight(), contentAlignment = Alignment.CenterStart) {
@@ -125,18 +128,21 @@ fun TvNavigationSideRail(
                 ),
             )
         }
-        // 进入门控: 只有"按左"才能把焦点移进侧边栏; 进入时焦点总是落到 defaultFocus 条目
-        val enterFocus = remember { FocusRequester() }
+        // 进入门控: 只有"按左" (空间搜索) 或编程式聚焦 (Enter 方向, 如全局菜单键的
+        // requestFocus) 才能把焦点移进侧边栏; 上/下/右的空间搜索一律取消.
+        // 进入时焦点总是落到 defaultFocus 条目.
+        val enterFocusResolved = enterFocus ?: remember { FocusRequester() }
         val hasDefaultFocusItem = items.any { it.defaultFocus }
         Column(
             Modifier
                 .onFocusChanged { expanded = it.hasFocus }
                 .focusProperties {
                     onEnter = {
-                        if (requestedFocusDirection == FocusDirection.Left) {
-                            if (hasDefaultFocusItem) enterFocus.requestFocus()
-                        } else {
-                            cancelFocus()
+                        when (requestedFocusDirection) {
+                            FocusDirection.Left, FocusDirection.Enter ->
+                                if (hasDefaultFocusItem) enterFocusResolved.requestFocus()
+
+                            else -> cancelFocus()
                         }
                     }
                 }
@@ -155,7 +161,7 @@ fun TvNavigationSideRail(
                     label = item.label,
                     expanded = expanded,
                     onExitFocus = onExitFocus,
-                    focusRequester = if (item.defaultFocus) enterFocus else item.focusRequester,
+                    focusRequester = if (item.defaultFocus) enterFocusResolved else item.focusRequester,
                     keepFocusOnClick = item.keepFocusOnClick,
                     onClick = item.onClick,
                 )
