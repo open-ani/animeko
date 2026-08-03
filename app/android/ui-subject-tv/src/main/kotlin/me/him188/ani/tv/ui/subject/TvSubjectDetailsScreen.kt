@@ -39,6 +39,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -67,11 +68,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
-import me.him188.ani.app.data.models.episode.displayName
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.CancellationException
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
+import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.data.network.TmdbImageService
+import me.him188.ani.app.data.network.matchToEpisodes
+import me.him188.ani.app.data.network.newestAiredDateStringOrNull
+import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
+import me.him188.ani.app.domain.usecase.GlobalKoin
+import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
+import me.him188.ani.app.ui.subject.details.state.SubjectDetailsState
+import me.him188.ani.app.ui.subject.details.SubjectDetailsUIState
+import me.him188.ani.app.ui.subject.episode.list.EpisodeListItem
 import me.him188.ani.app.ui.foundation.AsyncImage
-import me.him188.ani.datasources.api.topic.isDoneOrDropped
+import kotlinx.coroutines.flow.first
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
@@ -94,43 +105,106 @@ private enum class TvDetailsFocus : TvFocusKey {
  *
  * 未实现 (上游有): 圆钮行/选集网格菜单/标签菜单/吸附滚动/角色/制作人员/评论区块.
  */
+/** TMDB 横版 backdrop 三态: null = 未解析 (按有图排版等待); Resolved(url=null) = 确认无图回退封面. */
+private data class TvBackdropState(val url: String?)
+
 @Composable
 fun TvSubjectDetailsScreen(
-    viewModel: TvSubjectDetailsViewModel,
+    subjectId: Int,
+    placeholder: SubjectInfo?,
     onPlayEpisode: (episodeId: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val subject by viewModel.subject.collectAsState()
-    val backdropState by viewModel.backdropState.collectAsState()
-    val episodeStills by viewModel.episodeStills.collectAsState()
+    // 状态层复用手机 SubjectDetailsViewModel (D3): info/选集列表/续播目标/角色/评论 pagers
+    val viewModel = viewModel<SubjectDetailsViewModel>(key = subjectId.toString()) {
+        SubjectDetailsViewModel(subjectId, placeholder)
+    }
+    LaunchedEffect(viewModel) { viewModel.reload() }
+    val uiState by viewModel.state.collectAsState()
+
+    // TMDB backdrop/剧照 (TV 特有, 页内加载; 匹配需 EpisodeCollectionInfo, 独立拉 collection)
+    val collectionRepo = remember { GlobalKoin.get<SubjectCollectionRepository>() }
+    val tmdb = remember { GlobalKoin.get<TmdbImageService>() }
+    var backdropState by remember { mutableStateOf<TvBackdropState?>(null) }
+    var episodeStills by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
+    var airingCollection by remember { mutableStateOf<SubjectCollectionInfo?>(null) }
+    LaunchedEffect(subjectId) {
+        val collection = try {
+            collectionRepo.subjectCollectionFlow(subjectId).first()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        } ?: return@LaunchedEffect
+        airingCollection = collection
+        val newest = collection.episodes.newestAiredDateStringOrNull()
+        backdropState = TvBackdropState(
+            runCatching {
+                tmdb.getBackdropUrl(subjectId, collection.subjectInfo.name, activeAsOfDate = newest)
+            }.getOrNull(),
+        )
+        runCatching {
+            tmdb.getEpisodeStills(subjectId, collection.subjectInfo.name, "zh-CN", newestWantedAirDate = newest)
+        }.onSuccess { stills ->
+            episodeStills = stills.matchToEpisodes(collection.episodes)
+                .mapNotNull { (id, media) -> media.stillUrl?.let { id to it } }
+                .toMap()
+        }
+    }
 
     Box(modifier.fillMaxSize().background(tvShellBackgroundColor())) {
-        val info = subject
-        if (info == null) {
-            CircularProgressIndicator(Modifier.align(Alignment.Center))
-        } else {
-            SubjectContent(info, backdropState, episodeStills, onPlayEpisode)
+        when (val state = uiState) {
+            is SubjectDetailsUIState.Placeholder ->
+                CircularProgressIndicator(Modifier.align(Alignment.Center))
+
+            is SubjectDetailsUIState.Err -> Column(
+                Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    "加载失败了, 请检查网络后重试",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = tvHeroSecondaryContentColor(),
+                )
+                TvHeroButton(
+                    text = "重试",
+                    icon = Icons.Rounded.Refresh,
+                    filled = true,
+                    onClick = { viewModel.reload() },
+                    onFocused = {},
+                    modifier = Modifier.padding(top = 16.dp),
+                )
+            }
+
+            is SubjectDetailsUIState.Ok -> SubjectContent(
+                state.value, airingCollection, backdropState, episodeStills, onPlayEpisode,
+            )
         }
     }
 }
 
 @Composable
 private fun SubjectContent(
-    info: SubjectCollectionInfo,
-    backdropState: TvSubjectDetailsViewModel.BackdropState?,
+    details: SubjectDetailsState,
+    airingCollection: SubjectCollectionInfo?,
+    backdropState: TvBackdropState?,
     episodeStills: Map<Int, String>,
     onPlayEpisode: (episodeId: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val subjectInfo = info.subjectInfo
+    val subjectInfo = details.info ?: SubjectInfo.Empty
+    val presentation by details.presentation.collectAsState()
+    val episodes = presentation.episodeListUiState.mainEpisodes + presentation.episodeListUiState.otherEpisodes
     // backdrop 三态 (对齐 PR): 未解析时不显示回退图, 按"有图"排版等待 (图到直接淡入零跳变)
     val heroBackdropUrl = backdropState?.url
         ?: subjectInfo.imageLarge.takeIf { backdropState != null && it.isNotBlank() }
 
-    // 续播目标: 第一个未看完的正片, 否则第一集
-    val playTarget = info.episodes.firstOrNull { !it.collectionType.isDoneOrDropped() }
-        ?: info.episodes.firstOrNull()
-    val watched = info.episodes.count { it.collectionType.isDoneOrDropped() }
+    // 续播目标: 手机同款语义 (SubjectProgressState.episodeIdToPlay), 未就绪回退第一个未看正片
+    val playTargetId = details.subjectProgressState.episodeIdToPlay
+        ?: episodes.firstOrNull { !it.isDoneOrDropped }?.episodeId
+        ?: episodes.firstOrNull()?.episodeId
+    val playTargetSort = episodes.firstOrNull { it.episodeId == playTargetId }?.sort
+    val watched = episodes.count { it.isDoneOrDropped }
 
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
@@ -218,11 +292,11 @@ private fun SubjectContent(
                     horizontalArrangement = Arrangement.spacedBy(32.dp),
                     verticalAlignment = Alignment.Bottom,
                 ) {
-                    // 左列: 播放按钮 (继续观看 N / 开始观看)
+                    // 左列: 播放按钮 (续播目标 = 手机 SubjectProgressState.episodeIdToPlay 同款语义)
                     Column(Modifier.width(210.dp)) {
-                        if (playTarget != null) {
-                            val label = if (watched > 0) {
-                                "继续观看 第 ${playTarget.episodeInfo.sort} 话"
+                        if (playTargetId != null) {
+                            val label = if (watched > 0 && playTargetSort != null) {
+                                "继续观看 第 $playTargetSort 话"
                             } else {
                                 "开始观看"
                             }
@@ -230,7 +304,7 @@ private fun SubjectContent(
                                 text = label,
                                 icon = Icons.Rounded.PlayArrow,
                                 filled = true,
-                                onClick = { onPlayEpisode(playTarget.episodeId) },
+                                onClick = { onPlayEpisode(playTargetId) },
                                 onFocused = {},
                                 modifier = Modifier.tvFocusAnchor(focus, TvDetailsFocus.Play),
                             )
@@ -250,7 +324,7 @@ private fun SubjectContent(
                                     color = tvHeroContentColor(),
                                 )
                             }
-                            val latest = info.airingInfo.latestSort
+                            val latest = airingCollection?.airingInfo?.latestSort
                             val total = subjectInfo.totalEpisodes.takeIf { it > 0 }
                             val progress = buildString {
                                 if (latest != null) append("连载至 $latest")
@@ -301,7 +375,7 @@ private fun SubjectContent(
                     }
 
                     // 右列: 评分直方图 + 分数
-                    RatingBlock(info)
+                    RatingBlock(subjectInfo)
                 }
             }
 
@@ -322,7 +396,7 @@ private fun SubjectContent(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(start = TV_DETAILS_PAD, end = TV_DETAILS_PAD),
                 ) {
-                    items(info.episodes, key = { it.episodeId }) { episode ->
+                    items(episodes, key = { it.episodeId }) { episode ->
                         TvEpisodeCard(
                             episode = episode,
                             imageUrl = episodeStills[episode.episodeId]
@@ -356,8 +430,8 @@ private fun StatColumn(value: Int, label: String, modifier: Modifier = Modifier)
 
 /** 评分直方图 (1..10 竖条) + 分数 + 评分人数. */
 @Composable
-private fun RatingBlock(info: SubjectCollectionInfo, modifier: Modifier = Modifier) {
-    val rating = info.subjectInfo.ratingInfo
+private fun RatingBlock(info: SubjectInfo, modifier: Modifier = Modifier) {
+    val rating = info.ratingInfo
     val counts = (1..10).map { rating.count.get(it) }
     val max = (counts.maxOrNull() ?: 0).coerceAtLeast(1)
 
@@ -417,12 +491,12 @@ private fun RatingBlock(info: SubjectCollectionInfo, modifier: Modifier = Modifi
 /** 选集剧照卡: 16:9, 色圈+留白焦点 (与竖版卡同规格), 卡内左下角序号+标题. */
 @Composable
 private fun TvEpisodeCard(
-    episode: EpisodeCollectionInfo,
+    episode: EpisodeListItem,
     imageUrl: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val watched = episode.collectionType.isDoneOrDropped()
+    val watched = episode.isDoneOrDropped
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
 
@@ -470,12 +544,12 @@ private fun TvEpisodeCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    episode.episodeInfo.sort.toString(),
+                    episode.sort.toString(),
                     style = MaterialTheme.typography.titleMedium,
                     color = if (watched) Color.White.copy(alpha = 0.55f) else Color.White,
                 )
                 Text(
-                    episode.episodeInfo.displayName,
+                    episode.nameCn.ifBlank { episode.name },
                     style = MaterialTheme.typography.bodySmall,
                     color = if (watched) Color.White.copy(alpha = 0.55f) else Color.White,
                     maxLines = 1,

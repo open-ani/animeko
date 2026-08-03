@@ -27,6 +27,7 @@ import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,11 +39,12 @@ import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.lifecycle.viewmodel.compose.viewModel
+import me.him188.ani.app.data.repository.user.UserRepository
+import me.him188.ani.app.domain.usecase.GlobalKoin
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.tv.ui.collection.TvCollectionScreen
 import me.him188.ani.tv.ui.exploration.TvExplorationScreen
-import me.him188.ani.tv.ui.exploration.TvExplorationViewModel
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
@@ -51,7 +53,6 @@ import me.him188.ani.tv.ui.foundation.widgets.TvNavigationRailDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvNavigationSideRail
 import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
 import me.him188.ani.tv.ui.login.TvLoginScreen
-import me.him188.ani.tv.ui.login.TvLoginViewModel
 import me.him188.ani.tv.ui.schedule.TvScheduleScreen
 import me.him188.ani.tv.ui.search.TvSearchScreen
 import me.him188.ani.tv.ui.search.TvSearchViewModel
@@ -90,8 +91,8 @@ fun TvMainShell(modifier: Modifier = Modifier) {
     }
 
     val navigator = LocalNavigator.current
-    val loginViewModel = viewModel { TvLoginViewModel() }
-    val selfInfo by loginViewModel.selfInfo.collectAsState()
+    // rail 头像的登录态 (登录页状态层已复用手机 EmailLoginViewModel, 这里直取仓库)
+    val selfInfo by remember { GlobalKoin.get<UserRepository>() }.selfInfoFlow.collectAsState(null)
 
     // 菜单键从页面任意位置直达侧边栏 (焦点落到"探索"条目, rail 随 hasFocus 自动展开):
     // rail 的常规进入是"按左", 焦点在卡片行深处时要连按多次, 菜单键是一步到位的快捷路径
@@ -113,7 +114,6 @@ fun TvMainShell(modifier: Modifier = Modifier) {
             ) { current ->
                 when (current) {
                     TvShellContent.Exploration -> TvExplorationScreen(
-                        viewModel { TvExplorationViewModel() },
                         onClickSubject = { hero ->
                             navigator.navigateSubjectDetails(
                                 hero.subjectId,
@@ -173,7 +173,6 @@ fun TvMainShell(modifier: Modifier = Modifier) {
                     )
 
                     TvShellContent.Login -> TvLoginScreen(
-                        loginViewModel,
                         onLoggedIn = { content = TvShellContent.Exploration },
                     )
 

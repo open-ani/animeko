@@ -62,8 +62,25 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.paging.compose.collectWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItems
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
+import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
+import me.him188.ani.app.data.network.BangumiSummaryService
+import me.him188.ani.app.data.network.TmdbImageService
+import me.him188.ani.app.data.network.newestAiredDateStringOrNull
+import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
+import me.him188.ani.app.domain.usecase.GlobalKoin
+import me.him188.ani.app.ui.main.ExplorationPageViewModel
 import me.him188.ani.app.data.models.recommend.RecommendedSubjectInfo
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
@@ -76,6 +93,7 @@ import me.him188.ani.tv.ui.foundation.widgets.TV_BACKDROP_LEFT_FADE_END
 import me.him188.ani.tv.ui.foundation.widgets.TV_BACKDROP_LEFT_FADE_START
 import me.him188.ani.tv.ui.foundation.widgets.TV_BACKDROP_TOP_SCRIM_ALPHA
 import me.him188.ani.tv.ui.foundation.widgets.TV_BACKDROP_TOP_SCRIM_END
+import me.him188.ani.tv.ui.foundation.widgets.TV_HERO_MEDIA_DEBOUNCE_MILLIS
 import me.him188.ani.tv.ui.foundation.widgets.TV_HERO_SUMMARY_WIDTH_FRACTION
 import me.him188.ani.tv.ui.foundation.widgets.TV_HERO_TEXT_FADE_MILLIS
 import me.him188.ani.tv.ui.foundation.widgets.TV_HERO_TITLE_WIDTH_FRACTION
@@ -89,6 +107,13 @@ import me.him188.ani.tv.ui.foundation.widgets.tvBackdropFadeToBlackStops
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroSecondaryContentColor
 import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
+
+/** 探索页 hero 区当前展示的条目 (聚焦卡/轮播驱动). */
+data class TvHeroSubject(
+    val subjectId: Int,
+    val title: String,
+    val imageUrl: String,
+)
 
 /** 探索页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private enum class TvExplorationFocus : TvFocusKey {
@@ -109,15 +134,25 @@ private enum class TvExplorationFocus : TvFocusKey {
  */
 @Composable
 fun TvExplorationScreen(
-    viewModel: TvExplorationViewModel,
     onClickSubject: (TvHeroSubject) -> Unit,
     onPlaySubject: (TvHeroSubject) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val trends by viewModel.trends.collectAsState()
-    val recommendations = viewModel.recommendations.collectAsLazyPagingItems()
+    // 状态层复用手机 ExplorationPageViewModel/ExplorationPageState (D3)
+    val pageViewModel = viewModel<ExplorationPageViewModel> { ExplorationPageViewModel() }
+    val pageState = pageViewModel.explorationPageState
+    val trendsPager = pageState.trendingSubjectInfoPager.collectWithLifecycle()
+    val recommendations = pageState.recommendationPager.collectAsLazyPagingItems()
 
-    val carouselSize = minOf(trends.size, TV_CAROUSEL_MAX_DOTS)
+    // hero 异步加载缓存 (TV 特有, 按上游 PR 模式放页内): 标题即时, 详情/backdrop/简介兜底异步
+    val collectionRepo = remember { GlobalKoin.get<SubjectCollectionRepository>() }
+    val tmdb = remember { GlobalKoin.get<TmdbImageService>() }
+    val bangumiSummaryService = remember { GlobalKoin.get<BangumiSummaryService>() }
+    val infoCache = remember { mutableStateMapOf<Int, SubjectCollectionInfo>() }
+    val backdropCache = remember { mutableStateMapOf<Int, String?>() }
+    val summaryFallbackCache = remember { mutableStateMapOf<Int, String>() }
+
+    val carouselSize = minOf(trendsPager.itemCount, TV_CAROUSEL_MAX_DOTS)
     var carouselIndex by rememberSaveable { mutableIntStateOf(0) }
     var carouselInteraction by remember { mutableIntStateOf(0) }
     // 焦点是否在 hero 按钮区 (轮播态); 焦点下移进卡片区后 hero 由聚焦卡驱动
@@ -128,13 +163,43 @@ fun TvExplorationScreen(
     focus.Resolver()
     focus.InitialFocus(TvExplorationFocus.Play)
 
-    val carouselItem = trends.getOrNull(carouselIndex.coerceIn(0, (carouselSize - 1).coerceAtLeast(0)))
+    val carouselItem = (if (carouselSize > 0) {
+        trendsPager[carouselIndex.coerceIn(0, carouselSize - 1)]
+    } else null)
         ?.let { TvHeroSubject(it.bangumiId, it.nameCn, it.imageLarge) }
     val hero = (if (heroFocused) carouselItem else focusedCardSubject) ?: carouselItem
 
-    // hero 变化上报 VM 拉数据 (标题即时, 详情/backdrop 异步)
-    LaunchedEffect(hero?.subjectId) {
-        hero?.let { viewModel.setFocusedSubject(it) }
+    // hero 变化驱动异步加载 (collectLatest: 换卡取消在途请求; 防抖 300ms 快速划过不发请求)
+    var heroTarget by remember { mutableStateOf<TvHeroSubject?>(null) }
+    LaunchedEffect(hero?.subjectId) { hero?.let { heroTarget = it } }
+    LaunchedEffect(Unit) {
+        snapshotFlow { heroTarget }.filterNotNull().collectLatest { target ->
+            var info = infoCache[target.subjectId]
+            if (info == null) {
+                delay(TV_HERO_MEDIA_DEBOUNCE_MILLIS)
+                info = try {
+                    collectionRepo.subjectCollectionFlow(target.subjectId).first()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    null
+                } ?: return@collectLatest
+                infoCache[target.subjectId] = info
+            }
+            if (target.subjectId !in backdropCache) {
+                runCatching {
+                    tmdb.getBackdropUrl(
+                        target.subjectId,
+                        info.subjectInfo.name,
+                        activeAsOfDate = info.episodes.newestAiredDateStringOrNull(),
+                    )
+                }.onSuccess { url -> backdropCache[target.subjectId] = url }
+            }
+            if (info.subjectInfo.summary.isBlank() && target.subjectId !in summaryFallbackCache) {
+                runCatching { bangumiSummaryService.getSummary(target.subjectId) }
+                    .onSuccess { summaryFallbackCache[target.subjectId] = it.orEmpty() }
+            }
+        }
     }
 
     // 自动轮播: 焦点在 hero 且用户静止 6s 切下一个; 手动切换重置计时
@@ -146,8 +211,8 @@ fun TvExplorationScreen(
         }
     }
 
-    val info = hero?.let { viewModel.infoCache[it.subjectId] }
-    val backdropUrl = hero?.let { viewModel.backdropCache[it.subjectId] } ?: hero?.imageUrl
+    val info = hero?.let { infoCache[it.subjectId] }
+    val backdropUrl = hero?.let { backdropCache[it.subjectId] } ?: hero?.imageUrl
     val shellBackground = tvShellBackgroundColor()
 
     // backdrop 下缘渐隐起点: hero 态低 (露更多图), 卡片态高; 焦点移动时插值过渡
@@ -275,7 +340,7 @@ fun TvExplorationScreen(
                 }
                 // 简介: weight 填满信息块剩余空间
                 val summary = info?.subjectInfo?.summary?.takeIf { it.isNotBlank() }
-                    ?: hero?.let { viewModel.summaryFallbackCache[it.subjectId] }
+                    ?: hero?.let { summaryFallbackCache[it.subjectId] }
                 Crossfade(
                     summary,
                     Modifier.padding(top = 8.dp).weight(1f),
@@ -382,7 +447,8 @@ fun TvExplorationScreen(
                         horizontalArrangement = Arrangement.spacedBy(TV_PAGE_CARD_SPACING),
                         contentPadding = PaddingValues(end = TV_PAGE_END_PAD),
                     ) {
-                        itemsIndexed(trends, key = { _, it -> it.bangumiId }) { index, subject ->
+                        items(trendsPager.itemCount, key = { trendsPager.peek(it)?.bangumiId ?: it }) { index ->
+                            val subject = trendsPager[index] ?: return@items
                             val item = TvHeroSubject(subject.bangumiId, subject.nameCn, subject.imageLarge)
                             TvPortraitCard(
                                 imageUrl = subject.imageLarge,

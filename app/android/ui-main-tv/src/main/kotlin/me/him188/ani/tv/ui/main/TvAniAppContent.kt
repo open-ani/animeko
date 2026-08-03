@@ -27,8 +27,8 @@ import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.tv.ui.episode.TvEpisodeScreen
 import me.him188.ani.tv.ui.episode.TvEpisodeViewModel
+import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.tv.ui.subject.TvSubjectDetailsScreen
-import me.him188.ani.tv.ui.subject.TvSubjectDetailsViewModel
 import kotlin.reflect.typeOf
 
 /**
@@ -63,11 +63,11 @@ fun TvAniAppContent(
                     ),
                 ) { backStackEntry ->
                     val route = backStackEntry.toRoute<NavRoutes.SubjectDetail>()
-                    val vm = viewModel<TvSubjectDetailsViewModel>(key = route.subjectId.toString()) {
-                        TvSubjectDetailsViewModel(route.subjectId)
-                    }
                     TvSubjectDetailsScreen(
-                        vm,
+                        subjectId = route.subjectId,
+                        placeholder = route.placeholder?.run {
+                            SubjectInfo.createPlaceholder(id, name, coverUrl, nameCN)
+                        },
                         onPlayEpisode = { episodeId ->
                             aniNavigator.navigateEpisodeDetails(route.subjectId, episodeId)
                         },

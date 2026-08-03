@@ -42,6 +42,19 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.exploration.schedule.",
         // 追番状态层复用 (D3: UserCollectionsViewModel/UserCollectionsState; UI composable 仍禁用)
         "me.him188.ani.app.ui.subject.collection.",
+        // 详情页状态层复用 (D3: SubjectDetailsViewModel/SubjectDetailsState; UI composable 仍禁用)
+        "me.him188.ani.app.ui.subject.details.",
+        // 选集列表数据类 (EpisodeListUiState/EpisodeListItem, 详情页选集卡数据)
+        "me.him188.ani.app.ui.subject.episode.list.",
+        // 登录状态层复用 (D3: EmailLoginViewModel/EmailLoginUiState)
+        "me.him188.ani.app.ui.login.",
+        // 探索/搜索状态层复用 (D3: 精确到类, ui.main 包下还有手机壳 UI)
+        "me.him188.ani.app.ui.main.ExplorationPageViewModel",
+        "me.him188.ani.app.ui.main.SearchViewModel",
+        "me.him188.ani.app.ui.exploration.ExplorationPageState",
+        "me.him188.ani.app.ui.exploration.search.",
+        // 登录态 UI 状态 (SelfInfoUiState/SelfInfoStateProducer)
+        "me.him188.ani.app.ui.user.",
     )
 
     /** TV 代码 = app/android 下全部 ui-*-tv 模块 + src/tv 出包胶水 (§4.1). */

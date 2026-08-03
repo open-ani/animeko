@@ -27,6 +27,9 @@ android {
 dependencies {
     api(projects.app.android.uiFoundationTv)
     implementation(projects.app.shared.appData)
+    // 仅复用其登录状态层 (EmailLoginViewModel/EmailLoginUiState, D3); UI 自绘
+    implementation(projects.app.shared.uiOnboarding)
     api(projects.app.shared.uiFoundation) // 仅白名单基建: AbstractViewModel (§4.2)
     implementation(libs.koin.core)
+    implementation(libs.compose.lifecycle.viewmodel.compose)
 }
