@@ -38,6 +38,8 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.search.renderLoadErrorToastMessage",
         // v4 (对齐上游 PR#3217) 新增: 侧边栏头像
         "me.him188.ani.app.ui.foundation.avatar.",
+        // 时间表状态层复用 (D3: ScheduleViewModel/presentation 数据类; UI composable 仍禁用)
+        "me.him188.ani.app.ui.exploration.schedule.",
     )
 
     /** TV 代码 = app/android 下全部 ui-*-tv 模块 + src/tv 出包胶水 (§4.1). */

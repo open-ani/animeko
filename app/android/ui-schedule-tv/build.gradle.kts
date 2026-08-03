@@ -27,7 +27,10 @@ android {
 dependencies {
     api(projects.app.android.uiFoundationTv)
     implementation(projects.app.shared.appData)
+    // 仅复用其 schedule 状态层 (ScheduleViewModel/presentation, D3); UI 一律自绘
+    implementation(projects.app.shared.uiExploration)
     api(projects.app.shared.uiFoundation) // 仅白名单基建: AsyncImage / AbstractViewModel (§4.2)
     implementation(libs.koin.core)
     implementation(libs.kotlinx.datetime)
+    implementation(libs.compose.lifecycle.viewmodel.compose)
 }
