@@ -40,6 +40,8 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.foundation.avatar.",
         // 时间表状态层复用 (D3: ScheduleViewModel/presentation 数据类; UI composable 仍禁用)
         "me.him188.ani.app.ui.exploration.schedule.",
+        // 追番状态层复用 (D3: UserCollectionsViewModel/UserCollectionsState; UI composable 仍禁用)
+        "me.him188.ani.app.ui.subject.collection.",
     )
 
     /** TV 代码 = app/android 下全部 ui-*-tv 模块 + src/tv 出包胶水 (§4.1). */

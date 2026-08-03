@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -26,12 +27,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.paging.compose.collectWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Tab
 import androidx.tv.material3.TabRow
 import androidx.tv.material3.Text
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
+import me.him188.ani.app.ui.subject.collection.COLLECTION_TABS_SORTED
+import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
@@ -50,18 +54,26 @@ private enum class TvCollectionFocus : TvFocusKey {
 }
 
 /**
- * TV 追番页 (atv-architecture.md §7.4, M2):
+ * TV 追番页 (atv-architecture.md §7.4):
  * 顶部 TabRow (聚焦即选中 + 数量角标) + Adaptive 网格.
+ *
+ * 状态层复用手机 UserCollectionsViewModel/UserCollectionsState (D3): 每 tab 独立缓存的
+ * LazyPagingItems 与网格滚动状态 (跨 tab 保留数据与位置)、登录变更自动刷新.
+ * [UserCollectionsViewModel.navigator] 是手机装配的 lateinit, TV 侧不触碰.
  */
 @Composable
 fun TvCollectionScreen(
-    viewModel: TvCollectionViewModel,
     onClickSubject: (SubjectCollectionInfo) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val counts by viewModel.counts.collectAsState()
-    val items = viewModel.pager.collectAsLazyPagingItems()
-    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+    val viewModel = viewModel<UserCollectionsViewModel> { UserCollectionsViewModel() }
+    val state = viewModel.state
+    val counts = state.collectionCounts
+    val selectedTabIndex = state.selectedTypeIndex
+    // 每 tab 独立缓存 (状态持有式 LazyPagingItems, desktop 消费模式同款)
+    val items = remember(selectedTabIndex) {
+        state.getCollectionLazyPagingItems(selectedTabIndex)
+    }.collectWithLifecycle()
 
     // 统一焦点框架: 进页初始焦点落第一个 tab; tab 行按下键直达网格首卡
     val focus = rememberTvFocusScope()
@@ -73,13 +85,12 @@ fun TvCollectionScreen(
             selectedTabIndex = selectedTabIndex,
             modifier = Modifier.padding(start = 48.dp),
         ) {
-            viewModel.tabs.forEachIndexed { index, type ->
+            COLLECTION_TABS_SORTED.forEachIndexed { index, type ->
                 Tab(
                     selected = selectedTabIndex == index,
                     onFocus = {
                         // 聚焦即选中 (PR 语义, §5.2)
-                        selectedTabIndex = index
-                        viewModel.selectTab(type)
+                        if (selectedTabIndex != index) state.selectTypeIndex(index)
                     },
                     modifier = Modifier
                         .then(
@@ -111,6 +122,7 @@ fun TvCollectionScreen(
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(124.dp),
+                state = state.getGridState(selectedTabIndex), // 跨 tab 保留滚动位置
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 16.dp, bottom = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),

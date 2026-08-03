@@ -41,7 +41,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.tv.ui.collection.TvCollectionScreen
-import me.him188.ani.tv.ui.collection.TvCollectionViewModel
 import me.him188.ani.tv.ui.exploration.TvExplorationScreen
 import me.him188.ani.tv.ui.exploration.TvExplorationViewModel
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
@@ -145,7 +144,6 @@ fun TvMainShell(modifier: Modifier = Modifier) {
                     )
 
                     TvShellContent.Collection -> TvCollectionScreen(
-                        viewModel { TvCollectionViewModel() },
                         onClickSubject = { info ->
                             navigator.navigateSubjectDetails(
                                 info.subjectId,

@@ -27,7 +27,11 @@ android {
 dependencies {
     api(projects.app.android.uiFoundationTv)
     implementation(projects.app.shared.appData)
+    // 仅复用其 collection 状态层 (UserCollectionsViewModel/UserCollectionsState, D3); UI 自绘
+    implementation(projects.app.shared.uiSubject)
+    implementation(projects.app.shared.pagingCompose) // fork 版 LazyPagingItems (状态持有式)
     api(projects.app.shared.uiFoundation) // 仅白名单基建: AsyncImage / AbstractViewModel (§4.2)
     implementation(libs.koin.core)
+    implementation(libs.compose.lifecycle.viewmodel.compose)
     implementation(libs.paging.compose.android)
 }
