@@ -10,6 +10,7 @@
 package me.him188.ani.tools.datasourcetestmcp.resolver
 
 import io.ktor.http.HttpHeaders
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -137,6 +138,7 @@ class WebViewVideoResolverEngine(
                 errors = if (video == null) listOf("No video URL matched by the webview resolver engine") else emptyList(),
             )
         }.getOrElse { exception ->
+            if (exception is CancellationException) throw exception
             ResolveResult(
                 diagnostics = diagnostics(
                     pageUrl = pageUrl,

@@ -10,9 +10,10 @@
 package me.him188.ani.tools.datasourcetestmcp.source
 
 import io.ktor.client.HttpClient
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
@@ -82,6 +83,7 @@ class SourceTestService(
                 durationMillis = System.currentTimeMillis() - metadataStart,
             )
         }.onFailure { exception ->
+            if (exception is CancellationException) throw exception
             errors += "Ani metadata lookup failed: ${exception.message.orEmpty()}"
             stages += StageResult(
                 name = "ani_metadata",
@@ -110,12 +112,12 @@ class SourceTestService(
                     val sourceFetchStart = System.currentTimeMillis()
                     val sourceResult = runCatching {
                         val connection = source.checkConnection()
-                        val matches = withTimeout(input.fetchTimeoutMillis) {
+                        val matches = withTimeoutOrNull(input.fetchTimeoutMillis) {
                             source.fetch(metadata.request)
                                 .results
                                 .take(input.maxCandidates)
                                 .toList()
-                        }
+                        } ?: error("Source fetch timed out after ${input.fetchTimeoutMillis}ms")
                         connection to matches
                     }
                     val sourceFetchDuration = System.currentTimeMillis() - sourceFetchStart
@@ -132,6 +134,7 @@ class SourceTestService(
                             },
                         )
                     }.onFailure { exception ->
+                        if (exception is CancellationException) throw exception
                         errors += "Fetch failed for ${source.mediaSourceId}: ${exception.message.orEmpty()}"
                         val handshakeHint = handshakeFailureDomainAdvisor.analyzeIfNeeded(
                             sourceName = source.info.displayName,
@@ -229,9 +232,15 @@ class SourceTestService(
             )
 
             val probeStart = System.currentTimeMillis()
-            val probeResult = withTimeout(input.probeTimeoutMillis) {
+            val probeResult = withTimeoutOrNull(input.probeTimeoutMillis) {
                 probe.probe(resolved.url, resolved.headers)
-            }
+            } ?: VideoProbeResult(
+                ok = false,
+                url = resolved.url,
+                kind = "unknown",
+                summary = "HTTP probe timed out",
+                errors = listOf("HTTP probe timed out after ${input.probeTimeoutMillis}ms"),
+            )
             stages += StageResult(
                 name = "video_probe",
                 status = if (probeResult.ok) "success" else "failed",
@@ -393,7 +402,9 @@ class SourceTestService(
                     successfulChannels.forEach { add(JsonPrimitive(it.candidate.mediaId)) }
                 })
             },
-            errors = channelResults.filter { it.probeStatus == "failed" }.flatMap { it.errors },
+            errors = channelResults
+                .filter { it.probeStatus == "failed" || it.probeStatus == "timeout" }
+                .flatMap { it.errors },
             durationMillis = channelResults.mapNotNull { it.probeDurationMillis }.sum(),
         )
 

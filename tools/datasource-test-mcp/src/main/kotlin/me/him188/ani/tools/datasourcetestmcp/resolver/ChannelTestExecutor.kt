@@ -9,7 +9,8 @@
 
 package me.him188.ani.tools.datasourcetestmcp.resolver
 
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.matcher.WebVideoMatcher
 import me.him188.ani.datasources.api.source.MediaMatch
@@ -33,7 +34,7 @@ internal class ChannelTestExecutor(
     ): List<ChannelTestResult> {
         val results = mutableListOf<ChannelTestResult>()
         playableCandidates.forEachIndexed { index, match ->
-            val result = runCatching {
+            val result = try {
                 testCandidate(
                     order = index + 1,
                     match = match,
@@ -41,7 +42,9 @@ internal class ChannelTestExecutor(
                     probeTimeoutMillis = probeTimeoutMillis,
                     probeEnabled = probeEnabled,
                 )
-            }.getOrElse { exception ->
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Throwable) {
                 ChannelTestResult(
                     order = index + 1,
                     candidate = match.toCandidateResult(),
@@ -99,8 +102,43 @@ internal class ChannelTestExecutor(
         }
 
         val probeStart = System.currentTimeMillis()
-        val probeResult = withTimeout(probeTimeoutMillis) {
-            probe.probe(resolvedVideo.url, resolvedVideo.headers)
+        val probeResult = try {
+            withTimeoutOrNull(probeTimeoutMillis) {
+                probe.probe(resolvedVideo.url, resolvedVideo.headers)
+            }
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Throwable) {
+            return ChannelTestResult(
+                order = order,
+                candidate = candidate,
+                resolveStatus = "success",
+                probeStatus = "failed",
+                ok = false,
+                summary = "Resolved final video URL, but HTTP probe threw ${exception::class.simpleName}",
+                resolvedVideo = resolvedVideo,
+                resolveDiagnostics = resolveResult.diagnostics,
+                errors = resolveResult.errors +
+                        "${exception::class.simpleName}: ${exception.message.orEmpty()}",
+                resolveDurationMillis = resolveDuration,
+                probeDurationMillis = System.currentTimeMillis() - probeStart,
+            )
+        }
+        if (probeResult == null) {
+            return ChannelTestResult(
+                order = order,
+                candidate = candidate,
+                resolveStatus = "success",
+                probeStatus = "timeout",
+                ok = false,
+                summary = "Resolved final video URL, but HTTP probe timed out",
+                resolvedVideo = resolvedVideo,
+                resolveDiagnostics = resolveResult.diagnostics,
+                errors = resolveResult.errors +
+                        "HTTP probe timed out after ${probeTimeoutMillis}ms",
+                resolveDurationMillis = resolveDuration,
+                probeDurationMillis = System.currentTimeMillis() - probeStart,
+            )
         }
         val probeDuration = System.currentTimeMillis() - probeStart
         return ChannelTestResult(

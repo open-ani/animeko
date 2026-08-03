@@ -14,6 +14,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
@@ -73,6 +74,7 @@ class HandshakeFailureDomainAdvisor(
                 },
             )
         }.getOrElse { searchError ->
+            if (searchError is CancellationException) throw searchError
             HandshakeFailureDomainHint(
                 currentHost = currentHost,
                 searchProvider = "bing-rss",

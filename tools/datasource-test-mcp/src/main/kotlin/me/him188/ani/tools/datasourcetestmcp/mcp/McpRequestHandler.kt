@@ -9,6 +9,7 @@
 
 package me.him188.ani.tools.datasourcetestmcp.mcp
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
@@ -77,6 +78,7 @@ class McpRequestHandler(
         val structured = runCatching {
             toolCallMutex.withLock { registration.handler(arguments) }
         }.getOrElse { exception ->
+            if (exception is CancellationException) throw exception
             val errorResult = buildJsonObject {
                 put("ok", false)
                 put("summary", "${exception::class.simpleName}: ${exception.message.orEmpty()}")

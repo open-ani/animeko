@@ -14,6 +14,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.Url
+import kotlinx.coroutines.CancellationException
 import me.him188.ani.app.domain.media.hls.HlsManifestFilter
 import me.him188.ani.app.domain.media.hls.HlsManifestFilterStatus
 import me.him188.ani.utils.httpdownloader.m3u.DefaultM3u8Parser
@@ -51,6 +52,7 @@ class M3u8AdAnalyzer(
         return runCatching {
             analyzePlaylist(url, headers, depth = 0)
         }.getOrElse { e ->
+            if (e is CancellationException) throw e
             AdAnalysisResult(
                 suspicion = "unknown",
                 reasons = listOf("播放列表分析失败: ${e::class.simpleName}: ${e.message.orEmpty()}"),
@@ -156,6 +158,7 @@ class M3u8AdAnalyzer(
                 removedGroups = removedGroups,
             )
         }.getOrElse { e ->
+            if (e is CancellationException) throw e
             errors += "Ani HLS 广告过滤器分析失败: ${e::class.simpleName}: ${e.message.orEmpty()}"
             null
         }

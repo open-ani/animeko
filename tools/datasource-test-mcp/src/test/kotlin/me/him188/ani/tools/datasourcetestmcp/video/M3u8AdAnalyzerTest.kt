@@ -14,9 +14,13 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.headersOf
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -99,6 +103,17 @@ class M3u8AdAnalyzerTest {
         assertEquals("filtered", hlsFilter.status)
         assertTrue(hlsFilter.filterable)
         assertEquals(1, hlsFilter.removedGroups.size)
+    }
+
+    @Test
+    fun cancellation_is_propagated() = runTest {
+        val analyzer = M3u8AdAnalyzer(HttpClient(MockEngine { awaitCancellation() }))
+
+        assertFailsWith<TimeoutCancellationException> {
+            withTimeout(1) {
+                analyzer.analyze("https://cdn.example.com/media.m3u8", emptyMap())
+            }
+        }
     }
 
     private fun analyzerServing(vararg pages: Pair<String, String>): M3u8AdAnalyzer {

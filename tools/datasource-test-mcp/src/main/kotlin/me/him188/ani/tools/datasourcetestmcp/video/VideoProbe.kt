@@ -18,6 +18,7 @@ import io.ktor.client.statement.request
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.CancellationException
 import me.him188.ani.utils.ktor.UrlHelpers
 
 interface VideoUrlProbeEngine {
@@ -98,6 +99,7 @@ class VideoProbe(
                 errors = if (response.status.isSuccess()) emptyList() else listOf("Probe returned ${response.status.value}"),
             )
         }.getOrElse { exception ->
+            if (exception is CancellationException) throw exception
             VideoProbeResult(
                 ok = false,
                 url = url,

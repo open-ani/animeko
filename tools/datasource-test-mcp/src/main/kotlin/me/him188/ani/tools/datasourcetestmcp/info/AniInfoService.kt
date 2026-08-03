@@ -10,6 +10,7 @@
 package me.him188.ani.tools.datasourcetestmcp.info
 
 import io.ktor.client.HttpClient
+import kotlinx.coroutines.CancellationException
 import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.client.apis.TrendsAniApi
 import me.him188.ani.client.models.AniEpisodeCollection
@@ -32,7 +33,10 @@ class AniInfoService(
             val subjects = response.items.map { item ->
                 val episodes = if (input.includeEpisodes) {
                     runCatching { api.getSubject(item.id).body().episodes.map { it.toEpisodeResult() } }
-                        .getOrNull()
+                        .getOrElse { exception ->
+                            if (exception is CancellationException) throw exception
+                            null
+                        }
                 } else {
                     null
                 }
@@ -51,6 +55,7 @@ class AniInfoService(
                 subjects = subjects,
             )
         }.getOrElse { exception ->
+            if (exception is CancellationException) throw exception
             SearchSubjectsResult(
                 ok = false,
                 summary = "Subject search failed",
@@ -76,6 +81,7 @@ class AniInfoService(
                 ),
             )
         }.getOrElse { exception ->
+            if (exception is CancellationException) throw exception
             GetSubjectEpisodesResult(
                 ok = false,
                 summary = "Failed to fetch subject ${input.subjectId}",
@@ -105,6 +111,7 @@ class AniInfoService(
                 subjects = trending,
             )
         }.getOrElse { exception ->
+            if (exception is CancellationException) throw exception
             GetTrendsResult(
                 ok = false,
                 summary = "Failed to fetch trends",
