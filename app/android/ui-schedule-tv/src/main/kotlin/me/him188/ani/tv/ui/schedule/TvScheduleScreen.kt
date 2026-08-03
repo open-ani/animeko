@@ -29,7 +29,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -60,6 +60,7 @@ import kotlinx.datetime.isoDayNumber
 import me.him188.ani.app.ui.exploration.schedule.AiringScheduleColumnItem
 import me.him188.ani.app.ui.exploration.schedule.AiringScheduleItemPresentation
 import me.him188.ani.app.ui.exploration.schedule.ScheduleDay
+import me.him188.ani.app.ui.exploration.schedule.ScheduleScreenState
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.datasources.api.EpisodeSort
@@ -77,12 +78,15 @@ private enum class TvScheduleFocus : TvFocusKey {
 }
 
 /*
- * TV 新番时间表: 手机端 ScheduleScreen 的布局搬运 (atv-architecture.md §7.2) ——
- * 顶部日期 tab 行 + 每天一列「时间线列表」(时间行 / 56dp 封面 / 标题 / 集数副行 /
- * 当前时间指示器 / 占位骨架), 状态层直接复用手机 ScheduleViewModel (D3).
+ * TV 新番时间表: 手机端 ScheduleScreen 宽屏 (Medium) 布局的搬运 (atv-architecture.md §7.2) ——
+ * 多天并排的固定宽列 (360dp) 横向排列, 列头为「M/d + 周几」(今天主题色 + 圆头分隔线),
+ * 每列一条时间线列表 (时间行 / 56dp 封面 / 标题 / 集数副行 / 当前时间指示器 / 占位骨架).
+ * 状态层直接复用手机 ScheduleViewModel + ScheduleScreenState (D3).
  *
- * TV 化差异: tab 的「点击切页 + Pager 滑动」换成「聚焦即切天 + 内容 crossfade」;
- * 列表项聚焦用统一的色圈+留白视觉; 进页初始焦点落「今天」.
+ * 滚动控制: 手机 desktop 用 HorizontalScrollControlScaffoldOnDesktop (鼠标悬停出滚动按钮,
+ * 修 CMP 的 LazyRow 无法鼠标拖动); TV 上它是 Platform.Desktop 分支的空透传, 且 hover/click
+ * 输入源都不存在 —— 跨列横向滚动由焦点系统天然承担 (聚焦移到视口外的列, BringIntoView
+ * 自动滚动 LazyRow), 与 desktop 滚动按钮等效.
  */
 @Composable
 fun TvScheduleScreen(
@@ -92,113 +96,119 @@ fun TvScheduleScreen(
     // 状态层复用手机 ScheduleViewModel (D3); UI 为 TV 自绘
     val viewModel = viewModel<ScheduleViewModel> { ScheduleViewModel() }
     val presentation by viewModel.presentationFlow.collectAsState()
+    // 复用手机 ScheduleScreenState: days + 初始滚动到今天列的 lazyListState + 各列独立列表状态
+    val state = remember { ScheduleScreenState { viewModel.pageState.days } }
 
     val focus = rememberTvFocusScope()
     focus.Resolver()
     focus.InitialFocus(TvScheduleFocus.Today)
 
-    val days = presentation.days
-    val todayIndex = days.indexOfFirst { it.kind == ScheduleDay.Kind.TODAY }.coerceAtLeast(0)
-    var selectedDayIndex by rememberSaveable { mutableIntStateOf(todayIndex) }
-    val chipRowState = rememberLazyListState(initialFirstVisibleItemIndex = todayIndex)
-
-    Column(modifier.fillMaxSize().padding(top = 24.dp)) {
-        // ── 日期 tab 行: 聚焦即切天 (手机为点击 + pager 滑动); 今天主题色 ──
-        LazyRow(
-            state = chipRowState,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(start = TV_SCHEDULE_START_PAD, end = 48.dp),
+    // ── 错误态: 文本 + 重试 ──
+    val error = presentation.error
+    if (error != null) {
+        Column(
+            modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            itemsIndexed(days, key = { _, d -> d.date.toString() }) { index, day ->
-                TvScheduleDayChip(
-                    day = day,
-                    selected = selectedDayIndex == index,
-                    onFocused = { selectedDayIndex = index },
-                    modifier = if (index == todayIndex) {
-                        Modifier.tvFocusAnchor(focus, TvScheduleFocus.Today)
-                    } else Modifier,
-                )
-            }
+            Text(
+                "加载失败了, 请检查网络后重试",
+                style = MaterialTheme.typography.titleMedium,
+                color = tvHeroSecondaryContentColor(),
+            )
+            TvHeroButton(
+                text = "重试",
+                icon = Icons.Rounded.Refresh,
+                filled = true,
+                onClick = { viewModel.refresh() },
+                onFocused = {},
+                modifier = Modifier.padding(top = 16.dp),
+            )
         }
+        return
+    }
 
-        // ── 错误态: 文本 + 重试 ──
-        val error = presentation.error
-        if (error != null) {
-            Column(
-                Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
+    // ── 多列并排 (手机 Medium 档): 固定 360dp 列宽, 列间 16dp, 初始滚动到今天列 ──
+    LazyRow(
+        modifier.fillMaxSize(),
+        state = state.lazyListState,
+        horizontalArrangement = Arrangement.spacedBy(TV_SCHEDULE_PAGE_SPACING),
+        contentPadding = PaddingValues(start = TV_SCHEDULE_START_PAD, end = 48.dp),
+    ) {
+        items(state.days, key = { it.date.toString() }) { day ->
+            val columnItems = presentation.airingSchedules
+                .firstOrNull { it.date == day.date }?.episodes.orEmpty()
+            TvScheduleDayColumn(
+                day = day,
+                items = columnItems,
+                onClickSubject = onClickSubject,
+                focus = focus,
+                modifier = Modifier.width(TV_SCHEDULE_PAGE_WIDTH).fillParentMaxHeight(),
+            )
+        }
+    }
+}
+
+/**
+ * 单天列 (手机 ScheduleDayColumn 布局): 列头 [TvDayOfWeekHeadline] + 时间线 LazyColumn.
+ * 今天列的第一条数据挂 [TvScheduleFocus.Today] 锚点 (进页初始焦点).
+ */
+@Composable
+private fun TvScheduleDayColumn(
+    day: ScheduleDay,
+    items: List<AiringScheduleColumnItem>,
+    onClickSubject: (subjectId: Int) -> Unit,
+    focus: me.him188.ani.tv.ui.foundation.focus.TvFocusScope,
+    modifier: Modifier = Modifier,
+) {
+    val isToday = day.kind == ScheduleDay.Kind.TODAY
+    Column(modifier.padding(top = 20.dp)) {
+        TvDayOfWeekHeadline(day)
+
+        if (items.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
-                    "加载失败了, 请检查网络后重试",
-                    style = MaterialTheme.typography.titleMedium,
+                    "这一天没有新番",
+                    style = MaterialTheme.typography.bodyLarge,
                     color = tvHeroSecondaryContentColor(),
                 )
-                TvHeroButton(
-                    text = "重试",
-                    icon = Icons.Rounded.Refresh,
-                    filled = true,
-                    onClick = { viewModel.refresh() },
-                    onFocused = {},
-                    modifier = Modifier.padding(top = 16.dp),
-                )
             }
-            return@Column
-        }
-
-        // ── 当天时间线列表 (手机 ScheduleDayColumn 布局): 换天 crossfade ──
-        val selectedDay = days.getOrNull(selectedDayIndex)
-        val columnItems = presentation.airingSchedules
-            .firstOrNull { it.date == selectedDay?.date }?.episodes.orEmpty()
-
-        Crossfade(
-            targetState = selectedDay?.date to columnItems,
-            modifier = Modifier.fillMaxSize(),
-            label = "scheduleDay",
-        ) { (_, items) ->
-            if (items.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        "这一天没有新番",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = tvHeroSecondaryContentColor(),
-                    )
-                }
-            } else {
-                LazyColumn(
-                    Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        start = TV_SCHEDULE_START_PAD, end = 48.dp,
-                        top = 16.dp, bottom = 24.dp,
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    items(
-                        items.size,
-                        key = { index ->
-                            when (val item = items[index]) {
-                                is AiringScheduleColumnItem.Data ->
-                                    "data-${item.item.subjectId}-${item.item.episodeId}"
-
-                                is AiringScheduleColumnItem.CurrentTimeIndicator -> "indicator"
-                                is AiringScheduleColumnItem.PlaceholderData -> "placeholder-${item.id}"
-                            }
-                        },
-                    ) { index ->
+        } else {
+            // 今天列的第一条数据 = 初始焦点锚点
+            val firstDataIndex = items.indexOfFirst { it is AiringScheduleColumnItem.Data }
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                items(
+                    items.size,
+                    key = { index ->
                         when (val item = items[index]) {
-                            is AiringScheduleColumnItem.Data -> TvScheduleItem(
-                                item = item.item,
-                                showTime = item.showTime,
-                                onClick = { onClickSubject(item.item.subjectId) },
-                            )
+                            is AiringScheduleColumnItem.Data ->
+                                "data-${item.item.subjectId}-${item.item.episodeId}"
 
-                            is AiringScheduleColumnItem.CurrentTimeIndicator ->
-                                TvScheduleCurrentTimeIndicator(item.currentTime)
-
-                            is AiringScheduleColumnItem.PlaceholderData -> TvScheduleItemSkeleton(
-                                showTime = item.showTime,
-                            )
+                            is AiringScheduleColumnItem.CurrentTimeIndicator -> "indicator"
+                            is AiringScheduleColumnItem.PlaceholderData -> "placeholder-${item.id}"
                         }
+                    },
+                ) { index ->
+                    when (val item = items[index]) {
+                        is AiringScheduleColumnItem.Data -> TvScheduleItem(
+                            item = item.item,
+                            showTime = item.showTime,
+                            onClick = { onClickSubject(item.item.subjectId) },
+                            modifier = if (isToday && index == firstDataIndex) {
+                                Modifier.tvFocusAnchor(focus, TvScheduleFocus.Today)
+                            } else Modifier,
+                        )
+
+                        is AiringScheduleColumnItem.CurrentTimeIndicator ->
+                            TvScheduleCurrentTimeIndicator(item.currentTime)
+
+                        is AiringScheduleColumnItem.PlaceholderData -> TvScheduleItemSkeleton(
+                            showTime = item.showTime,
+                        )
                     }
                 }
             }
@@ -206,50 +216,27 @@ fun TvScheduleScreen(
     }
 }
 
-/** 日期胶囊: 手机 renderScheduleDay 语义 (M/d + 周几, 今天主题色), TV 聚焦即切天. */
+/** 列头 (手机 DayOfWeekHeadline 复刻): 「M/d 周几」headlineSmall, 今天主题色, 下缘 2dp 圆头线. */
 @Composable
-private fun TvScheduleDayChip(
+private fun TvDayOfWeekHeadline(
     day: ScheduleDay,
-    selected: Boolean,
-    onFocused: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val focused by interactionSource.collectIsFocusedAsState()
     val isToday = day.kind == ScheduleDay.Kind.TODAY
-    val container = when {
-        focused -> MaterialTheme.colorScheme.primary
-        selected -> MaterialTheme.colorScheme.secondaryContainer
-        else -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f)
-    }
-    val content = when {
-        focused -> MaterialTheme.colorScheme.onPrimary
-        selected -> MaterialTheme.colorScheme.onSecondaryContainer
-        isToday -> MaterialTheme.colorScheme.primary
-        else -> tvHeroSecondaryContentColor()
-    }
-    Row(
-        modifier
-            .clip(CircleShape)
-            .background(container)
-            .onFocusChanged { if (it.isFocused) onFocused() }
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = {},
-            )
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
+    Column(modifier.padding(horizontal = 16.dp)) {
         Text(
-            if (isToday) "今天" else "${day.date.monthNumber}/${day.date.dayOfMonth}",
-            style = MaterialTheme.typography.titleSmall,
-            color = content,
+            "${day.date.monthNumber}/${day.date.dayOfMonth} ${renderDayOfWeek(day)}",
+            style = MaterialTheme.typography.headlineSmall,
+            color = if (isToday) MaterialTheme.colorScheme.primary else tvHeroContentColor(),
+            softWrap = false,
         )
-        Text(
-            renderDayOfWeek(day),
-            style = MaterialTheme.typography.titleSmall,
-            color = content,
+        Box(
+            Modifier
+                .padding(top = 4.dp)
+                .fillMaxWidth()
+                .height(2.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.outlineVariant),
         )
     }
 }
@@ -267,7 +254,7 @@ private fun TvScheduleItem(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
-    Column(modifier.widthIn(max = TV_SCHEDULE_LIST_MAX_WIDTH)) {
+    Column(modifier) {
         if (showTime) {
             Text(
                 renderTime(item.time),
@@ -339,7 +326,6 @@ private fun TvScheduleCurrentTimeIndicator(
 ) {
     Row(
         modifier
-            .widthIn(max = TV_SCHEDULE_LIST_MAX_WIDTH)
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -371,7 +357,7 @@ private fun TvScheduleItemSkeleton(
     modifier: Modifier = Modifier,
 ) {
     val block = MaterialTheme.colorScheme.surfaceContainerHigh
-    Column(modifier.widthIn(max = TV_SCHEDULE_LIST_MAX_WIDTH)) {
+    Column(modifier) {
         if (showTime) {
             Box(
                 Modifier
@@ -432,15 +418,26 @@ private fun renderEpisode(
     return if (episodeName.isNullOrBlank()) sortDisplay else "$sortDisplay  $episodeName"
 }
 
-private fun renderDayOfWeek(day: ScheduleDay): String = when (day.date.dayOfWeek.isoDayNumber) {
-    1 -> "周一"; 2 -> "周二"; 3 -> "周三"; 4 -> "周四"; 5 -> "周五"; 6 -> "周六"; else -> "周日"
+/** 周几渲染 (手机 renderDayOfWeek 同语义: 上周%s / 周%s / 下周%s). */
+private fun renderDayOfWeek(day: ScheduleDay): String {
+    val weekday = when (day.date.dayOfWeek.isoDayNumber) {
+        1 -> "一"; 2 -> "二"; 3 -> "三"; 4 -> "四"; 5 -> "五"; 6 -> "六"; else -> "日"
+    }
+    return when (day.kind) {
+        ScheduleDay.Kind.LAST_WEEK -> "上周$weekday"
+        ScheduleDay.Kind.THIS_WEEK, ScheduleDay.Kind.TODAY -> "周$weekday"
+        ScheduleDay.Kind.NEXT_WEEK -> "下周$weekday"
+    }
 }
 
 /** 内容左侧留白 (外层已让开侧栏收起宽 48dp). */
 private val TV_SCHEDULE_START_PAD = 16.dp
 
-/** 时间线列表最大宽度 (手机为全宽单列; TV 屏宽, 限宽左对齐保持列表形态). */
-private val TV_SCHEDULE_LIST_MAX_WIDTH = 640.dp
+/** 单天列宽 (手机 Medium 档 PageSize.Fixed(360.dp) 同值). */
+private val TV_SCHEDULE_PAGE_WIDTH = 360.dp
+
+/** 列间距 (手机 Medium 档 pageSpacing 同值). */
+private val TV_SCHEDULE_PAGE_SPACING = 16.dp
 
 /** 列表项圆角. */
 private val TV_SCHEDULE_ITEM_CORNER = 10.dp
