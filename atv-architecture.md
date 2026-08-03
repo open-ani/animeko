@@ -384,6 +384,30 @@ fun TvAnchoredRow(state: LazyListState, content: LazyListScope.() -> Unit) {
 }
 ```
 
+### 5.4.1 统一焦点框架 `TvFocusScope`（v4 实装，取代 5.4 表中部分推断）
+
+§5.4 的对照表写于 v3（假设 tv-material + 官方原语点用即可）。v4 实装期实测推翻了其中两条：
+`requestFocus()` **不能**假设一次成功（触屏设备 touch mode 下 material3 clickable 不参与键盘焦点、
+页面转场头几帧节点未附着、返回值对未附着节点说谎）；跨大段不可聚焦内容的空间焦点搜索**不可靠**
+（落错或落空）。于是把上游 PR 每页手写的调度器泛化成统一框架，落在
+`ui-foundation-tv/focus/TvFocusScope.kt` + `TvFocusModifiers.kt`：
+
+| 概念 | API | 说明 |
+|---|---|---|
+| 锚点标识 | `TvFocusKey`（页面私有 enum 实现，或 `TvFocusKey("name")` 工厂） | 页面内具名焦点位置 |
+| 页面调度器 | `rememberTvFocusScope()` + 根部装 `focus.Resolver()` | 所有程序化聚焦走 `request(key)`，单解析循环消化：轮询 `requestFocus` + **到位确认**（当前聚焦状态 + 事件闩，不信 requestFocus 返回值；已到位不再重发，否则会把用户刚移开的焦点抢回） |
+| 锚点声明 | `Modifier.tvFocusAnchor(scope, key)` | 挂 requester + 焦点得失自动上报（hasFocus，容器/叶子皆可） |
+| 显式方向链接 | `Modifier.tvFocusLink(scope, up/down/left/right)` | 边缘元素声明去向，替代不可靠的空间搜索 |
+| 进入门控 | `Modifier.tvFocusEnterGate(scope, entry, allow)` | 容器只允许白名单方向进入（`FocusDirection.Enter` = 编程式聚焦，通常须包含） |
+| 全局快捷键 | `Modifier.tvFocusHotkey(scope, Key.Menu to key)` | 挂壳根，任意深度一键直达（如菜单键→侧边栏） |
+| 进页初始焦点 | `focus.InitialFocus(key)` | 标准延迟后走同一条 request 解析路径 |
+
+配套前置：触屏设备跑 TV 界面须在壳里 `LocalInputModeManager.requestInputMode(InputMode.Keyboard)`
+（touch mode 下整个键盘焦点系统不工作，真 TV 无此问题）。返回键分层仍用标准 `BackHandler` +
+`focus.request(上层锚点)` 组合。三个既有调用点（主壳菜单键/探索页/详情页）已迁移，真机回归通过。
+尚未纳入框架（需要时再泛化自 PR）：跨区块纵向路由（`TvDetailsSectionNav` 的有序区块表）、
+聚焦吸附滚动（SnapOnFocusSection）、Lazy 网格「聚焦第 N 项」两段解析。
+
 ### 5.5 主题系统 `AniTvTheme`
 
 ```kotlin
