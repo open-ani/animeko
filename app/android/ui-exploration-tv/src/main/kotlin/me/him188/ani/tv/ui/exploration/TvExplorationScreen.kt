@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -164,6 +165,8 @@ fun TvExplorationScreen(
     var heroFocused by remember { mutableStateOf(true) }
     var focusedCardSubject by remember { mutableStateOf<TvHeroSubject?>(null) }
     // 统一焦点框架: 锚点声明 + 显式链接 + 初始焦点共用一个调度器
+    val listState = rememberLazyListState()
+    val uiScope = rememberCoroutineScope()
     val focus = rememberTvFocusScope()
     focus.Resolver()
     focus.InitialFocus(TvExplorationFocus.Play)
@@ -228,67 +231,70 @@ fun TvExplorationScreen(
     )
 
     Box(modifier.fillMaxSize().background(shellBackground).tvFocusNavSignal(focus)) {
-        // Backdrop: 16:9 贴右上, 高度占屏 0.66, 顶缘轻压暗 + 左缘/下缘平滑渐隐 (采样停点无马赫带)
-        Crossfade(
-            backdropUrl,
-            Modifier.align(Alignment.TopEnd),
-            animationSpec = tween(TV_BACKDROP_CROSSFADE_MILLIS),
-            label = "backdrop",
-        ) { url ->
-            if (url != null) {
-                Box(
-                    Modifier
-                        .fillMaxHeight(TV_EXPLORATION_BACKDROP_HEIGHT_FRACTION)
-                        .aspectRatio(16f / 9f, matchHeightConstraintsFirst = true)
-                        .drawWithContent {
-                            drawContent()
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    *tvBackdropFadeFromBlackStops(
-                                        start = 0f, end = TV_BACKDROP_TOP_SCRIM_END,
-                                        maxAlpha = TV_BACKDROP_TOP_SCRIM_ALPHA,
-                                        color = shellBackground,
-                                    ),
-                                ),
-                            )
-                            drawRect(
-                                brush = Brush.horizontalGradient(
-                                    *tvBackdropFadeFromBlackStops(
-                                        start = TV_BACKDROP_LEFT_FADE_START,
-                                        end = TV_BACKDROP_LEFT_FADE_END,
-                                        color = shellBackground,
-                                    ),
-                                ),
-                            )
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    *tvBackdropFadeToBlackStops(
-                                        start = bottomFadeStart,
-                                        end = 1f,
-                                        color = shellBackground,
-                                    ),
-                                ),
-                            )
-                        },
-                ) {
-                    AsyncImage(
-                        url,
-                        contentDescription = null,
-                        Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                    )
-                }
-            }
-        }
-
         // ── 整页单 LazyColumn (用户指定): hero 与卡片区一同纵向滚动 ──
         LazyColumn(
             Modifier.fillMaxSize().padding(start = TV_EXPLORATION_START_PAD),
-            contentPadding = PaddingValues(top = 24.dp, bottom = 16.dp),
+            state = listState,
+            contentPadding = PaddingValues(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(TV_SECTION_HEADER_TO_ROW_GAP),
         ) {
             item(key = "hero") {
-                Column {
+                // backdrop 放 hero item 内部 (hero 参与滚动, 背景图必须随之滚出, 不能固定在根层).
+                // fillMaxWidth 必须给: 否则 Box 宽度收缩成图宽, TopEnd 对齐失效图会靠左压标题
+                Box(Modifier.fillMaxWidth().fillParentMaxHeight(TV_EXPLORATION_BACKDROP_HEIGHT_FRACTION)) {
+                // Backdrop: 16:9 贴右上, 高度占屏 0.66, 顶缘轻压暗 + 左缘/下缘平滑渐隐 (采样停点无马赫带)
+                Crossfade(
+                    backdropUrl,
+                    Modifier.align(Alignment.TopEnd),
+                    animationSpec = tween(TV_BACKDROP_CROSSFADE_MILLIS),
+                    label = "backdrop",
+                ) { url ->
+                    if (url != null) {
+                        Box(
+                            Modifier
+                                .fillMaxHeight(TV_EXPLORATION_BACKDROP_HEIGHT_FRACTION)
+                                .aspectRatio(16f / 9f, matchHeightConstraintsFirst = true)
+                                .drawWithContent {
+                                    drawContent()
+                                    drawRect(
+                                        brush = Brush.verticalGradient(
+                                            *tvBackdropFadeFromBlackStops(
+                                                start = 0f, end = TV_BACKDROP_TOP_SCRIM_END,
+                                                maxAlpha = TV_BACKDROP_TOP_SCRIM_ALPHA,
+                                                color = shellBackground,
+                                            ),
+                                        ),
+                                    )
+                                    drawRect(
+                                        brush = Brush.horizontalGradient(
+                                            *tvBackdropFadeFromBlackStops(
+                                                start = TV_BACKDROP_LEFT_FADE_START,
+                                                end = TV_BACKDROP_LEFT_FADE_END,
+                                                color = shellBackground,
+                                            ),
+                                        ),
+                                    )
+                                    drawRect(
+                                        brush = Brush.verticalGradient(
+                                            *tvBackdropFadeToBlackStops(
+                                                start = bottomFadeStart,
+                                                end = 1f,
+                                                color = shellBackground,
+                                            ),
+                                        ),
+                                    )
+                                },
+                        ) {
+                            AsyncImage(
+                                url,
+                                contentDescription = null,
+                                Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop,
+                            )
+                        }
+                    }
+                }
+                Column(Modifier.padding(top = 24.dp)) {
                     // ── Hero 信息块 (固定高度, 换条目时下方卡片区不跳动) ──
                     Column(Modifier.height(TV_HERO_INFO_HEIGHT)) {
                         // 标题: 定高一行, 长标题跑马灯; 换条目 crossfade
@@ -451,6 +457,7 @@ fun TvExplorationScreen(
 
                     // ── 卡片区: 推荐纵向行 (竖版纯图卡, 聚焦色圈) ──
                 }
+                }
             }
 
             if (followed.itemCount > 0) {
@@ -469,6 +476,9 @@ fun TvExplorationScreen(
                         Modifier.onPreviewKeyEvent { event ->
                             if (event.key == Key.DirectionUp) {
                                 if (event.type == KeyEventType.KeyDown) {
+                                    // hero item 可能已被 LazyColumn 滚出回收 (节点不在组合里),
+                                    // 必须先滚回顶部让它重新组合, 框架轮询兜住附着时序
+                                    uiScope.launch { listState.animateScrollToItem(0) }
                                     heroFocused = true
                                     focus.request(TvExplorationFocus.Play)
                                 }
