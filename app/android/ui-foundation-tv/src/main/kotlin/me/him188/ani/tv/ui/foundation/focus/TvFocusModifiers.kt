@@ -102,16 +102,41 @@ fun Modifier.tvFocusEnterGate(
 
 /**
  * 全局按键快捷跳转 (挂页面/壳根节点): 按下 [mappings] 中的键把焦点送到对应锚点.
- * KeyUp 一并消费, 不让残余触发别处. 焦点在页面任意深度都生效 (preview 自根下行).
+ * KeyUp 一并消费, 不让残余触发别处; 按住的系统连发不重复触发. 焦点在页面任意深度都生效.
+ *
+ * 同时兼任 [tvFocusNavSignal]: 方向键按下时上报"用户在导航", 放弃在途的焦点解析.
  */
 fun Modifier.tvFocusHotkey(
     scope: TvFocusScope,
     vararg mappings: Pair<Key, TvFocusKey>,
-): Modifier = onPreviewKeyEvent { event ->
-    val target = mappings.firstOrNull { it.first == event.key }?.second
-        ?: return@onPreviewKeyEvent false
-    if (event.type == KeyEventType.KeyDown) {
-        scope.request(target)
+): Modifier = this
+    .tvFocusNavSignal(scope)
+    .onPreviewKeyEvent { event ->
+        val target = mappings.firstOrNull { it.first == event.key }?.second
+            ?: return@onPreviewKeyEvent false
+        if (event.type == KeyEventType.KeyDown && !event.isAutoRepeatCompat) {
+            scope.request(target)
+        }
+        true
     }
-    true
+
+/**
+ * 用户导航信号 (挂页面根节点): 方向键按下时上报 [TvFocusScope.notifyUserNavigation],
+ * 放弃在途的焦点解析 —— 否则解析轮询会把用户刚移走的焦点抢回目标锚点. 不消费事件.
+ *
+ * 每个持有 [TvFocusScope] 的页面都应在根上挂本 modifier (或挂 [tvFocusHotkey], 它已兼任).
+ */
+fun Modifier.tvFocusNavSignal(scope: TvFocusScope): Modifier = onPreviewKeyEvent { event ->
+    if (event.type == KeyEventType.KeyDown && event.key in TV_NAV_KEYS) {
+        scope.notifyUserNavigation()
+    }
+    false // 只旁听, 不消费
 }
+
+private val TV_NAV_KEYS = setOf(
+    Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight,
+)
+
+/** 本次 KeyDown 是否系统按住连发 (android nativeKeyEvent.repeatCount). */
+private val androidx.compose.ui.input.key.KeyEvent.isAutoRepeatCompat: Boolean
+    get() = (nativeKeyEvent as? android.view.KeyEvent)?.let { it.repeatCount > 0 } ?: false

@@ -36,6 +36,7 @@ import me.him188.ani.app.data.models.user.SelfInfo
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 
 /** 登录页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private enum class TvLoginFocus : TvFocusKey {
@@ -67,6 +68,7 @@ fun TvLoginScreen(
     Column(
         modifier
             .fillMaxSize()
+            .tvFocusNavSignal(focus)
             .padding(horizontal = 48.dp),
         verticalArrangement = Arrangement.Center,
     ) {

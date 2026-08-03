@@ -69,6 +69,7 @@ import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
 import me.him188.ani.tv.ui.foundation.widgets.TV_BACKDROP_CROSSFADE_MILLIS
 import me.him188.ani.tv.ui.foundation.widgets.TV_BACKDROP_LEFT_FADE_END
@@ -156,7 +157,7 @@ fun TvExplorationScreen(
         label = "bottomFade",
     )
 
-    Box(modifier.fillMaxSize().background(shellBackground)) {
+    Box(modifier.fillMaxSize().background(shellBackground).tvFocusNavSignal(focus)) {
         // Backdrop: 16:9 贴右上, 高度占屏 0.66, 顶缘轻压暗 + 左缘/下缘平滑渐隐 (采样停点无马赫带)
         Crossfade(
             backdropUrl,

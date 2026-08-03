@@ -53,13 +53,14 @@ import me.him188.ani.tv.ui.foundation.widgets.TvNavigationSideRail
 import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
 import me.him188.ani.tv.ui.login.TvLoginScreen
 import me.him188.ani.tv.ui.login.TvLoginViewModel
+import me.him188.ani.tv.ui.schedule.TvScheduleScreen
 import me.him188.ani.tv.ui.search.TvSearchScreen
 import me.him188.ani.tv.ui.search.TvSearchViewModel
 import me.him188.ani.tv.ui.settings.TvSettingsScreen
 import me.him188.ani.tv.ui.settings.TvSettingsViewModel
 
-/** 主壳内容区: 探索/追番 + 搜索/登录/设置 (TV 额外 tab). */
-private enum class TvShellContent { Search, Exploration, Collection, Login, Settings }
+/** 主壳内容区: 探索/时间表/追番 + 搜索/登录/设置 (TV 额外 tab). */
+private enum class TvShellContent { Search, Exploration, Schedule, Collection, Login, Settings }
 
 /** 主壳焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private enum class TvShellFocus : TvFocusKey {
@@ -137,6 +138,12 @@ fun TvMainShell(modifier: Modifier = Modifier) {
                         },
                     )
 
+                    TvShellContent.Schedule -> TvScheduleScreen(
+                        onClickSubject = { subjectId ->
+                            navigator.navigateSubjectDetails(subjectId, null)
+                        },
+                    )
+
                     TvShellContent.Collection -> TvCollectionScreen(
                         viewModel { TvCollectionViewModel() },
                         onClickSubject = { info ->
@@ -188,7 +195,7 @@ fun TvMainShell(modifier: Modifier = Modifier) {
                 TvNavRailItem(Icons.Rounded.TravelExplore, "探索", defaultFocus = true) {
                     content = TvShellContent.Exploration
                 },
-                TvNavRailItem(Icons.Rounded.CalendarMonth, "时间表") { navigator.navigateSchedule() },
+                TvNavRailItem(Icons.Rounded.CalendarMonth, "时间表") { content = TvShellContent.Schedule },
                 TvNavRailItem(Icons.Rounded.Star, "追番") { content = TvShellContent.Collection },
                 TvNavRailItem(Icons.Rounded.Settings, "设置") { content = TvShellContent.Settings },
             ),

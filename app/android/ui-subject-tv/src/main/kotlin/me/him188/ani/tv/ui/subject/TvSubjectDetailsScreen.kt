@@ -75,6 +75,7 @@ import me.him188.ani.datasources.api.topic.isDoneOrDropped
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroSecondaryContentColor
@@ -143,7 +144,7 @@ private fun SubjectContent(
         focus.request(TvDetailsFocus.Play)
     }
 
-    BoxWithConstraints(modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier.fillMaxSize().tvFocusNavSignal(focus)) {
         val heroHeight = maxHeight - 16.dp
 
         // ── 背景层: 全屏 backdrop, 贴顶/贴右出血, 左缘 scrim + 底缘 DstOut 擦除, 随滚动淡出 ──

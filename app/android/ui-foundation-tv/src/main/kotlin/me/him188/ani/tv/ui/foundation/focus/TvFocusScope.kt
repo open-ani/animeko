@@ -68,6 +68,11 @@ class TvFocusScope {
     // 在 request 重置 (而非解析起手): 请求到解析启动隔着一帧, 期间到位的事件不能丢
     private var arrivedLatch = false
 
+    // 用户方向键计数 (tvFocusNavSignal 上报): 解析期间用户开始导航 = 立即放弃本次请求 ——
+    // 否则轮询会把用户刚移走的焦点一次次抢回目标锚点 (实机症状: 按走后焦点又跳回,
+    // 要连按多次才能离开). 判据同上游 PR 的 GridFocusController "按键放弃" 语义.
+    private var userNavCount = 0
+
     /** [key] 的 FocusRequester (惰性创建). 供需要原始 requester 的组件互操作 (如 SideRail). */
     fun requesterOf(key: TvFocusKey): FocusRequester = requesters.getOrPut(key) { FocusRequester() }
 
@@ -78,6 +83,11 @@ class TvFocusScope {
     fun request(key: TvFocusKey) {
         arrivedLatch = false
         pending = key to ((pending?.second ?: 0) + 1)
+    }
+
+    /** 用户按下方向键的上报 (由 [tvFocusNavSignal]/[tvFocusHotkey] 自动挂接): 放弃在途解析. */
+    fun notifyUserNavigation() {
+        userNavCount++
     }
 
     /** 锚点焦点得失上报 (由 [tvFocusAnchor] 自动挂接, 手写节点亦可直接调用). */
@@ -101,8 +111,11 @@ class TvFocusScope {
         LaunchedEffect(pending) {
             val (key, _) = pending ?: return@LaunchedEffect
             val requester = requesterOf(key)
+            val navAtStart = userNavCount
             resolveFocusRepeatedly(
                 arrived = { arrivedLatch || key in focusedKeys },
+                // 用户开始导航即放弃: 不跟用户抢焦点
+                abandon = { userNavCount != navAtStart },
             ) {
                 runCatching { requester.requestFocus() }
             }

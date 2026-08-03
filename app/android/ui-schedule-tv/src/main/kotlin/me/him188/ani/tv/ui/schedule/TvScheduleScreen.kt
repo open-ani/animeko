@@ -67,6 +67,7 @@ import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroSecondaryContentColor
@@ -130,7 +131,7 @@ fun TvScheduleScreen(
 
     // ── 多列并排 (手机 Medium 档): 固定 360dp 列宽, 列间 16dp, 初始滚动到今天列 ──
     LazyRow(
-        modifier.fillMaxSize(),
+        modifier.fillMaxSize().tvFocusNavSignal(focus),
         state = state.lazyListState,
         horizontalArrangement = Arrangement.spacedBy(TV_SCHEDULE_PAGE_SPACING),
         contentPadding = PaddingValues(start = TV_SCHEDULE_START_PAD, end = 48.dp),

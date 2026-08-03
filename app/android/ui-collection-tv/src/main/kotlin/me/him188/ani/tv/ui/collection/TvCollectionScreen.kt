@@ -36,6 +36,7 @@ import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
 import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
 
@@ -67,7 +68,7 @@ fun TvCollectionScreen(
     focus.Resolver()
     focus.InitialFocus(TvCollectionFocus.FirstTab)
 
-    Column(modifier.fillMaxSize().padding(top = 24.dp)) {
+    Column(modifier.fillMaxSize().tvFocusNavSignal(focus).padding(top = 24.dp)) {
         TabRow(
             selectedTabIndex = selectedTabIndex,
             modifier = Modifier.padding(start = 48.dp),

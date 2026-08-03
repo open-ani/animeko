@@ -39,6 +39,7 @@ import me.him188.ani.app.data.network.BatchSubjectDetails
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
 
 /** 搜索页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
@@ -66,7 +67,7 @@ fun TvSearchScreen(
     focus.Resolver()
     focus.InitialFocus(TvSearchFocus.Field)
 
-    Column(modifier.fillMaxSize().padding(top = 32.dp)) {
+    Column(modifier.fillMaxSize().tvFocusNavSignal(focus).padding(top = 32.dp)) {
         // TvTextField 精简版: BasicTextField + tv Surface 壳 (§5.3)
         Surface(
             modifier = Modifier

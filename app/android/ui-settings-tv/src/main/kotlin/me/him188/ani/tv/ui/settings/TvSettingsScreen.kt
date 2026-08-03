@@ -28,6 +28,7 @@ import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 
 /** 设置页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private enum class TvSettingsFocus : TvFocusKey {
@@ -55,6 +56,7 @@ fun TvSettingsScreen(
     Column(
         modifier
             .fillMaxSize()
+            .tvFocusNavSignal(focus)
             .verticalScroll(rememberScrollState())
             .padding(start = 48.dp, end = 48.dp, top = 24.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
