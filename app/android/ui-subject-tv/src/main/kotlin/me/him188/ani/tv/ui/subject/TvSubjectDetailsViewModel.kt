@@ -46,18 +46,25 @@ class TvSubjectDetailsViewModel(
         .map<SubjectCollectionInfo, SubjectCollectionInfo?> { it }
         .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    /** TMDB 横版 backdrop (§4.3-R3); 无 token / 无图时为 null, UI 退化为竖版海报. */
-    val backdropUrl: StateFlow<String?> = subject
+    /**
+     * TMDB 横版 backdrop 三态 (对齐 PR): null = 结果未出 (Hero 按"有图"排版等待, 不闪回退图);
+     * Resolved(url=null) = 确认无图, 回退竖版封面; Resolved(url) = TMDB 图.
+     */
+    data class BackdropState(val url: String?)
+
+    val backdropState: StateFlow<BackdropState?> = subject
         .filterNotNull()
         .map { info ->
-            runCatching {
-                tmdbImageService.getBackdropUrl(
-                    subjectId = info.subjectId,
-                    originalName = info.subjectInfo.name,
-                    activeAsOfDate = info.subjectInfo.airDate.takeIf { it.isValid }
-                        ?.let { "%04d-%02d-%02d".format(it.year, it.month, it.day) },
-                )
-            }.getOrNull()
+            BackdropState(
+                runCatching {
+                    tmdbImageService.getBackdropUrl(
+                        subjectId = info.subjectId,
+                        originalName = info.subjectInfo.name,
+                        activeAsOfDate = info.subjectInfo.airDate.takeIf { it.isValid }
+                            ?.let { "%04d-%02d-%02d".format(it.year, it.month, it.day) },
+                    )
+                }.getOrNull(),
+            )
         }
         .stateIn(backgroundScope, SharingStarted.WhileSubscribed(5_000), null)
 

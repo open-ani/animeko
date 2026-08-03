@@ -9,9 +9,17 @@
 
 package me.him188.ani.tv.ui.subject
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,43 +28,64 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.tv.material3.Button
-import androidx.tv.material3.ClickableSurfaceDefaults
-import androidx.tv.material3.Icon
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Surface
-import androidx.tv.material3.Text
+import androidx.compose.ui.zIndex
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.episode.EpisodeCollectionInfo
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
-import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.tv.ui.foundation.focus.FOCUS_REQ_DELAY_MILLIS
+import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
+import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
+import me.him188.ani.tv.ui.foundation.widgets.tvHeroSecondaryContentColor
+import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
 
-/**
- * TV 条目详情页 (atv-architecture.md §7.5):
- * 全屏 backdrop + Hero 首屏 (标题/原名 + 贴底三列信息带) + 选集横版剧照轮播.
+/*
+ * TV 条目详情页. 布局对齐上游 PR#3217 的 SubjectDetailsTvPage (本实现为其首屏简化版):
+ * Hero 全屏 backdrop (TMDB 三态: 未解析按有图排版等待 / TMDB 图 / 封面回退) +
+ * 标题白字浮图 + 贴底信息带 (播放按钮 / 统计+连载+标签墙 / 评分直方图) + 选集剧照卡轮播.
  *
- * 布局对齐参考实现 (第三方 TV 版实机效果).
+ * 未实现 (上游有): 圆钮行/选集网格菜单/标签菜单/吸附滚动/角色/制作人员/评论区块.
  */
 @Composable
 fun TvSubjectDetailsScreen(
@@ -65,19 +94,15 @@ fun TvSubjectDetailsScreen(
     modifier: Modifier = Modifier,
 ) {
     val subject by viewModel.subject.collectAsState()
-    val backdropUrl by viewModel.backdropUrl.collectAsState()
+    val backdropState by viewModel.backdropState.collectAsState()
     val episodeStills by viewModel.episodeStills.collectAsState()
 
-    Box(modifier.fillMaxSize()) {
+    Box(modifier.fillMaxSize().background(tvShellBackgroundColor())) {
         val info = subject
         if (info == null) {
-            Text(
-                "加载中…",
-                Modifier.align(Alignment.Center),
-                style = MaterialTheme.typography.titleMedium,
-            )
+            CircularProgressIndicator(Modifier.align(Alignment.Center))
         } else {
-            SubjectContent(info, backdropUrl, episodeStills, onPlayEpisode)
+            SubjectContent(info, backdropState, episodeStills, onPlayEpisode)
         }
     }
 }
@@ -85,155 +110,226 @@ fun TvSubjectDetailsScreen(
 @Composable
 private fun SubjectContent(
     info: SubjectCollectionInfo,
-    backdropUrl: String?,
+    backdropState: TvSubjectDetailsViewModel.BackdropState?,
     episodeStills: Map<Int, String>,
     onPlayEpisode: (episodeId: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val subjectInfo = info.subjectInfo
-    val surfaceColor = MaterialTheme.colorScheme.surface
+    // backdrop 三态 (对齐 PR): 未解析时不显示回退图, 按"有图"排版等待 (图到直接淡入零跳变)
+    val heroBackdropUrl = backdropState?.url
+        ?: subjectInfo.imageLarge.takeIf { backdropState != null && it.isNotBlank() }
 
-    // 续播目标: 第一个未看完的集, 否则第一集
+    // 续播目标: 第一个未看完的正片, 否则第一集
     val playTarget = info.episodes.firstOrNull { !it.collectionType.isDoneOrDropped() }
         ?: info.episodes.firstOrNull()
+    val watched = info.episodes.count { it.collectionType.isDoneOrDropped() }
 
-    Box(modifier.fillMaxSize()) {
-        // 全屏 backdrop: TMDB 横版图优先, 无图时退化为竖版海报 Crop
-        AsyncImage(
-            model = backdropUrl ?: subjectInfo.imageLarge,
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-        )
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        0.0f to surfaceColor.copy(alpha = 0.5f),
-                        0.5f to surfaceColor.copy(alpha = 0.72f),
-                        1.0f to surfaceColor.copy(alpha = 0.95f),
+    val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    val playButtonFocus = remember { FocusRequester() }
+    // 返回分层: 焦点在选集区时按返回先回 Hero 播放按钮 (对齐 PR 的 backLevel 语义)
+    var episodesFocused by remember { mutableStateOf(false) }
+    BackHandler(enabled = episodesFocused) {
+        scope.launch { scrollState.animateScrollTo(0) }
+        runCatching { playButtonFocus.requestFocus() }
+    }
+
+    // 进页初始焦点: Hero 播放按钮 (轮询, 对齐 PR 的 HERO_PLAY 锚点语义)
+    LaunchedEffect(Unit) {
+        repeat(4) {
+            delay(FOCUS_REQ_DELAY_MILLIS)
+            if (runCatching { playButtonFocus.requestFocus() }.getOrDefault(false)) return@LaunchedEffect
+        }
+    }
+
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val heroHeight = maxHeight - 16.dp
+
+        // ── 背景层: 全屏 backdrop, 贴顶/贴右出血, 左缘 scrim + 底缘 DstOut 擦除, 随滚动淡出 ──
+        heroBackdropUrl?.let { url ->
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        val progress = (scrollState.value / HERO_BACKDROP_FADE_DISTANCE.toPx()).coerceIn(0f, 1f)
+                        alpha = 1f - progress * (1f - HERO_BACKDROP_MIN_ALPHA)
+                        compositingStrategy = CompositingStrategy.Offscreen
+                    }
+                    .drawWithContent {
+                        drawContent()
+                        // 底部渐隐: 擦除图片自身 alpha 露出页面底色
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                0.62f to Color.Transparent,
+                                0.98f to Color.Black,
+                            ),
+                            blendMode = BlendMode.DstOut,
+                        )
+                    },
+            ) {
+                AsyncImage(
+                    url,
+                    contentDescription = null,
+                    Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+                // 左侧暗色 scrim: 浮在图上的标题可读性
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.horizontalGradient(
+                            0f to Color.Black.copy(alpha = 0.6f),
+                            0.55f to Color.Transparent,
+                        ),
                     ),
-                ),
-        )
-
-        Column(Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 20.dp)) {
-            // 标题 + 日文原名
-            Text(
-                subjectInfo.displayName,
-                style = MaterialTheme.typography.headlineLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (subjectInfo.name.isNotBlank() && subjectInfo.name != subjectInfo.displayName) {
-                Text(
-                    subjectInfo.name,
-                    Modifier.padding(top = 2.dp),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
 
-            Box(Modifier.weight(1f))
-
-            // 贴底三列信息带 (参考版核心布局)
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(36.dp),
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                // 左列: 播放按钮
-                Column(Modifier.width(210.dp)) {
-                    if (playTarget != null) {
-                        Button(onClick = { onPlayEpisode(playTarget.episodeId) }) {
-                            Icon(Icons.Rounded.PlayArrow, contentDescription = null, Modifier.size(20.dp))
-                            Text("开始观看", Modifier.padding(start = 8.dp))
-                        }
+        Column(Modifier.fillMaxSize().verticalScroll(scrollState)) {
+            // ── Hero 首屏: 标题在顶, 信息带贴底 ──
+            Column(Modifier.height(heroHeight).padding(horizontal = TV_DETAILS_PAD)) {
+                Column(Modifier.padding(top = 28.dp)) {
+                    Text(
+                        subjectInfo.displayName,
+                        Modifier.fillMaxWidth(0.55f).basicMarquee(iterations = 3),
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = tvHeroContentColor(),
+                        maxLines = 1,
+                    )
+                    if (subjectInfo.name.isNotBlank() && subjectInfo.name != subjectInfo.displayName) {
+                        Text(
+                            subjectInfo.name,
+                            Modifier.padding(top = 4.dp),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = tvHeroSecondaryContentColor(),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
 
-                // 中列: 年月/连载进度 + 收藏统计三列
-                Column(Modifier.width(230.dp)) {
-                    subjectInfo.airDate.takeIf { it.isValid }?.let { date ->
-                        Text(
-                            "${date.year} 年 ${date.month} 月",
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                    }
-                    val latest = info.airingInfo.latestSort
-                    val total = subjectInfo.totalEpisodes.takeIf { it > 0 }
-                    val progress = buildString {
-                        if (latest != null) append("连载至 $latest")
-                        if (total != null) {
-                            if (isNotEmpty()) append(" · ")
-                            append("预定全 $total 话")
-                        }
-                    }
-                    if (progress.isNotEmpty()) {
-                        Text(
-                            progress,
-                            Modifier.padding(top = 2.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Row(
-                        Modifier.padding(top = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(18.dp),
-                    ) {
-                        val stats = subjectInfo.collectionStats
-                        StatColumn(stats.collect, "收藏")
-                        StatColumn(stats.doing, "在看")
-                        StatColumn(stats.wish, "想看")
-                    }
-                }
+                Box(Modifier.weight(1f))
 
-                // 标签墙
-                Column(
-                    Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                // ── 贴底信息带: 左列按钮 / 中列统计+连载+标签墙 / 右列评分直方图 ──
+                Row(
+                    Modifier.fillMaxWidth().padding(bottom = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(32.dp),
+                    verticalAlignment = Alignment.Bottom,
                 ) {
-                    subjectInfo.tags.take(10).chunked(5).forEach { row ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            row.forEach { tag ->
+                    // 左列: 播放按钮 (继续观看 N / 开始观看)
+                    Column(Modifier.width(210.dp)) {
+                        if (playTarget != null) {
+                            val label = if (watched > 0) {
+                                "继续观看 第 ${playTarget.episodeInfo.sort} 话"
+                            } else {
+                                "开始观看"
+                            }
+                            TvHeroButton(
+                                text = label,
+                                icon = Icons.Rounded.PlayArrow,
+                                filled = true,
+                                onClick = { onPlayEpisode(playTarget.episodeId) },
+                                onFocused = {},
+                                focusRequester = playButtonFocus,
+                            )
+                        }
+                    }
+
+                    // 中列: 年月/连载 + 收藏统计 + 标签墙
+                    Column(Modifier.weight(1f)) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            subjectInfo.airDate.takeIf { it.isValid }?.let { date ->
+                                Text(
+                                    "${date.year} 年 ${date.month} 月",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = tvHeroContentColor(),
+                                )
+                            }
+                            val latest = info.airingInfo.latestSort
+                            val total = subjectInfo.totalEpisodes.takeIf { it > 0 }
+                            val progress = buildString {
+                                if (latest != null) append("连载至 $latest")
+                                if (total != null) {
+                                    if (isNotEmpty()) append(" · ")
+                                    append("预定全 $total 话")
+                                }
+                            }
+                            if (progress.isNotEmpty()) {
+                                Text(
+                                    progress,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = tvHeroSecondaryContentColor(),
+                                )
+                            }
+                        }
+                        Row(
+                            Modifier.padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(18.dp),
+                        ) {
+                            val stats = subjectInfo.collectionStats
+                            StatColumn(stats.collect, "收藏")
+                            StatColumn(stats.doing, "在看")
+                            StatColumn(stats.wish, "想看")
+                        }
+                        // 标签墙: 低透明度玻璃底 chip, 三行截断 (菜单入口未实现)
+                        FlowRow(
+                            Modifier.padding(top = 10.dp).fillMaxWidth(0.9f),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            maxLines = 3,
+                        ) {
+                            subjectInfo.tags.take(14).forEach { tag ->
                                 Text(
                                     tag.name,
                                     Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(Color.White.copy(alpha = 0.12f))
-                                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                                        .clip(TV_TAG_SHAPE)
+                                        .background(
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                                        )
+                                        .padding(horizontal = 9.dp, vertical = 4.dp),
                                     style = MaterialTheme.typography.labelMedium,
+                                    color = tvHeroContentColor(),
                                     maxLines = 1,
                                 )
                             }
                         }
                     }
-                }
 
-                // 右列: 评分直方图 + 分数
-                RatingBlock(info)
+                    // 右列: 评分直方图 + 分数
+                    RatingBlock(info)
+                }
             }
 
-            // 选集: 横版剧照卡 (参考版 16:9, 卡内左下角序号 + 标题)
-            Text(
-                "选集",
-                Modifier.padding(top = 18.dp, bottom = 8.dp),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(end = 48.dp),
+            // ── 选集: 横向剧照卡轮播 (色圈焦点) ──
+            Column(
+                Modifier
+                    .padding(bottom = 24.dp)
+                    .onFocusChanged { episodesFocused = it.hasFocus },
             ) {
-                items(info.episodes, key = { it.episodeId }) { episode ->
-                    TvEpisodeCard(
-                        episode = episode,
-                        imageUrl = episodeStills[episode.episodeId]
-                            ?: backdropUrl
-                            ?: subjectInfo.imageLarge,
-                        onClick = { onPlayEpisode(episode.episodeId) },
-                    )
+                Text(
+                    "选集",
+                    Modifier.padding(start = TV_DETAILS_PAD, bottom = 10.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = tvHeroContentColor(),
+                )
+                LazyRow(
+                    state = rememberLazyListState(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(start = TV_DETAILS_PAD, end = TV_DETAILS_PAD),
+                ) {
+                    items(info.episodes, key = { it.episodeId }) { episode ->
+                        TvEpisodeCard(
+                            episode = episode,
+                            imageUrl = episodeStills[episode.episodeId]
+                                ?: heroBackdropUrl
+                                ?: subjectInfo.imageLarge,
+                            onClick = { onPlayEpisode(episode.episodeId) },
+                        )
+                    }
                 }
             }
         }
@@ -242,29 +338,31 @@ private fun SubjectContent(
 
 @Composable
 private fun StatColumn(value: Int, label: String, modifier: Modifier = Modifier) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+    Row(modifier, verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             formatCount(value),
             style = MaterialTheme.typography.titleMedium,
+            color = tvHeroContentColor(),
         )
         Text(
             label,
+            Modifier.padding(bottom = 1.dp),
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = tvHeroSecondaryContentColor(),
         )
     }
 }
 
-/** 评分直方图 (1..10 竖条) + 分数 + 评分人数, 对齐参考版右下角布局. */
+/** 评分直方图 (1..10 竖条) + 分数 + 评分人数. */
 @Composable
 private fun RatingBlock(info: SubjectCollectionInfo, modifier: Modifier = Modifier) {
     val rating = info.subjectInfo.ratingInfo
     val counts = (1..10).map { rating.count.get(it) }
     val max = (counts.maxOrNull() ?: 0).coerceAtLeast(1)
 
-    Column(modifier.width(250.dp), horizontalAlignment = Alignment.End) {
+    Column(modifier.width(240.dp), horizontalAlignment = Alignment.End) {
         Row(
-            Modifier.height(46.dp),
+            Modifier.height(44.dp),
             horizontalArrangement = Arrangement.spacedBy(5.dp),
             verticalAlignment = Alignment.Bottom,
         ) {
@@ -272,8 +370,8 @@ private fun RatingBlock(info: SubjectCollectionInfo, modifier: Modifier = Modifi
                 val fraction = (count.toFloat() / max).coerceIn(0.04f, 1f)
                 Box(
                     Modifier
-                        .width(14.dp)
-                        .height((46 * fraction).dp)
+                        .width(13.dp)
+                        .height((44 * fraction).dp)
                         .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)),
                 )
@@ -286,9 +384,9 @@ private fun RatingBlock(info: SubjectCollectionInfo, modifier: Modifier = Modifi
             (1..10).forEach {
                 Text(
                     "$it",
-                    Modifier.width(14.dp),
+                    Modifier.width(13.dp),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = tvHeroSecondaryContentColor(),
                 )
             }
         }
@@ -301,6 +399,7 @@ private fun RatingBlock(info: SubjectCollectionInfo, modifier: Modifier = Modifi
                 rating.score.takeIf { it.isNotBlank() } ?: "-",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
+                color = tvHeroContentColor(),
             )
             Text(
                 buildString {
@@ -308,12 +407,13 @@ private fun RatingBlock(info: SubjectCollectionInfo, modifier: Modifier = Modifi
                     append("${formatCount(rating.total)} 人评分")
                 },
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = tvHeroSecondaryContentColor(),
             )
         }
     }
 }
 
+/** 选集剧照卡: 16:9, 色圈+留白焦点 (与竖版卡同规格), 卡内左下角序号+标题. */
 @Composable
 private fun TvEpisodeCard(
     episode: EpisodeCollectionInfo,
@@ -322,42 +422,44 @@ private fun TvEpisodeCard(
     modifier: Modifier = Modifier,
 ) {
     val watched = episode.collectionType.isDoneOrDropped()
-    Surface(
-        onClick = onClick,
-        modifier = modifier.width(228.dp),
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(11.dp)),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color.Transparent,
-            focusedContainerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            focusedContentColor = MaterialTheme.colorScheme.onSurface,
-        ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = TvFocusDefaults.FocusedScale),
-        border = TvFocusDefaults.clickableCardBorder(),
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+
+    Box(
+        modifier
+            .width(226.dp)
+            .aspectRatio(16f / 9f)
+            .then(
+                if (focused) {
+                    Modifier.border(2.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(11.dp))
+                } else Modifier,
+            ),
     ) {
         Box(
             Modifier
+                .fillMaxSize()
                 .padding(3.dp)
-                .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(8.dp)),
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = LocalIndication.current,
+                    onClick = onClick,
+                ),
         ) {
             AsyncImage(
-                model = imageUrl,
+                imageUrl,
                 contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
+                Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
             )
-            // 底部渐变 + 序号/标题 (参考版卡内布局)
             Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            0.35f to Color.Transparent,
-                            1f to Color.Black.copy(alpha = 0.82f),
-                        ),
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        0.4f to Color.Transparent,
+                        1f to Color.Black.copy(alpha = 0.82f),
                     ),
+                ),
             )
             Row(
                 Modifier
@@ -387,3 +489,14 @@ private fun formatCount(value: Int): String = when {
     value >= 1000 -> "%,d".format(value)
     else -> value.toString()
 }
+
+/** 内容水平留白 (含让开侧栏收起宽; 详情页是独立目的地, 自带留白). */
+private val TV_DETAILS_PAD = 48.dp
+
+/** backdrop 随滚动淡出的距离. */
+private val HERO_BACKDROP_FADE_DISTANCE = 400.dp
+
+/** backdrop 滚动淡出后的保留透明度. */
+private const val HERO_BACKDROP_MIN_ALPHA = 0.25f
+
+private val TV_TAG_SHAPE = RoundedCornerShape(6.dp)
