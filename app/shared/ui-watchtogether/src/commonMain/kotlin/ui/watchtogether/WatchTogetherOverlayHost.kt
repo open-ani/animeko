@@ -69,6 +69,7 @@ import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.EpisodeNavigationGuardRegistry
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.findLast
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.OnLifecycleEvent
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.watch_together_following
@@ -231,7 +232,9 @@ fun BoxScope.WatchTogetherOverlayHost(
 
     if (!state.featureEnabled) return
 
-    if (playerController.isDraggablePopupVisible) {
+    AniAnimatedVisibility(
+        visible = playerController.isDraggablePopupVisible,
+    ) {
         DraggableWatchTogetherBubble(
             state = state,
             onClick = { dialogVisible = true },

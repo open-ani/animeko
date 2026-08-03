@@ -142,18 +142,18 @@ fun AniAppContent(aniNavigator: AniNavigator) {
                     appState.mainSceneInitialPage,
                     Modifier.fillMaxSize(),
                 )
+                BangumiSessionExpiredPromptHost(
+                    viewModel = aniAppViewModel,
+                    enabled = appState.initialNavRoute is NavRoutes.Main,
+                    onLogin = {
+                        aniNavigator.navigateBangumiAuthorize()
+                    },
+                )
+                WatchTogetherOverlayHost(
+                    viewModel = watchTogetherViewModel,
+                    aniNavigator = aniNavigator,
+                )
             }
-            BangumiSessionExpiredPromptHost(
-                viewModel = aniAppViewModel,
-                enabled = appState.initialNavRoute is NavRoutes.Main,
-                onLogin = {
-                    aniNavigator.navigateBangumiAuthorize()
-                },
-            )
-            WatchTogetherOverlayHost(
-                viewModel = watchTogetherViewModel,
-                aniNavigator = aniNavigator,
-            )
         }
     }
 }
