@@ -53,8 +53,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -68,7 +66,10 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import kotlinx.coroutines.delay
 import me.him188.ani.app.data.models.recommend.RecommendedSubjectInfo
 import me.him188.ani.app.ui.foundation.AsyncImage
-import me.him188.ani.tv.ui.foundation.focus.FOCUS_REQ_DELAY_MILLIS
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
 import me.him188.ani.tv.ui.foundation.widgets.TV_BACKDROP_CROSSFADE_MILLIS
 import me.him188.ani.tv.ui.foundation.widgets.TV_BACKDROP_LEFT_FADE_END
 import me.him188.ani.tv.ui.foundation.widgets.TV_BACKDROP_LEFT_FADE_START
@@ -87,6 +88,15 @@ import me.him188.ani.tv.ui.foundation.widgets.tvBackdropFadeToBlackStops
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroSecondaryContentColor
 import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
+
+/** 探索页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
+private enum class TvExplorationFocus : TvFocusKey {
+    /** Hero 立即观看按钮 (进页初始焦点 / 返回键回顶目标). */
+    Play,
+
+    /** 卡片区首卡 (按钮块按下键的显式落点). */
+    FirstCard,
+}
 
 /*
  * TV 沉浸式探索页. 布局对齐上游 PR#3217 的 TvExplorationPage (本实现为其简化版):
@@ -112,9 +122,10 @@ fun TvExplorationScreen(
     // 焦点是否在 hero 按钮区 (轮播态); 焦点下移进卡片区后 hero 由聚焦卡驱动
     var heroFocused by remember { mutableStateOf(true) }
     var focusedCardSubject by remember { mutableStateOf<TvHeroSubject?>(null) }
-    // 显式焦点链接 (空间搜索跨大间距不可靠, 对齐 PR 的显式 FocusRequester 方案)
-    val firstCardFocus = remember { FocusRequester() }
-    val playButtonFocus = remember { FocusRequester() }
+    // 统一焦点框架: 锚点声明 + 显式链接 + 初始焦点共用一个调度器
+    val focus = rememberTvFocusScope()
+    focus.Resolver()
+    focus.InitialFocus(TvExplorationFocus.Play)
 
     val carouselItem = trends.getOrNull(carouselIndex.coerceIn(0, (carouselSize - 1).coerceAtLeast(0)))
         ?.let { TvHeroSubject(it.bangumiId, it.nameCn, it.imageLarge) }
@@ -123,15 +134,6 @@ fun TvExplorationScreen(
     // hero 变化上报 VM 拉数据 (标题即时, 详情/backdrop 异步)
     LaunchedEffect(hero?.subjectId) {
         hero?.let { viewModel.setFocusedSubject(it) }
-    }
-
-    // 冷启动初始焦点: 立即观看按钮 (布局就绪延迟, 对齐 PR 的 FOCUS_REQ_DELAY; 轮询直到成功)
-    LaunchedEffect(Unit) {
-        // 轮询数次: 首帧后节点可能尚未 attach (转场中), requestFocus 会静默失败
-        repeat(4) {
-            delay(FOCUS_REQ_DELAY_MILLIS)
-            if (runCatching { playButtonFocus.requestFocus() }.getOrDefault(false)) return@LaunchedEffect
-        }
     }
 
     // 自动轮播: 焦点在 hero 且用户静止 6s 切下一个; 手动切换重置计时
@@ -323,7 +325,7 @@ fun TvExplorationScreen(
                             filled = true,
                             onClick = { hero?.let(onPlaySubject) },
                             onFocused = { heroFocused = true },
-                            focusRequester = playButtonFocus,
+                            modifier = Modifier.tvFocusAnchor(focus, TvExplorationFocus.Play),
                         )
                         TvHeroButton(
                             text = "更多详细内容",
@@ -331,9 +333,8 @@ fun TvExplorationScreen(
                             filled = false,
                             onClick = { hero?.let(onClickSubject) },
                             onFocused = { heroFocused = true },
-                            modifier = Modifier.focusProperties {
-                                down = firstCardFocus // 跨过指示器/标题直达首卡
-                            },
+                            // 跨过指示器/标题直达首卡 (空间搜索跨大间距不可靠)
+                            modifier = Modifier.tvFocusLink(focus, down = TvExplorationFocus.FirstCard),
                         )
                     }
                     Spacer(Modifier.height(TV_HERO_BUTTONS_TO_CONTENT_GAP))
@@ -390,8 +391,11 @@ fun TvExplorationScreen(
                                     heroFocused = false
                                     focusedCardSubject = item
                                 },
-                                modifier = Modifier.width(TV_PAGE_CARD_WIDTH),
-                                focusRequester = firstCardFocus.takeIf { index == 0 },
+                                modifier = Modifier.width(TV_PAGE_CARD_WIDTH).then(
+                                    if (index == 0) {
+                                        Modifier.tvFocusAnchor(focus, TvExplorationFocus.FirstCard)
+                                    } else Modifier,
+                                ),
                             )
                         }
                     }

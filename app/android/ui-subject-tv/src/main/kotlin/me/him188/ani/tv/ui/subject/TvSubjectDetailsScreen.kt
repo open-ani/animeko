@@ -54,8 +54,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -74,11 +72,19 @@ import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.datasources.api.topic.isDoneOrDropped
-import me.him188.ani.tv.ui.foundation.focus.FOCUS_REQ_DELAY_MILLIS
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroSecondaryContentColor
 import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
+
+/** 详情页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
+private enum class TvDetailsFocus : TvFocusKey {
+    /** Hero 播放按钮 (进页初始焦点 / 选集区返回键分层目标). */
+    Play,
+}
 
 /*
  * TV 条目详情页. 布局对齐上游 PR#3217 的 SubjectDetailsTvPage (本实现为其首屏简化版):
@@ -127,20 +133,14 @@ private fun SubjectContent(
 
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
-    val playButtonFocus = remember { FocusRequester() }
-    // 返回分层: 焦点在选集区时按返回先回 Hero 播放按钮 (对齐 PR 的 backLevel 语义)
+    // 统一焦点框架: 进页初始焦点落播放按钮; 选集区返回键分层也经同一调度器归还
+    val focus = rememberTvFocusScope()
+    focus.Resolver()
+    focus.InitialFocus(TvDetailsFocus.Play)
     var episodesFocused by remember { mutableStateOf(false) }
     BackHandler(enabled = episodesFocused) {
         scope.launch { scrollState.animateScrollTo(0) }
-        runCatching { playButtonFocus.requestFocus() }
-    }
-
-    // 进页初始焦点: Hero 播放按钮 (轮询, 对齐 PR 的 HERO_PLAY 锚点语义)
-    LaunchedEffect(Unit) {
-        repeat(4) {
-            delay(FOCUS_REQ_DELAY_MILLIS)
-            if (runCatching { playButtonFocus.requestFocus() }.getOrDefault(false)) return@LaunchedEffect
-        }
+        focus.request(TvDetailsFocus.Play)
     }
 
     BoxWithConstraints(modifier.fillMaxSize()) {
@@ -231,7 +231,7 @@ private fun SubjectContent(
                                 filled = true,
                                 onClick = { onPlayEpisode(playTarget.episodeId) },
                                 onFocused = {},
-                                focusRequester = playButtonFocus,
+                                modifier = Modifier.tvFocusAnchor(focus, TvDetailsFocus.Play),
                             )
                         }
                     }

@@ -34,14 +34,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.runtime.remember
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.lifecycle.viewmodel.compose.viewModel
 import me.him188.ani.app.navigation.LocalNavigator
@@ -50,6 +44,9 @@ import me.him188.ani.tv.ui.collection.TvCollectionScreen
 import me.him188.ani.tv.ui.collection.TvCollectionViewModel
 import me.him188.ani.tv.ui.exploration.TvExplorationScreen
 import me.him188.ani.tv.ui.exploration.TvExplorationViewModel
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
 import me.him188.ani.tv.ui.foundation.widgets.TvNavRailItem
 import me.him188.ani.tv.ui.foundation.widgets.TvNavigationRailDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvNavigationSideRail
@@ -63,6 +60,12 @@ import me.him188.ani.tv.ui.settings.TvSettingsViewModel
 
 /** 主壳内容区: 探索/追番 + 搜索/登录/设置 (TV 额外 tab). */
 private enum class TvShellContent { Search, Exploration, Collection, Login, Settings }
+
+/** 主壳焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
+private enum class TvShellFocus : TvFocusKey {
+    /** 侧边栏进入落点 ("探索"条目); 菜单键从任意位置直达. */
+    Rail,
+}
 
 /**
  * TV 主壳. 布局对齐上游 PR#3217 的 MainScreen (TV 变体):
@@ -92,19 +95,14 @@ fun TvMainShell(modifier: Modifier = Modifier) {
 
     // 菜单键从页面任意位置直达侧边栏 (焦点落到"探索"条目, rail 随 hasFocus 自动展开):
     // rail 的常规进入是"按左", 焦点在卡片行深处时要连按多次, 菜单键是一步到位的快捷路径
-    val railEnterFocus = remember { FocusRequester() }
+    val focus = rememberTvFocusScope()
+    focus.Resolver()
 
     Box(
         modifier
             .fillMaxSize()
             .background(tvShellBackgroundColor())
-            .onPreviewKeyEvent { event ->
-                if (event.key != Key.Menu) return@onPreviewKeyEvent false
-                if (event.type == KeyEventType.KeyDown) {
-                    runCatching { railEnterFocus.requestFocus() }
-                }
-                true // KeyUp 一并消费, 不让残余触发别处
-            },
+            .tvFocusHotkey(focus, Key.Menu to TvShellFocus.Rail),
     ) {
         // 内容区: 让开侧边栏收起态宽度
         Box(Modifier.fillMaxSize().padding(start = TvNavigationRailDefaults.CollapsedWidth)) {
@@ -195,7 +193,7 @@ fun TvMainShell(modifier: Modifier = Modifier) {
                 TvNavRailItem(Icons.Rounded.Settings, "设置") { content = TvShellContent.Settings },
             ),
             modifier = Modifier.align(Alignment.CenterStart),
-            enterFocus = railEnterFocus,
+            enterFocus = focus.requesterOf(TvShellFocus.Rail),
         )
     }
 }
