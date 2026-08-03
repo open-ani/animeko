@@ -138,8 +138,6 @@ private enum class TvExplorationFocus : TvFocusKey {
 @Composable
 fun TvExplorationScreen(
     onClickSubject: (TvHeroSubject) -> Unit,
-    /** 立即观看: [episodeId] 非 null 直接进播放页; null (分集信息未加载到) 退化进详情页. */
-    onPlaySubject: (TvHeroSubject, episodeId: Int?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // 状态层复用手机 ExplorationPageViewModel/ExplorationPageState (D3)
@@ -375,37 +373,42 @@ fun TvExplorationScreen(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    // 操作按钮: 同一 Row (用户指定)
-                    Row(
-                        Modifier.padding(top = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        TvHeroButton(
-                            text = "立即观看",
-                            icon = Icons.Rounded.PlayArrow,
-                            filled = true,
-                            onClick = {
-                                hero?.let { h ->
-                                    // 有进度接着播下一集, 没有则第一集; 分集未加载退化进详情
-                                    val heroInfo = infoCache[h.subjectId]
-                                    val episodeId = heroInfo?.progressInfo?.nextEpisodeIdToPlay
-                                        ?: heroInfo?.episodes?.firstOrNull()?.episodeId
-                                    onPlaySubject(h, episodeId)
+                    // 唯一操作按钮 (用户裁定去掉立即观看): 聚焦时左右键切换轮播
+                    TvHeroButton(
+                        text = "更多详细内容",
+                        icon = Icons.Outlined.Info,
+                        filled = true,
+                        onClick = { hero?.let(onClickSubject) },
+                        onFocused = { heroFocused = true },
+                        modifier = Modifier
+                            .padding(top = 10.dp)
+                            .tvFocusAnchor(focus, TvExplorationFocus.Play)
+                            // 跨过指示器/标题直达首卡 (空间搜索跨大间距不可靠)
+                            .tvFocusLink(focus, down = TvExplorationFocus.FirstCard)
+                            // 左右键切轮播 (单按钮无行内导航冲突); 首项按左不消费, 交给侧栏
+                            .onPreviewKeyEvent { event ->
+                                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                                when (event.key) {
+                                    Key.DirectionRight -> {
+                                        if (carouselSize > 0) {
+                                            carouselIndex = (carouselIndex + 1) % carouselSize
+                                            carouselInteraction++
+                                        }
+                                        true
+                                    }
+
+                                    Key.DirectionLeft -> {
+                                        if (carouselIndex > 0) {
+                                            carouselIndex--
+                                            carouselInteraction++
+                                            true
+                                        } else false
+                                    }
+
+                                    else -> false
                                 }
                             },
-                            onFocused = { heroFocused = true },
-                            modifier = Modifier.tvFocusAnchor(focus, TvExplorationFocus.Play),
-                        )
-                        TvHeroButton(
-                            text = "更多详细内容",
-                            icon = Icons.Outlined.Info,
-                            filled = false,
-                            onClick = { hero?.let(onClickSubject) },
-                            onFocused = { heroFocused = true },
-                            // 跨过指示器/标题直达首卡 (空间搜索跨大间距不可靠)
-                            modifier = Modifier.tvFocusLink(focus, down = TvExplorationFocus.FirstCard),
-                        )
-                    }
+                    )
                     // 轮播指示器: hero 底部, 信息列宽内居中 (不可聚焦, 纯展示; 由自动轮播驱动)
                     if (carouselSize >= 2) {
                         Row(
