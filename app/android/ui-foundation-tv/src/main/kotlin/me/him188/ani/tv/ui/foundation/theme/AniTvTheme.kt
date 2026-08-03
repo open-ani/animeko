@@ -22,10 +22,12 @@ object AniTvThemeDefaults {
 }
 
 /**
- * TV 端主题: 复用 materialkolor 由种子色生成 m3 配色 (与手机同一算法, 品牌一致),
- * 逐字段映射到 tv-material ColorScheme. TV 固定深色 (atv-architecture.md D6).
+ * TV 端主题: 复用 materialkolor 由种子色生成 m3 配色 (与手机同一算法, 品牌一致).
+ * TV 固定深色 (atv-architecture.md D6).
  *
- * M0 阶段使用默认种子色; M3 起接入 SettingsRepository.themeSettings.
+ * 同时 provide material3 与 tv-material 两套 MaterialTheme:
+ * 新基建 (对齐上游 PR 的自研焦点组件) 读 material3 的 colorScheme,
+ * 存量 tv-material 组件读 tv-material 的.
  */
 @Composable
 fun AniTvTheme(
@@ -39,8 +41,10 @@ fun AniTvTheme(
         style = PaletteStyle.TonalSpot,
     )
     val tvColorScheme = remember(m3ColorScheme) { m3ColorScheme.toTvColorScheme() }
-    MaterialTheme(
-        colorScheme = tvColorScheme,
-        content = content,
-    )
+    androidx.compose.material3.MaterialTheme(colorScheme = m3ColorScheme) {
+        MaterialTheme(
+            colorScheme = tvColorScheme,
+            content = content,
+        )
+    }
 }
