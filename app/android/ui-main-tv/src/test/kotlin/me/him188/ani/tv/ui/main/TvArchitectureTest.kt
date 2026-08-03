@@ -18,7 +18,10 @@ import kotlin.test.Test
  * TV 约定边界守护 (atv-architecture.md §4.2/§11.1).
  *
  * D1 放弃编译期隔离后, 手机 UI 树对 tv variant 完整可见 —— 本测试是「TV 不调用手机 UI」
- * 约定的主要机械守护: 禁止 TV 代码 import 手机 material3 与手机 UI 树 (白名单基建除外).
+ * 约定的主要机械守护: 禁止 TV 代码 import 手机 UI 树 (白名单基建除外).
+ *
+ * v4 起不再禁 material3: 上游 PR#3217 的 TV 方案就是 material3 + 自研焦点系统
+ * (完全不用 tv-material), 我们的新基建 (TvImmersiveCards/TvNavigationSideRail) 与之对齐.
  */
 class TvArchitectureTest {
 
@@ -33,6 +36,8 @@ class TvArchitectureTest {
         "me.him188.ani.app.ui.foundation.widgets.LocalToaster",
         "me.him188.ani.app.ui.foundation.navigation.BackHandler",
         "me.him188.ani.app.ui.search.renderLoadErrorToastMessage",
+        // v4 (对齐上游 PR#3217) 新增: 侧边栏头像
+        "me.him188.ani.app.ui.foundation.avatar.",
     )
 
     /** TV 代码 = app/android 下全部 ui-*-tv 模块 + src/tv 出包胶水 (§4.1). */
@@ -47,15 +52,6 @@ class TvArchitectureTest {
         val dirs = tvDirs.filter { it.exists() }.map { it.absolutePath }
         check(dirs.size >= 11) { "TV 源集目录数量异常: $dirs" }
         Konsist.scopeFromExternalDirectories(dirs.toSet())
-    }
-
-    @Test
-    fun `tv code must not import phone material3`() {
-        tvScope().files.assertFalse { file ->
-            // 唯一例外: 色板类型桥接 (§4.2)
-            if (file.name == "TvColorMapping") return@assertFalse false
-            file.imports.any { it.name.startsWith("androidx.compose.material3.") }
-        }
     }
 
     @Test
