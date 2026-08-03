@@ -9,13 +9,16 @@
 
 package me.him188.ani.app.ui.watchtogether
 
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.receiveAsFlow
 import me.him188.ani.app.data.network.WatchTogetherJoinException
 import me.him188.ani.app.data.network.WatchTogetherJoinFailure
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -44,6 +47,9 @@ class WatchTogetherViewModel : AbstractViewModel(), KoinComponent {
     private val selfInfoProducer = SelfInfoStateProducer(koin = getKoin())
 
     private val joinError = MutableStateFlow<String?>(null)
+    private val dialogOpenRequestChannel = Channel<Unit>(Channel.BUFFERED)
+
+    internal val dialogOpenRequests: Flow<Unit> = dialogOpenRequestChannel.receiveAsFlow()
 
     private val roomProjection = manager.state.flatMapLatest { state ->
         when (state) {
@@ -107,6 +113,16 @@ class WatchTogetherViewModel : AbstractViewModel(), KoinComponent {
                 joinError.value = null
                 settingsRepository.watchTogetherSettings.update { copy(enabled = false) }
             }
+        }
+    }
+
+    fun onPlayerEntryClick() {
+        launchInBackground {
+            val settings = settingsRepository.watchTogetherSettings.flow.first()
+            if (!settings.enabled) {
+                settingsRepository.watchTogetherSettings.update { copy(enabled = true) }
+            }
+            dialogOpenRequestChannel.send(Unit)
         }
     }
 
