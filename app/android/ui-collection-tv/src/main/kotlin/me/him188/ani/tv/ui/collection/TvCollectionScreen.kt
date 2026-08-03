@@ -33,7 +33,20 @@ import androidx.tv.material3.TabRow
 import androidx.tv.material3.Text
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
 import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
+
+/** 追番页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
+private enum class TvCollectionFocus : TvFocusKey {
+    /** 第一个分类 tab (进页初始焦点). */
+    FirstTab,
+
+    /** 网格首卡 (tab 行按下键的显式落点). */
+    FirstCard,
+}
 
 /**
  * TV 追番页 (atv-architecture.md §7.4, M2):
@@ -49,6 +62,11 @@ fun TvCollectionScreen(
     val items = viewModel.pager.collectAsLazyPagingItems()
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
 
+    // 统一焦点框架: 进页初始焦点落第一个 tab; tab 行按下键直达网格首卡
+    val focus = rememberTvFocusScope()
+    focus.Resolver()
+    focus.InitialFocus(TvCollectionFocus.FirstTab)
+
     Column(modifier.fillMaxSize().padding(top = 24.dp)) {
         TabRow(
             selectedTabIndex = selectedTabIndex,
@@ -62,6 +80,14 @@ fun TvCollectionScreen(
                         selectedTabIndex = index
                         viewModel.selectTab(type)
                     },
+                    modifier = Modifier
+                        .then(
+                            if (index == 0) {
+                                Modifier.tvFocusAnchor(focus, TvCollectionFocus.FirstTab)
+                            } else Modifier,
+                        )
+                        // 跨过网格上缘空隙直达首卡 (空间搜索跨大间距不可靠)
+                        .tvFocusLink(focus, down = TvCollectionFocus.FirstCard),
                 ) {
                     val count = counts?.getCount(type)
                     Text(
@@ -95,6 +121,9 @@ fun TvCollectionScreen(
                         imageUrl = info.subjectInfo.imageLarge,
                         title = info.subjectInfo.displayName,
                         onClick = { onClickSubject(info) },
+                        modifier = if (index == 0) {
+                            Modifier.tvFocusAnchor(focus, TvCollectionFocus.FirstCard)
+                        } else Modifier,
                     )
                 }
             }

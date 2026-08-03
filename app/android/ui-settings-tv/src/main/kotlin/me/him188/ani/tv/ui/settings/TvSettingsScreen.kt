@@ -25,6 +25,15 @@ import androidx.tv.material3.ListItem
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import me.him188.ani.app.platform.currentAniBuildConfig
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+
+/** 设置页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
+private enum class TvSettingsFocus : TvFocusKey {
+    /** 第一个开关项 (进页初始焦点). */
+    FirstItem,
+}
 
 /**
  * TV 设置子集 (atv-architecture.md §7.6, M3 精简版).
@@ -38,6 +47,11 @@ fun TvSettingsScreen(
     val danmakuEnabled by viewModel.danmakuEnabled.collectAsState()
     val videoConfig by viewModel.videoConfig.collectAsState()
 
+    // 统一焦点框架: 进页初始焦点落第一个开关项
+    val focus = rememberTvFocusScope()
+    focus.Resolver()
+    focus.InitialFocus(TvSettingsFocus.FirstItem)
+
     Column(
         modifier
             .fillMaxSize()
@@ -48,7 +62,10 @@ fun TvSettingsScreen(
         Text("设置", style = MaterialTheme.typography.displaySmall)
 
         SectionTitle("弹幕")
-        ToggleItem("显示弹幕", danmakuEnabled) { viewModel.toggleDanmakuEnabled() }
+        ToggleItem(
+            "显示弹幕", danmakuEnabled,
+            modifier = Modifier.tvFocusAnchor(focus, TvSettingsFocus.FirstItem),
+        ) { viewModel.toggleDanmakuEnabled() }
 
         SectionTitle("播放")
         ToggleItem("自动连播", videoConfig?.autoPlayNext) { viewModel.toggleAutoPlayNext() }

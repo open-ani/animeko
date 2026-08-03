@@ -34,10 +34,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import kotlinx.coroutines.delay
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -50,6 +50,12 @@ import me.him188.ani.app.data.models.subject.displayName
 import me.him188.ani.app.domain.episode.EpisodeWithAiringTime
 import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
+
+/** 时间表焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
+private enum class TvScheduleFocus : TvFocusKey {
+    /** 「今天」日期胶囊 (进页初始焦点). */
+    Today,
+}
 
 /**
  * TV 新番时间表 (atv-architecture.md §7.2, M2 精简版):
@@ -77,13 +83,11 @@ fun TvScheduleScreen(
         val todayIndex = days.indexOfFirst { it.date == viewModel.today }.coerceAtLeast(0)
         var selectedDayIndex by rememberSaveable { mutableIntStateOf(todayIndex) }
         val chipRowState = rememberLazyListState(initialFirstVisibleItemIndex = todayIndex)
-        val todayRequester = remember { FocusRequester() }
 
-        // 进页初始焦点落「今天」胶囊 (对话框经验值 300ms, 附录 A)
-        LaunchedEffect(Unit) {
-            delay(300)
-            runCatching { todayRequester.requestFocus() }
-        }
+        // 统一焦点框架: 进页初始焦点落「今天」胶囊 (轮询 + 到位确认)
+        val focus = rememberTvFocusScope()
+        focus.Resolver()
+        focus.InitialFocus(TvScheduleFocus.Today)
 
         Column(Modifier.fillMaxSize().padding(top = 24.dp)) {
             // 日期胶囊行: 聚焦即换天 (正交按键模型, §7.2)
@@ -98,7 +102,9 @@ fun TvScheduleScreen(
                         isToday = day.date == viewModel.today,
                         selected = selectedDayIndex == index,
                         onFocused = { selectedDayIndex = index },
-                        modifier = if (index == todayIndex) Modifier.focusRequester(todayRequester) else Modifier,
+                        modifier = if (index == todayIndex) {
+                            Modifier.tvFocusAnchor(focus, TvScheduleFocus.Today)
+                        } else Modifier,
                     )
                 }
             }

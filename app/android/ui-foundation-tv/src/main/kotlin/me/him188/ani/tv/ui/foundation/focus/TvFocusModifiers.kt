@@ -81,11 +81,18 @@ fun Modifier.tvFocusEnterGate(
     scope: TvFocusScope,
     entry: TvFocusKey,
     allow: Set<FocusDirection> = setOf(FocusDirection.Left, FocusDirection.Enter),
+): Modifier = tvFocusEnterGate(scope.requesterOf(entry), allow)
+
+/** [tvFocusEnterGate] 的组件级重载: 不依赖 scope, 直接给进入落点 requester (如 SideRail). */
+@OptIn(ExperimentalComposeUiApi::class)
+fun Modifier.tvFocusEnterGate(
+    entry: androidx.compose.ui.focus.FocusRequester,
+    allow: Set<FocusDirection> = setOf(FocusDirection.Left, FocusDirection.Enter),
 ): Modifier = this
     .focusProperties {
         onEnter = {
             if (requestedFocusDirection in allow) {
-                scope.requesterOf(entry).requestFocus()
+                entry.requestFocus()
             } else {
                 cancelFocus()
             }

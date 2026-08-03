@@ -33,6 +33,15 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import me.him188.ani.app.data.models.user.SelfInfo
+import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+
+/** 登录页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
+private enum class TvLoginFocus : TvFocusKey {
+    /** 当前步骤的输入框 (进入各步骤时的初始焦点). */
+    Field,
+}
 
 /**
  * TV 邮箱 OTP 登录页 (atv-architecture.md §7.7): 两步式 —— 邮箱 -> 验证码.
@@ -47,8 +56,12 @@ fun TvLoginScreen(
     val busy by viewModel.busy.collectAsState()
     val error by viewModel.error.collectAsState()
 
+    // 统一焦点框架: 每个步骤 (邮箱/验证码) 进入时初始焦点落输入框
+    val focus = rememberTvFocusScope()
+    focus.Resolver()
     LaunchedEffect(step) {
         (step as? TvLoginViewModel.Step.Done)?.let { onLoggedIn(it.user) }
+        if (step !is TvLoginViewModel.Step.Done) focus.request(TvLoginFocus.Field)
     }
 
     Column(
@@ -70,7 +83,7 @@ fun TvLoginScreen(
                 me.him188.ani.tv.ui.foundation.widgets.TvTextField(
                     value = email,
                     onValueChange = { email = it },
-                    modifier = Modifier.fillMaxWidth(0.55f),
+                    modifier = Modifier.fillMaxWidth(0.55f).tvFocusAnchor(focus, TvLoginFocus.Field),
                     placeholder = "邮箱地址",
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Email,
@@ -104,7 +117,7 @@ fun TvLoginScreen(
                 me.him188.ani.tv.ui.foundation.widgets.TvTextField(
                     value = otp,
                     onValueChange = { if (it.length <= 6) otp = it },
-                    modifier = Modifier.fillMaxWidth(0.35f),
+                    modifier = Modifier.fillMaxWidth(0.35f).tvFocusAnchor(focus, TvLoginFocus.Field),
                     placeholder = "6 位验证码",
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Number,

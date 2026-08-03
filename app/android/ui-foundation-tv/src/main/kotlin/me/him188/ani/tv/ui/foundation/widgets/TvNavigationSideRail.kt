@@ -16,7 +16,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,10 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -62,6 +58,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.user.SelfInfo
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.tv.ui.foundation.focus.tvFocusEnterGate
 
 /*
  * TV 可展开左侧导航栏. 布局/交互对齐上游 PR#3217 的 TvNavigationSideRail:
@@ -99,7 +96,6 @@ data class TvNavRailItem(
  * @param enterFocus 进入侧边栏时聚焦的 defaultFocus 条目的请求器; 传入后调用方可在任意时刻
  *   requestFocus 把焦点直接送进侧边栏 (如全局菜单键), 不传则内部自建.
  */
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun TvNavigationSideRail(
     selfInfo: SelfInfo?,
@@ -128,25 +124,13 @@ fun TvNavigationSideRail(
                 ),
             )
         }
-        // 进入门控: 只有"按左" (空间搜索) 或编程式聚焦 (Enter 方向, 如全局菜单键的
-        // requestFocus) 才能把焦点移进侧边栏; 上/下/右的空间搜索一律取消.
-        // 进入时焦点总是落到 defaultFocus 条目.
+        // 进入门控 (统一焦点框架的组件级重载): 只有"按左"或编程式聚焦 (全局菜单键) 能进,
+        // 上/下/右的空间搜索一律取消; 进入时焦点总是落到 defaultFocus 条目.
         val enterFocusResolved = enterFocus ?: remember { FocusRequester() }
-        val hasDefaultFocusItem = items.any { it.defaultFocus }
         Column(
             Modifier
                 .onFocusChanged { expanded = it.hasFocus }
-                .focusProperties {
-                    onEnter = {
-                        when (requestedFocusDirection) {
-                            FocusDirection.Left, FocusDirection.Enter ->
-                                if (hasDefaultFocusItem) enterFocusResolved.requestFocus()
-
-                            else -> cancelFocus()
-                        }
-                    }
-                }
-                .focusGroup()
+                .tvFocusEnterGate(entry = enterFocusResolved)
                 .padding(start = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
