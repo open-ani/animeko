@@ -690,6 +690,9 @@
     <string name="video_player_aspect_stretch">Stretch</string>
     <string name="video_player_aspect_crop">Crop</string>
     <string name="video_player_auto">Auto</string>
+    <string name="video_player_original_quality">Original</string>
+    <string name="video_player_playback_bitrate">Playback bitrate</string>
+    <string name="video_player_quality_switch_failed">Failed to switch playback bitrate</string>
     <string name="video_player_audio_track">Audio</string>
     <string name="video_player_off">Off</string>
     <string name="video_player_subtitle">Subtitle</string>

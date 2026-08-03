@@ -44,6 +44,9 @@ kotlin {
         implementation(libs.libass.media)
         api(libs.mediamp.exoplayer)
     }
+    sourceSets.androidHostTest.dependencies {
+        implementation(libs.kotlinx.coroutines.test)
+    }
     sourceSets.desktopMain.dependencies {
         api(compose.desktop.currentOs) {
             exclude("org.jetbrains.compose.material:material") // We use material3

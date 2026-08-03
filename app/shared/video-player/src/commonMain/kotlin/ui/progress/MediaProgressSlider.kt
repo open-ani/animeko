@@ -101,6 +101,15 @@ const val TAG_PROGRESS_SLIDER_CENTERED_PREVIEW_FRAME = "ProgressSliderCenteredPr
 const val TAG_PROGRESS_SLIDER = "ProgressSlider"
 
 /**
+ * A temporary, known-valid progress value shown while the underlying player replaces its timeline.
+ */
+@Immutable
+data class PlayerProgressSnapshot(
+    val positionMillis: Long,
+    val durationMillis: Long,
+)
+
+/**
  * 播放器进度滑块的状态.
  *
  * - 支持从 [currentPositionMillis] 同步当前播放位置, 从 [totalDurationMillis] 同步总时长.
@@ -122,8 +131,12 @@ class PlayerProgressSliderState(
      */
     private val onPreviewFinished: (positionMillis: Long) -> Unit,
 ) {
-    val currentPositionMillis: Long by derivedStateOf(currentPositionMillis)
-    val totalDurationMillis: Long by derivedStateOf(totalDurationMillis)
+    val currentPositionMillis: Long by derivedStateOf {
+        currentPositionMillis().coerceAtLeast(0L)
+    }
+    val totalDurationMillis: Long by derivedStateOf {
+        totalDurationMillis().coerceAtLeast(0L)
+    }
     val chapters by derivedStateOf(chapters)
 
     private var previewPositionRatio: Float by mutableFloatStateOf(Float.NaN)
@@ -147,14 +160,14 @@ class PlayerProgressSliderState(
     val displayPositionRatio by derivedStateOf {
         val previewPositionRatio = this.previewPositionRatio
         if (!previewPositionRatio.isNaN()) {
-            return@derivedStateOf previewPositionRatio
+            return@derivedStateOf previewPositionRatio.coerceIn(0f, 1f)
         }
 
         val total = this.totalDurationMillis
-        if (total == 0L) {
+        if (total <= 0L) {
             return@derivedStateOf 0f
         }
-        this.currentPositionMillis.toFloat() / total
+        (this.currentPositionMillis.toFloat() / total).coerceIn(0f, 1f)
     }
 
     fun finishPreview() {
@@ -186,11 +199,14 @@ private class Data(
 
 /**
  * 便捷方法, 从 [MediampPlayer.currentPositionMillis] 创建  [PlayerProgressSliderState]
+ *
+ * @param progressSnapshot overrides transient player progress values until the caller finishes restoring the timeline.
  */
 @Composable
 fun rememberMediaProgressSliderState(
     player: MediampPlayer,
     chaptersFlow: Flow<List<Chapter>> = player.chapters ?: flowOf(emptyList()),
+    progressSnapshot: PlayerProgressSnapshot? = null,
     onPreview: (positionMillis: Long) -> Unit,
     onPreviewFinished: (positionMillis: Long) -> Unit,
 ): PlayerProgressSliderState { // TODO: 2025/1/3  refactor rememberMediaProgressSliderState
@@ -204,21 +220,23 @@ fun rememberMediaProgressSliderState(
         ) // TODO: this should be in domain layer
     }
 
-    val data by flow.collectAsStateWithLifecycle(Data.EMPTY)
-
-    val totalDuration by remember {
-        derivedStateOf {
-            data.mediaProperties?.durationMillis ?: 0L
-        }
-    }
+    val data = flow.collectAsStateWithLifecycle(Data.EMPTY)
+    val progressSnapshotState = rememberUpdatedState(progressSnapshot)
 
     val onPreviewUpdated by rememberUpdatedState(onPreview)
     val onPreviewFinishedUpdated by rememberUpdatedState(onPreviewFinished)
     return remember {
         PlayerProgressSliderState(
-            { data.currentPosition },
-            { totalDuration },
-            { data.chapters },
+            {
+                progressSnapshotState.value?.positionMillis
+                    ?: data.value.currentPosition
+            },
+            {
+                progressSnapshotState.value?.durationMillis
+                    ?: data.value.mediaProperties?.durationMillis
+                    ?: 0L
+            },
+            { data.value.chapters },
             onPreviewUpdated,
             onPreviewFinishedUpdated,
         )
