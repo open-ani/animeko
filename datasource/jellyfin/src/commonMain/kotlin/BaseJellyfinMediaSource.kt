@@ -29,6 +29,7 @@ import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.MediaChapter
 import me.him188.ani.datasources.api.MediaChapterKind
 import me.him188.ani.datasources.api.MediaExtraFiles
+import me.him188.ani.datasources.api.MediaPreviewThumbnails
 import me.him188.ani.datasources.api.MediaProperties
 import me.him188.ani.datasources.api.Subtitle
 import me.him188.ani.datasources.api.SubtitleKind
@@ -51,6 +52,7 @@ abstract class BaseJellyfinMediaSource(
     private val client: ScopedHttpClient,
 ) : HttpMediaSource() {
     abstract val baseUrl: String
+    protected open val itemFields: String = "MediaStreams,Chapters"
 
     protected data class Authorization(
         val userId: String,
@@ -66,6 +68,11 @@ abstract class BaseJellyfinMediaSource(
      * @return `true` when the request can be retried with a newly acquired authorization.
      */
     protected open suspend fun invalidateAuthorization(authorization: Authorization): Boolean = false
+
+    internal open fun createPreviewThumbnails(
+        itemId: String,
+        trickplay: Map<String, Map<String, JellyfinTrickplayManifestDto>>?,
+    ): MediaPreviewThumbnails? = null
 
     override suspend fun checkConnection(): ConnectionStatus {
         try {
@@ -163,6 +170,7 @@ abstract class BaseJellyfinMediaSource(
                             extraFiles = MediaExtraFiles(
                                 subtitles = getSubtitles(item.Id, item.MediaStreams),
                                 chapters = emptyList(),
+                                previewThumbnails = createPreviewThumbnails(item.Id, item.Trickplay),
                             ),
                             episodeRange = episodeRange,
                             location = MediaSourceLocation.Lan,
@@ -184,6 +192,7 @@ abstract class BaseJellyfinMediaSource(
                                 extraFiles = MediaExtraFiles(
                                     subtitles = media.extraFiles.subtitles,
                                     chapters = chapters,
+                                    previewThumbnails = media.extraFiles.previewThumbnails,
                                 ),
                             ),
                         )
@@ -341,7 +350,7 @@ abstract class BaseJellyfinMediaSource(
     private suspend fun doGetEpisodes(seriesId: String, seasonNum: Int): SearchResponse {
         return authorizedGet("$baseUrl/Shows/$seriesId/Episodes") {
             parameter("Season", seasonNum)
-            parameter("fields", "MediaStreams,Chapters")
+            parameter("fields", itemFields)
         }
     }
 
@@ -354,7 +363,7 @@ abstract class BaseJellyfinMediaSource(
             parameter("enableImages", false)
             parameter("recursive", recursive)
             parameter("searchTerm", subjectName)
-            parameter("fields", "MediaStreams,Chapters")
+            parameter("fields", itemFields)
             parameter("parentId", parentId)
         }
     }
@@ -413,6 +422,8 @@ abstract class BaseJellyfinMediaSource(
             authorization = getAuthorization()
         }
     }
+
+    override suspend fun fetchPreviewThumbnail(url: String): ByteArray = authorizedGet(url)
 }
 
 private class JellyfinAuthorizationException :
@@ -552,4 +563,5 @@ private data class Item(
     val MediaStreams: List<MediaStream> = emptyList(),
     val Chapters: List<ChapterInfoDto> = emptyList(),
     val RunTimeTicks: Long? = null,
+    val Trickplay: Map<String, Map<String, JellyfinTrickplayManifestDto>>? = null,
 )

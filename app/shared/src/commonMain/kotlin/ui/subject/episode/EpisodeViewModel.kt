@@ -79,7 +79,10 @@ import me.him188.ani.app.domain.episode.getCurrentEpisodeId
 import me.him188.ani.app.domain.episode.infoBundleFlow
 import me.him188.ani.app.domain.episode.infoLoadErrorFlow
 import me.him188.ani.app.domain.episode.mediaSelectorFlow
+import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.datasources.api.Media
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
@@ -256,6 +259,7 @@ class EpisodeViewModel(
 ) : KoinComponent, AbstractViewModel(), HasBackgroundScope {
     // region dependencies
     private val playerStateFactory: MediampPlayerFactory<*> by inject()
+    private val httpClientProvider: HttpClientProvider by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
     private val mediaCacheManager: MediaCacheManager by inject()
     private val danmakuRepository: DanmakuRepository by inject()
@@ -283,6 +287,9 @@ class EpisodeViewModel(
 
     val player: MediampPlayer =
         playerStateFactory.create(context, backgroundScope.coroutineContext)
+    internal val framePreviewHttpClient = httpClientProvider.get()
+    internal val fetchPreviewThumbnail: suspend (String, String) -> ByteArray? =
+        mediaSourceManager::fetchPreviewThumbnail
 
     /** `null` 表示本次播放尚未调整过倍速, 此时跟随配置. */
     private val playbackSpeedOverride = MutableStateFlow<Float?>(null)
@@ -340,6 +347,10 @@ class EpisodeViewModel(
     )
 
     val mediaResolver: MediaResolver get() = fetchPlayState.playerSession.mediaResolver
+
+    @UnsafeEpisodeSessionApi
+    val selectedMediaFlow: Flow<Media?> = fetchPlayState.mediaSelectorFlow
+        .flatMapLatest { it?.selected ?: flowOfNull() }
 
     // region Subject and episode data info flows
     @UnsafeEpisodeSessionApi

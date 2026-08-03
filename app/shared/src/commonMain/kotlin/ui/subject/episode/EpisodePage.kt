@@ -84,6 +84,8 @@ import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.comment.CommentContext
+import me.him188.ani.app.domain.episode.UnsafeEpisodeSessionApi
+import me.him188.ani.datasources.api.Media
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.platform.LocalContext
 import me.him188.ani.app.platform.features.StreamType
@@ -922,8 +924,15 @@ private fun EpisodeVideo(
             vm.player.seekTo(it)
         },
     )
+    @OptIn(UnsafeEpisodeSessionApi::class)
+    val selectedMedia by vm.selectedMediaFlow.collectAsStateWithLifecycle(null)
     val framePreview = if (vm.videoScaffoldConfig.enableFramePreview) {
-        rememberMediaProgressFramePreviewState(vm.player)
+        rememberMediaProgressFramePreviewState(
+            vm.player,
+            httpClient = vm.framePreviewHttpClient,
+            previewThumbnails = selectedMedia?.extraFiles?.previewThumbnails,
+            requestThumbnail = vm.fetchPreviewThumbnail,
+        )
     } else {
         null
     }

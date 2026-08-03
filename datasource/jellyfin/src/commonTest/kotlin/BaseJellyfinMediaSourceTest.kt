@@ -2,12 +2,16 @@ package me.him188.ani.datasources.jellyfin
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import me.him188.ani.datasources.api.MediaChapter
 import me.him188.ani.datasources.api.MediaChapterKind
+import me.him188.ani.datasources.api.MediaPreviewThumbnails
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class BaseJellyfinMediaSourceTest {
@@ -132,4 +136,129 @@ class BaseJellyfinMediaSourceTest {
         assertEquals(MediaChapterKind.ENDING, chapters[1].kind)
         assertEquals(1_329_040L, chapters[1].offsetMillis)
     }
+
+    @Test
+    fun testJellyfinTrickplayMetadataDeserializationAndMapping() {
+        val itemId = "item1"
+        val rawJson = """
+            {
+              "Trickplay": {
+                "$itemId": {
+                  "640": {
+                    "Width": 640,
+                    "Height": 360,
+                    "TileWidth": 5,
+                    "TileHeight": 5,
+                    "ThumbnailCount": 120,
+                    "Interval": 20000
+                  },
+                  "320": {
+                    "Width": 320,
+                    "Height": 180,
+                    "TileWidth": 10,
+                    "TileHeight": 10,
+                    "ThumbnailCount": 240,
+                    "Interval": 10000
+                  }
+                }
+              }
+            }
+        """.trimIndent()
+
+        val parsed = Json { ignoreUnknownKeys = true }.decodeFromString<TrickplayItemDto>(rawJson)
+        val thumbnails = assertNotNull(
+            createJellyfinPreviewThumbnails("https://example.com", "jellyfin-instance", itemId, parsed.Trickplay),
+        )
+        assertEquals(320, thumbnails.width)
+        assertEquals(180, thumbnails.height)
+        assertEquals(10_000L, thumbnails.intervalMillis)
+        assertEquals(240, thumbnails.totalCount)
+        assertEquals(
+            "https://example.com/Videos/item1/Trickplay/320/{tileIndex}.jpg?MediaSourceId=item1",
+            (thumbnails.layout as MediaPreviewThumbnails.Layout.SpriteTile).urlPattern,
+        )
+        assertEquals("jellyfin-instance", thumbnails.requesterMediaSourceId)
+        assertEquals(emptyMap(), thumbnails.headers)
+    }
+
+    @Test
+    fun testJellyfinTrickplayUsesSoleAlternativeMediaSource() {
+        val manifest = JellyfinTrickplayManifestDto(
+            Width = 320,
+            Height = 180,
+            TileWidth = 10,
+            TileHeight = 10,
+            ThumbnailCount = 240,
+            Interval = 10_000,
+        )
+        val thumbnails = assertNotNull(
+            createJellyfinPreviewThumbnails(
+                "https://example.com",
+                "jellyfin-instance",
+                "item1",
+                mapOf("another-version" to mapOf("320" to manifest)),
+            ),
+        )
+        assertEquals(
+            "https://example.com/Videos/item1/Trickplay/320/{tileIndex}.jpg?MediaSourceId=another-version",
+            (thumbnails.layout as MediaPreviewThumbnails.Layout.SpriteTile).urlPattern,
+        )
+    }
+
+    @Test
+    fun testJellyfinTrickplayDoesNotGuessBetweenAlternativeMediaSources() {
+        val manifest = JellyfinTrickplayManifestDto(
+            Width = 320,
+            Height = 180,
+            TileWidth = 10,
+            TileHeight = 10,
+            ThumbnailCount = 240,
+            Interval = 10_000,
+        )
+        assertNull(
+            createJellyfinPreviewThumbnails(
+                "https://example.com",
+                "jellyfin-instance",
+                "item1",
+                mapOf(
+                    "version-1" to mapOf("320" to manifest),
+                    "version-2" to mapOf("320" to manifest),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun testJellyfinTrickplaySelectsSmallestValidFallback() {
+        fun manifest(width: Int, height: Int = width / 2) = JellyfinTrickplayManifestDto(
+            Width = width,
+            Height = height,
+            TileWidth = 10,
+            TileHeight = 10,
+            ThumbnailCount = 100,
+            Interval = 10_000,
+        )
+
+        val thumbnails = assertNotNull(
+            createJellyfinPreviewThumbnails(
+                "https://example.com",
+                "jellyfin-instance",
+                "item1",
+                mapOf(
+                    "item1" to mapOf(
+                        "1280" to manifest(1280),
+                        "160" to manifest(160),
+                        "320" to manifest(320, height = 0),
+                    ),
+                ),
+            ),
+        )
+        assertEquals(160, thumbnails.width)
+    }
+
+    @Serializable
+    @Suppress("PropertyName")
+    private data class TrickplayItemDto(
+        val Trickplay: Map<String, Map<String, JellyfinTrickplayManifestDto>> = emptyMap(),
+    )
 }

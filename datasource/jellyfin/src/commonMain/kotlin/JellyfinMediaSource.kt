@@ -9,6 +9,8 @@
 
 package me.him188.ani.datasources.jellyfin
 
+import kotlinx.serialization.Serializable
+import me.him188.ani.datasources.api.MediaPreviewThumbnails
 import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.datasources.api.source.MediaSource
 import me.him188.ani.datasources.api.source.MediaSourceConfig
@@ -24,7 +26,7 @@ import me.him188.ani.utils.ktor.ScopedHttpClient
 class JellyfinMediaSource(
     config: MediaSourceConfig,
     client: ScopedHttpClient,
-    instanceId: String = ID,
+    override val mediaSourceId: String = ID,
 ) : BaseJellyfinMediaSource(client) {
     companion object {
         const val ID = "jellyfin"
@@ -89,13 +91,13 @@ class JellyfinMediaSource(
             mediaSourceId: String,
             config: MediaSourceConfig,
             client: ScopedHttpClient
-        ): MediaSource = JellyfinMediaSource(config, client, instanceId = mediaSourceId)
+        ): MediaSource = JellyfinMediaSource(config, client, mediaSourceId = mediaSourceId)
     }
 
     override val kind: MediaSourceKind get() = MediaSourceKind.WEB
     override val info: MediaSourceInfo = INFO
-    override val mediaSourceId: String get() = ID
     override val baseUrl = config[Parameters.baseUrl].removeSuffix("/")
+    override val itemFields: String = "MediaStreams,Chapters,Trickplay"
     private val authMode = config[Parameters.authMode]
     private val userId = config[Parameters.userId]
     private val apiKey = config[Parameters.apikey]
@@ -104,12 +106,17 @@ class JellyfinMediaSource(
             baseUrl = baseUrl,
             username = config[Parameters.username],
             password = config[Parameters.password],
-            deviceId = "animeko-$instanceId",
+            deviceId = "animeko-$mediaSourceId",
             client = client,
         )
     } else {
         null
     }
+
+    internal override fun createPreviewThumbnails(
+        itemId: String,
+        trickplay: Map<String, Map<String, JellyfinTrickplayManifestDto>>?,
+    ) = createJellyfinPreviewThumbnails(baseUrl, mediaSourceId, itemId, trickplay)
 
     override suspend fun getAuthorization(): Authorization {
         return when (authMode) {
@@ -145,4 +152,49 @@ class JellyfinMediaSource(
     override fun getDownloadUri(itemId: String, accessToken: String): String {
         return "$baseUrl/Items/$itemId/Download?ApiKey=$accessToken"
     }
+}
+
+@Serializable
+@Suppress("PropertyName")
+internal data class JellyfinTrickplayManifestDto(
+    val Width: Int = 0,
+    val Height: Int = 0,
+    val TileWidth: Int = 0,  // columns
+    val TileHeight: Int = 0, // rows
+    val ThumbnailCount: Int = 0,
+    val Interval: Long = 0,  // in milliseconds
+)
+
+internal fun createJellyfinPreviewThumbnails(
+    baseUrl: String,
+    requesterMediaSourceId: String,
+    itemId: String,
+    trickplay: Map<String, Map<String, JellyfinTrickplayManifestDto>>?,
+): MediaPreviewThumbnails? {
+    val validMediaSources = trickplay.orEmpty().mapNotNull { (mediaSourceId, manifests) ->
+        val validManifests = manifests.values.filter {
+            it.Width > 0 && it.Height > 0 && it.TileWidth > 0 && it.TileHeight > 0 &&
+                it.ThumbnailCount > 0 && it.Interval > 0
+        }
+        val manifest = validManifests.firstOrNull { it.Width == 320 }
+            ?: validManifests.minByOrNull { it.Width }
+            ?: return@mapNotNull null
+        mediaSourceId to manifest
+    }
+    val (mediaSourceId, manifest) = validMediaSources.firstOrNull { (mediaSourceId) -> mediaSourceId == itemId }
+        ?: validMediaSources.singleOrNull()
+        ?: return null
+    return MediaPreviewThumbnails(
+        width = manifest.Width,
+        height = manifest.Height,
+        intervalMillis = manifest.Interval,
+        totalCount = manifest.ThumbnailCount,
+        layout = MediaPreviewThumbnails.Layout.SpriteTile(
+            columns = manifest.TileWidth,
+            rows = manifest.TileHeight,
+            urlPattern =
+                "$baseUrl/Videos/$itemId/Trickplay/${manifest.Width}/{tileIndex}.jpg?MediaSourceId=$mediaSourceId",
+        ),
+        requesterMediaSourceId = requesterMediaSourceId,
+    )
 }

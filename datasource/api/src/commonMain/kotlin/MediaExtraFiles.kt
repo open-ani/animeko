@@ -18,9 +18,42 @@ import kotlinx.serialization.Serializable
 class MediaExtraFiles(
     val subtitles: List<Subtitle> = emptyList(),
     val chapters: List<MediaChapter> = emptyList(),
+    val previewThumbnails: MediaPreviewThumbnails? = null,
 ) {
     companion object {
         val EMPTY = MediaExtraFiles()
+    }
+}
+
+/**
+ * 通用的进度条预览缩略图信息，适用于 Jellyfin, Emby, Plex, YouTube Sprite Tiles 等各类视频数据源。
+ */
+@Serializable
+data class MediaPreviewThumbnails(
+    val width: Int,
+    val height: Int,
+    val intervalMillis: Long,
+    val totalCount: Int,
+    val layout: Layout,
+    val headers: Map<String, String> = emptyMap(),
+    val requesterMediaSourceId: String? = null,
+) {
+    @Serializable
+    sealed interface Layout {
+        /**
+         * 精灵图（Sprite Tile）拼图网格布局（如 Jellyfin/Emby/Plex/YouTube）。
+         * 每个大图包含 [columns] 列 x [rows] 行个小缩略图。
+         */
+        @Serializable
+        data class SpriteTile(
+            val columns: Int,
+            val rows: Int,
+            /**
+             * 拼图大图的 URL 模板，如 `https://example.com/tiles/{tileIndex}.jpg`。
+             * `{tileIndex}` 会被替换为 0, 1, 2...
+             */
+            val urlPattern: String,
+        ) : Layout
     }
 }
 
