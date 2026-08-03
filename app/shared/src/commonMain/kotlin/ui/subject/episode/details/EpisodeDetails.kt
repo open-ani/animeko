@@ -230,7 +230,7 @@ fun EpisodeDetails(
 
     if (state.subjectId != 0) {
         val subjectDetailsState by state.subjectDetailsStateLoader.state
-            .collectAsStateWithLifecycle(SubjectDetailsUIState.Placeholder(state.subjectId))
+            .collectAsStateWithLifecycle()
         if (showSubjectDetails) {
             ModalBottomSheet(
                 { showSubjectDetails = false },
@@ -246,7 +246,7 @@ fun EpisodeDetails(
                     subjectDetailsState,
                     selfInfo,
                     onPlay = onSwitchEpisode,
-                    onLoadErrorRetry = { state.subjectDetailsStateLoader.reload(state.subjectId) },
+                    onLoadErrorRetry = { state.subjectDetailsStateLoader.retry() },
                     onClickTag = onClickTag,
                     onEpisodeCollectionUpdate = onEpisodeCollectionUpdate,
                     showTopBar = false,
