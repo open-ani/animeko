@@ -10,6 +10,9 @@
 package me.him188.ani.tools.datasourcetestmcp.mcp
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
@@ -75,15 +78,20 @@ class McpRequestHandler(
             ?: return id?.let { RpcResponse(id = it, error = RpcError(-32602, "Unknown tool: $name")) }
         val arguments = params["arguments"] ?: JsonObject(emptyMap())
 
-        val structured = runCatching {
+        val structured = try {
             toolCallMutex.withLock { registration.handler(arguments) }
-        }.getOrElse { exception ->
-            if (exception is CancellationException) throw exception
-            val errorResult = buildJsonObject {
-                put("ok", false)
-                put("summary", "${exception::class.simpleName}: ${exception.message.orEmpty()}")
-            }
-            return id?.let { RpcResponse(id = it, result = toolCallResult(errorResult, isError = true)) }
+        } catch (exception: TimeoutCancellationException) {
+            // 下游漏网的 withTimeout 抛的是 TimeoutCancellationException, 表示这次工具调用超时,
+            // 不是本次请求被取消, 所以要降级成结构化错误返回给客户端, 不能让它打掉整个响应.
+            // 它是 CancellationException 的子类, 这个 catch 必须排在下面那个前面.
+            // 若此时整个请求其实已经被取消, ensureActive 会把取消重新抛出去.
+            currentCoroutineContext().ensureActive()
+            return id?.let { RpcResponse(id = it, result = toolCallResult(errorResultOf(exception), isError = true)) }
+        } catch (exception: CancellationException) {
+            // 客户端断开导致的取消必须继续向上传播, 否则会把断开误报成工具失败.
+            throw exception
+        } catch (exception: Throwable) {
+            return id?.let { RpcResponse(id = it, result = toolCallResult(errorResultOf(exception), isError = true)) }
         }
         return id?.let { RpcResponse(id = it, result = toolCallResult(structured, isError = false)) }
     }
@@ -97,6 +105,13 @@ class McpRequestHandler(
                     registrations.map { it.tool },
                 ),
             )
+        }
+    }
+
+    private fun errorResultOf(exception: Throwable): JsonObject {
+        return buildJsonObject {
+            put("ok", false)
+            put("summary", "${exception::class.simpleName}: ${exception.message.orEmpty()}")
         }
     }
 

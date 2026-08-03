@@ -32,74 +32,11 @@ class VideoProbe(
         url: String,
         headers: Map<String, String>,
     ): VideoProbeResult {
-        return runCatching {
-            val response = request(url, headers)
-            val contentType = response.contentType()?.toString()
-            val finalUrl = response.request.url.toString()
-
-            if (url.lowercase().contains(".m3u8") || contentType?.contains("mpegurl", ignoreCase = true) == true) {
-                val playlist = response.bodyAsText()
-                val entries = playlist.lineSequence()
-                    .map(String::trim)
-                    .filter { it.isNotEmpty() && !it.startsWith("#") }
-                    .toList()
-                if (entries.isEmpty()) {
-                    return@runCatching VideoProbeResult(
-                        ok = false,
-                        url = url,
-                        finalUrl = finalUrl,
-                        kind = "m3u8",
-                        statusCode = response.status.value,
-                        contentType = contentType,
-                        headers = response.headersSnapshot(),
-                        summary = "Playlist loaded but contains no playable entries",
-                        playlistEntries = 0,
-                        errors = listOf("Empty playlist"),
-                    )
-                }
-
-                val firstEntry = UrlHelpers.computeAbsoluteUrl(finalUrl, entries.first())
-                if (firstEntry.lowercase().contains(".m3u8")) {
-                    return@runCatching probe(firstEntry, headers).copy(
-                        kind = "m3u8-master",
-                        nestedPlaylistUrl = firstEntry,
-                    )
-                }
-
-                val segmentResponse = request(firstEntry, headers, rangeProbe = true)
-                return@runCatching VideoProbeResult(
-                    ok = segmentResponse.status.isSuccess(),
-                    url = url,
-                    finalUrl = finalUrl,
-                    kind = "m3u8",
-                    statusCode = response.status.value,
-                    contentType = contentType,
-                    headers = response.headersSnapshot(),
-                    summary = if (segmentResponse.status.isSuccess()) {
-                        "Playlist and first segment are reachable"
-                    } else {
-                        "Playlist is reachable but first segment probe failed"
-                    },
-                    playlistEntries = entries.size,
-                    sampledSegmentUrl = firstEntry,
-                    sampledSegmentStatusCode = segmentResponse.status.value,
-                    errors = if (segmentResponse.status.isSuccess()) emptyList() else listOf("First segment probe returned ${segmentResponse.status.value}"),
-                )
-            }
-
-            VideoProbeResult(
-                ok = response.status.isSuccess(),
-                url = url,
-                finalUrl = finalUrl,
-                kind = "file",
-                statusCode = response.status.value,
-                contentType = contentType,
-                headers = response.headersSnapshot(),
-                summary = if (response.status.isSuccess()) "Media URL is reachable" else "Media URL probe failed",
-                errors = if (response.status.isSuccess()) emptyList() else listOf("Probe returned ${response.status.value}"),
-            )
-        }.getOrElse { exception ->
-            if (exception is CancellationException) throw exception
+        return try {
+            probeImpl(url, headers)
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Throwable) {
             VideoProbeResult(
                 ok = false,
                 url = url,
@@ -108,6 +45,77 @@ class VideoProbe(
                 errors = listOf("${exception::class.simpleName}: ${exception.message.orEmpty()}"),
             )
         }
+    }
+
+    private suspend fun probeImpl(
+        url: String,
+        headers: Map<String, String>,
+    ): VideoProbeResult {
+        val response = request(url, headers)
+        val contentType = response.contentType()?.toString()
+        val finalUrl = response.request.url.toString()
+
+        if (url.lowercase().contains(".m3u8") || contentType?.contains("mpegurl", ignoreCase = true) == true) {
+            val playlist = response.bodyAsText()
+            val entries = playlist.lineSequence()
+                .map(String::trim)
+                .filter { it.isNotEmpty() && !it.startsWith("#") }
+                .toList()
+            if (entries.isEmpty()) {
+                return VideoProbeResult(
+                    ok = false,
+                    url = url,
+                    finalUrl = finalUrl,
+                    kind = "m3u8",
+                    statusCode = response.status.value,
+                    contentType = contentType,
+                    headers = response.headersSnapshot(),
+                    summary = "Playlist loaded but contains no playable entries",
+                    playlistEntries = 0,
+                    errors = listOf("Empty playlist"),
+                )
+            }
+
+            val firstEntry = UrlHelpers.computeAbsoluteUrl(finalUrl, entries.first())
+            if (firstEntry.lowercase().contains(".m3u8")) {
+                return probe(firstEntry, headers).copy(
+                    kind = "m3u8-master",
+                    nestedPlaylistUrl = firstEntry,
+                )
+            }
+
+            val segmentResponse = request(firstEntry, headers, rangeProbe = true)
+            return VideoProbeResult(
+                ok = segmentResponse.status.isSuccess(),
+                url = url,
+                finalUrl = finalUrl,
+                kind = "m3u8",
+                statusCode = response.status.value,
+                contentType = contentType,
+                headers = response.headersSnapshot(),
+                summary = if (segmentResponse.status.isSuccess()) {
+                    "Playlist and first segment are reachable"
+                } else {
+                    "Playlist is reachable but first segment probe failed"
+                },
+                playlistEntries = entries.size,
+                sampledSegmentUrl = firstEntry,
+                sampledSegmentStatusCode = segmentResponse.status.value,
+                errors = if (segmentResponse.status.isSuccess()) emptyList() else listOf("First segment probe returned ${segmentResponse.status.value}"),
+            )
+        }
+
+        return VideoProbeResult(
+            ok = response.status.isSuccess(),
+            url = url,
+            finalUrl = finalUrl,
+            kind = "file",
+            statusCode = response.status.value,
+            contentType = contentType,
+            headers = response.headersSnapshot(),
+            summary = if (response.status.isSuccess()) "Media URL is reachable" else "Media URL probe failed",
+            errors = if (response.status.isSuccess()) emptyList() else listOf("Probe returned ${response.status.value}"),
+        )
     }
 
     private suspend fun request(

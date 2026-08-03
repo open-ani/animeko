@@ -49,10 +49,11 @@ class M3u8AdAnalyzer(
                 reasons = listOf("非 HLS 播放列表, 无法从结构判断广告 (可看首帧截图)"),
             )
         }
-        return runCatching {
+        return try {
             analyzePlaylist(url, headers, depth = 0)
-        }.getOrElse { e ->
-            if (e is CancellationException) throw e
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
             AdAnalysisResult(
                 suspicion = "unknown",
                 reasons = listOf("播放列表分析失败: ${e::class.simpleName}: ${e.message.orEmpty()}"),

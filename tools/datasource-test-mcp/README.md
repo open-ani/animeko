@@ -6,8 +6,7 @@ The transport is a stateless subset of the MCP Streamable HTTP spec: JSON-RPC me
 `/mcp` and answered as `application/json` (no SSE streams, no sessions). The server binds to
 `127.0.0.1` by default and rejects non-local `Origin` headers to prevent DNS rebinding.
 
-> **Agent 操作手册
-**: [.agents/skills/datasource-test](../../.agents/skills/datasource-test/SKILL.md)
+> **Agent 操作手册**: [.agents/skills/datasource-test](../../.agents/skills/datasource-test/SKILL.md)
 > 描述了「拿到一份数据源 JSON 配置 → 分层测试 → 定位修复 → 出报告」的完整流程,
 > 包括 server 启动/直连 HTTP 调用方式、每步失败的判读表、行为红线,
 > 以及站点超出现有引擎能力时的「能力进化」闭环 (缺口取证 → 文档 → subagent 产出 patch → 复测)。
@@ -31,13 +30,11 @@ The transport is a stateless subset of the MCP Streamable HTTP spec: JSON-RPC me
   解析也不需要时传 `extractVideo=false`.
 - `selector_run_step` — 单步执行任意引擎步骤: 支持离线传 HTML 调试 selector, 离线测 matchVideo 正则,
   以及真实 WebView 拦截视频 URL.
--
-`get_selector_engine_docs` — 返回引擎步骤文档 (源文件: [selector-engine-docs.md](src/main/resources/selector-engine-docs.md)).
+- `get_selector_engine_docs` — 返回引擎步骤文档 (源文件: [selector-engine-docs.md](src/main/resources/selector-engine-docs.md)).
 
 ### 视频能力
 
-- `probe_video` — 探测最终视频 URL: HTTP 可达性 + **用 Animeko 桌面端同款播放器 (mediamp-mpv) 真实播放
-  **.
+- `probe_video` — 探测最终视频 URL: HTTP 可达性 + **用 Animeko 桌面端同款播放器 (mediamp-mpv) 真实播放**.
   默认弹出 Compose 测试窗口实时显示画面 (`showWindow=false` 可关), 实际播放几秒验证可播放性,
   并从 mpv 读取真实媒体信息 (分辨率/时长/编码/帧率/码率).
   mpv 原生库自动加载 (可用 `-Dani.mpv.native.dir` 指定目录); 加载失败时降级为仅 HTTP 探测.
@@ -94,8 +91,7 @@ MCP 是无人值守的, 没有 App 那样的手动兜底对话框, 所以只有�
 
 ## Handshake Failure Hints
 
-When datasource fetch fails with an SSL/TLS handshake-style error,
-`test_subject_episode_source` does one
+When datasource fetch fails with an SSL/TLS handshake-style error, `test_subject_episode_source` does one
 extra diagnostic step:
 
 1. Extract the current search host from the datasource config
@@ -106,8 +102,7 @@ This is a hint path only. It does not rewrite the datasource config automaticall
 
 ## Metadata Lookup
 
-`search_subjects` / `get_subject_episodes` / `selector_resolve_episode` /
-`test_subject_episode_source`
+`search_subjects` / `get_subject_episodes` / `selector_resolve_episode` / `test_subject_episode_source`
 fetch subject and episode metadata from the Ani API. Ani API is the metadata source of truth.
 
 ## Playback Header Path
@@ -135,8 +130,7 @@ This matches the app's current playback model:
 
 With `probeVideo=true`, top-level `ok` means at least one tested channel passed HTTP probing. With
 `probeVideo=false`, it means at least one channel resolved a final video URL. Probe timeout/failure never
-removes an already resolved URL; inspect `resolveStatus`,
-`probeStatus`, and the explicit result counts.
+removes an already resolved URL; inspect `resolveStatus`, `probeStatus`, and the explicit result counts.
 
 ## Run
 
@@ -155,18 +149,17 @@ Point your MCP client at the running server, e.g. in `.mcp.json`:
 
 ```json
 {
-    "mcpServers": {
-        "ani-datasource-test": {
-            "type": "http",
-            "url": "http://127.0.0.1:8264/mcp"
-        }
+  "mcpServers": {
+    "ani-datasource-test": {
+      "type": "http",
+      "url": "http://127.0.0.1:8264/mcp"
     }
+  }
 }
 ```
 
 The `.agents/skills/datasource-test` skill looks for this MCP under the name `ani-datasource-test`
-(tools like
-`mcp__ani-datasource-test__selector_resolve_episode`); keep the name in sync if you change it.
+(tools like `mcp__ani-datasource-test__selector_resolve_episode`); keep the name in sync if you change it.
 
 ## Test
 

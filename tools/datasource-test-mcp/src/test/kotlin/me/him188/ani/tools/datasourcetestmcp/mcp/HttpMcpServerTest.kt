@@ -36,6 +36,7 @@ import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class HttpMcpServerTest {
@@ -142,6 +143,38 @@ class HttpMcpServerTest {
         assertFailsWith<TimeoutCancellationException> {
             withTimeout(1) { handler.handle(request) }
         }
+    }
+
+    @Test
+    fun `tool timing out internally is reported as a structured error`() = runTest {
+        // 工具内部漏网的 withTimeout 抛的是 TimeoutCancellationException, 表示这次调用超时而非请求被取消,
+        // 不能让它冒到 transport 层把整个响应打掉.
+        val timingOutTool = McpToolRegistration(
+            McpTool(
+                name = "slow",
+                description = "slow",
+                inputSchema = buildJsonObject { put("type", "object") },
+            ),
+        ) { withTimeout(1) { awaitCancellation() } }
+        val handler = McpRequestHandler(listOf(timingOutTool), json)
+        val request = RpcRequest(
+            id = JsonPrimitive(1),
+            method = "tools/call",
+            params = buildJsonObject {
+                put("name", "slow")
+                put("arguments", buildJsonObject {})
+            },
+        )
+
+        val result = assertNotNull(handler.handle(request)).result
+        val content = assertNotNull(result).jsonObject
+        assertEquals("true", content.getValue("isError").jsonPrimitive.content)
+        val structured = content.getValue("structuredContent").jsonObject
+        assertEquals("false", structured.getValue("ok").jsonPrimitive.content)
+        assertTrue(
+            structured.getValue("summary").jsonPrimitive.content.contains("TimeoutCancellationException"),
+            structured.getValue("summary").jsonPrimitive.content,
+        )
     }
 
     @Test

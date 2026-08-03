@@ -70,7 +70,7 @@ class WebViewVideoResolverEngine(
         pageUrl: String,
         matchers: List<WebVideoMatcher>,
     ): ResolveResult {
-        return runCatching {
+        return try {
             initializeCef()
 
             val allMatchers = (matchers + classpathMatchers).distinctBy { it.javaClass.name }
@@ -137,8 +137,9 @@ class WebViewVideoResolverEngine(
                 ),
                 errors = if (video == null) listOf("No video URL matched by the webview resolver engine") else emptyList(),
             )
-        }.getOrElse { exception ->
-            if (exception is CancellationException) throw exception
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Throwable) {
             ResolveResult(
                 diagnostics = diagnostics(
                     pageUrl = pageUrl,

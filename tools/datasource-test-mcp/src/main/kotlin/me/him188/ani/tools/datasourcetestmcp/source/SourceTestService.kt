@@ -65,25 +65,26 @@ class SourceTestService(
         val errors = mutableListOf<String>()
 
         val metadataStart = System.currentTimeMillis()
-        val metadata = runCatching {
-            fetchAniMetadata(input)
-        }.onSuccess { result ->
-            stages += StageResult(
-                name = "ani_metadata",
-                status = "success",
-                summary = "Fetched subject and episode metadata from Ani API",
-                details = buildJsonObject {
-                    put("subjectId", result.subjectId)
-                    put("subjectName", result.subjectName)
-                    put("subjectNameCn", result.subjectNameCn ?: "")
-                    put("episodeId", result.episodeId)
-                    put("episodeSort", result.episodeSort)
-                    put("episodeEp", result.episodeEp ?: "")
-                },
-                durationMillis = System.currentTimeMillis() - metadataStart,
-            )
-        }.onFailure { exception ->
-            if (exception is CancellationException) throw exception
+        val metadata = try {
+            fetchAniMetadata(input).also { result ->
+                stages += StageResult(
+                    name = "ani_metadata",
+                    status = "success",
+                    summary = "Fetched subject and episode metadata from Ani API",
+                    details = buildJsonObject {
+                        put("subjectId", result.subjectId)
+                        put("subjectName", result.subjectName)
+                        put("subjectNameCn", result.subjectNameCn ?: "")
+                        put("episodeId", result.episodeId)
+                        put("episodeSort", result.episodeSort)
+                        put("episodeEp", result.episodeEp ?: "")
+                    },
+                    durationMillis = System.currentTimeMillis() - metadataStart,
+                )
+            }
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Throwable) {
             errors += "Ani metadata lookup failed: ${exception.message.orEmpty()}"
             stages += StageResult(
                 name = "ani_metadata",
@@ -92,13 +93,14 @@ class SourceTestService(
                 errors = listOf("${exception::class.simpleName}: ${exception.message.orEmpty()}"),
                 durationMillis = System.currentTimeMillis() - metadataStart,
             )
-        }.getOrNull() ?: return SourceTestResult(
-            ok = false,
-            summary = "Ani metadata lookup failed",
-            input = encodeInput(input),
-            stages = stages,
-            errors = errors,
-        )
+            return SourceTestResult(
+                ok = false,
+                summary = "Ani metadata lookup failed",
+                input = encodeInput(input),
+                stages = stages,
+                errors = errors,
+            )
+        }
 
         val sources = registry.createSources(input.mediaSource)
         return useSources(sources) { createdSources ->
@@ -110,7 +112,7 @@ class SourceTestService(
                     val sourceSpec = input.mediaSource
                         ?.takeIf { createdSources.size == 1 || it.mediaSourceId == source.mediaSourceId }
                     val sourceFetchStart = System.currentTimeMillis()
-                    val sourceResult = runCatching {
+                    val fetched = try {
                         val connection = source.checkConnection()
                         val matches = withTimeoutOrNull(input.fetchTimeoutMillis) {
                             source.fetch(metadata.request)
@@ -119,22 +121,10 @@ class SourceTestService(
                                 .toList()
                         } ?: error("Source fetch timed out after ${input.fetchTimeoutMillis}ms")
                         connection to matches
-                    }
-                    val sourceFetchDuration = System.currentTimeMillis() - sourceFetchStart
-
-                    sourceResult.onSuccess { (connection, matches) ->
-                        allMatches += matches
-                        add(
-                            buildJsonObject {
-                                put("mediaSourceId", source.mediaSourceId)
-                                put("factoryDisplayName", source.info.displayName)
-                                put("connectionStatus", connection.toString())
-                                put("matchCount", matches.size)
-                                put("durationMillis", sourceFetchDuration)
-                            },
-                        )
-                    }.onFailure { exception ->
-                        if (exception is CancellationException) throw exception
+                    } catch (exception: CancellationException) {
+                        throw exception
+                    } catch (exception: Throwable) {
+                        val sourceFetchDuration = System.currentTimeMillis() - sourceFetchStart
                         errors += "Fetch failed for ${source.mediaSourceId}: ${exception.message.orEmpty()}"
                         val handshakeHint = handshakeFailureDomainAdvisor.analyzeIfNeeded(
                             sourceName = source.info.displayName,
@@ -156,6 +146,21 @@ class SourceTestService(
                                         json.encodeToJsonElement(HandshakeFailureDomainHint.serializer(), it),
                                     )
                                 }
+                            },
+                        )
+                        null
+                    }
+
+                    fetched?.let { (connection, matches) ->
+                        val sourceFetchDuration = System.currentTimeMillis() - sourceFetchStart
+                        allMatches += matches
+                        add(
+                            buildJsonObject {
+                                put("mediaSourceId", source.mediaSourceId)
+                                put("factoryDisplayName", source.info.displayName)
+                                put("connectionStatus", connection.toString())
+                                put("matchCount", matches.size)
+                                put("durationMillis", sourceFetchDuration)
                             },
                         )
                     }
@@ -232,15 +237,27 @@ class SourceTestService(
             )
 
             val probeStart = System.currentTimeMillis()
-            val probeResult = withTimeoutOrNull(input.probeTimeoutMillis) {
-                probe.probe(resolved.url, resolved.headers)
-            } ?: VideoProbeResult(
-                ok = false,
-                url = resolved.url,
-                kind = "unknown",
-                summary = "HTTP probe timed out",
-                errors = listOf("HTTP probe timed out after ${input.probeTimeoutMillis}ms"),
-            )
+            val probeResult = try {
+                withTimeoutOrNull(input.probeTimeoutMillis) {
+                    probe.probe(resolved.url, resolved.headers)
+                } ?: VideoProbeResult(
+                    ok = false,
+                    url = resolved.url,
+                    kind = "unknown",
+                    summary = "HTTP probe timed out",
+                    errors = listOf("HTTP probe timed out after ${input.probeTimeoutMillis}ms"),
+                )
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Throwable) {
+                VideoProbeResult(
+                    ok = false,
+                    url = resolved.url,
+                    kind = "unknown",
+                    summary = "HTTP probe failed",
+                    errors = listOf("${exception::class.simpleName}: ${exception.message.orEmpty()}"),
+                )
+            }
             stages += StageResult(
                 name = "video_probe",
                 status = if (probeResult.ok) "success" else "failed",
@@ -345,6 +362,8 @@ class SourceTestService(
 
         val resolvedChannels = channelResults.filter { it.resolvedVideo != null }
         val successfulChannels = channelResults.filter { it.ok }
+        val probeFailedChannels = channelResults.filter { it.probeStatus == "failed" }
+        val probeTimedOutChannels = channelResults.filter { it.probeStatus == "timeout" }
 
         stages += StageResult(
             name = "video_resolve",
@@ -369,7 +388,7 @@ class SourceTestService(
             stages += StageResult(
                 name = "video_probe",
                 status = "failed",
-                summary = "No resolved channel available for playback probing",
+                summary = "No resolved channel available for HTTP probing",
                 errors = errors.toList(),
             )
             return SourceTestResult(
@@ -388,18 +407,24 @@ class SourceTestService(
             status = if (successfulChannels.isNotEmpty()) "success" else "failed",
             summary = when {
                 successfulChannels.isNotEmpty() -> {
-                    "Playable channels: ${successfulChannels.size}/${resolvedChannels.size} resolved channel(s)"
+                    "Channels passing HTTP probe: ${successfulChannels.size}/${resolvedChannels.size} " +
+                            "resolved channel(s)"
                 }
 
-                else -> "Resolved channels were found, but none passed playback probing"
+                else -> "Resolved channels were found, but none passed HTTP probing"
             },
             details = buildJsonObject {
                 put("testedChannelCount", channelResults.size)
                 put("resolvedChannelCount", resolvedChannels.size)
                 put("probedChannelCount", resolvedChannels.size)
-                put("playableChannelCount", successfulChannels.size)
-                put("playableChannelIds", buildJsonArray {
+                put("probeSucceededChannelCount", successfulChannels.size)
+                put("probeFailedChannelCount", probeFailedChannels.size)
+                put("probeTimedOutChannelCount", probeTimedOutChannels.size)
+                put("probeSucceededChannelIds", buildJsonArray {
                     successfulChannels.forEach { add(JsonPrimitive(it.candidate.mediaId)) }
+                })
+                put("probeTimedOutChannelIds", buildJsonArray {
+                    probeTimedOutChannels.forEach { add(JsonPrimitive(it.candidate.mediaId)) }
                 })
             },
             errors = channelResults
@@ -415,8 +440,14 @@ class SourceTestService(
         return SourceTestResult(
             ok = successfulChannels.isNotEmpty(),
             summary = when {
-                successfulChannels.isNotEmpty() -> "Playable channels: ${successfulChannels.size}/${resolvedChannels.size}"
-                resolvedChannels.isNotEmpty() -> "Resolved ${resolvedChannels.size}/${channelResults.size} channels, but none passed playback probing"
+                successfulChannels.isNotEmpty() ->
+                    "Channels passing HTTP probe: ${successfulChannels.size}/${resolvedChannels.size}"
+
+                resolvedChannels.isNotEmpty() ->
+                    "Resolved ${resolvedChannels.size}/${channelResults.size} channels, " +
+                            "but none passed HTTP probing " +
+                            "(${probeFailedChannels.size} failed, ${probeTimedOutChannels.size} timed out)"
+
                 else -> "Failed to resolve any channel to a final video URL"
             },
             input = input,

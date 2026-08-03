@@ -47,7 +47,7 @@ class HandshakeFailureDomainAdvisor(
             "$sourceName $hostToken",
         )
 
-        return runCatching {
+        return try {
             val suggestions = queries
                 .flatMap { query -> fetchSearchResults(query) }
                 .filter { candidate ->
@@ -73,8 +73,9 @@ class HandshakeFailureDomainAdvisor(
                     }"
                 },
             )
-        }.getOrElse { searchError ->
-            if (searchError is CancellationException) throw searchError
+        } catch (searchError: CancellationException) {
+            throw searchError
+        } catch (searchError: Throwable) {
             HandshakeFailureDomainHint(
                 currentHost = currentHost,
                 searchProvider = "bing-rss",

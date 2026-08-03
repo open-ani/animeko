@@ -24,7 +24,7 @@ class AniInfoService(
 ) {
     suspend fun searchSubjects(input: SearchSubjectsInput): SearchSubjectsResult {
         val api = createApi(input.aniApiBaseUrl, input.aniBearerToken)
-        return runCatching {
+        return try {
             val response = api.searchSubjects(
                 q = input.query,
                 offset = input.offset,
@@ -32,11 +32,13 @@ class AniInfoService(
             ).body()
             val subjects = response.items.map { item ->
                 val episodes = if (input.includeEpisodes) {
-                    runCatching { api.getSubject(item.id).body().episodes.map { it.toEpisodeResult() } }
-                        .getOrElse { exception ->
-                            if (exception is CancellationException) throw exception
-                            null
-                        }
+                    try {
+                        api.getSubject(item.id).body().episodes.map { it.toEpisodeResult() }
+                    } catch (exception: CancellationException) {
+                        throw exception
+                    } catch (_: Throwable) {
+                        null
+                    }
                 } else {
                     null
                 }
@@ -54,8 +56,9 @@ class AniInfoService(
                 summary = "Found ${subjects.size} subject(s) for \"${input.query}\"",
                 subjects = subjects,
             )
-        }.getOrElse { exception ->
-            if (exception is CancellationException) throw exception
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Throwable) {
             SearchSubjectsResult(
                 ok = false,
                 summary = "Subject search failed",
@@ -66,7 +69,7 @@ class AniInfoService(
 
     suspend fun getSubjectEpisodes(input: GetSubjectEpisodesInput): GetSubjectEpisodesResult {
         val api = createApi(input.aniApiBaseUrl, input.aniBearerToken)
-        return runCatching {
+        return try {
             val subject = api.getSubject(input.subjectId).body()
             GetSubjectEpisodesResult(
                 ok = true,
@@ -80,8 +83,9 @@ class AniInfoService(
                     episodes = subject.episodes.map { it.toEpisodeResult() },
                 ),
             )
-        }.getOrElse { exception ->
-            if (exception is CancellationException) throw exception
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Throwable) {
             GetSubjectEpisodesResult(
                 ok = false,
                 summary = "Failed to fetch subject ${input.subjectId}",
@@ -94,7 +98,7 @@ class AniInfoService(
         val api = TrendsAniApi(input.aniApiBaseUrl, httpClient).apply {
             input.aniBearerToken?.takeIf { it.isNotBlank() }?.let(::setBearerToken)
         }
-        return runCatching {
+        return try {
             val trending = api.getTrends().body().trendingSubjects
                 .let { if (input.limit > 0) it.take(input.limit) else it }
                 .mapIndexed { index, subject ->
@@ -110,8 +114,9 @@ class AniInfoService(
                 summary = "Top ${trending.size} trending subject(s)",
                 subjects = trending,
             )
-        }.getOrElse { exception ->
-            if (exception is CancellationException) throw exception
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Throwable) {
             GetTrendsResult(
                 ok = false,
                 summary = "Failed to fetch trends",
