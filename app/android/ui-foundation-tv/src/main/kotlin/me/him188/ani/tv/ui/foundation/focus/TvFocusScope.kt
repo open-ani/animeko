@@ -127,11 +127,26 @@ class TvFocusScope {
     /**
      * 进页初始焦点: 等待标准布局延迟后请求 [key]. 与 [request] 同一条解析路径
      * (轮询 + 到位确认), 页面切换转场期间节点未附着也能兜住.
+     *
+     * 若焦点记忆里有待认领的跨 route 恢复目标 (从详情页等返回, 见 [TvFocusMemory]),
+     * 优先恢复到它; 目标已不在 (数据变化) 或恢复失败时退回 [key] 默认初始焦点.
      */
     @Composable
     fun InitialFocus(key: TvFocusKey) {
+        val memory = LocalTvFocusMemory.current
         LaunchedEffect(Unit) {
             delay(FOCUS_REQ_DELAY_MILLIS)
+            val restoreTarget = memory?.takePendingRestore()
+            if (restoreTarget != null) {
+                val navAtStart = userNavCount
+                val restored = resolveFocusRepeatedly(
+                    arrived = { memory.last == restoreTarget },
+                    abandon = { userNavCount != navAtStart },
+                ) {
+                    runCatching { restoreTarget.requestFocus() }
+                }
+                if (restored) return@LaunchedEffect
+            }
             request(key)
         }
     }
@@ -146,6 +161,12 @@ fun rememberTvFocusScope(): TvFocusScope = remember { TvFocusScope() }
  * TvHeroButton 等) 聚焦时上报自身 requester; 焦点去了侧边栏等外部区域后可经 [restore]
  * 精确回到原位.
  *
+ * 同页恢复 (侧边栏往返) 用 [last] requester 直接 requestFocus. **跨 route 恢复** (进详情
+ * 页返回, 页面组合已重建, 旧 requester 失效) 用身份键: 组件聚焦时一并上报稳定的
+ * [lastId] (如 subjectId); 壳在 route 重建时把它转成 [pendingRestoreId], 新组合中身份
+ * 匹配的组件经 [claimPendingRestore] 认领登记, 页面 [TvFocusScope.InitialFocus] 统一
+ * 消费 —— 认领成功恢复原位, 目标不在了退回默认初始焦点.
+ *
  * 为什么不用 Compose 的 saveFocusedChild/focusRestorer: 它们只保存/恢复"第一层子 target",
  * 跨多层容器 (壳 -> AnimatedContent -> 页面 -> Lazy 列表 -> 卡) 时保存到的是不可聚焦的
  * 中间容器, 恢复必然失败 (同帧 save=true/restore=false, TV 模拟器实测).
@@ -155,7 +176,38 @@ class TvFocusMemory {
     /** 最后聚焦组件的 requester; 由组件聚焦时上报. */
     var last: FocusRequester? = null
 
-    /** 恢复到最后聚焦点. 返回是否发起了恢复 (节点已销毁时 no-op 由调用方兜底). */
+    /** 最后聚焦组件的身份键 (组件侧 memoryId, 页内唯一); null = 该组件不参与跨 route 恢复. */
+    var lastId: Any? = null
+
+    /**
+     * 待认领的跨 route 恢复目标身份键 (snapshot 状态: 组件组合中读取, 匹配即认领).
+     * 由壳在 route 重建时从 [lastId] 转入.
+     */
+    var pendingRestoreId: Any? by mutableStateOf(null)
+
+    /** 身份匹配组件认领后登记的 requester (新组合里的新实例). */
+    private var pendingRequester: FocusRequester? = null
+
+    /** 组件聚焦时上报 (foundation 可聚焦组件自动挂接). */
+    fun reportFocused(requester: FocusRequester, id: Any?) {
+        last = requester
+        lastId = id
+    }
+
+    /** 身份为 [id] 的组件在新组合中登记自身 (组合/SideEffect 阶段调用, 不清 pending). */
+    fun claimPendingRestore(id: Any, requester: FocusRequester) {
+        if (pendingRestoreId == id) pendingRequester = requester
+    }
+
+    /** 取走认领结果并结束本轮跨 route 恢复 (由 [TvFocusScope.InitialFocus] 消费). */
+    fun takePendingRestore(): FocusRequester? {
+        val result = pendingRequester
+        pendingRequester = null
+        pendingRestoreId = null
+        return result
+    }
+
+    /** 恢复到最后聚焦点 (同页场景). 返回是否发起了恢复 (节点已销毁时由调用方兜底). */
     fun restore(): Boolean {
         val requester = last ?: return false
         return runCatching { requester.requestFocus() }.isSuccess

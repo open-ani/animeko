@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,15 +63,21 @@ fun TvPosterCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onFocused: () -> Unit = {},
+    /** 焦点记忆身份键 (页内唯一, 如带前缀的 subjectId): 跨 route 返回时恢复焦点用; null = 不参与. */
+    memoryId: Any? = null,
     /** null = 宽度交给调用方 modifier 决定 (如 Row 内 weight 等分的自适应网格). */
     width: Dp? = TvPosterCardDefaults.Width,
     /** 参考版探索页卡片行为纯图, 标题只在网格页展示 */
     showTitle: Boolean = true,
 ) {
     var selfFocused by remember { mutableStateOf(false) }
-    // 聚焦时向内容区焦点记忆上报自身 (壳恢复"进侧边栏前的焦点"用)
+    // 聚焦时向内容区焦点记忆上报自身 (壳恢复"进侧边栏前的焦点"用); 跨 route 返回的
+    // 新组合中若本卡身份与待恢复目标匹配, 认领登记 (由页面 InitialFocus 消费)
     val focusMemory = LocalTvFocusMemory.current
     val selfRequester = remember { FocusRequester() }
+    if (memoryId != null && focusMemory?.pendingRestoreId == memoryId) {
+        SideEffect { focusMemory.claimPendingRestore(memoryId, selfRequester) }
+    }
     Surface(
         onClick = onClick,
         modifier = modifier
@@ -80,7 +87,7 @@ fun TvPosterCard(
                 selfFocused = it.isFocused
                 if (it.isFocused) {
                     onFocused()
-                    focusMemory?.last = selfRequester
+                    focusMemory?.reportFocused(selfRequester, memoryId)
                 }
             },
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(TvFocusDefaults.RingCornerRadius)),

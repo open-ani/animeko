@@ -221,7 +221,7 @@ fun TvHeroButton(
             .onFocusChanged {
                 if (it.isFocused) {
                     onFocused()
-                    focusMemory?.last = selfRequester
+                    focusMemory?.reportFocused(selfRequester, id = null)
                 }
                 onFocusChangedExtra?.invoke(it.isFocused)
             },

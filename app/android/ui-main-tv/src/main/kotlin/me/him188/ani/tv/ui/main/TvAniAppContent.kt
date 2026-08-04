@@ -12,6 +12,7 @@ package me.him188.ani.tv.ui.main
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -26,6 +27,7 @@ import me.him188.ani.app.navigation.MainScreenPage
 import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.tv.ui.episode.TvEpisodeScreen
+import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
 import me.him188.ani.tv.ui.episode.TvEpisodeViewModel
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.tv.ui.subject.TvSubjectDetailsScreen
@@ -43,6 +45,9 @@ fun TvAniAppContent(
 ) {
     val navController = rememberNavController()
     aniNavigator.setNavController(navController)
+    // 主壳焦点记忆放 NavHost 之上: 进详情页返回时 Main route 组合重建, 记忆须跨 route 存活
+    // (身份键恢复流程见 TvFocusMemory)
+    val shellFocusMemory = remember { TvFocusMemory() }
 
     CompositionLocalProvider(LocalNavigator provides aniNavigator) {
         // tv MaterialTheme 不绘制窗口背景, 根部铺一层 Surface (深色 surface + content color)
@@ -54,7 +59,7 @@ fun TvAniAppContent(
                 composable<NavRoutes.Main>(
                     typeMap = mapOf(typeOf<MainScreenPage>() to MainScreenPage.NavType),
                 ) {
-                    TvMainShell()
+                    TvMainShell(focusMemory = shellFocusMemory)
                 }
 
                 composable<NavRoutes.SubjectDetail>(

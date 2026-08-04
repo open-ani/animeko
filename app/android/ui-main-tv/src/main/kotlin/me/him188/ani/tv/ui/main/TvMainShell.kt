@@ -82,7 +82,11 @@ private enum class TvShellFocus : TvFocusKey {
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun TvMainShell(modifier: Modifier = Modifier) {
+fun TvMainShell(
+    modifier: Modifier = Modifier,
+    /** 焦点记忆; 调用方在 NavHost 之上创建传入使其跨 route 存活 (进详情页返回恢复焦点用). */
+    focusMemory: TvFocusMemory? = null,
+) {
     var content by rememberSaveable { mutableStateOf(TvShellContent.Exploration) }
 
     // 触屏设备上跑 TV 界面时强制键盘输入模式: touch mode 下 clickable 节点不参与
@@ -110,12 +114,22 @@ fun TvMainShell(modifier: Modifier = Modifier) {
     val focus = rememberTvFocusScope()
     focus.Resolver()
     val contentFocus = remember { FocusRequester() }
-    val focusMemory = remember { TvFocusMemory() }
-    LaunchedEffect(content) { focusMemory.last = null }
+    val memory = focusMemory ?: remember { TvFocusMemory() }
+    // 壳 (route) 重建 = 可能是从详情页等返回: 把离开前的身份键转成待认领的恢复目标,
+    // 新组合中身份匹配的组件认领后由页面 InitialFocus 恢复. 首次启动 lastId=null 无害.
+    // remember 块在子树组合前的组合阶段执行, 保证组件组合时已能读到 pending
+    remember(memory) {
+        memory.pendingRestoreId = memory.lastId
+        true
+    }
+    LaunchedEffect(content) {
+        memory.last = null
+        memory.lastId = null
+    }
     var railHasFocus by remember { mutableStateOf(false) }
-    val restoreContentFocus: () -> Unit = remember(contentFocus, focusMemory) {
+    val restoreContentFocus: () -> Unit = remember(contentFocus, memory) {
         {
-            if (!focusMemory.restore()) runCatching { contentFocus.requestFocus() }
+            if (!memory.restore()) runCatching { contentFocus.requestFocus() }
             Unit
         }
     }
@@ -137,7 +151,7 @@ fun TvMainShell(modifier: Modifier = Modifier) {
                 .padding(start = TvNavigationRailDefaults.CollapsedWidth)
                 .focusRequester(contentFocus),
         ) {
-            CompositionLocalProvider(LocalTvFocusMemory provides focusMemory) {
+            CompositionLocalProvider(LocalTvFocusMemory provides memory) {
             AnimatedContent(
                 content,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },

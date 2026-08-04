@@ -369,6 +369,7 @@ private fun LazyListScope.tvContinueWatchingSection(
                     title = info.subjectInfo.displayName,
                     onClick = { onClickSubject(item) },
                     onFocused = onCardFocused,
+                    memoryId = "followed-${info.subjectInfo.subjectId}",
                     modifier = if (index == 0) firstCardModifier else Modifier,
                 )
             }
@@ -415,6 +416,7 @@ private fun LazyListScope.tvRecommendationsSection(
                                 title = rec.nameCn,
                                 onClick = { onClickSubject(item) },
                                 onFocused = onCardFocused,
+                                memoryId = "rec-${rec.bangumiId}",
                                 width = null,
                                 modifier = Modifier
                                     .weight(1f)

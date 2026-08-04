@@ -321,6 +321,7 @@ private fun TvCollectionGrid(
                 title = info.subjectInfo.displayName,
                 onClick = { onClickSubject(info) },
                 onFocused = { onCardFocused(index, index == edgeEntryIndex) },
+                memoryId = "col-${info.subjectId}",
                 modifier = Modifier
                     .then(
                         if (index == 0) {

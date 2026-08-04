@@ -183,6 +183,7 @@ private fun TvSearchResultsGrid(
                 imageUrl = details.subjectInfo.imageLarge,
                 title = details.subjectInfo.displayName,
                 onClick = { onClickSubject(details) },
+                memoryId = "search-${details.subjectInfo.subjectId}",
             )
         }
     }
