@@ -903,6 +903,12 @@ D1 放弃编译期隔离后，**Konsist 是 §4.2 约定边界的主要机械守
 4. 应用内更新按维护者指示暂缓（服务端 `android-tv` 支持就绪前 TV 端保持关闭）。
 5. 构建环境：`ANDROID_HOME` 需显式 export；TMDB 需 `local.properties` 配 `ani.tmdb.api.token`（未配置全链路静默退化）。
 
+### 14.7 代码组织与风格
+
+1. **Defaults 惯例**：调参常量不散落顶层 `TV_XXX`，一律归入对应组件/页面的 `XXXDefaults` object（Compose 官方 `CardDefaults`/`NavigationRailDefaults` 惯例）。组件级先例：`TvFocusDefaults`（焦点视觉唯一出口，D7，含 `RingWidth/RingInset/RingCornerRadius`，自绘色圈也从这里取值）、`TvPosterCardDefaults`、`TvBackdropDefaults`/`TvHeroDefaults`/`TvPageDefaults`/`TvPortraitCardDefaults`（TvImmersiveCards.kt）、`TvNavigationRailDefaults`；页面级用页内 private/internal object（`TvExplorationDefaults`/`TvCollectionDefaults` 等）。调用方可能想改的尺寸/形状/颜色提升为 composable 参数、默认值取自 Defaults（如 `TvPosterCard(width = TvPosterCardDefaults.Width)`、`TvHeroButton(shape = TvHeroDefaults.ButtonShape)`）；纯内部实现细节只进 Defaults 不进参数，不过度参数化。
+2. **Layout 骨架惯例**：页面拆三层——`XXXScreen`（状态接线 + 行为/按键逻辑）→ `XXXPageLayout`（chrome 骨架：底色、焦点接线、滚动容器，slot 参数接内容）→ 区块 composable / `LazyListScope` section 扩展（内容填充）。先例：`TvExplorationPageLayout` + `tvContinueWatchingSection`/`tvRecommendationsSection`（TvExplorationScreen.kt）、`TvCollectionPageLayout` + `TvCollectionTabRow`/`TvCollectionGrid`、`TvSubjectDetailsPageLayout` + Hero/Episodes/Below 区块。页面私有的 `TvFocusKey` 不外泄给纯视图组件：锚点/链接/按键处理在 Screen 组装成 `Modifier` 注入（如 hero 的 `buttonModifier`）。
+3. **组织风格以手机 compose 代码为准**：slot 骨架参照 `CollectionPageLayout`（CollectionPage.kt）/`SubjectDetailsPageLayout`/`EmailLoginScreenLayout`，section 扩展参照 `recommendationItems`，状态类 hoisting 参照 `ExplorationPageState`，文件划分参照 exploration 的 followed/recommend 拆分。只模仿组织方式，布局骨架**不得 import 手机 composable**（Konsist 边界 §4.2 不变）。
+
 ---
 
 ## 附录 A · PR#3217 UX 参数速查（TV 端交互事实源）
