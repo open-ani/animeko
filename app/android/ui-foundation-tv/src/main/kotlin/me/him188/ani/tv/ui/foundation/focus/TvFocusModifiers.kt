@@ -121,6 +121,27 @@ fun Modifier.tvFocusHotkey(
     }
 
 /**
+ * 全局按键"去/回"切换 (挂壳/页面根): [hotkey] 按下时, 焦点不在 [target] 子树 -> 送往
+ * [target]; 已在其中 -> 调用 [onLeave] (典型: 恢复内容区上次焦点, 目标容器随失焦自动收起).
+ * 判据用锚点上报 ([TvFocusScope.isFocused]), 所以 [target] 必须挂有 [tvFocusAnchor].
+ * KeyUp 一并消费; 按住连发不重复触发. 兼任 [tvFocusNavSignal].
+ */
+fun Modifier.tvFocusHotkeyToggle(
+    scope: TvFocusScope,
+    hotkey: Key,
+    target: TvFocusKey,
+    onLeave: () -> Unit,
+): Modifier = this
+    .tvFocusNavSignal(scope)
+    .onPreviewKeyEvent { event ->
+        if (event.key != hotkey) return@onPreviewKeyEvent false
+        if (event.type == KeyEventType.KeyDown && !event.isAutoRepeatCompat) {
+            if (scope.isFocused(target)) onLeave() else scope.request(target)
+        }
+        true
+    }
+
+/**
  * 出口重定向 (挂焦点组容器): 焦点沿 [mappings] 中的方向离开本容器时不走空间搜索,
  * 直达对应锚点; 未声明的方向保持默认行为.
  *

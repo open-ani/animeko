@@ -23,6 +23,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -65,13 +68,20 @@ fun TvPosterCard(
     showTitle: Boolean = true,
 ) {
     var selfFocused by remember { mutableStateOf(false) }
+    // 聚焦时向内容区焦点记忆上报自身 (壳恢复"进侧边栏前的焦点"用)
+    val focusMemory = LocalTvFocusMemory.current
+    val selfRequester = remember { FocusRequester() }
     Surface(
         onClick = onClick,
         modifier = modifier
             .then(if (width != null) Modifier.width(width) else Modifier)
+            .focusRequester(selfRequester)
             .onFocusChanged {
                 selfFocused = it.isFocused
-                if (it.isFocused) onFocused()
+                if (it.isFocused) {
+                    onFocused()
+                    focusMemory?.last = selfRequester
+                }
             },
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(TvFocusDefaults.RingCornerRadius)),
         colors = ClickableSurfaceDefaults.colors(

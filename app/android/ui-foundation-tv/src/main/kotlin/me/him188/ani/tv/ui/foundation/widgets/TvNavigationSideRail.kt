@@ -129,6 +129,11 @@ fun TvNavigationSideRail(
     onExitFocus: (() -> Unit)? = null,
     scrimColor: Color? = null,
     enterFocus: FocusRequester? = null,
+    /**
+     * 点击条目后把焦点还给内容区的方式; null = 空间搜索右移 (moveFocus).
+     * 壳传"恢复进入侧边栏前的焦点"实现, 让点击当前页条目回到原位而非几何最近节点.
+     */
+    returnFocusToContent: (() -> Unit)? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box(modifier.fillMaxHeight(), contentAlignment = Alignment.CenterStart) {
@@ -172,6 +177,7 @@ fun TvNavigationSideRail(
                     onExitFocus = onExitFocus,
                     focusRequester = if (index == entryIndex) enterFocusResolved else item.focusRequester,
                     keepFocusOnClick = item.keepFocusOnClick,
+                    returnFocusToContent = returnFocusToContent,
                     onClick = item.onClick,
                 )
             }
@@ -301,6 +307,7 @@ private fun TvRailIconItem(
     onExitFocus: (() -> Unit)?,
     focusRequester: FocusRequester?,
     keepFocusOnClick: Boolean,
+    returnFocusToContent: (() -> Unit)?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -317,10 +324,13 @@ private fun TvRailIconItem(
                 indication = null,
                 onClick = {
                     onClick()
-                    // 点击后把焦点按空间搜索送回右侧内容区 (切页时新页的 InitialFocus 会接管).
+                    // 点击后把焦点送回右侧内容区 (切页时新页的 InitialFocus 会接管).
                     // 不能 clearFocus: 点击"当前页"条目时内容不重组、没有任何接管者, 焦点悬空
                     // 后 Compose 按键派发失去入口, 整个应用对遥控器无响应 (真机实测的死锁)
-                    if (!keepFocusOnClick) focusManager.moveFocus(FocusDirection.Right)
+                    if (!keepFocusOnClick) {
+                        returnFocusToContent?.invoke()
+                            ?: focusManager.moveFocus(FocusDirection.Right)
+                    }
                 },
             ),
         verticalAlignment = Alignment.CenterVertically,

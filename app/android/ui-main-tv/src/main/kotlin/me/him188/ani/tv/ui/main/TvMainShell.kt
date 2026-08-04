@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
@@ -36,6 +37,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -45,10 +49,12 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.tv.ui.collection.TvCollectionScreen
 import me.him188.ani.tv.ui.exploration.TvExplorationScreen
+import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
+import me.him188.ani.tv.ui.foundation.focus.TvFocusMemory
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
-import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
+import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkeyToggle
 import me.him188.ani.tv.ui.foundation.widgets.TvNavRailItem
 import me.him188.ani.tv.ui.foundation.widgets.TvNavigationRailDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvNavigationSideRail
@@ -95,19 +101,43 @@ fun TvMainShell(modifier: Modifier = Modifier) {
     // rail 头像的登录态 (登录页状态层已复用手机 EmailLoginViewModel, 这里直取仓库)
     val selfInfo by remember { GlobalKoin.get<UserRepository>() }.selfInfoFlow.collectAsState(null)
 
-    // 菜单键从页面任意位置直达侧边栏 (焦点落到"探索"条目, rail 随 hasFocus 自动展开):
-    // rail 的常规进入是"按左", 焦点在卡片行深处时要连按多次, 菜单键是一步到位的快捷路径
+    // 菜单键在"内容区 <-> 侧边栏"间往返: 焦点在内容时直达侧边栏 (落当前页条目, rail 随
+    // hasFocus 自动展开); 焦点已在侧边栏时按菜单/返回/点击条目 = 收起并**恢复进入前的
+    // 内容区焦点** (而不是落到几何最近的节点). 恢复用 TvFocusMemory: 内容区可聚焦组件
+    // 聚焦时自动上报, 换页清记忆 (由新页 InitialFocus 接管), 记忆失效退化为默认进入.
+    // (不用 focusRestorer/saveFocusedChild: 它们只保存第一层子 target, 跨壳->页面->Lazy
+    // 的多层容器时保存到不可聚焦的中间容器, 恢复必然失败 —— TV 模拟器同帧实测)
     val focus = rememberTvFocusScope()
     focus.Resolver()
+    val contentFocus = remember { FocusRequester() }
+    val focusMemory = remember { TvFocusMemory() }
+    LaunchedEffect(content) { focusMemory.last = null }
+    var railHasFocus by remember { mutableStateOf(false) }
+    val restoreContentFocus: () -> Unit = remember(contentFocus, focusMemory) {
+        {
+            if (!focusMemory.restore()) runCatching { contentFocus.requestFocus() }
+            Unit
+        }
+    }
+    BackHandler(enabled = railHasFocus) { restoreContentFocus() }
 
     Box(
         modifier
             .fillMaxSize()
             .background(tvShellBackgroundColor())
-            .tvFocusHotkey(focus, Key.Menu to TvShellFocus.Rail),
+            .tvFocusHotkeyToggle(
+                focus, Key.Menu, TvShellFocus.Rail,
+                onLeave = restoreContentFocus,
+            ),
     ) {
-        // 内容区: 让开侧边栏收起态宽度
-        Box(Modifier.fillMaxSize().padding(start = TvNavigationRailDefaults.CollapsedWidth)) {
+        // 内容区: 让开侧边栏收起态宽度. 焦点记忆只对内容子树 provide (侧边栏不上报)
+        Box(
+            Modifier
+                .fillMaxSize()
+                .padding(start = TvNavigationRailDefaults.CollapsedWidth)
+                .focusRequester(contentFocus),
+        ) {
+            CompositionLocalProvider(LocalTvFocusMemory provides focusMemory) {
             AnimatedContent(
                 content,
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -171,6 +201,7 @@ fun TvMainShell(modifier: Modifier = Modifier) {
                     )
                 }
             }
+            }
         }
 
         // 侧边栏浮于内容之上 (展开时渐变面板压住内容左缘)
@@ -205,7 +236,11 @@ fun TvMainShell(modifier: Modifier = Modifier) {
             // 确认, 烧满全部轮询期间会把用户点击后移入内容区的焦点一次次抢回 (实测)
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .tvFocusAnchor(focus, TvShellFocus.Rail),
+                .tvFocusAnchor(focus, TvShellFocus.Rail)
+                .onFocusChanged { railHasFocus = it.hasFocus },
+            // 点击条目后把焦点还给内容区并恢复进入前的位置 (切页时恢复目标随旧页销毁,
+            // 自然交给新页 InitialFocus)
+            returnFocusToContent = restoreContentFocus,
         )
     }
 }

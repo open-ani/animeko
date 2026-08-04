@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.focus.FocusRequester
 import kotlinx.coroutines.delay
@@ -139,6 +140,33 @@ class TvFocusScope {
 /** 创建页面级焦点调度器. 页面根部另装 [TvFocusScope.Resolver]. */
 @Composable
 fun rememberTvFocusScope(): TvFocusScope = remember { TvFocusScope() }
+
+/**
+ * 内容区"最后聚焦点"记忆: 壳对内容子树 provide 一个实例, 可聚焦组件 (TvPosterCard /
+ * TvHeroButton 等) 聚焦时上报自身 requester; 焦点去了侧边栏等外部区域后可经 [restore]
+ * 精确回到原位.
+ *
+ * 为什么不用 Compose 的 saveFocusedChild/focusRestorer: 它们只保存/恢复"第一层子 target",
+ * 跨多层容器 (壳 -> AnimatedContent -> 页面 -> Lazy 列表 -> 卡) 时保存到的是不可聚焦的
+ * 中间容器, 恢复必然失败 (同帧 save=true/restore=false, TV 模拟器实测).
+ */
+@Stable
+class TvFocusMemory {
+    /** 最后聚焦组件的 requester; 由组件聚焦时上报. */
+    var last: FocusRequester? = null
+
+    /** 恢复到最后聚焦点. 返回是否发起了恢复 (节点已销毁时 no-op 由调用方兜底). */
+    fun restore(): Boolean {
+        val requester = last ?: return false
+        return runCatching { requester.requestFocus() }.isSuccess
+    }
+}
+
+/**
+ * 当前内容区的焦点记忆; null = 所在子树不参与记忆 (如侧边栏).
+ * 壳在内容区根部 provide, 组件侧由 foundation 可聚焦组件自动上报, 页面无须感知.
+ */
+val LocalTvFocusMemory = staticCompositionLocalOf<TvFocusMemory?> { null }
 
 /**
  * 轮询解析焦点请求 (设计同上游 PR 的 FocusResolver): 每帧先查 [arrived] 后试 [attempt] ——
