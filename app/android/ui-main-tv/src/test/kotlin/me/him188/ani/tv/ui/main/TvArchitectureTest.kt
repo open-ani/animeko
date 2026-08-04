@@ -95,4 +95,32 @@ class TvArchitectureTest {
             }
         }
     }
+
+    // ============ 焦点框架规约 (atv-architecture.md §14.4; 违反 = 运行期焦点 bug) ============
+
+    /** 页面持有 TvFocusScope 就必须装解析循环 + 用户交互放弃信号, 否则送焦请求无人消化 / 轮询抢焦点. */
+    @Test
+    fun `files owning a focus scope must install resolver and nav signal`() {
+        tvScope().files.assertFalse { file ->
+            // 框架自身 (定义处/kdoc 示例) 不受此约束
+            !file.path.contains("ui-foundation-tv") &&
+                file.text.contains("rememberTvFocusScope()") &&
+                !(
+                    file.text.contains(".Resolver()") &&
+                        (file.text.contains("tvFocusNavSignal") || file.text.contains("tvFocusHotkey"))
+                    )
+        }
+    }
+
+    /**
+     * requesterOf 互操作只允许框架内部使用: 裸 requester 送焦没有锚点上报, 解析轮询
+     * 永远等不到"到位"确认, 会烧满轮询期间抢用户焦点 (实测事故, `7635c6ea1`).
+     * 页面/组件需要程序化送焦一律走 tvFocusAnchor + request(key).
+     */
+    @Test
+    fun `pages must not use raw requesterOf interop`() {
+        tvScope().files.assertFalse { file ->
+            !file.path.contains("ui-foundation-tv") && file.text.contains("requesterOf(")
+        }
+    }
 }

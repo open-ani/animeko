@@ -32,4 +32,9 @@ dependencies {
     // materialkolor 生成 m3 ColorScheme, 由 TvColorMapping 逐字段映射到 tv-material ColorScheme.
     // 这是 TV 代码中唯一允许接触 androidx.compose.material3 类型的位置 (atv-architecture.md §4.2).
     implementation(libs.materialkolor)
+
+    // 焦点框架单元测试 (纯逻辑: 解析轮询语义 / 焦点记忆协议状态机)
+    testImplementation(kotlin("test-junit5"))
+    testImplementation(libs.junit5.jupiter.engine)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
