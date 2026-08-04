@@ -11,6 +11,8 @@ package me.him188.ani.tv.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -26,6 +28,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import me.him188.ani.app.platform.currentAniBuildConfig
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
@@ -53,16 +56,7 @@ fun TvSettingsScreen(
     focus.Resolver()
     focus.InitialFocus(TvSettingsFocus.FirstItem)
 
-    Column(
-        modifier
-            .fillMaxSize()
-            .tvFocusNavSignal(focus)
-            .verticalScroll(rememberScrollState())
-            .padding(start = 48.dp, end = 48.dp, top = 24.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Text("设置", style = MaterialTheme.typography.displaySmall)
-
+    TvSettingsPageLayout(focus = focus, modifier = modifier) {
         SectionTitle("弹幕")
         ToggleItem(
             "显示弹幕", danmakuEnabled,
@@ -90,6 +84,37 @@ fun TvSettingsScreen(
             supportingContent = { Text("Animeko TV ${currentAniBuildConfig.versionName}") },
         )
     }
+}
+
+/**
+ * 设置页骨架: 统一焦点接线 + 纵向滚动列 + 页面大标题, [content] 填充分组与设置项.
+ */
+@Composable
+private fun TvSettingsPageLayout(
+    focus: TvFocusScope,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier
+            .fillMaxSize()
+            .tvFocusNavSignal(focus)
+            .verticalScroll(rememberScrollState())
+            .padding(TvSettingsDefaults.ContentPadding),
+        verticalArrangement = Arrangement.spacedBy(TvSettingsDefaults.ItemSpacing),
+    ) {
+        Text("设置", style = MaterialTheme.typography.displaySmall)
+        content()
+    }
+}
+
+/** 设置页默认值/调参. */
+private object TvSettingsDefaults {
+    /** 内容边距 (水平 = overscan 安全边距 48). */
+    val ContentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 24.dp, bottom = 24.dp)
+
+    /** 设置项纵向间距. */
+    val ItemSpacing = 6.dp
 }
 
 @Composable

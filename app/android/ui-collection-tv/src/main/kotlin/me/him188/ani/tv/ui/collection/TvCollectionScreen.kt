@@ -13,19 +13,16 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -39,24 +36,27 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Tab
 import androidx.tv.material3.TabRow
 import androidx.tv.material3.Text
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.ui.subject.collection.COLLECTION_TABS_SORTED
 import me.him188.ani.app.ui.subject.collection.UserCollectionsViewModel
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
+import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusExit
-import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
+import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
 
@@ -111,78 +111,46 @@ fun TvCollectionScreen(
     var focusedCardIndex by remember { mutableStateOf(-1) }
     var pendingFocusIndex by remember { mutableStateOf<Int?>(null) }
 
-    Column(modifier.fillMaxSize().tvFocusNavSignal(focus).padding(top = TvCollectionDefaults.TopPadding)) {
-        TabRow(
-            selectedTabIndex = selectedTabIndex,
-            modifier = Modifier.padding(start = TvCollectionDefaults.TabRowStartPadding),
-        ) {
-            COLLECTION_TABS_SORTED.forEachIndexed { index, type ->
-                Tab(
-                    selected = selectedTabIndex == index,
-                    onFocus = {
-                        // 聚焦即选中 (PR 语义, §5.2). 边缘切 tab 在途时冻结: 旧网格聚焦卡
-                        // 销毁瞬间焦点会跌落到首 tab, 不冻结会把刚选的相邻 tab 又抢走
-                        if (pendingFocusIndex == null && selectedTabIndex != index) {
-                            state.selectTypeIndex(index)
-                        }
-                    },
-                    modifier = Modifier
-                        .then(
-                            // 锚点挂在"当前选中"的 tab 上, 随选中迁移: 网格按上/按返回
-                            // 都回到当前分类, 而不是几何最近的 tab
-                            if (index == selectedTabIndex) {
-                                Modifier.tvFocusAnchor(focus, TvCollectionFocus.CurrentTab)
-                            } else Modifier,
-                        )
-                        // 跨过网格上缘空隙直达首卡 (空间搜索跨大间距不可靠)
-                        .tvFocusLink(focus, down = TvCollectionFocus.FirstCard),
-                ) {
-                    val count = counts?.getCount(type)
-                    Text(
-                        text = type.displayText() + (count?.let { " $it" } ?: ""),
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        style = MaterialTheme.typography.titleSmall,
-                    )
-                }
-            }
-        }
-
+    TvCollectionPageLayout(
+        focus = focus,
+        tabRow = {
+            TvCollectionTabRow(
+                selectedTabIndex = selectedTabIndex,
+                counts = counts,
+                focus = focus,
+                onTabFocused = { index ->
+                    // 聚焦即选中 (PR 语义, §5.2). 边缘切 tab 在途时冻结: 旧网格聚焦卡
+                    // 销毁瞬间焦点会跌落到首 tab, 不冻结会把刚选的相邻 tab 又抢走
+                    if (pendingFocusIndex == null && selectedTabIndex != index) {
+                        state.selectTypeIndex(index)
+                    }
+                },
+            )
+        },
+        modifier = modifier,
+    ) {
         if (items.itemCount == 0) {
-            // 边缘切进来的相邻 tab 是空列表: 别让焦点悬空, 稍候归还当前 tab
-            // (数据只是没加载完时, 网格会先出现使本效应取消, 不会误触)
-            LaunchedEffect(pendingFocusIndex) {
-                if (pendingFocusIndex != null) {
-                    delay(TvCollectionDefaults.EmptyTabReturnDelayMillis)
+            TvCollectionEmptyPlaceholder(
+                pendingFocusIndex = pendingFocusIndex,
+                onReturnFocusToTab = {
                     pendingFocusIndex = null
                     focus.request(TvCollectionFocus.CurrentTab)
-                }
-            }
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    "这里空空如也，去探索页找些番剧吧",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+                },
+            )
         } else {
             val gridState = state.getGridState(selectedTabIndex) // 跨 tab 保留滚动位置
-            // 切 tab 后把"对应位置"送焦点: 等新列表分页就绪 -> 目标行滚进视口 -> 框架轮询聚焦
-            LaunchedEffect(pendingFocusIndex, selectedTabIndex) {
-                val target = pendingFocusIndex ?: return@LaunchedEffect
-                snapshotFlow { items.itemCount }.first { it > 0 }
-                val clamped = target.coerceAtMost(items.itemCount - 1)
-                if (gridState.layoutInfo.visibleItemsInfo.none { it.index == clamped }) {
-                    gridState.scrollToItem(clamped)
-                }
-                focus.request(TvCollectionFocus.EdgeEntryCard)
-                // 兜底超时: 送达即被 onFocused 清掉 (本效应随之取消); 万一没送达也要
-                // 清 pending, 否则"聚焦即选中"被永久冻结
-                delay(TvCollectionDefaults.EdgeEntryTimeoutMillis)
-                pendingFocusIndex = null
-            }
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(TvPageDefaults.PosterGridCellMinWidth),
-                state = gridState,
+            TvCollectionGrid(
+                items = items,
+                gridState = gridState,
+                selectedTabIndex = selectedTabIndex,
+                focus = focus,
+                pendingFocusIndex = pendingFocusIndex,
+                onClickSubject = onClickSubject,
+                onCardFocused = { index, isEdgeEntry ->
+                    focusedCardIndex = index
+                    if (isEdgeEntry) pendingFocusIndex = null
+                },
+                onEdgeEntryTimeout = { pendingFocusIndex = null },
                 modifier = Modifier
                     .fillMaxSize()
                     .onFocusChanged { gridHasFocus = it.hasFocus }
@@ -218,35 +186,153 @@ fun TvCollectionScreen(
                         }
                         true
                     },
-                contentPadding = TvPageDefaults.PosterGridContentPadding,
-                horizontalArrangement = Arrangement.spacedBy(TvPageDefaults.CardSpacing),
-                verticalArrangement = Arrangement.spacedBy(TvPageDefaults.CardSpacing),
-            ) {
-                items(items.itemCount, key = { items.peek(it)?.subjectId ?: it }) { index ->
-                    val info = items[index] ?: return@items
-                    val edgeEntryIndex = pendingFocusIndex?.coerceAtMost(items.itemCount - 1)
-                    TvPosterCard(
-                        imageUrl = info.subjectInfo.imageLarge,
-                        title = info.subjectInfo.displayName,
-                        onClick = { onClickSubject(info) },
-                        onFocused = {
-                            focusedCardIndex = index
-                            if (index == edgeEntryIndex) pendingFocusIndex = null
-                        },
-                        modifier = Modifier
-                            .then(
-                                if (index == 0) {
-                                    Modifier.tvFocusAnchor(focus, TvCollectionFocus.FirstCard)
-                                } else Modifier,
-                            )
-                            .then(
-                                if (index == edgeEntryIndex) {
-                                    Modifier.tvFocusAnchor(focus, TvCollectionFocus.EdgeEntryCard)
-                                } else Modifier,
-                            ),
+            )
+        }
+    }
+}
+
+/**
+ * 追番页骨架 (对齐手机 CollectionPageLayout 的 slot 模式):
+ * 统一焦点接线 + 顶部 [tabRow] + 下方 [content] (网格或空态).
+ */
+@Composable
+private fun TvCollectionPageLayout(
+    focus: TvFocusScope,
+    tabRow: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        modifier
+            .fillMaxSize()
+            .tvFocusNavSignal(focus)
+            .padding(top = TvCollectionDefaults.TopPadding),
+    ) {
+        tabRow()
+        content()
+    }
+}
+
+/** 分类 TabRow: 聚焦即选中 (选中判定在 [onTabFocused], 切换在途冻结) + 数量角标. */
+@Composable
+private fun TvCollectionTabRow(
+    selectedTabIndex: Int,
+    counts: SubjectCollectionCounts?,
+    focus: TvFocusScope,
+    onTabFocused: (index: Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TabRow(
+        selectedTabIndex = selectedTabIndex,
+        modifier = modifier.padding(start = TvCollectionDefaults.TabRowStartPadding),
+    ) {
+        COLLECTION_TABS_SORTED.forEachIndexed { index, type ->
+            Tab(
+                selected = selectedTabIndex == index,
+                onFocus = { onTabFocused(index) },
+                modifier = Modifier
+                    .then(
+                        // 锚点挂在"当前选中"的 tab 上, 随选中迁移: 网格按上/按返回
+                        // 都回到当前分类, 而不是几何最近的 tab
+                        if (index == selectedTabIndex) {
+                            Modifier.tvFocusAnchor(focus, TvCollectionFocus.CurrentTab)
+                        } else Modifier,
                     )
-                }
+                    // 跨过网格上缘空隙直达首卡 (空间搜索跨大间距不可靠)
+                    .tvFocusLink(focus, down = TvCollectionFocus.FirstCard),
+            ) {
+                val count = counts?.getCount(type)
+                Text(
+                    text = type.displayText() + (count?.let { " $it" } ?: ""),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.titleSmall,
+                )
             }
+        }
+    }
+}
+
+/** 空列表占位. 边缘切进来的相邻 tab 是空列表时: 别让焦点悬空, 稍候归还当前 tab. */
+@Composable
+private fun TvCollectionEmptyPlaceholder(
+    pendingFocusIndex: Int?,
+    onReturnFocusToTab: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // (数据只是没加载完时, 网格会先出现使本效应取消, 不会误触)
+    LaunchedEffect(pendingFocusIndex) {
+        if (pendingFocusIndex != null) {
+            delay(TvCollectionDefaults.EmptyTabReturnDelayMillis)
+            onReturnFocusToTab()
+        }
+    }
+    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(
+            "这里空空如也，去探索页找些番剧吧",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * 收藏网格: Adaptive 海报卡网格. 边缘切 tab 的按键判定在调用方 [modifier] 上
+ * (依赖页面持有的 focusedCardIndex 等状态); 本组件负责"对应位置"送焦的锚点挂载与兜底.
+ */
+@Composable
+private fun TvCollectionGrid(
+    items: LazyPagingItems<SubjectCollectionInfo>,
+    gridState: LazyGridState,
+    selectedTabIndex: Int,
+    focus: TvFocusScope,
+    pendingFocusIndex: Int?,
+    onClickSubject: (SubjectCollectionInfo) -> Unit,
+    onCardFocused: (index: Int, isEdgeEntry: Boolean) -> Unit,
+    onEdgeEntryTimeout: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // 切 tab 后把"对应位置"送焦点: 等新列表分页就绪 -> 目标行滚进视口 -> 框架轮询聚焦
+    LaunchedEffect(pendingFocusIndex, selectedTabIndex) {
+        val target = pendingFocusIndex ?: return@LaunchedEffect
+        snapshotFlow { items.itemCount }.first { it > 0 }
+        val clamped = target.coerceAtMost(items.itemCount - 1)
+        if (gridState.layoutInfo.visibleItemsInfo.none { it.index == clamped }) {
+            gridState.scrollToItem(clamped)
+        }
+        focus.request(TvCollectionFocus.EdgeEntryCard)
+        // 兜底超时: 送达即被 onFocused 清掉 (本效应随之取消); 万一没送达也要
+        // 清 pending, 否则"聚焦即选中"被永久冻结
+        delay(TvCollectionDefaults.EdgeEntryTimeoutMillis)
+        onEdgeEntryTimeout()
+    }
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(TvPageDefaults.PosterGridCellMinWidth),
+        state = gridState,
+        modifier = modifier,
+        contentPadding = TvPageDefaults.PosterGridContentPadding,
+        horizontalArrangement = Arrangement.spacedBy(TvPageDefaults.CardSpacing),
+        verticalArrangement = Arrangement.spacedBy(TvPageDefaults.CardSpacing),
+    ) {
+        items(items.itemCount, key = { items.peek(it)?.subjectId ?: it }) { index ->
+            val info = items[index] ?: return@items
+            val edgeEntryIndex = pendingFocusIndex?.coerceAtMost(items.itemCount - 1)
+            TvPosterCard(
+                imageUrl = info.subjectInfo.imageLarge,
+                title = info.subjectInfo.displayName,
+                onClick = { onClickSubject(info) },
+                onFocused = { onCardFocused(index, index == edgeEntryIndex) },
+                modifier = Modifier
+                    .then(
+                        if (index == 0) {
+                            Modifier.tvFocusAnchor(focus, TvCollectionFocus.FirstCard)
+                        } else Modifier,
+                    )
+                    .then(
+                        if (index == edgeEntryIndex) {
+                            Modifier.tvFocusAnchor(focus, TvCollectionFocus.EdgeEntryCard)
+                        } else Modifier,
+                    ),
+            )
         }
     }
 }
