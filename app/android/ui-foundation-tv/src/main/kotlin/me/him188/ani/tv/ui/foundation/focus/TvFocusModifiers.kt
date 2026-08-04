@@ -121,6 +121,27 @@ fun Modifier.tvFocusHotkey(
     }
 
 /**
+ * 出口重定向 (挂焦点组容器): 焦点沿 [mappings] 中的方向离开本容器时不走空间搜索,
+ * 直达对应锚点; 未声明的方向保持默认行为.
+ *
+ * 典型: 网格上缘按上应回"当前选中"的分类 tab —— 空间搜索只会落到几何最近的 tab.
+ * 锚点可以是动态的 (如挂在当前选中项上), 重定向时取此刻挂着锚点的节点.
+ */
+@OptIn(ExperimentalComposeUiApi::class)
+fun Modifier.tvFocusExit(
+    scope: TvFocusScope,
+    vararg mappings: Pair<FocusDirection, TvFocusKey>,
+): Modifier = this
+    .focusProperties {
+        onExit = {
+            mappings.firstOrNull { it.first == requestedFocusDirection }?.let {
+                scope.requesterOf(it.second).requestFocus()
+            }
+        }
+    }
+    .focusGroup()
+
+/**
  * 用户导航信号 (挂页面根节点): 方向键按下时上报 [TvFocusScope.notifyUserNavigation],
  * 放弃在途的焦点解析 —— 否则解析轮询会把用户刚移走的焦点抢回目标锚点. 不消费事件.
  *

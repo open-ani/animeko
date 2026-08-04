@@ -9,6 +9,7 @@
 
 package me.him188.ani.tv.ui.collection
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,10 +23,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectWithLifecycle
@@ -40,14 +44,15 @@ import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusExit
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
 import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
 
 /** 追番页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
 private enum class TvCollectionFocus : TvFocusKey {
-    /** 第一个分类 tab (进页初始焦点). */
-    FirstTab,
+    /** 当前选中的分类 tab (进页初始焦点; 网格按上/按返回的回归目标). 锚点随选中迁移. */
+    CurrentTab,
 
     /** 网格首卡 (tab 行按下键的显式落点). */
     FirstCard,
@@ -75,10 +80,16 @@ fun TvCollectionScreen(
         state.getCollectionLazyPagingItems(selectedTabIndex)
     }.collectWithLifecycle()
 
-    // 统一焦点框架: 进页初始焦点落第一个 tab; tab 行按下键直达网格首卡
+    // 统一焦点框架: 进页初始焦点落当前选中 tab; tab 行按下键直达网格首卡
     val focus = rememberTvFocusScope()
     focus.Resolver()
-    focus.InitialFocus(TvCollectionFocus.FirstTab)
+    focus.InitialFocus(TvCollectionFocus.CurrentTab)
+
+    // 焦点在网格内时按返回: 直接回当前分类 tab (再按一次返回才交给壳回探索页)
+    var gridHasFocus by remember { mutableStateOf(false) }
+    BackHandler(enabled = gridHasFocus) {
+        focus.request(TvCollectionFocus.CurrentTab)
+    }
 
     Column(modifier.fillMaxSize().tvFocusNavSignal(focus).padding(top = 24.dp)) {
         TabRow(
@@ -94,8 +105,10 @@ fun TvCollectionScreen(
                     },
                     modifier = Modifier
                         .then(
-                            if (index == 0) {
-                                Modifier.tvFocusAnchor(focus, TvCollectionFocus.FirstTab)
+                            // 锚点挂在"当前选中"的 tab 上, 随选中迁移: 网格按上/按返回
+                            // 都回到当前分类, 而不是几何最近的 tab
+                            if (index == selectedTabIndex) {
+                                Modifier.tvFocusAnchor(focus, TvCollectionFocus.CurrentTab)
                             } else Modifier,
                         )
                         // 跨过网格上缘空隙直达首卡 (空间搜索跨大间距不可靠)
@@ -123,7 +136,11 @@ fun TvCollectionScreen(
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(124.dp),
                 state = state.getGridState(selectedTabIndex), // 跨 tab 保留滚动位置
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .onFocusChanged { gridHasFocus = it.hasFocus }
+                    // 网格上缘按上: 直达当前分类 tab (空间搜索会落到几何最近的 tab)
+                    .tvFocusExit(focus, FocusDirection.Up to TvCollectionFocus.CurrentTab),
                 contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 16.dp, bottom = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),

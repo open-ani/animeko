@@ -47,7 +47,8 @@ fun TvPosterCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onFocused: () -> Unit = {},
-    width: Dp = 112.dp,
+    /** null = 宽度交给调用方 modifier 决定 (如 Row 内 weight 等分的自适应网格). */
+    width: Dp? = 112.dp,
     /** 参考版探索页卡片行为纯图, 标题只在网格页展示 */
     showTitle: Boolean = true,
 ) {
@@ -55,7 +56,7 @@ fun TvPosterCard(
     Surface(
         onClick = onClick,
         modifier = modifier
-            .width(width)
+            .then(if (width != null) Modifier.width(width) else Modifier)
             .onFocusChanged {
                 selfFocused = it.isFocused
                 if (it.isFocused) onFocused()

@@ -13,14 +13,12 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -53,7 +51,6 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.tv.ui.foundation.focus.tvLongPressKey
@@ -473,34 +470,3 @@ private val TV_HERO_BUTTON_CORNER = 8.dp
 
 /** 操作按钮整体缩放比例 (内边距/图标/字号统一乘此值). */
 private const val TV_HERO_BUTTON_SCALE = 0.9f
-
-/**
- * 封面卡 + 下方标题的组合列: 标题平时单行截断, **卡片聚焦时变跑马灯滚动**
- * (聚焦 = 用户明确在看, 完整标题信息优先; 失焦即停回行首).
- * [card] 内容负责把 onFocusChanged 挂到卡片的 onFocusChangedExtra 上.
- */
-@Composable
-fun TvTitledCardColumn(
-    title: String,
-    modifier: Modifier = Modifier,
-    card: @Composable (onCardFocusChanged: (Boolean) -> Unit) -> Unit,
-) {
-    var focused by remember { mutableStateOf(false) }
-    Column(modifier) {
-        card { focused = it }
-        Text(
-            title,
-            Modifier
-                .padding(top = 4.dp, start = 4.dp, end = 4.dp)
-                .then(
-                    if (focused) {
-                        Modifier.basicMarquee(iterations = Int.MAX_VALUE)
-                    } else Modifier,
-                ),
-            style = MaterialTheme.typography.labelMedium,
-            color = if (focused) tvHeroContentColor() else tvHeroSecondaryContentColor(),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}

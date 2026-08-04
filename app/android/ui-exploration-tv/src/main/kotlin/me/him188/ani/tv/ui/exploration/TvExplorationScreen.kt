@@ -105,8 +105,7 @@ import me.him188.ani.tv.ui.foundation.widgets.TV_PAGE_CARD_SPACING
 import me.him188.ani.tv.ui.foundation.widgets.TV_PAGE_CARD_WIDTH
 import me.him188.ani.tv.ui.foundation.widgets.TV_PAGE_END_PAD
 import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
-import me.him188.ani.tv.ui.foundation.widgets.TvPortraitCard
-import me.him188.ani.tv.ui.foundation.widgets.TvTitledCardColumn
+import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
 import me.him188.ani.tv.ui.foundation.widgets.tvBackdropFadeFromBlackStops
 import me.him188.ani.tv.ui.foundation.widgets.tvBackdropFadeToBlackStops
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
@@ -477,21 +476,16 @@ fun TvExplorationScreen(
                                 info.subjectInfo.displayName,
                                 info.subjectInfo.imageLarge,
                             )
-                            TvTitledCardColumn(
+                            // 与收藏页统一的海报卡样式 (标题在卡内, 聚焦跑马灯)
+                            TvPosterCard(
+                                imageUrl = info.subjectInfo.imageLarge,
                                 title = info.subjectInfo.displayName,
-                                modifier = Modifier.width(TV_PAGE_CARD_WIDTH),
-                            ) { onCardFocusChanged ->
-                                TvPortraitCard(
-                                    imageUrl = info.subjectInfo.imageLarge,
-                                    contentDescription = info.subjectInfo.displayName,
-                                    onClick = { onClickSubject(item) },
-                                    onFocused = { heroFocused = false },
-                                    onFocusChangedExtra = onCardFocusChanged,
-                                    modifier = if (index == 0) {
-                                        Modifier.tvFocusAnchor(focus, TvExplorationFocus.FirstCard)
-                                    } else Modifier,
-                                )
-                            }
+                                onClick = { onClickSubject(item) },
+                                onFocused = { heroFocused = false },
+                                modifier = if (index == 0) {
+                                    Modifier.tvFocusAnchor(focus, TvExplorationFocus.FirstCard)
+                                } else Modifier,
+                            )
                         }
                     }
                 }
@@ -521,22 +515,22 @@ fun TvExplorationScreen(
                             when (val rec = recommendations[index]) {
                                 is RecommendedSubjectInfo -> {
                                     val item = TvHeroSubject(rec.bangumiId, rec.nameCn, rec.imageLarge)
-                                    TvTitledCardColumn(
+                                    // 与收藏页统一的海报卡样式; 宽度由行内 weight 等分决定
+                                    TvPosterCard(
+                                        imageUrl = rec.imageLarge,
                                         title = rec.nameCn,
-                                        modifier = Modifier.weight(1f),
-                                    ) { onCardFocusChanged ->
-                                        TvPortraitCard(
-                                            imageUrl = rec.imageLarge,
-                                            contentDescription = rec.nameCn,
-                                            onClick = { onClickSubject(item) },
-                                            onFocused = { heroFocused = false },
-                                            onFocusChangedExtra = onCardFocusChanged,
-                                            modifier = if (followed.itemCount == 0 && index == 0) {
-                                                // 未登录无继续观看行时, 首卡兼任 FirstCard 锚点
-                                                Modifier.tvFocusAnchor(focus, TvExplorationFocus.FirstCard)
-                                            } else Modifier,
-                                        )
-                                    }
+                                        onClick = { onClickSubject(item) },
+                                        onFocused = { heroFocused = false },
+                                        width = null,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .then(
+                                                if (followed.itemCount == 0 && index == 0) {
+                                                    // 未登录无继续观看行时, 首卡兼任 FirstCard 锚点
+                                                    Modifier.tvFocusAnchor(focus, TvExplorationFocus.FirstCard)
+                                                } else Modifier,
+                                            ),
+                                    )
                                 }
 
                                 else -> Spacer(Modifier.weight(1f))

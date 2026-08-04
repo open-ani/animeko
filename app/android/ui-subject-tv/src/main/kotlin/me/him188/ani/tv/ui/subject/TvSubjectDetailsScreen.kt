@@ -93,8 +93,7 @@ import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.nameCn
-import me.him188.ani.tv.ui.foundation.widgets.TvPortraitCard
-import me.him188.ani.tv.ui.foundation.widgets.TvTitledCardColumn
+import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
 import me.him188.ani.app.ui.foundation.AsyncImage
 import kotlinx.coroutines.flow.first
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
@@ -840,17 +839,12 @@ private fun TvRelatedSubjectCard(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.width(112.dp)) {
-        TvTitledCardColumn(
+        // 与收藏页统一的海报卡样式 (标题在卡内, 聚焦跑马灯)
+        TvPosterCard(
+            imageUrl = info.image.orEmpty(),
             title = info.nameCn.ifBlank { info.name.orEmpty() },
-        ) { onCardFocusChanged ->
-            TvPortraitCard(
-                imageUrl = info.image,
-                contentDescription = info.nameCn,
-                onClick = { onClick(info.subjectId) },
-                onFocused = {},
-                onFocusChangedExtra = onCardFocusChanged,
-            )
-        }
+            onClick = { onClick(info.subjectId) },
+        )
         Text(
             info.relation?.let { renderSubjectRelation(it) }.orEmpty(),
             Modifier.padding(start = 4.dp),
