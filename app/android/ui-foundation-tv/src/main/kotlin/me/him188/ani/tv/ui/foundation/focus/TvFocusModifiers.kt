@@ -142,20 +142,22 @@ fun Modifier.tvFocusExit(
     .focusGroup()
 
 /**
- * 用户导航信号 (挂页面根节点): 方向键按下时上报 [TvFocusScope.notifyUserNavigation],
+ * 用户交互信号 (挂页面根节点): 方向键或确认键按下时上报 [TvFocusScope.notifyUserNavigation],
  * 放弃在途的焦点解析 —— 否则解析轮询会把用户刚移走的焦点抢回目标锚点. 不消费事件.
+ * 确认键也算: 点击 (如侧边栏条目把焦点送回内容区) 引发的焦点变化同样不该被在途轮询抢回.
  *
  * 每个持有 [TvFocusScope] 的页面都应在根上挂本 modifier (或挂 [tvFocusHotkey], 它已兼任).
  */
 fun Modifier.tvFocusNavSignal(scope: TvFocusScope): Modifier = onPreviewKeyEvent { event ->
-    if (event.type == KeyEventType.KeyDown && event.key in TV_NAV_KEYS) {
+    if (event.type == KeyEventType.KeyDown && event.key in TV_USER_INTERACTION_KEYS) {
         scope.notifyUserNavigation()
     }
     false // 只旁听, 不消费
 }
 
-private val TV_NAV_KEYS = setOf(
+private val TV_USER_INTERACTION_KEYS = setOf(
     Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight,
+    Key.DirectionCenter, Key.Enter, Key.NumPadEnter,
 )
 
 /** 本次 KeyDown 是否系统按住连发 (android nativeKeyEvent.repeatCount). */

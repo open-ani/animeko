@@ -115,8 +115,9 @@ data class TvNavRailItem(
  * @param onExitFocus 非 null 时: 条目上按返回键/右键调用它并吞掉按键 (如详情页把焦点送回
  *   Hero 播放按钮); null 时不拦截.
  * @param scrimColor 展开面板底色覆盖; null 用 [tvShellBackgroundColor].
- * @param enterFocus 进入侧边栏时聚焦的 defaultFocus 条目的请求器; 传入后调用方可在任意时刻
- *   requestFocus 把焦点直接送进侧边栏 (如全局菜单键), 不传则内部自建.
+ * @param enterFocus 进入落点条目的请求器; 不传则内部自建. 调用方要程序化送焦点进侧边栏
+ *   (如全局菜单键) 时, 推荐在 [modifier] 上挂 tvFocusAnchor (容器锚点): requestFocus 会经
+ *   进入门控落到 selected 条目, 且 hasFocus 对整个子树上报到位 (解析轮询能确认收敛).
  */
 @Composable
 fun TvNavigationSideRail(

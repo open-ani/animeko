@@ -47,6 +47,7 @@ import me.him188.ani.tv.ui.collection.TvCollectionScreen
 import me.him188.ani.tv.ui.exploration.TvExplorationScreen
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
+import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusHotkey
 import me.him188.ani.tv.ui.foundation.widgets.TvNavRailItem
 import me.him188.ani.tv.ui.foundation.widgets.TvNavigationRailDefaults
@@ -199,8 +200,12 @@ fun TvMainShell(modifier: Modifier = Modifier) {
                     selected = content == TvShellContent.Settings,
                 ) { content = TvShellContent.Settings },
             ),
-            modifier = Modifier.align(Alignment.CenterStart),
-            enterFocus = focus.requesterOf(TvShellFocus.Rail),
+            // Rail 锚点挂容器而非条目: requestFocus 经进入门控落到当前页条目, 而
+            // hasFocus 对整个子树上报到位 —— 否则 request(Rail) 的解析轮询永远等不到
+            // 确认, 烧满全部轮询期间会把用户点击后移入内容区的焦点一次次抢回 (实测)
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .tvFocusAnchor(focus, TvShellFocus.Rail),
         )
     }
 }
