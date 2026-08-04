@@ -11,10 +11,7 @@ package me.him188.ani.tv.ui.foundation.widgets
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +25,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -41,7 +37,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -55,129 +50,17 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.AsyncImage
-import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
 import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
-import me.him188.ani.tv.ui.foundation.focus.tvLongPressKey
 import kotlin.math.pow
 
 /*
  * TV 沉浸式页面的卡片/按钮/backdrop 体系.
  *
- * 视觉规格对齐上游 PR#3217 实机效果 (material3 + 自研焦点, 不用 tv-material):
- * - 卡片聚焦: 主题主色外圈 + 圈与封面之间留一圈空隙 ("色圈+留白", 无缩放)
+ * 视觉规格对齐上游 PR#3217 实机效果:
  * - hero 按钮: Prime 风格深/浅灰实心, 聚焦整颗变主色反色
  * - backdrop: 平滑曲线采样的多停点渐变 (避免手写折点的马赫带)
+ * (条目卡统一用 TvPosterCard, 见 TvPosterCard.kt)
  */
-
-/**
- * TV 竖版封面卡片 (探索页 / 追番页共用): 聚焦时主题主色外圈. [imageUrl] 为 null 时显示占位.
- * 长按 (遥控器确定键长按 / 触屏长按) 弹出 [menu].
- */
-@Composable
-fun TvPortraitCard(
-    imageUrl: String?,
-    contentDescription: String?,
-    onClick: () -> Unit,
-    onFocused: () -> Unit,
-    modifier: Modifier = Modifier,
-    focusRequester: FocusRequester? = null,
-    onFocusChangedExtra: ((Boolean) -> Unit)? = null,
-    menu: (@Composable (expanded: Boolean, onDismiss: () -> Unit) -> Unit)? = null,
-    /** 集数观看进度 (0..1): 贴卡片底缘画一条细进度条; null 不显示. */
-    progress: Float? = null,
-    onMenuExpandedChange: ((Boolean) -> Unit)? = null,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val focused by interactionSource.collectIsFocusedAsState()
-    var menuExpanded by remember { mutableStateOf(false) }
-    val setMenuExpanded = { value: Boolean ->
-        if (menuExpanded != value) {
-            menuExpanded = value
-            onMenuExpandedChange?.invoke(value)
-        }
-    }
-    Box(
-        modifier
-            .aspectRatio(TvPortraitCardDefaults.CoverRatio)
-            .then(
-                if (focused) {
-                    Modifier.border(
-                        TvFocusDefaults.RingWidth,
-                        MaterialTheme.colorScheme.primary,
-                        RoundedCornerShape(TvPortraitCardDefaults.CornerRadius + TvFocusDefaults.RingInset),
-                    )
-                } else Modifier,
-            ),
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxSize().padding(TvFocusDefaults.RingInset),
-            shape = RoundedCornerShape(TvPortraitCardDefaults.CornerRadius),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
-                    .onFocusChanged {
-                        if (it.isFocused) onFocused()
-                        onFocusChangedExtra?.invoke(it.isFocused)
-                    }
-                    .then(
-                        // 有菜单才接管确认键 (按住到阈值立即弹菜单, 短按仍是点击)
-                        if (menu == null) {
-                            Modifier
-                        } else {
-                            Modifier.tvLongPressKey(
-                                onLongPress = { setMenuExpanded(true) },
-                                onShortPress = onClick,
-                            )
-                        },
-                    )
-                    .combinedClickable(
-                        interactionSource = interactionSource,
-                        indication = LocalIndication.current,
-                        onClick = onClick,
-                        onLongClick = menu?.let { { setMenuExpanded(true) } },
-                    ),
-            ) {
-                if (imageUrl != null) {
-                    AsyncImage(
-                        imageUrl,
-                        contentDescription = contentDescription,
-                        Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                    )
-                }
-                // 集数观看进度条: 悬浮胶囊条 — 左右内缩避开圆角, 圆头, 白 30% 轨道 + 主题色填充
-                if (progress != null && progress > 0f) {
-                    Box(
-                        Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(horizontal = TvPortraitCardDefaults.ProgressBarInset)
-                            .padding(bottom = TvPortraitCardDefaults.ProgressBarBottomGap)
-                            .fillMaxWidth()
-                            .height(TvPortraitCardDefaults.ProgressBarHeight)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = TvPortraitCardDefaults.ProgressTrackAlpha)),
-                    ) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth(progress.coerceIn(0f, 1f))
-                                .height(TvPortraitCardDefaults.ProgressBarHeight)
-                                .background(MaterialTheme.colorScheme.primary),
-                        )
-                    }
-                }
-            }
-        }
-        // 菜单以卡片右下角为锚点弹出
-        if (menu != null) {
-            Box(Modifier.align(Alignment.BottomEnd)) {
-                menu(menuExpanded) { setMenuExpanded(false) }
-            }
-        }
-    }
-}
 
 /**
  * TV Hero 操作按钮 (立即观看 / 更多详细内容等). 深/浅灰实心 (参考 Prime: 主按钮略亮,
@@ -193,7 +76,6 @@ fun TvHeroButton(
     modifier: Modifier = Modifier,
     shape: Shape = TvHeroDefaults.ButtonShape,
     focusRequester: FocusRequester? = null,
-    onFocusChangedExtra: ((Boolean) -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
@@ -223,7 +105,6 @@ fun TvHeroButton(
                     onFocused()
                     focusMemory?.reportFocused(selfRequester, id = null)
                 }
-                onFocusChangedExtra?.invoke(it.isFocused)
             },
         shape = shape,
         color = container,
@@ -469,25 +350,4 @@ object TvPageDefaults {
 
     /** 底缘遮罩在最底边的不透明度. */
     const val BottomScrimMaxAlpha: Float = 0.95f
-}
-
-/** [TvPortraitCard] 默认值 (聚焦外圈规格统一走 [TvFocusDefaults]). */
-object TvPortraitCardDefaults {
-    /** 竖版封面宽高比 (与详情页封面一致). */
-    const val CoverRatio: Float = 0.72f
-
-    /** 卡片圆角. */
-    val CornerRadius: Dp = 8.dp
-
-    /** 集数进度条 (悬浮胶囊条) 高度. */
-    val ProgressBarHeight: Dp = 2.5.dp
-
-    /** 集数进度条左右内缩 (避开卡片圆角). */
-    val ProgressBarInset: Dp = 10.dp
-
-    /** 集数进度条距卡片底缘间距. */
-    val ProgressBarBottomGap: Dp = 4.dp
-
-    /** 集数进度条轨道 (白色) 不透明度. */
-    const val ProgressTrackAlpha: Float = 0.3f
 }
