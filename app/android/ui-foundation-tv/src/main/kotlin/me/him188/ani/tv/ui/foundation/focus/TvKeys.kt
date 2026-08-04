@@ -31,9 +31,6 @@ import androidx.compose.ui.input.key.type
  * 长按判定基于系统 KeyDown 连发计数而非计时, 与原生 View 的手势判据一致.
  */
 
-/** 弹层/布局变化后请求焦点前的标准延迟: 确保布局完成, 否则 requestFocus 会被丢弃. */
-const val FOCUS_REQ_DELAY_MILLIS = 300L
-
 /**
  * 长按判定阈值: 第几次 KeyDown 算长按.
  *

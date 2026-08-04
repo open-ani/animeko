@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
@@ -31,12 +32,13 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.LazyPagingItems
+import androidx.paging.LoadState
 import androidx.paging.compose.collectWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Tab
 import androidx.tv.material3.TabRow
 import androidx.tv.material3.Text
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import me.him188.ani.app.data.models.subject.SubjectCollectionCounts
 import me.him188.ani.app.data.models.subject.SubjectCollectionInfo
 import me.him188.ani.app.ui.subject.collection.COLLECTION_TABS_SORTED
@@ -119,6 +121,7 @@ fun TvCollectionScreen(
     ) {
         if (items.itemCount == 0) {
             TvCollectionEmptyPlaceholder(
+                items = items,
                 edgeSwitchInFlight = gridFocus.switching,
                 onReturnFocusToTab = {
                     gridFocus.cancel()
@@ -209,17 +212,23 @@ private fun TvCollectionTabRow(
     }
 }
 
-/** 空列表占位. 边缘切进来的相邻 tab 是空列表时: 别让焦点悬空, 稍候归还当前 tab. */
+/**
+ * 空列表占位. 边缘切进来的相邻 tab 是空列表时: 别让焦点悬空, 归还当前 tab.
+ * 判据是分页 LoadState 事件 (刷新完成且确无数据), 不是延时猜测 (§14.4-8);
+ * 数据只是没加载完时本效应挂起等待, 网格出现即取消, 不会误触.
+ */
 @Composable
 private fun TvCollectionEmptyPlaceholder(
+    items: LazyPagingItems<SubjectCollectionInfo>,
     edgeSwitchInFlight: Boolean,
     onReturnFocusToTab: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // (数据只是没加载完时, 网格会先出现使本效应取消, 不会误触)
-    LaunchedEffect(edgeSwitchInFlight) {
+    LaunchedEffect(edgeSwitchInFlight, items) {
         if (edgeSwitchInFlight) {
-            delay(TvCollectionDefaults.EmptyTabReturnDelayMillis)
+            snapshotFlow {
+                items.loadState.refresh is LoadState.NotLoading && items.itemCount == 0
+            }.first { it }
             onReturnFocusToTab()
         }
     }
@@ -286,8 +295,6 @@ private object TvCollectionDefaults {
     /** tab 行左侧留白 (= overscan 安全边距 48). */
     val TabRowStartPadding = 48.dp
 
-    /** 边缘切进空列表后焦点归还当前 tab 的等待 (给分页数据一个出现窗口). */
-    const val EmptyTabReturnDelayMillis = 800L
 }
 
 private fun UnifiedCollectionType.displayText(): String = when (this) {

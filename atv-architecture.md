@@ -884,7 +884,8 @@ D1 放弃编译期隔离后，**Konsist 是 §4.2 约定边界的主要机械守
 4. **Lazy 容器内的焦点目标先保证组合**：目标 item 可能已被回收，须先 `scrollToItem` 再 request，框架轮询兜住附着时序。
 5. 已知陷阱：切换数据源导致聚焦节点销毁时，焦点会瞬时跌落到布局中**第一个可聚焦节点**——若该节点有"聚焦即选中"语义须在过渡期冻结（读 `TvGridFocusState.switching`，追番页边缘切 tab 的实测教训）。
 6. **多方参与的焦点协议单文件收口**：焦点记忆（同页/跨 route 恢复）全协议在 `TvFocusMemory.kt`（组件只挂 `tvFocusMemorable(id)`），网格聚焦第 N 项/边缘切换在 `TvFocusGrid.kt`——新增此类协议时照此模式，禁止把步骤散进壳/组件/页面各写一段。
-7. 本节 1/2 的可静态检查部分已固化为 Konsist 测试（TvArchitectureTest：持有 scope 必装 Resolver+信号、`requesterOf` 仅框架内部可用——裸 requester 无锚点上报，解析轮询不收敛）；框架纯逻辑（轮询语义/记忆协议）有单元测试守护（ui-foundation-tv/src/test）。
+7. 本节 1/2 的可静态检查部分已固化为 Konsist 测试（TvArchitectureTest：持有 scope 必装 Resolver+信号、`requesterOf` 仅框架内部可用——裸 requester 无锚点上报，事件驱动解析无法感知目标）；框架纯逻辑（调度/记忆/网格状态机）有单元测试守护（ui-foundation-tv/src/test）。
+8. **焦点处理必须全事件驱动，禁止轮询与延时**（用户裁定，Konsist 守护框架目录禁 `delay`/`withFrameNanos`）。可用的确定性信号只有四类：**节点附着事件**（`tvFocusAnchor` 上报，悬挂中的 `request` 在目标附着瞬间送达——这是对 Compose"对未附着节点 requestFocus 静默失败且无附着回调"缺口的补齐）、**焦点得失事件**（onFocusChanged 上报）、**快照状态变化**（`snapshotFlow`，如用户交互代数、分页 itemCount）、**数据层完成事件**（如 Paging `LoadState` 判定"确无数据"）。失败语义 = 单发不抢：送焦后被后到分配抢走不追抢，用户按键即取消在途请求；"目标可能永不出现"一律用数据层事件判定，不准用超时猜测。历史教训：轮询+延时版本在慢设备上暴露整族时序竞态（烧满轮询抢用户焦点、时序窗口内按键误伤），全部源于"猜时间"。
 
 ### 14.5 交互细则（逐轮验收裁定，视为验收标准）
 

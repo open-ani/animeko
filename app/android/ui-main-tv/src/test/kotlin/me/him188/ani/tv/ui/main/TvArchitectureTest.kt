@@ -112,9 +112,19 @@ class TvArchitectureTest {
         }
     }
 
+    /** 焦点处理禁止轮询/延时 (§14.4-8): 框架目录内不得出现 delay/帧等待, 一律事件驱动. */
+    @Test
+    fun `focus framework must be event driven with no delays or frame polling`() {
+        tvScope().files.assertFalse { file ->
+            file.path.contains("ui-foundation-tv") &&
+                file.path.contains("/focus/") &&
+                (file.text.contains("delay(") || file.text.contains("withFrameNanos"))
+        }
+    }
+
     /**
-     * requesterOf 互操作只允许框架内部使用: 裸 requester 送焦没有锚点上报, 解析轮询
-     * 永远等不到"到位"确认, 会烧满轮询期间抢用户焦点 (实测事故, `7635c6ea1`).
+     * requesterOf 互操作只允许框架内部使用: 裸 requester 送焦没有锚点附着/焦点上报,
+     * 事件驱动解析无法感知目标 (曾以轮询形态酿成抢焦事故, `7635c6ea1`).
      * 页面/组件需要程序化送焦一律走 tvFocusAnchor + request(key).
      */
     @Test

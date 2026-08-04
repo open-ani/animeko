@@ -19,6 +19,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 
@@ -41,14 +43,47 @@ import androidx.compose.ui.input.key.type
  */
 
 /**
- * 标注本节点为 [key] 锚点: 挂 FocusRequester + 焦点得失自动上报 (到位确认依据).
+ * 标注本节点为 [key] 锚点: 挂 FocusRequester + **节点附着/脱离上报** (事件驱动送焦的
+ * 核心: 悬挂中的 request 在锚点附着瞬间送达, 见 [TvFocusScope]) + 焦点得失上报.
  *
- * 上报用 hasFocus (含子树): 锚点可以是容器 (如轮播行, 配合 focusRestorer 恢复行内
- * 上次聚焦的卡片), 也可以是叶子按钮.
+ * 焦点上报用 hasFocus (含子树): 锚点可以是容器 (如轮播行), 也可以是叶子按钮.
  */
 fun Modifier.tvFocusAnchor(scope: TvFocusScope, key: TvFocusKey): Modifier = this
     .focusRequester(scope.requesterOf(key))
+    .then(TvFocusAnchorAttachElement(scope, key))
     .onFocusChanged { scope.onAnchorFocusChanged(key, it.hasFocus) }
+
+/** 锚点附着追踪节点: 把 Compose 缺失的"节点已附着"事件上报给 [TvFocusScope]. */
+private data class TvFocusAnchorAttachElement(
+    val scope: TvFocusScope,
+    val key: TvFocusKey,
+) : ModifierNodeElement<TvFocusAnchorAttachNode>() {
+    override fun create() = TvFocusAnchorAttachNode(scope, key)
+
+    override fun update(node: TvFocusAnchorAttachNode) = node.update(scope, key)
+
+    override fun InspectorInfo.inspectableProperties() {
+        name = "tvFocusAnchorAttach"
+        properties["key"] = key
+    }
+}
+
+private class TvFocusAnchorAttachNode(
+    private var scope: TvFocusScope,
+    private var key: TvFocusKey,
+) : Modifier.Node() {
+    override fun onAttach() = scope.onAnchorAttached(key)
+
+    override fun onDetach() = scope.onAnchorDetached(key)
+
+    fun update(newScope: TvFocusScope, newKey: TvFocusKey) {
+        if (newScope === scope && newKey == key) return
+        if (isAttached) scope.onAnchorDetached(key)
+        scope = newScope
+        key = newKey
+        if (isAttached) scope.onAnchorAttached(key)
+    }
+}
 
 /**
  * 显式方向链接: 声明方向的焦点搜索直达目标锚点, 不走空间搜索.

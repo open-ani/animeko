@@ -35,8 +35,11 @@ import androidx.compose.ui.focus.onFocusChanged
  *    上次的 requester (节点仍存活).
  * 4. 【跨 route 恢复】进详情页返回, 页面组合已重建、旧 requester 失效:
  *    壳在 route 重组处调 [TvFocusMemory.ArmOnRouteReturn] (组合期把 lastId 转成待认领
- *    目标) -> 新组合中身份匹配的 [tvFocusMemorable] 组件自动认领登记新 requester ->
- *    页面 [TvFocusScope.InitialFocus] 统一消费 (轮询恢复; 目标没了退回默认初始锚点).
+ *    目标, Armed 态) -> 新组合中身份匹配的 [tvFocusMemorable] 组件附着时**认领登记**
+ *    ([claimRestore]) -> route 进入前台 (Lifecycle RESUMED 事件, InitialFocus 挂接
+ *    [activate]) 执行恢复 (Armed -> Done). 转场中不 requestFocus (会被转场收尾冲掉);
+ *    RESUMED 后组件才附着 (数据迟到) 则认领即时恢复; 恢复失败/无认领时 InitialFocus
+ *    落默认锚点防悬空. 用户交互 ([onUserInteraction]) 取消 Armed, 不再迟到抢焦.
  * 5. 【清理】壳在内容页切换时清 last/lastId (换页语义上不该恢复, 交给新页 InitialFocus).
  *
  * 为什么不用 Compose 的 saveFocusedChild/focusRestorer: 它们只保存/恢复"第一层子 target",
@@ -57,13 +60,24 @@ class TvFocusMemory {
 
     /**
      * 待认领的跨 route 恢复目标身份键 (snapshot 状态: 组件组合中读取, 匹配即认领).
-     * 由 [ArmOnRouteReturn] 从 [lastId] 转入.
+     * 由 [ArmOnRouteReturn] 从 [lastId] 转入 (Armed 态); 恢复完成或用户交互后清空.
      */
     var pendingRestoreId: Any? by mutableStateOf(null)
         private set
 
-    /** 身份匹配组件认领后登记的 requester (新组合里的新实例). */
-    private var pendingRequester: FocusRequester? = null
+    /** 本 route 的跨 route 恢复是否已完成 (Done 态): InitialFocus 据此让位, 不抢默认锚点. */
+    var restoreDone: Boolean = false
+        private set
+
+    /** 身份匹配组件认领登记的 requester (等待 [activate] 或 live 态即时恢复). */
+    private var claimedRequester: FocusRequester? = null
+
+    /**
+     * route 是否已进入前台 (Lifecycle RESUMED, 返回转场完成): 之前认领只登记 ——
+     * 转场未结束就 requestFocus 会被转场收尾的焦点处理冲掉 (TV 模拟器实测,
+     * 这正是旧版 300ms 延时"恰好"掩盖的真实事件缺口); 之后认领即时恢复 (迟到数据).
+     */
+    private var live: Boolean = false
 
     /** 组件聚焦时上报 (由 [tvFocusMemorable] 自动挂接). */
     fun reportFocused(requester: FocusRequester, id: Any?) {
@@ -71,23 +85,47 @@ class TvFocusMemory {
         lastId = id
     }
 
-    /** 身份为 [id] 的组件在新组合中登记自身 (由 [tvFocusMemorable] 自动挂接, 不清 pending). */
-    fun claimPendingRestore(id: Any, requester: FocusRequester) {
-        if (pendingRestoreId == id) pendingRequester = requester
+    /**
+     * 身份匹配组件附着时的认领 (由 [tvFocusMemorable] 自动挂接): 登记新组合里的
+     * requester; route 已 live (转场完成) 时即时恢复, 否则等 [activate].
+     */
+    fun claimRestore(id: Any, requester: FocusRequester) {
+        if (pendingRestoreId != id) return
+        claimedRequester = requester
+        if (live) restoreClaimed()
     }
 
-    /** 取走认领结果并结束本轮跨 route 恢复 (由 [TvFocusScope.InitialFocus] 消费). */
-    fun takePendingRestore(): FocusRequester? {
-        val result = pendingRequester
-        pendingRequester = null
+    /**
+     * route 进入前台 (Lifecycle RESUMED 事件, 由 [TvFocusScope.InitialFocus] 挂接):
+     * 执行已登记的恢复. 返回是否恢复成功 (调用方据此决定是否落默认锚点).
+     */
+    fun activate(): Boolean {
+        live = true
+        return restoreClaimed()
+    }
+
+    private fun restoreClaimed(): Boolean {
+        val requester = claimedRequester ?: return false
+        claimedRequester = null
         pendingRestoreId = null
-        return result
+        restoreDone = true
+        runCatching { requester.requestFocus() }
+        return true
+    }
+
+    /** 用户交互上报 (由壳挂接): 取消未完成的恢复, 迟到的数据不再抢焦点. */
+    fun onUserInteraction() {
+        pendingRestoreId = null
+        claimedRequester = null
     }
 
     /** 内容页切换时清空记忆 (换页语义上不该恢复; 由壳挂接). */
     fun clear() {
         last = null
         lastId = null
+        pendingRestoreId = null
+        claimedRequester = null
+        restoreDone = false
     }
 
     /** 恢复到最后聚焦点 (同页场景). 返回是否发起了恢复 (节点已销毁时由调用方兜底). */
@@ -96,9 +134,12 @@ class TvFocusMemory {
         return runCatching { requester.requestFocus() }.isSuccess
     }
 
-    /** [ArmOnRouteReturn] 的非组合内核: 把离开前的身份键转成待认领的 pending. */
+    /** [ArmOnRouteReturn] 的非组合内核: 把离开前的身份键转成待认领的 pending (新一轮 Armed). */
     fun armFromLast() {
         pendingRestoreId = lastId
+        claimedRequester = null
+        restoreDone = false
+        live = false
     }
 
     /**
@@ -130,7 +171,8 @@ fun Modifier.tvFocusMemorable(memoryId: Any? = null): Modifier = composed {
     val memory = LocalTvFocusMemory.current ?: return@composed Modifier
     val selfRequester = remember { FocusRequester() }
     if (memoryId != null && memory.pendingRestoreId == memoryId) {
-        SideEffect { memory.claimPendingRestore(memoryId, selfRequester) }
+        // 认领登记 (SideEffect 时节点已附着); 恢复时机由 route RESUMED 事件裁决
+        SideEffect { memory.claimRestore(memoryId, selfRequester) }
     }
     Modifier
         .focusRequester(selfRequester)

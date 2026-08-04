@@ -14,18 +14,18 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
-import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 /** [TvFocusMemory] 协议状态机 (协议全貌见 TvFocusMemory.kt 文件头). */
 class TvFocusMemoryTest {
 
     @Test
-    fun `report then arm exposes last id as pending`() {
+    fun `report then arm exposes last id as pending (Armed)`() {
         val memory = TvFocusMemory()
-        val requester = FocusRequester()
-        memory.reportFocused(requester, "rec-1")
+        memory.reportFocused(FocusRequester(), "rec-1")
         memory.armFromLast()
         assertEquals("rec-1", memory.pendingRestoreId)
+        assertFalse(memory.restoreDone)
     }
 
     @Test
@@ -33,30 +33,68 @@ class TvFocusMemoryTest {
         val memory = TvFocusMemory()
         memory.armFromLast()
         assertNull(memory.pendingRestoreId)
-        assertNull(memory.takePendingRestore())
+        assertFalse(memory.restoreDone)
     }
 
     @Test
-    fun `matching claim is returned by take and ends the round`() {
+    fun `claim before resume only registers, activate performs the restore (Done)`() {
         val memory = TvFocusMemory()
         memory.reportFocused(FocusRequester(), "rec-1")
         memory.armFromLast()
-        val recreated = FocusRequester()
-        memory.claimPendingRestore("rec-1", recreated)
-        assertSame(recreated, memory.takePendingRestore())
-        // 一轮结束: pending 清空, 再取无结果
+        memory.claimRestore("rec-1", FocusRequester())
+        // 转场未完成: 只登记, 不恢复
+        assertFalse(memory.restoreDone)
+        assertTrue(memory.activate())
         assertNull(memory.pendingRestoreId)
-        assertNull(memory.takePendingRestore())
+        assertTrue(memory.restoreDone)
     }
 
     @Test
-    fun `mismatched claim is ignored and take clears pending`() {
+    fun `late claim after resume restores immediately`() {
         val memory = TvFocusMemory()
         memory.reportFocused(FocusRequester(), "rec-1")
         memory.armFromLast()
-        memory.claimPendingRestore("rec-2", FocusRequester())
-        assertNull(memory.takePendingRestore())
+        assertFalse(memory.activate()) // RESUMED 时无认领 -> 调用方落默认锚点
+        memory.claimRestore("rec-1", FocusRequester()) // 迟到数据: live 态即时恢复
+        assertTrue(memory.restoreDone)
         assertNull(memory.pendingRestoreId)
+    }
+
+    @Test
+    fun `mismatched claim is ignored (stays Armed)`() {
+        val memory = TvFocusMemory()
+        memory.reportFocused(FocusRequester(), "rec-1")
+        memory.armFromLast()
+        memory.claimRestore("rec-2", FocusRequester())
+        assertEquals("rec-1", memory.pendingRestoreId)
+        assertFalse(memory.activate())
+        assertFalse(memory.restoreDone)
+    }
+
+    @Test
+    fun `user interaction cancels claim and pending`() {
+        val memory = TvFocusMemory()
+        memory.reportFocused(FocusRequester(), "rec-1")
+        memory.armFromLast()
+        memory.claimRestore("rec-1", FocusRequester())
+        memory.onUserInteraction()
+        assertFalse(memory.activate())
+        assertFalse(memory.restoreDone)
+    }
+
+    @Test
+    fun `re-arm resets Done and live for the new round`() {
+        val memory = TvFocusMemory()
+        memory.reportFocused(FocusRequester(), "rec-1")
+        memory.armFromLast()
+        memory.claimRestore("rec-1", FocusRequester())
+        memory.activate()
+        assertTrue(memory.restoreDone)
+        memory.armFromLast()
+        assertFalse(memory.restoreDone)
+        // 新一轮: live 已复位, 认领重新等待 RESUMED
+        memory.claimRestore("rec-1", FocusRequester())
+        assertFalse(memory.restoreDone)
     }
 
     @Test
@@ -68,17 +106,15 @@ class TvFocusMemoryTest {
     }
 
     @Test
-    fun `clear drops both requester and id`() {
+    fun `clear drops everything`() {
         val memory = TvFocusMemory()
         memory.reportFocused(FocusRequester(), "rec-1")
+        memory.armFromLast()
         memory.clear()
         assertNull(memory.last)
         assertNull(memory.lastId)
+        assertNull(memory.pendingRestoreId)
+        assertFalse(memory.restoreDone)
         assertFalse(memory.restore())
-    }
-
-    @Test
-    fun `restore without memory reports failure for caller fallback`() {
-        assertFalse(TvFocusMemory().restore())
     }
 }

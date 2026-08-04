@@ -13,29 +13,35 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.focus.FocusRequester
-import kotlinx.coroutines.delay
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.filterNotNull
 
 /*
- * TV 统一焦点管理框架 (设计泛化自上游 PR#3217 的 TvDetailsFocusAnchors / FocusResolver,
- * 那边是每页手写一套, 这里抽成可复用的 scope + Modifier 扩展; 使用侧 API 见 TvFocusModifiers.kt).
+ * TV 统一焦点管理框架 (使用侧 API 见 TvFocusModifiers.kt).
  *
  * 概念:
  * - [TvFocusKey]: 页面内一个具名焦点位置 (锚点). 页面用 enum 实现或 [TvFocusKey] 工厂创建.
  * - [TvFocusScope]: 页面级调度器. 所有"把焦点送到某处"的入口 (进页初始焦点 / 返回键分层 /
- *   弹层关闭归还 / 全局快捷键) 都走 [TvFocusScope.request], 由单个解析循环消化 ——
- *   轮询 requestFocus, 锚点节点 (或其子树) 获得焦点时确认到位即停.
+ *   弹层关闭归还 / 全局快捷键) 都走 [TvFocusScope.request], 由 [Resolver] 消化.
  *
- * 为什么需要轮询 + 到位确认 (而不是一次 requestFocus):
- * - 节点未附着 (页面切换/弹层退场的头几帧) 时 requestFocus 静默失败, 返回值也不可靠;
- * - 页面切换期间其它异步焦点分配可能后到抢焦点, 需要多帧兜底;
- * - 到位判据必须查"当前聚焦状态"而非一次性事件: 系统可能在解析启动前就自行把焦点还给
- *   锚点, 此时对已聚焦节点的 requestFocus 不再产生焦点事件, 靠事件标志会烧满全部轮询
- *   次数, 期间用户移开的焦点每帧被抢回 (上游实测事故).
+ * **全事件驱动, 禁止轮询/延时** (§14.4-8): Compose 对未附着节点的 requestFocus 静默失败
+ * 且返回值不可靠, 早期版本用"轮询 + 到位确认 + 延时"兜时序, 在慢设备上暴露出整族竞态
+ * (烧满轮询抢用户焦点 / 时序窗口内按键误伤). 现在把缺失的"附着"事件补上:
+ * 锚点 modifier 在节点附着/脱离时上报 ([onAnchorAttached]/[onAnchorDetached]),
+ * [Resolver] 以快照流响应"pending 请求 && 目标已附着" —— 目标已附着则立即送焦,
+ * 未附着 (Lazy 回收/转场中) 则请求悬挂, 目标一附着即送. 没有帧等待, 没有超时.
+ *
+ * 失败语义: 单发不抢 —— 送焦后若被后到的分配抢走, 框架不抢回 (与"不与用户抢焦点"
+ * 一致); 用户按下方向/确认键即取消在途请求 ([notifyUserNavigation]).
  */
 
 /** 页面内一个具名焦点位置. 页面私有 enum 直接实现本接口, 或用 [TvFocusKey] 工厂. */
@@ -51,7 +57,7 @@ private data class NamedFocusKey(val name: String) : TvFocusKey {
 /**
  * 页面级焦点调度器. 经 [rememberTvFocusScope] 创建; 页面根部须装 [Resolver] 消化请求.
  *
- * 线程模型: 全部在主线程 (组合/效应) 使用.
+ * 线程模型: 全部在主线程 (组合/效应/按键分发) 使用.
  */
 @Stable
 class TvFocusScope {
@@ -61,90 +67,97 @@ class TvFocusScope {
     internal var pending: Pair<TvFocusKey, Int>? by mutableStateOf(null)
         private set
 
+    /**
+     * 已附着锚点 -> 附着代数 (快照状态: [Resolver] 靠它感知"目标出现了").
+     * 由锚点 modifier 的节点附着/脱离事件维护 (见 tvFocusAnchor).
+     */
+    private val attachedAnchors = mutableStateMapOf<TvFocusKey, Int>()
+
     // 当前聚焦的锚点集合 (各锚点 onFocusChanged 得失双向上报, 见 tvFocusAnchor)
     private val focusedKeys = mutableSetOf<TvFocusKey>()
 
-    // 事件闩 (兜底): 焦点在两次轮询之间落到锚点又立即被移走时当前状态查不到, 靠它记住.
-    // 在 request 重置 (而非解析起手): 请求到解析启动隔着一帧, 期间到位的事件不能丢
-    private var arrivedLatch = false
+    /**
+     * 用户交互代数 (快照状态; [tvFocusNavSignal] 上报): 方向/确认键按下即自增并取消
+     * 在途请求 —— 框架不与用户抢焦点. 需要交互取消语义的效应 (如网格切换冻结) 观察它.
+     */
+    var userNavGeneration: Int by mutableIntStateOf(0)
+        private set
 
-    // 用户方向键计数 (tvFocusNavSignal 上报): 解析期间用户开始导航 = 立即放弃本次请求 ——
-    // 否则轮询会把用户刚移走的焦点一次次抢回目标锚点 (实机症状: 按走后焦点又跳回,
-    // 要连按多次才能离开). 判据同上游 PR 的 GridFocusController "按键放弃" 语义.
-    private var userNavCount = 0
-
-    /** [key] 的 FocusRequester (惰性创建). 供需要原始 requester 的组件互操作 (如 SideRail). */
+    /** [key] 的 FocusRequester (惰性创建). 框架内部互操作用; 页面侧一律走锚点 + [request]. */
     fun requesterOf(key: TvFocusKey): FocusRequester = requesters.getOrPut(key) { FocusRequester() }
 
     /**
-     * 请求把焦点送到 [key] (fire-and-forget): 由 [Resolver] 轮询解析, 到位即停.
-     * 同 key 连续请求也会重新触发 (弹层反复开关归还焦点的场景).
+     * 请求把焦点送到 [key] (fire-and-forget): 锚点已附着则 [Resolver] 立即送焦;
+     * 未附着 (Lazy 回收/转场中) 则悬挂, 锚点一附着即送. 同 key 连续请求也会重新触发.
+     * 后发请求覆盖先发; 用户交互取消在途请求.
      */
     fun request(key: TvFocusKey) {
-        arrivedLatch = false
         pending = key to ((pending?.second ?: 0) + 1)
     }
 
-    /** 用户按下方向键的上报 (由 [tvFocusNavSignal]/[tvFocusHotkey] 自动挂接): 放弃在途解析. */
+    /** 用户按下方向/确认键的上报 (由 [tvFocusNavSignal]/[tvFocusHotkey] 自动挂接): 取消在途请求. */
     fun notifyUserNavigation() {
-        userNavCount++
+        userNavGeneration++
+        pending = null
     }
 
-    /** 锚点焦点得失上报 (由 [tvFocusAnchor] 自动挂接, 手写节点亦可直接调用). */
+    /** 锚点节点附着上报 (由 tvFocusAnchor 自动挂接). */
+    fun onAnchorAttached(key: TvFocusKey) {
+        attachedAnchors[key] = (attachedAnchors[key] ?: 0) + 1
+    }
+
+    /** 锚点节点脱离上报 (由 tvFocusAnchor 自动挂接). */
+    fun onAnchorDetached(key: TvFocusKey) {
+        attachedAnchors.remove(key)
+    }
+
+    /** [key] 的锚点当前是否附着 (目标存在性判断). */
+    fun isAnchorAttached(key: TvFocusKey): Boolean = attachedAnchors.containsKey(key)
+
+    /** 锚点焦点得失上报 (由 tvFocusAnchor 自动挂接, 手写节点亦可直接调用). */
     fun onAnchorFocusChanged(key: TvFocusKey, focused: Boolean) {
-        if (focused) {
-            focusedKeys.add(key)
-            if (pending?.first == key) arrivedLatch = true
-        } else {
-            focusedKeys.remove(key)
-        }
+        if (focused) focusedKeys.add(key) else focusedKeys.remove(key)
     }
 
     /** [key] (或其子树) 当前是否持有焦点. */
     fun isFocused(key: TvFocusKey): Boolean = key in focusedKeys
 
     /**
-     * 解析循环安装点: 页面根部组合一次. 单实例消化所有 [request], 避免多处请求打架.
+     * 解析安装点: 页面根部组合一次. 快照流响应"有 pending 且目标锚点已附着" ->
+     * 立即送焦一次并清 pending. 单实例消化所有 [request], 避免多处请求打架.
      */
     @Composable
     fun Resolver() {
-        LaunchedEffect(pending) {
-            val (key, _) = pending ?: return@LaunchedEffect
-            val requester = requesterOf(key)
-            val navAtStart = userNavCount
-            resolveFocusRepeatedly(
-                arrived = { arrivedLatch || key in focusedKeys },
-                // 用户开始导航即放弃: 不跟用户抢焦点
-                abandon = { userNavCount != navAtStart },
-            ) {
-                runCatching { requester.requestFocus() }
+        LaunchedEffect(this) {
+            snapshotFlow {
+                val p = pending ?: return@snapshotFlow null
+                // 附着代数入元组: 目标脱离又重附着 (Lazy 回收再滚回) 也会重新触发
+                attachedAnchors[p.first]?.let { generation -> Triple(p.first, p.second, generation) }
             }
-            pending = null
+                .filterNotNull()
+                .collect { (key, _, _) ->
+                    runCatching { requesterOf(key).requestFocus() }
+                    if (pending?.first == key) pending = null
+                }
         }
     }
 
     /**
-     * 进页初始焦点: 等待标准布局延迟后请求 [key]. 与 [request] 同一条解析路径
-     * (轮询 + 到位确认), 页面切换转场期间节点未附着也能兜住.
+     * 进页初始焦点: 组合完成后请求 [key] (锚点未附着则悬挂到附着, 无延时).
      *
-     * 若焦点记忆里有待认领的跨 route 恢复目标 (从详情页等返回, 见 [TvFocusMemory]),
-     * 优先恢复到它; 目标已不在 (数据变化) 或恢复失败时退回 [key] 默认初始焦点.
+     * 跨 route 返回 (焦点记忆 Armed) 时等 route 进入前台的 **Lifecycle RESUMED 事件**
+     * (转场完成) 再裁决: 认领已登记 -> 记忆恢复原位, 不落默认锚点; 无认领 (数据未到) ->
+     * 落默认锚点防悬空, 目标附着后由记忆即时接管. 转场中不送焦 (会被转场收尾冲掉).
      */
     @Composable
     fun InitialFocus(key: TvFocusKey) {
         val memory = LocalTvFocusMemory.current
-        LaunchedEffect(Unit) {
-            delay(FOCUS_REQ_DELAY_MILLIS)
-            val restoreTarget = memory?.takePendingRestore()
-            if (restoreTarget != null) {
-                val navAtStart = userNavCount
-                val restored = resolveFocusRepeatedly(
-                    arrived = { memory.last == restoreTarget },
-                    abandon = { userNavCount != navAtStart },
-                ) {
-                    runCatching { restoreTarget.requestFocus() }
-                }
-                if (restored) return@LaunchedEffect
+        val lifecycle = LocalLifecycleOwner.current.lifecycle
+        LaunchedEffect(this) {
+            // LaunchedEffect 在组合应用后执行, 此刻首帧组合内的记忆认领 (SideEffect) 已完成
+            if (memory?.pendingRestoreId != null) {
+                lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
+                if (memory.activate()) return@LaunchedEffect
             }
             request(key)
         }
@@ -154,25 +167,3 @@ class TvFocusScope {
 /** 创建页面级焦点调度器. 页面根部另装 [TvFocusScope.Resolver]. */
 @Composable
 fun rememberTvFocusScope(): TvFocusScope = remember { TvFocusScope() }
-
-/**
- * 轮询解析焦点请求 (设计同上游 PR 的 FocusResolver): 每帧先查 [arrived] 后试 [attempt] ——
- * 已到位时不再多发一次 requestFocus, 否则用户刚移开的焦点会被抢回来一格.
- */
-suspend fun resolveFocusRepeatedly(
-    attempts: Int = 40,
-    delayMillis: Long = 30,
-    arrived: () -> Boolean,
-    abandon: () -> Boolean = { false },
-    attempt: suspend () -> Unit,
-): Boolean {
-    repeat(attempts) {
-        withFrameNanos { }
-        if (arrived()) return true
-        if (abandon()) return false
-        attempt()
-        if (arrived()) return true
-        if (delayMillis > 0) delay(delayMillis)
-    }
-    return false
-}

@@ -31,6 +31,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,6 +43,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalInputModeManager
+import kotlinx.coroutines.flow.drop
 import androidx.lifecycle.viewmodel.compose.viewModel
 import me.him188.ani.app.data.repository.user.UserRepository
 import me.him188.ani.app.domain.usecase.GlobalKoin
@@ -116,7 +118,17 @@ fun TvMainShell(
     val contentFocus = remember { FocusRequester() }
     val memory = focusMemory ?: remember { TvFocusMemory() }
     memory.ArmOnRouteReturn() // route 重建 (从详情页等返回) 时装填跨 route 恢复目标
-    LaunchedEffect(content) { memory.clear() }
+    // 内容 tab **真实变化**时才清记忆: 首启 (含 route 返回重组) 不清 —— 否则刚 arm 的
+    // 跨 route 恢复目标与认领会被摧毁 (事件驱动版实测事故)
+    LaunchedEffect(Unit) {
+        snapshotFlow { content }.drop(1).collect { memory.clear() }
+    }
+    // 用户交互 (壳根信号, 快照事件) 取消未认领的跨 route 恢复: 迟到的数据不再抢焦点
+    LaunchedEffect(focus, memory) {
+        snapshotFlow { focus.userNavGeneration }
+            .drop(1)
+            .collect { memory.onUserInteraction() }
+    }
     var railHasFocus by remember { mutableStateOf(false) }
     val restoreContentFocus: () -> Unit = remember(contentFocus, memory) {
         {

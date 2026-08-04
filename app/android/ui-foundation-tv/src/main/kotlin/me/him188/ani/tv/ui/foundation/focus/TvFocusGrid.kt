@@ -25,25 +25,26 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 
 /*
- * 网格"聚焦第 N 项" + "边缘横向切换"原语 —— 协议都在本文件内:
+ * 网格"聚焦第 N 项" + "边缘横向切换"原语 —— 协议都在本文件内, 全事件驱动 (§14.4-8):
  *
- * 1. 页面 [rememberTvGridFocus] 创建状态 (挂在页面的 TvFocusScope 上).
+ * 1. 页面 [rememberTvGridFocus] 创建状态 (挂在页面的 TvFocusScope 上); 创建处同时装有
+ *    交互取消观察: pending 在途时用户再按键 (快照事件) 即取消 —— 不用超时兜底.
  * 2. 每张网格卡挂 [tvGridFocusItem]: 追踪当前聚焦下标 + "待聚焦目标"的动态锚点
- *    (目标下标钳到列表末项; 送达即清 pending).
- * 3. 网格组合内装 [TvGridFocusState.SendFocusEffect]: pending 出现后等数据就绪 ->
- *    目标滚进视口 -> 框架轮询送焦 -> 超时兜底清 pending (否则依赖 [switching] 的
- *    冻结逻辑会被永久卡住).
+ *    (目标下标钳到列表末项; 送达即清 pending —— 焦点事件).
+ * 3. 网格组合内装 [TvGridFocusState.SendFocusEffect]: pending 出现后等数据就绪
+ *    (快照事件) -> 目标滚进视口 -> [TvFocusScope.request] (锚点附着事件送达).
  * 4. 程序化聚焦第 N 项: [TvGridFocusState.focusItem]. 边缘切换在此之上:
  *    网格容器挂 [tvGridEdgeSwitchKeys], 左/右缘按键时算出"对应位置" (同一行、进入
- *    方向的近缘列) 作为目标, 再回调 [onSwitch] 让页面切换数据源 (相邻 tab/分类).
+ *    方向的近缘列) 作为目标, 再回调 onSwitch 让页面切换数据源 (相邻 tab/分类).
  *
- * 切换期间调用方应冻结"聚焦即选中"类副作用 (读 [TvGridFocusState.switching]):
- * 旧网格聚焦卡销毁瞬间焦点会跌落到布局首个可聚焦节点, 其副作用会抢走刚选的目标
- * (TV 模拟器实测: 不冻结会连跳两个分类).
+ * pending 的三个事件出口: 目标聚焦 (清) / 用户再交互 (取消) / 调用方确定目标不会出现
+ * (如分页确定空列表, 调 [TvGridFocusState.cancel]). 切换期间调用方应冻结"聚焦即选中"
+ * 类副作用 (读 [TvGridFocusState.switching]): 旧网格聚焦卡销毁瞬间焦点会跌落到布局
+ * 首个可聚焦节点, 其副作用会抢走刚选的目标 (TV 模拟器实测: 不冻结会连跳两个分类).
  */
 
 /**
@@ -59,56 +60,99 @@ class TvGridFocusState internal constructor(internal val scope: TvFocusScope) {
     /** 当前聚焦卡下标 (由 [tvGridFocusItem] 上报; 仅按键判定读, 非 snapshot 状态). */
     internal var focusedIndex: Int = -1
 
-    /** 待聚焦的目标下标; null = 无在途请求. */
+    /** 已解析的待聚焦目标下标 (锚点匹配用); null = 无已解析目标. */
     var pendingIndex: Int? by mutableStateOf(null)
         private set
 
+    /** 待按目标网格列数解析的 (row, direction) 目标 (边缘切换: 同行近缘列). */
+    private var pendingRowEdge: Pair<Int, Int>? by mutableStateOf(null)
+
+    /** 请求代数 ([SendFocusEffect] 的重启键: 同目标连续请求也能重新触发). */
+    private var requestGeneration by mutableStateOf(0)
+
+    /** 发起请求时的用户交互代数: 之后的交互 (代数变化) = 用户接管, 取消请求. */
+    internal var navGenerationAtRequest: Int = 0
+        private set
+
     /** 是否有在途的送焦请求 (期间调用方应冻结"聚焦即选中"类副作用, 见文件头). */
-    val switching: Boolean get() = pendingIndex != null
+    val switching: Boolean get() = pendingIndex != null || pendingRowEdge != null
 
     /** 程序化聚焦第 [index] 项 (越界会钳到末项; 由 [SendFocusEffect] 消化). */
     fun focusItem(index: Int) {
+        navGenerationAtRequest = scope.userNavGeneration
+        pendingRowEdge = null
         pendingIndex = index
-    }
-
-    /** 取消在途请求 (如空列表兜底归还焦点前). */
-    fun cancel() {
-        pendingIndex = null
+        requestGeneration++
     }
 
     /**
-     * 送焦效应: 网格组合内装一次. 等数据就绪 -> 目标滚进视口 -> 轮询送焦;
-     * [timeoutMillis] 后未送达也清 pending (解除 [switching] 冻结).
-     * [itemCount] 须读 snapshot 状态 (如 LazyPagingItems.itemCount).
+     * 聚焦第 [row] 行的近缘列 (边缘切换的"对应位置"): [direction] > 0 = 从左进入落行首列,
+     * < 0 = 从右进入落行尾列. 列数按**目标网格**的实际布局解析 (源网格列数可能不同).
+     */
+    fun focusRowEdge(row: Int, direction: Int) {
+        navGenerationAtRequest = scope.userNavGeneration
+        pendingIndex = null
+        pendingRowEdge = row to direction
+        requestGeneration++
+    }
+
+    /** 取消在途请求 (调用方确定目标不会出现, 如分页确定空列表). */
+    fun cancel() {
+        pendingIndex = null
+        pendingRowEdge = null
+    }
+
+    /**
+     * 送焦效应: 网格组合内装一次. 等数据就绪 (快照事件) -> 行缘目标按目标网格布局列数
+     * 解析为下标 (布局事件) -> 目标滚进视口 -> [TvFocusScope.request] (锚点附着事件送达,
+     * 无超时; pending 出口见文件头). [itemCount] 须读 snapshot 状态.
      */
     @Composable
-    fun SendFocusEffect(
-        gridState: LazyGridState,
-        itemCount: () -> Int,
-        timeoutMillis: Long = TV_GRID_FOCUS_TIMEOUT_MILLIS,
-    ) {
-        LaunchedEffect(pendingIndex, gridState) {
-            val target = pendingIndex ?: return@LaunchedEffect
+    fun SendFocusEffect(gridState: LazyGridState, itemCount: () -> Int) {
+        LaunchedEffect(requestGeneration, gridState) {
+            if (pendingIndex == null && pendingRowEdge == null) return@LaunchedEffect
             snapshotFlow { itemCount() }.first { it > 0 }
-            val clamped = target.coerceAtMost(itemCount() - 1)
-            if (gridState.layoutInfo.visibleItemsInfo.none { it.index == clamped }) {
-                gridState.scrollToItem(clamped)
+            pendingRowEdge?.let { (row, direction) ->
+                // 等目标网格首帧布局 (快照事件) 拿实际列数
+                val columns = snapshotFlow {
+                    gridState.layoutInfo.visibleItemsInfo.maxOfOrNull { it.column }
+                }.first { it != null }!! + 1
+                pendingRowEdge = null
+                pendingIndex = (row * columns + if (direction > 0) 0 else columns - 1)
+                    .coerceAtMost(itemCount() - 1)
+                    .coerceAtLeast(0)
+            }
+            val target = (pendingIndex ?: return@LaunchedEffect).coerceAtMost(itemCount() - 1)
+            if (gridState.layoutInfo.visibleItemsInfo.none { it.index == target }) {
+                gridState.scrollToItem(target)
             }
             scope.request(entryKey)
-            delay(timeoutMillis)
-            cancel()
         }
     }
 }
 
-/** 创建 [TvGridFocusState] (挂在页面的 [scope] 上). */
+/**
+ * 创建 [TvGridFocusState] (挂在页面的 [scope] 上), 并装交互取消观察:
+ * 在途请求期间用户再按方向/确认键即取消 (代数对比排除发起切换的那次按键).
+ */
 @Composable
-fun rememberTvGridFocus(scope: TvFocusScope): TvGridFocusState =
-    remember(scope) { TvGridFocusState(scope) }
+fun rememberTvGridFocus(scope: TvFocusScope): TvGridFocusState {
+    val state = remember(scope) { TvGridFocusState(scope) }
+    LaunchedEffect(state) {
+        snapshotFlow { scope.userNavGeneration }
+            .drop(1) // 首值为当前代数, 非事件
+            .collect { generation ->
+                if (state.switching && generation != state.navGenerationAtRequest) {
+                    state.cancel()
+                }
+            }
+    }
+    return state
+}
 
 /**
  * 网格卡接线 (每张卡都挂): 聚焦时上报下标; 本卡是"待聚焦目标" (钳到 [itemCount] 末项)
- * 时挂动态锚点, 送达即清 pending.
+ * 时挂动态锚点, 送达即清 pending (焦点事件出口).
  */
 fun Modifier.tvGridFocusItem(
     state: TvGridFocusState,
@@ -164,11 +208,9 @@ fun Modifier.tvGridEdgeSwitchKeys(
         return@onPreviewKeyEvent direction > 0
     }
     if (event.type == KeyEventType.KeyDown && !event.isAutoRepeatCompat) {
-        state.focusItem(info.row * columns + if (direction > 0) 0 else columns - 1)
+        // "对应位置" = 同一行、进入方向的近缘列 (列数按目标网格布局解析, 见 focusRowEdge)
+        state.focusRowEdge(info.row, direction)
         onSwitch(direction)
     }
     true
 }
-
-/** 送焦兜底超时: 没送达也要清 pending, 否则 [TvGridFocusState.switching] 的冻结永久卡住. */
-const val TV_GRID_FOCUS_TIMEOUT_MILLIS = 1500L
