@@ -50,7 +50,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.AsyncImage
-import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
+import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
 import kotlin.math.pow
 
 /*
@@ -79,9 +79,6 @@ fun TvHeroButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
-    // 聚焦时向内容区焦点记忆上报自身 (壳恢复"进侧边栏前的焦点"用)
-    val focusMemory = LocalTvFocusMemory.current
-    val selfRequester = remember { FocusRequester() }
     val dark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val baseContainer = when {
         dark && filled -> Color(0xFF31363D)
@@ -99,13 +96,8 @@ fun TvHeroButton(
         onClick = onClick,
         modifier = modifier
             .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
-            .focusRequester(selfRequester)
-            .onFocusChanged {
-                if (it.isFocused) {
-                    onFocused()
-                    focusMemory?.reportFocused(selfRequester, id = null)
-                }
-            },
+            .tvFocusMemorable()
+            .onFocusChanged { if (it.isFocused) onFocused() },
         shape = shape,
         color = container,
         interactionSource = interactionSource,

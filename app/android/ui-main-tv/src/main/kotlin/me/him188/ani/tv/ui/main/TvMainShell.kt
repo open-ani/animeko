@@ -115,17 +115,8 @@ fun TvMainShell(
     focus.Resolver()
     val contentFocus = remember { FocusRequester() }
     val memory = focusMemory ?: remember { TvFocusMemory() }
-    // 壳 (route) 重建 = 可能是从详情页等返回: 把离开前的身份键转成待认领的恢复目标,
-    // 新组合中身份匹配的组件认领后由页面 InitialFocus 恢复. 首次启动 lastId=null 无害.
-    // remember 块在子树组合前的组合阶段执行, 保证组件组合时已能读到 pending
-    remember(memory) {
-        memory.pendingRestoreId = memory.lastId
-        true
-    }
-    LaunchedEffect(content) {
-        memory.last = null
-        memory.lastId = null
-    }
+    memory.ArmOnRouteReturn() // route 重建 (从详情页等返回) 时装填跨 route 恢复目标
+    LaunchedEffect(content) { memory.clear() }
     var railHasFocus by remember { mutableStateOf(false) }
     val restoreContentFocus: () -> Unit = remember(contentFocus, memory) {
         {

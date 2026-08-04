@@ -17,16 +17,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import me.him188.ani.tv.ui.foundation.focus.LocalTvFocusMemory
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -39,6 +36,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
+import me.him188.ani.tv.ui.foundation.focus.tvFocusMemorable
 
 /** [TvPosterCard] 默认值 (atv-architecture.md 附录 A: 海报卡 112dp/0.72/圆角 8/间距 10). */
 object TvPosterCardDefaults {
@@ -71,24 +69,14 @@ fun TvPosterCard(
     showTitle: Boolean = true,
 ) {
     var selfFocused by remember { mutableStateOf(false) }
-    // 聚焦时向内容区焦点记忆上报自身 (壳恢复"进侧边栏前的焦点"用); 跨 route 返回的
-    // 新组合中若本卡身份与待恢复目标匹配, 认领登记 (由页面 InitialFocus 消费)
-    val focusMemory = LocalTvFocusMemory.current
-    val selfRequester = remember { FocusRequester() }
-    if (memoryId != null && focusMemory?.pendingRestoreId == memoryId) {
-        SideEffect { focusMemory.claimPendingRestore(memoryId, selfRequester) }
-    }
     Surface(
         onClick = onClick,
         modifier = modifier
             .then(if (width != null) Modifier.width(width) else Modifier)
-            .focusRequester(selfRequester)
+            .tvFocusMemorable(memoryId)
             .onFocusChanged {
                 selfFocused = it.isFocused
-                if (it.isFocused) {
-                    onFocused()
-                    focusMemory?.reportFocused(selfRequester, memoryId)
-                }
+                if (it.isFocused) onFocused()
             },
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(TvFocusDefaults.RingCornerRadius)),
         colors = ClickableSurfaceDefaults.colors(
