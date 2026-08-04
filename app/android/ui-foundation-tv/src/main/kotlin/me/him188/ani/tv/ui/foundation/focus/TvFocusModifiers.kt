@@ -182,5 +182,5 @@ private val TV_USER_INTERACTION_KEYS = setOf(
 )
 
 /** 本次 KeyDown 是否系统按住连发 (android nativeKeyEvent.repeatCount). */
-private val androidx.compose.ui.input.key.KeyEvent.isAutoRepeatCompat: Boolean
+internal val androidx.compose.ui.input.key.KeyEvent.isAutoRepeatCompat: Boolean
     get() = (nativeKeyEvent as? android.view.KeyEvent)?.let { it.repeatCount > 0 } ?: false
