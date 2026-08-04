@@ -43,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -315,8 +316,10 @@ private fun TvRailIconItem(
                 indication = null,
                 onClick = {
                     onClick()
-                    // 点击后清空焦点, 让全局兜底把焦点送入当前页面左上角可聚焦项
-                    if (!keepFocusOnClick) focusManager.clearFocus()
+                    // 点击后把焦点按空间搜索送回右侧内容区 (切页时新页的 InitialFocus 会接管).
+                    // 不能 clearFocus: 点击"当前页"条目时内容不重组、没有任何接管者, 焦点悬空
+                    // 后 Compose 按键派发失去入口, 整个应用对遥控器无响应 (真机实测的死锁)
+                    if (!keepFocusOnClick) focusManager.moveFocus(FocusDirection.Right)
                 },
             ),
         verticalAlignment = Alignment.CenterVertically,

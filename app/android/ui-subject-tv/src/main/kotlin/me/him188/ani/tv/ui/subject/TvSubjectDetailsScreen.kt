@@ -54,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -86,6 +87,8 @@ import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.TvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
+import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
+import me.him188.ani.tv.ui.foundation.focus.tvFocusExit
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
 import me.him188.ani.tv.ui.foundation.widgets.TvPosterCardDefaults
@@ -101,6 +104,9 @@ private enum class TvDetailsFocus : TvFocusKey {
 
     /** 选集轮播行 (下方区块按返回的归还目标). */
     EpisodesCarousel,
+
+    /** 选集整页区的"展开简介"按钮 (Play 与轮播之间的纵向链节点). */
+    ExpandSummary,
 }
 
 /** 返回键分层的区块层级 (PR 的 backLevel 语义). */
@@ -249,6 +255,9 @@ private fun TvSubjectDetailsContent(
         },
         modifier = modifier,
     ) { heroHeight ->
+        // Play -> 展开简介 -> 选集轮播的纵向路径全显式声明: 三者相隔整屏且水平错位,
+        // 空间搜索跨这种距离不可靠 (长简介条目实测 down 无法离开 Play; 轮播非首卡
+        // 与上方按钮不重叠, up 是死路) —— TV 模拟器 E2E 实测结论
         TvDetailsHeroSection(
             subjectInfo = subjectInfo,
             airingCollection = airingCollection,
@@ -256,7 +265,9 @@ private fun TvSubjectDetailsContent(
             playTargetSort = playTargetSort,
             watchedCount = watched,
             onPlayEpisode = onPlayEpisode,
-            playButtonModifier = Modifier.tvFocusAnchor(focus, TvDetailsFocus.Play),
+            playButtonModifier = Modifier
+                .tvFocusAnchor(focus, TvDetailsFocus.Play)
+                .tvFocusLink(focus, down = TvDetailsFocus.ExpandSummary),
             modifier = Modifier.height(heroHeight),
         )
         TvDetailsEpisodesSection(
@@ -266,7 +277,17 @@ private fun TvSubjectDetailsContent(
             fallbackImageUrl = heroBackdropUrl,
             pageHeight = heroHeight,
             onPlayEpisode = onPlayEpisode,
-            carouselModifier = Modifier.tvFocusAnchor(focus, TvDetailsFocus.EpisodesCarousel),
+            summaryButtonModifier = Modifier
+                .tvFocusAnchor(focus, TvDetailsFocus.ExpandSummary)
+                .tvFocusLink(
+                    focus,
+                    up = TvDetailsFocus.Play,
+                    down = TvDetailsFocus.EpisodesCarousel,
+                ),
+            carouselModifier = Modifier
+                .tvFocusAnchor(focus, TvDetailsFocus.EpisodesCarousel)
+                // 行内任意卡按上都回"展开简介" (出组重定向, 不依赖几何对齐)
+                .tvFocusExit(focus, FocusDirection.Up to TvDetailsFocus.ExpandSummary),
             onFocusedWithin = { backLevel = TvDetailsBackLevel.Episodes },
         )
         TvDetailsBelowSections(
@@ -489,6 +510,7 @@ private fun TvDetailsEpisodesSection(
     fallbackImageUrl: String?,
     pageHeight: Dp,
     onPlayEpisode: (episodeId: Int) -> Unit,
+    summaryButtonModifier: Modifier,
     carouselModifier: Modifier,
     onFocusedWithin: () -> Unit,
     modifier: Modifier = Modifier,
@@ -531,6 +553,7 @@ private fun TvDetailsEpisodesSection(
                     filled = false,
                     onClick = { summaryDialogOpen = true },
                     onFocused = {},
+                    modifier = summaryButtonModifier,
                 )
             }
             if (subjectInfo.imageLarge.isNotBlank()) {
