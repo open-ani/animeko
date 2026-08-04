@@ -71,6 +71,21 @@ import me.him188.ani.tv.ui.foundation.focus.tvFocusEnterGate
 object TvNavigationRailDefaults {
     /** 收起态占位宽度 (= start 16 + 图标 32): 调用方据此把内容右移让开收起的图标列. */
     val CollapsedWidth = 48.dp
+
+    /** 展开时的渐变面板宽度. */
+    val ScrimWidth = 180.dp
+
+    /** 单个图标按钮 (聚焦反色方块 / 头像) 的边长. */
+    val ItemSize = 32.dp
+
+    /** 图标按钮聚焦方块的圆角. */
+    val ItemCornerRadius = 6.dp
+
+    /** 头像照片尺寸: 比高亮框略小, 使聚焦圆环成为其外圈. */
+    val AvatarImageSize = 24.dp
+
+    /** 图标字形尺寸. */
+    val IconGlyphSize = 20.dp
 }
 
 /** 侧边栏单个条目: 图标 + 文字, 聚焦时图标方块反色高亮. */
@@ -119,7 +134,7 @@ fun TvNavigationSideRail(
             // 展开底衬: 纯色面板 + 右缘多色标平滑羽化融入内容 (消除竖向明暗切线)
             val panelColor = scrimColor ?: tvShellBackgroundColor()
             Box(
-                Modifier.fillMaxHeight().width(TV_RAIL_SCRIM_WIDTH).background(
+                Modifier.fillMaxHeight().width(TvNavigationRailDefaults.ScrimWidth).background(
                     Brush.horizontalGradient(
                         0.00f to panelColor,
                         0.82f to panelColor,
@@ -145,7 +160,7 @@ fun TvNavigationSideRail(
             if (showAvatar) {
                 TvRailAvatar(selfInfo, expanded, onExitFocus, onAvatarClick)
             } else {
-                Box(Modifier.size(TV_RAIL_ITEM_SIZE))
+                Box(Modifier.size(TvNavigationRailDefaults.ItemSize))
             }
             for ((index, item) in items.withIndex()) {
                 TvRailIconItem(
@@ -173,7 +188,10 @@ private fun TvRailGlyphBox(
         if (focused) MaterialTheme.colorScheme.primary else Color.Transparent,
     )
     Box(
-        modifier.size(TV_RAIL_ITEM_SIZE).clip(RoundedCornerShape(TV_RAIL_ITEM_CORNER)).background(background),
+        modifier
+            .size(TvNavigationRailDefaults.ItemSize)
+            .clip(RoundedCornerShape(TvNavigationRailDefaults.ItemCornerRadius))
+            .background(background),
         contentAlignment = Alignment.Center,
     ) {
         CompositionLocalProvider(
@@ -183,7 +201,7 @@ private fun TvRailGlyphBox(
                 MaterialTheme.colorScheme.onSurface
             },
         ) {
-            Box(Modifier.size(TV_RAIL_ICON_GLYPH_SIZE), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(TvNavigationRailDefaults.IconGlyphSize), contentAlignment = Alignment.Center) {
                 Icon(icon, null)
             }
         }
@@ -231,7 +249,7 @@ private fun TvRailAvatar(
     ) {
         if (loggedIn) {
             Box(
-                Modifier.size(TV_RAIL_ITEM_SIZE)
+                Modifier.size(TvNavigationRailDefaults.ItemSize)
                     .onFocusChanged { avatarFocused = it.isFocused }
                     .railExitKeys(onExitFocus)
                     .clickable(
@@ -245,7 +263,7 @@ private fun TvRailAvatar(
                 // 照片比高亮框略小并居中, 使聚焦圆环成为其外圈
                 AvatarImage(
                     url = selfInfo?.avatarUrl,
-                    modifier = Modifier.size(TV_RAIL_AVATAR_IMAGE_SIZE).clip(CircleShape),
+                    modifier = Modifier.size(TvNavigationRailDefaults.AvatarImageSize).clip(CircleShape),
                 )
             }
         } else {
@@ -315,18 +333,3 @@ private fun TvRailIconItem(
         }
     }
 }
-
-/** 侧边栏展开时的渐变面板宽度. */
-private val TV_RAIL_SCRIM_WIDTH = 180.dp
-
-/** 单个图标按钮 (聚焦反色方块 / 头像) 的边长. */
-private val TV_RAIL_ITEM_SIZE = 32.dp
-
-/** 图标按钮聚焦方块的圆角. */
-private val TV_RAIL_ITEM_CORNER = 6.dp
-
-/** 头像照片尺寸: 比高亮框略小, 使聚焦圆环成为其外圈. */
-private val TV_RAIL_AVATAR_IMAGE_SIZE = 24.dp
-
-/** 图标字形尺寸. */
-private val TV_RAIL_ICON_GLYPH_SIZE = 20.dp

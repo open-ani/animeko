@@ -57,6 +57,7 @@ import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusExit
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
+import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
 
 /** 追番页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
@@ -110,10 +111,10 @@ fun TvCollectionScreen(
     var focusedCardIndex by remember { mutableStateOf(-1) }
     var pendingFocusIndex by remember { mutableStateOf<Int?>(null) }
 
-    Column(modifier.fillMaxSize().tvFocusNavSignal(focus).padding(top = 24.dp)) {
+    Column(modifier.fillMaxSize().tvFocusNavSignal(focus).padding(top = TvCollectionDefaults.TopPadding)) {
         TabRow(
             selectedTabIndex = selectedTabIndex,
-            modifier = Modifier.padding(start = 48.dp),
+            modifier = Modifier.padding(start = TvCollectionDefaults.TabRowStartPadding),
         ) {
             COLLECTION_TABS_SORTED.forEachIndexed { index, type ->
                 Tab(
@@ -151,7 +152,7 @@ fun TvCollectionScreen(
             // (数据只是没加载完时, 网格会先出现使本效应取消, 不会误触)
             LaunchedEffect(pendingFocusIndex) {
                 if (pendingFocusIndex != null) {
-                    delay(800)
+                    delay(TvCollectionDefaults.EmptyTabReturnDelayMillis)
                     pendingFocusIndex = null
                     focus.request(TvCollectionFocus.CurrentTab)
                 }
@@ -176,11 +177,11 @@ fun TvCollectionScreen(
                 focus.request(TvCollectionFocus.EdgeEntryCard)
                 // 兜底超时: 送达即被 onFocused 清掉 (本效应随之取消); 万一没送达也要
                 // 清 pending, 否则"聚焦即选中"被永久冻结
-                delay(1500)
+                delay(TvCollectionDefaults.EdgeEntryTimeoutMillis)
                 pendingFocusIndex = null
             }
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(124.dp),
+                columns = GridCells.Adaptive(TvPageDefaults.PosterGridCellMinWidth),
                 state = gridState,
                 modifier = Modifier
                     .fillMaxSize()
@@ -217,9 +218,9 @@ fun TvCollectionScreen(
                         }
                         true
                     },
-                contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 16.dp, bottom = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = TvPageDefaults.PosterGridContentPadding,
+                horizontalArrangement = Arrangement.spacedBy(TvPageDefaults.CardSpacing),
+                verticalArrangement = Arrangement.spacedBy(TvPageDefaults.CardSpacing),
             ) {
                 items(items.itemCount, key = { items.peek(it)?.subjectId ?: it }) { index ->
                     val info = items[index] ?: return@items
@@ -248,6 +249,21 @@ fun TvCollectionScreen(
             }
         }
     }
+}
+
+/** 追番页默认值/调参. */
+private object TvCollectionDefaults {
+    /** 页面顶部留白 (tab 行上方). */
+    val TopPadding = 24.dp
+
+    /** tab 行左侧留白 (= overscan 安全边距 48). */
+    val TabRowStartPadding = 48.dp
+
+    /** 边缘切进空列表后焦点归还当前 tab 的等待 (给分页数据一个出现窗口). */
+    const val EmptyTabReturnDelayMillis = 800L
+
+    /** 边缘切 tab 送焦"对应位置"的兜底超时 (没送达也要清 pending, 否则聚焦即选中被永久冻结). */
+    const val EdgeEntryTimeoutMillis = 1500L
 }
 
 /** 本次 KeyDown 是否系统按住连发 (边缘切 tab 只认离散按键, 防按住飞掠多个分类). */

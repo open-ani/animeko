@@ -96,11 +96,13 @@ import me.him188.ani.app.data.models.subject.nameCn
 import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
 import me.him188.ani.app.ui.foundation.AsyncImage
 import kotlinx.coroutines.flow.first
+import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
+import me.him188.ani.tv.ui.foundation.widgets.TvPosterCardDefaults
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroSecondaryContentColor
 import me.him188.ani.tv.ui.foundation.widgets.tvShellBackgroundColor
@@ -260,8 +262,8 @@ private fun SubjectContent(
                 Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        val progress = (scrollState.value / HERO_BACKDROP_FADE_DISTANCE.toPx()).coerceIn(0f, 1f)
-                        alpha = 1f - progress * (1f - HERO_BACKDROP_MIN_ALPHA)
+                        val progress = (scrollState.value / TvSubjectDetailsDefaults.BackdropFadeDistance.toPx()).coerceIn(0f, 1f)
+                        alpha = 1f - progress * (1f - TvSubjectDetailsDefaults.BackdropMinAlpha)
                         compositingStrategy = CompositingStrategy.Offscreen
                     }
                     .drawWithContent {
@@ -296,7 +298,7 @@ private fun SubjectContent(
 
         Column(Modifier.fillMaxSize().verticalScroll(scrollState)) {
             // ── Hero 首屏: 标题在顶, 信息带贴底 ──
-            Column(Modifier.height(heroHeight).padding(horizontal = TV_DETAILS_PAD)) {
+            Column(Modifier.height(heroHeight).padding(horizontal = TvSubjectDetailsDefaults.HorizontalPadding)) {
                 Column(Modifier.padding(top = 28.dp)) {
                     Text(
                         subjectInfo.displayName,
@@ -394,7 +396,7 @@ private fun SubjectContent(
                                 Text(
                                     tag.name,
                                     Modifier
-                                        .clip(TV_TAG_SHAPE)
+                                        .clip(TvSubjectDetailsDefaults.TagShape)
                                         .background(
                                             MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
                                         )
@@ -422,9 +424,9 @@ private fun SubjectContent(
                     .onFocusChanged { if (it.hasFocus) backLevel = TvDetailsBackLevel.Episodes },
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = TV_DETAILS_PAD)) {
+                Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = TvSubjectDetailsDefaults.HorizontalPadding)) {
                     val textEndReserve = if (subjectInfo.imageLarge.isNotBlank()) {
-                        episodesCoverHeight * (0.72f) + 32.dp
+                        episodesCoverHeight * TvPosterCardDefaults.CoverRatio + 32.dp
                     } else 0.dp
                     Column(
                         Modifier.fillMaxSize().padding(end = textEndReserve),
@@ -461,7 +463,7 @@ private fun SubjectContent(
                             Modifier
                                 .align(Alignment.TopEnd)
                                 .height(episodesCoverHeight)
-                                .aspectRatio(0.72f)
+                                .aspectRatio(TvPosterCardDefaults.CoverRatio)
                                 .clip(RoundedCornerShape(16.dp)),
                             contentScale = ContentScale.Crop,
                         )
@@ -471,7 +473,7 @@ private fun SubjectContent(
                     state = rememberLazyListState(),
                     modifier = Modifier.tvFocusAnchor(focus, TvDetailsFocus.EpisodesCarousel),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(start = TV_DETAILS_PAD, end = TV_DETAILS_PAD),
+                    contentPadding = PaddingValues(start = TvSubjectDetailsDefaults.HorizontalPadding, end = TvSubjectDetailsDefaults.HorizontalPadding),
                 ) {
                     items(episodes, key = { it.episodeId }) { episode ->
                         TvEpisodeCard(
@@ -513,7 +515,7 @@ private fun SubjectContent(
                     TvDetailsSectionHeader("角色", details.totalCharactersCountState.value)
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(start = TV_DETAILS_PAD, end = TV_DETAILS_PAD),
+                        contentPadding = PaddingValues(start = TvSubjectDetailsDefaults.HorizontalPadding, end = TvSubjectDetailsDefaults.HorizontalPadding),
                     ) {
                         items(characters.itemCount, key = { characters.peek(it)?.character?.id ?: it }) { i ->
                             characters[i]?.let { TvCharacterCard(it) }
@@ -526,7 +528,7 @@ private fun SubjectContent(
                     TvDetailsSectionHeader("制作人员", details.totalStaffCountState.value)
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(start = TV_DETAILS_PAD, end = TV_DETAILS_PAD),
+                        contentPadding = PaddingValues(start = TvSubjectDetailsDefaults.HorizontalPadding, end = TvSubjectDetailsDefaults.HorizontalPadding),
                     ) {
                         items(staff.itemCount, key = { staff.peek(it)?.personInfo?.id ?: it }) { i ->
                             staff[i]?.let { TvStaffCard(it) }
@@ -539,7 +541,7 @@ private fun SubjectContent(
                     TvDetailsSectionHeader("关联条目", null)
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(start = TV_DETAILS_PAD, end = TV_DETAILS_PAD),
+                        contentPadding = PaddingValues(start = TvSubjectDetailsDefaults.HorizontalPadding, end = TvSubjectDetailsDefaults.HorizontalPadding),
                     ) {
                         items(related.itemCount, key = { related.peek(it)?.subjectId ?: it }) { i ->
                             related[i]?.let { TvRelatedSubjectCard(it, onClickRelated) }
@@ -552,7 +554,7 @@ private fun SubjectContent(
                     TvDetailsSectionHeader("评价", details.subjectCommentState.count)
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(start = TV_DETAILS_PAD, end = TV_DETAILS_PAD),
+                        contentPadding = PaddingValues(start = TvSubjectDetailsDefaults.HorizontalPadding, end = TvSubjectDetailsDefaults.HorizontalPadding),
                     ) {
                         items(comments.itemCount, key = { comments.peek(it)?.stableId ?: it.toString() }) { i ->
                             comments[i]?.let { TvCommentCard(it) }
@@ -655,11 +657,11 @@ private fun TvEpisodeCard(
 
     Box(
         modifier
-            .width(226.dp)
+            .width(TvSubjectDetailsDefaults.EpisodeCardWidth)
             .aspectRatio(16f / 9f)
             .then(
                 if (focused) {
-                    Modifier.border(2.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(11.dp))
+                    Modifier.border(TvFocusDefaults.RingWidth, MaterialTheme.colorScheme.primary, RoundedCornerShape(TvFocusDefaults.RingCornerRadius))
                 } else Modifier,
             ),
     ) {
@@ -718,23 +720,36 @@ private fun formatCount(value: Int): String = when {
     else -> value.toString()
 }
 
-/** 内容水平留白 (含让开侧栏收起宽; 详情页是独立目的地, 自带留白). */
-private val TV_DETAILS_PAD = 48.dp
+/** 详情页默认值/调参. */
+private object TvSubjectDetailsDefaults {
+    /** 内容水平留白 (含让开侧栏收起宽; 详情页是独立目的地, 自带留白). */
+    val HorizontalPadding = 48.dp
 
-/** backdrop 随滚动淡出的距离. */
-private val HERO_BACKDROP_FADE_DISTANCE = 400.dp
+    /** backdrop 随滚动淡出的距离. */
+    val BackdropFadeDistance = 400.dp
 
-/** backdrop 滚动淡出后的保留透明度. */
-private const val HERO_BACKDROP_MIN_ALPHA = 0.25f
+    /** backdrop 滚动淡出后的保留透明度. */
+    const val BackdropMinAlpha = 0.25f
 
-private val TV_TAG_SHAPE = RoundedCornerShape(6.dp)
+    /** 标签墙 chip 圆角. */
+    val TagShape = RoundedCornerShape(6.dp)
+
+    /** 选集剧照卡宽度 (16:9). */
+    val EpisodeCardWidth = 226.dp
+
+    /** 角色/制作人员卡宽度. */
+    val PersonCardWidth = 96.dp
+
+    /** 评价卡宽度. */
+    val CommentCardWidth = 320.dp
+}
 
 // ── 下方区块组件 (数据 = 复用的 SubjectDetailsState pagers; UI 为 TV 自绘) ──
 
 @Composable
 private fun TvDetailsSectionHeader(title: String, count: Int?, modifier: Modifier = Modifier) {
     Row(
-        modifier.padding(start = TV_DETAILS_PAD),
+        modifier.padding(start = TvSubjectDetailsDefaults.HorizontalPadding),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -756,10 +771,10 @@ private fun TvCharacterCard(info: RelatedCharacterInfo, modifier: Modifier = Mod
     val focused by interactionSource.collectIsFocusedAsState()
     Column(
         modifier
-            .width(96.dp)
+            .width(TvSubjectDetailsDefaults.PersonCardWidth)
             .then(
                 if (focused) {
-                    Modifier.border(2.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(11.dp))
+                    Modifier.border(TvFocusDefaults.RingWidth, MaterialTheme.colorScheme.primary, RoundedCornerShape(TvFocusDefaults.RingCornerRadius))
                 } else Modifier,
             )
             .clickable(interactionSource = interactionSource, indication = LocalIndication.current) {}
@@ -797,10 +812,10 @@ private fun TvStaffCard(info: RelatedPersonInfo, modifier: Modifier = Modifier) 
     val focused by interactionSource.collectIsFocusedAsState()
     Column(
         modifier
-            .width(96.dp)
+            .width(TvSubjectDetailsDefaults.PersonCardWidth)
             .then(
                 if (focused) {
-                    Modifier.border(2.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(11.dp))
+                    Modifier.border(TvFocusDefaults.RingWidth, MaterialTheme.colorScheme.primary, RoundedCornerShape(TvFocusDefaults.RingCornerRadius))
                 } else Modifier,
             )
             .clickable(interactionSource = interactionSource, indication = LocalIndication.current) {}
@@ -838,7 +853,7 @@ private fun TvRelatedSubjectCard(
     onClick: (subjectId: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.width(112.dp)) {
+    Column(modifier.width(TvPosterCardDefaults.Width)) {
         // 与收藏页统一的海报卡样式 (标题在卡内, 聚焦跑马灯)
         TvPosterCard(
             imageUrl = info.image.orEmpty(),
@@ -862,10 +877,10 @@ private fun TvCommentCard(comment: UIComment, modifier: Modifier = Modifier) {
     val focused by interactionSource.collectIsFocusedAsState()
     Column(
         modifier
-            .width(320.dp)
+            .width(TvSubjectDetailsDefaults.CommentCardWidth)
             .then(
                 if (focused) {
-                    Modifier.border(2.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(11.dp))
+                    Modifier.border(TvFocusDefaults.RingWidth, MaterialTheme.colorScheme.primary, RoundedCornerShape(TvFocusDefaults.RingCornerRadius))
                 } else Modifier,
             )
             .clip(RoundedCornerShape(8.dp))

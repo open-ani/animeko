@@ -36,6 +36,18 @@ import androidx.tv.material3.Text
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
 
+/** [TvPosterCard] 默认值 (atv-architecture.md 附录 A: 海报卡 112dp/0.72/圆角 8/间距 10). */
+object TvPosterCardDefaults {
+    /** 卡片宽度 (探索/追番/搜索页统一规格). */
+    val Width: Dp = 112.dp
+
+    /** 竖版封面宽高比 (与详情页封面一致). */
+    const val CoverRatio: Float = 0.72f
+
+    /** 封面图圆角 (= 聚焦描边圆角 11 - 留白 3, 见 [TvFocusDefaults]). */
+    val ImageShape = RoundedCornerShape(8.dp)
+}
+
 /**
  * 竖版海报卡 (atv-architecture.md §5.2 / 附录 A):
  * 聚焦 2.5dp primary 描边 @ 圆角 11dp, 内容常驻内缩 3dp, 无缩放, 图圆角 8dp.
@@ -48,7 +60,7 @@ fun TvPosterCard(
     modifier: Modifier = Modifier,
     onFocused: () -> Unit = {},
     /** null = 宽度交给调用方 modifier 决定 (如 Row 内 weight 等分的自适应网格). */
-    width: Dp? = 112.dp,
+    width: Dp? = TvPosterCardDefaults.Width,
     /** 参考版探索页卡片行为纯图, 标题只在网格页展示 */
     showTitle: Boolean = true,
 ) {
@@ -61,7 +73,7 @@ fun TvPosterCard(
                 selfFocused = it.isFocused
                 if (it.isFocused) onFocused()
             },
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(11.dp)),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(TvFocusDefaults.RingCornerRadius)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
             focusedContainerColor = Color.Transparent,
@@ -71,14 +83,14 @@ fun TvPosterCard(
         scale = ClickableSurfaceDefaults.scale(focusedScale = TvFocusDefaults.FocusedScale),
         border = TvFocusDefaults.clickableCardBorder(),
     ) {
-        Column(Modifier.padding(3.dp)) {
+        Column(Modifier.padding(TvFocusDefaults.RingInset)) {
             AsyncImage(
                 model = imageUrl,
                 contentDescription = title,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(0.72f)
-                    .clip(RoundedCornerShape(8.dp)),
+                    .aspectRatio(TvPosterCardDefaults.CoverRatio)
+                    .clip(TvPosterCardDefaults.ImageShape),
                 contentScale = ContentScale.Crop,
             )
             if (showTitle) {

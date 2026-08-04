@@ -40,6 +40,7 @@ import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
+import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
 
 /** 搜索页焦点锚点 (统一焦点框架, 见 ui-foundation-tv/focus). */
@@ -67,12 +68,12 @@ fun TvSearchScreen(
     focus.Resolver()
     focus.InitialFocus(TvSearchFocus.Field)
 
-    Column(modifier.fillMaxSize().tvFocusNavSignal(focus).padding(top = 32.dp)) {
+    Column(modifier.fillMaxSize().tvFocusNavSignal(focus).padding(top = TvSearchDefaults.TopPadding)) {
         // TvTextField 精简版: BasicTextField + tv Surface 壳 (§5.3)
         Surface(
             modifier = Modifier
-                .padding(start = 48.dp)
-                .fillMaxWidth(0.55f),
+                .padding(start = TvSearchDefaults.FieldStartPadding)
+                .fillMaxWidth(TvSearchDefaults.FieldWidthFraction),
             colors = SurfaceDefaults.colors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -126,11 +127,11 @@ fun TvSearchScreen(
             }
 
             else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(124.dp),
+                columns = GridCells.Adaptive(TvPageDefaults.PosterGridCellMinWidth),
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 16.dp, bottom = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = TvPageDefaults.PosterGridContentPadding,
+                horizontalArrangement = Arrangement.spacedBy(TvPageDefaults.CardSpacing),
+                verticalArrangement = Arrangement.spacedBy(TvPageDefaults.CardSpacing),
             ) {
                 items(results.itemCount, key = { results.peek(it)?.subjectInfo?.subjectId ?: it }) { index ->
                     val details = results[index] ?: return@items
@@ -143,4 +144,16 @@ fun TvSearchScreen(
             }
         }
     }
+}
+
+/** 搜索页默认值/调参. */
+private object TvSearchDefaults {
+    /** 页面顶部留白 (输入框上方). */
+    val TopPadding = 32.dp
+
+    /** 输入框左侧留白 (= overscan 安全边距 48). */
+    val FieldStartPadding = 48.dp
+
+    /** 输入框占屏宽比例. */
+    const val FieldWidthFraction = 0.55f
 }

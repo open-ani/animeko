@@ -64,11 +64,13 @@ import me.him188.ani.app.ui.exploration.schedule.ScheduleScreenState
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
 import me.him188.ani.tv.ui.foundation.focus.TvFocusKey
 import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
+import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroContentColor
 import me.him188.ani.tv.ui.foundation.widgets.tvHeroSecondaryContentColor
 
@@ -133,8 +135,8 @@ fun TvScheduleScreen(
     LazyRow(
         modifier.fillMaxSize().tvFocusNavSignal(focus),
         state = state.lazyListState,
-        horizontalArrangement = Arrangement.spacedBy(TV_SCHEDULE_PAGE_SPACING),
-        contentPadding = PaddingValues(start = TV_SCHEDULE_START_PAD, end = 48.dp),
+        horizontalArrangement = Arrangement.spacedBy(TvScheduleDefaults.PageSpacing),
+        contentPadding = PaddingValues(start = TvScheduleDefaults.StartPadding, end = TvPageDefaults.EndPadding),
     ) {
         items(state.days, key = { it.date.toString() }) { day ->
             val columnItems = presentation.airingSchedules
@@ -144,7 +146,7 @@ fun TvScheduleScreen(
                 items = columnItems,
                 onClickSubject = onClickSubject,
                 focus = focus,
-                modifier = Modifier.width(TV_SCHEDULE_PAGE_WIDTH).fillParentMaxHeight(),
+                modifier = Modifier.width(TvScheduleDefaults.PageWidth).fillParentMaxHeight(),
             )
         }
     }
@@ -271,9 +273,9 @@ private fun TvScheduleItem(
                 .then(
                     if (focused) {
                         Modifier.border(
-                            2.5.dp,
+                            TvFocusDefaults.RingWidth,
                             MaterialTheme.colorScheme.primary,
-                            RoundedCornerShape(TV_SCHEDULE_ITEM_CORNER + 3.dp),
+                            RoundedCornerShape(TvScheduleDefaults.ItemCornerRadius + TvFocusDefaults.RingInset),
                         )
                     } else Modifier,
                 ),
@@ -281,8 +283,8 @@ private fun TvScheduleItem(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(3.dp)
-                    .clip(RoundedCornerShape(TV_SCHEDULE_ITEM_CORNER))
+                    .padding(TvFocusDefaults.RingInset)
+                    .clip(RoundedCornerShape(TvScheduleDefaults.ItemCornerRadius))
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null,
@@ -431,14 +433,17 @@ private fun renderDayOfWeek(day: ScheduleDay): String {
     }
 }
 
-/** 内容左侧留白 (外层已让开侧栏收起宽 48dp). */
-private val TV_SCHEDULE_START_PAD = 16.dp
+/** 时间表页默认值/调参 (布局度量对齐手机 Medium 档). */
+private object TvScheduleDefaults {
+    /** 内容左侧留白 (外层已让开侧栏收起宽 48dp). */
+    val StartPadding = 16.dp
 
-/** 单天列宽 (手机 Medium 档 PageSize.Fixed(360.dp) 同值). */
-private val TV_SCHEDULE_PAGE_WIDTH = 360.dp
+    /** 单天列宽 (手机 Medium 档 PageSize.Fixed(360.dp) 同值). */
+    val PageWidth = 360.dp
 
-/** 列间距 (手机 Medium 档 pageSpacing 同值). */
-private val TV_SCHEDULE_PAGE_SPACING = 16.dp
+    /** 列间距 (手机 Medium 档 pageSpacing 同值). */
+    val PageSpacing = 16.dp
 
-/** 列表项圆角. */
-private val TV_SCHEDULE_ITEM_CORNER = 10.dp
+    /** 列表项圆角. */
+    val ItemCornerRadius = 10.dp
+}

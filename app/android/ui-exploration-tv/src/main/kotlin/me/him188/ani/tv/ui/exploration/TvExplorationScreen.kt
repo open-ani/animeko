@@ -92,19 +92,11 @@ import me.him188.ani.tv.ui.foundation.focus.rememberTvFocusScope
 import me.him188.ani.tv.ui.foundation.focus.tvFocusAnchor
 import me.him188.ani.tv.ui.foundation.focus.tvFocusNavSignal
 import me.him188.ani.tv.ui.foundation.focus.tvFocusLink
-import me.him188.ani.tv.ui.foundation.widgets.TV_BACKDROP_CROSSFADE_MILLIS
-import me.him188.ani.tv.ui.foundation.widgets.TV_BACKDROP_LEFT_FADE_END
-import me.him188.ani.tv.ui.foundation.widgets.TV_BACKDROP_LEFT_FADE_START
-import me.him188.ani.tv.ui.foundation.widgets.TV_BACKDROP_TOP_SCRIM_ALPHA
-import me.him188.ani.tv.ui.foundation.widgets.TV_BACKDROP_TOP_SCRIM_END
-import me.him188.ani.tv.ui.foundation.widgets.TV_HERO_MEDIA_DEBOUNCE_MILLIS
-import me.him188.ani.tv.ui.foundation.widgets.TV_HERO_SUMMARY_WIDTH_FRACTION
-import me.him188.ani.tv.ui.foundation.widgets.TV_HERO_TEXT_FADE_MILLIS
-import me.him188.ani.tv.ui.foundation.widgets.TV_HERO_TITLE_WIDTH_FRACTION
-import me.him188.ani.tv.ui.foundation.widgets.TV_PAGE_CARD_SPACING
-import me.him188.ani.tv.ui.foundation.widgets.TV_PAGE_CARD_WIDTH
-import me.him188.ani.tv.ui.foundation.widgets.TV_PAGE_END_PAD
+import me.him188.ani.tv.ui.foundation.widgets.TvBackdropDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvHeroButton
+import me.him188.ani.tv.ui.foundation.widgets.TvHeroDefaults
+import me.him188.ani.tv.ui.foundation.widgets.TvPageDefaults
+import me.him188.ani.tv.ui.foundation.widgets.TvPosterCardDefaults
 import me.him188.ani.tv.ui.foundation.widgets.TvPosterCard
 import me.him188.ani.tv.ui.foundation.widgets.tvBackdropFadeFromBlackStops
 import me.him188.ani.tv.ui.foundation.widgets.tvBackdropFadeToBlackStops
@@ -157,7 +149,7 @@ fun TvExplorationScreen(
     val backdropCache = remember { mutableStateMapOf<Int, String?>() }
     val summaryFallbackCache = remember { mutableStateMapOf<Int, String>() }
 
-    val carouselSize = minOf(trendsPager.itemCount, TV_CAROUSEL_MAX_DOTS)
+    val carouselSize = minOf(trendsPager.itemCount, TvExplorationDefaults.CarouselMaxDots)
     var carouselIndex by rememberSaveable { mutableIntStateOf(0) }
     var carouselInteraction by remember { mutableIntStateOf(0) }
     // 焦点是否在 hero 按钮区 (轮播态); 焦点下移进卡片区后 hero 由聚焦卡驱动
@@ -182,7 +174,7 @@ fun TvExplorationScreen(
         snapshotFlow { heroTarget }.filterNotNull().collectLatest { target ->
             var info = infoCache[target.subjectId]
             if (info == null) {
-                delay(TV_HERO_MEDIA_DEBOUNCE_MILLIS)
+                delay(TvHeroDefaults.MediaDebounceMillis)
                 info = try {
                     collectionRepo.subjectCollectionFlow(target.subjectId).first()
                 } catch (e: CancellationException) {
@@ -212,7 +204,7 @@ fun TvExplorationScreen(
     LaunchedEffect(heroFocused, carouselInteraction, carouselSize) {
         if (!heroFocused || carouselSize < 2) return@LaunchedEffect
         while (true) {
-            delay(TV_CAROUSEL_AUTO_ADVANCE_MILLIS)
+            delay(TvExplorationDefaults.CarouselAutoAdvanceMillis)
             carouselIndex = (carouselIndex + 1) % carouselSize
         }
     }
@@ -223,30 +215,30 @@ fun TvExplorationScreen(
 
     // backdrop 下缘渐隐起点: hero 态低 (露更多图), 卡片态高; 焦点移动时插值过渡
     val bottomFadeStart by animateFloatAsState(
-        if (heroFocused) TV_EXPLORATION_BOTTOM_FADE_START_HERO else 0.78f,
-        animationSpec = tween(TV_BACKDROP_STATE_ANIM_MILLIS),
+        if (heroFocused) TvExplorationDefaults.HeroBottomFadeStart else TvBackdropDefaults.BottomFadeStart,
+        animationSpec = tween(TvExplorationDefaults.BackdropStateAnimMillis),
         label = "bottomFade",
     )
 
     BoxWithConstraints(modifier.fillMaxSize().background(shellBackground).tvFocusNavSignal(focus)) {
         // 为你推荐网格的可用行宽 (减去内容区左缘留白与右缘留白)
-        val recAvailableWidth = maxWidth - TV_EXPLORATION_START_PAD - TV_PAGE_END_PAD
+        val recAvailableWidth = maxWidth - TvExplorationDefaults.StartPadding - TvPageDefaults.EndPadding
         // ── 整页单 LazyColumn (用户指定): hero 与卡片区一同纵向滚动 ──
         LazyColumn(
-            Modifier.fillMaxSize().padding(start = TV_EXPLORATION_START_PAD),
+            Modifier.fillMaxSize().padding(start = TvExplorationDefaults.StartPadding),
             state = listState,
             contentPadding = PaddingValues(bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(TV_SECTION_HEADER_TO_ROW_GAP),
+            verticalArrangement = Arrangement.spacedBy(TvExplorationDefaults.SectionGap),
         ) {
             item(key = "hero") {
                 // backdrop 放 hero item 内部 (hero 参与滚动, 背景图必须随之滚出, 不能固定在根层).
                 // fillMaxWidth 必须给: 否则 Box 宽度收缩成图宽, TopEnd 对齐失效图会靠左压标题
-                Box(Modifier.fillMaxWidth().fillParentMaxHeight(TV_EXPLORATION_BACKDROP_HEIGHT_FRACTION)) {
+                Box(Modifier.fillMaxWidth().fillParentMaxHeight(TvExplorationDefaults.BackdropHeightFraction)) {
                 // Backdrop: 16:9 贴右上, 高度占屏 0.66, 顶缘轻压暗 + 左缘/下缘平滑渐隐 (采样停点无马赫带)
                 Crossfade(
                     backdropUrl,
                     Modifier.align(Alignment.TopEnd),
-                    animationSpec = tween(TV_BACKDROP_CROSSFADE_MILLIS),
+                    animationSpec = tween(TvBackdropDefaults.CrossfadeMillis),
                     label = "backdrop",
                 ) { url ->
                     if (url != null) {
@@ -254,14 +246,14 @@ fun TvExplorationScreen(
                             Modifier
                                 // 外层 hero Box 已限高 0.66 屏, 这里占满它 (再乘 fraction 会双重缩小)
                                 .fillMaxHeight()
-                                .aspectRatio(16f / 9f, matchHeightConstraintsFirst = true)
+                                .aspectRatio(TvBackdropDefaults.AspectRatio, matchHeightConstraintsFirst = true)
                                 .drawWithContent {
                                     drawContent()
                                     drawRect(
                                         brush = Brush.verticalGradient(
                                             *tvBackdropFadeFromBlackStops(
-                                                start = 0f, end = TV_BACKDROP_TOP_SCRIM_END,
-                                                maxAlpha = TV_BACKDROP_TOP_SCRIM_ALPHA,
+                                                start = 0f, end = TvBackdropDefaults.TopScrimEnd,
+                                                maxAlpha = TvBackdropDefaults.TopScrimAlpha,
                                                 color = shellBackground,
                                             ),
                                         ),
@@ -269,8 +261,8 @@ fun TvExplorationScreen(
                                     drawRect(
                                         brush = Brush.horizontalGradient(
                                             *tvBackdropFadeFromBlackStops(
-                                                start = TV_BACKDROP_LEFT_FADE_START,
-                                                end = TV_BACKDROP_LEFT_FADE_END,
+                                                start = TvBackdropDefaults.LeftFadeStart,
+                                                end = TvBackdropDefaults.LeftFadeEnd,
                                                 color = shellBackground,
                                             ),
                                         ),
@@ -300,10 +292,10 @@ fun TvExplorationScreen(
                 // 之前被固定高度信息块挤出裁掉)
                 Column(Modifier.fillMaxSize().padding(top = 24.dp, bottom = 10.dp)) {
                     // 标题: 定高一行, 长标题跑马灯; 换条目 crossfade
-                    Crossfade(hero?.title, animationSpec = tween(TV_HERO_TEXT_FADE_MILLIS), label = "title") { title ->
+                    Crossfade(hero?.title, animationSpec = tween(TvHeroDefaults.TextFadeMillis), label = "title") { title ->
                         Text(
                             title.orEmpty(),
-                            Modifier.fillMaxWidth(TV_HERO_TITLE_WIDTH_FRACTION).basicMarquee(iterations = 3),
+                            Modifier.fillMaxWidth(TvHeroDefaults.TitleWidthFraction).basicMarquee(iterations = 3),
                             style = MaterialTheme.typography.headlineLarge,
                             color = tvHeroContentColor(),
                             maxLines = 1,
@@ -311,7 +303,7 @@ fun TvExplorationScreen(
                     }
                     // 评分 + 连载信息行
                     Row(
-                        Modifier.padding(top = 8.dp).height(TV_HERO_STATUS_ROW_HEIGHT),
+                        Modifier.padding(top = 8.dp).height(TvExplorationDefaults.StatusRowHeight),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -364,12 +356,12 @@ fun TvExplorationScreen(
                     Crossfade(
                         summary,
                         Modifier.padding(top = 8.dp).weight(1f),
-                        animationSpec = tween(TV_HERO_TEXT_FADE_MILLIS),
+                        animationSpec = tween(TvHeroDefaults.TextFadeMillis),
                         label = "summary",
                     ) { text ->
                         Text(
                             text.orEmpty().trim(),
-                            Modifier.fillMaxWidth(TV_HERO_SUMMARY_WIDTH_FRACTION),
+                            Modifier.fillMaxWidth(TvHeroDefaults.SummaryWidthFraction),
                             style = MaterialTheme.typography.bodyMedium,
                             color = tvHeroSecondaryContentColor(),
                             overflow = TextOverflow.Ellipsis,
@@ -416,7 +408,7 @@ fun TvExplorationScreen(
                         Row(
                             Modifier
                                 .padding(top = 12.dp)
-                                .fillMaxWidth(TV_HERO_SUMMARY_WIDTH_FRACTION),
+                                .fillMaxWidth(TvHeroDefaults.SummaryWidthFraction),
                             horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -463,8 +455,8 @@ fun TvExplorationScreen(
                                 true
                             } else false
                         },
-                        horizontalArrangement = Arrangement.spacedBy(TV_PAGE_CARD_SPACING),
-                        contentPadding = PaddingValues(end = TV_PAGE_END_PAD),
+                        horizontalArrangement = Arrangement.spacedBy(TvPageDefaults.CardSpacing),
+                        contentPadding = PaddingValues(end = TvPageDefaults.EndPadding),
                     ) {
                         items(
                             followed.itemCount,
@@ -501,13 +493,13 @@ fun TvExplorationScreen(
             // 为你推荐: 纵向网格 (手机 GridCells.Adaptive 同语义) —— 列数按可用宽自适应,
             // 行内 weight 等分拉伸 (不会出现固定宽度下最右侧最后一项被压缩), 尾行空位 Spacer 占住
             val recColumns = (
-                (recAvailableWidth + TV_PAGE_CARD_SPACING) / (TV_PAGE_CARD_WIDTH + TV_PAGE_CARD_SPACING)
+                (recAvailableWidth + TvPageDefaults.CardSpacing) / (TvPosterCardDefaults.Width + TvPageDefaults.CardSpacing)
             ).toInt().coerceAtLeast(1)
             val recRows = (recommendations.itemCount + recColumns - 1) / recColumns
             items(recRows, key = { "rec-row-$it" }) { rowIndex ->
                 Row(
-                    Modifier.fillMaxWidth().padding(end = TV_PAGE_END_PAD),
-                    horizontalArrangement = Arrangement.spacedBy(TV_PAGE_CARD_SPACING),
+                    Modifier.fillMaxWidth().padding(end = TvPageDefaults.EndPadding),
+                    horizontalArrangement = Arrangement.spacedBy(TvPageDefaults.CardSpacing),
                 ) {
                     repeat(recColumns) { colIndex ->
                         val index = rowIndex * recColumns + colIndex
@@ -545,43 +537,29 @@ fun TvExplorationScreen(
     }
 }
 
-// ============ 探索页调参 (对齐上游 PR 实机验证值) ============
+/** 探索页默认值/调参 (对齐上游 PR 实机验证值; 共享参数见 ui-foundation-tv 的各 Defaults). */
+private object TvExplorationDefaults {
+    /** Hero "评分/连载"状态行的固定高度. */
+    val StatusRowHeight = 30.dp
 
-/** Hero 信息块固定高度 (标题 + 评分/连载行 + 简介); 固定保证换条目时卡片区不跳动. */
-private val TV_HERO_INFO_HEIGHT = 200.dp
+    /** 区块标题到卡片行的间距. */
+    val SectionGap = 12.dp
 
-/** Hero "评分/连载"状态行的固定高度. */
-private val TV_HERO_STATUS_ROW_HEIGHT = 30.dp
+    /** 内容左侧额外留白 (外层已让开侧边栏收起宽 48dp, 总左缘 = 48 + 16 = 64). */
+    val StartPadding = 16.dp
 
-/** Hero 信息块与操作按钮块之间的间距. */
-private val TV_HERO_INFO_TO_BUTTONS_GAP = 6.dp
+    /** backdrop 高度占屏高比例 (Prime 实测: 图占屏顶约 66%; 追番/搜索为共享的 0.70 档). */
+    const val BackdropHeightFraction = 0.66f
 
-/** 两枚操作按钮之间的间距 (很短). */
-private val TV_HERO_BUTTON_GAP = 4.dp
+    /** backdrop 下缘渐隐起点的轮播 (hero) 态档位; 卡片态用共享的 [TvBackdropDefaults.BottomFadeStart]. */
+    const val HeroBottomFadeStart = 0.88f
 
-/** 按钮块下方到卡片区的间距. */
-private val TV_HERO_BUTTONS_TO_CONTENT_GAP = 12.dp
+    /** backdrop 两态渐变切换动画时长. */
+    const val BackdropStateAnimMillis = 400
 
-/** 区块标题到卡片行的间距. */
-private val TV_SECTION_HEADER_TO_ROW_GAP = 12.dp
+    /** 轮播指示器最多显示的圆点数. */
+    const val CarouselMaxDots = 20
 
-/** 轮播指示器最多显示的圆点数. */
-private const val TV_CAROUSEL_MAX_DOTS = 20
-
-/** 自动轮播切换间隔. */
-private const val TV_CAROUSEL_AUTO_ADVANCE_MILLIS = 6000L
-
-/** backdrop 下缘渐隐起点的轮播 (hero) 态档位; 卡片态用共享的 0.78. */
-private const val TV_EXPLORATION_BOTTOM_FADE_START_HERO = 0.88f
-
-/** backdrop 两态渐变切换动画时长. */
-private const val TV_BACKDROP_STATE_ANIM_MILLIS = 400
-
-/** 内容左侧额外留白 (外层已让开侧边栏收起宽 48dp, 总左缘 = 48 + 16 = 64). */
-private val TV_EXPLORATION_START_PAD = 16.dp
-
-/** 为你推荐纵向网格列数 (1080p 横屏: 内容区宽约 (1080dp*2-64-48), 112dp 卡 + 10dp 距). */
-private const val TV_REC_GRID_COLUMNS = 14
-
-/** backdrop 高度占屏高比例 (Prime 实测: 图占屏顶约 66%). */
-private const val TV_EXPLORATION_BACKDROP_HEIGHT_FRACTION = 0.66f
+    /** 自动轮播切换间隔. */
+    const val CarouselAutoAdvanceMillis = 6000L
+}

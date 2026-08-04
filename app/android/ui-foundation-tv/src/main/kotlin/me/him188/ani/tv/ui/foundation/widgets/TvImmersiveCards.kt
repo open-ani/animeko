@@ -19,6 +19,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -47,12 +48,14 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.AsyncImage
+import me.him188.ani.tv.ui.foundation.focus.TvFocusDefaults
 import me.him188.ani.tv.ui.foundation.focus.tvLongPressKey
 import kotlin.math.pow
 
@@ -94,20 +97,20 @@ fun TvPortraitCard(
     }
     Box(
         modifier
-            .aspectRatio(TV_PORTRAIT_CARD_COVER_RATIO)
+            .aspectRatio(TvPortraitCardDefaults.CoverRatio)
             .then(
                 if (focused) {
                     Modifier.border(
-                        TV_CARD_FOCUS_RING_WIDTH,
+                        TvFocusDefaults.RingWidth,
                         MaterialTheme.colorScheme.primary,
-                        RoundedCornerShape(TV_PORTRAIT_CARD_CORNER + TV_CARD_FOCUS_GAP),
+                        RoundedCornerShape(TvPortraitCardDefaults.CornerRadius + TvFocusDefaults.RingInset),
                     )
                 } else Modifier,
             ),
     ) {
         Surface(
-            modifier = Modifier.fillMaxSize().padding(TV_CARD_FOCUS_GAP),
-            shape = RoundedCornerShape(TV_PORTRAIT_CARD_CORNER),
+            modifier = Modifier.fillMaxSize().padding(TvFocusDefaults.RingInset),
+            shape = RoundedCornerShape(TvPortraitCardDefaults.CornerRadius),
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
             Box(
@@ -149,17 +152,17 @@ fun TvPortraitCard(
                     Box(
                         Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(horizontal = TV_CARD_PROGRESS_BAR_INSET)
-                            .padding(bottom = TV_CARD_PROGRESS_BAR_BOTTOM_GAP)
+                            .padding(horizontal = TvPortraitCardDefaults.ProgressBarInset)
+                            .padding(bottom = TvPortraitCardDefaults.ProgressBarBottomGap)
                             .fillMaxWidth()
-                            .height(TV_CARD_PROGRESS_BAR_HEIGHT)
+                            .height(TvPortraitCardDefaults.ProgressBarHeight)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = TV_CARD_PROGRESS_TRACK_ALPHA)),
+                            .background(Color.White.copy(alpha = TvPortraitCardDefaults.ProgressTrackAlpha)),
                     ) {
                         Box(
                             Modifier
                                 .fillMaxWidth(progress.coerceIn(0f, 1f))
-                                .height(TV_CARD_PROGRESS_BAR_HEIGHT)
+                                .height(TvPortraitCardDefaults.ProgressBarHeight)
                                 .background(MaterialTheme.colorScheme.primary),
                         )
                     }
@@ -187,6 +190,7 @@ fun TvHeroButton(
     onClick: () -> Unit,
     onFocused: () -> Unit,
     modifier: Modifier = Modifier,
+    shape: Shape = TvHeroDefaults.ButtonShape,
     focusRequester: FocusRequester? = null,
     onFocusChangedExtra: ((Boolean) -> Unit)? = null,
 ) {
@@ -201,7 +205,7 @@ fun TvHeroButton(
     }
     val container = if (focused) MaterialTheme.colorScheme.primary else baseContainer
     val content = if (focused) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-    val scale = TV_HERO_BUTTON_SCALE
+    val scale = TvHeroDefaults.ButtonScale
     val textStyle = MaterialTheme.typography.titleSmall.let {
         it.copy(fontSize = it.fontSize * scale, lineHeight = it.lineHeight * scale)
     }
@@ -213,7 +217,7 @@ fun TvHeroButton(
                 if (it.isFocused) onFocused()
                 onFocusChangedExtra?.invoke(it.isFocused)
             },
-        shape = RoundedCornerShape(TV_HERO_BUTTON_CORNER),
+        shape = shape,
         color = container,
         interactionSource = interactionSource,
     ) {
@@ -303,20 +307,20 @@ fun TvPageBackdropLayer(
     Crossfade(
         backdropUrl(),
         modifier,
-        animationSpec = tween(TV_BACKDROP_CROSSFADE_MILLIS),
+        animationSpec = tween(TvBackdropDefaults.CrossfadeMillis),
     ) { url ->
         if (url != null) {
             Box(
                 Modifier
-                    .fillMaxHeight(TV_BACKDROP_HEIGHT_FRACTION)
-                    .aspectRatio(TV_BACKDROP_ASPECT_RATIO, matchHeightConstraintsFirst = true)
+                    .fillMaxHeight(TvBackdropDefaults.HeightFraction)
+                    .aspectRatio(TvBackdropDefaults.AspectRatio, matchHeightConstraintsFirst = true)
                     .drawWithContent {
                         drawContent()
                         drawRect(
                             brush = Brush.verticalGradient(
                                 *tvBackdropFadeFromBlackStops(
-                                    start = 0f, end = TV_BACKDROP_TOP_SCRIM_END,
-                                    maxAlpha = TV_BACKDROP_TOP_SCRIM_ALPHA,
+                                    start = 0f, end = TvBackdropDefaults.TopScrimEnd,
+                                    maxAlpha = TvBackdropDefaults.TopScrimAlpha,
                                     color = fadeColor,
                                 ),
                             ),
@@ -324,8 +328,8 @@ fun TvPageBackdropLayer(
                         drawRect(
                             brush = Brush.horizontalGradient(
                                 *tvBackdropFadeFromBlackStops(
-                                    start = TV_BACKDROP_LEFT_FADE_START,
-                                    end = TV_BACKDROP_LEFT_FADE_END,
+                                    start = TvBackdropDefaults.LeftFadeStart,
+                                    end = TvBackdropDefaults.LeftFadeEnd,
                                     color = fadeColor,
                                 ),
                             ),
@@ -333,7 +337,7 @@ fun TvPageBackdropLayer(
                         drawRect(
                             brush = Brush.verticalGradient(
                                 *tvBackdropFadeToBlackStops(
-                                    start = TV_BACKDROP_BOTTOM_FADE_START,
+                                    start = TvBackdropDefaults.BottomFadeStart,
                                     end = 1f,
                                     color = fadeColor,
                                 ),
@@ -365,7 +369,7 @@ fun TvFullScreenBackdropLayer(
     Crossfade(
         backdropUrl(),
         modifier,
-        animationSpec = tween(TV_BACKDROP_CROSSFADE_MILLIS),
+        animationSpec = tween(TvBackdropDefaults.CrossfadeMillis),
     ) { url ->
         if (url != null) {
             Box(Modifier.fillMaxSize()) {
@@ -377,96 +381,105 @@ fun TvFullScreenBackdropLayer(
                 )
                 Box(
                     Modifier.fillMaxSize()
-                        .background(background.copy(alpha = TV_FULLSCREEN_BACKDROP_DIM_ALPHA)),
+                        .background(background.copy(alpha = TvBackdropDefaults.FullScreenDimAlpha)),
                 )
             }
         }
     }
 }
 
-// ============ TV 沉浸式页面共享调参 (对齐上游 PR 实机验证值) ============
+// ============ TV 沉浸式页面共享 Defaults (对齐上游 PR 实机验证值) ============
 
-// ---- backdrop ----
+/** TV 页面 backdrop 层的默认值 (页面/全屏两种 backdrop 与探索页 hero backdrop 共用). */
+object TvBackdropDefaults {
+    /** backdrop 宽高比. */
+    const val AspectRatio: Float = 16f / 9f
 
-/** backdrop 宽高比. */
-const val TV_BACKDROP_ASPECT_RATIO = 16f / 9f
+    /** backdrop 高度占屏高比例 (追番/搜索; 探索页因轮播布局单独一档). */
+    const val HeightFraction: Float = 0.70f
 
-/** backdrop 高度占屏高比例 (追番/搜索; 探索页因轮播布局单独一档). */
-const val TV_BACKDROP_HEIGHT_FRACTION = 0.70f
+    /** backdrop 换图的淡入淡出时长 (毫秒). */
+    const val CrossfadeMillis: Int = 600
 
-/** backdrop 换图的淡入淡出时长 (毫秒). */
-const val TV_BACKDROP_CROSSFADE_MILLIS = 600
+    /** backdrop 顶缘压暗带终点 (顶部悬浮文字的可读性 scrim). */
+    const val TopScrimEnd: Float = 0.16f
 
-/** backdrop 顶缘压暗带终点 (顶部悬浮文字的可读性 scrim). */
-const val TV_BACKDROP_TOP_SCRIM_END = 0.16f
+    /** backdrop 顶缘压暗强度. */
+    const val TopScrimAlpha: Float = 0.7f
 
-/** backdrop 顶缘压暗强度. */
-const val TV_BACKDROP_TOP_SCRIM_ALPHA = 0.7f
+    /** backdrop 下缘渐隐起点 (卡片态; 探索页轮播态另有自己的一档). */
+    const val BottomFadeStart: Float = 0.78f
 
-/** backdrop 下缘渐隐起点 (卡片态; 探索页轮播态另有自己的一档). */
-const val TV_BACKDROP_BOTTOM_FADE_START = 0.78f
+    /** backdrop 左缘渐隐窗口起点 (此前全擦除). */
+    const val LeftFadeStart: Float = 0.02f
 
-/** backdrop 左缘渐隐窗口起点 (此前全擦除). */
-const val TV_BACKDROP_LEFT_FADE_START = 0.02f
+    /** backdrop 左缘渐隐窗口终点 (此处起图完全清晰). */
+    const val LeftFadeEnd: Float = 0.3f
 
-/** backdrop 左缘渐隐窗口终点 (此处起图完全清晰). */
-const val TV_BACKDROP_LEFT_FADE_END = 0.3f
+    /** 全屏 backdrop 的整屏基础压暗强度. */
+    const val FullScreenDimAlpha: Float = 0.46f
+}
 
-/** 全屏 backdrop 的整屏基础压暗强度. */
-const val TV_FULLSCREEN_BACKDROP_DIM_ALPHA = 0.46f
+/** TV hero 区 (标题/简介/操作按钮) 的默认值. */
+object TvHeroDefaults {
+    /** hero 标题占屏宽比例 (右侧留给 backdrop 清晰区). */
+    const val TitleWidthFraction: Float = 0.5f
 
-// ---- hero 文字 ----
+    /** hero 简介/状态行文字占内容列宽比例. */
+    const val SummaryWidthFraction: Float = 0.4f
 
-/** TV hero 标题占屏宽比例 (右侧留给 backdrop 清晰区). */
-const val TV_HERO_TITLE_WIDTH_FRACTION = 0.5f
+    /** hero 信息块换条目时文字的渐隐渐现时长 (毫秒). */
+    const val TextFadeMillis: Int = 500
 
-/** TV hero 简介/状态行文字占内容列宽比例. */
-const val TV_HERO_SUMMARY_WIDTH_FRACTION = 0.4f
+    /** hero 媒体 (backdrop/简介等) 请求防抖: 焦点快速划过时不发请求. */
+    const val MediaDebounceMillis: Long = 300L
 
-/** TV hero 信息块换条目时文字的渐隐渐现时长 (毫秒). */
-const val TV_HERO_TEXT_FADE_MILLIS = 500
+    /** [TvHeroButton] 圆角. */
+    val ButtonShape: Shape = RoundedCornerShape(8.dp)
 
-/** TV hero 媒体 (backdrop/简介等) 请求防抖: 焦点快速划过时不发请求. */
-const val TV_HERO_MEDIA_DEBOUNCE_MILLIS = 300L
+    /** [TvHeroButton] 整体缩放比例 (内边距/图标/字号统一乘此值). */
+    const val ButtonScale: Float = 0.9f
+}
 
-// ---- 卡片网格 ----
+/** TV 沉浸式页面级布局的默认值 (卡片网格/留白/底缘遮罩). */
+object TvPageDefaults {
+    /** 卡片间距. */
+    val CardSpacing: Dp = 10.dp
 
-/** 竖版海报卡片宽度 (Adaptive 网格按此为最小宽度自动决定列数). */
-val TV_PAGE_CARD_WIDTH: Dp = 112.dp
+    /** 内容右侧留白. */
+    val EndPadding: Dp = 48.dp
 
-/** 卡片间距. */
-val TV_PAGE_CARD_SPACING = 10.dp
+    /** Adaptive 海报网格的最小格宽 (追番/搜索页同规格). */
+    val PosterGridCellMinWidth: Dp = 124.dp
 
-// ---- 页面留白 ----
+    /** 海报网格内容边距 (追番/搜索页同规格; 水平 = overscan 安全边距 48). */
+    val PosterGridContentPadding: PaddingValues =
+        PaddingValues(start = 48.dp, end = 48.dp, top = 16.dp, bottom = 24.dp)
 
-/** 底缘渐变遮罩高度 (覆盖被视口截断的下一行卡片露出的整段). */
-val TV_PAGE_BOTTOM_SCRIM_HEIGHT = 90.dp
+    /** 底缘渐变遮罩高度 (覆盖被视口截断的下一行卡片露出的整段). */
+    val BottomScrimHeight: Dp = 90.dp
 
-/** 底缘遮罩在最底边的不透明度. */
-const val TV_PAGE_BOTTOM_SCRIM_MAX_ALPHA = 0.95f
+    /** 底缘遮罩在最底边的不透明度. */
+    const val BottomScrimMaxAlpha: Float = 0.95f
+}
 
-/** 内容右侧留白. */
-val TV_PAGE_END_PAD = 48.dp
+/** [TvPortraitCard] 默认值 (聚焦外圈规格统一走 [TvFocusDefaults]). */
+object TvPortraitCardDefaults {
+    /** 竖版封面宽高比 (与详情页封面一致). */
+    const val CoverRatio: Float = 0.72f
 
-/** 竖版封面宽高比 (与详情页封面一致). */
-const val TV_PORTRAIT_CARD_COVER_RATIO = 0.72f
+    /** 卡片圆角. */
+    val CornerRadius: Dp = 8.dp
 
-/** 卡片圆角. */
-private val TV_PORTRAIT_CARD_CORNER = 8.dp
+    /** 集数进度条 (悬浮胶囊条) 高度. */
+    val ProgressBarHeight: Dp = 2.5.dp
 
-/** 聚焦外圈描边宽度 (主题主色). */
-private val TV_CARD_FOCUS_RING_WIDTH = 2.5.dp
+    /** 集数进度条左右内缩 (避开卡片圆角). */
+    val ProgressBarInset: Dp = 10.dp
 
-/** 聚焦外圈与封面之间的空隙 (聚焦时空隙处露出底色形成"色圈+留白"). */
-private val TV_CARD_FOCUS_GAP = 3.dp
+    /** 集数进度条距卡片底缘间距. */
+    val ProgressBarBottomGap: Dp = 4.dp
 
-private val TV_CARD_PROGRESS_BAR_HEIGHT = 2.5.dp
-private val TV_CARD_PROGRESS_BAR_INSET = 10.dp
-private val TV_CARD_PROGRESS_BAR_BOTTOM_GAP = 4.dp
-private const val TV_CARD_PROGRESS_TRACK_ALPHA = 0.3f
-
-/** Hero 操作按钮圆角. */
-private val TV_HERO_BUTTON_CORNER = 8.dp
-
-/** 操作按钮整体缩放比例 (内边距/图标/字号统一乘此值). */
-private const val TV_HERO_BUTTON_SCALE = 0.9f
+    /** 集数进度条轨道 (白色) 不透明度. */
+    const val ProgressTrackAlpha: Float = 0.3f
+}

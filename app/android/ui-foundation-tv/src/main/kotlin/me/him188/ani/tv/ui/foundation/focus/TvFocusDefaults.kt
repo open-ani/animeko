@@ -13,6 +13,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceBorder
@@ -28,12 +29,21 @@ object TvFocusDefaults {
     /** 无缩放; 官方风格为 1.05f. */
     const val FocusedScale: Float = 1f
 
-    /** 海报卡聚焦描边: 2.5dp primary @ 圆角 11dp (=内容 8 + inset 3), 内容常驻内缩 3dp. */
+    /** 聚焦描边宽度 (主题主色). */
+    val RingWidth: Dp = 2.5.dp
+
+    /** 描边与内容之间的留白 (聚焦时露出底色形成"色圈+留白"); 内容常驻按此内缩防跳动. */
+    val RingInset: Dp = 3.dp
+
+    /** 描边圆角 (= 内容圆角 8 + [RingInset] 3). */
+    val RingCornerRadius: Dp = 11.dp
+
+    /** 海报卡聚焦描边: [RingWidth] primary @ [RingCornerRadius], 内容常驻内缩 [RingInset]. */
     @Composable
     fun cardBorder(): Border = Border(
-        border = BorderStroke(2.5.dp, MaterialTheme.colorScheme.primary),
-        inset = 3.dp,
-        shape = RoundedCornerShape(11.dp),
+        border = BorderStroke(RingWidth, MaterialTheme.colorScheme.primary),
+        inset = RingInset,
+        shape = RoundedCornerShape(RingCornerRadius),
     )
 
     /** 不使用 glow. */
@@ -41,11 +51,11 @@ object TvFocusDefaults {
 
     /** [cardBorder] 的 tv Surface(clickable) 包装. */
     @Composable
-    fun clickableCardBorder(shape: Shape = RoundedCornerShape(11.dp)): ClickableSurfaceBorder =
+    fun clickableCardBorder(shape: Shape = RoundedCornerShape(RingCornerRadius)): ClickableSurfaceBorder =
         ClickableSurfaceDefaults.border(
             focusedBorder = Border(
-                border = BorderStroke(2.5.dp, MaterialTheme.colorScheme.primary),
-                inset = 3.dp,
+                border = BorderStroke(RingWidth, MaterialTheme.colorScheme.primary),
+                inset = RingInset,
                 shape = shape,
             ),
         )
