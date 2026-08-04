@@ -882,7 +882,9 @@ D1 放弃编译期隔离后，**Konsist 是 §4.2 约定边界的主要机械守
 2. **不与用户抢焦点**：程序化送焦（`request(key)`）在用户按方向键的瞬间放弃；按住连发（repeatCount>0）不重复触发快捷键/边缘切换。
 3. **跨大间距/跨区块的焦点移动一律显式声明**（link/exit 重定向），不信任空间搜索；`focusProperties.onExit` 内 requestFocus 重定向已实机验证可用。
 4. **Lazy 容器内的焦点目标先保证组合**：目标 item 可能已被回收，须先 `scrollToItem` 再 request，框架轮询兜住附着时序。
-5. 已知陷阱：切换数据源导致聚焦节点销毁时，焦点会瞬时跌落到布局中**第一个可聚焦节点**——若该节点有"聚焦即选中"语义须在过渡期冻结（追番页边缘切 tab 的实测教训）。
+5. 已知陷阱：切换数据源导致聚焦节点销毁时，焦点会瞬时跌落到布局中**第一个可聚焦节点**——若该节点有"聚焦即选中"语义须在过渡期冻结（读 `TvGridFocusState.switching`，追番页边缘切 tab 的实测教训）。
+6. **多方参与的焦点协议单文件收口**：焦点记忆（同页/跨 route 恢复）全协议在 `TvFocusMemory.kt`（组件只挂 `tvFocusMemorable(id)`），网格聚焦第 N 项/边缘切换在 `TvFocusGrid.kt`——新增此类协议时照此模式，禁止把步骤散进壳/组件/页面各写一段。
+7. 本节 1/2 的可静态检查部分已固化为 Konsist 测试（TvArchitectureTest：持有 scope 必装 Resolver+信号、`requesterOf` 仅框架内部可用——裸 requester 无锚点上报，解析轮询不收敛）；框架纯逻辑（轮询语义/记忆协议）有单元测试守护（ui-foundation-tv/src/test）。
 
 ### 14.5 交互细则（逐轮验收裁定，视为验收标准）
 
