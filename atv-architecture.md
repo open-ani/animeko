@@ -854,6 +854,57 @@ D1 放弃编译期隔离后，**Konsist 是 §4.2 约定边界的主要机械守
 
 ---
 
+## 14. 开发规范与约束（实施期裁定汇总）
+
+> 本章汇总 M0 至今由维护者与实施负责人逐轮裁定的规范，是后续 TV 侧开发的**行为事实源**；与前文冲突处以本章为准（前文为设计期草案，个别结论已被实机迭代推翻，如 §1.1-2 的"全部基于 tv-material"已演进为 v4，见 14.2）。
+
+### 14.1 参照与实现方式
+
+1. **UI/UX 事实源 = PR#3217 的实机效果**，不是其源码，也不是文档。验证机需安装参考版（包名 `me.him188.ani.tv`，与 debug 包 `me.him188.ani.tv.debug2` 并存），逐页实机对照。
+2. **参考 PR 源码只为理解布局与交互，禁止整体照搬**（曾尝试 merge 整个 PR 被否决并回滚）。裁定的折中：**低层基建可改造借用**进 `ui-foundation-tv`（按键/卡片视觉/渐变曲线/侧边栏等），**页面代码一律自行实现**。PR 源码保留在本地分支 `pr3217`，随时 `git show pr3217:<path>` 查阅。
+3. **实机验证驱动**：每轮 UI/交互改动必须在真机上验证后才算完成（adb + `tools/tv-remote` TUI 遥控器；菜单键=keyevent 82）。触屏设备跑 TV 界面需壳里强制 `InputMode.Keyboard`（touch mode 下 clickable 不参与键盘焦点）。
+
+### 14.2 UI 技术栈（v4 现实）
+
+1. 参考版**完全不用 tv-material**：material3 + 自研焦点系统。TV 侧新组件一律读 **material3** 主题（主题同时 provide 两套，tv-material 仅存量组件残留）；Konsist 的 material3 禁令已删除。
+2. **视觉规格**以实机对照校准：色圈+留白聚焦（2.5dp primary 描边 + 3dp 间隙）、Prime 风格灰底按钮（聚焦整颗反色）、smootherstep 采样渐变（附录 A 参数仍有效）。
+
+### 14.3 状态层复用（D3 强化为硬性要求）
+
+1. **"尽量做到 ViewModel 和 state object 复用"**：TV 页面优先复用手机端 VM/状态对象（UserCollections/Schedule/EmailLogin/ExplorationPage/SubjectDetails 等已落地），只有视图层允许双份。
+2. 复用受阻于公共层设计糟糕时，**允许重构公共层**使架构更好（例：`SubjectDetailsStateLoader` 重构为非空状态流 + 单一 `load(force)` 入口），须同步适配全部消费者并保证手机端行为不变。
+3. UI 改动过大的页面不硬套：播放页等上游 `EpisodeScreenVariant` 接缝成熟再迁；设置页保留薄 VM（手机版多 tab 巨型状态机不值得为 4 个开关引入）。
+4. 每次新增复用需在 Konsist 白名单**逐条**放行（状态层放行、composable 仍禁），不得整包放开。
+
+### 14.4 焦点工程规范
+
+1. **必须使用统一焦点框架 `TvFocusScope`**（§5.4.1）声明焦点关系：页面私有 `TvFocusKey` 枚举 + `tvFocusAnchor/tvFocusLink/tvFocusEnterGate/tvFocusExit/tvFocusHotkey`；禁止散落手写 requestFocus 轮询。每页根部挂 `Resolver()` 与 `tvFocusNavSignal`。
+2. **不与用户抢焦点**：程序化送焦（`request(key)`）在用户按方向键的瞬间放弃；按住连发（repeatCount>0）不重复触发快捷键/边缘切换。
+3. **跨大间距/跨区块的焦点移动一律显式声明**（link/exit 重定向），不信任空间搜索；`focusProperties.onExit` 内 requestFocus 重定向已实机验证可用。
+4. **Lazy 容器内的焦点目标先保证组合**：目标 item 可能已被回收，须先 `scrollToItem` 再 request，框架轮询兜住附着时序。
+5. 已知陷阱：切换数据源导致聚焦节点销毁时，焦点会瞬时跌落到布局中**第一个可聚焦节点**——若该节点有"聚焦即选中"语义须在过渡期冻结（追番页边缘切 tab 的实测教训）。
+
+### 14.5 交互细则（逐轮验收裁定，视为验收标准）
+
+| 范围 | 裁定 |
+|---|---|
+| 全局 | 菜单键从任意位置直达侧边栏；侧边栏进入落点=**当前页**条目（`selected` 标记，回退 defaultFocus）；条目卡统一 `TvPosterCard` 样式（标题在卡内），**聚焦时标题跑马灯**、失焦单行截断 |
+| 探索页 | 整页单 LazyColumn（hero 参与滚动，backdrop 在 hero item 内且 fillMaxWidth）；hero **只由轮播驱动**（卡片聚焦不换 hero）；hero 单按钮"更多详细内容" + 左右键切轮播（首项按左放行侧边栏）+ 指示器/按钮常驻；下方=继续观看行 + 为你推荐**自适应网格**（手机 GridCells.Adaptive 语义：列数按可用宽算、行内 weight 等分、最右项不得压缩、尾行 Spacer 占位） |
+| 追番页 | tab 聚焦即选中；网格按上/按返回回**当前**分类 tab（不是几何最近的）；列表左右缘按左右=切相邻分类并落"对应位置"（同行近缘列、钳到末项）；首 tab 左缘交给侧边栏；tab 行再按返回才交壳回探索 |
+| 时间表 | 手机 **Medium 档多列布局**复刻（360dp 定宽列 + DayOfWeekHeadline 列头，无 TabRow/无 pager），复用 `ScheduleScreenState`；`HorizontalScrollControlScaffoldOnDesktop` 不可复用（hover 驱动，TV 无此事件源） |
+| 详情页 | 返回键三级分层（下方区块→选集轮播→Hero→退出）；backdrop 三态（未解析按有图排版，防海报闪替） |
+| 通用 UI | 横竖屏两个极端都要顾及：竖屏顾小屏幕、横屏顾超宽屏幕，不做两态硬切 |
+
+### 14.6 工程与流程
+
+1. **架构边界**：v3 约定边界不动摇（共享依赖树 + DI 门控）；TV 模块命名 `app/android/ui-<feature>-tv`；`src/tv` 只留出包胶水；不为隔离引入新模块。
+2. **每轮回归三件套全绿**后才提交：`assembleDefaultDebug`（手机零行为变化）、`:app:android:ui-main-tv:testDebugUnitTest`（Konsist）、`verifyTvManifestPurity`。
+3. **分层提交**：每个 commit 独立可编译，按里程碑/功能切分。
+4. 应用内更新按维护者指示暂缓（服务端 `android-tv` 支持就绪前 TV 端保持关闭）。
+5. 构建环境：`ANDROID_HOME` 需显式 export；TMDB 需 `local.properties` 配 `ani.tmdb.api.token`（未配置全链路静默退化）。
+
+---
+
 ## 附录 A · PR#3217 UX 参数速查（TV 端交互事实源）
 
 > 完整逐页规格见 PR#3217 评审时产出的 8 份规格文档；UI/UX 视觉稿镜像于 claude.ai/design 项目 [「Animeko TV」](https://claude.ai/design/2a3b7d37-075a-400b-bedb-ef2072b6caf3)（逐页可交互对照，M1–M3 验收时与本附录参数互为事实源）。此处摘迁移必需的常量。
