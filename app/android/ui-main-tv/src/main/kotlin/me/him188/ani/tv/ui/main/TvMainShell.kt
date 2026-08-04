@@ -176,14 +176,28 @@ fun TvMainShell(modifier: Modifier = Modifier) {
         TvNavigationSideRail(
             selfInfo = selfInfo,
             onAvatarClick = { content = TvShellContent.Login },
+            // selected = 当前页条目: 进入侧边栏 (按左/菜单键) 焦点落到它上, 而不是固定落"探索"
             items = listOf(
-                TvNavRailItem(Icons.Rounded.Search, "搜索") { content = TvShellContent.Search },
-                TvNavRailItem(Icons.Rounded.TravelExplore, "探索", defaultFocus = true) {
-                    content = TvShellContent.Exploration
-                },
-                TvNavRailItem(Icons.Rounded.CalendarMonth, "时间表") { content = TvShellContent.Schedule },
-                TvNavRailItem(Icons.Rounded.Star, "追番") { content = TvShellContent.Collection },
-                TvNavRailItem(Icons.Rounded.Settings, "设置") { content = TvShellContent.Settings },
+                TvNavRailItem(
+                    Icons.Rounded.Search, "搜索",
+                    selected = content == TvShellContent.Search,
+                ) { content = TvShellContent.Search },
+                TvNavRailItem(
+                    Icons.Rounded.TravelExplore, "探索", defaultFocus = true,
+                    selected = content == TvShellContent.Exploration,
+                ) { content = TvShellContent.Exploration },
+                TvNavRailItem(
+                    Icons.Rounded.CalendarMonth, "时间表",
+                    selected = content == TvShellContent.Schedule,
+                ) { content = TvShellContent.Schedule },
+                TvNavRailItem(
+                    Icons.Rounded.Star, "追番",
+                    selected = content == TvShellContent.Collection,
+                ) { content = TvShellContent.Collection },
+                TvNavRailItem(
+                    Icons.Rounded.Settings, "设置",
+                    selected = content == TvShellContent.Settings,
+                ) { content = TvShellContent.Settings },
             ),
             modifier = Modifier.align(Alignment.CenterStart),
             enterFocus = focus.requesterOf(TvShellFocus.Rail),

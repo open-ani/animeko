@@ -63,7 +63,8 @@ import me.him188.ani.tv.ui.foundation.focus.tvFocusEnterGate
 /*
  * TV 可展开左侧导航栏. 布局/交互对齐上游 PR#3217 的 TvNavigationSideRail:
  * 收起态一列 32dp 图标 (头像置顶), 焦点进入后展开为"图标+文字"并压一层左缘渐变面板,
- * 焦点离开自动收起. 只有"按左"能把焦点移进侧边栏, 进入时焦点总是落到 defaultFocus 条目.
+ * 焦点离开自动收起. 只有"按左"能把焦点移进侧边栏, 进入时焦点落到 selected (当前页)
+ * 条目, 无 selected 时回退 defaultFocus 条目.
  */
 
 /** TV 可展开左侧导航栏的默认尺寸. */
@@ -77,8 +78,13 @@ object TvNavigationRailDefaults {
 data class TvNavRailItem(
     val icon: ImageVector,
     val label: String,
-    /** true 时焦点进入侧边栏总是落到该条目上 (整栏至多标记一个, 如"探索"). */
+    /** 无 selected 条目时焦点进入侧边栏的回退落点 (整栏至多标记一个, 如"探索"). */
     val defaultFocus: Boolean = false,
+    /**
+     * true = 本条目对应当前显示的页面: 焦点进入侧边栏 (按左/菜单键) 优先落到它上,
+     * 用户不用再从固定落点挪到当前页条目. 条目内不画"当前页"高亮 (与聚焦高亮会互相误导).
+     */
+    val selected: Boolean = false,
     val focusRequester: FocusRequester? = null,
     /** true 时点击后不清焦点 (就地开弹窗的条目需要留住焦点). */
     val keepFocusOnClick: Boolean = false,
@@ -125,8 +131,10 @@ fun TvNavigationSideRail(
             )
         }
         // 进入门控 (统一焦点框架的组件级重载): 只有"按左"或编程式聚焦 (全局菜单键) 能进,
-        // 上/下/右的空间搜索一律取消; 进入时焦点总是落到 defaultFocus 条目.
+        // 上/下/右的空间搜索一律取消; 进入落点 = selected (当前页) 条目, 回退 defaultFocus
         val enterFocusResolved = enterFocus ?: remember { FocusRequester() }
+        val entryIndex = items.indexOfFirst { it.selected }.takeIf { it >= 0 }
+            ?: items.indexOfFirst { it.defaultFocus }
         Column(
             Modifier
                 .onFocusChanged { expanded = it.hasFocus }
@@ -139,13 +147,13 @@ fun TvNavigationSideRail(
             } else {
                 Box(Modifier.size(TV_RAIL_ITEM_SIZE))
             }
-            for (item in items) {
+            for ((index, item) in items.withIndex()) {
                 TvRailIconItem(
                     icon = item.icon,
                     label = item.label,
                     expanded = expanded,
                     onExitFocus = onExitFocus,
-                    focusRequester = if (item.defaultFocus) enterFocusResolved else item.focusRequester,
+                    focusRequester = if (index == entryIndex) enterFocusResolved else item.focusRequester,
                     keepFocusOnClick = item.keepFocusOnClick,
                     onClick = item.onClick,
                 )
