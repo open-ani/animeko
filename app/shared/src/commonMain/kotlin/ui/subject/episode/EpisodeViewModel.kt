@@ -374,7 +374,7 @@ class EpisodeViewModel(
     )
 
     val cacheProgressInfoFlow = CacheProgressProvider(
-        player, backgroundScope,
+        player, fetchPlayState.playerSession.hlsCacheProgressInfoFlow, backgroundScope,
     ).cacheProgressInfoFlow
 
     /**

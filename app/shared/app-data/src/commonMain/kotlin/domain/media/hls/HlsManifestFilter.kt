@@ -131,7 +131,7 @@ object HlsManifestFilter {
             val short = group.count <= 12 || group.duration <= 45.0
 
             val paths = group.segments.joinToString(" ") { segmentPath(it.uri).lowercase() }
-            val strongPath = listOf("adjump", "/ad/", "/ads/", "advert").any { it in paths }
+            val strongPath = listOf("adjump", "/ad/", "/ads/", "/ad-account/", "advert").any { it in paths }
             if (strongPath) {
                 reasons += HlsCandidateReason.StrongPath
             }

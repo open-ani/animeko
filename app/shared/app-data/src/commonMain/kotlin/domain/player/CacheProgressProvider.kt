@@ -10,9 +10,9 @@
 package me.him188.ani.app.domain.player
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.shareIn
 import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.domain.media.player.TorrentMediaCacheProgressProvider
@@ -21,13 +21,14 @@ import org.openani.mediamp.MediampPlayer
 
 class CacheProgressProvider(
     playerState: MediampPlayer,
+    hlsCacheProgressInfoFlow: Flow<MediaCacheProgressInfo>,
     flowScope: CoroutineScope,
 ) {
     val cacheProgressInfoFlow = playerState.mediaData
         .flatMapLatest { data ->
             when (data) {
                 is TorrentMediaData -> TorrentMediaCacheProgressProvider(data.pieces).flow
-                else -> flowOf(MediaCacheProgressInfo.Empty)
+                else -> hlsCacheProgressInfoFlow
             }
         }.shareIn(
             flowScope,

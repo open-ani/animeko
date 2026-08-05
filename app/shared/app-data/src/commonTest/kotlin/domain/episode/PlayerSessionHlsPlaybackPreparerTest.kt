@@ -12,14 +12,18 @@ package me.him188.ani.app.domain.episode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.media.TestMediaList
 import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
+import me.him188.ani.app.domain.media.hls.HlsPlaybackPrepareOptions
 import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparerResult
 import me.him188.ani.app.domain.media.hls.HlsPlaybackProxySession
+import me.him188.ani.app.domain.media.player.ChunkState
+import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.domain.media.player.data.MediaDataProvider
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
 import me.him188.ani.app.domain.media.resolver.MediaResolver
@@ -73,6 +77,22 @@ class PlayerSessionHlsPlaybackPreparerTest {
     }
 
     @Test
+    fun `prepares uri media data when pause prefetch is enabled`() = runTest {
+        val preparer = RecordingHlsPlaybackPreparer()
+        val playerSession = createPlayerSession(
+            hlsEnabled = false,
+            pausePrefetchEnabled = true,
+            preparer = preparer,
+        )
+
+        playerSession.loadMedia(TestMediaList.first(), episode)
+
+        assertEquals(1, preparer.prepareCount)
+        assertTrue(preparer.options.single().enablePausePrefetch)
+        assertFalse(preparer.options.single().enableSegmentFiltering)
+    }
+
+    @Test
     fun `closes prepared proxy session on next load and player session close`() = runTest {
         val preparer = RecordingHlsPlaybackPreparer()
         val playerSession = createPlayerSession(
@@ -110,8 +130,28 @@ class PlayerSessionHlsPlaybackPreparerTest {
         assertTrue(session.closed)
     }
 
+    @Test
+    fun `forwards HLS cache progress to the player UI`() = runTest {
+        val preparer = RecordingHlsPlaybackPreparer()
+        val playerSession = createPlayerSession(
+            hlsEnabled = false,
+            pausePrefetchEnabled = true,
+            preparer = preparer,
+        )
+
+        playerSession.loadMedia(TestMediaList.first(), episode)
+        val expected = MediaCacheProgressInfo(
+            chunkWeights = androidx.collection.floatListOf(1f),
+            chunkStates = listOf(ChunkState.DONE),
+        )
+        preparer.sessions.single().cacheProgress.value = expected
+
+        assertEquals(expected, playerSession.hlsCacheProgressInfoFlow.first { it == expected })
+    }
+
     private fun TestScope.createPlayerSession(
         hlsEnabled: Boolean,
+        pausePrefetchEnabled: Boolean = false,
         preparer: HlsPlaybackPreparer,
     ): PlayerSession {
         val koin = Koin()
@@ -131,6 +171,7 @@ class PlayerSessionHlsPlaybackPreparerTest {
                             flowOf(
                                 VideoScaffoldConfig.AllDisabled.copy(
                                     enableExperimentalHlsSegmentFiltering = hlsEnabled,
+                                    enablePauseHlsPrefetch = pausePrefetchEnabled,
                                 ),
                             )
                         }
@@ -140,7 +181,7 @@ class PlayerSessionHlsPlaybackPreparerTest {
             ),
         )
         val player = TestMediampPlayer(StandardTestDispatcher(testScheduler))
-        return PlayerSession(player, koin, mainDispatcher = EmptyCoroutineContext)
+        return PlayerSession(player, koin, this, mainDispatcher = EmptyCoroutineContext)
     }
 
     private class StaticMediaResolver(
@@ -161,11 +202,13 @@ class PlayerSessionHlsPlaybackPreparerTest {
 
     private class RecordingHlsPlaybackPreparer : HlsPlaybackPreparer {
         val sessions = mutableListOf<RecordingHlsPlaybackProxySession>()
+        val options = mutableListOf<HlsPlaybackPrepareOptions>()
         var prepareCount: Int = 0
             private set
 
-        override suspend fun prepare(data: UriMediaData): HlsPlaybackPreparerResult {
+        override suspend fun prepare(data: UriMediaData, options: HlsPlaybackPrepareOptions): HlsPlaybackPreparerResult {
             prepareCount++
+            this.options += options
             val session = RecordingHlsPlaybackProxySession()
             sessions += session
             return HlsPlaybackPreparerResult(
@@ -180,6 +223,8 @@ class PlayerSessionHlsPlaybackPreparerTest {
     }
 
     private class RecordingHlsPlaybackProxySession : HlsPlaybackProxySession {
+        val cacheProgress = MutableStateFlow(MediaCacheProgressInfo.Empty)
+        override val cacheProgressInfoFlow = cacheProgress
         var closed: Boolean = false
             private set
 
