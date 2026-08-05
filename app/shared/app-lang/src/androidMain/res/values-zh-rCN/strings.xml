@@ -733,6 +733,25 @@
     <string name="video_player_audio_track">音轨</string>
     <string name="video_player_off">关闭</string>
     <string name="video_player_subtitle">字幕</string>
+    <string name="video_player_subtitle_track_unnamed">轨道 %1$d</string>
+    <string name="video_player_subtitle_track_indexed">%1$s %2$d</string>
+    <string name="video_player_subtitle_track_language_with_note">%1$s（%2$s）</string>
+    <string name="video_player_subtitle_language_chinese">中文</string>
+    <string name="video_player_subtitle_language_chinese_simplified">简体中文</string>
+    <string name="video_player_subtitle_language_chinese_traditional">繁体中文</string>
+    <string name="video_player_subtitle_language_cantonese">粤语</string>
+    <string name="video_player_subtitle_language_japanese">日语</string>
+    <string name="video_player_subtitle_language_english">英语</string>
+    <string name="video_player_subtitle_language_korean">韩语</string>
+    <string name="video_player_subtitle_language_russian">俄语</string>
+    <string name="video_player_subtitle_language_french">法语</string>
+    <string name="video_player_subtitle_language_german">德语</string>
+    <string name="video_player_subtitle_language_spanish">西班牙语</string>
+    <string name="video_player_subtitle_language_portuguese">葡萄牙语</string>
+    <string name="video_player_subtitle_language_italian">意大利语</string>
+    <string name="video_player_subtitle_language_thai">泰语</string>
+    <string name="video_player_subtitle_language_vietnamese">越南语</string>
+    <string name="video_player_subtitle_language_arabic">阿拉伯语</string>
     <string name="video_player_disable_danmaku">禁用弹幕</string>
     <string name="video_player_enable_danmaku">启用弹幕</string>
     <string name="video_player_mute">静音</string>
@@ -1291,6 +1310,7 @@
     <string name="subject_episode_danmaku_service_baha_short">巴</string>
     <string name="subject_episode_now_playing">正在播放</string>
     <string name="subject_episode_danmaku_settings_title">弹幕设置</string>
+    <string name="subject_episode_player_settings_title">播放设置</string>
     <string name="subject_episode_fast_forward_seconds">快进 %1$d 秒</string>
     <string name="subject_episode_collapse_sidebar">折叠侧边栏</string>
     <string name="subject_episode_expand_sidebar">展开侧边栏</string>
@@ -1327,6 +1347,14 @@
     <string name="subject_episode_video_settings_enable_regex_filter">启用正则弹幕过滤器</string>
     <string name="subject_episode_video_settings_manage_regex_filter">管理正则弹幕过滤器</string>
     <string name="subject_episode_video_settings_debug_mode">弹幕调试模式</string>
+    <string name="subject_episode_video_settings_subtitle">字幕</string>
+    <string name="subject_episode_video_settings_subtitle_reset">重置</string>
+    <string name="subject_episode_video_settings_subtitle_delay">延迟</string>
+    <string name="subject_episode_video_settings_subtitle_delay_decrease">字幕提前</string>
+    <string name="subject_episode_video_settings_subtitle_delay_increase">字幕延后</string>
+    <string name="subject_episode_video_settings_subtitle_font_scale">字号</string>
+    <string name="subject_episode_video_settings_subtitle_position">位置</string>
+    <string name="subject_episode_video_settings_subtitle_position_description">带有自带定位的字幕不受位置调整影响</string>
 
     <!-- 人物/角色详情页 -->
     <string name="person_details_basic_info">基本信息</string>

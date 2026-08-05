@@ -12,17 +12,24 @@ package me.him188.ani.app.ui.subject.episode.video.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.ElevatedFilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
@@ -31,8 +38,10 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.danmaku.DanmakuFilterConfig
@@ -67,20 +76,31 @@ import me.him188.ani.app.ui.lang.subject_episode_video_settings_opacity
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_speed
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_speed_description
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_stroke_width
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_subtitle
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_subtitle_delay
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_subtitle_delay_decrease
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_subtitle_delay_increase
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_subtitle_font_scale
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_subtitle_position
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_subtitle_position_description
+import me.him188.ani.app.ui.lang.subject_episode_video_settings_subtitle_reset
 import me.him188.ani.app.ui.lang.subject_episode_video_settings_top
 import me.him188.ani.app.ui.settings.SettingsTab
 import me.him188.ani.app.ui.settings.framework.AbstractSettingsViewModel
 import me.him188.ani.app.ui.settings.framework.SettingsState
 import me.him188.ani.app.ui.settings.framework.components.SettingsDefaults
+import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.framework.components.SliderItem
 import me.him188.ani.app.ui.settings.framework.components.SwitchItem
 import me.him188.ani.app.ui.settings.framework.components.TextItem
+import me.him188.ani.app.videoplayer.ui.SubtitleAdjustmentState
 import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuStyle
 import me.him188.ani.utils.platform.isDesktop
 import org.jetbrains.compose.resources.stringResource
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 @Stable
@@ -123,6 +143,7 @@ fun EpisodeVideoSettings(
     vm: EpisodeVideoSettingsViewModel,
     onNavigateToFilterSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    subtitleAdjustmentState: SubtitleAdjustmentState? = null,
 ) {
     return EpisodeVideoSettings(
         danmakuConfig = vm.danmakuConfig,
@@ -133,6 +154,7 @@ fun EpisodeVideoSettings(
         onManageRegexFilters = onNavigateToFilterSettings,
         enableRegexFilter = vm.danmakuFilterConfig.enableRegexFilter,
         switchDanmakuRegexFilterCompletely = vm::switchDanmakuRegexFilterCompletely,
+        subtitleAdjustmentState = subtitleAdjustmentState,
     )
 }
 
@@ -144,7 +166,8 @@ fun EpisodeVideoSettings(
     onManageRegexFilters: () -> Unit,
     switchDanmakuRegexFilterCompletely: () -> Unit,
     modifier: Modifier = Modifier,
-    useThinSlider: Boolean = true
+    useThinSlider: Boolean = true,
+    subtitleAdjustmentState: SubtitleAdjustmentState? = null,
 ) {
     val topText = stringResource(Lang.subject_episode_video_settings_top)
     val floatingText = stringResource(Lang.subject_episode_video_settings_floating)
@@ -385,6 +408,10 @@ fun EpisodeVideoSettings(
                 Text(manageRegexFilterText)
             }
 
+            subtitleAdjustmentState?.let {
+                SubtitleAdjustmentGroup(it, useThinSlider)
+            }
+
             val debugViewModel = rememberDebugSettingsViewModel()
             if (debugViewModel.isAppInDebugMode) {
 
@@ -407,6 +434,102 @@ fun EpisodeVideoSettings(
             }
         }
     }
+}
+
+/**
+ * 字幕调整. 仅在播放器后端支持 [SubtitleAdjustment][org.openani.mediamp.features.SubtitleAdjustment] 时显示,
+ * 每一项还要单独看后端是否支持.
+ */
+@Composable
+private fun SettingsScope.SubtitleAdjustmentGroup(
+    state: SubtitleAdjustmentState,
+    useThinSlider: Boolean,
+) {
+    Group(
+        title = { Text(stringResource(Lang.subject_episode_video_settings_subtitle)) },
+        actions = {
+            TextButton(onClick = { state.reset() }) {
+                Text(stringResource(Lang.subject_episode_video_settings_subtitle_reset))
+            }
+        },
+    ) {
+        if (state.supportsDelay) {
+            val decreaseDelayText = stringResource(Lang.subject_episode_video_settings_subtitle_delay_decrease)
+            val increaseDelayText = stringResource(Lang.subject_episode_video_settings_subtitle_delay_increase)
+            TextItem(
+                title = { Text(stringResource(Lang.subject_episode_video_settings_subtitle_delay)) },
+                action = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = { state.decreaseDelay() },
+                            enabled = state.delayMillis > SubtitleAdjustmentState.DelayRange.first,
+                        ) {
+                            Icon(Icons.Rounded.Remove, contentDescription = decreaseDelayText)
+                        }
+                        Text(
+                            remember(state.delayMillis) { renderSubtitleDelay(state.delayMillis) },
+                            Modifier.widthIn(min = 56.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            textAlign = TextAlign.Center,
+                        )
+                        IconButton(
+                            onClick = { state.increaseDelay() },
+                            enabled = state.delayMillis < SubtitleAdjustmentState.DelayRange.last,
+                        ) {
+                            Icon(Icons.Rounded.Add, contentDescription = increaseDelayText)
+                        }
+                    }
+                },
+            )
+        }
+
+        if (state.supportsFontScale) {
+            SliderItem(
+                value = state.fontScale,
+                // 拖动时即时应用, 与弹幕设置一致
+                onValueChange = { state.setFontScale(it) },
+                valueRange = SubtitleAdjustmentState.FontScaleRange,
+                title = { Text(stringResource(Lang.subject_episode_video_settings_subtitle_font_scale)) },
+                valueLabel = {
+                    Text(remember(state.fontScale) { "${renderOneDecimal(state.fontScale)}x" })
+                },
+                useThinSlider = useThinSlider,
+            )
+        }
+
+        if (state.supportsVerticalPosition) {
+            SliderItem(
+                value = state.verticalPosition,
+                onValueChange = { state.setVerticalPosition(it) },
+                valueRange = 0f..1f,
+                title = { Text(stringResource(Lang.subject_episode_video_settings_subtitle_position)) },
+                description = {
+                    Text(stringResource(Lang.subject_episode_video_settings_subtitle_position_description))
+                },
+                valueLabel = {
+                    Text(remember(state.verticalPosition) { "${(state.verticalPosition * 100).roundToInt()}%" })
+                },
+                useThinSlider = useThinSlider,
+            )
+        }
+    }
+}
+
+/** 例如 `+0.5s`, `-1.2s`, `0.0s`. [millis] 是 [SubtitleAdjustmentState.DelayStepMillis] 的整数倍. */
+private fun renderSubtitleDelay(millis: Long): String {
+    val abs = abs(millis)
+    val sign = when {
+        millis > 0 -> "+"
+        millis < 0 -> "-"
+        else -> ""
+    }
+    return "$sign${abs / 1000}.${abs % 1000 / 100}s"
+}
+
+/** `String.format` 在 common 里不可用. */
+private fun renderOneDecimal(value: Float): String {
+    val tenths = (value * 10).roundToInt()
+    return "${tenths / 10}.${tenths % 10}"
 }
 
 @Preview

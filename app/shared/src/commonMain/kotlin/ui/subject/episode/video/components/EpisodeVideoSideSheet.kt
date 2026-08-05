@@ -32,7 +32,7 @@ import kotlinx.serialization.Serializable
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBarPadding
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.subject_episode_close
-import me.him188.ani.app.ui.lang.subject_episode_danmaku_settings_title
+import me.him188.ani.app.ui.lang.subject_episode_player_settings_title
 import me.him188.ani.app.ui.settings.danmaku.DanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.EpisodeVideoDefaults
 import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettings
@@ -40,6 +40,7 @@ import me.him188.ani.app.ui.subject.episode.video.settings.EpisodeVideoSettingsV
 import me.him188.ani.app.ui.subject.episode.video.settings.SideSheetLayout
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSettings
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.SubtitleAdjustmentState
 import me.him188.ani.app.videoplayer.ui.VideoSideSheetScope
 import me.him188.ani.app.videoplayer.ui.VideoSideSheets
 import me.him188.ani.app.videoplayer.ui.VideoSideSheetsController
@@ -109,16 +110,17 @@ object EpisodeVideoSideSheets {
         expanded: Boolean,
         state: DanmakuRegexFilterState,
         onDismissRequest: () -> Unit,
-        onNavigateToFilterSettings: () -> Unit
+        onNavigateToFilterSettings: () -> Unit,
+        subtitleAdjustmentState: SubtitleAdjustmentState? = null,
     ) {
-        val danmakuSettingsText = stringResource(Lang.subject_episode_danmaku_settings_title)
+        val playerSettingsText = stringResource(Lang.subject_episode_player_settings_title)
         val closeText = stringResource(Lang.subject_episode_close)
 
         // 全屏：直接展示主设置 SideSheet
         if (expanded) {
             val viewModel = remember { EpisodeVideoSettingsViewModel() }
             SideSheetLayout(
-                title = { Text(danmakuSettingsText) },
+                title = { Text(playerSettingsText) },
                 onDismissRequest = onDismissRequest,
                 modifier = Modifier,
                 closeButton = {
@@ -127,7 +129,11 @@ object EpisodeVideoSideSheets {
                     }
                 },
             ) {
-                EpisodeVideoSettings(viewModel, onNavigateToFilterSettings)
+                EpisodeVideoSettings(
+                    viewModel,
+                    onNavigateToFilterSettings,
+                    subtitleAdjustmentState = subtitleAdjustmentState,
+                )
             }
             return
         }
@@ -152,6 +158,7 @@ object EpisodeVideoSideSheets {
                         EpisodeVideoSettings(
                             viewModel,
                             onNavigateToFilterSettings = { currentPage = DanmakuSettingsPage.REGEX_FILTER },
+                            subtitleAdjustmentState = subtitleAdjustmentState,
                         )
                     }
 
@@ -181,12 +188,13 @@ fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
 
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    subtitleAdjustmentState: SubtitleAdjustmentState? = null,
 ) {
-    val danmakuSettingsText = stringResource(Lang.subject_episode_danmaku_settings_title)
+    val playerSettingsText = stringResource(Lang.subject_episode_player_settings_title)
     val closeText = stringResource(Lang.subject_episode_close)
 
     SideSheetLayout(
-        title = { Text(text = danmakuSettingsText) },
+        title = { Text(text = playerSettingsText) },
         onDismissRequest = onDismissRequest,
         modifier,
         closeButton = {
@@ -201,6 +209,7 @@ fun EpisodeVideoSideSheets.DanmakuSettingsSheet(
             enableRegexFilter,
             onNavigateToFilterSettings,
             switchDanmakuRegexFilterCompletely,
+            subtitleAdjustmentState = subtitleAdjustmentState,
         )
     }
 }

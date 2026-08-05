@@ -33,6 +33,7 @@ import me.him188.ani.app.data.models.preference.OneshotActionConfig
 import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.models.preference.ProfileSettings
 import me.him188.ani.app.data.models.preference.ProxySettings
+import me.him188.ani.app.data.models.preference.SubtitleTrackPreference
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.models.preference.TorrentPeerConfig
 import me.him188.ani.app.data.models.preference.UISettings
@@ -74,6 +75,11 @@ interface SettingsRepository {
     val themeSettings: Settings<ThemeSettings>
     val updateSettings: Settings<UpdateSettings>
     val videoScaffoldConfig: Settings<VideoScaffoldConfig>
+
+    /**
+     * 用户上次手动选择的内嵌字幕轨道, 用于播放新视频时自动选择
+     */
+    val subtitleTrackPreference: Settings<SubtitleTrackPreference>
 
     val videoResolverSettings: Settings<VideoResolverSettings>
     val anitorrentConfig: Settings<AnitorrentConfig>
@@ -216,6 +222,11 @@ class PreferencesRepositoryImpl(
         "videoScaffoldConfig",
         VideoScaffoldConfig.serializer(),
         default = { VideoScaffoldConfig.Default },
+    )
+    override val subtitleTrackPreference: Settings<SubtitleTrackPreference> = SerializablePreference(
+        "subtitleTrackPreference",
+        SubtitleTrackPreference.serializer(),
+        default = { SubtitleTrackPreference.Default },
     )
     override val videoResolverSettings: Settings<VideoResolverSettings> = SerializablePreference(
         "videoResolverSettings",

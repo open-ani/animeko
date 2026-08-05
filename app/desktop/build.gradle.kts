@@ -44,7 +44,12 @@ dependencies {
         else -> throw UnsupportedOperationException("Unknown os: $triple")
     }
 
-    if (getLocalProperty("ani.build.mediamp.path") != null) {
+    // Composite build 默认在本地构建 mpv natives (需要 MSYS2 等工具链). 若本地 mediamp 的
+    // native 层与已发布版本一致 (只改了 Kotlin 层), 可设 ani.build.mediamp.runtime=maven
+    // 继续使用 Maven 上的预构建 runtime, 免去本地 native 构建.
+    if (getLocalProperty("ani.build.mediamp.path") != null &&
+        getLocalProperty("ani.build.mediamp.runtime") != "maven"
+    ) {
         runtimeOnly(libs.mediamp.mpv) {
             capabilities {
                 requireCapability("org.openani.mediamp:mediamp-mpv-runtime-${getOsTriple()}")
