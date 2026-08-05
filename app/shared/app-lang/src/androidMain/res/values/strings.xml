@@ -60,6 +60,8 @@
     <string name="settings_pikpak_queue_title">Cache slots</string>
     <string name="settings_pikpak_queue_description">How many recent sources to keep in PikPak\'s working folder before evicting the oldest. Higher makes re-plays instant at the cost of drive space. Drag past 13 for no eviction at all.</string>
     <string name="settings_pikpak_queue_unlimited">Unlimited</string>
+    <string name="settings_pikpak_download_concurrency_title">Download concurrency</string>
+    <string name="settings_pikpak_download_concurrency_description">Number of parallel connections used when caching files from PikPak. Higher values may improve download speed but increase the chance of temporary server errors.</string>
     <string name="settings_pikpak_test_connection">Test connection</string>
     <string name="settings_pikpak_recommend_title">Align media selector?</string>
     <string name="settings_pikpak_recommend_message">PikPak only handles BitTorrent sources. Set "Preferred source type" to BT so the default selector routes through PikPak.</string>

@@ -163,6 +163,8 @@ fun getAndroidModules(
 
     single<HttpMediaCacheEngine> {
         val logger = logger<TorrentManager>()
+        val pikpakConfig = get<SettingsRepository>().pikpakConfig.flow
+            .stateIn(coroutineScope, SharingStarted.Eagerly, PikPakConfig.Default)
 
         val saveDir = get<MediaSaveDirProvider>().saveDir
             .let { Path(it).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR) }
@@ -174,6 +176,7 @@ fun getAndroidModules(
             downloader = get<HttpDownloader>(),
             saveDir = saveDir,
             mediaResolver = get<MediaResolver>(),
+            pikpakConfig = { pikpakConfig.value },
         )
     }
 
