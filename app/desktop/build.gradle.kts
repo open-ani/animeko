@@ -62,6 +62,8 @@ dependencies {
 
     // vlcj 依赖里没有 native libraries，依赖是手动放的
     implementation(libs.vlcj)
+
+    testImplementation(kotlin("test"))
 }
 
 // workaround for compose limitation
