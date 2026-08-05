@@ -217,7 +217,8 @@ compose.desktop {
         if (getLocalProperty("ani.desktop.proguard")?.toBooleanStrict() != false) {
             buildTypes.release.proguard {
                 isEnabled.set(true)
-                version = "7.8.0"
+                // 7.9.1 起 (proguard-core 9.3.2 + kotlin-metadata-jvm 2.3.0) 才能读 Kotlin 2.4 metadata.
+                version = "7.9.1"
                 optimize.set(true)
                 obfuscate.set(false)
                 this.configurationFiles.from(project(":app:shared").sharedAndroidProguardRules())
