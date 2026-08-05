@@ -12,6 +12,7 @@ package me.him188.ani.app.domain.media.selector
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -253,6 +254,153 @@ class MediaSelectorAutoSelectUseCaseTest {
         assertSelectedSource(sources.web1)
         job.assertCompleted()
     }
+
+    @Test
+    fun `fallback waits for cached candidate flows to receive completed results`() =
+        runFetchMediaSelectorTestSuite(cachingEnabled = true) {
+            initSubject()
+            preferenceApi.savedUserPreference.value = MediaPreference.Any
+            preferenceApi.mediaSelectorSettings.value = autoSelectSettings(fastSelectWebKind = false)
+
+            val (_, session, sources) = configureFetchSession {
+                object {
+                    val web1 by web()
+                }
+            }
+
+            testScope().backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                selector.preferredCandidates.collect()
+            }
+            testScope().runCurrent()
+
+            val job = launchAutoSelect(session)
+            sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName))
+            testScope().runCurrent()
+
+            assertSelectedSource(sources.web1)
+            job.assertCompleted()
+        }
+
+    @Test
+    fun `fallback recomputes preferences after cached preferred candidates stop with stale replay`() =
+        runFetchMediaSelectorTestSuite(cachingEnabled = true) {
+            initSubject()
+            preferenceApi.savedUserPreference.value = MediaPreference.Any
+            preferenceApi.mediaSelectorSettings.value = autoSelectSettings(fastSelectWebKind = false)
+
+            val (_, session, sources) = configureFetchSession {
+                object {
+                    val web1 by web()
+                }
+            }
+
+            val preferredCollector = testScope().backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                selector.preferredCandidates.collect()
+            }
+            testScope().runCurrent()
+            preferredCollector.cancel()
+            testScope().runCurrent()
+            testScope().advanceTimeBy(6.seconds)
+            testScope().runCurrent()
+
+            testScope().backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                selector.filteredCandidates.collect()
+            }
+            testScope().runCurrent()
+
+            val job = launchAutoSelect(session)
+            sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName))
+            testScope().runCurrent()
+
+            assertSelectedSource(sources.web1)
+            job.assertCompleted()
+        }
+
+    @Test
+    fun `fallback keeps preferred kind after cached candidate propagation`() =
+        runFetchMediaSelectorTestSuite(cachingEnabled = true) {
+            initSubject()
+            preferenceApi.savedUserPreference.value = MediaPreference.Any
+            preferenceApi.mediaSelectorSettings.value = autoSelectSettings(
+                preferKind = BitTorrent,
+                fastSelectWebKind = false,
+            )
+
+            val (_, session, sources) = configureFetchSession {
+                object {
+                    val bt1 by bt()
+                    val web1 by web()
+                }
+            }
+
+            testScope().backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                selector.preferredCandidates.collect()
+            }
+            testScope().runCurrent()
+
+            val job = launchAutoSelect(session)
+            sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName))
+            sources.bt1.complete(media(kind = BitTorrent, subjectName = initApi.subjectName))
+            testScope().runCurrent()
+
+            assertSelectedSource(sources.bt1)
+            job.assertCompleted()
+        }
+
+    @Test
+    fun `fallback completes when propagated candidates are excluded`() =
+        runFetchMediaSelectorTestSuite(cachingEnabled = true) {
+            initSubject()
+            preferenceApi.savedUserPreference.value = MediaPreference.Any
+            preferenceApi.mediaSelectorSettings.value = autoSelectSettings(fastSelectWebKind = false)
+
+            val (_, session, sources) = configureFetchSession {
+                object {
+                    val web1 by web()
+                }
+            }
+
+            testScope().backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                selector.preferredCandidates.collect()
+            }
+            testScope().runCurrent()
+
+            val job = launchAutoSelect(session)
+            sources.web1.complete(media(kind = WEB, subjectName = "unrelated subject"))
+            testScope().runCurrent()
+
+            assertNull(selector.selected.value)
+            job.assertCompleted()
+        }
+
+    @Test
+    fun `fallback preserves manual selection while cached candidates are pending`() =
+        runFetchMediaSelectorTestSuite(cachingEnabled = true) {
+            initSubject()
+            preferenceApi.savedUserPreference.value = MediaPreference.Any
+            preferenceApi.mediaSelectorSettings.value = autoSelectSettings(fastSelectWebKind = false)
+
+            val (_, session, sources) = configureFetchSession {
+                object {
+                    val web1 by web()
+                }
+            }
+
+            testScope().backgroundScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                selector.preferredCandidates.collect()
+            }
+            testScope().runCurrent()
+
+            val manuallySelected = media(kind = WEB, subjectName = initApi.subjectName)
+            selector.select(manuallySelected)
+
+            val job = launchAutoSelect(session)
+            sources.web1.complete(media(kind = WEB, subjectName = initApi.subjectName))
+            testScope().runCurrent()
+
+            assertEquals(manuallySelected.mediaId, selector.selected.value?.mediaId)
+            job.assertCompleted()
+        }
 
     @Test
     fun `fast select is skipped when preferred kind is not web`() = runFetchMediaSelectorTestSuite {
