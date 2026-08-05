@@ -24,6 +24,7 @@ import io.ktor.http.content.OutgoingContent
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -114,7 +115,7 @@ class JellyfinMediaSourceAuthenticationTest {
                     else -> error("Unexpected request: ${request.url}")
                 }
             },
-            instanceId = "source-instance",
+            mediaSourceId = "source-instance",
         )
 
         assertEquals(ConnectionStatus.SUCCESS, source.checkConnection())
@@ -344,6 +345,7 @@ class JellyfinMediaSourceAuthenticationTest {
             client = mockClient { request ->
                 assertEquals("/Items", request.url.encodedPath)
                 itemsCount++
+                assertEquals("MediaStreams,Chapters", request.url.parameters["fields"])
                 assertEquals("emby-user-id", request.url.parameters["userId"])
                 assertEquals(
                     """MediaBrowser Token="emby-api-key"""",
@@ -358,7 +360,7 @@ class JellyfinMediaSourceAuthenticationTest {
     }
 
     @Test
-    fun `fetch creates a playable download url from the session token`() = runTest {
+    fun `fetch uses the login session for downloads and trickplay thumbnails`() = runTest {
         var loginCount = 0
         val source = JellyfinMediaSource(
             config = passwordConfig(),
@@ -376,8 +378,10 @@ class JellyfinMediaSourceAuthenticationTest {
                         )
                     }
 
-                    "/Items" -> respondJson(
-                        """
+                    "/Items" -> {
+                        assertEquals("MediaStreams,Chapters,Trickplay", request.url.parameters["fields"])
+                        respondJson(
+                            """
                         {
                           "Items": [
                             {
@@ -385,12 +389,25 @@ class JellyfinMediaSourceAuthenticationTest {
                               "SeriesName": "Test Anime",
                               "Id": "episode-1",
                               "IndexNumber": 1,
-                              "Type": "Episode"
+                              "Type": "Episode",
+                              "Trickplay": {
+                                "episode-1": {
+                                  "320": {
+                                    "Width": 320,
+                                    "Height": 180,
+                                    "TileWidth": 10,
+                                    "TileHeight": 10,
+                                    "ThumbnailCount": 100,
+                                    "Interval": 10000
+                                  }
+                                }
+                              }
                             }
                           ]
                         }
-                        """.trimIndent(),
-                    )
+                            """.trimIndent(),
+                        )
+                    }
 
                     else -> error("Unexpected request: ${request.url}")
                 }
@@ -406,7 +423,126 @@ class JellyfinMediaSourceAuthenticationTest {
             "$TEST_BASE_URL/Items/episode-1/Download?ApiKey=playback-session-token",
             download.uri,
         )
+        val previewThumbnails = assertNotNull(media.extraFiles.previewThumbnails)
+        assertEquals(JellyfinMediaSource.ID, previewThumbnails.requesterMediaSourceId)
+        assertEquals(emptyMap(), previewThumbnails.headers)
         assertEquals(1, loginCount)
+    }
+
+    @Test
+    fun `trickplay request reauthenticates once after an unauthorized response`() = runTest {
+        var loginCount = 0
+        var trickplayCount = 0
+        val source = JellyfinMediaSource(
+            config = passwordConfig(),
+            client = mockClient { request ->
+                when (request.url.encodedPath) {
+                    "/Users/AuthenticateByName" -> {
+                        loginCount++
+                        respondJson(
+                            """
+                            {
+                              "AccessToken": "session-token-$loginCount",
+                              "User": { "Id": "session-user-id" }
+                            }
+                            """.trimIndent(),
+                        )
+                    }
+
+                    "/Videos/episode-1/Trickplay/320/0.jpg" -> {
+                        trickplayCount++
+                        assertEquals("session-user-id", request.url.parameters["userId"])
+                        assertTrue(
+                            request.headers[HttpHeaders.Authorization]
+                                .orEmpty()
+                                .contains("""Token="session-token-$trickplayCount""""),
+                        )
+                        if (trickplayCount == 1) {
+                            respondJson("""{"error":"invalid token"}""", HttpStatusCode.Unauthorized)
+                        } else {
+                            respond("thumbnail")
+                        }
+                    }
+
+                    else -> error("Unexpected request: ${request.url}")
+                }
+            },
+        )
+
+        val bytes = source.fetchPreviewThumbnail(
+            "$TEST_BASE_URL/Videos/episode-1/Trickplay/320/0.jpg?MediaSourceId=episode-1",
+        )
+
+        assertEquals("thumbnail", bytes.decodeToString())
+        assertEquals(2, loginCount)
+        assertEquals(2, trickplayCount)
+    }
+
+    @Test
+    fun `concurrent trickplay requests share one session refresh`() = runTest {
+        val requestCount = 4
+        var loginCount = 0
+        var firstWaveCount = 0
+        var trickplayCount = 0
+        val firstWaveReady = CompletableDeferred<Unit>()
+        val source = JellyfinMediaSource(
+            config = passwordConfig(),
+            client = mockClient { request ->
+                when (request.url.encodedPath) {
+                    "/Users/AuthenticateByName" -> {
+                        loginCount++
+                        respondJson(
+                            """{"AccessToken":"session-token-$loginCount","User":{"Id":"session-user-id"}}""",
+                        )
+                    }
+
+                    else -> {
+                        check(request.url.encodedPath.startsWith("/Videos/episode-1/Trickplay/320/"))
+                        trickplayCount++
+                        val authorization = request.headers[HttpHeaders.Authorization].orEmpty()
+                        if ("""Token="session-token-1"""" in authorization) {
+                            firstWaveCount++
+                            if (firstWaveCount == requestCount) firstWaveReady.complete(Unit)
+                            firstWaveReady.await()
+                            respondJson("""{"error":"invalid token"}""", HttpStatusCode.Unauthorized)
+                        } else {
+                            assertTrue("""Token="session-token-2"""" in authorization)
+                            respond("thumbnail")
+                        }
+                    }
+                }
+            },
+        )
+
+        coroutineScope {
+            List(requestCount) { tileIndex ->
+                async {
+                    source.fetchPreviewThumbnail(
+                        "$TEST_BASE_URL/Videos/episode-1/Trickplay/320/$tileIndex.jpg?MediaSourceId=episode-1",
+                    )
+                }
+            }.awaitAll()
+        }
+
+        assertEquals(2, loginCount)
+        assertEquals(requestCount * 2, trickplayCount)
+    }
+
+    @Test
+    fun `factories preserve unique media source ids`() {
+        val client = mockClient { error("No request expected") }
+        assertEquals(
+            "jellyfin-instance",
+            JellyfinMediaSource.Factory()
+                .create("jellyfin-instance", passwordConfig(), client)
+                .mediaSourceId,
+        )
+        assertEquals(
+            "emby-instance",
+            EmbyMediaSource.Factory()
+                .create("emby-instance", MediaSourceConfig.Default, client)
+                .mediaSourceId,
+        )
     }
 
     @Test
@@ -431,9 +567,9 @@ class JellyfinMediaSourceAuthenticationTest {
         }
     }
 
-    private fun passwordConfig() = MediaSourceConfig(
+    private fun passwordConfig(baseUrl: String = TEST_BASE_URL) = MediaSourceConfig(
         arguments = mapOf(
-            "baseUrl" to TEST_BASE_URL,
+            "baseUrl" to baseUrl,
             "authMode" to JellyfinMediaSource.AUTH_MODE_USERNAME_PASSWORD,
             "username" to "test-user",
             "password" to "test-password",

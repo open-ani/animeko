@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.mapLatest
 import me.him188.ani.app.domain.media.selector.MediaSelectorSourceTiers
+import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
+import me.him188.ani.app.domain.mediasource.instance.createTestMediaSourceInstance
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.matcher.MediaSourceWebVideoMatcherLoader
 import me.him188.ani.datasources.api.source.FactoryId
@@ -22,7 +24,11 @@ import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSource
 import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.datasources.api.source.MediaSourceFactory
+import me.him188.ani.datasources.api.source.TestHttpMediaSource
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertSame
 
 class MediaSourceManagerFetchSessionTest {
@@ -63,13 +69,47 @@ class MediaSourceManagerFetchSessionTest {
         assertSame(fetcher2, recreated.owner)
     }
 
+    @Test
+    fun `preview thumbnail request uses the current matching source`() = kotlinx.coroutines.test.runTest {
+        val manager = TestMediaSourceManager(TestMediaFetcher("fetcher"))
+        manager.allInstancesState.value = listOf(
+            createTestMediaSourceInstance(ThumbnailSource("source", byteArrayOf(1))),
+        )
+        assertContentEquals(
+            byteArrayOf(1),
+            manager.fetchPreviewThumbnail("source", "https://example.com/first"),
+        )
+
+        manager.allInstancesState.value = listOf(
+            createTestMediaSourceInstance(ThumbnailSource("source", byteArrayOf(2))),
+        )
+        assertContentEquals(
+            byteArrayOf(2),
+            manager.fetchPreviewThumbnail("source", "https://example.com/second"),
+        )
+    }
+
+    @Test
+    fun `preview thumbnail request handles missing and duplicate sources`() = kotlinx.coroutines.test.runTest {
+        val manager = TestMediaSourceManager(TestMediaFetcher("fetcher"))
+        assertNull(manager.fetchPreviewThumbnail("missing", "https://example.com/tile"))
+
+        manager.allInstancesState.value = listOf(
+            createTestMediaSourceInstance(ThumbnailSource("duplicate", byteArrayOf(1))),
+            createTestMediaSourceInstance(ThumbnailSource("duplicate", byteArrayOf(2))),
+        )
+        assertFailsWith<IllegalStateException> {
+            manager.fetchPreviewThumbnail("duplicate", "https://example.com/tile")
+        }
+    }
+
     private class TestMediaSourceManager(
         initialFetcher: MediaFetcher,
     ) : MediaSourceManager {
         val mediaFetcherState = MutableStateFlow(initialFetcher)
+        val allInstancesState = MutableStateFlow<List<MediaSourceInstance>>(emptyList())
 
-        override val allInstances: Flow<List<me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance>> =
-            flowOf(emptyList())
+        override val allInstances: Flow<List<MediaSourceInstance>> = allInstancesState
         override val allFactories: List<MediaSourceFactory> = emptyList()
         override val allFactoryIds: List<FactoryId> = emptyList()
         override val mediaFetcher: Flow<MediaFetcher> = mediaFetcherState
@@ -91,6 +131,13 @@ class MediaSourceManagerFetchSessionTest {
         override suspend fun setEnabled(instanceId: String, enabled: Boolean) = error("Not needed in test")
         override suspend fun removeInstance(instanceId: String) = error("Not needed in test")
         override fun mediaSourceTiersFlow(): Flow<MediaSelectorSourceTiers> = flowOf(MediaSelectorSourceTiers.Empty)
+    }
+
+    private class ThumbnailSource(
+        mediaSourceId: String,
+        private val response: ByteArray,
+    ) : TestHttpMediaSource(mediaSourceId) {
+        override suspend fun fetchPreviewThumbnail(url: String): ByteArray = response
     }
 
     private class TestMediaFetcher(

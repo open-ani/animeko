@@ -116,6 +116,13 @@ interface MediaSource : AutoCloseable {
      */
     suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch>
 
+    /**
+     * 下载由此数据源提供的进度预览缩略图资源.
+     *
+     * 数据源可覆写此方法以附加认证信息或刷新已过期的凭据.
+     */
+    suspend fun fetchPreviewThumbnail(url: String): ByteArray? = null
+
     override fun close() {}
 }
 

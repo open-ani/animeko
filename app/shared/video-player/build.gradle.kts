@@ -30,10 +30,13 @@ kotlin {
         api(libs.mediamp.api)
         api(libs.kotlinx.coroutines.core)
         api(projects.utils.coroutines)
+        api(projects.utils.ktorClient)
+        api(libs.ktor.client.core)
         api(projects.danmaku.danmakuApi)
     }
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)
+        implementation(libs.ktor.client.mock)
     }
     sourceSets.androidMain.dependencies {
         implementation(libs.compose.material3.adaptive.core)

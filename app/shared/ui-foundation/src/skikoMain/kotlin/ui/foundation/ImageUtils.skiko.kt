@@ -51,3 +51,39 @@ actual fun ImageBitmap.resize(
     // 获取缩放后图片的快照，并转换为 Compose 的 ImageBitmap
     return surface.makeImageSnapshot().toComposeImageBitmap()
 }
+
+actual fun ImageBitmap.crop(
+    x: Int,
+    y: Int,
+    width: Int,
+    height: Int,
+): ImageBitmap {
+    val skiaBitmap = this.asSkiaBitmap()
+
+    val imageInfo = ImageInfo.makeN32Premul(width, height)
+    val surface = Surface.makeRaster(imageInfo)
+    try {
+        val originalImage = SkiaImage.makeFromBitmap(skiaBitmap)
+        try {
+            val paint = Paint()
+            try {
+                val srcRect = Rect(x.toFloat(), y.toFloat(), (x + width).toFloat(), (y + height).toFloat())
+                val destRect = Rect(0f, 0f, width.toFloat(), height.toFloat())
+                surface.canvas.drawImageRect(originalImage, srcRect, destRect, paint)
+            } finally {
+                paint.close()
+            }
+        } finally {
+            originalImage.close()
+        }
+
+        val snapshot = surface.makeImageSnapshot()
+        try {
+            return snapshot.toComposeImageBitmap()
+        } finally {
+            snapshot.close()
+        }
+    } finally {
+        surface.close()
+    }
+}

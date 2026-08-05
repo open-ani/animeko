@@ -20,7 +20,17 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.ktor.client.call.body
+import io.ktor.client.request.header
+import io.ktor.client.request.prepareGet
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import me.him188.ani.app.ui.foundation.crop
+import me.him188.ani.app.ui.foundation.decodeImageBitmap
+import me.him188.ani.datasources.api.MediaPreviewThumbnails
+import me.him188.ani.utils.ktor.ScopedHttpClient
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.FramePreview
 import org.openani.mediamp.features.PreviewFrame
@@ -59,6 +69,7 @@ class MediaProgressFramePreviewState(
         private set
 
     private var frameGridKey = Long.MIN_VALUE
+    private var mediaGeneration = 0L
     private val cache = androidx.collection.LruCache<Long, ImageBitmap>(cacheSize)
 
     private fun gridKeyOf(positionMillis: Long): Long =
@@ -69,6 +80,7 @@ class MediaProgressFramePreviewState(
      * 缓存命中立即显示; 加载成功前保留上一帧, 避免闪烁.
      */
     internal suspend fun requestFrame(positionMillis: Long) {
+        val generation = mediaGeneration
         val key = gridKeyOf(positionMillis)
         if (key == frameGridKey && frame != null) return
         cache[key]?.let {
@@ -78,6 +90,7 @@ class MediaProgressFramePreviewState(
         }
         delay(debounceMillis) // debounce: 快速滑动时, 更新的位置会取消本次请求
         val newFrame = fetchFrame(alignToGrid(key, positionMillis)) ?: return
+        if (generation != mediaGeneration) return
         cache.put(key, newFrame)
         frame = newFrame
         frameGridKey = key
@@ -88,9 +101,11 @@ class MediaProgressFramePreviewState(
      * 用于播放开始时提前启动预览解码器.
      */
     suspend fun prewarm(positionMillis: Long) {
+        val generation = mediaGeneration
         val key = gridKeyOf(positionMillis)
         if (cache[key] != null) return
         val newFrame = fetchFrame(alignToGrid(key, positionMillis)) ?: return
+        if (generation != mediaGeneration) return
         cache.put(key, newFrame)
     }
 
@@ -109,6 +124,7 @@ class MediaProgressFramePreviewState(
      * 媒体切换时清空缓存, 避免展示上一个视频的帧.
      */
     fun onMediaChanged() {
+        mediaGeneration++
         cache.evictAll()
         frame = null
         frameGridKey = Long.MIN_VALUE
@@ -116,38 +132,153 @@ class MediaProgressFramePreviewState(
 }
 
 /**
- * 从 [player] 的 [FramePreview] feature 创建 [MediaProgressFramePreviewState].
+ * 从 [player] 的 [FramePreview] feature 或 [previewThumbnails] 创建 [MediaProgressFramePreviewState].
  *
- * 当播放器后端不支持取帧时返回 `null`, 此时进度条浮窗只显示时间.
+ * 优先使用数据源提供的 [previewThumbnails]（如 Jellyfin/Emby 的 Trickplay 拼图大图），
+ * 避免在 HTTP 播放时进行二次视频解码；若无预生成缩略图，则回退到播放器解码器 [FramePreview]。
  */
 @Composable
 fun rememberMediaProgressFramePreviewState(
     player: MediampPlayer,
+    httpClient: ScopedHttpClient,
+    previewThumbnails: MediaPreviewThumbnails? = null,
+    requestThumbnail: (suspend (mediaSourceId: String, url: String) -> ByteArray?)? = null,
     maxWidth: Dp = 192.dp,
     maxHeight: Dp = 128.dp,
 ): MediaProgressFramePreviewState? {
-    val framePreview = remember(player) { player.features[FramePreview] } ?: return null
     val density = LocalDensity.current
-    val state = remember(framePreview, density, maxWidth, maxHeight) {
+    val framePreviewFeature = remember(player) { player.features[FramePreview] }
+    val tileFetcher = remember(previewThumbnails, httpClient, requestThumbnail) {
+        previewThumbnails?.let { MediaPreviewThumbnailsTileFetcher(it, httpClient, requestThumbnail) }
+    }
+
+    if (tileFetcher == null && framePreviewFeature == null) return null
+
+    val state = remember(tileFetcher, framePreviewFeature, density, maxWidth, maxHeight) {
         val maxWidthPx = with(density) { maxWidth.roundToPx() }
         val maxHeightPx = with(density) { maxHeight.roundToPx() }
         MediaProgressFramePreviewState(
             fetchFrame = { positionMillis ->
-                framePreview.getPreviewFrame(positionMillis, maxWidthPx, maxHeightPx)?.toImageBitmap()
+                tileFetcher?.fetchFrame(positionMillis)
+                    ?: framePreviewFeature?.getPreviewFrame(positionMillis, maxWidthPx, maxHeightPx)?.toImageBitmap()
             },
         )
     }
     LaunchedEffect(state, player) {
         player.mediaData.collect { data ->
             state.onMediaChanged()
-            if (data != null) {
-                // 预热预览解码器 (第二个解码器实例启动需要秒级时间), 避免首次悬浮时长时间显示占位框.
-                // 取当前播放位置附近的帧: 该区域一定已在缓冲, 不会抢占下载优先级.
+            if (data != null && tileFetcher == null) {
+                // 预热预览解码器 (仅在无预生成缩略图时), 避免首次悬浮时长时间显示占位框.
                 runCatching { state.prewarm(player.getCurrentPositionMillis()) }
             }
         }
     }
     return state
+}
+
+/**
+ * 负责拉取和裁剪 [MediaPreviewThumbnails.Layout.SpriteTile] 精灵图网格缩略图。
+ */
+class MediaPreviewThumbnailsTileFetcher(
+    private val previewThumbnails: MediaPreviewThumbnails,
+    private val httpClient: ScopedHttpClient,
+    private val requestThumbnail: (suspend (mediaSourceId: String, url: String) -> ByteArray?)? = null,
+) {
+    private val tileCache = androidx.collection.LruCache<Int, ImageBitmap>(1)
+
+    suspend fun fetchFrame(positionMillis: Long): ImageBitmap? {
+        val layout = previewThumbnails.layout as? MediaPreviewThumbnails.Layout.SpriteTile ?: return null
+        val frame = calculateSpriteTileFrame(previewThumbnails, layout, positionMillis) ?: return null
+
+        val tileImage = getOrFetchTileImage(layout.urlPattern, frame.tileIndex) ?: return null
+
+        if (frame.cropX.toLong() + previewThumbnails.width > tileImage.width.toLong() ||
+            frame.cropY.toLong() + previewThumbnails.height > tileImage.height.toLong()
+        ) {
+            return null
+        }
+
+        return try {
+            withContext(Dispatchers.Default) {
+                tileImage.crop(frame.cropX, frame.cropY, previewThumbnails.width, previewThumbnails.height)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private suspend fun getOrFetchTileImage(
+        urlPattern: String,
+        tileIndex: Int,
+    ): ImageBitmap? {
+        tileCache[tileIndex]?.let { return it }
+
+        val url = urlPattern.replace("{tileIndex}", tileIndex.toString())
+        val bytes = try {
+            val requesterMediaSourceId = previewThumbnails.requesterMediaSourceId
+            if (requesterMediaSourceId == null) {
+                httpClient.use {
+                    prepareGet(url) {
+                        previewThumbnails.headers.forEach { (key, value) ->
+                            header(key, value)
+                        }
+                    }.execute { response ->
+                        response.body<ByteArray>()
+                    }
+                }
+            } else {
+                requestThumbnail?.invoke(requesterMediaSourceId, url) ?: return null
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return null
+        }
+
+        val bitmap = try {
+            withContext(Dispatchers.Default) {
+                decodeImageBitmap(bytes)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return null
+        }
+        tileCache.put(tileIndex, bitmap)
+        return bitmap
+    }
+}
+
+internal data class SpriteTileFrame(
+    val tileIndex: Int,
+    val cropX: Int,
+    val cropY: Int,
+)
+
+internal fun calculateSpriteTileFrame(
+    previewThumbnails: MediaPreviewThumbnails,
+    layout: MediaPreviewThumbnails.Layout.SpriteTile,
+    positionMillis: Long,
+): SpriteTileFrame? {
+    if (previewThumbnails.width <= 0 || previewThumbnails.height <= 0 ||
+        previewThumbnails.intervalMillis <= 0 || previewThumbnails.totalCount <= 0 ||
+        layout.columns <= 0 || layout.rows <= 0
+    ) {
+        return null
+    }
+
+    val frameIndex = (positionMillis.coerceAtLeast(0) / previewThumbnails.intervalMillis)
+        .coerceAtMost(previewThumbnails.totalCount.toLong() - 1)
+    val tilesPerSheet = layout.columns.toLong() * layout.rows
+    val indexInTile = frameIndex % tilesPerSheet
+    val tileIndex = frameIndex / tilesPerSheet
+    val cropX = (indexInTile % layout.columns) * previewThumbnails.width
+    val cropY = (indexInTile / layout.columns) * previewThumbnails.height
+    if (tileIndex > Int.MAX_VALUE || cropX > Int.MAX_VALUE || cropY > Int.MAX_VALUE) return null
+
+    return SpriteTileFrame(tileIndex.toInt(), cropX.toInt(), cropY.toInt())
 }
 
 /**
