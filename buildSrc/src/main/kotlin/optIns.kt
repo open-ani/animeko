@@ -54,22 +54,6 @@ fun Project.optInForTestSourceSets(qualifiedClassname: String) {
     }
 }
 
-fun Project.enableLanguageFeatureForAllSourceSets(qualifiedClassname: String) {
-    kotlinSourceSets!!.all {
-        languageSettings {
-            this.enableLanguageFeature(qualifiedClassname)
-        }
-    }
-}
-
-fun Project.enableLanguageFeatureForTestSourceSets(name: String) {
-    allTestSourceSets {
-        languageSettings {
-            this.enableLanguageFeature(name)
-        }
-    }
-}
-
 fun Project.allTestSourceSets(action: KotlinSourceSet.() -> Unit) {
     kotlinSourceSets!!.all {
         if (this.name.contains("test", ignoreCase = true)) {

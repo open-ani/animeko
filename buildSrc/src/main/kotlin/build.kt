@@ -95,10 +95,7 @@ val optInAnnotations = arrayOf(
     "kotlin.time.ExperimentalTime",
 )
 
-val testLanguageFeatures: List<String> = listOf(
-    "ContextParameters",
-//    "ContextReceivers" // causes segfault on ios
-)
+// ContextParameters is stable since Kotlin 2.4 and no longer needs a language feature flag.
 
 fun Project.configureKotlinOptIns() {
     val sourceSets = kotlinSourceSets ?: return
@@ -118,10 +115,6 @@ fun Project.configureKotlinOptIns() {
     project.tasks.withType(KotlinCompile::class.java) {
         @Suppress("MISSING_DEPENDENCY_SUPERCLASS_IN_TYPE_ARGUMENT")
         compilerOptions.languageVersion.set(kotlinVersion)
-    }
-
-    for (name in testLanguageFeatures) {
-        enableLanguageFeatureForTestSourceSets(name)
     }
 }
 
@@ -204,7 +197,6 @@ fun Project.configureJvmTarget() {
                     }
                     freeCompilerArgs.add("-Xdont-warn-on-error-suppression")
                     freeCompilerArgs.add("-Xannotation-target-all")
-                    freeCompilerArgs.add("-Xmulti-dollar-interpolation")
                     freeCompilerArgs.add("-Xannotation-default-target=param-property")
                 }
             }
