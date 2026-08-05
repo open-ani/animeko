@@ -65,8 +65,10 @@ import me.him188.ani.app.platform.window.ExtendedUser32.Companion.WM_SETTINGCHAN
 import me.him188.ani.app.platform.window.ExtendedUser32.MENUITEMINFO
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
+import me.him188.ani.utils.logging.debug
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.logger
+import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.isWindows
 import org.jetbrains.skiko.SkiaLayer
 import java.awt.Window
@@ -105,11 +107,10 @@ internal open class BasicWindowProc(
     private val _accentColor: MutableStateFlow<Color> = MutableStateFlow(currentAccentColor())
     val accentColor: StateFlow<Color> = _accentColor.asStateFlow()
 
+    private val ownWindowProc: Pointer = CallbackReference.getFunctionPointer(this)
+
     private val defaultWindowProc =
-        user32.installWindowProc(
-            windowHandle,
-            CallbackReference.getFunctionPointer(this),
-        )
+        user32.installWindowProc(windowHandle, ownWindowProc)
 
     private val touchBridge = if (installTouchBridge) ComposeSceneTouchBridge.create(window) else null
     private val touchInputHandler = touchBridge?.let { bridge ->
@@ -196,7 +197,7 @@ internal open class BasicWindowProc(
     override fun close() {
         touchInputHandler?.close()
         touchBridge?.close()
-        user32.restoreWindowProc(windowHandle, defaultWindowProc)
+        user32.restoreWindowProc(windowHandle, defaultWindowProc, ownWindowProc)
     }
 }
 
@@ -551,7 +552,11 @@ internal class ExtendedTitleBarWindowProc(
 
     override fun close() {
         skiaLayerWindowProc?.close()
-        windowHandle.updateWindowStyle { it or WS_SYSMENU }
+        if (user32.IsWindow(windowHandle)) {
+            // 自 Compose Desktop 1.10 起, ComposeWindow.dispose() 先销毁原生窗口再 dispose
+            // composition, 执行到这里时窗口可能已经被销毁, 此时无须也不应再修改窗口样式.
+            windowHandle.updateWindowStyle { it or WS_SYSMENU }
+        }
         super.close()
     }
 }
@@ -570,8 +575,10 @@ internal class SkiaLayerHitTestWindowProc(
     private val windowHandle = HWND(Pointer(skiaLayer.windowHandle))
     internal val contentHandle = HWND(skiaLayer.canvas.let(Native::getComponentPointer))
 
+    private val ownWindowProc: Pointer = CallbackReference.getFunctionPointer(this)
+
     private val defaultWindowProc =
-        user32.installWindowProc(contentHandle, CallbackReference.getFunctionPointer(this))
+        user32.installWindowProc(contentHandle, ownWindowProc)
 
     private val touchBridge = ComposeSceneTouchBridge.create(window)
     private val touchInputHandler = touchBridge?.let { bridge ->
@@ -670,7 +677,7 @@ internal class SkiaLayerHitTestWindowProc(
     override fun close() {
         touchInputHandler?.close()
         touchBridge?.close()
-        user32.restoreWindowProc(contentHandle, defaultWindowProc)
+        user32.restoreWindowProc(contentHandle, defaultWindowProc, ownWindowProc)
     }
 }
 
@@ -682,7 +689,24 @@ private fun ExtendedUser32.installWindowProc(windowHandle: HWND, callback: Point
     }
 }
 
-private fun ExtendedUser32.restoreWindowProc(windowHandle: HWND, previousWindowProc: Pointer) {
+private fun ExtendedUser32.restoreWindowProc(
+    windowHandle: HWND,
+    previousWindowProc: Pointer,
+    ownWindowProc: Pointer,
+) {
+    val currentWindowProc = GetWindowLongPtr(windowHandle, WinUser.GWL_WNDPROC)
+    if (currentWindowProc == null || currentWindowProc.toLong() == 0L) {
+        // 自 Compose Desktop 1.10 起, ComposeWindow.dispose() 先销毁原生窗口再 dispose
+        // composition, 执行到这里时窗口可能已经被销毁 (lastError=1400), 此时无须恢复.
+        logger.debug { "Windows 窗口已销毁, 无须恢复 WndProc: hwnd=$windowHandle" }
+        return
+    }
+    if (currentWindowProc.toPointer() != ownWindowProc) {
+        // 窗口仍有效但 WndProc 不是我们的 hook: 可能是重复 close, 或被其他代码再次 hook.
+        // 此时不能写回 previousWindowProc, 否则会破坏他人的 hook 链.
+        logger.warn("跳过恢复 Windows WndProc: hwnd=$windowHandle 的 WndProc 已不属于当前 hook")
+        return
+    }
     val restored = SetWindowLongPtr(windowHandle, WinUser.GWL_WNDPROC, previousWindowProc)
     if (restored == null) {
         logger.error("恢复 Windows WndProc 失败: hwnd=$windowHandle, lastError=${Native.getLastError()}")
