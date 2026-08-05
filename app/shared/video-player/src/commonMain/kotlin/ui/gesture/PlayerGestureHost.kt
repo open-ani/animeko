@@ -69,8 +69,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.coerceAtLeast
@@ -81,6 +83,11 @@ import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
+import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
+import me.him188.ani.app.ui.foundation.input.asGesturePointerType
+import me.him188.ani.app.ui.foundation.input.touchDragOnly
+import me.him188.ani.app.ui.foundation.input.trackActiveInputSource
+import me.him188.ani.app.ui.foundation.ifNotNullThen
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
 import me.him188.ani.app.ui.lang.*
@@ -101,6 +108,7 @@ import me.him188.ani.app.videoplayer.ui.gesture.SwipeSeekerState.Companion.swipe
 import me.him188.ani.app.videoplayer.ui.playerFocusHost
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.utils.platform.Platform
+import me.him188.ani.utils.platform.isDesktop
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.AudioLevelController
 import org.jetbrains.compose.resources.stringResource
@@ -419,6 +427,7 @@ fun GestureIndicator(
     }
 }
 
+/** 平台默认的手势约定, 仅作为 [gestureFamilyOf] 的回退值. */
 @Stable
 val Platform.mouseFamily: GestureFamily
     get() = when (this) {
@@ -426,50 +435,53 @@ val Platform.mouseFamily: GestureFamily
         is Platform.Android, is Platform.Ios -> GestureFamily.TOUCH
     }
 
+/**
+ * 由最近一次使用的指针设备决定手势约定, 尚未收到指针事件时回退到 [fallback].
+ *
+ * 纯触摸设备只会产生触摸事件、纯键鼠设备只会产生鼠标事件, 两者行为与改动前一致;
+ * 只有混合设备才会在两套约定之间切换.
+ */
+@Stable
+fun gestureFamilyOf(activeInputSource: PointerType, fallback: GestureFamily): GestureFamily =
+    when (activeInputSource.asGesturePointerType()) {
+        PointerType.Touch -> GestureFamily.TOUCH
+        PointerType.Mouse -> GestureFamily.MOUSE
+        else -> fallback
+    }
+
+/**
+ * 这台设备有没有鼠标. 常驻 UI 应该用它而不是 [GestureFamily] —— 后者跟着当前输入方式走,
+ * 会让控件在用户切换手指/鼠标时反复显隐.
+ */
+@Stable
+fun hasPointerDevice(platform: Platform, hasSeenMouse: Boolean): Boolean =
+    hasSeenMouse || platform.isDesktop()
+
+/**
+ * 一套点击/双击约定. 滑动、长按、滚轮不在这里 —— 它们按本次手势 down 事件的
+ * [PointerType] 过滤 (见 [touchDragOnly]、[longPressFastSkip]), 不经过 family.
+ */
 @Immutable
 enum class GestureFamily(
     val clickToPauseResume: Boolean,
     val clickToToggleController: Boolean,
     val doubleClickToFullscreen: Boolean,
     val doubleClickToPauseResume: Boolean,
-    val swipeToSeek: Boolean,
-    val swipeRhsForVolume: Boolean,
-    val swipeLhsForBrightness: Boolean,
-    val swipeMidForFullscreen: Boolean,
-    val longPressForFastSkip: Boolean,
-    val scrollForVolume: Boolean,
     val autoHideController: Boolean,
-    val volumeControllerOnBottomBar: Boolean,
-    val mouseHoverForController: Boolean = true, // not supported on mobile
 ) {
     TOUCH(
         clickToPauseResume = false,
         clickToToggleController = true,
         doubleClickToFullscreen = false,
         doubleClickToPauseResume = true,
-        swipeToSeek = true,
-        swipeRhsForVolume = true,
-        swipeLhsForBrightness = true,
-        swipeMidForFullscreen = true,
-        longPressForFastSkip = true,
-        volumeControllerOnBottomBar = false,
-        scrollForVolume = false,
         autoHideController = true,
-        mouseHoverForController = false,
     ),
     MOUSE(
         clickToPauseResume = true,
         clickToToggleController = false,
         doubleClickToFullscreen = true,
         doubleClickToPauseResume = false,
-        swipeToSeek = false,
-        swipeRhsForVolume = false,
-        swipeLhsForBrightness = false,
-        swipeMidForFullscreen = false,
-        longPressForFastSkip = false,
-        scrollForVolume = true,
         autoHideController = false,
-        volumeControllerOnBottomBar = true,
     )
 }
 
@@ -561,7 +573,10 @@ fun PlayerGestureHost(
     brightnessController: LevelController,
     playbackSpeedControllerState: PlaybackSpeedControllerState?,
     modifier: Modifier = Modifier,
-    family: GestureFamily = LocalPlatform.current.mouseFamily,
+    family: GestureFamily = gestureFamilyOf(
+        LocalActiveInputSource.current.current,
+        LocalPlatform.current.mouseFamily,
+    ),
     onTogglePauseResume: () -> Unit = {},
     onToggleFullscreen: () -> Unit = {},
     onExitFullscreen: () -> Unit = {},
@@ -570,7 +585,8 @@ fun PlayerGestureHost(
 ) {
     val onTogglePauseResumeState by rememberUpdatedState(onTogglePauseResume)
 
-    BoxWithConstraints {
+    val inputSourceState = LocalActiveInputSource.current
+    BoxWithConstraints(Modifier.trackActiveInputSource(inputSourceState)) {
         Row(
             Modifier.align(Alignment.TopCenter)
                 .systemGesturesPadding()
@@ -586,7 +602,9 @@ fun PlayerGestureHost(
 
         val indicatorTasker = rememberUiMonoTasker()
         val audioLevelController = playerState.features[AudioLevelController]
-        val useMediaAudioController = family == GestureFamily.MOUSE
+        // 平台问题而非输入方式问题: 桌面没有系统级 AudioManager, 音量由 mediamp 提供.
+        // 用 GestureFamily 判断会让混合设备上键盘音量键的作用目标随输入方式跳变.
+        val useMediaAudioController = LocalPlatform.current.isDesktop()
         val systemFullscreen = isSystemInFullscreen()
         val playerFocusState = controllerState.focusState
 
@@ -651,7 +669,9 @@ fun PlayerGestureHost(
             }
         }
 
-        if (family.mouseHoverForController) {
+        // 与上面的 Move handler 配套. 同样用「这台设备有没有鼠标」而不是「此刻在用鼠标」:
+        // 后者会让隐藏时序随输入方式跳变, 手指点一下就把鼠标模式下的自动隐藏关掉.
+        if (hasPointerDevice(LocalPlatform.current, inputSourceState.hasSeenMouse)) {
             // 没有人请求 alwaysOn 时自动隐藏控制器
             LaunchedEffect(controllerState) {
                 snapshotFlow { controllerState.alwaysOn }.collectLatest { alwaysOn ->
@@ -671,23 +691,26 @@ fun PlayerGestureHost(
                 combinedClickable(
                     remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = remember(family, playerFocusState) {
+                    onClick = remember(family, playerFocusState, inputSourceState) {
                         {
-                            if (family.clickToPauseResume) {
+                            // 按本次事件的指针类型解析, 组合期算好的 family 会慢一拍
+                            val tapFamily = gestureFamilyOf(inputSourceState.latest, family)
+                            if (tapFamily.clickToPauseResume) {
                                 onTogglePauseResumeState()
                             }
-                            if (family.clickToToggleController) {
+                            if (tapFamily.clickToToggleController) {
                                 controllerState.toggleFullVisible()
                             }
                             playerFocusState.requestPlayerFocus()
                         }
                     },
-                    onDoubleClick = remember(family, onToggleFullscreen, playerFocusState) {
+                    onDoubleClick = remember(family, onToggleFullscreen, playerFocusState, inputSourceState) {
                         {
-                            if (family.doubleClickToFullscreen) {
+                            val tapFamily = gestureFamilyOf(inputSourceState.latest, family)
+                            if (tapFamily.doubleClickToFullscreen) {
                                 onToggleFullscreen()
                             }
-                            if (family.doubleClickToPauseResume) {
+                            if (tapFamily.doubleClickToPauseResume) {
                                 onTogglePauseResumeState()
                             }
                             playerFocusState.requestPlayerFocus()
@@ -699,13 +722,13 @@ fun PlayerGestureHost(
         Box(
             keyboardModifier
                 .combineClickableWithFamilyGesture()
-                .ifThen(family.swipeToSeek && enableSwipeToSeek) {
+                .ifThen(enableSwipeToSeek) {
                     val swipeSeekInteraction = rememberSwipeSeekInteraction(
                         controllerState,
                         seekerState,
                         progressSliderState,
                     )
-                    swipeToSeek(
+                    touchDragOnly().swipeToSeek(
                         seekerState,
                         Orientation.Horizontal,
                         //调节音量/亮度时禁用水平seek
@@ -728,10 +751,10 @@ fun PlayerGestureHost(
                         playerFocusState.requestPlayerFocus()
                     }
                 }
-                .ifThen(family.mouseHoverForController) {
-                    // 这里不能用 hover, 因为在当控制器隐藏后, hover 状态仍然有, 于是下次移动鼠标时不会重复触发 hover 事件, 也就无法显示
-                    // See test case: `mouse - mouseHoverForController - center screen twice`
-                    onPointerEventMultiplatform(PointerEventType.Move) { _ ->
+                // 始终挂载, 再按本次事件过滤. 否则触摸后的第一次 Mouse Move 只会切换 family,
+                // 要等第二次 Move 才能显示控制器.
+                .onPointerEventMultiplatform(PointerEventType.Move) { event ->
+                    if (event.changes.firstOrNull()?.type == PointerType.Mouse) {
                         controllerState.toggleFullVisible(true)
                         mouseMoveTasker.launch {
                             delay(VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION)
@@ -739,7 +762,8 @@ fun PlayerGestureHost(
                         }
                     }
                 }
-                .ifThen(family.scrollForVolume && audioLevelController != null) {
+                // 滚轮只可能来自鼠标, 无需 family 门控; 接了鼠标的 Android 平板同样受益
+                .ifThen(audioLevelController != null) {
                     if (audioLevelController == null) return@ifThen this
                     onPointerEventMultiplatform(PointerEventType.Scroll) { event ->
                         event.changes.firstOrNull()?.scrollDelta?.y?.run {
@@ -760,25 +784,20 @@ fun PlayerGestureHost(
                 .fillMaxSize(),
         ) {
             Row(
+                // 桌面上是零 inset, 无条件挂载可避免混合设备上随 family 增删 padding 造成布局跳变
                 Modifier.matchParentSize()
-                    .ifThen(
-                        family.swipeLhsForBrightness ||
-                                family.swipeRhsForVolume ||
-                                family.swipeMidForFullscreen ||
-                                family.longPressForFastSkip,
-                    ) {
-                        systemGesturesPadding()
-                    }
-                    .ifThen(family.longPressForFastSkip) {
-                        fastSkipState?.let {
-                            longPressFastSkip(it, SkipDirection.FORWARD)
-                        }
+                    .systemGesturesPadding()
+                    // 由 down 事件的类型过滤而非 family 门控: 按下不提交 family, 门控会漏掉每次长按
+                    .ifNotNullThen(fastSkipState) {
+                        longPressFastSkip(it, SkipDirection.FORWARD, requiredPointerType = PointerType.Touch)
                     },
             ) {
                 Box(
                     Modifier
-                        .ifThen(family.swipeLhsForBrightness) {
-                            swipeLevelControlWithIndicator(
+                        // 挂载看能力 (桌面没有 BrightnessManager, 传进来是 NoOp), 是否响应看 enabled;
+                        // 分开之后切换输入方式后的第一次滑动不会因为修饰符尚未挂上而丢失
+                        .ifThen(brightnessController !== NoOpLevelController) {
+                            touchDragOnly().swipeLevelControlWithIndicator(
                                 brightnessController,
                                 ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
                                 Orientation.Vertical,
@@ -796,25 +815,24 @@ fun PlayerGestureHost(
 
                 Box(
                     Modifier
-                        .ifThen(family.swipeMidForFullscreen) {
-                            swipeToFullscreen(
-                                enabled = !seekerState.isSeeking && !adjustingVolumeOrBrightness && !adjustingForwardOrBackward,
-                                onEnterFullscreen = {
-                                    if (!systemFullscreen) onToggleFullscreen()
-                                },
-                                onExitFullscreen = {
-                                    if (systemFullscreen) onExitFullscreen()
-                                },
-                            )
-                        }
+                        .touchDragOnly()
+                        .swipeToFullscreen(
+                            enabled = !seekerState.isSeeking && !adjustingVolumeOrBrightness && !adjustingForwardOrBackward,
+                            onEnterFullscreen = {
+                                if (!systemFullscreen) onToggleFullscreen()
+                            },
+                            onExitFullscreen = {
+                                if (systemFullscreen) onExitFullscreen()
+                            },
+                        )
                         .weight(1f)
                         .fillMaxHeight(),
                 )
 
                 Box(
                     Modifier
-                        .ifThen(family.swipeRhsForVolume) {
-                            swipeLevelControlWithIndicator(
+                        .ifThen(audioController !== NoOpLevelController) {
+                            touchDragOnly().swipeLevelControlWithIndicator(
                                 audioController,
                                 ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
                                 Orientation.Vertical,
