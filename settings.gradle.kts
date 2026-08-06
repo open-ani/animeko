@@ -12,6 +12,9 @@ import java.util.Properties
 rootProject.name = "animeko"
 
 pluginManagement {
+    // 约定插件来自 build-logic; 必须在 settings 里 includeBuild, plugins {} 才解析得到 `ani.*`.
+    includeBuild("build-logic")
+
     repositories {
         gradlePluginPortal()
         mavenCentral()
@@ -164,8 +167,7 @@ includeProject(":tools:datasource-test-mcp", "tools/datasource-test-mcp")
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 
-// buildSrc 的 LocalPropertiesValueSource 在 settings 求值时还不可用 (settings 先于 buildSrc 构建),
-// 所以这里用 providers.fileContents 单独实现一份 —— 同样是 provider, 不再有 createNewFile 副作用.
+// settings 先于 build-logic 构建, 拿不到 LocalPropertiesValueSource, 这里单独实现一份.
 val localProperties: Provider<Properties> =
     providers.fileContents(layout.settingsDirectory.file("local.properties")).asText
         .map { text -> Properties().apply { text.reader().use { load(it) } } }

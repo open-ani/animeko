@@ -8,11 +8,10 @@
  */
 
 plugins {
-    id("ani.base")
-    alias(libs.plugins.kotlin.jvm)
+    id("ani.jvm-library")
     alias(libs.plugins.kotlin.plugin.serialization)
     alias(libs.plugins.kotlinx.atomicfu)
-    `flatten-source-sets`
+    id("ani.flatten-source-sets")
 }
 
 dependencies {

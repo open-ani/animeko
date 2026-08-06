@@ -7,13 +7,5 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-plugins {
-    id("ani.jvm-library")
-    id("ani.flatten-source-sets")
-}
-
-dependencies {
-    implementation(projects.utils.bbcode)
-    implementation(projects.utils.testing)
-    implementation(libs.kotlinpoet)
-}
+// 实现见 aniBuildConfig.kt: 放在 .kt 里, 消费方才不用写 `Build_config_gradle.` 脚本类前缀.
+apply<AniBuildConfigPlugin>()

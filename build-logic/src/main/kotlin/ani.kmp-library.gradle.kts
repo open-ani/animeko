@@ -14,15 +14,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
 
-/*
- * 「KMP 库」模块入口: common + desktop(JVM) + android (+ 可选 iOS).
- *
- * 与被它取代的 `ani-mpp-lib-targets` 的关键区别:
- * 这里【显式声明】需要哪些插件, 而不是用 `extensions.findByType(...) != null` 去探测
- * 别人有没有先应用. 模块脚本因此不再需要维护 "前几个插件顺序非常重要" 这种隐式契约.
- *
- * 需要 Compose 的模块请改用 `ani.kmp-compose`, 它组合了本插件.
- */
+// KMP 库模块: common + desktop(JVM) + android (+ 可选 iOS). 需要 Compose 的用 ani.kmp-compose.
 
 plugins {
     id("ani.base")

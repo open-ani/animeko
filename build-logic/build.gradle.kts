@@ -13,21 +13,19 @@ plugins {
     `kotlin-dsl`
 }
 
-repositories {
-    mavenCentral()
-    google()
-    gradlePluginPortal()
-    maven("https://maven.pkg.jetbrains.space/public/p/compose/dev") // Compose Multiplatform pre-release versions
-}
-
-// 根仓库的 local.properties (buildSrc 的 settingsDirectory 是 buildSrc/ 本身).
-// CI 会往这里 append `jvm.toolchain.version=21`.
-val rootLocalProperties: Provider<Properties> =
-    providers.fileContents(layout.settingsDirectory.dir("..").file("local.properties")).asText
+// included build 不继承主构建的 gradle.properties, jvm.toolchain.* 必须显式从仓库根读,
+// 否则 toolchain 会悄悄回落到默认 JDK. (settingsDirectory 是 build-logic/ 自己, ".." 才是仓库根)
+fun rootProperties(fileName: String): Provider<Properties> =
+    providers.fileContents(layout.settingsDirectory.dir("..").file(fileName)).asText
         .map { text -> Properties().apply { text.reader().use { load(it) } } }
 
+val rootLocalProperties = rootProperties("local.properties")
+val rootGradleProperties = rootProperties("gradle.properties")
+
 fun toolchainProperty(name: String): Provider<String> =
-    rootLocalProperties.map { it.getProperty(name) }.orElse(providers.gradleProperty(name))
+    rootLocalProperties.map { it.getProperty(name) }
+        .orElse(rootGradleProperties.map { it.getProperty(name) })
+        .orElse(providers.gradleProperty(name))
 
 kotlin {
     jvmToolchain {

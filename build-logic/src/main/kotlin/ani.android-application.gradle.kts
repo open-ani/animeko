@@ -7,13 +7,11 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-plugins {
-    id("ani.jvm-library")
-    id("ani.flatten-source-sets")
-}
+// Android 应用模块. 同 ani.android-library, Kotlin 支持由 AGP 9 内建提供.
 
-dependencies {
-    implementation(projects.utils.bbcode)
-    implementation(projects.utils.testing)
-    implementation(libs.kotlinpoet)
+plugins {
+    id("ani.base")
+    id("com.android.application")
+    // 在这里声明, KGP 的 marker 才会进消费方 classpath; AGP 内建的 Kotlin 不注册可解析的 plugin id.
+    id("org.jetbrains.kotlin.plugin.parcelize")
 }

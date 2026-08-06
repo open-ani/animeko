@@ -27,15 +27,8 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 import javax.inject.Inject
 
 /**
- * 每个平台一份的 BuildConfig 字段集合.
- *
- * 字段在【配置期】就渲染成 Kotlin 代码行, 存进 [fieldLines] 这个 [ListProperty].
- *
- * 用 ListProperty 而不是普通 Map 是这次改造的关键:
- * `platform("desktop") { ... }` 会先创建平台对象 (此时插件注册好任务), 之后才执行
- * 花括号里的 `stringField(...)`. 如果任务在注册时就快照一份 Map, 拿到的会是空的 ——
- * 这正是原实现必须套一层 `afterEvaluate` 的原因.
- * ListProperty 是惰性的, 后加进来的值任务照样能看到, 于是 afterEvaluate 就不需要了.
+ * 每个平台一份的 BuildConfig 字段. 用 ListProperty 而非 Map: 平台对象先创建、字段后添加,
+ * 惰性求值才能免掉 afterEvaluate.
  */
 abstract class BuildConfigPlatform @Inject constructor(private val platformName: String) : Named {
     override fun getName(): String = platformName
@@ -88,7 +81,7 @@ abstract class GenerateBuildConfigTask : DefaultTask() {
     @get:Input
     abstract val platformName: Property<String>
 
-    /** 已渲染好的代码行. 全是 String, 因此任务状态里没有任何自定义序列化. */
+    /** 已渲染好的代码行, 纯 String, 任务状态里没有自定义序列化. */
     @get:Input
     abstract val fieldLines: ListProperty<String>
 
@@ -116,16 +109,7 @@ object ${classNameValue}${platformNameValue.replaceFirstChar { it.uppercase() }}
     }
 }
 
-/**
- * 生成各平台的 BuildConfig.
- *
- * 相对原实现的三处改动:
- * 1. 去掉 `afterEvaluate` —— 靠 [BuildConfigPlatform.fieldLines] 这个 ListProperty 的惰性求值;
- * 2. 去掉按任务名子串匹配的 `dependsOn` —— 改为把生成目录接进对应的 Kotlin 源集,
- *    任务依赖由 Gradle 从 provider 自动推导;
- * 3. 去掉给未配置平台注册的占位任务 —— 它们什么都不做, 只是污染 `tasks` 输出
- *    (其中 `js` 平台在本仓根本不存在).
- */
+/** 生成各平台的 BuildConfig. */
 class AniBuildConfigPlugin : Plugin<Project> {
     override fun apply(project: Project): Unit = with(project) {
         val extension = extensions.create<BuildConfigExtension>("buildConfig")
@@ -133,7 +117,7 @@ class AniBuildConfigPlugin : Plugin<Project> {
         extension.className.convention("BuildConfig")
         extension.outputDir.convention(layout.buildDirectory.dir("generated/buildconfig"))
 
-        // 每声明一个平台就注册一个任务. 容器很小 (2~3 个), 且必须对后加入的元素生效.
+        // 必须对后加入的元素生效, 所以用 all 而不是 configureEach.
         extension.platforms.all {
             val platform = this
             val platformDir = extension.outputDir.map { it.dir(platform.name) }

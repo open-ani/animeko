@@ -7,44 +7,13 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-buildscript {
-    repositories {
-        gradlePluginPortal()
-        mavenCentral()
-        google()
-        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-    }
-}
-
+// 原先这里有一长串 `alias(...) apply false`, 只为把插件塞进根 buildscript classpath 供子项目继承.
+// 改用 build-logic 后, 插件由 settings 的 includeBuild 或 catalog 里的版本解析, 不再需要.
 plugins {
-    alias(libs.plugins.kotlin.multiplatform) apply false
-    alias(libs.plugins.kotlin.jvm) apply false
-    alias(libs.plugins.android.kotlin.multiplatform.library) apply false
-    alias(libs.plugins.android.application) apply false
-    alias(libs.plugins.android.library) apply false
-    alias(libs.plugins.kotlinx.atomicfu) apply false
-    alias(libs.plugins.jetbrains.compose) apply false
-    alias(libs.plugins.kotlin.native.cocoapods) apply false
-    alias(libs.plugins.kotlin.plugin.compose) apply false
-
-    alias(libs.plugins.kotlin.plugin.serialization) apply false
-    alias(libs.plugins.google.gms.google.services) apply false
-    alias(libs.plugins.androidx.room) apply false
-    alias(libs.plugins.antlr.kotlin) apply false
-    // mannodermaus.android.junit5 与 compose.stability.analyzer 已改由 buildSrc 的
-    // 约定插件 (ani.kmp-library / ani.kmp-compose) 在自己的 plugins {} 里声明,
-    // 它们的 marker artifact 在 buildSrc 的 classpath 上. 这里再写 `apply false`
-    // 会因为"已在 classpath 上但版本未知"而冲突.
-    alias(libs.plugins.sentry.kotlin.multiplatform) apply false
-    alias(libs.plugins.undercouch.download) apply false
     idea
 }
 
-// group / version / 仓库 / JNA pin / Kotlin 约定原先都在这里的 `allprojects {}` 和
-// `subprojects { afterEvaluate { ... } }` 里. 现已分别搬到:
-//   - 仓库          -> settings.gradle.kts 的 dependencyResolutionManagement
-//   - 其余全部      -> buildSrc 的 `ani.base` 约定插件, 由各子项目显式应用
-// 参见 gradle-build-rework.md 的 F1.
+// 仓库搬到 settings 的 dependencyResolutionManagement, 其余约定搬到 build-logic 的 `ani.base`.
 group = "me.him188.ani"
 version = providers.gradleProperty("version.name").get()
 

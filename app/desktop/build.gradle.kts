@@ -15,8 +15,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import java.util.UUID
 
 plugins {
-    id("ani.base")
-    alias(libs.plugins.kotlin.jvm)
+    id("ani.jvm-library")
     alias(libs.plugins.kotlin.plugin.compose)
     alias(libs.plugins.jetbrains.compose)
     alias(libs.plugins.kotlin.plugin.serialization)

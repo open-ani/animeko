@@ -10,12 +10,10 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
 
 plugins {
-    id("ani.base")
+    id("ani.android-application")
     alias(libs.plugins.jetbrains.compose)
-    alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.plugin.compose)
     alias(libs.plugins.kotlinx.atomicfu)
-    id("kotlin-parcelize")
     alias(libs.plugins.google.gms.google.services)
     idea
 }

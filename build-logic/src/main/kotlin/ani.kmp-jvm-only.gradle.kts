@@ -9,18 +9,7 @@
 
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 
-/*
- * 「KMP 库, 但没有 Android target」模块入口.
- *
- * 只有两个模块用它: :datasource:datasource-core 和 :datasource:mikan
- * (mikan 的 commonTest 需要 android 不支持的 resources).
- *
- * 注意它用的是 `jvm()` 而不是 `ani.kmp-library` 的 `jvm("desktop")`,
- * 所以源集叫 jvmMain / jvmTest 而不是 desktopMain / desktopTest.
- *
- * 这是原 `ani-mpp-lib-targets` 里 `if (androidLibraryExtension != null) { ... } else { ... }`
- * 的 else 分支 —— 现在它是一个显式的模块类型, 而不是"探测不到 Android 插件"的副作用.
- */
+// KMP 但无 Android target. 用 jvm() 而非 jvm("desktop"), 故源集是 jvmMain / jvmTest.
 
 plugins {
     id("ani.base")

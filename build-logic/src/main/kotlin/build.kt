@@ -183,7 +183,7 @@ fun Project.configureJvmTarget() {
         }
     }
 
-    // 在配置期读一次, 而不是在每个 compilation 的配置回调里重复读 local.properties.
+    // 配置期读一次, 避免每个 compilation 回调里重复读 local.properties.
     val renderInternalDiagnosticNames =
         getLocalProperty("ani.kotlin.render-internal-diagnostic-names")?.toBooleanStrict() == true
 
@@ -233,8 +233,7 @@ fun Project.configureKotlinTestSettings() {
         if (this !is KotlinJvmTarget) return@configureEach
         testRuns.configureEach { executionTask.configure { useJUnitPlatform() } }
 
-        // MPP 的 JVM target 测试源集叫 `${targetName}Test` (desktopTest / jvmTest).
-        // 从 target 侧驱动, 就不需要反过来从源集名字去 find target 了.
+        // 从 target 侧驱动, 免去从源集名字反推 target.
         val targetName = name
         kotlinSourceSets?.matching { it.name == "${targetName}Test" }
             ?.configureEach { configureJvmTest(b) }
@@ -253,18 +252,13 @@ fun Project.configureKotlinTestSettings() {
         isKotlinMpp -> {
             val sourceSets = kotlinSourceSets ?: return
 
-            // androidTest 是 android 目标的共享测试源集, androidHostTest / androidDeviceTest
-            // 是 AGP KMP 插件在声明 androidLibrary target 时才创建的叶子源集.
-            // 三者都要拿到 JVM 测试依赖 —— 少了 androidTest 会让
-            // androidTestResolvableDependenciesMetadata 丢掉整套 junit5.
-            //
-            // 用 matching{}.configureEach 这种 live filtered collection 注册, 源集何时出现都能命中,
-            // 因此不再依赖插件应用顺序 —— 原实现用 getByName, 必须放在 afterEvaluate 里才安全.
+            // 三个源集都要拿到 JVM 测试依赖, 少了 androidTest 会丢掉整套 junit5.
+            // 用 live filtered collection 注册, 源集何时创建都能命中, 因此不需要 afterEvaluate.
             sourceSets.matching {
                 it.name == "androidTest" || it.name == "androidHostTest" || it.name == "androidDeviceTest"
             }.configureEach { configureJvmTest(b) }
 
-            // instrumented / host test runner 只加在叶子源集上.
+            // runner 只加在叶子源集上.
             sourceSets.matching { it.name == "androidHostTest" || it.name == "androidDeviceTest" }
                 .configureEach {
                     dependencies {
@@ -284,13 +278,8 @@ fun Project.configureKotlinTestSettings() {
 }
 
 /**
- * 给 Compose + Android KMP Library 自动加上 `org.jetbrains.compose.ui:ui-tooling`.
- *
- * 调用方 (`ani.base`) 已经通过 `pluginManager.withPlugin` 保证了两个插件都已应用,
- * 所以这里不再用 `plugins.hasPlugin(...)` 探测.
- *
- * `androidRuntimeClasspath` 是声明 `androidLibrary` target 时才创建的, 因此用
- * `configurations.matching{}.configureEach` 注册, 而不是立即 `dependencies.add(...)`.
+ * 给 Compose + Android KMP Library 自动加上 ui-tooling.
+ * androidRuntimeClasspath 要等 androidLibrary target 声明后才存在, 所以用 matching{} 延迟注册.
  */
 fun Project.configureComposePreviewToolingDependency() {
     val notation = versionCatalogLibs().getLibrary("compose-ui-tooling")

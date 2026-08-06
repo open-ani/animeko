@@ -96,15 +96,18 @@ haze = "1.7.2"
 
 [plugins]
 # Plugins for projects.
-kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform" }
-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm" }
-android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library" }
-android-application = { id = "com.android.application" }
-android-library = { id = "com.android.library" }
-kotlinx-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu" }
-jetbrains-compose = { id = "org.jetbrains.compose" }
-kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose" }
-kotlin-native-cocoapods = { id = "org.jetbrains.kotlin.native.cocoapods" }
+# 这里的别名必须带版本: build-logic 是 included build, 不会像 buildSrc 那样泄漏 classpath.
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "android-gradle-plugin" }
+android-application = { id = "com.android.application", version.ref = "android-gradle-plugin" }
+android-library = { id = "com.android.library", version.ref = "android-gradle-plugin" }
+kotlinx-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "kotlinx-atomicfu" }
+jetbrains-compose = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
+kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-native-cocoapods = { id = "org.jetbrains.kotlin.native.cocoapods", version.ref = "kotlin" }
+# 上面规则的唯一例外: parcelize 由 KGP 自带, 带版本会报 "already on the classpath", 故用完整 id 且不带版本.
+kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize" }
 
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "google-gms-google-services" }

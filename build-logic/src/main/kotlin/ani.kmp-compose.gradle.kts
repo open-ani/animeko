@@ -10,14 +10,7 @@
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
-/*
- * 「KMP + Compose 库」模块入口 = `ani.kmp-library` + Compose Multiplatform.
- *
- * 插件顺序在这里是【被固定下来的】: kotlin.multiplatform -> android KMP library
- * (由 ani.kmp-library 提供) -> compose -> compose compiler.
- * 模块脚本因此不用再自己维护 "前几个插件顺序非常重要, 调整后可能导致 compose multiplatform
- * resources 生成错误" 这个隐式契约.
- */
+// = ani.kmp-library + Compose. 插件顺序在此固定, 顺序错会导致 compose resources 生成错误.
 
 plugins {
     id("ani.kmp-library")

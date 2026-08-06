@@ -15,6 +15,8 @@ plugins {
     alias(libs.plugins.kotlin.plugin.serialization)
     idea
     alias(libs.plugins.openapi.generator)
+    // 本脚本用了它的 Download 任务类型 (downloadSpec), 必须自己声明.
+    alias(libs.plugins.undercouch.download)
 }
 
 val generatedRoot = "generated/openapi"

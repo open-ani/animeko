@@ -12,7 +12,7 @@ plugins {
     alias(libs.plugins.kotlin.plugin.serialization)
 
     // alias(libs.plugins.kotlinx.atomicfu)
-    id("kotlin-parcelize")
+    alias(libs.plugins.kotlin.parcelize)
 
     alias(libs.plugins.google.devtools.ksp)
     alias(libs.plugins.androidx.room)
@@ -123,9 +123,7 @@ room {
     schemaDirectory("$projectDir/schemas")
 }
 
-ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
-}
+// 不要再加 ksp { arg("room.schemaLocation", ...) }: Room 插件禁止与上面的 room {} 同时使用.
 
 dependencies {
     kspDesktop(libs.androidx.room.compiler)

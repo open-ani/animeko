@@ -7,6 +7,10 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-// 实现在 aniBuildConfig.kt. 放在 .kt 里而不是脚本里, 这样 BuildConfigPlatform 等类型
-// 是顶层类型, 消费方不用再写 `Build_config_gradle.BuildConfigPlatform` 这种脚本类前缀.
-apply<AniBuildConfigPlugin>()
+// 纯 JVM Kotlin 模块. 由约定插件应用 kotlin.jvm: 同块内若有别的 KGP 子插件先解析,
+// 模块自己带版本请求会报 "already on the classpath with an unknown version".
+
+plugins {
+    id("ani.base")
+    id("org.jetbrains.kotlin.jvm")
+}

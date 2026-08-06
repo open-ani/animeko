@@ -16,12 +16,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.cocoapods.CocoapodsExtension
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 
-/**
- * iOS 单元测试的资源拷贝 workaround.
- *
- * Kotlin/Native 不会把 commonTest 的 resources 带进测试 bundle.
- * https://developer.squareup.com/blog/kotlin-multiplatform-shared-test-resources/
- */
+/** Kotlin/Native 不会把 commonTest resources 带进测试 bundle: https://developer.squareup.com/blog/kotlin-multiplatform-shared-test-resources/ */
 fun Project.configureAniIosTestResources() {
     if (!enableIos) return
 
@@ -34,9 +29,7 @@ fun Project.configureAniIosTestResources() {
     }
 }
 
-/**
- * CocoaPods 集成. 只在 macOS 上有意义 (需要本机的 pod 工具链).
- */
+/** CocoaPods 集成, 只在 macOS 上有意义 (需要本机 pod 工具链). */
 fun Project.configureAniCocoapods() {
     if (!enableIos || getOs() != Os.MacOS) return
 
