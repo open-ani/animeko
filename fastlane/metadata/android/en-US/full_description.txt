@@ -1,0 +1,1 @@
+Animeko supports syncing whatching history on Bangumi, multiple video source, local cache, danmaku, and more functions, providing a simple and comfortable anime watching experience as much as possible.
