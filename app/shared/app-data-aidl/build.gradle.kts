@@ -8,6 +8,7 @@
  */
 
 plugins {
+    id("ani.base")
     alias(libs.plugins.android.library)
     id("kotlin-parcelize")
 }

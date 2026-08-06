@@ -14,6 +14,7 @@ import org.gradle.api.tasks.bundling.Zip
 import java.io.File
 
 plugins {
+    id("ani.base")
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlinx.atomicfu)
 }

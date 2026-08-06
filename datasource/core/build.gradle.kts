@@ -8,6 +8,7 @@
  */
 
 plugins {
+    id("ani.base")
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.plugin.serialization)
     `ani-mpp-lib-targets`

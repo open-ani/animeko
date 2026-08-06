@@ -38,42 +38,13 @@ plugins {
     idea
 }
 
-allprojects {
-    group = "me.him188.ani"
-    version = properties["version.name"].toString()
-
-    repositories {
-        mavenCentral()
-        google()
-        mavenLocal()
-        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-        maven("https://androidx.dev/storage/compose-compiler/repository/")
-        maven("https://jogamp.org/deployment/maven")
-    }
-}
-
-subprojects {
-    // Pin JNA: FileKit and other deps may request newer JNA, which breaks VLC.
-    configurations.configureEach {
-        resolutionStrategy.force(
-            "net.java.dev.jna:jna:${libs.versions.jna.get()}",
-            "net.java.dev.jna:jna-platform:${libs.versions.jna.get()}",
-        )
-    }
-
-    afterEvaluate {
-        configureKotlinOptIns()
-        configureKotlinTestSettings()
-        configureEncoding()
-        configureJvmTarget()
-        configureComposePreviewToolingDependency()
-//        kotlin.runCatching {
-//            extensions.findByType(ComposeExtension::class)?.apply {
-//                this.kotlinCompilerPlugin.set(libs.versions.compose.multiplatform.compiler.get())
-//            }
-//        }
-    }
-}
+// group / version / 仓库 / JNA pin / Kotlin 约定原先都在这里的 `allprojects {}` 和
+// `subprojects { afterEvaluate { ... } }` 里. 现已分别搬到:
+//   - 仓库          -> settings.gradle.kts 的 dependencyResolutionManagement
+//   - 其余全部      -> buildSrc 的 `ani.base` 约定插件, 由各子项目显式应用
+// 参见 gradle-build-rework.md 的 F1.
+group = "me.him188.ani"
+version = providers.gradleProperty("version.name").get()
 
 idea {
     module {

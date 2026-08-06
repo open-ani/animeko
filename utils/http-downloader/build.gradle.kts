@@ -8,6 +8,7 @@
  */
 
 plugins {
+    id("ani.base")
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.kotlin.plugin.serialization)
@@ -16,9 +17,10 @@ plugins {
     `ani-mpp-lib-targets`
 }
 
-val mediampFfmpegAppleRuntime by configurations.creating {
-    isCanBeConsumed = false
-    isCanBeResolved = true
+// 声明桶与可解析配置分离, 每个 configuration 只承担一种角色.
+val mediampFfmpegAppleRuntime = configurations.dependencyScope("mediampFfmpegAppleRuntime")
+val mediampFfmpegAppleRuntimePath = configurations.resolvable("mediampFfmpegAppleRuntimePath") {
+    extendsFrom(mediampFfmpegAppleRuntime.get())
     isTransitive = false
 }
 
@@ -27,7 +29,7 @@ val mediampFfmpegIOSRuntime = libs.mediamp.ffmpeg.runtime.ios.xcframework.get()
 
 val mediampFfmpegAppleRuntimeDirectory = layout.buildDirectory.dir("mediamp-ffmpeg/apple-runtime")
 val extractMediampFfmpegAppleRuntime = tasks.register<ExtractAppleXcframeworkTask>("extractMediampFfmpegAppleRuntime") {
-    archives.from(mediampFfmpegAppleRuntime)
+    archives.from(mediampFfmpegAppleRuntimePath)
     outputDirectory.set(mediampFfmpegAppleRuntimeDirectory)
 }
 
@@ -76,5 +78,8 @@ dependencies {
         else -> throw UnsupportedOperationException("Unknown os: $triple")
     }
 
-    mediampFfmpegAppleRuntime("${mediampFfmpegIOSRuntime.group}:${mediampFfmpegIOSRuntime.name}:$mediampVersion@zip")
+    add(
+        mediampFfmpegAppleRuntime.name,
+        "${mediampFfmpegIOSRuntime.group}:${mediampFfmpegIOSRuntime.name}:$mediampVersion@zip",
+    )
 }

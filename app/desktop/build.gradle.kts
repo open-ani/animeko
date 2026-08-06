@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import java.util.UUID
 
 plugins {
+    id("ani.base")
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.plugin.compose)
     alias(libs.plugins.jetbrains.compose)
@@ -210,8 +211,8 @@ compose.desktop {
 //                    You should have received a copy of the GNU General Public License
 //                    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //            """.trimIndent()
-            licenseFile.set(rootProject.rootDir.resolve("LICENSE.txt"))
-            packageVersion = properties["package.version"].toString()
+            licenseFile.set(layout.settingsDirectory.file("LICENSE.txt"))
+            packageVersion = providers.gradleProperty("package.version").get()
         }
 
         if (getLocalProperty("ani.desktop.proguard")?.toBooleanStrict() != false) {

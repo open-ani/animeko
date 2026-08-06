@@ -9,15 +9,6 @@
 
 import java.util.Properties
 
-/*
- * Copyright (C) 2024 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 plugins {
     `kotlin-dsl`
 }
@@ -29,10 +20,19 @@ repositories {
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev") // Compose Multiplatform pre-release versions
 }
 
+// 根仓库的 local.properties (buildSrc 的 settingsDirectory 是 buildSrc/ 本身).
+// CI 会往这里 append `jvm.toolchain.version=21`.
+val rootLocalProperties: Provider<Properties> =
+    providers.fileContents(layout.settingsDirectory.dir("..").file("local.properties")).asText
+        .map { text -> Properties().apply { text.reader().use { load(it) } } }
+
+fun toolchainProperty(name: String): Provider<String> =
+    rootLocalProperties.map { it.getProperty(name) }.orElse(providers.gradleProperty(name))
+
 kotlin {
     jvmToolchain {
-        this.vendor.set(getPropertyOrNull("jvm.toolchain.vendor")?.let { JvmVendorSpec.matching(it) })
-        this.languageVersion = getPropertyOrNull("jvm.toolchain.version")?.let { JavaLanguageVersion.of(it) }
+        toolchainProperty("jvm.toolchain.vendor").orNull?.let { vendor.set(JvmVendorSpec.matching(it)) }
+        toolchainProperty("jvm.toolchain.version").orNull?.let { languageVersion.set(JavaLanguageVersion.of(it)) }
     }
     compilerOptions {
         optIn.add("org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi")
@@ -69,25 +69,3 @@ dependencies {
 
 
 
-fun Project.getPropertyOrNull(name: String) =
-    getLocalProperty(name)
-        ?: System.getProperty(name)
-        ?: System.getenv(name)
-        ?: findProperty(name)?.toString()
-        ?: properties[name]?.toString()
-        ?: extensions.extraProperties.runCatching { get(name).toString() }.getOrNull()
-
-val Project.localPropertiesFile: File get() = project.rootProject.file("local.properties")
-
-fun Project.getLocalProperty(key: String): String? {
-    return if (localPropertiesFile.exists()) {
-        val properties = Properties()
-        localPropertiesFile.inputStream().buffered().use { input ->
-            properties.load(input)
-        }
-        properties.getProperty(key)
-    } else {
-        localPropertiesFile.createNewFile()
-        null
-    }
-}

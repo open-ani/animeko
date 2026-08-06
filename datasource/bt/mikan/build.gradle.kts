@@ -8,13 +8,13 @@
  */
 
 plugins {
+    id("ani.base")
     alias(libs.plugins.kotlin.multiplatform)
     // no android because commonTest needs resources that are not supported by android
     `ani-mpp-lib-targets`
     alias(libs.plugins.kotlin.plugin.serialization)
 
     // alias(libs.plugins.kotlinx.atomicfu)
-    `flatten-source-sets`
 }
 
 kotlin {

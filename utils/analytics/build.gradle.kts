@@ -10,6 +10,7 @@
 @file:Suppress("UnstableApiUsage")
 
 plugins {
+    id("ani.base")
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.plugin.serialization)
     alias(libs.plugins.android.kotlin.multiplatform.library)

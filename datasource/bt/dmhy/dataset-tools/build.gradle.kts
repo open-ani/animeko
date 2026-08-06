@@ -10,6 +10,7 @@
 @file:Suppress("UnstableApiUsage")
 
 plugins {
+    id("ani.base")
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.plugin.serialization)
 }
