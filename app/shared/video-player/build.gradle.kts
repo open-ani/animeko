@@ -15,7 +15,7 @@ plugins {
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.app.video.player"
     }
     sourceSets.commonMain.dependencies {

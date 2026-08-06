@@ -14,7 +14,7 @@ plugins {
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.utils.intellij.annotations"
     }
     @OptIn(ExperimentalKotlinGradlePluginApi::class)

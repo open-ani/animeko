@@ -15,7 +15,7 @@ group = "org.burnoutcrew.composereorderable"
 version = "0.9.7"
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.app.reorderable"
     }
     sourceSets {

@@ -31,7 +31,7 @@ tasks.withType<Test>().configureEach {
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.torrent.pikpak"
     }
     sourceSets.commonMain.dependencies {

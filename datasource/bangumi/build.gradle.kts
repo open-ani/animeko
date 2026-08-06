@@ -19,7 +19,7 @@ plugins {
 val generatedRoot = "generated/openapi"
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.datasources.bangumi"
     }
     sourceSets.commonMain.dependencies {

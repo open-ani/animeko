@@ -31,7 +31,7 @@ val extractMediampFfmpegAppleRuntime = tasks.register<ExtractAppleXcframeworkTas
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.utils.http.downloader"
         packaging {
             resources {

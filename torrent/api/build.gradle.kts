@@ -14,7 +14,7 @@ plugins {
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.utils.torrent.api"
     }
     sourceSets.commonMain.dependencies {

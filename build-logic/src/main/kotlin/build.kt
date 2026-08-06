@@ -7,9 +7,6 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
-import com.android.build.gradle.api.KotlinMultiplatformAndroidPlugin
-import org.gradle.api.Action
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalog
@@ -27,7 +24,6 @@ import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinCommonCompilerOptions
-import org.jetbrains.kotlin.gradle.dsl.KotlinGradlePluginDsl
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
@@ -279,7 +275,7 @@ fun Project.configureKotlinTestSettings() {
 
 /**
  * 给 Compose + Android KMP Library 自动加上 ui-tooling.
- * androidRuntimeClasspath 要等 androidLibrary target 声明后才存在, 所以用 matching{} 延迟注册.
+ * androidRuntimeClasspath 要等 android target 声明后才存在, 所以用 matching{} 延迟注册.
  */
 fun Project.configureComposePreviewToolingDependency() {
     val notation = versionCatalogLibs().getLibrary("compose-ui-tooling")
@@ -316,14 +312,4 @@ fun Project.withKotlinTargets(fn: (KotlinTarget) -> Unit) {
                 fn(this)
             }
     }
-}
-
-@KotlinGradlePluginDsl
-internal fun KotlinMultiplatformExtension.androidLibrary(
-    action: Action<KotlinMultiplatformAndroidLibraryTarget>
-) {
-    if (!project.plugins.hasPlugin(KotlinMultiplatformAndroidPlugin::class.java)) {
-        throw IllegalStateException("KMP Android plugin is not applied")
-    }
-    extensions.configure("android", action)
 }

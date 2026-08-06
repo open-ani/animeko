@@ -20,7 +20,7 @@ dependencies {
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.utils.serialization"
     }
     @OptIn(ExperimentalKotlinGradlePluginApi::class)

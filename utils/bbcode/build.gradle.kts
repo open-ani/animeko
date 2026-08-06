@@ -18,7 +18,7 @@ plugins {
 val generatedRoot = projectDir.resolve("src/commonMain/generatedKotlin")
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.utils.bbcode"
     }
     sourceSets.commonMain {

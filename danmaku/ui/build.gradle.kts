@@ -15,7 +15,7 @@ plugins {
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.danmaku.ui"
     }
     sourceSets.commonMain.dependencies {

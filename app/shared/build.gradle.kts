@@ -36,7 +36,7 @@ compose.resources {
 val enableIosFramework = enableIos && buildIosFramework
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani"
         compileSdk = getIntProperty("android.compile.sdk")
         minSdk = getIntProperty("android.min.sdk")

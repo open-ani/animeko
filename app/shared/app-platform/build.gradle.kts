@@ -30,7 +30,7 @@ val overrideAniApiServer = getPropertyOrNull("ani.api.server")?.takeIf { it.isNo
 val distroChannel = getPropertyOrNull("ani.distro.channel") ?: "default"
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.app.platform"
         // TODO AGP Migration: Test package optimization
         optimization {
