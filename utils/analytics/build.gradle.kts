@@ -10,11 +10,8 @@
 @file:Suppress("UnstableApiUsage")
 
 plugins {
-    id("ani.base")
-    alias(libs.plugins.kotlin.multiplatform)
+    id("ani.kmp-library")
     alias(libs.plugins.kotlin.plugin.serialization)
-    alias(libs.plugins.android.kotlin.multiplatform.library)
-    `ani-mpp-lib-targets`
 }
 
 

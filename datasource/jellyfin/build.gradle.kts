@@ -8,13 +8,10 @@
  */
 
 plugins {
-    id("ani.base")
-    alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.kotlin.multiplatform.library)
+    id("ani.kmp-library")
     alias(libs.plugins.kotlin.plugin.serialization)
 
     // alias(libs.plugins.kotlinx.atomicfu)
-    `ani-mpp-lib-targets`
 }
 
 kotlin {

@@ -62,6 +62,8 @@ dependencies {
     api(libs.compose.multiplatfrom.gradle.plugin)
     api(libs.kotlin.compose.compiler.gradle.plugin)
     api(libs.kotlin.native.cocoapods.gradle.plugin)
+    api(libs.mannodermaus.android.junit5.gradle.plugin)
+    api(libs.compose.stability.analyzer.gradle.plugin)
     implementation(kotlin("script-runtime"))
     implementation(libs.snakeyaml)
 }

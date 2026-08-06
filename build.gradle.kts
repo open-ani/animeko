@@ -31,10 +31,12 @@ plugins {
     alias(libs.plugins.google.gms.google.services) apply false
     alias(libs.plugins.androidx.room) apply false
     alias(libs.plugins.antlr.kotlin) apply false
-    alias(libs.plugins.mannodermaus.android.junit5) apply false
+    // mannodermaus.android.junit5 与 compose.stability.analyzer 已改由 buildSrc 的
+    // 约定插件 (ani.kmp-library / ani.kmp-compose) 在自己的 plugins {} 里声明,
+    // 它们的 marker artifact 在 buildSrc 的 classpath 上. 这里再写 `apply false`
+    // 会因为"已在 classpath 上但版本未知"而冲突.
     alias(libs.plugins.sentry.kotlin.multiplatform) apply false
     alias(libs.plugins.undercouch.download) apply false
-    alias(libs.plugins.compose.stability.analyzer) apply false
     idea
 }
 

@@ -8,10 +8,8 @@
  */
 
 plugins {
-    id("ani.base")
-    alias(libs.plugins.kotlin.multiplatform)
+    id("ani.kmp-jvm-only")
     alias(libs.plugins.kotlin.plugin.serialization)
-    `ani-mpp-lib-targets`
 }
 
 kotlin {

@@ -127,6 +127,9 @@ atomicfu-gradle-plugin = { module = "org.jetbrains.kotlinx:atomicfu-gradle-plugi
 compose-multiplatfrom-gradle-plugin = { module = "org.jetbrains.compose:org.jetbrains.compose.gradle.plugin", version.ref = "compose-multiplatform" }
 kotlin-compose-compiler-gradle-plugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
 kotlin-native-cocoapods-gradle-plugin = { module = "org.jetbrains.kotlin.native.cocoapods:org.jetbrains.kotlin.native.cocoapods.gradle.plugin", version.ref = "kotlin" }
+# plugin marker artifact: 约定插件要 id(...) 它们, 就得让它们出现在编译类路径上.
+mannodermaus-android-junit5-gradle-plugin = { module = "de.mannodermaus.android-junit5:de.mannodermaus.android-junit5.gradle.plugin", version.ref = "mannodermaus-android-junit5" }
+compose-stability-analyzer-gradle-plugin = { module = "com.github.skydoves.compose.stability.analyzer:com.github.skydoves.compose.stability.analyzer.gradle.plugin", version.ref = "stability-analyzer" }
 
 # JUnit
 # These are used dynamically

@@ -10,12 +10,9 @@
 import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
 
 plugins {
-    id("ani.base")
-    alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.kotlin.multiplatform.library)
+    id("ani.kmp-library")
     alias(libs.plugins.kotlin.plugin.serialization)
     idea
-    `ani-mpp-lib-targets`
     alias(libs.plugins.openapi.generator)
 }
 
