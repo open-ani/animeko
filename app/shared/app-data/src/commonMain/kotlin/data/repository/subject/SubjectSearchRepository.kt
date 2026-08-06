@@ -20,7 +20,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.schedule.AnimeSeasonId
-import me.him188.ani.app.data.models.schedule.yearMonths
 import me.him188.ani.app.data.network.AniSubjectSearchService
 import me.him188.ani.app.data.network.BatchSubjectDetails
 import me.him188.ani.app.data.network.SubjectSearchField
@@ -109,17 +108,23 @@ class SubjectSearchRepository(
         private fun SubjectSearchQuery.toSubjectSearchFilters(): SubjectSearchFilters {
             return SubjectSearchFilters(
                 tags,
-                airDates = season?.toBangumiAirDates(),
+                airDates = season?.toBangumiAirDates() ?: year?.toBangumiAirDates(),
                 ratings = rating?.toBangumiRatings(),
                 nsfw = nsfw,
             )
         }
 
         private fun AnimeSeasonId.toBangumiAirDates(): List<String> {
-            val (begin, _, end) = this.yearMonths
             return listOf(
-                ">=${begin.first}-${begin.second}-01",
-                "<${end.first}-${end.second}-31",
+                ">=${year}-${season.searchStartMonth()}-01",
+                "<${season.nextSeasonStartYear(year)}-${season.nextSeasonStartMonth()}-01",
+            )
+        }
+
+        private fun Int.toBangumiAirDates(): List<String> {
+            return listOf(
+                ">=$this-01-01",
+                "<${this + 1}-01-01",
             )
         }
 
@@ -129,6 +134,31 @@ class SubjectSearchRepository(
                 range.min?.let { ">=${it}" },
                 range.max?.let { "<${it}" },
             )
+        }
+
+        private fun me.him188.ani.app.data.models.schedule.AnimeSeason.searchStartMonth(): String {
+            return when (this) {
+                me.him188.ani.app.data.models.schedule.AnimeSeason.WINTER -> "01"
+                me.him188.ani.app.data.models.schedule.AnimeSeason.SPRING -> "04"
+                me.him188.ani.app.data.models.schedule.AnimeSeason.SUMMER -> "07"
+                me.him188.ani.app.data.models.schedule.AnimeSeason.AUTUMN -> "10"
+            }
+        }
+
+        private fun me.him188.ani.app.data.models.schedule.AnimeSeason.nextSeasonStartMonth(): String {
+            return when (this) {
+                me.him188.ani.app.data.models.schedule.AnimeSeason.WINTER -> "04"
+                me.him188.ani.app.data.models.schedule.AnimeSeason.SPRING -> "07"
+                me.him188.ani.app.data.models.schedule.AnimeSeason.SUMMER -> "10"
+                me.him188.ani.app.data.models.schedule.AnimeSeason.AUTUMN -> "01"
+            }
+        }
+
+        private fun me.him188.ani.app.data.models.schedule.AnimeSeason.nextSeasonStartYear(year: Int): Int {
+            return when (this) {
+                me.him188.ani.app.data.models.schedule.AnimeSeason.AUTUMN -> year + 1
+                else -> year
+            }
         }
 
         /**
