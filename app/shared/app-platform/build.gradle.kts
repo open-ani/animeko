@@ -15,7 +15,7 @@ plugins {
 
     // alias(libs.plugins.kotlinx.atomicfu)
     idea
-    `build-config`
+    id("ani.build-config")
 }
 
 val aniAuthServerUrlDebug =
@@ -96,7 +96,7 @@ buildConfig {
     outputDir.set(layout.buildDirectory.dir("generated/buildconfig"))
 
     // Desktop platform configuration
-    fun Build_config_gradle.BuildConfigPlatform.firebaseFields() {
+    fun BuildConfigPlatform.firebaseFields() {
         fun getProp(name: String): String {
             return if (enableFirebase) {
                 getProperty(name).also {
