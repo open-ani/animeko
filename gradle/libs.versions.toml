@@ -96,15 +96,18 @@ haze = "1.7.2"
 
 [plugins]
 # Plugins for projects.
-kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform" }
-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm" }
-android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library" }
-android-application = { id = "com.android.application" }
-android-library = { id = "com.android.library" }
-kotlinx-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu" }
-jetbrains-compose = { id = "org.jetbrains.compose" }
-kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose" }
-kotlin-native-cocoapods = { id = "org.jetbrains.kotlin.native.cocoapods" }
+# 这里的别名必须带版本: build-logic 是 included build, 不会像 buildSrc 那样泄漏 classpath.
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "android-gradle-plugin" }
+android-application = { id = "com.android.application", version.ref = "android-gradle-plugin" }
+android-library = { id = "com.android.library", version.ref = "android-gradle-plugin" }
+kotlinx-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "kotlinx-atomicfu" }
+jetbrains-compose = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
+kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-native-cocoapods = { id = "org.jetbrains.kotlin.native.cocoapods", version.ref = "kotlin" }
+# 上面规则的唯一例外: parcelize 由 KGP 自带, 带版本会报 "already on the classpath", 故用完整 id 且不带版本.
+kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize" }
 
 kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "google-gms-google-services" }
@@ -118,7 +121,7 @@ openapi-generator = { id = "org.openapi.generator", version.ref = "openapi-gener
 compose-stability-analyzer = { id = "com.github.skydoves.compose.stability.analyzer", version.ref = "stability-analyzer" }
 
 [libraries]
-# Plugin libraries for build logic (buildSrc).
+# Plugin libraries for build-logic.
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "android-gradle-plugin" }
 android-kotlin-multiplatform-library-gradle-plugin = { module = "com.android.kotlin.multiplatform.library:com.android.kotlin.multiplatform.library.gradle.plugin", version.ref = "android-gradle-plugin" }
 android-application-gradle-plugin = { module = "com.android.application:com.android.application.gradle.plugin", version.ref = "android-gradle-plugin" }
@@ -127,6 +130,9 @@ atomicfu-gradle-plugin = { module = "org.jetbrains.kotlinx:atomicfu-gradle-plugi
 compose-multiplatfrom-gradle-plugin = { module = "org.jetbrains.compose:org.jetbrains.compose.gradle.plugin", version.ref = "compose-multiplatform" }
 kotlin-compose-compiler-gradle-plugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
 kotlin-native-cocoapods-gradle-plugin = { module = "org.jetbrains.kotlin.native.cocoapods:org.jetbrains.kotlin.native.cocoapods.gradle.plugin", version.ref = "kotlin" }
+# plugin marker artifact: 约定插件要 id(...) 它们, 就得让它们出现在编译类路径上.
+mannodermaus-android-junit5-gradle-plugin = { module = "de.mannodermaus.android-junit5:de.mannodermaus.android-junit5.gradle.plugin", version.ref = "mannodermaus-android-junit5" }
+compose-stability-analyzer-gradle-plugin = { module = "com.github.skydoves.compose.stability.analyzer:com.github.skydoves.compose.stability.analyzer.gradle.plugin", version.ref = "stability-analyzer" }
 
 # JUnit
 # These are used dynamically

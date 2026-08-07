@@ -9,18 +9,12 @@
 
 import java.util.Properties
 
-/*
- * Copyright (C) 2024 OpenAni and contributors.
- *
- * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
- * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
- *
- * https://github.com/open-ani/ani/blob/main/LICENSE
- */
-
 rootProject.name = "animeko"
 
 pluginManagement {
+    // 约定插件来自 build-logic; 必须在 settings 里 includeBuild, plugins {} 才解析得到 `ani.*`.
+    includeBuild("build-logic")
+
     repositories {
         gradlePluginPortal()
         mavenCentral()
@@ -30,10 +24,17 @@ pluginManagement {
 }
 
 dependencyResolutionManagement {
+    // 仓库策略属于 settings; FAIL_ON_PROJECT_REPOS 防止子项目再自己加仓库.
+    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
     @Suppress("UnstableApiUsage")
     repositories {
-        mavenLocal()
+        // mavenLocal 的位置不能动: 本地 mediamp / anitorrent 调试构建依赖它排在这里.
         mavenCentral()
+        google()
+        mavenLocal()
+        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+        maven("https://androidx.dev/storage/compose-compiler/repository/")
+        maven("https://jogamp.org/deployment/maven")
     }
     versionCatalogs {
         create("anitorrentLibs") {
@@ -166,19 +167,12 @@ includeProject(":tools:datasource-test-mcp", "tools/datasource-test-mcp")
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 
-val localPropertiesFile: File get() = rootProject.projectDir.resolve("local.properties")
-fun findLocalProperty(key: String): String? {
-    return if (localPropertiesFile.exists()) {
-        val properties = Properties()
-        localPropertiesFile.inputStream().buffered().use { input ->
-            properties.load(input)
-        }
-        properties.getProperty(key)
-    } else {
-        localPropertiesFile.createNewFile()
-        null
-    }
-}
+// settings 先于 build-logic 构建, 拿不到 LocalPropertiesValueSource, 这里单独实现一份.
+val localProperties: Provider<Properties> =
+    providers.fileContents(layout.settingsDirectory.file("local.properties")).asText
+        .map { text -> Properties().apply { text.reader().use { load(it) } } }
+
+fun findLocalProperty(key: String): String? = localProperties.orNull?.getProperty(key)
 
 findLocalProperty("ani.build.mediamp.path")?.let { mediampPath ->
     println("i:: Including mediamp as a Composite Build from: $mediampPath")

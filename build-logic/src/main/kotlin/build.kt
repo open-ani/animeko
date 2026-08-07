@@ -7,9 +7,6 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-import com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget
-import com.android.build.gradle.api.KotlinMultiplatformAndroidPlugin
-import org.gradle.api.Action
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalog
@@ -20,23 +17,18 @@ import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.jvm.toolchain.JvmVendorSpec
 import org.gradle.kotlin.dsl.dependencies
-import org.gradle.kotlin.dsl.extra
 import org.gradle.kotlin.dsl.findByType
-import org.gradle.kotlin.dsl.get
 import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.kotlin
 import org.gradle.kotlin.dsl.withType
-import org.jetbrains.compose.ComposePlugin
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinCommonCompilerOptions
-import org.jetbrains.kotlin.gradle.dsl.KotlinGradlePluginDsl
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.dsl.kotlinExtension
-import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
 import org.jetbrains.kotlin.gradle.plugin.KotlinTarget
 import org.jetbrains.kotlin.gradle.plugin.KotlinTargetsContainer
@@ -99,7 +91,7 @@ val optInAnnotations = arrayOf(
 
 fun Project.configureKotlinOptIns() {
     val sourceSets = kotlinSourceSets ?: return
-    sourceSets.all {
+    sourceSets.configureEach {
         configureKotlinOptIns()
     }
 
@@ -112,7 +104,7 @@ fun Project.configureKotlinOptIns() {
         languageVersion.set(kotlinVersion)
     }
     // ksp task extends KotlinCompile
-    project.tasks.withType(KotlinCompile::class.java) {
+    project.tasks.withType(KotlinCompile::class.java).configureEach {
         @Suppress("MISSING_DEPENDENCY_SUPERCLASS_IN_TYPE_ARGUMENT")
         compilerOptions.languageVersion.set(kotlinVersion)
     }
@@ -148,26 +140,25 @@ fun KotlinSourceSet.configureKotlinOptIns() {
 val Project.DEFAULT_JVM_TOOLCHAIN_VENDOR
     get() = getPropertyOrNull("jvm.toolchain.vendor")?.let { JvmVendorSpec.matching(it) }
 
-private fun Project.getProjectPreferredJvmTargetVersion() = extra.runCatching { get("ani.jvm.target") }.fold(
-    onSuccess = { JavaVersion.toVersion(it.toString()) },
-    onFailure = { JavaVersion.toVersion(getPropertyOrNull("jvm.toolchain.version")?.toInt() ?: 21) },
-)
+private fun Project.getProjectPreferredJvmTargetVersion() =
+    JavaVersion.toVersion(getPropertyOrNull("jvm.toolchain.version")?.toInt() ?: 21)
 
 fun Project.configureJvmTarget() {
     val ver = getProjectPreferredJvmTargetVersion()
     logger.info("JVM target for project ${this.path} is: $ver")
+    val target = JvmTarget.fromTarget(ver.toString())
 
     // 我也不知道到底设置谁就够了, 反正全都设置了
 
-    tasks.withType(KotlinJvmCompile::class.java) {
-        compilerOptions.jvmTarget.set(JvmTarget.fromTarget(ver.toString()))
+    tasks.withType(KotlinJvmCompile::class.java).configureEach {
+        compilerOptions.jvmTarget.set(target)
     }
 
-    tasks.withType(KotlinCompile::class.java) {
-        compilerOptions.jvmTarget.set(JvmTarget.fromTarget(ver.toString()))
+    tasks.withType(KotlinCompile::class.java).configureEach {
+        compilerOptions.jvmTarget.set(target)
     }
 
-    tasks.withType(JavaCompile::class.java) {
+    tasks.withType(JavaCompile::class.java).configureEach {
         sourceCompatibility = ver.toString()
         targetCompatibility = ver.toString()
     }
@@ -188,11 +179,15 @@ fun Project.configureJvmTarget() {
         }
     }
 
+    // 配置期读一次, 避免每个 compilation 回调里重复读 local.properties.
+    val renderInternalDiagnosticNames =
+        getLocalProperty("ani.kotlin.render-internal-diagnostic-names")?.toBooleanStrict() == true
+
     withKotlinTargets {
-        it.compilations.all {
+        it.compilations.configureEach {
             compileTaskProvider.configure {
                 compilerOptions {
-                    if (getLocalProperty("ani.kotlin.render-internal-diagnostic-names")?.toBooleanStrict() == true) {
+                    if (renderInternalDiagnosticNames) {
                         freeCompilerArgs.add("-Xrender-internal-diagnostic-names")
                     }
                     freeCompilerArgs.add("-Xdont-warn-on-error-suppression")
@@ -203,7 +198,7 @@ fun Project.configureJvmTarget() {
             if (this is KotlinJvmAndroidCompilation) {
                 compileTaskProvider.configure {
                     compilerOptions {
-                        jvmTarget.set(JvmTarget.fromTarget(ver.toString()))
+                        jvmTarget.set(target)
                     }
                 }
             }
@@ -214,31 +209,32 @@ fun Project.configureJvmTarget() {
         sourceCompatibility = ver
         targetCompatibility = ver
     }
-
-    /*extensions.findByType(KotlinMultiplatformAndroidLibraryExtension::class)?.apply {
-        
-    }*/
 }
 
 fun Project.configureEncoding() {
-    tasks.withType(JavaCompile::class.java) {
+    tasks.withType(JavaCompile::class.java).configureEach {
         options.encoding = "UTF8"
     }
 }
 
 fun Project.configureKotlinTestSettings() {
-    tasks.withType(Test::class) {
+    tasks.withType(Test::class).configureEach {
         useJUnitPlatform()
     }
 
     val libs = versionCatalogLibs()
+    val b = "Auto-set for project '${project.path}'. (configureKotlinTestSettings)"
 
-    allKotlinTargets().all {
-        if (this !is KotlinJvmTarget) return@all
-        this.testRuns["test"].executionTask.configure { useJUnitPlatform() }
+    allKotlinTargets().configureEach {
+        if (this !is KotlinJvmTarget) return@configureEach
+        testRuns.configureEach { executionTask.configure { useJUnitPlatform() } }
+
+        // 从 target 侧驱动, 免去从源集名字反推 target.
+        val targetName = name
+        kotlinSourceSets?.matching { it.name == "${targetName}Test" }
+            ?.configureEach { configureJvmTest(b) }
     }
 
-    val b = "Auto-set for project '${project.path}'. (configureKotlinTestSettings)"
     when {
         isKotlinJvmProject -> {
             dependencies {
@@ -250,65 +246,45 @@ fun Project.configureKotlinTestSettings() {
         }
 
         isKotlinMpp -> {
-            if (allKotlinTargets().any { it.platformType == KotlinPlatformType.androidJvm }) {
-                // has android target, configure instrumented test
-                // this must be added to `androidTest`, instead of just `androidInstrumentedTest`
+            val sourceSets = kotlinSourceSets ?: return
 
-                // TODO AGP Migration: Check the android test
-                val androidTestSourceSets = listOf(
-                    kotlinSourceSets?.getByName("androidHostTest"),
-                    kotlinSourceSets?.getByName("androidDeviceTest"),
-                )
-                androidTestSourceSets.forEach {
-                    it?.dependencies {
+            // 三个源集都要拿到 JVM 测试依赖, 少了 androidTest 会丢掉整套 junit5.
+            // 用 live filtered collection 注册, 源集何时创建都能命中, 因此不需要 afterEvaluate.
+            sourceSets.matching {
+                it.name == "androidTest" || it.name == "androidHostTest" || it.name == "androidDeviceTest"
+            }.configureEach { configureJvmTest(b) }
+
+            // runner 只加在叶子源集上.
+            sourceSets.matching { it.name == "androidHostTest" || it.name == "androidDeviceTest" }
+                .configureEach {
+                    dependencies {
                         implementation(libs.getLibrary("androidx-test-runner"))
                         implementation(libs.getLibrary("junit5-android-test-core"))
                         runtimeOnly(libs.getLibrary("junit5-android-test-runner"))
-
-                        implementation(libs.getLibrary("junit5-jupiter-api"))
-                        runtimeOnly(libs.getLibrary("junit5-jupiter-engine"))
                     }
                 }
-            }
 
-            kotlinSourceSets?.all {
-                val sourceSet = this
-
-                val target = allKotlinTargets()
-                    .find { it.name == sourceSet.name.substringBeforeLast("Main").substringBeforeLast("Test") }
-
-                if (sourceSet.name.contains("test", ignoreCase = true)) {
-                    when {
-                        target?.platformType == KotlinPlatformType.jvm -> {
-                            // For android, this should be done differently. See Android.kt
-                            sourceSet.configureJvmTest(b)
-                        }
-
-                        sourceSet.name == "commonTest" -> {
-                            sourceSet.dependencies {
-                                implementation(kotlin("test-annotations-common"))?.because(b)
-                            }
-                        }
-
-                        target?.platformType == KotlinPlatformType.androidJvm
-                                || sourceSet.name == "androidDeviceTest"
-                                || sourceSet.name == "androidHostTest" -> {
-                            sourceSet.configureJvmTest(b)
-                        }
-                    }
+            sourceSets.matching { it.name == "commonTest" }.configureEach {
+                dependencies {
+                    implementation(kotlin("test-annotations-common"))?.because(b)
                 }
             }
         }
     }
 }
 
+/**
+ * 给 Compose + Android KMP Library 自动加上 ui-tooling.
+ * androidRuntimeClasspath 要等 android target 声明后才存在, 所以用 matching{} 延迟注册.
+ */
 fun Project.configureComposePreviewToolingDependency() {
-    val libs = versionCatalogLibs()
-    if (plugins.hasPlugin(ComposePlugin::class.java) &&
-        plugins.hasPlugin(KotlinMultiplatformAndroidPlugin::class.java)
-    ) {
-        dependencies.add("androidRuntimeClasspath", libs.getLibrary("compose-ui-tooling"))
-            ?.because("Automatically add org.jetbrains.compose.ui:ui-tooling dependency to Compose & Android KMP Library.")
+    val notation = versionCatalogLibs().getLibrary("compose-ui-tooling")
+    val reason =
+        "Automatically add org.jetbrains.compose.ui:ui-tooling dependency to Compose & Android KMP Library."
+    configurations.matching { it.name == "androidRuntimeClasspath" }.configureEach {
+        dependencies.add(
+            project.dependencies.create(notation).apply { because(reason) },
+        )
     }
 }
 
@@ -332,18 +308,8 @@ fun Project.withKotlinTargets(fn: (KotlinTarget) -> Unit) {
     extensions.findByType(KotlinTargetsContainer::class.java)?.let { kotlinExtension ->
         // find all compilations given sourceSet belongs to
         kotlinExtension.targets
-            .all {
+            .configureEach {
                 fn(this)
             }
     }
-}
-
-@KotlinGradlePluginDsl
-internal fun KotlinMultiplatformExtension.androidLibrary(
-    action: Action<KotlinMultiplatformAndroidLibraryTarget>
-) {
-    if (!project.plugins.hasPlugin(KotlinMultiplatformAndroidPlugin::class.java)) {
-        throw IllegalStateException("KMP Android plugin is not applied")
-    }
-    extensions.configure("android", action)
 }

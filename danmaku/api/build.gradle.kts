@@ -8,14 +8,12 @@
  */
 
 plugins {
-    alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.kotlin.multiplatform.library)
+    id("ani.kmp-library")
     alias(libs.plugins.kotlin.plugin.serialization)
-    `ani-mpp-lib-targets`
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.danmaku.api"
     }
     sourceSets.commonMain {
