@@ -119,11 +119,19 @@ compose.resources {
     generateResClass = always
 }
 
+// 两个都要, 不是重复配置, 删任何一个都会坏:
+// - room {} 负责 Android 侧, 并注册 copyRoomSchemas* (把 schema 拷进 androidTest assets 给 MigrationTestHelper 用);
+//   但它没把 room.schemaLocation 传给 KMP 的 desktop / iOS 那几个 KSP task.
+// - ksp {} 的 arg 对所有 KSP task 生效, 补上 room {} 没覆盖到的 target.
+// 少了下面这段, kspKotlinDesktop 会报 "Schema import directory was not provided" 而失败 (自动迁移读不到旧 schema).
+// 两者同时存在不冲突, Room 插件不会因此报错.
 room {
     schemaDirectory("$projectDir/schemas")
 }
 
-// 不要再加 ksp { arg("room.schemaLocation", ...) }: Room 插件禁止与上面的 room {} 同时使用.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
 
 dependencies {
     kspDesktop(libs.androidx.room.compiler)
