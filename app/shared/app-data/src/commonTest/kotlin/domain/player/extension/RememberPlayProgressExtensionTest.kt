@@ -675,6 +675,108 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
         advanceUntilIdle()
 
         assertEquals(500, suite.player.currentPositionMillis.value)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `retries loading saved history if interrupted before video properties are ready`() = runTest {
+        // 等待时长期间播放器进入缓冲, collectLatest 会取消这次恢复; 回到 PLAYING 时必须再试一次.
+        val (testScope, suite, _) = createCase()
+        advanceUntilIdle()
+        repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
+        suite.player.mediaProperties.value = null
+
+        suite.player.setMediaData(UriMediaData("file://test"))
+        suite.player.playbackState.value = PlaybackState.PLAYING
+        runCurrent()
+        assertEquals(0, suite.player.currentPositionMillis.value)
+
+        suite.player.playbackState.value = PlaybackState.PAUSED_BUFFERING
+        runCurrent()
+        suite.player.playbackState.value = PlaybackState.PLAYING
+        runCurrent()
+
+        suite.player.mediaProperties.value = MediaProperties.Empty.copy(durationMillis = 100_000L)
+        advanceUntilIdle()
+
+        assertEquals(500, suite.player.currentPositionMillis.value)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `does not load saved history again when READY reappears for the same media`() = runTest {
+        // https://github.com/open-ani/animeko/issues/3215
+        // ExoPlayer 会在播放途中再发一次 READY (onMediaItemTransition), 此时不能把用户跳到的位置拉回旧进度.
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+        repository.saveOrUpdate(episodeId = initialEpisodeId, positionMillis = 8_000)
+
+        // 不推进虚拟时间, 避免 5 秒后的自动保存把数据库里的旧进度覆盖掉
+        loadSelectedMedia(suite, state, advanceUntilSettled = false)
+        runCurrent()
+        assertEquals(8_000, suite.player.currentPositionMillis.value) // 首次播放正常恢复
+
+        suite.player.seekTo(60_000) // 用户点击跳过 OP
+        runCurrent()
+
+        suite.player.playbackState.value = PlaybackState.READY
+        runCurrent()
+        suite.player.playbackState.value = PlaybackState.PLAYING
+        runCurrent()
+
+        assertEquals(60_000, suite.player.currentPositionMillis.value)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `does not retry loading saved history after first PLAYING found none`() = runTest {
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+
+        loadSelectedMedia(suite, state, advanceUntilSettled = false)
+        runCurrent()
+
+        suite.player.seekTo(50_000)
+        runCurrent()
+        // 首次播放之后才写入历史, 用来检测是否错误地二次读取
+        repository.saveOrUpdate(episodeId = initialEpisodeId, positionMillis = 5_000)
+
+        suite.player.playbackState.value = PlaybackState.READY
+        runCurrent()
+        suite.player.playbackState.value = PlaybackState.PLAYING
+        runCurrent()
+
+        assertEquals(50_000, suite.player.currentPositionMillis.value)
+
+        testScope.cancel()
+    }
+
+    @Test
+    fun `loads saved history on switching media source`() = runTest {
+        // 换源时播放器会重新 setMediaData, 此时必须恢复到换源前保存的进度 (换源续播)
+        val (testScope, suite, state) = createCase()
+        advanceUntilIdle()
+
+        loadSelectedMedia(suite, state, mediaIndex = 0, advanceUntilSettled = false)
+        runCurrent()
+
+        suite.player.seekTo(30_000)
+        advanceTimeBy(5_000) // 播放 5 秒后自动保存进度
+        runCurrent()
+        assertSavedHistory(30_000)
+
+        loadSelectedMedia(suite, state, mediaIndex = 1, advanceUntilSettled = false)
+        // 恢复要等新资源报出时长 (见扩展里那次 mediaProperties 等待), 但不能推到 5 秒 ——
+        // 那时的自动保存会把还没恢复的 0 写回数据库
+        suite.setMediaDuration(100_000L)
+        advanceTimeBy(1_000)
+        runCurrent()
+
+        assertEquals(30_000, suite.player.currentPositionMillis.value)
+
         testScope.cancel()
     }
 
