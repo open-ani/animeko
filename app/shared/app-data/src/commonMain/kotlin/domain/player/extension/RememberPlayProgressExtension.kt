@@ -30,6 +30,7 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.PlaybackState
+import org.openani.mediamp.source.MediaData
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -87,25 +88,37 @@ class RememberPlayProgressExtension(
 
         backgroundTaskScope.launch("PlaybackStateListener") {
             val player = context.player
-            var haveResumedOnce = false
+
+            // 已经为哪个 MediaData 判断过"要不要恢复历史进度" —— 每个真正载入播放器的资源只判断一次.
+            //
+            // 不能用 PlaybackState.READY 当作"新资源"的边界: 虽然 MediampPlayer 的文档说 READY 只由
+            // setMediaData 产生, 但 ExoPlayer 后端在 onMediaItemTransition 里会无条件把状态改回 READY
+            // (而 animeko 自己的 LibassExoPlayerMediampPlayer.resume 就会再 setMediaSource 一次),
+            // 于是播放中途会莫名多出一次 READY -> PLAYING. 之前的实现在每个 READY 上重置标记, 这次 PLAYING
+            // 就被误认为"新资源首次播放", 把用户刚跳到的位置拉回数据库里的旧进度
+            // (点击跳过 OP / 自动跳过 OP 都能复现, https://github.com/open-ani/animeko/issues/3215).
+            //
+            // 同一 episode 换数据源时 PlayerSession.loadMedia 会 setMediaData 一个新的 MediaData,
+            // 所以换源续播 (配合 onBeforeSelect 的保存) 仍然有效.
+            var resumeAttemptedFor: MediaData? = null
             player.playbackState.collectLatest { playbackState ->
                 when (playbackState) {
-                    PlaybackState.READY -> {
-                        haveResumedOnce = false
-                    }
-
                     PlaybackState.PLAYING -> {
                         // Some backends (notably desktop mpv) report PLAYING before the loaded file accepts seeks.
                         // Restore once metadata is ready, but only report after PLAYING remains active for 5 seconds.
-                        if (!haveResumedOnce) {
+                        //
+                        // `openResource` 先于 READY/PLAYING 更新, 所以此时读到的一定是当前正在播放的资源.
+                        val currentMediaData = player.mediaData.first()
+                        if (currentMediaData != null && currentMediaData != resumeAttemptedFor) {
                             if (automationGate.suppressed.value) {
-                                haveResumedOnce = true
+                                resumeAttemptedFor = currentMediaData
                             } else {
                                 val positionMillis =
                                     playProgressRepository.getPositionMillisByEpisodeId(episodeSession.episodeId)
                                 if (positionMillis == null) {
                                     logger.info { "Did not find saved position" }
-                                    haveResumedOnce = true
+                                    // 没查到也要记账, 否则此后每次 PLAYING 都要重新查一遍数据库.
+                                    resumeAttemptedFor = currentMediaData
                                 } else {
                                     logger.info {
                                         "Loaded saved position: $positionMillis, waiting for video properties"
@@ -116,7 +129,7 @@ class RememberPlayProgressExtension(
                                             "Video properties ready, seeking to saved position: $positionMillis"
                                         }
                                         player.seekTo(positionMillis)
-                                        haveResumedOnce = true
+                                        resumeAttemptedFor = currentMediaData
                                     }
                                 }
                             }
