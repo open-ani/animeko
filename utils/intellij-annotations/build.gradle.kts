@@ -10,13 +10,11 @@
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
 plugins {
-    alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.kotlin.multiplatform.library)
-    `ani-mpp-lib-targets`
+    id("ani.kmp-library")
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.utils.intellij.annotations"
     }
     @OptIn(ExperimentalKotlinGradlePluginApi::class)

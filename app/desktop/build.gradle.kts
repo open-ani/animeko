@@ -15,7 +15,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 import java.util.UUID
 
 plugins {
-    alias(libs.plugins.kotlin.jvm)
+    id("ani.jvm-library")
     alias(libs.plugins.kotlin.plugin.compose)
     alias(libs.plugins.jetbrains.compose)
     alias(libs.plugins.kotlin.plugin.serialization)
@@ -35,15 +35,8 @@ dependencies {
     implementation(libs.bytebuddy)
     implementation(libs.mediamp.ffmpeg.desktop)
 
-    when (val triple = getOsTriple()) {
-        "windows-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.windows.x64)
-        "linux-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.linux.x64)
-        "macos-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.macos.x64)
-        "macos-arm64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.macos.arm64)
-        "windows-arm64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.windows.arm64)
-        else -> throw UnsupportedOperationException("Unknown os: $triple")
-    }
-
+    // mpv runtime 必须声明在 ffmpeg runtime 之前: 两个 runtime jar 的 libav* 同名且不同构建,
+    // dev run 的 natives 提取按 classpath 首匹配, mpv 需要命中自己 jar 里的全功能 libav.
     if (getLocalProperty("ani.build.mediamp.path") != null) {
         runtimeOnly(libs.mediamp.mpv) {
             capabilities {
@@ -58,6 +51,15 @@ dependencies {
             "macos-arm64" -> runtimeOnly(libs.mediamp.mpv.runtime.macos.arm64)
             else -> {}
         }
+    }
+
+    when (val triple = getOsTriple()) {
+        "windows-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.windows.x64)
+        "linux-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.linux.x64)
+        "macos-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.macos.x64)
+        "macos-arm64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.macos.arm64)
+        "windows-arm64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.windows.arm64)
+        else -> throw UnsupportedOperationException("Unknown os: $triple")
     }
 
     // vlcj 依赖里没有 native libraries，依赖是手动放的
@@ -208,14 +210,15 @@ compose.desktop {
 //                    You should have received a copy of the GNU General Public License
 //                    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //            """.trimIndent()
-            licenseFile.set(rootProject.rootDir.resolve("LICENSE.txt"))
-            packageVersion = properties["package.version"].toString()
+            licenseFile.set(layout.settingsDirectory.file("LICENSE.txt"))
+            packageVersion = providers.gradleProperty("package.version").get()
         }
 
         if (getLocalProperty("ani.desktop.proguard")?.toBooleanStrict() != false) {
             buildTypes.release.proguard {
                 isEnabled.set(true)
-                version = "7.8.0"
+                // 7.9.1 起 (proguard-core 9.3.2 + kotlin-metadata-jvm 2.3.0) 才能读 Kotlin 2.4 metadata.
+                version = "7.9.1"
                 optimize.set(true)
                 obfuscate.set(false)
                 this.configurationFiles.from(project(":app:shared").sharedAndroidProguardRules())
@@ -339,6 +342,8 @@ afterEvaluate {
         doLast {
             unpackComposeDesktopNativeLibraries()
             reconstructLinuxSolink()
+            isolateLinuxBundledLibraries()
+            restoreLinuxRuntimeExecutables()
         }
     }
 }

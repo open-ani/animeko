@@ -131,6 +131,8 @@ fun ModalSideSheet(
             dismissOnClickOutside = true,
             usePlatformDefaultWidth = false,
             usePlatformInsets = false,
+            // 本组件自带滑入动画, 不能叠加 CMP 1.11 的 Dialog 默认 scale-in.
+            animateTransition = false,
         ),
     ) {
         Box(Modifier.fillMaxSize().imePadding()) {

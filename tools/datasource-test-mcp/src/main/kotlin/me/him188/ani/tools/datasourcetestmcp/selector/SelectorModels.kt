@@ -93,6 +93,14 @@ data class SelectorResolveEpisodeResult(
     val extractResults: List<ChannelTestResult> = emptyList(),
     val errors: List<String> = emptyList(),
     val totalDurationMillis: Long? = null,
+    /** 成功解析出最终视频 URL 的候选数, 与后续 HTTP probe 结果无关。 */
+    val resolvedCount: Int = 0,
+    /** 通过 HTTP probe 的候选数。probeVideo=false 时为 0。 */
+    val probeSucceededCount: Int = 0,
+    /** HTTP probe 返回失败或抛出非超时异常的候选数。 */
+    val probeFailedCount: Int = 0,
+    /** HTTP probe 超时的候选数。超时结果仍保留 resolvedVideo。 */
+    val probeTimedOutCount: Int = 0,
 )
 
 @Serializable

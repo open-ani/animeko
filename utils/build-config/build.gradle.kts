@@ -8,7 +8,7 @@
  */
 
 plugins {
-    alias(libs.plugins.android.library)
+    id("ani.android-library")
 }
 
 // TODO AGP Migration: Test new build config behavior

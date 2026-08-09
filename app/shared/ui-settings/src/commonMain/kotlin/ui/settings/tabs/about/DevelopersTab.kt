@@ -62,6 +62,7 @@ import me.him188.ani.app.ui.settings.misakatat
 import me.him188.ani.app.ui.settings.nekoouo
 import me.him188.ani.app.ui.settings.nick
 import me.him188.ani.app.ui.settings.nier4ever
+import me.him188.ani.app.ui.settings.nihildigit
 import me.him188.ani.app.ui.settings.rdlwicked
 import me.him188.ani.app.ui.settings.sanlorng
 import me.him188.ani.app.ui.settings.stageguard
@@ -179,6 +180,12 @@ fun DevelopersTab(
             "NieR4ever", "https://github.com/NieR4ever",
             description = stringResource(Lang.settings_developers_contributor),
             avatar = { LocalImage(Res.drawable.nier4ever) },
+        )
+
+        DeveloperItem(
+            "NihilDigit", "https://github.com/NihilDigit",
+            description = stringResource(Lang.settings_developers_contributor),
+            avatar = { LocalImage(Res.drawable.nihildigit) },
         )
 
         DeveloperItem(

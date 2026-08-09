@@ -60,11 +60,11 @@ import me.him188.ani.app.data.models.subject.nameCnOrName
 import me.him188.ani.app.data.network.AutoSkipRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
+import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.comment.PostCommentUseCase
-import me.him188.ani.app.domain.comment.TurnstileState
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.danmaku.SetDanmakuEnabledUseCase
 import me.him188.ani.app.domain.episode.EpisodeCompletionContext.isKnownCompleted
@@ -262,7 +262,6 @@ class EpisodeViewModel(
     private val setDanmakuEnabledUseCase: SetDanmakuEnabledUseCase by inject()
     private val postCommentUseCase: PostCommentUseCase by inject()
     private val autoSkipRepository: AutoSkipRepository by inject()
-    val turnstileState: TurnstileState by inject()
     private val getMediaSelectorSettings: GetMediaSelectorSettingsUseCase by inject()
     private val getMediaSourceInstances: GetMediaSourceInstancesUseCase by inject()
     val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase by inject()
@@ -675,22 +674,26 @@ class EpisodeViewModel(
             .flatMapLatest { episodeId ->
                 episodeCommentRepository.subjectEpisodeCommentsPager(
                     episodeId.toLong(),
-                    onAniLoadFailed = { commentLoadFailureChannel.trySend(it) },
+                    // Ani 评论正常但服务端没取到 Bangumi 评论: 列表照常显示, 额外提示一次, 免得看起来像"没有评论"
+                    onBangumiUnavailable = {
+                        commentLoadFailureChannel.trySend(
+                            RepositoryServiceUnavailableException("Bangumi episode comments unavailable"),
+                        )
+                    },
                 )
                     .map { page -> page.map { it.parseToUIComment() } }
             }.cachedIn(backgroundScope),
         countState = stateOf(null),
         onSubmitCommentReaction = { comment, value, selected ->
-            episodeCommentRepository.submitReaction(
-                episodeId = episodeIdFlow.first().toLong(),
-                source = when (comment.source) {
-                    UICommentSource.ANI -> me.him188.ani.app.data.models.episode.EpisodeCommentSource.ANI
-                    UICommentSource.BANGUMI -> me.him188.ani.app.data.models.episode.EpisodeCommentSource.BANGUMI
-                },
-                commentId = comment.sourceCommentId,
-                value = value,
-                selected = selected,
-            )
+            // Bangumi 评论只读, 不支持提交表情回应
+            if (comment.source == UICommentSource.ANI) {
+                episodeCommentRepository.submitReaction(
+                    episodeId = episodeIdFlow.first().toLong(),
+                    commentId = comment.sourceCommentId,
+                    value = value,
+                    selected = selected,
+                )
+            }
         },
         backgroundScope = backgroundScope,
         commentLoadFailures = commentLoadFailureChannel.receiveAsFlow(),
@@ -1060,7 +1063,6 @@ class EpisodeViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        turnstileState.cancel()
         webSessionManager.cancelAutoSolves()
         backgroundScope.launch(NonCancellable + CoroutineName("EpisodeViewModel#onCleared")) {
             fetchPlayState.onClose()

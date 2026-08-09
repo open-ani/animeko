@@ -27,6 +27,8 @@ import kotlinx.serialization.encoding.*
  *
  * @param total
  * @param items
+ * @param bangumiUnavailable
+ * @param nextCursor
  */
 @Serializable
 
@@ -34,7 +36,11 @@ data class AniEpisodeCommentsResponse (
 
     @SerialName(value = "total") @Required val total: kotlin.Long,
 
-    @SerialName(value = "items") @Required val items: kotlin.collections.List<AniEpisodeComment>
+    @SerialName(value = "items") @Required val items: kotlin.collections.List<AniEpisodeComment>,
+
+    @SerialName(value = "bangumiUnavailable") @Required val bangumiUnavailable: kotlin.Boolean,
+
+    @SerialName(value = "nextCursor") val nextCursor: kotlin.String? = null
 
 ) {
 
