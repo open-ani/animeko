@@ -139,6 +139,8 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
     }
     single<HttpMediaCacheEngine> {
         val saveDir = Path(get<MediaSaveDirProvider>().saveDir).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR)
+        val pikpakConfig = get<SettingsRepository>().pikpakConfig.flow
+            .stateIn(scope, SharingStarted.Eagerly, PikPakConfig.Default)
         logger<TorrentManager>().info { "HttpMediaCacheEngine base save dir: $saveDir" }
 
         HttpMediaCacheEngine(
@@ -147,6 +149,7 @@ fun getDesktopModules(getContext: () -> DesktopContext, scope: CoroutineScope) =
             downloader = get<HttpDownloader>(),
             saveDir = saveDir.toKtPath(),
             mediaResolver = get<MediaResolver>(),
+            pikpakConfig = { pikpakConfig.value },
         )
     }
 
