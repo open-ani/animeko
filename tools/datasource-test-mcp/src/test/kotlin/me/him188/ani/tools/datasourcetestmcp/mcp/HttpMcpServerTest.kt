@@ -21,8 +21,13 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -30,6 +35,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class HttpMcpServerTest {
@@ -112,6 +119,62 @@ class HttpMcpServerTest {
             result.getValue("structuredContent").jsonObject.getValue("hello").jsonPrimitive.content,
         )
         assertEquals("false", result.getValue("isError").jsonPrimitive.content)
+    }
+
+    @Test
+    fun `tools call propagates coroutine cancellation`() = runTest {
+        val cancellingTool = McpToolRegistration(
+            McpTool(
+                name = "cancel",
+                description = "cancel",
+                inputSchema = buildJsonObject { put("type", "object") },
+            ),
+        ) { awaitCancellation() }
+        val handler = McpRequestHandler(listOf(cancellingTool), json)
+        val request = RpcRequest(
+            id = JsonPrimitive(1),
+            method = "tools/call",
+            params = buildJsonObject {
+                put("name", "cancel")
+                put("arguments", buildJsonObject {})
+            },
+        )
+
+        assertFailsWith<TimeoutCancellationException> {
+            withTimeout(1) { handler.handle(request) }
+        }
+    }
+
+    @Test
+    fun `tool timing out internally is reported as a structured error`() = runTest {
+        // 工具内部漏网的 withTimeout 抛的是 TimeoutCancellationException, 表示这次调用超时而非请求被取消,
+        // 不能让它冒到 transport 层把整个响应打掉.
+        val timingOutTool = McpToolRegistration(
+            McpTool(
+                name = "slow",
+                description = "slow",
+                inputSchema = buildJsonObject { put("type", "object") },
+            ),
+        ) { withTimeout(1) { awaitCancellation() } }
+        val handler = McpRequestHandler(listOf(timingOutTool), json)
+        val request = RpcRequest(
+            id = JsonPrimitive(1),
+            method = "tools/call",
+            params = buildJsonObject {
+                put("name", "slow")
+                put("arguments", buildJsonObject {})
+            },
+        )
+
+        val result = assertNotNull(handler.handle(request)).result
+        val content = assertNotNull(result).jsonObject
+        assertEquals("true", content.getValue("isError").jsonPrimitive.content)
+        val structured = content.getValue("structuredContent").jsonObject
+        assertEquals("false", structured.getValue("ok").jsonPrimitive.content)
+        assertTrue(
+            structured.getValue("summary").jsonPrimitive.content.contains("TimeoutCancellationException"),
+            structured.getValue("summary").jsonPrimitive.content,
+        )
     }
 
     @Test

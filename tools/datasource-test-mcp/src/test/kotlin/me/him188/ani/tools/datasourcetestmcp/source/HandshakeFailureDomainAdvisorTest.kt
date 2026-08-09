@@ -15,12 +15,16 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import javax.net.ssl.SSLHandshakeException
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -87,6 +91,23 @@ class HandshakeFailureDomainAdvisorTest {
         )
 
         assertNull(result)
+    }
+
+    @Test
+    fun analyzeIfNeeded_propagatesCancellation() = runTest {
+        val advisor = HandshakeFailureDomainAdvisor(
+            HttpClient(MockEngine { awaitCancellation() }),
+        )
+
+        assertFailsWith<TimeoutCancellationException> {
+            withTimeout(1) {
+                advisor.analyzeIfNeeded(
+                    sourceName = "趣动漫",
+                    mediaSourceSpec = testSpec("https://www.qdm8.com/search?wd={keyword}"),
+                    exception = SSLHandshakeException("handshake failed"),
+                )
+            }
+        }
     }
 
     private fun testSpec(searchUrl: String): MediaSourceSpec {

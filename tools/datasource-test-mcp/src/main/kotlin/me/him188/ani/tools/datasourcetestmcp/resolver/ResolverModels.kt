@@ -40,7 +40,14 @@ enum class CandidateTestMode {
 data class ChannelTestResult(
     val order: Int,
     val candidate: MediaCandidateResult,
+    /** `success` / `failed` */
     val resolveStatus: String,
+    /**
+     * HTTP 可达性探测的结果: `success` / `failed` / `timeout` / `not_run`.
+     *
+     * `not_run` 表示未解析出 URL 或调用方关掉了探测; `timeout` 与 `failed` 都不会清掉
+     * 已经解析出来的 [resolvedVideo], 判断"是否解析成功"请看 [resolveStatus].
+     */
     val probeStatus: String,
     val ok: Boolean,
     val summary: String,
@@ -53,7 +60,7 @@ data class ChannelTestResult(
      */
     val resolveDurationMillis: Long? = null,
     /**
-     * HTTP 播放探测耗时
+     * HTTP 可达性探测耗时
      */
     val probeDurationMillis: Long? = null,
 )

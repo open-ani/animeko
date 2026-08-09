@@ -342,6 +342,8 @@ afterEvaluate {
         doLast {
             unpackComposeDesktopNativeLibraries()
             reconstructLinuxSolink()
+            isolateLinuxBundledLibraries()
+            restoreLinuxRuntimeExecutables()
         }
     }
 }

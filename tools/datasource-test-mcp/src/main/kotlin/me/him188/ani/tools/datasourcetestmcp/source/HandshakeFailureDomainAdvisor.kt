@@ -14,6 +14,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
@@ -46,7 +47,7 @@ class HandshakeFailureDomainAdvisor(
             "$sourceName $hostToken",
         )
 
-        return runCatching {
+        return try {
             val suggestions = queries
                 .flatMap { query -> fetchSearchResults(query) }
                 .filter { candidate ->
@@ -72,7 +73,9 @@ class HandshakeFailureDomainAdvisor(
                     }"
                 },
             )
-        }.getOrElse { searchError ->
+        } catch (searchError: CancellationException) {
+            throw searchError
+        } catch (searchError: Throwable) {
             HandshakeFailureDomainHint(
                 currentHost = currentHost,
                 searchProvider = "bing-rss",
