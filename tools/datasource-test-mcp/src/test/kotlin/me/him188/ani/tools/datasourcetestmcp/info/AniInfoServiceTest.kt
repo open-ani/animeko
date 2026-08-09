@@ -17,10 +17,14 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -96,5 +100,20 @@ class AniInfoServiceTest {
         assertFalse(result.ok)
         assertTrue(result.errors.isNotEmpty())
         assertTrue(result.errors.first().contains("429"), result.errors.first())
+    }
+
+    @Test
+    fun `getTrends propagates coroutine cancellation`() = runTest {
+        val service = AniInfoService(
+            HttpClient(MockEngine { awaitCancellation() }) {
+                install(ContentNegotiation) {
+                    json(Json { ignoreUnknownKeys = true })
+                }
+            },
+        )
+
+        assertFailsWith<TimeoutCancellationException> {
+            withTimeout(1) { service.getTrends(GetTrendsInput()) }
+        }
     }
 }

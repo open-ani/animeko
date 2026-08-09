@@ -691,6 +691,26 @@ class RememberPlayProgressExtensionTest : AbstractPlayerExtensionTest() {
     }
 
     @Test
+    fun `waits for video properties before loading saved history`() = runTest {
+        val (testScope, suite, _) = createCase()
+        advanceUntilIdle()
+        repository.saveOrUpdate(episodeId = initialEpisodeId, 500)
+        suite.player.mediaProperties.value = null
+
+        suite.player.setMediaData(UriMediaData("file://test"))
+        suite.player.playbackState.value = PlaybackState.PLAYING
+        runCurrent()
+
+        assertEquals(0, suite.player.currentPositionMillis.value)
+
+        suite.player.mediaProperties.value = MediaProperties.Empty.copy(durationMillis = 100_000L)
+        advanceUntilIdle()
+
+        assertEquals(500, suite.player.currentPositionMillis.value)
+        testScope.cancel()
+    }
+
+    @Test
     fun `loads saved history on switch episode`() = runTest {
         val (testScope, suite, state) = createCase()
         advanceUntilIdle()

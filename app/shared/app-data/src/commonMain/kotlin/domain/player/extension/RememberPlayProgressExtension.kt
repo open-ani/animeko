@@ -15,6 +15,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -94,23 +95,29 @@ class RememberPlayProgressExtension(
                     }
 
                     PlaybackState.PLAYING -> {
-                        // Restore immediately, but only report after PLAYING has remained active for 5 seconds.
-                        withContext(NonCancellable) {
-                            if (!haveResumedOnce) {
-                                if (automationGate.suppressed.value) {
-                                    haveResumedOnce = true
-                                    return@withContext
-                                }
+                        // Some backends (notably desktop mpv) report PLAYING before the loaded file accepts seeks.
+                        // Restore once metadata is ready, but only report after PLAYING remains active for 5 seconds.
+                        if (!haveResumedOnce) {
+                            if (automationGate.suppressed.value) {
+                                haveResumedOnce = true
+                            } else {
                                 val positionMillis =
                                     playProgressRepository.getPositionMillisByEpisodeId(episodeSession.episodeId)
                                 if (positionMillis == null) {
                                     logger.info { "Did not find saved position" }
-                                } else {
-                                    logger.info { "Loaded saved position: $positionMillis, seeking to $positionMillis" }
-                                    withContext(Dispatchers.Main) { // android must call in main thread
-                                        player.seekTo(positionMillis)
-                                    }
                                     haveResumedOnce = true
+                                } else {
+                                    logger.info {
+                                        "Loaded saved position: $positionMillis, waiting for video properties"
+                                    }
+                                    player.mediaProperties.first { it != null && it.durationMillis > 0L }
+                                    withContext(Dispatchers.Main + NonCancellable) { // android must call in main thread
+                                        logger.info {
+                                            "Video properties ready, seeking to saved position: $positionMillis"
+                                        }
+                                        player.seekTo(positionMillis)
+                                        haveResumedOnce = true
+                                    }
                                 }
                             }
                         }

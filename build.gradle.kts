@@ -7,15 +7,17 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-buildscript {
-    repositories {
-        gradlePluginPortal()
-        mavenCentral()
-        google()
-        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-    }
-}
-
+// 这串 `apply false` 不是历史包袱, 不要"因为都搬进 build-logic 了"而删掉.
+//
+// Gradle 按 buildscript classpath 给每个 project 建 ClassLoader, 子项目的 scope 是根的子级, 类加载 parent-first.
+// 子项目各自的 `plugins {}` 组合不同 (serialization / sentry / ksp / room ...), classpath 就不同,
+// 于是每个组合都会拿到一个独立 ClassLoader —— 里面各带一份 KGP. 而 BuildService 是全局按名字注册的:
+// 先注册的项目存进去的是它那份 KGP 里的类, 另一个项目取出来往自己那份类上 cast 就炸,
+// 例如 macOS 上配置 :app:shared 时的 SwiftPMLockTaskAggregationBuildService ClassCastException.
+//
+// 在根这里声明 (apply false 表示只进 classpath 不应用), 这些 jar 就落在根 scope,
+// 子项目 parent-first 命中同一份类, 全仓才只有一份 KGP. 版本与 catalog 一致, 子项目照旧可以带版本请求.
+// 新增会被多个模块共享的插件时, 这里也要补一行.
 plugins {
     alias(libs.plugins.kotlin.multiplatform) apply false
     alias(libs.plugins.kotlin.jvm) apply false
@@ -38,42 +40,9 @@ plugins {
     idea
 }
 
-allprojects {
-    group = "me.him188.ani"
-    version = properties["version.name"].toString()
-
-    repositories {
-        mavenCentral()
-        google()
-        mavenLocal()
-        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-        maven("https://androidx.dev/storage/compose-compiler/repository/")
-        maven("https://jogamp.org/deployment/maven")
-    }
-}
-
-subprojects {
-    // Pin JNA: FileKit and other deps may request newer JNA, which breaks VLC.
-    configurations.configureEach {
-        resolutionStrategy.force(
-            "net.java.dev.jna:jna:${libs.versions.jna.get()}",
-            "net.java.dev.jna:jna-platform:${libs.versions.jna.get()}",
-        )
-    }
-
-    afterEvaluate {
-        configureKotlinOptIns()
-        configureKotlinTestSettings()
-        configureEncoding()
-        configureJvmTarget()
-        configureComposePreviewToolingDependency()
-//        kotlin.runCatching {
-//            extensions.findByType(ComposeExtension::class)?.apply {
-//                this.kotlinCompilerPlugin.set(libs.versions.compose.multiplatform.compiler.get())
-//            }
-//        }
-    }
-}
+// 仓库搬到 settings 的 dependencyResolutionManagement, 其余约定搬到 build-logic 的 `ani.base`.
+group = "me.him188.ani"
+version = providers.gradleProperty("version.name").get()
 
 idea {
     module {

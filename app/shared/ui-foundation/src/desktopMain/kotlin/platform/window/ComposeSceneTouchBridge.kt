@@ -79,6 +79,8 @@ internal class ComposeSceneTouchBridge private constructor(
                 event.pointer.eventTimeMillis,
                 null,
                 null,
+                1f, // scaleGestureFactor
+                Offset.Zero.packedValue, // panGestureOffset
             )
         }
     }
@@ -184,7 +186,7 @@ internal class ComposeSceneTouchBridge private constructor(
             val methods = (scene.javaClass.methods.asSequence() + ComposeScene::class.java.methods.asSequence())
                 .filter { method ->
                     method.name.startsWith("sendPointerEvent-") &&
-                        method.parameterTypes.size == 8 &&
+                        method.parameterTypes.size == 10 &&
                         method.parameterTypes[1] == List::class.java
                 }
                 .distinctBy { method -> method.name }
