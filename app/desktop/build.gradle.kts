@@ -38,9 +38,14 @@ dependencies {
     // mpv runtime 必须声明在 ffmpeg runtime 之前: 两个 runtime jar 的 libav* 同名且不同构建,
     // dev run 的 natives 提取按 classpath 首匹配, mpv 需要命中自己 jar 里的全功能 libav.
     if (getLocalProperty("ani.build.mediamp.path") != null) {
-        runtimeOnly(libs.mediamp.mpv) {
-            capabilities {
-                requireCapability("org.openani.mediamp:mediamp-mpv-runtime-${getOsTriple()}")
+        // Dev natives (ani.build.mediamp.mpv.devNativeDir): the JNI wrapper is loaded from that
+        // directory at startup instead of a runtime jar, so skip the composite runtime
+        // dependency — resolving it would trigger mediamp's full meson mpv build.
+        if (getLocalProperty("ani.build.mediamp.mpv.devNativeDir") == null) {
+            runtimeOnly(libs.mediamp.mpv) {
+                capabilities {
+                    requireCapability("org.openani.mediamp:mediamp-mpv-runtime-${getOsTriple()}")
+                }
             }
         }
     } else {
@@ -48,6 +53,7 @@ dependencies {
             "windows-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.windows.x64)
             "windows-arm64" -> runtimeOnly(libs.mediamp.mpv.runtime.windows.arm64)
             "linux-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.linux.x64)
+            "macos-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.macos.x64)
             "macos-arm64" -> runtimeOnly(libs.mediamp.mpv.runtime.macos.arm64)
             else -> {}
         }
@@ -62,8 +68,6 @@ dependencies {
         else -> throw UnsupportedOperationException("Unknown os: $triple")
     }
 
-    // vlcj 依赖里没有 native libraries，依赖是手动放的
-    implementation(libs.vlcj)
 }
 
 // workaround for compose limitation
@@ -387,5 +391,11 @@ fun JavaExec.configureDevProperties() {
         "ani.windows.nativeTouch.debug",
         providers.gradleProperty("ani.windows.nativeTouch.debug").getOrElse("false"),
     )
+    // mediamp composite 开发: 从本地目录加载 mpv JNI wrapper (配合 mediamp 的 compileJniDevMacos)
+    getLocalProperty("ani.build.mediamp.mpv.devNativeDir")?.let {
+        systemProperty("mediamp.mpv.dev.native.dir", it)
+    }
+    // MpvVerify 无头自测: ./gradlew :app:desktop:run -Pani.desktop.mainClass=...MpvVerifyKt -Pani.mpv.selftest=true
+    systemProperty("ani.mpv.selftest", providers.gradleProperty("ani.mpv.selftest").getOrElse("false"))
     workingDir(file("test-sandbox"))
 }

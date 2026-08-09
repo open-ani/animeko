@@ -83,7 +83,10 @@ class LoadMediaOnSelectExtensionTest : AbstractPlayerExtensionTest() {
 
         val ms1 = suite.mediaSelectorTestBuilder.delayedMediaSource("1")
 
-        suite.player.currentPositionMillis.value = 1000
+        // v2: give the player prior playback state that the select must replace.
+        suite.player.loadMedia(durationMs = 100_000L, playWhenReady = true, uri = "file://old.mp4")
+        suite.player.injectPosition(1000)
+        advanceUntilIdle()
 
         val myMedia = TestMediaList[0]
         ms1.complete(listOf(myMedia))
@@ -103,7 +106,10 @@ class LoadMediaOnSelectExtensionTest : AbstractPlayerExtensionTest() {
 
         val ms1 = suite.mediaSelectorTestBuilder.delayedMediaSource("1")
 
-        suite.player.currentPositionMillis.value = 1000
+        // v2: give the player prior playback state that the select must replace.
+        suite.player.loadMedia(durationMs = 100_000L, playWhenReady = true, uri = "file://old.mp4")
+        suite.player.injectPosition(1000)
+        advanceUntilIdle()
 
         // Fetch complete
         ms1.complete(TestMediaList.take(2))
@@ -136,7 +142,10 @@ class LoadMediaOnSelectExtensionTest : AbstractPlayerExtensionTest() {
 
         val ms1 = suite.mediaSelectorTestBuilder.delayedMediaSource("1")
 
-        suite.player.currentPositionMillis.value = 1000
+        // v2: give the player prior playback state that the select must replace.
+        suite.player.loadMedia(durationMs = 100_000L, playWhenReady = true, uri = "file://old.mp4")
+        suite.player.injectPosition(1000)
+        advanceUntilIdle()
 
         // Fetch complete
         ms1.complete(TestMediaList.take(2))

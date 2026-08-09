@@ -15,8 +15,9 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import me.him188.ani.app.domain.episode.EpisodeFetchSelectPlayState
 import me.him188.ani.app.domain.episode.EpisodePlayerTestSuite
-import org.openani.mediamp.PlaybackState
+import org.openani.mediamp.isMediaLoaded
 import org.openani.mediamp.metadata.MediaProperties
+import org.openani.mediamp.source.UriMediaData
 import org.openani.mediamp.test.TestMediampPlayer
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.AfterTest
@@ -41,9 +42,23 @@ abstract class AbstractPlayerExtensionTest {
         )
     }
 
-    fun EpisodePlayerTestSuite.setMediaDuration(durationMillis: Long) {
-        player.mediaProperties.value = player.mediaProperties.value?.copy(durationMillis = durationMillis)
-            ?: MediaProperties.Empty.copy(durationMillis = durationMillis)
+    /**
+     * Sets the duration the (fake) media reports.
+     *
+     * - Before a media is opened, this configures [TestMediampPlayer.defaultMediaProperties], so the
+     *   next open (e.g. triggered by selecting a media) reports this duration at its Ready point.
+     * - If a media is already loaded, the updated properties are also injected into the current
+     *   session, like a backend delivering a late properties update.
+     *
+     * Pass `null` for an unknown duration (v2 semantics for live/unknown media; replaces v1's `0`/`-1`).
+     */
+    fun EpisodePlayerTestSuite.setMediaDuration(durationMillis: Long?) {
+        val properties = (player.mediaProperties.value ?: player.defaultMediaProperties)
+            .copy(durationMillis = durationMillis)
+        player.defaultMediaProperties = properties
+        if (player.state.value.isMediaLoaded) {
+            player.injectProperties(properties)
+        }
     }
 
 
@@ -58,11 +73,23 @@ abstract class AbstractPlayerExtensionTest {
     }
 }
 
-fun TestMediampPlayer.loadMedia(
-    durationMs: Long,
+/**
+ * Loads a fake media directly into the player (bypassing the fetch-select pipeline), reporting
+ * [durationMs] at the Ready point.
+ *
+ * Suspends until the open completes (the test scheduler is pumped automatically while suspended).
+ * On return the player is [org.openani.mediamp.MediaStatus.Ready]; with [playWhenReady] it is
+ * actually playing (fake transport is not stalled).
+ *
+ * Note: media loaded this way does NOT produce [EpisodeFetchSelectPlayState.MediaLoadedEvent] —
+ * extensions gated on it stay disabled, which some tests rely on.
+ */
+suspend fun TestMediampPlayer.loadMedia(
+    durationMs: Long?,
+    playWhenReady: Boolean = false,
+    uri: String = "file://test.mp4",
+    startPositionMillis: Long = 0L,
 ) {
-    mediaProperties.value = MediaProperties(
-        durationMillis = durationMs,
-    )
-    playbackState.value = PlaybackState.READY
+    defaultMediaProperties = defaultMediaProperties.copy(durationMillis = durationMs)
+    setMediaData(UriMediaData(uri), playWhenReady = playWhenReady, startPositionMillis = startPositionMillis)
 }
