@@ -8,10 +8,9 @@
  */
 
 plugins {
-    alias(libs.plugins.kotlin.jvm)
+    id("ani.jvm-library")
     alias(libs.plugins.kotlin.plugin.serialization)
     alias(libs.plugins.kotlin.plugin.compose)
-    alias(libs.plugins.jetbrains.compose)
     application
 }
 
@@ -45,10 +44,39 @@ dependencies {
 
     // probe_video: 用与桌面 App 相同的 VLC 播放器真实播放视频
     implementation(libs.mediamp.api)
-    implementation(libs.mediamp.vlc)
     implementation(libs.mediamp.mpv)
-    implementation(libs.vlcj)
-    implementation(compose.desktop.currentOs)
+    // Keep the Compose desktop application model out of this CLI module: it also owns a `run`
+    // task, which conflicts with the Gradle application plugin used to build the launcher.
+    implementation(
+        "org.jetbrains.compose.desktop:desktop-jvm-${getOsTriple()}:${libs.versions.compose.multiplatform.get()}",
+    )
+
+    implementation(libs.mediamp.ffmpeg.desktop)
+
+    when (val triple = getOsTriple()) {
+        "windows-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.windows.x64)
+        "linux-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.linux.x64)
+        "macos-x64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.macos.x64)
+        "macos-arm64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.macos.arm64)
+        "windows-arm64" -> runtimeOnly(libs.mediamp.ffmpeg.runtime.windows.arm64)
+        else -> throw UnsupportedOperationException("Unknown os: $triple")
+    }
+
+    if (getLocalProperty("ani.build.mediamp.path") != null) {
+        runtimeOnly(libs.mediamp.mpv) {
+            capabilities {
+                requireCapability("org.openani.mediamp:mediamp-mpv-runtime-${getOsTriple()}")
+            }
+        }
+    } else {
+        when (val triple = getOsTriple()) {
+            "windows-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.windows.x64)
+            "windows-arm64" -> runtimeOnly(libs.mediamp.mpv.runtime.windows.arm64)
+            "linux-x64" -> runtimeOnly(libs.mediamp.mpv.runtime.linux.x64)
+            "macos-arm64" -> runtimeOnly(libs.mediamp.mpv.runtime.macos.arm64)
+            else -> {}
+        }
+    }
 
     runtimeOnly(libs.slf4j.simple)
     // 验证码浏览器要在 Swing EDT (CEF context) 上取 UA, WebSessionManager 用 Dispatchers.Main 切过去

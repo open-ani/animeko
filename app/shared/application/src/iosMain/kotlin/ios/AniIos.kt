@@ -206,38 +206,40 @@ private fun initializeIosFfmpegRuntime() {
 @Suppress("FunctionName", "unused") // used in Swift
 fun MainViewController(app: AniIosApplication): UIViewController {
     val contentViewController = ComposeUIViewController {
-        AniApp {
-            val platformWindow = rememberPlatformWindow()
-            CompositionLocalProvider(
-                LocalContext provides app.context,
-                LocalPlatformWindow provides platformWindow,
-                LocalOnBackPressedDispatcherOwner provides app.onBackPressedDispatcherOwner,
-            ) {
-                Box(
-                    Modifier.background(color = MaterialTheme.colorScheme.surfaceContainerLowest)
-                        .fillMaxSize(),
+        ProvideIosResourceEnvironment {
+            AniApp {
+                val platformWindow = rememberPlatformWindow()
+                CompositionLocalProvider(
+                    LocalContext provides app.context,
+                    LocalPlatformWindow provides platformWindow,
+                    LocalOnBackPressedDispatcherOwner provides app.onBackPressedDispatcherOwner,
                 ) {
-                    Box(Modifier.fillMaxSize()) {
-                        val paddingByWindowSize by animateDpAsState(0.dp)
+                    Box(
+                        Modifier.background(color = MaterialTheme.colorScheme.surfaceContainerLowest)
+                            .fillMaxSize(),
+                    ) {
+                        Box(Modifier.fillMaxSize()) {
+                            val paddingByWindowSize by animateDpAsState(0.dp)
 
-                        val vm = viewModel { ToastViewModel() }
+                            val vm = viewModel { ToastViewModel() }
 
-                        val showing by vm.showing.collectAsStateWithLifecycle()
-                        val content by vm.content.collectAsStateWithLifecycle()
+                            val showing by vm.showing.collectAsStateWithLifecycle()
+                            val content by vm.content.collectAsStateWithLifecycle()
 
-                        CompositionLocalProvider(
-                            LocalNavigator provides app.aniNavigator,
-                            LocalToaster provides remember {
-                                object : Toaster {
-                                    override fun toast(text: String) {
-                                        vm.show(text)
+                            CompositionLocalProvider(
+                                LocalNavigator provides app.aniNavigator,
+                                LocalToaster provides remember {
+                                    object : Toaster {
+                                        override fun toast(text: String) {
+                                            vm.show(text)
+                                        }
                                     }
+                                },
+                            ) {
+                                Box(Modifier.padding(all = paddingByWindowSize)) {
+                                    AniAppContent(app.aniNavigator)
+                                    Toast({ showing }, { Text(content) })
                                 }
-                            },
-                        ) {
-                            Box(Modifier.padding(all = paddingByWindowSize)) {
-                                AniAppContent(app.aniNavigator)
-                                Toast({ showing }, { Text(content) })
                             }
                         }
                     }

@@ -219,6 +219,8 @@
     <string name="settings_app_close_behavior_exit">關閉應用</string>
     <string name="settings_app_close_behavior_minimize_to_tray">最小化到系統托盤</string>
     <string name="desktop_tray_open">顯示主視窗</string>
+    <string name="always_on_top">視窗置頂</string>
+    <string name="always_on_top_disable">取消視窗置頂</string>
 
     <!-- SoftwareUpdateGroup -->
     <string name="settings_update_software">軟件更新</string>

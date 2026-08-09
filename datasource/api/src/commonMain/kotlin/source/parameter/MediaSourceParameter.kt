@@ -4,9 +4,28 @@ sealed interface MediaSourceParameter<T> {
     val name: String
     val description: String?  // todo: how to localize?
     val default: () -> T
+    val visibleWhen: MediaSourceParameterVisibilityCondition?
+        get() = null
 
     fun parseFromString(value: String): T
 }
+
+/**
+ * Shows a parameter only while [parameterName] has one of [acceptedValues].
+ * A `null` condition means the parameter is always visible.
+ */
+data class MediaSourceParameterVisibilityCondition(
+    val parameterName: String,
+    val acceptedValues: Set<String>,
+) {
+    init {
+        require(parameterName.isNotEmpty()) { "parameterName must not be empty" }
+        require(acceptedValues.isNotEmpty()) { "acceptedValues must not be empty" }
+    }
+}
+
+fun MediaSourceParameter<*>.hasValue(vararg acceptedValues: String): MediaSourceParameterVisibilityCondition =
+    MediaSourceParameterVisibilityCondition(name, acceptedValues.toSet())
 
 private val TrueValidator: (String) -> Boolean = { true }
 private val NoopSanitizer: (String) -> String = { it }
@@ -25,6 +44,7 @@ class StringParameter(
      * 用户每输入一个字都会用整个编辑框的值调用这个函数, 可用于自动清除首尾空格等
      */
     val sanitize: (String) -> String = NoopSanitizer,
+    override val visibleWhen: MediaSourceParameterVisibilityCondition? = null,
 ) : MediaSourceParameter<String> {
     val validate: (String) -> Boolean = {
         if (isRequired && it.isBlank()) {
@@ -47,6 +67,7 @@ data class BooleanParameter(
     override val name: String,
     override val description: String? = null,
     override val default: () -> Boolean,
+    override val visibleWhen: MediaSourceParameterVisibilityCondition? = null,
 ) : MediaSourceParameter<Boolean> {
     init {
         require(name.isNotEmpty()) { "name must not be empty" }
@@ -62,6 +83,7 @@ data class SimpleEnumParameter(
     val oneOf: List<String>,
     override val description: String? = null,
     override val default: () -> String,
+    override val visibleWhen: MediaSourceParameterVisibilityCondition? = null,
 ) : MediaSourceParameter<String> {
     init {
         require(name.isNotEmpty()) { "name must not be empty" }

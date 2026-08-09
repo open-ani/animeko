@@ -147,7 +147,7 @@ fun buildToolRegistrations(
             description = "Resolve playable video links for an Ani episode using a selector media source config, " +
                     "by running the full SelectorMediaSourceEngine pipeline: " +
                     "searchSubjects -> selectSubjects -> searchEpisodes -> selectEpisodes -> selectMedia, " +
-                    "then optionally WebView (CEF) video extraction and a playback probe. " +
+                    "then optionally WebView (CEF) video extraction and an HTTP availability probe. " +
                     "Returns a per-step trace (inputs, parsed results, errors) for debugging. " +
                     "If the site is behind a captcha, it is solved automatically using the same strategies as the app " +
                     "(reported as details.autoSolvedCaptcha); if it cannot be solved, the whole run stops immediately " +
@@ -157,7 +157,10 @@ fun buildToolRegistrations(
                 put("subjectId", integerSchema("Ani subject ID"))
                 put("episodeId", integerSchema("Ani episode ID (from get_subject_episodes)"))
                 put("config", anySchema("Selector media source config JSON, same forms as validate_selector_config"))
-                put("maxSubjectsPerName", integerSchema("Max subject detail pages to visit per search keyword, default 3"))
+                put(
+                    "maxSubjectsPerName",
+                    integerSchema("Max subject detail pages to visit per search keyword, default 3"),
+                )
                 put("extractVideo", booleanSchema("Run WebView video URL extraction on matched medias, default true"))
                 put("probeVideo", booleanSchema("HTTP-probe extracted video URLs, default true"))
                 put("maxCandidatesToExtract", integerSchema("Max media candidates to run extraction on, default 3"))
@@ -201,7 +204,10 @@ fun buildToolRegistrations(
                         "selectEpisodes", "selectMedia", "matchWebVideo", "extractVideo",
                     ),
                 )
-                put("config", anySchema("Selector config JSON; required by all steps except searchEpisodes/extractVideo"))
+                put(
+                    "config",
+                    anySchema("Selector config JSON; required by all steps except searchEpisodes/extractVideo"),
+                )
                 put("keyword", stringSchema("searchSubjects: search keyword, usually the subject name"))
                 put(
                     "url",
@@ -210,13 +216,22 @@ fun buildToolRegistrations(
                                 "URL to test (matchWebVideo), or play page URL (extractVideo)",
                     ),
                 )
-                put("html", stringSchema("selectSubjects/selectEpisodes: parse this HTML instead of fetching url (offline debug)"))
-                put("subjectUrl", stringSchema("selectEpisodes: full URL of the subject detail page, used to resolve relative links"))
+                put(
+                    "html",
+                    stringSchema("selectSubjects/selectEpisodes: parse this HTML instead of fetching url (offline debug)"),
+                )
+                put(
+                    "subjectUrl",
+                    stringSchema("selectEpisodes: full URL of the subject detail page, used to resolve relative links"),
+                )
                 put(
                     "episodes",
                     buildJsonObject {
                         put("type", "array")
-                        put("description", JsonPrimitive("selectMedia: episode list, usually from selectEpisodes output"))
+                        put(
+                            "description",
+                            JsonPrimitive("selectMedia: episode list, usually from selectEpisodes output"),
+                        )
                         put(
                             "items",
                             objectSchema(required = listOf("name", "playUrl")) {
@@ -246,7 +261,10 @@ fun buildToolRegistrations(
                     },
                 )
                 put("maxHtmlLength", integerSchema("Max HTML characters to return, default 100000"))
-                put("probeResolvedVideo", booleanSchema("extractVideo: HTTP-probe the resolved video URL, default false"))
+                put(
+                    "probeResolvedVideo",
+                    booleanSchema("extractVideo: HTTP-probe the resolved video URL, default false"),
+                )
                 put("probeTimeoutMillis", integerSchema("Probe timeout in milliseconds, default 15000"))
             },
         ),
@@ -293,7 +311,10 @@ fun buildToolRegistrations(
                 put("probeTimeoutMillis", integerSchema("HTTP probe timeout in milliseconds, default 15000"))
                 put("analyze", booleanSchema("Run the real-player playback test, default true"))
                 put("playSeconds", integerSchema("Seconds to actually play for the playability test, default 5"))
-                put("playTimeoutMillis", integerSchema("Timeout for entering/finishing playback in milliseconds, default 60000"))
+                put(
+                    "playTimeoutMillis",
+                    integerSchema("Timeout for entering/finishing playback in milliseconds, default 60000"),
+                )
                 put("showWindow", booleanSchema("Show a Compose window with the live playback, default true"))
                 put(
                     "detectAds",
@@ -302,13 +323,19 @@ fun buildToolRegistrations(
                                 "also reports whether Animeko's client-side HLS ad filter would remove the segments",
                     ),
                 )
-                put("captureFramesDir", stringSchema("If set, save first-frame and mid PNG screenshots into this dir for visual ad inspection"))
+                put(
+                    "captureFramesDir",
+                    stringSchema("If set, save first-frame and mid PNG screenshots into this dir for visual ad inspection"),
+                )
                 put(
                     "captureAtSeconds",
                     buildJsonObject {
                         put("type", "array")
                         put("items", integerSchema("Playback position in seconds"))
-                        put("description", JsonPrimitive("Also capture a frame at each of these playback positions (frame_XXs.png); playSeconds must cover the max"))
+                        put(
+                            "description",
+                            JsonPrimitive("Also capture a frame at each of these playback positions (frame_XXs.png); playSeconds must cover the max"),
+                        )
                     },
                 )
             },

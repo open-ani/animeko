@@ -16,6 +16,7 @@
 
 package me.him188.ani.client.models
 
+import me.him188.ani.client.models.AniCommentVoteValue
 import me.him188.ani.client.models.AniEpisodeCommentAuthor
 import me.him188.ani.client.models.AniSubjectReviewSource
 
@@ -32,7 +33,9 @@ import kotlinx.serialization.encoding.*
  * @param contentBbcode
  * @param updatedAt
  * @param rating
+ * @param likeCount
  * @param author
+ * @param selfVote
  */
 @Serializable
 
@@ -50,7 +53,11 @@ data class AniSubjectReview (
 
     @SerialName(value = "rating") @Required val rating: kotlin.Int,
 
-    @SerialName(value = "author") val author: AniEpisodeCommentAuthor? = null
+    @SerialName(value = "likeCount") @Required val likeCount: kotlin.Int,
+
+    @SerialName(value = "author") val author: AniEpisodeCommentAuthor? = null,
+
+    @SerialName(value = "selfVote") val selfVote: AniCommentVoteValue? = null
 
 ) {
 

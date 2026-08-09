@@ -25,8 +25,9 @@ The transport is a stateless subset of the MCP Streamable HTTP spec: JSON-RPC me
   命名分组等. 接受 App 导出格式 / 裸 arguments / 裸 searchConfig / 订阅列表四种形态.
 - `selector_resolve_episode` — 提供 subjectId+episodeId+配置, 自动跑 `SelectorMediaSourceEngine`
   全流程 (searchSubjects → selectSubjects → searchEpisodes → selectEpisodes → selectMedia),
-  返回每个步骤的 trace 便于定位问题. **默认**继续做 WebView 视频解析与播放探测
-  (会启动 CEF); 只测解析层传 `extractVideo=false`.
+  返回每个步骤的 trace 便于定位问题. **默认**继续做 WebView 视频解析与 HTTP 可达性探测
+  (会启动 CEF, 但不会启动播放器); 只取最终视频 URL 时传 `probeVideo=false`, 连 WebView
+  解析也不需要时传 `extractVideo=false`.
 - `selector_run_step` — 单步执行任意引擎步骤: 支持离线传 HTML 调试 selector, 离线测 matchVideo 正则,
   以及真实 WebView 拦截视频 URL.
 - `get_selector_engine_docs` — 返回引擎步骤文档 (源文件: [selector-engine-docs.md](src/main/resources/selector-engine-docs.md)).
@@ -124,10 +125,12 @@ This matches the app's current playback model:
 `test_subject_episode_source` and `selector_resolve_episode` test candidates channel by channel:
 
 - `all_channels`: test every candidate channel (default for `test_subject_episode_source`)
-- `first_success`: stop after the first channel that passes both resolve and playback probe
+- `first_success`: stop after the first channel that passes both resolve and HTTP probe
   (default for `selector_resolve_episode`)
 
-Top-level `ok` means at least one tested channel passed playback probing.
+With `probeVideo=true`, top-level `ok` means at least one tested channel passed HTTP probing. With
+`probeVideo=false`, it means at least one channel resolved a final video URL. Probe timeout/failure never
+removes an already resolved URL; inspect `resolveStatus`, `probeStatus`, and the explicit result counts.
 
 ## Run
 
@@ -135,6 +138,10 @@ Top-level `ok` means at least one tested channel passed playback probing.
 ./gradlew :tools:datasource-test-mcp:installDist
 ./tools/datasource-test-mcp/build/install/datasource-test-mcp/bin/datasource-test-mcp
 ```
+
+WebView/CEF tools must run on a JetBrains Runtime that includes JCEF (prefer JBR 21); a plain OpenJDK can
+still start the server but cannot resolve WebVideo pages. On Windows, the datasource-eval launcher also uses
+a Java argument file to avoid `cmd.exe`'s 8191-character command limit.
 
 Defaults to `http://127.0.0.1:8264/mcp`; override with `--host <host>` / `--port <port>`.
 

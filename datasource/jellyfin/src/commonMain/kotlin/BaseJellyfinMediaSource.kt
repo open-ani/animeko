@@ -10,11 +10,13 @@
 package me.him188.ani.datasources.jellyfin
 
 import io.ktor.client.call.body
+import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.serialization.Serializable
@@ -55,8 +57,21 @@ abstract class BaseJellyfinMediaSource(
     private val client: ScopedHttpClient,
 ) : HttpMediaSource() {
     abstract val baseUrl: String
-    abstract val userId: String
-    abstract val apiKey: String
+
+    protected data class Authorization(
+        val userId: String,
+        val accessToken: String,
+        val headerValue: String,
+    )
+
+    protected abstract suspend fun getAuthorization(): Authorization
+
+    /**
+     * Invalidates [authorization] after the server rejects it.
+     *
+     * @return `true` when the request can be retried with a newly acquired authorization.
+     */
+    protected open suspend fun invalidateAuthorization(authorization: Authorization): Boolean = false
 
     override suspend fun checkConnection(): ConnectionStatus {
         try {
@@ -75,8 +90,10 @@ abstract class BaseJellyfinMediaSource(
 
     override suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch> {
         return SinglePagePagedSource {
-            findBySubjectNames(query)
-                .mapNotNull { it.toMediaMatch(query) }
+            val matches = findBySubjectNames(query)
+            val authorization = getAuthorization()
+            matches
+                .mapNotNull { it.toMediaMatch(query, authorization.accessToken) }
                 .filter { it.matches(query) != false }
                 .asFlow()
         }
@@ -386,7 +403,10 @@ abstract class BaseJellyfinMediaSource(
         }
     }
 
-    private fun MatchedItem.toMediaMatch(query: MediaFetchRequest): MediaMatch? = with(item) {
+    private fun MatchedItem.toMediaMatch(
+        query: MediaFetchRequest,
+        accessToken: String,
+    ): MediaMatch? = with(item) {
         val (originalTitle, episodeRange) = when (Type) {
             TYPE_EPISODE -> {
                 val indexNumber = IndexNumber ?: return null
@@ -413,7 +433,7 @@ abstract class BaseJellyfinMediaSource(
                 mediaSourceId = mediaSourceId,
                 originalUrl = "$baseUrl/Items/$Id",
                 download = ResourceLocation.HttpStreamingFile(
-                    uri = getDownloadUri(Id),
+                    uri = getDownloadUri(Id, accessToken),
                 ),
                 originalTitle = originalTitle,
                 publishedTime = 0,
@@ -441,7 +461,7 @@ abstract class BaseJellyfinMediaSource(
         )
     }
 
-    protected abstract fun getDownloadUri(itemId: String): String
+    protected abstract fun getDownloadUri(itemId: String, accessToken: String): String
 
     private fun getSubtitles(itemId: String, mediaStreams: List<MediaStream>): List<Subtitle> {
         return mediaStreams
@@ -552,21 +572,17 @@ abstract class BaseJellyfinMediaSource(
         }
     }
 
-    private suspend fun doGetSeasons(seriesId: String) = client.use {
-        get("$baseUrl/Shows/$seriesId/Seasons") {
-            configureAuthorizationHeaders()
-            parameter("userId", userId)
+    private suspend fun doGetSeasons(seriesId: String): SearchResponse {
+        return authorizedGet("$baseUrl/Shows/$seriesId/Seasons") {
             parameter("fields", FIELD_PROVIDER_IDS)
-        }.body<SearchResponse>()
+        }
     }
 
-    private suspend fun doGetEpisodes(seriesId: String, seasonNum: Int) = client.use {
-        get("$baseUrl/Shows/$seriesId/Episodes") {
-            configureAuthorizationHeaders()
-            parameter("userId", userId)
+    private suspend fun doGetEpisodes(seriesId: String, seasonNum: Int): SearchResponse {
+        return authorizedGet("$baseUrl/Shows/$seriesId/Episodes") {
             parameter("Season", seasonNum)
             parameter("fields", FIELD_PROVIDER_IDS)
-        }.body<SearchResponse>()
+        }
     }
 
     private suspend fun doSearch(
@@ -579,10 +595,8 @@ abstract class BaseJellyfinMediaSource(
         startIndex: Int? = null,
         limit: Int? = null,
         enableTotalRecordCount: Boolean? = null,
-    ) = client.use {
-        get("$baseUrl/Items") {
-            configureAuthorizationHeaders()
-            parameter("userId", userId)
+    ): SearchResponse {
+        return authorizedGet("$baseUrl/Items") {
             parameter("enableImages", false)
             parameter("recursive", recursive)
             subjectName?.let { parameter("searchTerm", it) }
@@ -593,14 +607,45 @@ abstract class BaseJellyfinMediaSource(
             startIndex?.let { parameter("startIndex", it) }
             limit?.let { parameter("limit", it) }
             enableTotalRecordCount?.let { parameter("enableTotalRecordCount", it) }
-        }.body<SearchResponse>()
+        }
     }
 
-    private fun HttpRequestBuilder.configureAuthorizationHeaders() {
-        header(
-            HttpHeaders.Authorization,
-            "MediaBrowser Token=\"$apiKey\"",
-        )
+    private suspend inline fun <reified T> authorizedGet(
+        url: String,
+        crossinline configure: HttpRequestBuilder.() -> Unit = {},
+    ): T {
+        var authorization = getAuthorization()
+        var hasRetried = false
+
+        while (true) {
+            try {
+                return client.use {
+                    val response = get(url) {
+                        header(HttpHeaders.Authorization, authorization.headerValue)
+                        parameter("userId", authorization.userId)
+                        configure()
+                    }
+                    if (response.status == HttpStatusCode.Unauthorized) {
+                        throw JellyfinAuthorizationException()
+                    }
+                    response.body()
+                }
+            } catch (e: JellyfinAuthorizationException) {
+                if (hasRetried || !invalidateAuthorization(authorization)) {
+                    throw e
+                }
+            } catch (e: ClientRequestException) {
+                if (e.response.status != HttpStatusCode.Unauthorized ||
+                    hasRetried ||
+                    !invalidateAuthorization(authorization)
+                ) {
+                    throw e
+                }
+            }
+
+            hasRetried = true
+            authorization = getAuthorization()
+        }
     }
 }
 
@@ -769,6 +814,9 @@ private data class MatchedSeason(
     val item: Item,
     val inheritedSubjectMatch: Boolean,
 )
+
+private class JellyfinAuthorizationException :
+    IllegalStateException("Jellyfin rejected the configured authorization")
 
 @Serializable
 private class SearchResponse(

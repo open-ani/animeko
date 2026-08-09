@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import io.ktor.utils.io.core.Closeable
@@ -110,7 +111,17 @@ class EditingMediaSource(
     }.stateInBackground(null, started = SharingStarted.Eagerly)
 
     val isLoading = persistLoader.map { it != null }
-    val hasError by derivedStateOf { arguments.any { it.isError } }
+    val visibleArguments by derivedStateOf {
+        arguments.filter { argument ->
+            val condition = argument.visibleWhen ?: return@filter true
+            val controllingValue = arguments
+                .firstOrNull { it.name == condition.parameterName }
+                ?.toPersisted()
+                ?: return@filter true
+            controllingValue in condition.acceptedValues
+        }
+    }
+    val hasError by derivedStateOf { visibleArguments.any { it.isError } }
 
     override fun close() {
         backgroundScope.cancel()
@@ -131,6 +142,7 @@ sealed class ArgumentState(
 ) {
     val name: String get() = parameter.name
     val description: String? get() = parameter.description
+    val visibleWhen get() = parameter.visibleWhen
 
     abstract val isError: Boolean
 
@@ -242,7 +254,7 @@ internal fun EditMediaSourceDialog(
                     Modifier.verticalScroll(rememberScrollState()).padding(top = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    for (argument in state.arguments) {
+                    for (argument in state.visibleArguments) {
                         when (argument) {
                             is BooleanArgumentState -> {
                                 BooleanArgument(argument)
@@ -254,6 +266,7 @@ internal fun EditMediaSourceDialog(
 
                             is StringArgumentState -> {
                                 OutlinedTextField(
+                                    modifier = Modifier.testTag(EditMediaSourceTestTags.argument(argument.name)),
                                     value = argument.value,
                                     onValueChange = { argument.value = argument.parameter.sanitize(it) },
                                     label = { Text(argument.name) },
@@ -308,7 +321,9 @@ private fun SimpleEnumArgument(argument: SimpleEnumArgumentState, modifier: Modi
                 // The `menuAnchor` modifier must be passed to the text field to handle
                 // expanding/collapsing the menu on click. A read-only text field has
                 // the anchor type `PrimaryNotEditable`.
-                modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                modifier = Modifier
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                    .testTag(EditMediaSourceTestTags.argument(argument.name)),
                 value = argument.value,
                 onValueChange = {},
                 readOnly = true,
@@ -325,6 +340,7 @@ private fun SimpleEnumArgument(argument: SimpleEnumArgumentState, modifier: Modi
             ) {
                 argument.options.forEach { option ->
                     DropdownMenuItem(
+                        modifier = Modifier.testTag(EditMediaSourceTestTags.enumOption(argument.name, option)),
                         text = { Text(option) },
                         onClick = {
                             argument.value = option
@@ -364,6 +380,11 @@ private fun BooleanArgument(argument: BooleanArgumentState, modifier: Modifier =
             },
         )
     }
+}
+
+internal object EditMediaSourceTestTags {
+    fun argument(name: String) = "edit_media_source_argument_$name"
+    fun enumOption(name: String, option: String) = "edit_media_source_argument_${name}_option_$option"
 }
 
 @TestOnly

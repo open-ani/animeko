@@ -8,12 +8,7 @@
  */
 
 plugins {
-    alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.kotlin.multiplatform.library)
-    alias(libs.plugins.kotlin.plugin.compose)
-    alias(libs.plugins.jetbrains.compose)
-
-    `ani-mpp-lib-targets`
+    id("ani.kmp-compose")
     alias(libs.plugins.kotlin.plugin.serialization)
 
     // org.jetbrains.kotlinx.atomicfu
@@ -21,7 +16,7 @@ plugins {
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.app.ui.lang"
     }
     sourceSets.commonMain.dependencies {
@@ -50,10 +45,13 @@ compose.resources {
 val populateStringsLocales by tasks.registering(Copy::class) {
     group = "ani"
     description =
-        "Populate string resources for all locales. This will copy values-zh-rHK/strings.xml to other locales speaking Traditional Chinese."
+        "Populate string resources for locales speaking Simplified or Traditional Chinese."
 
     val chtLocales = listOf(
         "values-zh-rMO",
+    )
+    val chsLocales = listOf(
+        "values-zh",
         "values-zh-rSG",
     )
     destinationDir = file("src/androidMain/res")
@@ -67,9 +65,11 @@ val populateStringsLocales by tasks.registering(Copy::class) {
                 }
             }
 
-            from(file("src/androidMain/res/values-zh-rCN/${file.name}")) {
-                into("values-zh")
-                rename { file.name }
+            for (locale in chsLocales) {
+                from(file("src/androidMain/res/values-zh-rCN/${file.name}")) {
+                    into(locale)
+                    rename { file.name }
+                }
             }
         }
     }

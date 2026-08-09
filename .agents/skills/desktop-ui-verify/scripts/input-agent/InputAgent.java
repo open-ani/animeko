@@ -11,6 +11,7 @@ import java.lang.instrument.Instrumentation;
  * Protocol (one command per line, coordinates in window-CONTENT points of the
  * frontmost visible Frame):
  *   click <x> <y>
+ *   rightclick <x> <y>  (BUTTON3 with popup trigger, e.g. for context menus)
  *   press <x> <y>     (mouse down only)
  *   release <x> <y>
  *   move <x> <y>
@@ -58,7 +59,7 @@ public final class InputAgent {
         Frame frame = targetFrame();
         if (frame == null) return "err no visible frame";
         switch (a[0]) {
-            case "click": case "press": case "release": case "move": {
+            case "click": case "rightclick": case "press": case "release": case "move": {
                 String[] xy = a[1].split("\\s+");
                 int x = Integer.parseInt(xy[0]), y = Integer.parseInt(xy[1]);
                 return mouse(frame, a[0], x, y);
@@ -111,6 +112,11 @@ public final class InputAgent {
             EventQueue q = Toolkit.getDefaultToolkit().getSystemEventQueue();
             if (kind.equals("move")) {
                 q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_MOVED, when, 0, p.x, p.y, 0, false));
+            } else if (kind.equals("rightclick")) {
+                // macOS convention: popup trigger fires on press
+                q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_PRESSED, when, MouseEvent.BUTTON3_DOWN_MASK, p.x, p.y, 1, true, MouseEvent.BUTTON3));
+                q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_RELEASED, when + 20, 0, p.x, p.y, 1, false, MouseEvent.BUTTON3));
+                q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_CLICKED, when + 20, 0, p.x, p.y, 1, false, MouseEvent.BUTTON3));
             } else {
                 if (!kind.equals("release"))
                     q.postEvent(new MouseEvent(target, MouseEvent.MOUSE_PRESSED, when, 0, p.x, p.y, 1, false, MouseEvent.BUTTON1));

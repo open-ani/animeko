@@ -274,7 +274,7 @@ jobs:
       uses: 'android-actions/setup-android@v3'
       with:
         accept-android-sdk-licenses: 'true'
-        packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+        packages: 'platform-tools platforms;android-37.0 build-tools;36.0.0'
     - id: 'step-5'
       name: 'Get JBR (Windows)'
       env:
@@ -847,24 +847,27 @@ jobs:
         overwrite: 'true'
       if: '${{ steps.step-47.outcome == ''failure'' }}'
     - id: 'step-49'
+      name: 'Install patchelf'
+      run: 'sudo apt-get install -y patchelf'
+    - id: 'step-50'
       name: 'Package Desktop (Attempt #1)'
       continue-on-error: true
       timeout-minutes: 180
       run: './gradlew createReleaseDistributable "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
-    - id: 'step-50'
+    - id: 'step-51'
       name: 'Package Desktop (Attempt #2)'
       continue-on-error: false
       timeout-minutes: 180
       run: './gradlew createReleaseDistributable "--scan" "-Porg.gradle.daemon.idletimeout=60000" "-Dfile.encoding=UTF-8" "-Dorg.gradle.jvmargs=-Xmx8g -Dkotlin.daemon.jvm.options=-Xmx6g" "-Dkotlin.daemon.jvm.options=-Xmx6g"'
-      if: '${{ steps.step-49.outcome == ''failure'' }}'
-    - id: 'step-51'
+      if: '${{ steps.step-50.outcome == ''failure'' }}'
+    - id: 'step-52'
       name: 'Upload compose logs'
       uses: 'actions/upload-artifact@v4'
       with:
         name: 'compose-logs-github-ubuntu-2404'
         path: 'app/desktop/build/compose/logs'
       if: '${{ always() }}'
-    - id: 'step-52'
+    - id: 'step-53'
       name: 'Build AppImage'
       run: |-
         # Download appimagetool
@@ -890,7 +893,13 @@ jobs:
         # Fix permissions
         chmod a+x AppDir/AppRun
         chmod a+x AppDir/usr/bin/Ani
-        chmod a+x AppDir/usr/lib/runtime/lib/jcef_helper
+
+        # The CEF helpers get their executable bit from restoreLinuxRuntimeExecutables,
+        # so assert rather than chmod. A chmod here would keep the AppImage green while
+        # the deb, the rpm and every direct user of createReleaseDistributable ship a
+        # runtime whose helpers cannot be spawned (#3259).
+        test -x AppDir/usr/lib/runtime/lib/jcef_helper
+        test -x AppDir/usr/lib/runtime/lib/cef_server
 
         # Build an AppImage whose zsync metadata points at this repository's release asset.
         # Build with the final release filename so the generated zsync metadata keeps that name,
@@ -909,7 +918,7 @@ jobs:
         sed -i "s|^URL:.*|URL: $releaseAsset|" "$releaseAsset.zsync"
         mv "$releaseAsset" Animeko-x86_64.AppImage
         mv "$releaseAsset.zsync" Animeko-x86_64.AppImage.zsync
-    - id: 'step-53'
+    - id: 'step-54'
       name: 'Upload Linux packages (Attempt #1)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v4'
@@ -920,7 +929,7 @@ jobs:
           Animeko-x86_64.AppImage.zsync
         if-no-files-found: 'error'
         overwrite: 'true'
-    - id: 'step-54'
+    - id: 'step-55'
       name: 'Upload Linux packages (Attempt #2)'
       continue-on-error: true
       uses: 'actions/upload-artifact@v4'
@@ -931,8 +940,8 @@ jobs:
           Animeko-x86_64.AppImage.zsync
         if-no-files-found: 'error'
         overwrite: 'true'
-      if: '${{ steps.step-53.outcome == ''failure'' }}'
-    - id: 'step-55'
+      if: '${{ steps.step-54.outcome == ''failure'' }}'
+    - id: 'step-56'
       name: 'Upload Linux packages (Attempt #3)'
       continue-on-error: false
       uses: 'actions/upload-artifact@v4'
@@ -943,7 +952,7 @@ jobs:
           Animeko-x86_64.AppImage.zsync
         if-no-files-found: 'error'
         overwrite: 'true'
-      if: '${{ steps.step-54.outcome == ''failure'' }}'
+      if: '${{ steps.step-55.outcome == ''failure'' }}'
   build_github-macos-15-intel:
     name: 'Build (macOS 15 x86_64 (GitHub))'
     runs-on:

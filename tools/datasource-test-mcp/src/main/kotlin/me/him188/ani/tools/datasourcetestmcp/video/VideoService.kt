@@ -9,7 +9,8 @@
 
 package me.him188.ani.tools.datasourcetestmcp.video
 
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * 视频能力: HTTP 可达性探测 + Animeko 播放器 (mpv) 真实播放测试.
@@ -60,11 +61,19 @@ class VideoService(
     suspend fun probeVideo(input: ProbeVideoInput): ProbeVideoResult {
         val totalStart = System.currentTimeMillis()
         val httpProbeStart = System.currentTimeMillis()
-        val httpProbe = runCatching {
-            withTimeout(input.probeTimeoutMillis) {
+        val httpProbe = try {
+            withTimeoutOrNull(input.probeTimeoutMillis) {
                 probe.probe(input.videoUrl, input.headers)
-            }
-        }.getOrElse { exception ->
+            } ?: VideoProbeResult(
+                ok = false,
+                url = input.videoUrl,
+                kind = "unknown",
+                summary = "HTTP probe timed out",
+                errors = listOf("HTTP probe timed out after ${input.probeTimeoutMillis}ms"),
+            )
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Throwable) {
             VideoProbeResult(
                 ok = false,
                 url = input.videoUrl,
@@ -75,7 +84,13 @@ class VideoService(
         }.copy(durationMillis = System.currentTimeMillis() - httpProbeStart)
 
         val adAnalysis = if (input.detectAds) {
-            runCatching { adAnalyzer.analyze(input.videoUrl, input.headers) }.getOrNull()
+            try {
+                adAnalyzer.analyze(input.videoUrl, input.headers)
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (_: Throwable) {
+                null
+            }
         } else {
             null
         }

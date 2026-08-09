@@ -51,6 +51,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
@@ -214,6 +215,17 @@ private fun EpisodeScreenContent(
     val context by rememberUpdatedState(LocalContext.current)
     val window = LocalPlatformWindow.current
     val scope = rememberCoroutineScope()
+
+    // 若窗口置顶是通过播放器内按钮开启的, 退出播放页时自动取消置顶
+    DisposableEffect(window, vm) {
+        onDispose {
+            if (vm.desktopAlwaysOnTopSetByPlayer) {
+                vm.desktopAlwaysOnTopSetByPlayer = false
+                window.setAlwaysOnTop(false)
+            }
+        }
+    }
+
     BackHandler(enabled = vm.isFullscreen) {
         scope.launch {
             context.setRequestFullScreen(window, false)
@@ -386,7 +398,6 @@ private fun EpisodeScreenContent(
     if (showEditCommentSheet) {
         EpisodeEditCommentSheet(
             state = vm.commentEditorState,
-            turnstileState = vm.turnstileState,
             onDismiss = {
                 showEditCommentSheet = false
                 vm.commentEditorState.cancelSend()
@@ -968,6 +979,12 @@ private fun EpisodeVideo(
                 context.setRequestFullScreen(window, false)
                 vm.isFullscreen = false
             }
+        },
+        alwaysOnTop = window.isAlwaysOnTop,
+        onToggleAlwaysOnTop = {
+            val newValue = !window.isAlwaysOnTop
+            window.setAlwaysOnTop(newValue)
+            vm.desktopAlwaysOnTopSetByPlayer = newValue
         },
         danmakuEditor = {
             PlayerDanmakuEditor(

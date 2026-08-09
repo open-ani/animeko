@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.platform
 
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,7 +34,8 @@ actual open class PlatformWindow(
     val windowScope: WindowScope? = null,
     val windowState: WindowState,
     val platform: Platform,
-    val layoutHitTestOwner: LayoutHitTestOwner? = null
+    val layoutHitTestOwner: LayoutHitTestOwner? = null,
+    private val alwaysOnTopState: MutableState<Boolean> = mutableStateOf(false),
 ) {
     internal var savedWindowsWindowState: SavedWindowsWindowState? = null
 
@@ -72,6 +74,12 @@ actual open class PlatformWindow(
 
     actual fun floating() {
         windowState.placement = WindowPlacement.Floating
+    }
+
+    actual val isAlwaysOnTop: Boolean get() = alwaysOnTopState.value
+
+    actual fun setAlwaysOnTop(alwaysOnTop: Boolean) {
+        alwaysOnTopState.value = alwaysOnTop
     }
 }
 
