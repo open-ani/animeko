@@ -10,12 +10,8 @@
 @file:Suppress("UnstableApiUsage")
 
 plugins {
-    alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.kotlin.multiplatform.library)
-    alias(libs.plugins.kotlin.plugin.compose)
-    alias(libs.plugins.jetbrains.compose)
+    id("ani.kmp-compose")
     // 注意! 前几个插件顺序非常重要, 调整后可能导致 compose multiplatform resources 生成错误
-    `ani-mpp-lib-targets`
 
     alias(libs.plugins.kotlin.plugin.serialization)
 
@@ -23,7 +19,7 @@ plugins {
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.image.viewer"
     }
 

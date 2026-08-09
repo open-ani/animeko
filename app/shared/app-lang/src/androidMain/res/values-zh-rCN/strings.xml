@@ -60,6 +60,8 @@
     <string name="settings_pikpak_queue_title">缓存槽位数</string>
     <string name="settings_pikpak_queue_description">PikPak 云盘保留多少个最近源的缓存；更多则重播更快但占更多云盘。拉到 13 右侧的"不限"档则完全不清理。</string>
     <string name="settings_pikpak_queue_unlimited">不限</string>
+    <string name="settings_pikpak_download_concurrency_title">下载并发数</string>
+    <string name="settings_pikpak_download_concurrency_description">缓存 PikPak 文件时使用的并行连接数。提高并发可能加快下载，但也更容易触发服务器临时错误。</string>
     <string name="settings_pikpak_test_connection">测试连接</string>
     <string name="settings_pikpak_recommend_title">同步调整数据源选择器？</string>
     <string name="settings_pikpak_recommend_message">PikPak 只处理 BT 资源。建议把"优先数据源类型"设为 BT，这样默认选择器才会实际走到 PikPak。</string>

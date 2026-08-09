@@ -828,6 +828,9 @@ class EpisodeVideoControllerTest {
         }
 
         videoGestureHost.performClick()
+        // combinedClickable 带 onDoubleClick, onClick 要等双击判定窗口过后才发;
+        // CMP 1.11 起桌面端触摸输入会进入 Touch input mode, 不再有按下即抢焦点的捷径.
+        mainClock.advanceTimeBy(1000L)
         videoGestureHost.assertIsFocused()
         videoGestureHost.performKeyInput {
             pressKey(Key.B)

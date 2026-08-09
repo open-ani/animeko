@@ -331,7 +331,7 @@ jobs:
       uses: 'android-actions/setup-android@v3'
       with:
         accept-android-sdk-licenses: 'true'
-        packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+        packages: 'platform-tools platforms;android-37.0 build-tools;36.0.0'
     - id: 'step-7'
       name: 'Get JBR (Windows)'
       env:

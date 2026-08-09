@@ -7,6 +7,9 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+plugins {
+    id("ani.base")
+}
 
 // ╔══════════════════════════════════════════════════════════════════════════════╗
 // ║  Animeko iOS 构建脚本                                                       ║
@@ -387,3 +390,4 @@ tasks.matching { it.path == ":app:shared:application:embedAndSignPodAppleFramewo
     dependsOn(patchInfoPlist)
     inputs.file(file("Animeko/Info.plist"))
 }
+
