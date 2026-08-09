@@ -82,7 +82,13 @@ class PointerTypeDragFilterTest {
                 assertEquals(0, clicks)
             }
 
-            target.performMouseInput { click() }
+            target.performMouseInput {
+                click()
+                // CMP 1.11: 松开最后一个键会清掉 cursor input source 但保留 hover 状态,
+                // 之后注入触摸事件会撞上 "Cursor is entered, but not associated with a specific
+                // input type". 显式退出 hover 才能切到触摸.
+                exit()
+            }
             runOnIdle {
                 assertEquals(1, clicks)
             }
@@ -139,6 +145,7 @@ class PointerTypeDragFilterTest {
                 press()
                 moveTo(centerLeft)
                 release()
+                exit() // 同上: 切到触摸前必须先退出 hover
             }
             waitForIdle()
             runOnIdle {
