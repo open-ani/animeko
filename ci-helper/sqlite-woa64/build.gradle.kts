@@ -15,6 +15,7 @@ import java.util.Base64
 import javax.inject.Inject
 
 plugins {
+    id("ani.base")
     `java-library`
 }
 

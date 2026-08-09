@@ -8,19 +8,14 @@
  */
 
 plugins {
-    alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.kotlin.multiplatform.library)
-    alias(libs.plugins.kotlin.plugin.compose)
-    alias(libs.plugins.jetbrains.compose)
-
-    `ani-mpp-lib-targets`
+    id("ani.kmp-compose")
 }
 
 group = "org.burnoutcrew.composereorderable"
 version = "0.9.7"
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.app.reorderable"
     }
     sourceSets {

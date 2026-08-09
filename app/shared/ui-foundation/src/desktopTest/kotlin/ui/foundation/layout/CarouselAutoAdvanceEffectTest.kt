@@ -31,6 +31,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.testing.TestLifecycleOwner
 import me.him188.ani.app.ui.foundation.ProvideFoundationCompositionLocalsForTest
+import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.milliseconds
@@ -53,7 +54,7 @@ class CarouselAutoAdvanceEffectTest {
     //	at kotlinx.coroutines.test.TestBuildersKt__TestBuildersKt$runTest$2$1$1.invokeSuspend(TestBuilders.kt:317)
     //	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:34)
     fun `auto-advance - whenEnabledAndLifecycleResumed - advancesPageAfterPeriod`() =
-        _root_ide_package_.me.him188.ani.app.ui.framework.runAniComposeUiTest {
+        runAniComposeUiTest {
             mainClock.autoAdvance = false
             val testLifecycleOwner = createTestLifecycleOwner(Lifecycle.State.RESUMED)
             val pageCount = 20
@@ -93,7 +94,7 @@ class CarouselAutoAdvanceEffectTest {
 
     @Test
     fun `auto-advance - whenDisabled - doesNotAdvancePage`() =
-        _root_ide_package_.me.him188.ani.app.ui.framework.runAniComposeUiTest {
+        runAniComposeUiTest {
             mainClock.autoAdvance = false
             val testLifecycleOwner = createTestLifecycleOwner(Lifecycle.State.RESUMED)
             val pageCount = 5
@@ -126,7 +127,7 @@ class CarouselAutoAdvanceEffectTest {
 
     @Test
     fun `auto-advance - userScrollInProgress - skipAutoAdvance`() =
-        _root_ide_package_.me.him188.ani.app.ui.framework.runAniComposeUiTest {
+        runAniComposeUiTest {
             mainClock.autoAdvance = false
             val testLifecycleOwner = createTestLifecycleOwner(Lifecycle.State.RESUMED)
             val pageCount = 20
@@ -208,7 +209,7 @@ class CarouselAutoAdvanceEffectTest {
 
     @Test
     fun `auto-advance - lifecyclePausedThenResumed - resumesAutoAdvance`() =
-        _root_ide_package_.me.him188.ani.app.ui.framework.runAniComposeUiTest {
+        runAniComposeUiTest {
             mainClock.autoAdvance = false
             val testLifecycleOwner = createTestLifecycleOwner(Lifecycle.State.RESUMED)
             val pageCount = 10
@@ -261,7 +262,7 @@ class CarouselAutoAdvanceEffectTest {
 
     @Test
     fun `auto-advance - wrapAround - goesBackToFirstPage`() =
-        _root_ide_package_.me.him188.ani.app.ui.framework.runAniComposeUiTest {
+        runAniComposeUiTest {
             mainClock.autoAdvance = false
             val testLifecycleOwner = createTestLifecycleOwner(Lifecycle.State.RESUMED)
             // If pageCount = 4, effect uses (currentPage + 1) % (pageCount - 1)

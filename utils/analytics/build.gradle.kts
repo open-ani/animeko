@@ -10,15 +10,13 @@
 @file:Suppress("UnstableApiUsage")
 
 plugins {
-    alias(libs.plugins.kotlin.multiplatform)
+    id("ani.kmp-library")
     alias(libs.plugins.kotlin.plugin.serialization)
-    alias(libs.plugins.android.kotlin.multiplatform.library)
-    `ani-mpp-lib-targets`
 }
 
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.utils.analytics"
     }
     sourceSets {

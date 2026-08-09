@@ -21,6 +21,7 @@ actual fun PlatformDialogPropertiesImpl(
     usePlatformInsets: Boolean,
     decorFitsSystemWindows: Boolean,
     scrimColor: Color,
+    animateTransition: Boolean,
 ): DialogProperties {
     return DialogProperties(
         dismissOnBackPress = dismissOnBackPress,
