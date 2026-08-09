@@ -39,7 +39,6 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -80,7 +79,10 @@ import me.him188.ani.app.domain.episode.getCurrentEpisodeId
 import me.him188.ani.app.domain.episode.infoBundleFlow
 import me.him188.ani.app.domain.episode.infoLoadErrorFlow
 import me.him188.ani.app.domain.episode.mediaSelectorFlow
+import me.him188.ani.app.domain.foundation.HttpClientProvider
 import me.him188.ani.app.domain.foundation.LoadError
+import me.him188.ani.app.domain.foundation.get
+import me.him188.ani.datasources.api.Media
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
@@ -146,7 +148,11 @@ import me.him188.ani.app.ui.subject.episode.statistics.DanmakuStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatistics
 import me.him188.ani.app.ui.subject.episode.statistics.VideoStatisticsCollector
 import me.him188.ani.app.ui.subject.episode.video.PlayerSkipOpEdState
+import me.him188.ani.app.ui.subject.episode.video.SkipChapterCandidate
+import me.him188.ani.app.ui.subject.episode.video.isLikelyOpEdChapter
+import me.him188.ani.app.ui.subject.episode.video.mergeSkipChapterCandidates
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorState
+import me.him188.ani.app.ui.subject.episode.video.toSkipChapterCandidateOrNull
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
@@ -161,6 +167,8 @@ import me.him188.ani.danmaku.ui.DanmakuConfig
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import me.him188.ani.danmaku.ui.DanmakuTrackProperties
+import me.him188.ani.datasources.api.MediaChapter
+import me.him188.ani.datasources.api.MediaChapterKind
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.datasources.api.source.MediaSourceKind
@@ -251,6 +259,7 @@ class EpisodeViewModel(
 ) : KoinComponent, AbstractViewModel(), HasBackgroundScope {
     // region dependencies
     private val playerStateFactory: MediampPlayerFactory<*> by inject()
+    private val httpClientProvider: HttpClientProvider by inject()
     private val episodeCollectionRepository: EpisodeCollectionRepository by inject()
     private val mediaCacheManager: MediaCacheManager by inject()
     private val danmakuRepository: DanmakuRepository by inject()
@@ -278,6 +287,9 @@ class EpisodeViewModel(
 
     val player: MediampPlayer =
         playerStateFactory.create(context, backgroundScope.coroutineContext)
+    internal val framePreviewHttpClient = httpClientProvider.get()
+    internal val fetchPreviewThumbnail: suspend (String, String) -> ByteArray? =
+        mediaSourceManager::fetchPreviewThumbnail
 
     /** `null` 表示本次播放尚未调整过倍速, 此时跟随配置. */
     private val playbackSpeedOverride = MutableStateFlow<Float?>(null)
@@ -335,6 +347,10 @@ class EpisodeViewModel(
     )
 
     val mediaResolver: MediaResolver get() = fetchPlayState.playerSession.mediaResolver
+
+    @UnsafeEpisodeSessionApi
+    val selectedMediaFlow: Flow<Media?> = fetchPlayState.mediaSelectorFlow
+        .flatMapLatest { it?.selected ?: flowOfNull() }
 
     // region Subject and episode data info flows
     @UnsafeEpisodeSessionApi
@@ -717,13 +733,19 @@ class EpisodeViewModel(
         backgroundScope = backgroundScope,
     )
 
-    // Combine original chapters with AutoSkip rules fetched from server
+    @OptIn(InternalMediampApi::class)
+    private val playerChaptersFlow: Flow<List<Chapter>> = player.chapters ?: flowOf(emptyList())
+
+    private val playerVideoLengthFlow = player.mediaProperties
+        .map { it?.durationMillis?.milliseconds ?: 0.milliseconds }
+        .distinctUntilChanged()
+
     @OptIn(UnsafeEpisodeSessionApi::class, InternalMediampApi::class)
-    private val autoSkipChaptersFlow: Flow<List<Chapter>> = combine(
+    private val autoSkipChaptersFlow: Flow<List<SkipChapterCandidate>> = combine(
         fetchPlayState.episodeSessionFlow.flatMapLatest { session ->
             autoSkipRepository.rulesFlow(session.episodeId)
         },
-        player.mediaProperties.mapNotNull { it?.durationMillis?.milliseconds },
+        playerVideoLengthFlow,
         settingsRepository.videoScaffoldConfig.flow
             .map { it.opEdSkipDuration }
             .distinctUntilChanged(),
@@ -736,21 +758,23 @@ class EpisodeViewModel(
         if (durationMillis == 0L) {
             emptyList()
         } else {
-            millisecondTimes.mapIndexed { index, t ->
-                val name = if (millisecondTimes.size == 2) {
-                    val anotherIndex = if (index == 0) 1 else 0
-                    if (t <= millisecondTimes[anotherIndex]) {
-                        "OP"
-                    } else {
-                        "ED"
-                    }
+            millisecondTimes.sorted().mapIndexed { index, timeMillis ->
+                val kind = if (millisecondTimes.size == 2) {
+                    if (index == 0) MediaChapterKind.OPENING else MediaChapterKind.ENDING
                 } else {
-                    "Ch ${index + 1}"
+                    null
                 }
-                Chapter(
-                    name,
-                    durationMillis,
-                    t,
+                SkipChapterCandidate(
+                    chapter = Chapter(
+                        name = when (kind) {
+                            MediaChapterKind.OPENING -> "OP"
+                            MediaChapterKind.ENDING -> "ED"
+                            else -> "Ch ${index + 1}"
+                        },
+                        durationMillis = durationMillis,
+                        offsetMillis = timeMillis,
+                    ),
+                    kind = kind,
                 )
             }
         }
@@ -759,27 +783,66 @@ class EpisodeViewModel(
     }
 
 
-    private val combinedChaptersFlow: Flow<List<Chapter>> =
-        combine(
-            (player.chapters ?: flowOf(emptyList())),
-            flow {
-                emit(emptyList()) // 先给个空列表, 避免刚开始时因为等待网络而没有进度
-                emitAll(autoSkipChaptersFlow)
-            },
-        ) { a, b -> if (b.isEmpty()) a else (a + b) }
+    @OptIn(UnsafeEpisodeSessionApi::class)
+    private val mediaChaptersFlow: Flow<List<MediaChapter>> = fetchPlayState.episodeSessionFlow.flatMapLatest { session ->
+        session.fetchSelectFlow.flatMapLatest { fetchSelect ->
+            fetchSelect?.mediaSelector?.selected?.map { media ->
+                media?.extraFiles?.chapters ?: emptyList()
+            } ?: flowOf(emptyList())
+        }
+    }.catch {
+        logger.warn(it) { "Failed to fetch media chapters" }
+    }
 
-    // Chapters to be displayed on progress slider (merged with AutoSkip rules)
-    val progressChaptersFlow: Flow<List<Chapter>> = combinedChaptersFlow
+    @OptIn(InternalMediampApi::class)
+    private val explicitSkipChaptersFlow: Flow<List<SkipChapterCandidate>> = combine(
+        autoSkipChaptersFlow.onStart { emit(emptyList()) },
+        mediaChaptersFlow.onStart { emit(emptyList()) },
+    ) { autoSkipChapters, mediaChapters ->
+        mergeSkipChapterCandidates(
+            primary = mediaChapters.mapNotNull { it.toSkipChapterCandidateOrNull() },
+            fallback = autoSkipChapters,
+        )
+    }
+
+    @OptIn(InternalMediampApi::class)
+    private val playerSkipChaptersFlow: Flow<List<SkipChapterCandidate>> = combine(
+        playerChaptersFlow,
+        playerVideoLengthFlow,
+    ) { chapters, videoLength ->
+        chapters.mapNotNull { chapter ->
+            chapter.takeIf { isLikelyOpEdChapter(it, videoLength) }
+                ?.let { SkipChapterCandidate(it) }
+        }
+    }
+
+    private val skipChaptersFlow: Flow<List<Chapter>> = combine(
+        explicitSkipChaptersFlow,
+        playerSkipChaptersFlow,
+    ) { explicitChapters, playerChapters ->
+        mergeSkipChapterCandidates(explicitChapters, playerChapters).map { it.chapter }
+    }
+
+    @OptIn(InternalMediampApi::class)
+    val progressChaptersFlow: Flow<List<Chapter>> = combine(
+        playerChaptersFlow,
+        mediaChaptersFlow.onStart { emit(emptyList()) },
+        explicitSkipChaptersFlow,
+    ) { playerChapters, mediaChapters, skipChapters ->
+        val regularMediaChapters = mediaChapters
+            .filter { it.kind == MediaChapterKind.CHAPTER }
+            .map { Chapter(it.name, it.durationMillis, it.offsetMillis) }
+        (playerChapters + regularMediaChapters + skipChapters.map { it.chapter })
+            .distinctBy { Pair(it.name, it.offsetMillis) }
+    }
 
     val playerSkipOpEdState: PlayerSkipOpEdState = PlayerSkipOpEdState(
-        chapters = combinedChaptersFlow.produceState(emptyList()),
+        chapters = skipChaptersFlow.produceState(emptyList()),
         onSkip = {
             launchInBackground(Dispatchers.Main) {
                 player.seekTo(it)
             }
         },
-        videoLength = player.mediaProperties.mapNotNull { it?.durationMillis?.milliseconds }
-            .produceState(0.milliseconds),
     )
 
     private val matchingDanmakuProviderId = MutableStateFlow<DanmakuProviderId?>(null)

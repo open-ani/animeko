@@ -26,3 +26,12 @@ actual fun ImageBitmap.resize(
 ): ImageBitmap {
     return this.asAndroidBitmap().scale(width, height).asImageBitmap()
 }
+
+actual fun ImageBitmap.crop(
+    x: Int,
+    y: Int,
+    width: Int,
+    height: Int,
+): ImageBitmap {
+    return android.graphics.Bitmap.createBitmap(this.asAndroidBitmap(), x, y, width, height).asImageBitmap()
+}

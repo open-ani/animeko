@@ -91,4 +91,5 @@ class ImageIODesktopTest {
         val b = color and 0xFF
         assertTrue(r > 200 && g < 80 && b < 80, "Center pixel not red-ish after clamp: r=$r g=$g b=$b")
     }
+
 }

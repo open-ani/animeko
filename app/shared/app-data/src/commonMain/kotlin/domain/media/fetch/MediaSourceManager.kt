@@ -78,6 +78,13 @@ interface MediaSourceManager { // available by inject
      */
     val allInstances: Flow<List<MediaSourceInstance>>
 
+    suspend fun fetchPreviewThumbnail(mediaSourceId: String, url: String): ByteArray? {
+        val matches = allInstances.first()
+            .filter { it.mediaSourceId == mediaSourceId }
+        check(matches.size <= 1) { "Duplicate media source id: $mediaSourceId" }
+        return matches.singleOrNull()?.source?.fetchPreviewThumbnail(url)
+    }
+
     /**
      * 全部的 [MediaSource], 包括那些设置里关闭的, 包括本地的.
      */

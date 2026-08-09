@@ -23,6 +23,7 @@ import me.him188.ani.utils.ktor.ScopedHttpClient
 class EmbyMediaSource(
     config: MediaSourceConfig,
     client: ScopedHttpClient,
+    override val mediaSourceId: String = ID,
 ) : BaseJellyfinMediaSource(client) {
     companion object {
         const val ID = "emby"
@@ -60,12 +61,11 @@ class EmbyMediaSource(
             mediaSourceId: String,
             config: MediaSourceConfig,
             client: ScopedHttpClient
-        ): MediaSource = EmbyMediaSource(config, client)
+        ): MediaSource = EmbyMediaSource(config, client, mediaSourceId)
     }
 
     override val kind: MediaSourceKind get() = MediaSourceKind.WEB
     override val info: MediaSourceInfo get() = INFO
-    override val mediaSourceId: String get() = ID
     override val baseUrl = config[Parameters.baseUrl].removeSuffix("/")
     private val userId = config[Parameters.userId]
     private val apiKey = config[Parameters.apikey]

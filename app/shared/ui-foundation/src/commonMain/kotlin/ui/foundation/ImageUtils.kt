@@ -20,6 +20,13 @@ expect fun ImageBitmap.resize(
     height: Int,
 ): ImageBitmap
 
+expect fun ImageBitmap.crop(
+    x: Int,
+    y: Int,
+    width: Int,
+    height: Int,
+): ImageBitmap
+
 /**
  * Determine the main color in a [ImageBitmap].
  *

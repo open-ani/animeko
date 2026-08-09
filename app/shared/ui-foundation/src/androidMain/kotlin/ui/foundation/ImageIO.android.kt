@@ -36,4 +36,3 @@ actual fun cropImageToSquare(imageData: ByteArray, crop: CropRect, outputSize: I
     scaled.compress(Bitmap.CompressFormat.JPEG, jpegQuality.coerceIn(1, 100), baos)
     return baos.toByteArray()
 }
-

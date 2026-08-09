@@ -22,4 +22,3 @@ data class CropRect(val x: Int, val y: Int, val size: Int)
  * Crop a square region from [imageData] and return JPEG bytes of [outputSize] x [outputSize].
  */
 expect fun cropImageToSquare(imageData: ByteArray, crop: CropRect, outputSize: Int, jpegQuality: Int = 90): ByteArray
-
