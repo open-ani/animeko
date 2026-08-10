@@ -153,7 +153,7 @@ import me.him188.ani.utils.logging.warn
 import org.koin.core.KoinApplication
 import org.koin.core.scope.Scope
 import org.koin.dsl.module
-import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 private val Scope.client get() = get<BangumiClient>()
 private val Scope.database get() = get<AniDatabase>()
@@ -590,7 +590,8 @@ fun KoinApplication.startCommonKoinModule(
         val subscriptionUpdater = koin.get<MediaSourceSubscriptionUpdater>()
         while (currentCoroutineContext().isActive) {
             val nextDelay = subscriptionUpdater.updateAllOutdated()
-            delay(nextDelay.coerceAtLeast(10.minutes))
+            // updateAllOutdated 失败后会返回很短的重试间隔 (启动头几秒网络还没就绪是常态), 这里只兜底防止空转
+            delay(nextDelay.coerceAtLeast(10.seconds))
         }
     }
 
