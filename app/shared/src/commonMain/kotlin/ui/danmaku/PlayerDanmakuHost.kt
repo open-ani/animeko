@@ -17,15 +17,20 @@ import me.him188.ani.danmaku.ui.DanmakuHost
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import org.openani.mediamp.MediampPlayer
+import org.openani.mediamp.features.PlaybackSpeed
 
 /**
  * A [DanmakuHost] that is connected with the [player].
+ *
+ * 弹幕屏幕状态由 [danmakuHostState] 内部编译布局决定, 这里只需要接入:
+ * - [danmakuListFlow]: 当前话的完整弹幕列表 (已过滤);
+ * - 播放器的进度报告、倍速与播放状态.
  */
 @Composable
 fun PlayerDanmakuHost(
     player: MediampPlayer,
     danmakuHostState: DanmakuHostState,
-    danmakuEvent: Flow<UIDanmakuEvent>,
+    danmakuListFlow: Flow<List<DanmakuPresentation>>,
     modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(player, danmakuHostState) {
@@ -33,30 +38,21 @@ fun PlayerDanmakuHost(
             danmakuHostState.setPaused(!it.isPlaying)
         }
     }
-    LaunchedEffect(danmakuEvent, danmakuHostState) {
-        danmakuEvent.collect { event ->
-            when (event) {
-                is UIDanmakuEvent.Add -> {
-                    danmakuHostState.trySend(event.presentation)
-                }
-
-                is UIDanmakuEvent.Repopulate -> {
-                    danmakuHostState.repopulate(event.list, event.currentPositionMillis)
-                }
-            }
+    LaunchedEffect(player, danmakuHostState) {
+        player.currentPositionMillis.collect {
+            danmakuHostState.onPositionReport(it)
+        }
+    }
+    LaunchedEffect(player, danmakuHostState) {
+        player.features[PlaybackSpeed]?.valueFlow?.collect {
+            danmakuHostState.setPlaybackSpeed(it)
+        }
+    }
+    LaunchedEffect(danmakuListFlow, danmakuHostState) {
+        danmakuListFlow.collect { list ->
+            danmakuHostState.setDanmakuList(list)
         }
     }
 
     DanmakuHost(danmakuHostState, modifier)
-}
-
-sealed class UIDanmakuEvent {
-    data class Add(
-        val presentation: DanmakuPresentation
-    ) : UIDanmakuEvent()
-
-    data class Repopulate(
-        val list: List<DanmakuPresentation>,
-        val currentPositionMillis: Long
-    ) : UIDanmakuEvent()
 }

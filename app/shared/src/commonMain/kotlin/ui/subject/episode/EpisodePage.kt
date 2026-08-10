@@ -967,7 +967,7 @@ private fun EpisodeVideo(
             )
         },
         danmakuHost = {
-            PlayerDanmakuHost(vm.player, danmakuHostState, vm.uiDanmakuEventFlow)
+            PlayerDanmakuHost(vm.player, danmakuHostState, vm.uiDanmakuListFlow)
         },
         danmakuEnabled = page.danmakuEnabled,
         onToggleDanmaku = { vm.setDanmakuEnabled(!page.danmakuEnabled) },

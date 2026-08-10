@@ -114,7 +114,6 @@ import me.him188.ani.app.ui.comment.CommentMapperContext.parseToUIComment
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.EditCommentSticker
 import me.him188.ani.app.ui.comment.UICommentSource
-import me.him188.ani.app.ui.danmaku.UIDanmakuEvent
 import me.him188.ani.app.ui.episode.PlayingEpisodeSummary
 import me.him188.ani.app.ui.episode.danmaku.MatchingDanmakuPresenter
 import me.him188.ani.app.ui.episode.danmaku.MatchingDanmakuUiState
@@ -152,7 +151,6 @@ import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.danmaku.api.DanmakuContent
-import me.him188.ani.danmaku.api.DanmakuEvent
 import me.him188.ani.danmaku.api.DanmakuInfo
 import me.him188.ani.danmaku.api.DanmakuServiceId
 import me.him188.ani.danmaku.api.provider.DanmakuFetchResult
@@ -597,47 +595,9 @@ class EpisodeViewModel(
         },
         bundleFlow = fetchPlayState.infoBundleFlow.filterNotNull().distinctUntilChanged(),
         danmakuRepository = danmakuRepository,
-        getDanmakuRegexFilterListFlowUseCase = getDanmakuRegexFilterListFlowUseCase,
         backgroundScope,
         sharingStarted = SharingStarted.WhileSubscribed(5_000),
     )
-
-    /**
-     * Danmaku event flow to be processed by UI DanmakuHost.
-     */
-    val uiDanmakuEventFlow = danmakuRepository.selfId.flatMapLatest { selfId ->
-        fun createDanmakuPresentation(
-            data: DanmakuInfo,
-            selfId: String?,
-        ) = DanmakuPresentation(data, isSelf = selfId == data.senderId)
-
-        episodeDanmakuLoader.danmakuEventFlow.mapNotNull { event ->
-            when (event) {
-                is DanmakuEvent.Add -> {
-                    val data = event.danmaku
-                    if (data.text.isBlank()) {
-                        null
-                    } else {
-                        UIDanmakuEvent.Add(createDanmakuPresentation(data, selfId))
-                    }
-                }
-
-                is DanmakuEvent.Repopulate -> {
-                    UIDanmakuEvent.Repopulate(
-                        event.list
-                            .filter { it.text.any { c -> !c.isWhitespace() } }
-                            .map { createDanmakuPresentation(it, selfId) },
-                        withContext(Dispatchers.Main) {
-                            player.currentPositionMillis.value
-                        },
-                    )
-                }
-            }
-        }
-    }.shareInBackground(
-        started = SharingStarted.WhileSubscribed(5000), // Must be some time, because when switching full-screen (i.e. configuration change), UI may stop collect for some milliseconds.
-        replay = 1,
-    ) // This is lazy. If user puts app into background, queries will abort.
 
     val allDanmakuListFlow = combine(
         episodeDanmakuLoader.allDanmakuFlow,
@@ -650,6 +610,28 @@ class EpisodeViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         replay = 1,
     )
+
+    /**
+     * 屏幕上显示的弹幕列表 (已应用正则过滤), 供 [DanmakuHostState] 编译布局.
+     */
+    val uiDanmakuListFlow: Flow<List<DanmakuPresentation>> = combine(
+        allDanmakuListFlow,
+        getDanmakuRegexFilterListFlowUseCase(),
+    ) { list, regexFilters ->
+        val regexes = regexFilters.mapNotNull { pattern ->
+            runCatching { Regex(pattern, RegexOption.IGNORE_CASE) }.getOrNull()
+        }
+        if (regexes.isEmpty()) {
+            list
+        } else {
+            list.filter { presentation ->
+                regexes.none { regex -> regex.find(presentation.danmaku.text) != null }
+            }
+        }
+    }.shareInBackground(
+        started = SharingStarted.WhileSubscribed(5000), // Must be some time, because when switching full-screen (i.e. configuration change), UI may stop collect for some milliseconds.
+        replay = 1,
+    ) // This is lazy. If user puts app into background, queries will abort.
 
     val danmakuListStateProducer = DanmakuListStateProducer(
         danmakuFlow = allDanmakuListFlow,

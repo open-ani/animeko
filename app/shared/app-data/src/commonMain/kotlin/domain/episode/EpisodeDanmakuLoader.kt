@@ -20,10 +20,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.shareIn
@@ -34,13 +31,8 @@ import me.him188.ani.app.domain.danmaku.DanmakuLoaderImpl
 import me.him188.ani.app.domain.danmaku.DanmakuLoadingState
 import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.media.player.data.filenameOrNull
-import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
-import me.him188.ani.danmaku.api.DanmakuCollection
-import me.him188.ani.danmaku.api.DanmakuEvent
 import me.him188.ani.danmaku.api.DanmakuInfo
 import me.him188.ani.danmaku.api.DanmakuServiceId
-import me.him188.ani.danmaku.api.DanmakuSession
-import me.him188.ani.danmaku.api.TimeBasedDanmakuSession
 import me.him188.ani.danmaku.api.provider.DanmakuFetchResult
 import me.him188.ani.danmaku.api.provider.DanmakuMatchInfo
 import me.him188.ani.danmaku.api.provider.DanmakuMatchMethod
@@ -50,7 +42,6 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.platform.annotations.TestOnly
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.metadata.duration
 import org.openani.mediamp.source.SeekableInputMediaData
 import org.openani.mediamp.source.UriMediaData
@@ -67,7 +58,6 @@ class EpisodeDanmakuLoader(
     private val selectedMedia: Flow<Media?>,
     private val bundleFlow: Flow<SubjectEpisodeInfoBundle>,
     private val danmakuRepository: DanmakuRepository,
-    getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase,
     backgroundScope: CoroutineScope,
     sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(),
 ) {
@@ -123,14 +113,6 @@ class EpisodeDanmakuLoader(
     val configFlow = config.asStateFlow()
 
 
-    private val danmakuSessionFlow: Flow<DanmakuSession> = config.mapLatest { configMap ->
-        createDanmakuCollection(danmakuLoader.fetchResultFlow, configMap).at(
-            progress = player.currentPositionMillis.map { it.milliseconds },
-            playbackSpeed = { player.features[PlaybackSpeed]?.value ?: 1f },
-            danmakuRegexFilterList = getDanmakuRegexFilterListFlowUseCase(),
-        )
-    }.shareIn(flowScope, started = sharingStarted, replay = 1)
-
     val danmakuLoadingStateFlow: StateFlow<DanmakuLoadingState> = danmakuLoader.danmakuLoadingStateFlow
 
     // this flow must emit a value quickly when started, otherwise it will block ui
@@ -147,12 +129,6 @@ class EpisodeDanmakuLoader(
             )
         }
     }.shareIn(flowScope, started = sharingStarted, replay = 1)
-
-    val danmakuEventFlow: Flow<DanmakuEvent> = danmakuSessionFlow.flatMapLatest { it.events }
-
-    suspend fun requestRepopulate() {
-        danmakuSessionFlow.first().requestRepopulate()
-    }
 
     fun getInteractiveDanmakuFetcherOrNull(providerId: DanmakuProviderId?): DanmakuFetcher? {
         return danmakuRepository.getInteractiveDanmakuFetcherOrNull(providerId ?: return null)
@@ -178,34 +154,6 @@ class EpisodeDanmakuLoader(
 
     private fun Map<DanmakuServiceId, DanmakuOriginConfig>.getConfigOrDefault(providerId: DanmakuServiceId) =
         this[providerId] ?: DanmakuOriginConfig.Default
-
-    private fun createDanmakuCollection(
-        danmakuListFlow: Flow<List<DanmakuFetchResult>?>,
-        config: Map<DanmakuServiceId, DanmakuOriginConfig>
-    ): DanmakuCollection {
-        return TimeBasedDanmakuSession.create(
-            danmakuListFlow.map {
-                it?.flatMap { result ->
-                    val config = config[result.matchInfo.serviceId] ?: DanmakuOriginConfig.Default
-
-                    if (!config.enabled) {
-                        return@flatMap emptyList()
-                    }
-
-                    result.list
-                        .mapNotNull { danmaku ->
-                            val newText = sanitizeDanmakuText(danmaku.text) ?: return@mapNotNull null
-                            danmaku.copy(
-                                content = danmaku.content.copy(
-                                    playTimeMillis = danmaku.playTimeMillis + config.shiftMillis,
-                                    text = newText,
-                                ),
-                            )
-                        }
-                } ?: emptyList()
-            },
-        )
-    }
 
     private fun sanitizeDanmakuText(text: String): String? {
         if (text.isEmpty()) {
