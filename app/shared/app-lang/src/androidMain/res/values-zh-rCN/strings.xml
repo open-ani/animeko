@@ -290,6 +290,12 @@
     <string name="settings_player_op_ed_skip_duration">OP/ED 跳过时长</string>
     <string name="settings_player_op_ed_skip_duration_seconds">%1$d 秒</string>
     <string name="settings_player_auto_switch_media_on_error">播放失败时自动切换资源</string>
+    <string name="settings_player_pause_hls_prefetch">暂停时缓存后续内容</string>
+    <string name="settings_player_pause_hls_prefetch_description">暂停在线播放时，缓存本集剩余内容。退出本集后自动删除临时缓存；仅支持在线 HLS 和直链视频，不影响 BT 播放。</string>
+    <string name="settings_player_pause_hls_prefetch_recommend_title">同时开启广告分片过滤？</string>
+    <string name="settings_player_pause_hls_prefetch_recommend_message">部分在线源会插入无法加载的广告分片。开启过滤可避免缓存空洞和跳转卡顿；该功能仍属实验性，误判时可能跳过正常内容。</string>
+    <string name="settings_player_pause_hls_prefetch_recommend_enable_filter">同时开启</string>
+    <string name="settings_player_pause_hls_prefetch_recommend_prefetch_only">仅开启预缓存</string>
     <string name="settings_player_experimental_hls_segment_filter">过滤贴片广告（实验性）</string>
     <string name="settings_player_experimental_hls_segment_filter_description">尝试过滤部分在线源插入的贴片广告。只对以独立片段插入的广告有效，识别错误时可能跳过正常内容。</string>
     <string name="settings_player_long_press_fast_forward_speed">长按播放速度</string>

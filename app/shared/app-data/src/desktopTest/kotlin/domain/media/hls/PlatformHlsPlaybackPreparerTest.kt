@@ -10,9 +10,15 @@
 package me.him188.ani.app.domain.media.hls
 
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
 import me.him188.ani.app.domain.settings.NoProxyProvider
 import org.openani.mediamp.source.UriMediaData
+import org.openani.mediamp.PlaybackState
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.InetAddress
@@ -21,14 +27,194 @@ import java.net.SocketException
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 
 class PlatformHlsPlaybackPreparerTest {
+    @Test
+    fun `pause prefetch leaves ad segments untouched when filtering is disabled`() = runTest {
+        val requestedAdSegments = CountDownLatch(2)
+        val server = StaticManifestServer(
+            content = """
+                #EXTM3U
+                #EXT-X-VERSION:3
+                #EXT-X-TARGETDURATION:10
+                #EXTINF:10,
+                main0.ts
+                #EXT-X-DISCONTINUITY
+                #EXTINF:1,
+                sycp/ad-account/ad0.tmp
+                #EXTINF:1,
+                sycp/ad-account/ad1.tmp
+                #EXT-X-DISCONTINUITY
+                #EXTINF:10,
+                main1.ts
+                #EXT-X-ENDLIST
+            """.trimIndent(),
+            onRequest = { path ->
+                if (path == "/unfiltered/sycp/ad-account/ad0.tmp" ||
+                    path == "/unfiltered/sycp/ad-account/ad1.tmp"
+                ) {
+                    requestedAdSegments.countDown()
+                }
+            },
+        )
+        val provider = DefaultHttpClientProvider(NoProxyProvider, backgroundScope)
+        val preparer = PlatformHlsPlaybackPreparer(provider)
+        val result = preparer.prepare(
+            UriMediaData("${server.baseUrl}/unfiltered/index.m3u8"),
+            HlsPlaybackPrepareOptions(enableSegmentFiltering = false, enablePausePrefetch = true),
+        )
+
+        try {
+            result.session!!.onPlaybackStateChanged(PlaybackState.PAUSED)
+            assertTrue(withContext(Dispatchers.IO) { requestedAdSegments.await(3, TimeUnit.SECONDS) })
+        } finally {
+            result.session?.close()
+            provider.forceReleaseAll()
+            server.close()
+        }
+    }
+
+    @Test
+    fun `pause prefetch filters ads and skips non-media URI attributes when filtering is enabled`() = runTest {
+        val requestedVideoSegments = CountDownLatch(2)
+        val nonMediaAssetRequested = AtomicBoolean(false)
+        val server = StaticManifestServer(
+            content = """
+                #EXTM3U
+                #EXT-X-VERSION:3
+                #EXT-X-TARGETDURATION:10
+                #EXTINF:10,
+                main0.ts
+                #EXT-X-DISCONTINUITY
+                #EXTINF:1,
+                sycp/ad-account/ad0.tmp
+                #EXTINF:1,
+                sycp/ad-account/ad1.tmp
+                #EXT-X-DISCONTINUITY
+                #EXTINF:10,
+                main1.ts
+                #EXT-X-X-ASSET-URI:URI="tracker.tmp"
+                #EXT-X-ENDLIST
+            """.trimIndent(),
+            onRequest = { path ->
+                when (path) {
+                    "/filtered/main0.ts", "/filtered/main1.ts" -> requestedVideoSegments.countDown()
+                    "/filtered/tracker.tmp",
+                    "/filtered/sycp/ad-account/ad0.tmp",
+                    "/filtered/sycp/ad-account/ad1.tmp" -> nonMediaAssetRequested.set(true)
+                }
+            },
+        )
+        val provider = DefaultHttpClientProvider(NoProxyProvider, backgroundScope)
+        val preparer = PlatformHlsPlaybackPreparer(provider)
+        val result = preparer.prepare(
+            UriMediaData("${server.baseUrl}/filtered/index.m3u8"),
+            HlsPlaybackPrepareOptions(enableSegmentFiltering = true, enablePausePrefetch = true),
+        )
+
+        try {
+            val localManifest = URI(result.data.uri).toURL().readText()
+            assertEquals(false, "sycp/ad-account/ad0.tmp" in localManifest)
+            assertContains(localManifest, "URI=\"${server.baseUrl}/filtered/tracker.tmp\"")
+
+            result.session!!.onPlaybackStateChanged(PlaybackState.PAUSED)
+            assertTrue(withContext(Dispatchers.IO) { requestedVideoSegments.await(3, TimeUnit.SECONDS) })
+            assertEquals(false, nonMediaAssetRequested.get())
+            val progress = withContext(Dispatchers.IO) {
+                withTimeout(3_000) {
+                    result.session.cacheProgressInfoFlow.first { info ->
+                        info.chunkStates == listOf(ChunkState.DONE, ChunkState.DONE)
+                    }
+                }
+            }
+            assertEquals(2, progress.chunkStates.size)
+        } finally {
+            result.session?.close()
+            provider.forceReleaseAll()
+            server.close()
+        }
+    }
+
+    @Test
+    fun `prefetches VOD segments after playback is paused`() = runTest {
+        val requestedSegments = CountDownLatch(2)
+        val server = StaticManifestServer(
+            content = """
+                #EXTM3U
+                #EXTINF:2,
+                first.ts
+                #EXTINF:2,
+                second.ts
+                #EXT-X-ENDLIST
+            """.trimIndent(),
+            onRequest = { path ->
+                if (path == "/vod/first.ts" || path == "/vod/second.ts") {
+                    requestedSegments.countDown()
+                }
+            },
+        )
+        val provider = DefaultHttpClientProvider(NoProxyProvider, backgroundScope)
+        val preparer = PlatformHlsPlaybackPreparer(provider)
+        val result = preparer.prepare(
+            UriMediaData("${server.baseUrl}/vod/index.m3u8"),
+            HlsPlaybackPrepareOptions(enableSegmentFiltering = false, enablePausePrefetch = true),
+        )
+
+        try {
+            result.session!!.onPlaybackStateChanged(PlaybackState.PAUSED)
+            assertTrue(withContext(Dispatchers.IO) { requestedSegments.await(3, TimeUnit.SECONDS) })
+            val progress = withContext(Dispatchers.IO) {
+                withTimeout(3_000) {
+                    result.session.cacheProgressInfoFlow.first { info ->
+                        info.chunkStates == listOf(ChunkState.DONE, ChunkState.DONE)
+                    }
+                }
+            }
+            assertEquals(2, progress.chunkStates.size)
+        } finally {
+            result.session?.close()
+            provider.forceReleaseAll()
+            server.close()
+        }
+    }
+
+    @Test
+    fun `prefetches direct HTTP range content after playback is paused`() = runTest {
+        val server = ByteRangeServer(ByteArray(2_200_000) { it.toByte() })
+        val provider = DefaultHttpClientProvider(NoProxyProvider, backgroundScope)
+        val preparer = PlatformHlsPlaybackPreparer(provider)
+        val result = preparer.prepare(
+            UriMediaData("${server.baseUrl}/video.mp4"),
+            HlsPlaybackPrepareOptions(enableSegmentFiltering = false, enablePausePrefetch = true),
+        )
+
+        try {
+            assertIs<HlsPlaybackProxySession>(result.session)
+            result.session.onPlaybackStateChanged(PlaybackState.PAUSED)
+            val progress = withContext(Dispatchers.IO) {
+                withTimeout(5_000) {
+                    result.session.cacheProgressInfoFlow.first { info ->
+                        info.chunkStates.isNotEmpty() && info.chunkStates.all { it == ChunkState.DONE }
+                    }
+                }
+            }
+            assertEquals(2, progress.chunkStates.size)
+        } finally {
+            result.session?.close()
+            provider.forceReleaseAll()
+            server.close()
+        }
+    }
+
     @Test
     fun `filters playlist and serves rewritten local manifest`() = runTest {
         val server = StaticManifestServer(manifest)
@@ -202,6 +388,7 @@ class PlatformHlsPlaybackPreparerTest {
         private val contentByPath: Map<String, String> = emptyMap(),
         private val redirectFrom: String? = null,
         private val redirectTo: String? = null,
+        private val onRequest: (String?) -> Unit = {},
     ) : AutoCloseable {
         private val closed = AtomicBoolean(false)
         private val bytes = content.toByteArray(StandardCharsets.UTF_8)
@@ -233,9 +420,10 @@ class PlatformHlsPlaybackPreparerTest {
                             ?.trim()
 
                         socket.getOutputStream().use { output ->
-                            val requestPath = lines.firstOrNull()
-                                ?.substringAfter(" ")
-                                ?.substringBefore(" ")
+                        val requestPath = lines.firstOrNull()
+                            ?.substringAfter(" ")
+                            ?.substringBefore(" ")
+                        onRequest(requestPath)
                             if (requestPath == redirectFrom && redirectTo != null) {
                                 output.write(redirectHeader("$baseUrl$redirectTo").toByteArray(StandardCharsets.US_ASCII))
                             } else {
@@ -282,6 +470,71 @@ class PlatformHlsPlaybackPreparerTest {
                 append("\r\n")
             }
         }
+    }
+
+    private class ByteRangeServer(
+        private val content: ByteArray,
+    ) : AutoCloseable {
+        private val closed = AtomicBoolean(false)
+        private val serverSocket = ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))
+
+        val baseUrl: String = "http://127.0.0.1:${serverSocket.localPort}"
+
+        private val thread = thread(
+            name = "ByteRangeServer-${serverSocket.localPort}",
+            isDaemon = true,
+            start = true,
+        ) {
+            while (!closed.get()) {
+                try {
+                    serverSocket.accept().use { socket ->
+                        val reader = BufferedReader(InputStreamReader(socket.getInputStream(), StandardCharsets.US_ASCII))
+                        val lines = buildList {
+                            while (true) {
+                                val line = reader.readLine() ?: break
+                                if (line.isEmpty()) break
+                                add(line)
+                            }
+                        }
+                        val range = lines.firstOrNull { it.startsWith("Range:", ignoreCase = true) }
+                            ?.substringAfter(':')
+                            ?.trim()
+                            ?.removePrefix("bytes=")
+                            ?.substringBefore(',')
+                            ?: return@use
+                        val start = range.substringBefore('-').toInt()
+                        val end = range.substringAfter('-').ifBlank { "${content.lastIndex}" }.toInt()
+                            .coerceAtMost(content.lastIndex)
+                        val bytes = content.copyOfRange(start, end + 1)
+                        socket.getOutputStream().use { output ->
+                            output.write(
+                                buildString {
+                                    append("HTTP/1.1 206 Partial Content\r\n")
+                                    append("Content-Type: video/mp4\r\n")
+                                    append("Content-Length: ${bytes.size}\r\n")
+                                    append("Content-Range: bytes $start-$end/${content.size}\r\n")
+                                    append("Accept-Ranges: bytes\r\n")
+                                    append("Connection: close\r\n\r\n")
+                                }.toByteArray(StandardCharsets.US_ASCII),
+                            )
+                            output.write(bytes)
+                            output.flush()
+                        }
+                    }
+                } catch (e: SocketException) {
+                    if (!closed.get()) throw e
+                }
+            }
+        }
+
+        override fun close() {
+            if (closed.compareAndSet(false, true)) {
+                serverSocket.close()
+            }
+        }
+
+        @Suppress("unused")
+        private fun keepThreadReachable(): Thread = thread
     }
 
     private val manifest = buildString {

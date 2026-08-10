@@ -92,6 +92,11 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      */
     val enableExperimentalHlsSegmentFiltering: Boolean = false,
     /**
+     * When a VOD HLS stream is paused, keep downloading its remaining segments into a
+     * temporary playback cache. The cache is removed when leaving the episode.
+     */
+    val enablePauseHlsPrefetch: Boolean = false,
+    /**
      * 用于在安卓上设置屏幕刷新率, 解决某些设备会自动限制刷新率的问题 (三星).
      *
      * 0 为不设置 (使用系统默认).
@@ -225,6 +230,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
             autoSwitchMediaOnPlayerError = false,
             enableHighQualityAudioTimeStretch = false,
             enableExperimentalHlsSegmentFiltering = false,
+            enablePauseHlsPrefetch = false,
         )
     }
 

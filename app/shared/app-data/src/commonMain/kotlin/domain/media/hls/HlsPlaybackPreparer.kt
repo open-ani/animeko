@@ -9,21 +9,38 @@
 
 package me.him188.ani.app.domain.media.hls
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
+import org.openani.mediamp.PlaybackState
 import org.openani.mediamp.source.UriMediaData
 
 interface HlsPlaybackPreparer {
-    suspend fun prepare(data: UriMediaData): HlsPlaybackPreparerResult
+    suspend fun prepare(
+        data: UriMediaData,
+        options: HlsPlaybackPrepareOptions = HlsPlaybackPrepareOptions(enableSegmentFiltering = true, enablePausePrefetch = false),
+    ): HlsPlaybackPreparerResult
 }
+
+data class HlsPlaybackPrepareOptions(
+    val enableSegmentFiltering: Boolean,
+    val enablePausePrefetch: Boolean,
+)
 
 data class HlsPlaybackPreparerResult(
     val data: UriMediaData,
     val session: HlsPlaybackProxySession? = null,
 )
 
-interface HlsPlaybackProxySession : AutoCloseable
+interface HlsPlaybackProxySession : AutoCloseable {
+    val cacheProgressInfoFlow: Flow<MediaCacheProgressInfo>
+        get() = flowOf(MediaCacheProgressInfo.Empty)
+
+    fun onPlaybackStateChanged(state: PlaybackState) {}
+}
 
 object NoopHlsPlaybackPreparer : HlsPlaybackPreparer {
-    override suspend fun prepare(data: UriMediaData): HlsPlaybackPreparerResult {
+    override suspend fun prepare(data: UriMediaData, options: HlsPlaybackPrepareOptions): HlsPlaybackPreparerResult {
         return HlsPlaybackPreparerResult(data)
     }
 }
