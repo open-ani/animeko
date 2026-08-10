@@ -17,6 +17,25 @@ import kotlin.time.Duration.Companion.seconds
 
 class VideoScaffoldConfigTest {
     @Test
+    fun `missing video enhancement default uses on`() {
+        val config = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}")
+
+        assertEquals(true, config.enableVideoEnhancementByDefault)
+    }
+
+    @Test
+    fun `video enhancement default survives serialization`() {
+        val config = VideoScaffoldConfig.Default.copy(enableVideoEnhancementByDefault = true)
+
+        val decoded = DataStoreJson.decodeFromString(
+            VideoScaffoldConfig.serializer(),
+            DataStoreJson.encodeToString(VideoScaffoldConfig.serializer(), config),
+        )
+
+        assertEquals(true, decoded.enableVideoEnhancementByDefault)
+    }
+
+    @Test
     fun `missing OP ED skip duration uses 85 seconds`() {
         val config = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}")
 

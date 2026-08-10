@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.DisplaySettings
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Groups
@@ -31,6 +32,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
@@ -96,8 +98,11 @@ import me.him188.ani.app.ui.lang.subject_episode_fast_forward_seconds
 import me.him188.ani.app.ui.lang.subject_episode_more_options
 import me.him188.ani.app.ui.lang.subject_episode_preview_mode
 import me.him188.ani.app.ui.lang.subject_episode_select_media_source
+import me.him188.ani.app.ui.lang.video_player_off
+import me.him188.ani.app.ui.lang.video_player_on
 import me.him188.ani.app.ui.lang.video_player_stats_title_hide
 import me.him188.ani.app.ui.lang.video_player_stats_title_show
+import me.him188.ani.app.ui.lang.video_player_video_enhancement
 import me.him188.ani.app.ui.lang.watch_together_title
 import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
 import me.him188.ani.app.ui.mediafetch.ViewKind
@@ -164,6 +169,8 @@ import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
 import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.MediampPlayer
+import org.openani.mediamp.features.VideoEnhancement
+import org.openani.mediamp.features.VideoEnhancementMode
 import org.openani.mediamp.features.audioTracks
 import org.openani.mediamp.features.subtitleTracks
 import org.openani.mediamp.test.TestMediampPlayer
@@ -174,6 +181,7 @@ internal const val TAG_EPISODE_VIDEO_TOP_BAR = "EpisodeVideoTopBar"
 
 internal const val TAG_DANMAKU_SETTINGS_SHEET = "DanmakuSettingsSheet"
 internal const val TAG_SHOW_MEDIA_SELECTOR = "ShowMediaSelector"
+internal const val TAG_VIDEO_ENHANCEMENT = "VideoEnhancement"
 internal const val TAG_SHOW_SETTINGS = "ShowSettings"
 internal const val TAG_COLLAPSE_SIDEBAR = "collapseSidebar"
 internal const val TAG_WATCH_TOGETHER_MENU_ITEM = "WatchTogetherMenuItem"
@@ -650,6 +658,7 @@ private fun EpisodeVideoTopBarActions(
     val hidePlayerStatsText = stringResource(Lang.video_player_stats_title_hide)
     val collapseSidebarText = stringResource(Lang.subject_episode_collapse_sidebar)
     val expandSidebarText = stringResource(Lang.subject_episode_expand_sidebar)
+    val videoEnhancement = remember(playerState) { playerState.features[VideoEnhancement] }
 
     DisposableEffect(dropdownAlwaysOnRequester, isExternalDropdownVisible) {
         if (isExternalDropdownVisible) {
@@ -679,6 +688,10 @@ private fun EpisodeVideoTopBarActions(
             Modifier.testTag(TAG_SHOW_MEDIA_SELECTOR),
         ) {
             Icon(Icons.Rounded.DisplaySettings, contentDescription = selectMediaSourceText)
+        }
+
+        videoEnhancement?.let {
+            VideoEnhancementButton(it, playerControllerState)
         }
     }
 
@@ -764,6 +777,76 @@ private fun EpisodeVideoTopBarActions(
             } else {
                 Icon(AniIcons.RightPanelOpen, contentDescription = expandSidebarText)
             }
+        }
+    }
+}
+
+@Composable
+private fun VideoEnhancementButton(
+    videoEnhancement: VideoEnhancement,
+    playerControllerState: PlayerControllerState,
+) {
+    var showDropdown by rememberSaveable { mutableStateOf(false) }
+    val mode by videoEnhancement.mode.collectAsState()
+    val alwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "videoEnhancement")
+    val title = stringResource(Lang.video_player_video_enhancement)
+    val onText = stringResource(Lang.video_player_on)
+    val offText = stringResource(Lang.video_player_off)
+
+    DisposableEffect(alwaysOnRequester, showDropdown) {
+        if (showDropdown) {
+            alwaysOnRequester.request()
+        } else {
+            alwaysOnRequester.cancelRequest()
+        }
+        onDispose {
+            if (showDropdown) alwaysOnRequester.cancelRequest()
+        }
+    }
+
+    Box {
+        IconButton(
+            onClick = { showDropdown = true },
+            modifier = Modifier.testTag(TAG_VIDEO_ENHANCEMENT),
+        ) {
+            Icon(
+                Icons.Rounded.AutoAwesome,
+                contentDescription = title,
+                tint = if (mode == VideoEnhancementMode.CLEAR) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    LocalContentColor.current
+                },
+            )
+        }
+        DropdownMenu(
+            expanded = showDropdown,
+            onDismissRequest = { showDropdown = false },
+        ) {
+            Text(
+                title,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            listOf(VideoEnhancementMode.CLEAR, VideoEnhancementMode.OFF)
+                .filter { it in videoEnhancement.supportedModes }
+                .forEach { item ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                when (item) {
+                                    VideoEnhancementMode.OFF -> offText
+                                    VideoEnhancementMode.CLEAR -> onText
+                                },
+                            )
+                        },
+                        onClick = {
+                            videoEnhancement.setMode(item)
+                            showDropdown = false
+                        },
+                        enabled = item != mode,
+                    )
+                }
         }
     }
 }

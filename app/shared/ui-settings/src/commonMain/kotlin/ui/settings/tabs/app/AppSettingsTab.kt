@@ -105,6 +105,8 @@ import me.him188.ani.app.ui.lang.settings_player_playback_speed_range
 import me.him188.ani.app.ui.lang.settings_player_playback_speed_range_description
 import me.him188.ani.app.ui.lang.settings_player_remember_playback_speed
 import me.him188.ani.app.ui.lang.settings_player_remember_playback_speed_description
+import me.him188.ani.app.ui.lang.settings_player_video_enhancement_default
+import me.him188.ani.app.ui.lang.settings_player_video_enhancement_default_description
 import me.him188.ani.app.ui.lang.settings_update_auto_check
 import me.him188.ani.app.ui.lang.settings_update_auto_check_description
 import me.him188.ani.app.ui.lang.settings_update_auto_download
@@ -480,6 +482,17 @@ fun SettingsScope.PlayerGroup(
             },
             title = { Text(stringResource(Lang.settings_player_fullscreen_button)) },
             description = { Text(stringResource(Lang.settings_player_fullscreen_button_description)) },
+        )
+        HorizontalDividerItem()
+        SwitchItem(
+            checked = config.enableVideoEnhancementByDefault,
+            onCheckedChange = {
+                videoScaffoldConfig.update(config.copy(enableVideoEnhancementByDefault = it))
+            },
+            title = { Text(stringResource(Lang.settings_player_video_enhancement_default)) },
+            description = {
+                Text(stringResource(Lang.settings_player_video_enhancement_default_description))
+            },
         )
         HorizontalDividerItem()
         SwitchItem(

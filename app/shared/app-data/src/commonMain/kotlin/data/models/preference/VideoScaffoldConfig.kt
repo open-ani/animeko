@@ -49,6 +49,12 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      */
     val enableFramePreview: Boolean = true,
     /**
+     * 进入播放器时默认开启超分.
+     *
+     * @since 6.0
+     */
+    val enableVideoEnhancementByDefault: Boolean = true,
+    /**
      * 在编辑弹幕时暂停视频.
      * @since 3.2.0-beta01
      */
@@ -216,6 +222,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
         val AllDisabled = VideoScaffoldConfig(
             fullscreenSwitchMode = FullscreenSwitchMode.ONLY_IN_CONTROLLER,
             enableFramePreview = false,
+            enableVideoEnhancementByDefault = false,
             pauseVideoOnEditDanmaku = false,
             autoMarkDone = false,
             hideSelectorOnSelect = false,

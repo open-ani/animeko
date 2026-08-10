@@ -180,6 +180,8 @@ import org.koin.core.component.inject
 import org.openani.mediamp.InternalMediampApi
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
+import org.openani.mediamp.features.VideoEnhancement
+import org.openani.mediamp.features.VideoEnhancementMode
 import org.openani.mediamp.features.chapters
 import org.openani.mediamp.metadata.Chapter
 import kotlin.time.Duration.Companion.milliseconds
@@ -1037,6 +1039,17 @@ class EpisodeViewModel(
     }
 
     init {
+        launchInBackground {
+            val enabled = settingsRepository.videoScaffoldConfig.flow
+                .first()
+                .enableVideoEnhancementByDefault
+            withContext(player.mainDispatcher) {
+                player.features[VideoEnhancement]?.setMode(
+                    if (enabled) VideoEnhancementMode.CLEAR else VideoEnhancementMode.OFF,
+                )
+            }
+        }
+
         // 跳过 OP 和 ED
         launchInBackground {
             settingsRepository.videoScaffoldConfig.flow
