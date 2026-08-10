@@ -54,6 +54,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -81,12 +82,10 @@ import me.him188.ani.danmaku.api.DanmakuContent
 import me.him188.ani.danmaku.api.DanmakuInfo
 import me.him188.ani.danmaku.api.DanmakuLocation
 import me.him188.ani.danmaku.api.DanmakuServiceId
-import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.math.roundToInt
 import kotlin.random.Random
 import kotlin.random.nextInt
 import kotlin.random.nextLong
-import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun DanmakuHost(
@@ -102,26 +101,17 @@ fun DanmakuHost(
         state.setUIContext(baseStyle, danmakuTextMeasurer, density)
     }
 
-    // observe config changes
+    // observe config & danmaku list changes, recompile layout
     LaunchedEffect(trackStubMeasurer) { state.observeConfig(trackStubMeasurer) }
-    // calculate current play time on every frame
+    // interpolate frames: advance video time and maintain the visible window
     LaunchedEffect(state.paused) { if (!state.paused) state.interpolateFrameLoop() }
-    // logical tick for removal of danmaku
-    LaunchedEffect(state.paused) {
-        if (!state.paused) {
-            while (true) {
-                state.tick()
-                delay(1000)
-            }
-        }
-    }
 
     BoxWithConstraints(modifier) {
         val hostWidth = constraints.maxWidth
         state.hostWidth = hostWidth
         state.hostHeight = constraints.maxHeight
 
-        // Canvas only subscribes `danmakuUpdateSubscription` and `hostHeight` to re-draw.
+        // Canvas only subscribes `danmakuUpdateSubscription` to re-draw.
         Canvas(
             modifier = Modifier.fillMaxSize()
                 .clipToBounds()
@@ -129,26 +119,40 @@ fun DanmakuHost(
         ) {
             state.danmakuUpdateSubscription // subscribe changes
 
-            state.forEachFloatingDanmaku {
-                // don't draw uninitialized danmaku
-                if (it.y.isNaN()) return@forEachFloatingDanmaku
+            val videoTimeMillis = state.currentVideoTimeMillis
+            if (videoTimeMillis >= 0) {
+                val trackHeight = state.trackHeight.toFloat()
+                val hostHeightPx = state.hostHeight.toFloat()
 
-                with(it.danmaku) {
-                    draw(
-                        screenPosX = hostWidth - it.distanceX,
-                        screenPosY = it.y,
-                    )
+                val visibleFloating = state.visibleFloating
+                for (i in visibleFloating.indices) {
+                    val danmaku = visibleFloating[i]
+                    with(danmaku.styled) {
+                        draw(
+                            screenPosX = hostWidth - danmaku.placed.distanceXAt(videoTimeMillis),
+                            screenPosY = trackHeight * danmaku.placed.trackIndex,
+                        )
+                    }
                 }
-            }
-            state.forEachFixedDanmaku {
-                // don't draw uninitialized danmaku
-                if (it.y.isNaN()) return@forEachFixedDanmaku
-
-                with(it.danmaku) {
-                    draw(
-                        screenPosX = (hostWidth - danmakuWidth) / 2f,
-                        screenPosY = it.y,
-                    )
+                val visibleTop = state.visibleTop
+                for (i in visibleTop.indices) {
+                    val danmaku = visibleTop[i]
+                    with(danmaku.styled) {
+                        draw(
+                            screenPosX = (hostWidth - danmakuWidth) / 2f,
+                            screenPosY = trackHeight * danmaku.placed.trackIndex,
+                        )
+                    }
+                }
+                val visibleBottom = state.visibleBottom
+                for (i in visibleBottom.indices) {
+                    val danmaku = visibleBottom[i]
+                    with(danmaku.styled) {
+                        draw(
+                            screenPosX = (hostWidth - danmakuWidth) / 2f,
+                            screenPosY = hostHeightPx - (danmaku.placed.trackIndex + 1) * trackHeight,
+                        )
+                    }
                 }
             }
         }
@@ -156,33 +160,32 @@ fun DanmakuHost(
         if (state.isDebug) {
             CompositionLocalProvider(LocalTextStyle provides MaterialTheme.typography.bodySmall) {
                 Column(modifier = Modifier.padding(4.dp).fillMaxSize()) {
+                    state.danmakuUpdateSubscription
                     Text("DanmakuHost state: ")
                     Text("  hostSize: ${state.hostWidth}x${state.hostHeight}, trackHeight: ${state.trackHeight}")
                     Text(
-                        "  paused: ${state.paused}, elapsedFrameTimeMillis: ${state.elapsedFrameTimeNanos / 1_000_000}, " +
+                        "  paused: ${state.paused}, videoTimeMillis: ${state.currentVideoTimeMillis}, " +
                                 "frameTimeDeltaMillis: ${state.currentFrameTimeDeltaNanos / 1_000_000} " +
                                 "(raw: ${state.currentFrameRawDeltaNanos / 1_000_000})",
                     )
+                    val layout = state.compiledLayout
+                    if (layout == null) {
+                        Text("  layout: null")
+                    } else {
+                        Text(
+                            "  layout: floating=${layout.floating.size}, top=${layout.top.size}, " +
+                                    "bottom=${layout.bottom.size}, dropped=${layout.droppedCount}",
+                        )
+                        Text(
+                            "  tracks: floating=${layout.params.floatingTrackCount}, " +
+                                    "top=${layout.params.topTrackCount}, bottom=${layout.params.bottomTrackCount}, " +
+                                    "playbackSpeed=${layout.params.playbackSpeed}",
+                        )
+                    }
                     Text(
-                        "  presentDanmakuCount: ${
-                            DanmakuCollectionIterator(state.floatingTrack).toList().size +
-                                    DanmakuCollectionIterator(state.topTrack).toList().size +
-                                    DanmakuCollectionIterator(state.bottomTrack).toList().size
-                        }",
+                        "  visible: floating=${state.visibleFloating.size}, " +
+                                "top=${state.visibleTop.size}, bottom=${state.visibleBottom.size}",
                     )
-                    HorizontalDivider()
-                    Text("  floating tracks: ")
-                    for (track in state.floatingTrack) {
-                        Text("    $track")
-                    }
-                    Text("  top tracks: ")
-                    for (track in state.topTrack) {
-                        Text("    $track")
-                    }
-                    Text("  bottom tracks: ")
-                    for (track in state.bottomTrack) {
-                        Text("    $track")
-                    }
                 }
             }
         }
@@ -191,67 +194,35 @@ fun DanmakuHost(
 
 // preview code below
 
-private class DummyDanmakuGeneratorState(
-    private val startTime: Long = currentTimeMillis()
-) {
-    private var emitted = 0
-    private var counter = 0
+private fun dummyDanmakuInfo(
+    id: String,
+    playTimeMillis: Long,
+    text: String,
+    location: DanmakuLocation,
+    color: Int = 0xffffff,
+): DanmakuInfo = DanmakuInfo(
+    id,
+    DanmakuServiceId("dummy"), "sender",
+    DanmakuContent(playTimeMillis, color, text, location),
+)
 
-    fun generate(
-        playTimeMillis: Long = currentTimeMillis() - startTime
-    ): DanmakuInfo {
-        return DanmakuInfo(
-            counter++.toString(),
-            DanmakuServiceId("dummy"), currentTimeMillis().toString(),
-            DanmakuContent(
-                playTimeMillis,
-                Color.Black.value.toInt(),
-                text = LoremIpsum(Random.nextInt(1..5)).values.first(),
-                location = DanmakuLocation.entries.random(),
-            ),
-        )
-    }
-
-    fun generateSelf(): DanmakuInfo {
-        return DanmakuInfo(
-            "self${Random.Default.nextLong(100000000L..999999999L)}",
-            DanmakuServiceId("dummy sender"), "2",
-            DanmakuContent(
-                currentTimeMillis() - startTime,
-                0xfe1010,
-                text = "this is my danmaku ${currentTimeMillis()}",
-                location = DanmakuLocation.entries.random(),
-            ),
-        )
-    }
-
-    fun generateRepopulate(
-        lastTimeMillis: Long = Random.nextLong(0L..(1000L * 60 * 25))
-    ): List<DanmakuInfo> {
-        if (lastTimeMillis < 0) return emptyList()
-
-        val list = mutableListOf<DanmakuInfo>()
-        var current = lastTimeMillis
-
-        kotlin.run {
-            repeat(Random.nextInt(10..100)) {
-                list.add(generate(current))
-                current -= Random.nextLong(0L..200L)
-                if (current < 0) return@run
-            }
-        }
-
-        return list.asReversed()
-    }
-
-    fun flow() = kotlinx.coroutines.flow.flow {
-        emit(generate())
-        emit(generate())
-        emit(generate())
-        while (true) {
-            emit(generate())
-            emitted++
-            delay(Random.nextLong(5, 10).milliseconds)
+private fun generateDummyDanmakuList(random: Random): List<DanmakuPresentation> {
+    var time = 0L
+    return buildList {
+        repeat(3000) { i ->
+            time += random.nextLong(100L..1200L)
+            add(
+                DanmakuPresentation(
+                    dummyDanmakuInfo(
+                        id = i.toString(),
+                        playTimeMillis = time,
+                        text = LoremIpsum(random.nextInt(1..5)).values.first(),
+                        location = if (random.nextInt(10) < 8) DanmakuLocation.NORMAL
+                        else DanmakuLocation.entries.random(random),
+                    ),
+                    isSelf = false,
+                ),
+            )
         }
     }
 }
@@ -332,13 +303,18 @@ private fun PreviewDanmakuHostImpl(
     }
     val state = remember { DanmakuHostState(config) }
 
-    val generator = remember { DummyDanmakuGeneratorState() }
-    val scope = rememberCoroutineScope()
+    // 模拟播放器: 每 500ms 报告一次进度
+    var playerPositionMillis by remember { mutableLongStateOf(0L) }
     LaunchedEffect(true) {
-        generator.flow().collect {
-            state.trySend(DanmakuPresentation(it, isSelf = false))
+        state.setDanmakuList(generateDummyDanmakuList(Random(0)))
+        while (true) {
+            state.onPositionReport(playerPositionMillis)
+            delay(500)
+            playerPositionMillis += 500
         }
     }
+
+    val scope = rememberCoroutineScope()
 
     @Composable
     fun Editor(modifier: Modifier) {
@@ -350,7 +326,18 @@ private fun PreviewDanmakuHostImpl(
                 Button(
                     {
                         scope.launch {
-                            state.send(DanmakuPresentation(generator.generateSelf(), isSelf = true))
+                            state.send(
+                                DanmakuPresentation(
+                                    dummyDanmakuInfo(
+                                        id = "self${Random.nextLong(100000000L..999999999L)}",
+                                        playTimeMillis = state.currentVideoTimeMillis,
+                                        text = "this is my danmaku",
+                                        location = DanmakuLocation.NORMAL,
+                                        color = 0xfe1010,
+                                    ),
+                                    isSelf = true,
+                                ),
+                            )
                         }
                     },
                 ) {
@@ -359,19 +346,16 @@ private fun PreviewDanmakuHostImpl(
             }
             item {
                 Button(
-                    onClick = {
-                        scope.launch {
-                            val generated = generator.generateRepopulate().map {
-                                DanmakuPresentation(it, isSelf = false)
-                            }
-                            state.repopulate(
-                                generated,
-                                generated.last().danmaku.playTimeMillis,
-                            )
-                        }
-                    },
+                    onClick = { playerPositionMillis += 30_000 },
                 ) {
-                    Text("Repopulate")
+                    Text("Seek +30s")
+                }
+            }
+            item {
+                Button(
+                    onClick = { playerPositionMillis = (playerPositionMillis - 30_000).coerceAtLeast(0) },
+                ) {
+                    Text("Seek -30s")
                 }
             }
             item {
@@ -484,7 +468,6 @@ private fun PreviewDanmakuConfig(
                         )
                     },
                     valueRange = 0.50f..3f,
-//                steps = ((3f - 0.50f) / 0.05f).toInt() - 1,
                     title = { Text("弹幕字号") },
                     valueLabel = { Text(remember(fontSize) { "${(fontSize * 100).roundToInt()}%" }) },
                 )
@@ -501,7 +484,6 @@ private fun PreviewDanmakuConfig(
                         )
                     },
                     valueRange = 0f..1f,
-//                steps = ((1f - 0f) / 0.05f).toInt() - 1,
                     title = { Text("不透明度") },
                     valueLabel = { Text(remember(alpha) { "${(alpha * 100).roundToInt()}%" }) },
                 )
@@ -518,7 +500,6 @@ private fun PreviewDanmakuConfig(
                         )
                     },
                     valueRange = 0f..2f,
-//                steps = ((2f - 0f) / 0.1f).toInt() - 1,
                     title = { Text("描边宽度") },
                     valueLabel = { Text(remember(strokeWidth) { "${(strokeWidth * 100).roundToInt()}%" }) },
                 )
@@ -539,7 +520,6 @@ private fun PreviewDanmakuConfig(
                         }
                     },
                     valueRange = 100f..900f,
-//                steps = ((900 - 100) / 100) - 1,
                     title = { Text("弹幕字重") },
                     valueLabel = { Text(remember(fontWeight) { "${fontWeight.toInt()}" }) },
                 )
@@ -559,7 +539,6 @@ private fun PreviewDanmakuConfig(
                         )
                     },
                     valueRange = 0.2f..3f,
-//                steps = ((3f - 0.2f) / 0.1f).toInt() - 1,
                     title = { Text("弹幕速度") },
                     description = { Text("弹幕速度不会跟随视频倍速变化") },
                     valueLabel = { Text(remember(speed) { "${(speed * 100).roundToInt()}%" }) },
@@ -582,7 +561,7 @@ private fun PreviewDanmakuConfig(
                     onValueChange = {
                         displayDensity = it
                     },
-                    // 这个会导致 repopulate, 所以改完了才更新
+                    // 这个会导致重新编译, 所以改完了才更新
                     onValueChangeFinished = {
                         setDanmakuConfig(
                             danmakuConfig.copy(
@@ -623,7 +602,7 @@ private fun PreviewDanmakuConfig(
                     onValueChange = {
                         displayArea = it
                     },
-                    // 这个会导致 repopulate, 所以改完了才更新
+                    // 这个会导致重新编译, 所以改完了才更新
                     onValueChangeFinished = {
                         setDanmakuConfig(
                             danmakuConfig.copy(

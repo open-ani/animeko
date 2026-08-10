@@ -144,4 +144,21 @@ class CompiledDanmakuLayout(
      * 因所有轨道均无法容纳而被丢弃的弹幕数量.
      */
     val droppedCount: Int,
-)
+) {
+    /**
+     * 浮动弹幕最长的在屏时长. 用于 seek 后重建可见窗口时确定回溯范围.
+     */
+    val maxFloatingLifetimeMillis: Long by lazy {
+        floating.maxOfOrNull { it.exitTimeMillis - it.enterTimeMillis } ?: 0L
+    }
+
+    /**
+     * 固定弹幕最长的在屏时长.
+     */
+    val maxFixedLifetimeMillis: Long by lazy {
+        maxOf(
+            top.maxOfOrNull { it.endTimeMillis - it.enterTimeMillis } ?: 0L,
+            bottom.maxOfOrNull { it.endTimeMillis - it.enterTimeMillis } ?: 0L,
+        )
+    }
+}

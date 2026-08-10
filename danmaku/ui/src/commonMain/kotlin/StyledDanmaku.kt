@@ -41,10 +41,7 @@ data class StyledDanmaku(
     internal val enableColor: Boolean,
     internal val isDebug: Boolean
 ) : SizeSpecifiedDanmaku {
-    private val danmakuText = presentation.danmaku.run {
-        val seconds = playTimeMillis.toFloat().div(1000)
-        if (isDebug) "$text (${floor((seconds / 60)).toInt()}:${String.format2f(seconds % 60)})" else text
-    }
+    private val danmakuText = danmakuDisplayText(presentation, isDebug)
 
     private val solidTextLayout = measurer.measure(
         text = danmakuText,
@@ -99,6 +96,38 @@ internal fun Canvas.paintIfNotEmpty(layout: TextLayoutResult) {
     if (layout.size.width != 0 && layout.size.height != 0) {
         TextPainter.paint(this, layout)
     }
+}
+
+/**
+ * 弹幕的显示文本. Debug 模式下附加发送时间.
+ */
+internal fun danmakuDisplayText(presentation: DanmakuPresentation, isDebug: Boolean): String =
+    presentation.danmaku.run {
+        val seconds = playTimeMillis.toFloat().div(1000)
+        if (isDebug) "$text (${floor((seconds / 60)).toInt()}:${String.format2f(seconds % 60)})" else text
+    }
+
+/**
+ * 仅测量弹幕文本宽度, 不创建 [StyledDanmaku].
+ *
+ * 与 [StyledDanmaku] 内部的实体文本测量使用完全相同的样式合并逻辑
+ * (颜色与下划线不影响宽度), 因此结果与 [StyledDanmaku.danmakuWidth] 一致.
+ */
+internal fun measureDanmakuTextWidth(
+    measurer: TextMeasurer,
+    presentation: DanmakuPresentation,
+    baseStyle: TextStyle,
+    style: DanmakuStyle,
+    isDebug: Boolean,
+): Int {
+    val layout = measurer.measure(
+        text = danmakuDisplayText(presentation, isDebug),
+        style = baseStyle.merge(style.styleForText(color = Color.White)),
+        overflow = TextOverflow.Clip,
+        maxLines = 1,
+        softWrap = false,
+    )
+    return layout.size.width.coerceAtLeast(1)
 }
 
 internal fun dummyDanmaku(

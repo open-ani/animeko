@@ -131,10 +131,12 @@ object DanmakuLayoutCompiler {
             }
 
             val widthPx = measureWidth(presentation).coerceAtLeast(1)
-            val speed = speedFor(presentation, widthPx)
+            val speed = floatingDanmakuSpeed(
+                params, widthPx,
+                fluctuation01 = stableHash01(danmakuLayoutKey(presentation)),
+            )
             val enter = presentation.danmaku.playTimeMillis
-            val exit = enter +
-                    ((params.trackWidthPx + widthPx + params.safeSeparationPx) / speed * 1000.0).toLong()
+            val exit = floatingDanmakuExitTime(params, enter, widthPx, speed)
 
             for (trackIndex in 0 until params.floatingTrackCount) {
                 val upcoming = PlacedFloatingDanmaku(presentation, trackIndex, enter, widthPx, speed, exit)
@@ -151,28 +153,8 @@ object DanmakuLayoutCompiler {
             return false
         }
 
-        private fun speedFor(presentation: DanmakuPresentation, widthPx: Int): Float {
-            val baseMultiplier = params.speedMultiplier
-                .pow(log(widthPx.toFloat() / params.baseSpeedTextWidthPx, 2f))
-                .coerceAtLeast(1f)
-            val fluctuation =
-                (stableHash01(danmakuLayoutKey(presentation)) - 0.5f) * 2f * params.speedFluctuation
-            val wallSpeed = params.baseSpeedPxPerSecond * (baseMultiplier + fluctuation)
-            return wallSpeed / params.playbackSpeed
-        }
-
-        /**
-         * [prev] 在前 [next] 在后 (enter 更晚) 时, 两者是否不冲突.
-         */
-        private fun fits(prev: PlacedFloatingDanmaku, next: PlacedFloatingDanmaku): Boolean {
-            // 1. next 出现时 prev 已完全进入轨道 (含安全间隔)
-            val prevFullyEnteredMillis = (prev.widthPx + params.safeSeparationPx) / prev.speedPxPerVideoSecond * 1000.0
-            if ((next.enterTimeMillis - prev.enterTimeMillis) < prevFullyEnteredMillis) return false
-            // 2. 不追尾: next 左边缘到达轨道左侧不早于 prev 完全滚出
-            val nextLeftArrivalMillis = next.enterTimeMillis +
-                    params.trackWidthPx / next.speedPxPerVideoSecond * 1000.0
-            return prev.exitTimeMillis <= nextLeftArrivalMillis
-        }
+        private fun fits(prev: PlacedFloatingDanmaku, next: PlacedFloatingDanmaku): Boolean =
+            floatingDanmakuFits(prev, next, params.trackWidthPx, params.safeSeparationPx)
     }
 
     private class FixedPass(
@@ -189,11 +171,7 @@ object DanmakuLayoutCompiler {
 
         private var frozenByKey: Map<String, PlacedFixedDanmaku> = emptyMap()
 
-        /**
-         * 显示时长为墙钟时间, 转换到视频时间轴.
-         */
-        private val durationVideoMillis: Long =
-            (params.fixedDanmakuDurationMillis * params.playbackSpeed).toLong()
+        private val durationVideoMillis: Long = params.fixedDurationVideoMillis
 
         fun seedFrozen(
             previousPlaced: List<PlacedFixedDanmaku>,
@@ -245,6 +223,60 @@ object DanmakuLayoutCompiler {
  */
 internal fun danmakuLayoutKey(presentation: DanmakuPresentation): String =
     "${presentation.danmaku.serviceId.value}:${presentation.danmaku.id}"
+
+/**
+ * [prev] 在前 [next] 在后 (enter 更晚) 时, 两者在同一轨道上是否不冲突.
+ */
+internal fun floatingDanmakuFits(
+    prev: PlacedFloatingDanmaku,
+    next: PlacedFloatingDanmaku,
+    trackWidthPx: Int,
+    safeSeparationPx: Float,
+): Boolean {
+    // 1. next 出现时 prev 已完全进入轨道 (含安全间隔)
+    val prevFullyEnteredMillis = (prev.widthPx + safeSeparationPx) / prev.speedPxPerVideoSecond * 1000.0
+    if ((next.enterTimeMillis - prev.enterTimeMillis) < prevFullyEnteredMillis) return false
+    // 2. 不追尾: next 左边缘到达轨道左侧不早于 prev 完全滚出
+    val nextLeftArrivalMillis = next.enterTimeMillis + trackWidthPx / next.speedPxPerVideoSecond * 1000.0
+    return prev.exitTimeMillis <= nextLeftArrivalMillis
+}
+
+/**
+ * 计算弹幕在视频时间轴上的速度 (px 每视频秒).
+ *
+ * @param fluctuation01 `[0, 1)` 内的随机因子, 0.5 表示无波动. 编译时取弹幕 key 的哈希以保证确定性.
+ */
+internal fun floatingDanmakuSpeed(
+    params: DanmakuLayoutParams,
+    widthPx: Int,
+    fluctuation01: Float,
+): Float {
+    val baseMultiplier = params.speedMultiplier
+        .pow(log(widthPx.toFloat() / params.baseSpeedTextWidthPx, 2f))
+        .coerceAtLeast(1f)
+    val fluctuation = (fluctuation01 - 0.5f) * 2f * params.speedFluctuation
+    val wallSpeed = params.baseSpeedPxPerSecond * (baseMultiplier + fluctuation)
+    return wallSpeed / params.playbackSpeed
+}
+
+/**
+ * 弹幕左边缘 (含安全间隔) 完全滚出轨道左侧的视频时刻.
+ */
+internal fun floatingDanmakuExitTime(
+    params: DanmakuLayoutParams,
+    enterTimeMillis: Long,
+    widthPx: Int,
+    speedPxPerVideoSecond: Float,
+): Long {
+    return enterTimeMillis +
+            ((params.trackWidthPx + widthPx + params.safeSeparationPx) / speedPxPerVideoSecond * 1000.0).toLong()
+}
+
+/**
+ * 固定弹幕显示时长 (墙钟时间) 转换到视频时间轴.
+ */
+internal val DanmakuLayoutParams.fixedDurationVideoMillis: Long
+    get() = (fixedDanmakuDurationMillis * playbackSpeed).toLong()
 
 /**
  * 稳定的字符串哈希, 映射到 `[0, 1)`. 跨平台、跨进程一致 (FNV-1a 64).
