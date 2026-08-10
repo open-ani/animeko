@@ -25,11 +25,15 @@ class PlayerSkipOpEdStateTest {
     class `OP chapter on start` {
         private val opChapterOnStart = listOf(
             Chapter("chapter1 op", 80_000L, 0),
+            Chapter("chapter2", 10_000L, 100_000L),
+            Chapter("chapter3", 10_000L, 110_000L),
         )
+
+        private val videoLength = 24.minutes
 
         private fun createState_opChapterOnStart_24minutes(onSkip: (targetMillis: Long) -> Unit = {}): PlayerSkipOpEdState {
             return PlayerSkipOpEdState(
-                stateOf(opChapterOnStart),
+                stateOf(opChapterOnStart.filter { isLikelyOpEdChapter(it, videoLength) }),
                 onSkip = onSkip,
             )
         }
@@ -116,12 +120,16 @@ class PlayerSkipOpEdStateTest {
     class `OP chapter on chapter 2` {
 
         private val opChapterOnChapter2 = listOf(
+            Chapter("chapter1", 10_000L, 0),
             Chapter("chapter2 op", 90_000L, 10_000L),
+            Chapter("chapter3", 10_000L, 110_000L),
         )
+
+        private val videoLength = 24.minutes
 
         private fun createState_opChapterOnChapter2_24minutes(onSkip: (targetMillis: Long) -> Unit = {}): PlayerSkipOpEdState {
             return PlayerSkipOpEdState(
-                stateOf(opChapterOnChapter2),
+                stateOf(opChapterOnChapter2.filter { isLikelyOpEdChapter(it, videoLength) }),
                 onSkip = onSkip,
             )
         }
