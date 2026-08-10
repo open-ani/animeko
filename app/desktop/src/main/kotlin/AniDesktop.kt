@@ -169,6 +169,15 @@ object AniDesktop {
 
     @JvmStatic
     fun main(args: Array<String>) {
+        // Compose Desktop 1.11.1 may enqueue a null accessibility child and crash on macOS.
+        // Remove this workaround after CMP-10170 is available in the Compose version we use.
+        if (
+            currentPlatformDesktop().isMacOS() &&
+            System.getProperty("compose.accessibility.enable") == null
+        ) {
+            System.setProperty("compose.accessibility.enable", "false")
+        }
+
         val startupTimeMonitor = StartupTimeMonitor()
 
         val originalExceptionHandler = Thread.currentThread().uncaughtExceptionHandler
