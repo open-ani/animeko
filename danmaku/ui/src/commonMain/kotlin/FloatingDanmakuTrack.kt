@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -36,7 +36,7 @@ internal class FloatingDanmakuTrack<T : SizeSpecifiedDanmaku>(
     private val frameTimeNanosState: LongState,
     private val trackHeight: IntState,
     private val trackWidth: IntState,
-    var baseSpeedPxPerSecond: Float,
+    baseSpeedPxPerSecond: Float,
     var safeSeparation: Float,
     var baseSpeedTextWidth: Int,
     val speedMultiplier: FloatState,
@@ -45,23 +45,48 @@ internal class FloatingDanmakuTrack<T : SizeSpecifiedDanmaku>(
     private val danmakuList: MutableList<FloatingDanmaku<T>> = mutableListOf()
 
     /**
+     * 基础速度. 修改时会以当前帧时间重新锚定轨道内所有弹幕, 保证位置连续 (不跳变), 弹幕立即以新速度运动.
+     */
+    var baseSpeedPxPerSecond: Float = baseSpeedPxPerSecond
+        set(value) {
+            if (field == value) return
+            field = value
+            danmakuList.forEach { it.updateSpeed(value * it.speedMultiplier) }
+        }
+
+    /**
      * 检测是否可以放置这条[弹幕][danmaku].
      *
      * 无论如何弹幕都不可以放到轨道长度之外.
      */
     override fun canPlace(danmaku: T, placeFrameTimeNanos: Long): Boolean {
-        return checkPlaceableImpl(danmaku, placeFrameTimeNanos) != null
+        return checkPlaceableImpl(danmaku, placeFrameTimeNanos, overrideSpeedMultiplier = null) != null
     }
 
     override fun tryPlace(danmaku: T, placeFrameTimeNanos: Long): FloatingDanmaku<T>? {
-        val (upcomingDanmaku, insertionIndex) = checkPlaceableImpl(danmaku, placeFrameTimeNanos) ?: return null
+        return tryPlace(danmaku, placeFrameTimeNanos, overrideSpeedMultiplier = null)
+    }
+
+    /**
+     * 尝试放置弹幕.
+     *
+     * @param overrideSpeedMultiplier 指定速度倍率, 不重新计算随机速度波动.
+     *     用于重新放置已在屏幕上的弹幕 (例如配置变更时), 保证弹幕位置与速度完全不变.
+     */
+    internal fun tryPlace(
+        danmaku: T,
+        placeFrameTimeNanos: Long,
+        overrideSpeedMultiplier: Float?,
+    ): FloatingDanmaku<T>? {
+        val (upcomingDanmaku, insertionIndex) =
+            checkPlaceableImpl(danmaku, placeFrameTimeNanos, overrideSpeedMultiplier) ?: return null
         if (insertionIndex < 0) danmakuList.add(upcomingDanmaku) else danmakuList.add(insertionIndex, upcomingDanmaku)
 
         return upcomingDanmaku
     }
 
     override fun place(danmaku: T, placeFrameTimeNanos: Long): FloatingDanmaku<T> {
-        val upcomingDanmaku = danmaku.createFloating(placeFrameTimeNanos)
+        val upcomingDanmaku = danmaku.createFloating(placeFrameTimeNanos, overrideSpeedMultiplier = null)
 
         val insertionIndex = upcomingDanmaku.isNonOverlapping(danmakuList)
         if (insertionIndex < 0) danmakuList.add(upcomingDanmaku) else danmakuList.add(insertionIndex, upcomingDanmaku)
@@ -79,9 +104,20 @@ internal class FloatingDanmakuTrack<T : SizeSpecifiedDanmaku>(
     }
 
     /**
+     * 移除所有满足 [predicate] 的弹幕.
+     */
+    internal fun removeAll(predicate: (FloatingDanmaku<T>) -> Boolean) {
+        danmakuList.removeAll(predicate)
+    }
+
+    /**
      * check if placeable, return insertionIndex and corresponding upcoming danmaku
      */
-    private fun checkPlaceableImpl(danmaku: T, placeFrameTimeNanos: Long): Pair<FloatingDanmaku<T>, Int>? {
+    private fun checkPlaceableImpl(
+        danmaku: T,
+        placeFrameTimeNanos: Long,
+        overrideSpeedMultiplier: Float?,
+    ): Pair<FloatingDanmaku<T>, Int>? {
         check(placeFrameTimeNanos == DanmakuTrack.NOT_PLACED || placeFrameTimeNanos >= 0) {
             "Expected placeFrameTimeNanos to be NOT_PLACED or non-negative, but got $placeFrameTimeNanos"
         }
@@ -92,7 +128,7 @@ internal class FloatingDanmakuTrack<T : SizeSpecifiedDanmaku>(
             return null
 
         // 如果指定了放置时间, 则需要计算划过的距离
-        val upcomingDanmaku = danmaku.createFloating(placeFrameTimeNanos)
+        val upcomingDanmaku = danmaku.createFloating(placeFrameTimeNanos, overrideSpeedMultiplier)
 
         // 弹幕缓存为空, 那就判断是否 gone 了, 如果 gone 了就不放置
         if (danmakuList.isEmpty()) return if (upcomingDanmaku.isGone()) null else Pair(upcomingDanmaku, 0)
@@ -103,20 +139,33 @@ internal class FloatingDanmakuTrack<T : SizeSpecifiedDanmaku>(
         return if (insertionIndex == -1) null else Pair(upcomingDanmaku, insertionIndex)
     }
 
-    private fun T.createFloating(placeFrameTimeNanos: Long): FloatingDanmaku<T> {
+    private fun T.createFloating(placeFrameTimeNanos: Long, overrideSpeedMultiplier: Float?): FloatingDanmaku<T> {
         require(danmakuWidth > 0) { "Expected danmaku width to be positive, but got $danmakuWidth." }
-        val speedMultiplier = this@FloatingDanmakuTrack.speedMultiplier.floatValue
-            .pow(log(danmakuWidth.toFloat() / baseSpeedTextWidth, 2f))
-            .coerceAtLeast(1f)
+        val finalSpeedMultiplier = overrideSpeedMultiplier ?: run {
+            val multiplier = this@FloatingDanmakuTrack.speedMultiplier.floatValue
+                .pow(log(danmakuWidth.toFloat() / baseSpeedTextWidth, 2f))
+                .coerceAtLeast(1f)
 
-        val finalSpeedMultiplier = if (randomizeSpeedFluctuation == 0f) speedMultiplier
-        else (speedMultiplier + (Random.Default.nextFloat() - 0.5f) * 2f * randomizeSpeedFluctuation)
+            if (randomizeSpeedFluctuation == 0f) multiplier
+            else (multiplier + (Random.Default.nextFloat() - 0.5f) * 2f * randomizeSpeedFluctuation)
+        }
 
-        // 避免浮点数的量级过大
-        val upcomingDistanceX = if (placeFrameTimeNanos == DanmakuTrack.NOT_PLACED) 0f else
-            ((frameTimeNanosState.longValue - placeFrameTimeNanos) / 1_000L) / 1_000_000f * (baseSpeedPxPerSecond * finalSpeedMultiplier)
+        // 未指定放置时间的弹幕从当前帧时间开始滚动
+        val anchorFrameTimeNanos = if (placeFrameTimeNanos == DanmakuTrack.NOT_PLACED) {
+            frameTimeNanosState.longValue
+        } else {
+            placeFrameTimeNanos
+        }
 
-        return FloatingDanmaku(this, upcomingDistanceX, trackIndex, trackHeight, finalSpeedMultiplier)
+        return FloatingDanmaku(
+            danmaku = this,
+            placeFrameTimeNanos = anchorFrameTimeNanos,
+            speedPxPerSecond = baseSpeedPxPerSecond * finalSpeedMultiplier,
+            speedMultiplier = finalSpeedMultiplier,
+            trackIndex = trackIndex,
+            frameTimeNanosState = frameTimeNanosState,
+            trackHeight = trackHeight,
+        )
     }
 
     // 弹幕左侧在轨道的位置
@@ -132,9 +181,9 @@ internal class FloatingDanmakuTrack<T : SizeSpecifiedDanmaku>(
     // 撞车检测, 必须让 previous.left 小于 next.left, 也就是 previous 在前 next 在后
     private fun willClash(previous: FloatingDanmaku<T>, next: FloatingDanmaku<T>): Boolean {
         // 前一条弹幕的右侧移动到轨道左侧(a.k.a isGone == true)花费的时间
-        val previousRightReachTrackLeftCostTime = previous.right() / previous.speedMultiplier
+        val previousRightReachTrackLeftCostTime = previous.right() / previous.speedPxPerSecond
         // 后一条弹幕的左侧移动到轨道左侧花费的时间
-        val nextLeftReachTrackLeftCostTime = next.left() / next.speedMultiplier
+        val nextLeftReachTrackLeftCostTime = next.left() / next.speedPxPerSecond
         // 如果 前一条弹幕的右侧移动到轨道左侧花费的时间 比 后一条弹幕的左侧移动到轨道左侧花费的时间 大
         // 那说明当 后一条弹幕的左侧 移动到轨道左侧时, 前一条弹幕的右侧 还需要花更长时间移动到轨道左侧, 会撞车
         return previousRightReachTrackLeftCostTime > nextLeftReachTrackLeftCostTime
@@ -218,25 +267,43 @@ internal class FloatingDanmakuTrack<T : SizeSpecifiedDanmaku>(
 }
 
 /**
- * 一条浮动弹幕
+ * 一条浮动弹幕.
+ *
+ * 位置是[放置时间][placeFrameTimeNanos]与[速度][speedPxPerSecond]的纯函数,
+ * 不做逐帧积分, 因此不会累计误差, 重新放置时也无需反推位置.
  */
 @Stable
 internal class FloatingDanmaku<T : SizeSpecifiedDanmaku>(
     var danmaku: T,
-    initialDistanceX: Float = 0f,
-    internal val trackIndex: Int,
-    private val trackHeight: IntState,
+    placeFrameTimeNanos: Long,
+    speedPxPerSecond: Float,
     // 这个值和字体大小无关
     internal val speedMultiplier: Float,
+    internal val trackIndex: Int,
+    private val frameTimeNanosState: LongState,
+    private val trackHeight: IntState,
 ) {
+    /**
+     * 弹幕在帧时间轴上的锚点, 即弹幕位于轨道最右侧的时刻.
+     */
+    var placeFrameTimeNanos: Long = placeFrameTimeNanos
+        private set
+
+    /**
+     * 弹幕的滚动速度. 单位 px/s. 等于轨道基础速度乘以 [speedMultiplier].
+     */
+    var speedPxPerSecond: Float = speedPxPerSecond
+        private set
+
     /**
      * 弹幕在浮动轨道已滚动的距离, 是正数. 单位 px
      *
      * 例如, 如果弹幕现在在右侧刚被放置, 则等于 `0`.
      * 如果左边已滑倒轨道最左侧, 则等于轨道长度.
      */
-    var distanceX: Float = initialDistanceX
-        internal set
+    val distanceX: Float
+        // 先用整数运算转换到微秒, 避免浮点数的量级过大
+        get() = ((frameTimeNanosState.longValue - placeFrameTimeNanos) / 1_000L) / 1_000_000f * speedPxPerSecond
 
     /**
      * calculate pos y lazily in ui loop
@@ -246,6 +313,17 @@ internal class FloatingDanmaku<T : SizeSpecifiedDanmaku>(
 
     internal fun calculatePosY(): Float {
         return trackHeight.intValue.toFloat() * trackIndex
+    }
+
+    /**
+     * 修改速度, 并以当前帧时间重新锚定, 保证 [distanceX] 连续 (不跳变).
+     */
+    internal fun updateSpeed(newSpeedPxPerSecond: Float) {
+        if (newSpeedPxPerSecond == speedPxPerSecond || newSpeedPxPerSecond <= 0f) return
+        val currentDistanceX = distanceX
+        placeFrameTimeNanos = frameTimeNanosState.longValue -
+                (currentDistanceX / newSpeedPxPerSecond * 1_000_000_000f).toLong()
+        speedPxPerSecond = newSpeedPxPerSecond
     }
 
     override fun toString(): String {
