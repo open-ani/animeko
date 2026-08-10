@@ -32,9 +32,9 @@ import me.him188.ani.client.models.AniWatchTogetherPlayback
 import me.him188.ani.client.models.AniWatchTogetherWatchingInfo
 import me.him188.ani.utils.coroutines.sampleWithInitial
 import org.koin.core.Koin
-import org.openani.mediamp.PlaybackState
+import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.features.PlaybackSpeed
-import org.openani.mediamp.isPlaying
+import org.openani.mediamp.isMediaLoaded
 import kotlin.math.abs
 
 class WatchTogetherPlayerExtension(
@@ -83,14 +83,18 @@ class WatchTogetherPlayerExtension(
                 // Drives the fix cadence only; the emitted value reads the live position below so
                 // state-edge fixes (e.g. resume right after a reload) never carry a stale sample.
                 context.player.currentPositionMillis.sampleWithInitial(REPORT_SAMPLE_INTERVAL_MILLIS),
-                context.player.playbackState,
+                context.player.state,
                 context.player.mediaProperties,
-            ) { info, _, playbackState, mediaProperties ->
-                // Stable-state gate: no fixes while (re)loading media (CREATED/READY/ERROR, e.g.
+            ) { info, _, playerState, mediaProperties ->
+                // Stable-state gate: no fixes while (re)loading media (Idle/Opening/Error, e.g.
                 // switching sources mid-episode), or the transient 0 position would be broadcast
                 // and followers would be yanked to it. The last stable fix stays current instead.
-                if (playbackState !in STABLE_REPORT_STATES) return@combine null
-                if (!holdSettled.isCompleted && playbackState == PlaybackState.PLAYING) return@combine null
+                // v2 change: fixes start as soon as the media is loaded (Ready/Ended) — the initial
+                // buffer is reported as buffering instead of being skipped like v1's READY gate did.
+                if (!playerState.isMediaLoaded) return@combine null
+                // Suppress by intent so the transient auto-play (even while still buffering)
+                // never reaches the room before the hold decision settles.
+                if (!holdSettled.isCompleted && playerState.playWhenReady) return@combine null
                 val durationMillis = mediaProperties?.durationMillis ?: 0L
                 AniWatchTogetherWatchingInfo(
                     subjectId = info.subjectId,
@@ -101,8 +105,8 @@ class WatchTogetherPlayerExtension(
                     positionMillis = context.player.currentPositionMillis.value.coerceAtLeast(0L),
                     positionAtMillis = manager.serverNowMillis(),
                     durationMillis = durationMillis,
-                    paused = playbackState != PlaybackState.PLAYING,
-                    buffering = playbackState == PlaybackState.PAUSED_BUFFERING,
+                    paused = !playerState.playWhenReady,
+                    buffering = playerState.isBuffering,
                     // Loading ends only once the player learns the total duration.
                     loading = durationMillis <= 0L,
                     playbackRate = context.player.features[PlaybackSpeed]?.value ?: 1f,
@@ -115,15 +119,16 @@ class WatchTogetherPlayerExtension(
             // the host to press play, so the host can start once the whole room has loaded.
             // Mid-episode source reloads don't re-trigger (mediaLoaded completes once per episode).
             mediaLoaded.await()
-            val firstStable = context.player.playbackState
-                .filter { it == PlaybackState.PLAYING || it == PlaybackState.PAUSED }
+            // Stable = actually playing, or loaded and pausing by intent.
+            val firstStable = context.player.state
+                .filter { it.isPlaying || (it.mediaStatus == MediaStatus.Ready && !it.playWhenReady) }
                 .first()
-            if (firstStable == PlaybackState.PLAYING && isRoomSyncActive()) {
+            if (firstStable.isPlaying && isRoomSyncActive()) {
                 withContext(Dispatchers.Main.immediate) { context.player.pause() }
-                // Wait for the pause to take effect so the reporter's PLAYING suppression covers
+                // Wait for the pause to take effect so the reporter's playing suppression covers
                 // the whole transient; bounded in case the player ignores the pause.
                 withTimeoutOrNull(HOLD_SETTLE_TIMEOUT_MILLIS) {
-                    context.player.playbackState.filter { it != PlaybackState.PLAYING }.first()
+                    context.player.state.filter { !it.isPlaying }.first()
                 }
             }
             holdSettled.complete(Unit)
@@ -134,8 +139,8 @@ class WatchTogetherPlayerExtension(
             // Serialized after the hold decision so the initial sync and the hold don't fight
             // over the play/pause state.
             holdSettled.await()
-            context.player.playbackState
-                .filter { it == PlaybackState.PLAYING || it == PlaybackState.PAUSED }
+            context.player.state
+                .filter { it.isPlaying || (it.mediaStatus == MediaStatus.Ready && !it.playWhenReady) }
                 .first()
             bridge.targetPlayback.value?.let { applyPlayback(episodeSession, it, forceSeek = true) }
         }
@@ -181,10 +186,12 @@ class WatchTogetherPlayerExtension(
                 delta = targetPosition - localPosition
             }
             player.features[PlaybackSpeed]?.set(host.playbackRate ?: 1f)
+            // Sync the play intent (playWhenReady), not the momentary clock state: pausing must
+            // stick even mid-buffer, and play() at Ended replays so followers stay in sync.
             if (host.paused) {
-                if (player.playbackState.value.isPlaying) player.pause()
-            } else if (player.playbackState.value == PlaybackState.PAUSED) {
-                player.resume()
+                if (player.state.value.playWhenReady) player.pause()
+            } else if (!player.state.value.playWhenReady) {
+                player.play()
             }
             delta
         }
@@ -219,12 +226,5 @@ class WatchTogetherPlayerExtension(
         private const val POSITION_CORRECTION_THRESHOLD_MILLIS = 3_000L
         private const val BUFFERING_DEBOUNCE_MILLIS = 2_000L
         private const val HOLD_SETTLE_TIMEOUT_MILLIS = 2_000L
-
-        private val STABLE_REPORT_STATES = setOf(
-            PlaybackState.PLAYING,
-            PlaybackState.PAUSED,
-            PlaybackState.PAUSED_BUFFERING,
-            PlaybackState.FINISHED,
-        )
     }
 }

@@ -49,7 +49,6 @@ kotlin {
         // 运行时按平台加载对应 native library (见 app/desktop). mpv: Windows x64 / Windows arm64 / Linux x64 / macOS arm64,
         // VLC: macOS x64.
         api(libs.mediamp.mpv)
-        api(libs.mediamp.vlc)
     }
     sourceSets.appleMain.dependencies {
         api(libs.mediamp.avkit)

@@ -38,9 +38,18 @@ import me.him188.ani.app.videoplayer.ui.gesture.keyboardSeekAndFastForward
 import me.him188.ani.app.videoplayer.ui.gesture.rememberSwipeSeekerState
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressSlider
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
+import org.openani.mediamp.MediaStatus
+import org.openani.mediamp.PlaybackEvent
 import org.openani.mediamp.mpv.MpvMediampPlayer
 import org.openani.mediamp.mpv.compose.MpvMediampPlayerSurface
 import org.openani.mediamp.source.UriMediaData
+import kotlin.system.exitProcess
 
 /**
  * Scratch verification app for the mpv backend (hwdec + Metal/IOSurface rendering):
@@ -61,6 +70,7 @@ fun main() = application {
         val scope = rememberCoroutineScope()
         val player = remember {
             val nativeDir = System.getProperty("ani.mpv.native.dir")
+                ?: System.getProperty("mediamp.mpv.dev.native.dir")
             if (nativeDir != null) {
                 MpvMediampPlayer.prepareLibraries(nativeDir, extractRuntimeLibrary = false)
             } else {
@@ -73,8 +83,19 @@ fun main() = application {
         }
         LaunchedEffect(Unit) {
             val path = System.getProperty("ani.seekverify.video") ?: "/tmp/seek-verify.mp4"
-            player.setMediaData(UriMediaData(path))
-            player.resume()
+            player.setMediaData(UriMediaData(path), playWhenReady = true)
+        }
+        LaunchedEffect(Unit) {
+            // 控制台进度输出, 便于无头验证状态机与位置推进
+            while (true) {
+                println("[verify] state=${player.state.value} pos=${player.currentPositionMillis.value}ms")
+                kotlinx.coroutines.delay(1000)
+            }
+        }
+        if (System.getProperty("ani.mpv.selftest") == "true") {
+            LaunchedEffect(Unit) {
+                runMpvSelfTest(player)
+            }
         }
 
         val focusRequester = remember { FocusRequester() }
@@ -101,7 +122,7 @@ fun main() = application {
                         .padding(16.dp),
                 ) {
                     val positionMillis by player.currentPositionMillis.collectAsState()
-                    val state by player.playbackState.collectAsState()
+                    val state by player.state.collectAsState()
                     Text(
                         "pos=$positionMillis ms  state=$state",
                         color = Color.White,
@@ -118,5 +139,98 @@ fun main() = application {
             }
             LaunchedEffect(Unit) { focusRequester.requestFocus() }
         }
+    }
+}
+
+/**
+ * 无头自测: 通过真实 mpv 管线依次验证 pause 冻结 / play 恢复 / seek / 自然结束 (MediaEnded 事件) /
+ * Ended 重播 / stopPlayback → Idle. 需要 -Dani.mpv.selftest=true, 视频时长应为 60s.
+ * 结果打印 `[selftest] PASS` / `[selftest] FAIL: ...` 后退出进程.
+ */
+private suspend fun runMpvSelfTest(player: MpvMediampPlayer): Nothing {
+    val events = mutableListOf<PlaybackEvent>()
+    val eventScope = CoroutineScope(currentCoroutineContext())
+    eventScope.launch { player.events.collect { events += it } }
+
+    fun fail(message: String): Nothing {
+        println("[selftest] FAIL: $message (state=${player.state.value} pos=${player.currentPositionMillis.value})")
+        exitProcess(1)
+    }
+    suspend fun awaitStatus(name: String, timeoutMillis: Long, predicate: () -> Boolean) {
+        try {
+            withTimeout(timeoutMillis) {
+                while (!predicate()) delay(50)
+            }
+        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            fail("timeout awaiting $name")
+        }
+    }
+
+    try {
+        println("[selftest] start")
+        player.state.first { it.mediaStatus == MediaStatus.Ready }
+        println("[selftest] reached Ready")
+
+        // 1. 播放推进
+        delay(3000)
+        val p1 = player.currentPositionMillis.value
+        if (p1 < 1000) fail("position not advancing after 3s: $p1")
+        println("[selftest] playback advancing: pos=$p1")
+
+        // 2. pause 冻结
+        player.pause()
+        if (player.state.value.playWhenReady) fail("pause() did not clear playWhenReady synchronously")
+        delay(700)
+        val p2 = player.currentPositionMillis.value
+        delay(1200)
+        val p3 = player.currentPositionMillis.value
+        if (p3 - p2 > 300) fail("position kept advancing while paused: $p2 -> $p3")
+        println("[selftest] pause freezes position: $p2 -> $p3")
+
+        // 3. play 恢复
+        player.play()
+        if (!player.state.value.playWhenReady) fail("play() did not set playWhenReady synchronously")
+        delay(1500)
+        val p4 = player.currentPositionMillis.value
+        if (p4 <= p3 + 300) fail("position not advancing after play(): $p3 -> $p4")
+        println("[selftest] play resumes: $p3 -> $p4")
+
+        // 4. seek
+        player.seekTo(30_000)
+        awaitStatus("seek to land near 30s", 8000) {
+            player.currentPositionMillis.value in 29_000..36_000
+        }
+        println("[selftest] seek landed: pos=${player.currentPositionMillis.value}")
+
+        // 5. 自然结束 → MediaEnded 事件 + Ended 状态
+        player.seekTo(57_000)
+        awaitStatus("natural end (Ended status)", 20_000) {
+            player.state.value.mediaStatus == MediaStatus.Ended
+        }
+        if (player.state.value.playWhenReady) fail("Ended must reset playWhenReady")
+        if (events.none { it is PlaybackEvent.MediaEnded }) fail("no MediaEnded event observed")
+        val ended = events.filterIsInstance<PlaybackEvent.MediaEnded>().first()
+        println("[selftest] natural end: MediaEnded(final=${ended.finalPositionMillis}, duration=${ended.durationMillis})")
+
+        // 6. Ended 重播
+        player.play()
+        awaitStatus("replay from start", 8000) {
+            player.state.value.isPlaying && player.currentPositionMillis.value in 0..10_000
+        }
+        println("[selftest] replay from start: pos=${player.currentPositionMillis.value}")
+
+        // 7. stopPlayback → Idle
+        player.stopPlayback()
+        awaitStatus("Idle after stopPlayback", 5000) {
+            player.state.value.mediaStatus == MediaStatus.Idle
+        }
+        if (player.mediaData.value != null) fail("mediaData not cleared after stopPlayback")
+        println("[selftest] stopPlayback -> Idle, mediaData cleared")
+
+        println("[selftest] PASS")
+        exitProcess(0)
+    } catch (e: Throwable) {
+        if (e is kotlinx.coroutines.CancellationException) throw e
+        fail("unexpected exception: $e")
     }
 }

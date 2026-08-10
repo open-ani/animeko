@@ -28,7 +28,6 @@ import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeUseCase
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.coroutines.childScope
-import org.openani.mediamp.PlaybackState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -92,13 +91,11 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
             },
         )
 
-        // Simulate playback at 95% (well past 90%) and state is PLAYING or FINISHED.
-        suite.player.currentPositionMillis.value = 9500L
-        // Suppose the total duration is 10 seconds for easy math.
-        suite.setMediaDuration(10000L)
+        // Suppose the total duration is 10 seconds for easy math; playback at 95% (well past 90%).
+        suite.player.loadMedia(durationMs = 10000L, playWhenReady = true)
         advanceUntilIdle()
 
-        suite.player.playbackState.value = PlaybackState.PLAYING
+        suite.player.injectPosition(9500L)
 
         advanceUntilIdle()
 
@@ -117,18 +114,19 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
             },
         )
 
-        suite.player.playbackState.value = PlaybackState.READY
-        advanceUntilIdle()
-        // Current position is 95% but the state is not playing (IDLE, PAUSED, etc.)
-        suite.setMediaDuration(10000L)
+        // Current position is 95% but the media is loaded paused (not playing).
+        suite.player.loadMedia(durationMs = 10000L, playWhenReady = false)
         advanceUntilIdle()
 
-        suite.player.currentPositionMillis.value = 9500L
-        suite.player.playbackState.value = PlaybackState.PLAYING
+        suite.player.injectPosition(9500L)
+        advanceUntilIdle()
+        assertFalse(setCalled) // paused: strict isPlaying gate does not mark
+
+        suite.player.play()
 
         advanceUntilIdle()
 
-        assertTrue(setCalled) // TODO: 2025/3/25 This case may be wrong. We should reconsider. 
+        assertTrue(setCalled) // TODO: 2025/3/25 This case may be wrong. We should reconsider.
 
         testScope.cancel()
     }
@@ -144,11 +142,10 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         )
 
         // Even though we are at 95% and playing, if it's already DONE, we don't mark it again.
-        suite.setMediaDuration(durationMillis = 10000L)
+        suite.player.loadMedia(durationMs = 10000L, playWhenReady = true)
         advanceUntilIdle()
 
-        suite.player.currentPositionMillis.value = 9500L
-        suite.player.playbackState.value = PlaybackState.PLAYING
+        suite.player.injectPosition(9500L)
 
         advanceUntilIdle()
 
@@ -172,12 +169,11 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
             },
         )
 
-        // Set up 10-second media, move position to 95%, and set state to PLAYING.
-        suite.setMediaDuration(durationMillis = 10000L)
+        // Set up 10-second media playing, move position to 95%.
+        suite.player.loadMedia(durationMs = 10000L, playWhenReady = true)
         advanceUntilIdle()
 
-        suite.player.currentPositionMillis.value = 9500L
-        suite.player.playbackState.value = PlaybackState.PLAYING
+        suite.player.injectPosition(9500L)
 
         advanceUntilIdle()
 
@@ -198,20 +194,18 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
             },
         )
 
-        // Move near 90% & mark as PLAYING -> triggers mark once.
-        suite.setMediaDuration(durationMillis = 10000L)
+        // Move near 90% while playing -> triggers mark once.
+        suite.player.loadMedia(durationMs = 10000L, playWhenReady = true)
         advanceUntilIdle()
 
-        suite.player.currentPositionMillis.value = 9500L
-        suite.player.playbackState.value = PlaybackState.PLAYING
+        suite.player.injectPosition(9500L)
 
         advanceUntilIdle()
         assertEquals(1, callCount)
 
-        // Advance time a bit, remain in PLAYING, still near the 90% mark
+        // Advance the position a bit, remain playing, still near the 90% mark.
         // The extension uses `cancelScope()` once it marks, so no double marking.
-        suite.player.currentPositionMillis.value = 9999L
-        suite.player.playbackState.value = PlaybackState.PLAYING
+        suite.player.injectPosition(9999L)
         advanceUntilIdle()
         // Still 1
         assertEquals(1, callCount)
@@ -234,11 +228,10 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
             },
         )
 
-        suite.setMediaDuration(durationMillis = 3.minutes.inWholeMilliseconds)
+        suite.player.loadMedia(durationMs = 3.minutes.inWholeMilliseconds, playWhenReady = true)
         advanceUntilIdle()
 
-        suite.player.currentPositionMillis.value = (3.minutes - 100.seconds).inWholeMilliseconds
-        suite.player.playbackState.value = PlaybackState.PLAYING
+        suite.player.injectPosition((3.minutes - 100.seconds).inWholeMilliseconds)
 
         advanceUntilIdle()
 
@@ -265,11 +258,10 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
             },
         )
 
-        suite.setMediaDuration(durationMillis = 1_200_000L)
+        suite.player.loadMedia(durationMs = 1_200_000L, playWhenReady = true)
         advanceUntilIdle()
 
-        suite.player.currentPositionMillis.value = (18.minutes + 21.seconds).inWholeMilliseconds
-        suite.player.playbackState.value = PlaybackState.PLAYING
+        suite.player.injectPosition((18.minutes + 21.seconds).inWholeMilliseconds)
 
         advanceUntilIdle()
 
@@ -293,11 +285,10 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
 
         // Set up a 20-minute video (1,200,000 ms)
         // Position at 80% (960,000 ms) which is less than 90% and more than 100 seconds from the end
-        suite.setMediaDuration(durationMillis = 1_200_000L)
+        suite.player.loadMedia(durationMs = 1_200_000L, playWhenReady = true)
         advanceUntilIdle()
 
-        suite.player.currentPositionMillis.value = 960_000L // 80% of video, more than 100 seconds from end
-        suite.player.playbackState.value = PlaybackState.PLAYING
+        suite.player.injectPosition(960_000L) // 80% of video, more than 100 seconds from end
 
         advanceUntilIdle()
 
@@ -318,12 +309,11 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         )
 
         // Set up a video shorter than 10 seconds (9 seconds)
-        suite.setMediaDuration(durationMillis = 9.seconds.inWholeMilliseconds)
+        suite.player.loadMedia(durationMs = 9.seconds.inWholeMilliseconds, playWhenReady = true)
         advanceUntilIdle()
 
         // Position at 95% which would normally trigger marking
-        suite.player.currentPositionMillis.value = (9.seconds.inWholeMilliseconds * 0.95).toLong()
-        suite.player.playbackState.value = PlaybackState.PLAYING
+        suite.player.injectPosition((9.seconds.inWholeMilliseconds * 0.95).toLong())
 
         advanceUntilIdle()
 
@@ -333,7 +323,7 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
         testScope.cancel()
     }
 
-    // TODO: 2025/1/5 This test sometimes fails on desktopMain.  
+    // TODO: 2025/1/5 This test sometimes fails on desktopMain.
 //    @Test
 //    fun `handles exceptions from setEpisodeCollectionTypeUseCase`(): TestResult = runTest {
 //        val (scope, backgroundException) = createExceptionCapturingSupervisorScope(this)
@@ -361,10 +351,9 @@ class MarkAsWatchedExtensionTest : AbstractPlayerExtensionTest() {
 //        )
 //        state.onUIReady()
 //
-//        // Move near 90% & mark as PLAYING -> triggers mark once, but we'll throw from setEpisodeCollectionTypeUseCase
-//        suite.setMediaDuration(10000L)
-//        suite.player.currentPositionMillis.value = 9500L
-//        suite.player.playbackState.value = PlaybackState.PLAYING
+//        // Move near 90% while playing -> triggers mark once, but we'll throw from setEpisodeCollectionTypeUseCase
+//        suite.player.loadMedia(durationMs = 10000L, playWhenReady = true)
+//        suite.player.injectPosition(9500L)
 //        advanceUntilIdle()
 //
 //        // The exception thrown in setEpisodeCollectionTypeUseCase should propagate as ExtensionException

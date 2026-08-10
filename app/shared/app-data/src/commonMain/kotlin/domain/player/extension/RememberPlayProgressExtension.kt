@@ -29,7 +29,7 @@ import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
-import org.openani.mediamp.PlaybackState
+import org.openani.mediamp.MediaStatus
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -88,15 +88,16 @@ class RememberPlayProgressExtension(
         backgroundTaskScope.launch("PlaybackStateListener") {
             val player = context.player
             var haveResumedOnce = false
-            player.playbackState.collectLatest { playbackState ->
-                when (playbackState) {
-                    PlaybackState.READY -> {
+            player.state.collectLatest { state ->
+                when {
+                    state.mediaStatus == MediaStatus.Opening -> {
+                        // 新媒体正在打开, 重置恢复进度标记
                         haveResumedOnce = false
                     }
 
-                    PlaybackState.PLAYING -> {
-                        // Some backends (notably desktop mpv) report PLAYING before the loaded file accepts seeks.
-                        // Restore once metadata is ready, but only report after PLAYING remains active for 5 seconds.
+                    state.isPlaying -> {
+                        // Some backends (notably desktop mpv) report playing before the loaded file accepts seeks.
+                        // Restore once metadata is ready, but only report after playback remains active for 5 seconds.
                         if (!haveResumedOnce) {
                             if (automationGate.suppressed.value) {
                                 haveResumedOnce = true
@@ -110,7 +111,7 @@ class RememberPlayProgressExtension(
                                     logger.info {
                                         "Loaded saved position: $positionMillis, waiting for video properties"
                                     }
-                                    player.mediaProperties.first { it != null && it.durationMillis > 0L }
+                                    player.mediaProperties.first { (it?.durationMillis ?: 0L) > 0L }
                                     withContext(Dispatchers.Main + NonCancellable) { // android must call in main thread
                                         logger.info {
                                             "Video properties ready, seeking to saved position: $positionMillis"
@@ -133,12 +134,12 @@ class RememberPlayProgressExtension(
                         }
                     }
 
-                    PlaybackState.PAUSED -> {
+                    state.mediaStatus == MediaStatus.Ready && !state.playWhenReady -> { // 暂停
                         mediaLoaded.await() // 播放器开始播放了一次之后再保存状态
                         savePlayProgressOrRemove(episodeSession)
                     }
 
-                    PlaybackState.FINISHED -> {
+                    state.mediaStatus == MediaStatus.Ended -> { // 播放完成
                         mediaLoaded.await() // 播放器开始播放了一次之后再保存状态
                         savePlayProgressOrRemove(episodeSession)
                     }
@@ -179,54 +180,38 @@ class RememberPlayProgressExtension(
         allowZeroPosition: Boolean = false,
     ) {
         val player = context.player
-        val playbackState = player.playbackState.value
+        val mediaStatus = player.state.value.mediaStatus
         val videoDurationMillis = player.mediaProperties.value?.durationMillis
 
         if (videoDurationMillis == null || videoDurationMillis <= 0L) {
             return
         }
 
-        when (playbackState) {
-            PlaybackState.DESTROYED,
-            PlaybackState.CREATED,
-            PlaybackState.READY,
-            PlaybackState.ERROR -> return
+        // 只在媒体已加载 (Ready/Ended) 时保存
+        if (mediaStatus != MediaStatus.Ready && mediaStatus != MediaStatus.Ended) {
+            return
+        }
 
-            PlaybackState.FINISHED,
-            PlaybackState.PAUSED,
-            PlaybackState.PLAYING,
-            PlaybackState.PAUSED_BUFFERING -> {
-                val currentPositionMillis = withContext(Dispatchers.Main.immediate) {
-                    try {
-                        player.getCurrentPositionMillis()
-                    } catch (e: Error) {
-                        // Caused by: java.lang.Error: Invalid memory access
-                        // https://github.com/open-ani/animeko/issues/1787
-                        0L
-                    }
-                }
+        val currentPositionMillis = player.currentPositionMillis.value
 
-                if (currentPositionMillis < 0L || (currentPositionMillis == 0L && !allowZeroPosition)) {
-                    return
-                }
+        if (currentPositionMillis < 0L || (currentPositionMillis == 0L && !allowZeroPosition)) {
+            return
+        }
 
-                if (videoDurationMillis - currentPositionMillis < 5000 || currentPositionMillis > videoDurationMillis) {
-                    playProgressRepository.remove(episodeId)
-                } else {
-                    val info = latestInfoBundle(episodeId, episodeSession)
-                    playProgressRepository.saveOrUpdate(
-                        episodeId = episodeId,
-                        positionMillis = currentPositionMillis,
-                        subjectId = info?.subjectId,
-                        episodeSort = info?.episodeInfo?.sort?.number,
-                        subjectName = info?.subjectInfo?.displayName,
-                        subjectImageUrl = info?.subjectInfo?.imageLarge,
-                        episodeName = info?.episodeInfo?.displayName,
-                        durationMillis = videoDurationMillis,
-                    )
-                }
-                return
-            }
+        if (videoDurationMillis - currentPositionMillis < 5000 || currentPositionMillis > videoDurationMillis) {
+            playProgressRepository.remove(episodeId)
+        } else {
+            val info = latestInfoBundle(episodeId, episodeSession)
+            playProgressRepository.saveOrUpdate(
+                episodeId = episodeId,
+                positionMillis = currentPositionMillis,
+                subjectId = info?.subjectId,
+                episodeSort = info?.episodeInfo?.sort?.number,
+                subjectName = info?.subjectInfo?.displayName,
+                subjectImageUrl = info?.subjectInfo?.imageLarge,
+                episodeName = info?.episodeInfo?.displayName,
+                durationMillis = videoDurationMillis,
+            )
         }
     }
 

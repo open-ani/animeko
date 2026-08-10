@@ -52,7 +52,6 @@ import me.him188.ani.danmaku.api.DanmakuContent
 import me.him188.ani.danmaku.api.DanmakuLocation
 import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.isPlaying
 
 
 @Composable
@@ -111,7 +110,7 @@ fun PlayerDanmakuEditor(
                 scope.launch {
                     onSend(
                         DanmakuContent(
-                            playerState.getCurrentPositionMillis(),
+                            playerState.currentPositionMillis.value,
                             text = text,
                             color = Color.White.toArgb(),
                             location = DanmakuLocation.NORMAL,
@@ -122,7 +121,7 @@ fun PlayerDanmakuEditor(
             },
             modifier = Modifier.onFocusChanged {
                 if (it.isFocused) {
-                    if (videoScaffoldConfig.pauseVideoOnEditDanmaku && playerState.playbackState.value.isPlaying) {
+                    if (videoScaffoldConfig.pauseVideoOnEditDanmaku && playerState.state.value.playWhenReady) {
                         didSetPaused = true
                         playerState.pause()
                     }
@@ -130,7 +129,7 @@ fun PlayerDanmakuEditor(
                 } else {
                     if (didSetPaused) {
                         didSetPaused = false
-                        playerState.resume()
+                        playerState.play()
                     }
                     danmakuEditorRequester.cancelRequest()
                 }
