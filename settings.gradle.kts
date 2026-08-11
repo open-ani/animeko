@@ -41,9 +41,6 @@ dependencyResolutionManagement {
             from("org.openani.anitorrent:catalog:0.2.0")
         }
 
-        create("mediampLibs") {
-            from("org.openani.mediamp:catalog:0.0.30")
-        }
     }
 }
 
@@ -182,8 +179,6 @@ findLocalProperty("ani.build.mediamp.path")?.let { mediampPath ->
                 .using(project(":mediamp-api"))
             substitute(module("org.openani.mediamp:mediamp-exoplayer"))
                 .using(project(":mediamp-exoplayer"))
-            substitute(module("org.openani.mediamp:mediamp-vlc"))
-                .using(project(":mediamp-vlc"))
             substitute(module("org.openani.mediamp:mediamp-mpv"))
                 .using(project(":mediamp-mpv"))
             /*substitute(module("org.openani.mediamp:mediamp-ffmpeg"))

@@ -124,7 +124,6 @@ import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.openani.mediamp.ffmpeg.FFmpegKit
 import org.openani.mediamp.mpv.MPVHandle
-import org.openani.mediamp.vlc.VlcMediampPlayer
 import java.awt.Desktop
 import java.awt.Frame
 import java.io.File
@@ -352,9 +351,14 @@ object AniDesktop {
                 logger.error(e) { "Failed to load FFmpeg component of mediamp." }
             }
 
-            if (currentPlatformDesktop().usesMpv()) {
+            run {
                 try {
-                    if (currentProcessName()?.contains("java") == true) {
+                    val devNativeDir = System.getProperty("mediamp.mpv.dev.native.dir")
+                    if (devNativeDir != null) {
+                        // mediamp composite 开发: 直接加载本地编译的 JNI wrapper (见 local.properties
+                        // 的 ani.build.mediamp.mpv.devNativeDir)
+                        MPVHandle.setRuntimeLibraryDirectory(devNativeDir, false)
+                    } else if (currentProcessName()?.contains("java") == true) {
                         MPVHandle.useDefaultRuntimeLibraryDirectory()
                     } else {
                         MPVHandle.setRuntimeLibraryDirectory(composeResDir, false)
@@ -380,14 +384,12 @@ object AniDesktop {
                     logger.error(e) { "Failed to load libmpv component of mediamp." }
                 }
                 logger.info { "mediampv is loaded." }
-            } else {
-                VlcMediampPlayer.prepareLibraries()
             }
         }
 
         // Initialize CEF application.
         coroutineScope.launch {
-            logger.info { "[JCEF init] awaiting anitorrent, FFmpegKit and VLC/libmpv loaded." }
+            logger.info { "[JCEF init] awaiting anitorrent, FFmpegKit and libmpv loaded." }
             try {
                 analyticsInitializer.join()
                 loadLibraryJob.join()

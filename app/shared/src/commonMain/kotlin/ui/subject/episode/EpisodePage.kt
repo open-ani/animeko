@@ -174,7 +174,6 @@ import org.openani.mediamp.features.PlaybackSpeed
 import org.openani.mediamp.features.Screenshots
 import org.openani.mediamp.features.VideoAspectRatio
 import org.openani.mediamp.features.toggleMute
-import org.openani.mediamp.isPlaying
 
 
 /**
@@ -237,9 +236,9 @@ private fun EpisodeScreenContent(
     val imageViewer = rememberImageViewerHandler()
     BackHandler(enabled = imageViewer.viewing.value) { imageViewer.clear() }
 
-    val playbackState by vm.player.playbackState.collectAsStateWithLifecycle()
+    val playerState by vm.player.state.collectAsStateWithLifecycle()
     val playbackAutomationSuppressed by vm.playbackAutomationSuppressed.collectAsStateWithLifecycle()
-    if (playbackState.isPlaying) {
+    if (playerState.playWhenReady) {
         ScreenOnEffect()
     }
 
@@ -249,7 +248,7 @@ private fun EpisodeScreenContent(
     val pauseOnPlaying: () -> Unit = {
         if (playbackAutomationSuppressed) {
             didSetPaused = false
-        } else if (vm.player.playbackState.value.isPlaying) {
+        } else if (vm.player.state.value.playWhenReady) {
             didSetPaused = true
             vm.player.pause()
         } else {
@@ -259,7 +258,7 @@ private fun EpisodeScreenContent(
     val tryUnpause: () -> Unit = {
         if (didSetPaused && !playbackAutomationSuppressed) {
             didSetPaused = false
-            vm.player.resume()
+            vm.player.play()
         }
     }
 
@@ -776,7 +775,7 @@ private fun EpisodeScreenContentPhone(
                     scope.launch {
                         danmakuEditorState.post(
                             DanmakuContent(
-                                vm.player.getCurrentPositionMillis(),
+                                vm.player.currentPositionMillis.value,
                                 text = text,
                                 color = Color.White.toArgb(),
                                 location = DanmakuLocation.NORMAL,
@@ -995,7 +994,7 @@ private fun EpisodeVideo(
             )
         },
         onClickScreenshot = {
-            val currentPositionMillis = vm.player.getCurrentPositionMillis()
+            val currentPositionMillis = vm.player.currentPositionMillis.value
             val min = currentPositionMillis / 60000
             val sec = (currentPositionMillis - (min * 60000)) / 1000
             val ms = currentPositionMillis - (min * 60000) - (sec * 1000)
@@ -1187,7 +1186,7 @@ private fun AutoPauseEffect(viewModel: EpisodeViewModel, enabled: Boolean) {
     val autoPauseTasker = rememberUiMonoTasker()
     OnLifecycleEvent {
         if (it == Lifecycle.Event.ON_STOP) {
-            if (viewModel.player.playbackState.value.isPlaying) {
+            if (viewModel.player.state.value.playWhenReady) {
                 pausedVideo = true
                 autoPauseTasker.launch {
                     // #160, 切换全屏时视频会暂停半秒
@@ -1200,7 +1199,7 @@ private fun AutoPauseEffect(viewModel: EpisodeViewModel, enabled: Boolean) {
             }
         } else if (it == Lifecycle.Event.ON_START && pausedVideo) {
             autoPauseTasker.launch {
-                viewModel.player.resume() // 切回前台自动恢复, 当且仅当之前是自动暂停的
+                viewModel.player.play() // 切回前台自动恢复, 当且仅当之前是自动暂停的
             }
             pausedVideo = false
         }

@@ -169,9 +169,8 @@ import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.audioTracks
 import org.openani.mediamp.features.subtitleTracks
-import org.openani.mediamp.isPlaying
 import org.openani.mediamp.test.TestMediampPlayer
-import org.openani.mediamp.togglePause
+import org.openani.mediamp.togglePlayWhenReady
 import kotlin.time.Duration
 
 internal const val TAG_EPISODE_VIDEO_TOP_BAR = "EpisodeVideoTopBar"
@@ -381,7 +380,7 @@ internal fun EpisodeVideoImpl(
                     playbackSpeedControllerState,
                     Modifier,
                     onTogglePauseResume = {
-                        if (playerState.playbackState.value.isPlaying) {
+                        if (playerState.state.value.playWhenReady) {
                             indicatorTasker.launch {
                                 indicatorState.showPausedLong()
                             }
@@ -390,7 +389,7 @@ internal fun EpisodeVideoImpl(
                                 indicatorState.showResumedLong()
                             }
                         }
-                        playerState.togglePause()
+                        playerState.togglePlayWhenReady()
                     },
                     onToggleFullscreen = onClickFullScreen,
                     onExitFullscreen = onExitFullscreen,
@@ -460,11 +459,11 @@ internal fun EpisodeVideoImpl(
             bottomBar = {
                 PlayerControllerBar(
                     startActions = {
-                        val isPlaying by remember(playerState) { playerState.playbackState.map { it.isPlaying } }
+                        val playWhenReady by remember(playerState) { playerState.state.map { it.playWhenReady } }
                             .collectAsStateWithLifecycle(false)
                         PlayerControllerDefaults.PlaybackIcon(
-                            isPlaying = { isPlaying },
-                            onClick = { playerState.togglePause() },
+                            isPlaying = { playWhenReady },
+                            onClick = { playerState.togglePlayWhenReady() },
                         )
 
                         if (hasNextEpisode && expanded) {
@@ -672,7 +671,7 @@ private fun EpisodeVideoTopBarActions(
         }
     }
 
-    IconButton({ onClickSkipOpEd(playerState.getCurrentPositionMillis()) }) {
+    IconButton({ onClickSkipOpEd(playerState.currentPositionMillis.value) }) {
         val icon = when (skipDurationSeconds) {
             85L -> AniIcons.Forward85
             90L -> AniIcons.Forward90

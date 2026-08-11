@@ -14,19 +14,15 @@ import androidx.compose.ui.Modifier
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.mpv.MpvMediampPlayer
 import org.openani.mediamp.mpv.compose.MpvMediampPlayerSurface
-import org.openani.mediamp.vlc.VlcMediampPlayer
-import org.openani.mediamp.vlc.compose.VlcMediampPlayerSurface
 
 @Composable
 actual fun VideoPlayer(
     player: MediampPlayer,
     modifier: Modifier,
 ) {
-    // 桌面端按平台创建 mpv (Windows x64 / Windows arm64 / Linux x64 / macOS arm64) 或 VLC (macOS x64) player,
-    // 这里根据实际实例选择对应的 surface.
+    // 桌面端统一使用 mpv (mediamp-mpv) 后端.
     when (player) {
         is MpvMediampPlayer -> MpvMediampPlayerSurface(player, modifier = modifier)
-        is VlcMediampPlayer -> VlcMediampPlayerSurface(player, modifier = modifier)
         else -> error("Unsupported desktop MediampPlayer: ${player::class.qualifiedName}")
     }
 }

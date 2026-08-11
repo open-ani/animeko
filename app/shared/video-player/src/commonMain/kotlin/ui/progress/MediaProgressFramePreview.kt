@@ -143,7 +143,7 @@ fun rememberMediaProgressFramePreviewState(
             if (data != null) {
                 // 预热预览解码器 (第二个解码器实例启动需要秒级时间), 避免首次悬浮时长时间显示占位框.
                 // 取当前播放位置附近的帧: 该区域一定已在缓冲, 不会抢占下载优先级.
-                runCatching { state.prewarm(player.getCurrentPositionMillis()) }
+                runCatching { state.prewarm(player.currentPositionMillis.value) }
             }
         }
     }
