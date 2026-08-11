@@ -54,6 +54,7 @@ import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.data.models.preference.VideoEnhancementDefaultMode
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.nameCnOrName
@@ -1042,11 +1043,15 @@ class EpisodeViewModel(
 
     init {
         launchInBackground {
-            val enabled = settingsRepository.videoScaffoldConfig.flow
+            val defaultMode = settingsRepository.videoScaffoldConfig.flow
                 .first()
-                .enableVideoEnhancementByDefault
+                .videoEnhancementDefaultMode
             videoEnhancement?.setMode(
-                if (enabled) VideoEnhancementMode.CLEAR else VideoEnhancementMode.OFF,
+                when (defaultMode) {
+                    VideoEnhancementDefaultMode.OFF -> VideoEnhancementMode.OFF
+                    VideoEnhancementDefaultMode.PERFORMANCE -> VideoEnhancementMode.PERFORMANCE
+                    VideoEnhancementDefaultMode.QUALITY -> VideoEnhancementMode.QUALITY
+                },
             )
         }
 

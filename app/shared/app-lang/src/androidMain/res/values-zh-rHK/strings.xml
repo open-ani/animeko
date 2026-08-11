@@ -259,7 +259,7 @@
     <string name="settings_player_fullscreen_button">豎屏模式下顯示全螢幕按鈕</string>
     <string name="settings_player_fullscreen_button_description">總是顯示播放器右下角的切換全螢幕按鈕，方便切換</string>
     <string name="settings_player_video_enhancement_default">超分預設狀態</string>
-    <string name="settings_player_video_enhancement_default_description">設定每次進入播放器時是否預設開啟超分</string>
+    <string name="settings_player_video_enhancement_default_description">設定每次進入播放器時使用的超分模式</string>
     <string name="settings_player_frame_preview">顯示進度條畫面預覽</string>
     <string name="settings_player_frame_preview_description">懸停或拖動進度條時，顯示目標位置的影片畫面</string>
     <string name="settings_player_enable_regex_filter">啟用正則彈幕過濾器</string>
@@ -710,7 +710,9 @@
     <string name="video_player_audio_track">音軌</string>
     <string name="video_player_off">關閉</string>
     <string name="video_player_on">開啟</string>
-    <string name="video_player_video_enhancement">超分開關</string>
+    <string name="video_player_performance">效能</string>
+    <string name="video_player_quality">品質</string>
+    <string name="video_player_video_enhancement">超分模式</string>
     <string name="video_player_subtitle">字幕</string>
     <string name="video_player_disable_danmaku">禁用彈幕</string>
     <string name="video_player_enable_danmaku">啟用彈幕</string>

@@ -25,7 +25,8 @@ import kotlin.coroutines.CoroutineContext
 
 enum class VideoEnhancementMode {
     OFF,
-    CLEAR,
+    PERFORMANCE,
+    QUALITY,
 }
 
 interface VideoEnhancementController : AutoCloseable {

@@ -43,6 +43,7 @@ import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.data.models.preference.VideoEnhancementDefaultMode
 import me.him188.ani.app.data.models.preference.WatchTogetherSettings
 import me.him188.ani.app.data.network.protocol.ReleaseClass
 import me.him188.ani.app.navigation.MainScreenPage
@@ -107,6 +108,9 @@ import me.him188.ani.app.ui.lang.settings_player_remember_playback_speed
 import me.him188.ani.app.ui.lang.settings_player_remember_playback_speed_description
 import me.him188.ani.app.ui.lang.settings_player_video_enhancement_default
 import me.him188.ani.app.ui.lang.settings_player_video_enhancement_default_description
+import me.him188.ani.app.ui.lang.video_player_off
+import me.him188.ani.app.ui.lang.video_player_performance
+import me.him188.ani.app.ui.lang.video_player_quality
 import me.him188.ani.app.ui.lang.settings_update_auto_check
 import me.him188.ani.app.ui.lang.settings_update_auto_check_description
 import me.him188.ani.app.ui.lang.settings_update_auto_download
@@ -484,10 +488,26 @@ fun SettingsScope.PlayerGroup(
             description = { Text(stringResource(Lang.settings_player_fullscreen_button_description)) },
         )
         HorizontalDividerItem()
-        SwitchItem(
-            checked = config.enableVideoEnhancementByDefault,
-            onCheckedChange = {
-                videoScaffoldConfig.update(config.copy(enableVideoEnhancementByDefault = it))
+        DropdownItem(
+            selected = { config.videoEnhancementDefaultMode },
+            values = {
+                listOf(
+                    VideoEnhancementDefaultMode.PERFORMANCE,
+                    VideoEnhancementDefaultMode.QUALITY,
+                    VideoEnhancementDefaultMode.OFF,
+                )
+            },
+            itemText = {
+                Text(
+                    when (it) {
+                        VideoEnhancementDefaultMode.OFF -> stringResource(Lang.video_player_off)
+                        VideoEnhancementDefaultMode.PERFORMANCE -> stringResource(Lang.video_player_performance)
+                        VideoEnhancementDefaultMode.QUALITY -> stringResource(Lang.video_player_quality)
+                    },
+                )
+            },
+            onSelect = {
+                videoScaffoldConfig.update(config.copy(videoEnhancementDefaultMode = it))
             },
             title = { Text(stringResource(Lang.settings_player_video_enhancement_default)) },
             description = {

@@ -99,7 +99,8 @@ import me.him188.ani.app.ui.lang.subject_episode_more_options
 import me.him188.ani.app.ui.lang.subject_episode_preview_mode
 import me.him188.ani.app.ui.lang.subject_episode_select_media_source
 import me.him188.ani.app.ui.lang.video_player_off
-import me.him188.ani.app.ui.lang.video_player_on
+import me.him188.ani.app.ui.lang.video_player_performance
+import me.him188.ani.app.ui.lang.video_player_quality
 import me.him188.ani.app.ui.lang.video_player_stats_title_hide
 import me.him188.ani.app.ui.lang.video_player_stats_title_show
 import me.him188.ani.app.ui.lang.video_player_video_enhancement
@@ -792,7 +793,8 @@ private fun VideoEnhancementButton(
     val mode by videoEnhancement.mode.collectAsState()
     val alwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "videoEnhancement")
     val title = stringResource(Lang.video_player_video_enhancement)
-    val onText = stringResource(Lang.video_player_on)
+    val performanceText = stringResource(Lang.video_player_performance)
+    val qualityText = stringResource(Lang.video_player_quality)
     val offText = stringResource(Lang.video_player_off)
 
     DisposableEffect(alwaysOnRequester, showDropdown) {
@@ -814,7 +816,7 @@ private fun VideoEnhancementButton(
             Icon(
                 Icons.Rounded.AutoAwesome,
                 contentDescription = title,
-                tint = if (mode == VideoEnhancementMode.CLEAR) {
+                tint = if (mode != VideoEnhancementMode.OFF) {
                     MaterialTheme.colorScheme.primary
                 } else {
                     LocalContentColor.current
@@ -830,14 +832,19 @@ private fun VideoEnhancementButton(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                 style = MaterialTheme.typography.titleSmall,
             )
-            listOf(VideoEnhancementMode.CLEAR, VideoEnhancementMode.OFF)
+            listOf(
+                VideoEnhancementMode.PERFORMANCE,
+                VideoEnhancementMode.QUALITY,
+                VideoEnhancementMode.OFF,
+            )
                 .forEach { item ->
                     DropdownMenuItem(
                         text = {
                             Text(
                                 when (item) {
                                     VideoEnhancementMode.OFF -> offText
-                                    VideoEnhancementMode.CLEAR -> onText
+                                    VideoEnhancementMode.PERFORMANCE -> performanceText
+                                    VideoEnhancementMode.QUALITY -> qualityText
                                 },
                             )
                         },

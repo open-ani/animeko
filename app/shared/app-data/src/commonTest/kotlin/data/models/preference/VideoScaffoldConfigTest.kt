@@ -17,22 +17,24 @@ import kotlin.time.Duration.Companion.seconds
 
 class VideoScaffoldConfigTest {
     @Test
-    fun `missing video enhancement default uses on`() {
+    fun `missing video enhancement default uses performance`() {
         val config = DataStoreJson.decodeFromString(VideoScaffoldConfig.serializer(), "{}")
 
-        assertEquals(true, config.enableVideoEnhancementByDefault)
+        assertEquals(VideoEnhancementDefaultMode.PERFORMANCE, config.videoEnhancementDefaultMode)
     }
 
     @Test
     fun `video enhancement default survives serialization`() {
-        val config = VideoScaffoldConfig.Default.copy(enableVideoEnhancementByDefault = true)
+        val config = VideoScaffoldConfig.Default.copy(
+            videoEnhancementDefaultMode = VideoEnhancementDefaultMode.QUALITY,
+        )
 
         val decoded = DataStoreJson.decodeFromString(
             VideoScaffoldConfig.serializer(),
             DataStoreJson.encodeToString(VideoScaffoldConfig.serializer(), config),
         )
 
-        assertEquals(true, decoded.enableVideoEnhancementByDefault)
+        assertEquals(VideoEnhancementDefaultMode.QUALITY, decoded.videoEnhancementDefaultMode)
     }
 
     @Test

@@ -29,7 +29,7 @@ private class ExoPlayerVideoEnhancementController(
     private val exoPlayer: ExoPlayer,
     parentCoroutineContext: CoroutineContext,
 ) : BaseVideoEnhancementController(player, parentCoroutineContext) {
-    private var enhancementApplied = false
+    private var appliedMode = VideoEnhancementMode.OFF
     private var scalerApplied = false
     private var appliedWidth = 0
     private var appliedHeight = 0
@@ -53,28 +53,31 @@ private class ExoPlayerVideoEnhancementController(
 
         val shouldApplyScaler = videoSize != null && viewportSize != null
         if (
-            enhancementApplied && scalerApplied == shouldApplyScaler &&
+            appliedMode == mode && scalerApplied == shouldApplyScaler &&
             (!shouldApplyScaler || appliedWidth == viewportSize.width && appliedHeight == viewportSize.height)
         ) return
 
         exoPlayer.setVideoEffects(
             buildList {
                 add(Anime4kRestoreEffect)
+                if (mode == VideoEnhancementMode.QUALITY) {
+                    add(Anime4kUpscaleEffect)
+                }
                 if (shouldApplyScaler) {
                     add(DesktopStyleLanczosSharpEffect(viewportSize.width, viewportSize.height))
                 }
             },
         )
-        enhancementApplied = true
+        appliedMode = mode
         scalerApplied = shouldApplyScaler
         appliedWidth = if (shouldApplyScaler) viewportSize.width else 0
         appliedHeight = if (shouldApplyScaler) viewportSize.height else 0
     }
 
     override fun restore() {
-        if (!enhancementApplied) return
+        if (appliedMode == VideoEnhancementMode.OFF) return
         exoPlayer.setVideoEffects(emptyList())
-        enhancementApplied = false
+        appliedMode = VideoEnhancementMode.OFF
         scalerApplied = false
         appliedWidth = 0
         appliedHeight = 0
