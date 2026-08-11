@@ -74,6 +74,14 @@ internal class FixedDanmakuTrack<T : SizeSpecifiedDanmaku>(
         currentDanmaku = null
     }
 
+    /**
+     * 如果当前正在显示的弹幕满足 [predicate] 则移除它.
+     */
+    internal fun removeCurrentIf(predicate: (FixedDanmaku<T>) -> Boolean) {
+        val current = currentDanmaku ?: return
+        if (predicate(current)) currentDanmaku = null
+    }
+
     override fun tick() {
         val current = currentDanmaku ?: return
         val danmakuTime = current.placeFrameTimeNanos
