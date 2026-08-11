@@ -163,14 +163,14 @@ import me.him188.ani.app.videoplayer.ui.rememberVideoControllerState
 import me.him188.ani.app.videoplayer.ui.rememberVideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 import me.him188.ani.app.videoplayer.ui.top.SystemTime
+import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementController
+import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isMobile
 import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.features.VideoEnhancement
-import org.openani.mediamp.features.VideoEnhancementMode
 import org.openani.mediamp.features.audioTracks
 import org.openani.mediamp.features.subtitleTracks
 import org.openani.mediamp.test.TestMediampPlayer
@@ -196,6 +196,7 @@ internal const val TAG_EPISODE_SELECTOR_SHEET = "EpisodeSelectorSheet"
 @Composable
 internal fun EpisodeVideoImpl(
     playerState: MediampPlayer,
+    videoEnhancement: VideoEnhancementController? = null,
     expanded: Boolean,
     hasNextEpisode: Boolean,
     onClickNextEpisode: () -> Unit,
@@ -306,6 +307,7 @@ internal fun EpisodeVideoImpl(
                         actions = {
                             EpisodeVideoTopBarActions(
                                 playerState = playerState,
+                                videoEnhancement = videoEnhancement,
                                 expanded = expanded,
                                 opEdSkipDuration = opEdSkipDuration,
                                 onClickSkipOpEd = onClickSkipOpEd,
@@ -627,6 +629,7 @@ private fun rememberPlayerTouchSeekState(
 @Composable
 private fun EpisodeVideoTopBarActions(
     playerState: MediampPlayer,
+    videoEnhancement: VideoEnhancementController?,
     expanded: Boolean,
     opEdSkipDuration: Duration,
     onClickSkipOpEd: (currentPositionMillis: Long) -> Unit,
@@ -658,7 +661,6 @@ private fun EpisodeVideoTopBarActions(
     val hidePlayerStatsText = stringResource(Lang.video_player_stats_title_hide)
     val collapseSidebarText = stringResource(Lang.subject_episode_collapse_sidebar)
     val expandSidebarText = stringResource(Lang.subject_episode_expand_sidebar)
-    val videoEnhancement = remember(playerState) { playerState.features[VideoEnhancement] }
 
     DisposableEffect(dropdownAlwaysOnRequester, isExternalDropdownVisible) {
         if (isExternalDropdownVisible) {
@@ -783,7 +785,7 @@ private fun EpisodeVideoTopBarActions(
 
 @Composable
 private fun VideoEnhancementButton(
-    videoEnhancement: VideoEnhancement,
+    videoEnhancement: VideoEnhancementController,
     playerControllerState: PlayerControllerState,
 ) {
     var showDropdown by rememberSaveable { mutableStateOf(false) }
@@ -829,7 +831,6 @@ private fun VideoEnhancementButton(
                 style = MaterialTheme.typography.titleSmall,
             )
             listOf(VideoEnhancementMode.CLEAR, VideoEnhancementMode.OFF)
-                .filter { it in videoEnhancement.supportedModes }
                 .forEach { item ->
                     DropdownMenuItem(
                         text = {

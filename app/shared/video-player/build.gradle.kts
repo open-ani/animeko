@@ -33,6 +33,7 @@ kotlin {
     sourceSets.androidMain.dependencies {
         implementation(libs.compose.material3.adaptive.core)
         implementation(libs.androidx.media3.ui)
+        implementation(libs.androidx.media3.effect)
         implementation(libs.androidx.media3.exoplayer)
         implementation(libs.androidx.media3.exoplayer.dash)
         implementation(libs.androidx.media3.exoplayer.hls)

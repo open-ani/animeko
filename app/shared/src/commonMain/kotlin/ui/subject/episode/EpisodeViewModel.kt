@@ -151,6 +151,8 @@ import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
+import me.him188.ani.app.videoplayer.videoenhancement.createVideoEnhancementController
 import me.him188.ani.danmaku.api.DanmakuContent
 import me.him188.ani.danmaku.api.DanmakuEvent
 import me.him188.ani.danmaku.api.DanmakuInfo
@@ -180,8 +182,6 @@ import org.koin.core.component.inject
 import org.openani.mediamp.InternalMediampApi
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
-import org.openani.mediamp.features.VideoEnhancement
-import org.openani.mediamp.features.VideoEnhancementMode
 import org.openani.mediamp.features.chapters
 import org.openani.mediamp.metadata.Chapter
 import kotlin.time.Duration.Companion.milliseconds
@@ -280,6 +280,8 @@ class EpisodeViewModel(
 
     val player: MediampPlayer =
         playerStateFactory.create(context, backgroundScope.coroutineContext)
+
+    val videoEnhancement = createVideoEnhancementController(player, backgroundScope.coroutineContext)
 
     /** `null` 表示本次播放尚未调整过倍速, 此时跟随配置. */
     private val playbackSpeedOverride = MutableStateFlow<Float?>(null)
@@ -1043,11 +1045,9 @@ class EpisodeViewModel(
             val enabled = settingsRepository.videoScaffoldConfig.flow
                 .first()
                 .enableVideoEnhancementByDefault
-            withContext(player.mainDispatcher) {
-                player.features[VideoEnhancement]?.setMode(
-                    if (enabled) VideoEnhancementMode.CLEAR else VideoEnhancementMode.OFF,
-                )
-            }
+            videoEnhancement?.setMode(
+                if (enabled) VideoEnhancementMode.CLEAR else VideoEnhancementMode.OFF,
+            )
         }
 
         // 跳过 OP 和 ED
@@ -1075,6 +1075,7 @@ class EpisodeViewModel(
     }
 
     override fun onCleared() {
+        videoEnhancement?.close()
         super.onCleared()
         webSessionManager.cancelAutoSolves()
         backgroundScope.launch(NonCancellable + CoroutineName("EpisodeViewModel#onCleared")) {

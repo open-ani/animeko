@@ -950,6 +950,7 @@ private fun EpisodeVideo(
 
     EpisodeVideoImpl(
         vm.player,
+        videoEnhancement = vm.videoEnhancement,
         expanded = expanded,
         hasNextEpisode = vm.episodeSelectorState.hasNextEpisode,
         onClickNextEpisode = { vm.episodeSelectorState.selectNext() },
