@@ -13,9 +13,11 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -155,6 +157,22 @@ class CommentItemInteractionTest {
         onNodeWithTag(CommentItemTestTags.RepliesBlock).performClick()
         waitForIdle()
         assertTrue(expanded)
+    }
+
+    @Test
+    fun `bangumi comment menu has copy but no report`() = runAniComposeUiTest {
+        // Bangumi 源评论不可举报, 调用方传 onReport = null; 内置的复制项仍应显示
+        setItem(
+            comment = CommentItemTestFixtures.bangumiComment(),
+            menu = CommentMenuHandlers(
+                onOpenOriginal = {},
+                onReport = null,
+            ),
+        )
+        onNodeWithTag(rootTag).performTouchInput { longClick() }
+        waitForIdle()
+        onNodeWithTag(CommentContextMenuTestTags.CopyContent).assertExists()
+        onAllNodesWithTag(CommentContextMenuTestTags.Report).assertCountEquals(0)
     }
 
     @Test

@@ -46,7 +46,6 @@ import me.him188.ani.app.data.models.person.PersonSubjectSummary
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.navigation.SubjectDetailPlaceholder
 import me.him188.ani.app.tools.formatDateTime
-import me.him188.ani.app.ui.comment.CommentReportState
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.external.placeholder.placeholder
@@ -499,7 +498,6 @@ internal fun PersonCommentsSheet(
     state: CommentState,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
-    reportState: CommentReportState? = null,
     originalCommentsUrl: String? = null,
 ) {
     val browserNavigator = LocalUriHandler.current
@@ -533,7 +531,6 @@ internal fun PersonCommentsSheet(
                     )
                 },
                 onClickImage = { imageViewer.viewImage(it) },
-                reportState = reportState,
                 onOpenOriginal = originalCommentsUrl?.let { url ->
                     { browserNavigator.openUri(url) }
                 },

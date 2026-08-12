@@ -12,12 +12,10 @@ package me.him188.ani.app.data.network
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.comment.CommentReportReason
-import me.him188.ani.app.data.models.comment.CommentReportSource
 import me.him188.ani.app.data.models.comment.CommentReportTargetType
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.client.apis.CommentsAniApi
 import me.him188.ani.client.models.AniCommentReportReason
-import me.him188.ani.client.models.AniCommentReportSource
 import me.him188.ani.client.models.AniCommentReportTargetType
 import me.him188.ani.client.models.AniCreateCommentReportRequest
 import me.him188.ani.utils.coroutines.IO_
@@ -29,17 +27,14 @@ open class AniCommentReportService(
     private val ioDispatcher: CoroutineContext = Dispatchers.IO_,
 ) {
     /**
-     * 举报一条评论. 任意来源 (Animeko / Bangumi) 的评论都可以举报.
+     * 举报一条 Animeko 评论 (Bangumi 源评论不可举报).
      * 同一用户重复举报同一条评论会覆盖之前的举报内容, 不会报错.
      *
      * @param contentSnapshot 被举报评论的快照 (作者昵称 + 评论原文).
-     *        Bangumi 来源的评论不存在于服务端, 审核依赖这个快照.
-     * @param commentAuthorId 被举报评论的作者 ID, Animeko 源为服务端用户 UUID,
-     *        Bangumi 源为 bangumi 侧用户 id. 作者未知时为 `null`.
+     *        评论可能在举报后被编辑/删除, 审核以快照为准.
      */
     open suspend fun createReport(
         targetType: CommentReportTargetType,
-        source: CommentReportSource,
         targetId: String,
         reason: CommentReportReason,
         commentAuthorId: String? = null,
@@ -53,10 +48,9 @@ open class AniCommentReportService(
                 createCommentReport(
                     AniCreateCommentReportRequest(
                         targetType = targetType.toAniCommentReportTargetType(),
-                        source = source.toAniCommentReportSource(),
                         targetId = targetId,
-                        commentAuthorId = commentAuthorId,
                         reason = reason.toAniCommentReportReason(),
+                        commentAuthorId = commentAuthorId,
                         detail = detail,
                         contentSnapshot = contentSnapshot,
                         subjectId = subjectId,
@@ -73,13 +67,6 @@ open class AniCommentReportService(
 private fun CommentReportTargetType.toAniCommentReportTargetType(): AniCommentReportTargetType = when (this) {
     CommentReportTargetType.EPISODE_COMMENT -> AniCommentReportTargetType.EPISODE_COMMENT
     CommentReportTargetType.SUBJECT_REVIEW -> AniCommentReportTargetType.SUBJECT_REVIEW
-    CommentReportTargetType.PERSON_COMMENT -> AniCommentReportTargetType.PERSON_COMMENT
-    CommentReportTargetType.CHARACTER_COMMENT -> AniCommentReportTargetType.CHARACTER_COMMENT
-}
-
-private fun CommentReportSource.toAniCommentReportSource(): AniCommentReportSource = when (this) {
-    CommentReportSource.ANIMEKO -> AniCommentReportSource.ANIMEKO
-    CommentReportSource.BANGUMI -> AniCommentReportSource.BANGUMI
 }
 
 private fun CommentReportReason.toAniCommentReportReason(): AniCommentReportReason = when (this) {

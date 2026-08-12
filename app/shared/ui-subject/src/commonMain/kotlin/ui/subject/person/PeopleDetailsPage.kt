@@ -61,8 +61,6 @@ import me.him188.ani.app.data.models.person.PersonCastInfo
 import me.him188.ani.app.data.models.person.PersonDetailsInfo
 import me.him188.ani.app.data.models.person.PersonWorkInfo
 import me.him188.ani.app.data.models.subject.nameCn
-import me.him188.ani.app.ui.comment.CommentReportHost
-import me.him188.ani.app.ui.comment.CommentReportState
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
@@ -119,11 +117,10 @@ fun PersonDetailsScreen(
         summary = details?.person?.summary.orEmpty(),
         centerStrips = { PersonStrips(casts, works) },
         commentState = vm.commentState,
-        commentReportState = vm.commentReportState,
         originalCommentsUrl = vm.originalCommentsUrl,
         compactContent = {
             PersonDetailsContentColumn(
-                details, casts, works, vm.commentState, vm.commentReportState,
+                details, casts, works, vm.commentState,
                 originalCommentsUrl = vm.originalCommentsUrl,
             )
         },
@@ -162,11 +159,10 @@ fun CharacterDetailsScreen(
         summary = details?.summary.orEmpty(),
         centerStrips = { CharacterStrips(details, subjects) },
         commentState = vm.commentState,
-        commentReportState = vm.commentReportState,
         originalCommentsUrl = vm.originalCommentsUrl,
         compactContent = {
             CharacterDetailsContentColumn(
-                details, subjects, vm.commentState, vm.commentReportState,
+                details, subjects, vm.commentState,
                 originalCommentsUrl = vm.originalCommentsUrl,
             )
         },
@@ -196,13 +192,9 @@ private fun PeopleDetailsScaffold(
     commentState: CommentState,
     compactContent: @Composable () -> Unit,
     modifier: Modifier = Modifier,
-    commentReportState: CommentReportState? = null,
     originalCommentsUrl: String? = null,
 ) {
     var showAllComments by rememberSaveable { mutableStateOf(false) }
-
-    // 页面级唯一 Host: 评论 sheet 提交后立即关闭也能收到举报结果提示
-    commentReportState?.let { CommentReportHost(it) }
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val layoutParams = SubjectDetailsLayoutParams.calculate(maxWidth)
@@ -380,7 +372,6 @@ private fun PeopleDetailsScaffold(
         PersonCommentsSheet(
             commentState,
             onDismissRequest = { showAllComments = false },
-            reportState = commentReportState,
             originalCommentsUrl = originalCommentsUrl,
         )
     }
@@ -401,7 +392,6 @@ internal fun PersonDetailsContentColumn(
     casts: LazyPagingItems<PersonCastInfo>,
     works: LazyPagingItems<PersonWorkInfo>,
     commentState: CommentState,
-    commentReportState: CommentReportState? = null,
     originalCommentsUrl: String? = null,
     modifier: Modifier = Modifier,
     navigation: PeopleDetailsNavigation = rememberPeopleDetailsNavigation(),
@@ -434,7 +424,6 @@ internal fun PersonDetailsContentColumn(
         PersonCommentsSheet(
             commentState,
             onDismissRequest = { showAllComments = false },
-            reportState = commentReportState,
             originalCommentsUrl = originalCommentsUrl,
         )
     }
@@ -516,7 +505,6 @@ internal fun CharacterDetailsContentColumn(
     details: CharacterDetailsInfo?,
     subjects: LazyPagingItems<CharacterSubjectInfo>,
     commentState: CommentState,
-    commentReportState: CommentReportState? = null,
     originalCommentsUrl: String? = null,
     modifier: Modifier = Modifier,
     navigation: PeopleDetailsNavigation = rememberPeopleDetailsNavigation(),
@@ -549,7 +537,6 @@ internal fun CharacterDetailsContentColumn(
         PersonCommentsSheet(
             commentState,
             onDismissRequest = { showAllComments = false },
-            reportState = commentReportState,
             originalCommentsUrl = originalCommentsUrl,
         )
     }

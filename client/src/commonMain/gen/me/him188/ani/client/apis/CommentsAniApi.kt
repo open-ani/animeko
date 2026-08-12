@@ -45,7 +45,7 @@ open class CommentsAniApi : ApiClient {
 
     /**
      * Report a comment
-     * 举报一条评论. 任意来源 (Animeko / Bangumi) 的评论都可以举报: Bangumi 来源的评论不存在于服务端, 审核依赖客户端提交的 &#x60;contentSnapshot&#x60; (作者昵称 + 评论原文). 同一用户重复举报同一条评论是覆盖举报内容 (原因/说明/快照) 而不是新增一条, 重复提交也返回 204.
+     * 举报一条 Animeko 评论 (Bangumi 来源的评论不可举报). &#x60;contentSnapshot&#x60; 是举报时的原文快照 (作者昵称 + 评论原文), 评论被编辑或删除后审核以快照为准. 同一用户重复举报同一条评论是覆盖举报内容 (原因/说明/快照) 而不是新增一条, 重复提交也返回 204.
      * @param aniCreateCommentReportRequest
      * @return kotlin.Any
      */

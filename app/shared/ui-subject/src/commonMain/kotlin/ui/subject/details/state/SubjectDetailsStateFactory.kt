@@ -58,7 +58,6 @@ import me.him188.ani.app.ui.comment.CommentReportState
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.comment.reportSnapshotText
-import me.him188.ani.app.ui.comment.toCommentReportSource
 import me.him188.ani.app.ui.comment.toDataReason
 import me.him188.ani.app.ui.foundation.produceState
 import me.him188.ani.app.ui.foundation.stateOf
@@ -278,7 +277,6 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             onSubmitReport = { comment, reason, detail ->
                 commentReportService.createReport(
                     targetType = CommentReportTargetType.SUBJECT_REVIEW,
-                    source = comment.source.toCommentReportSource(),
                     targetId = comment.sourceCommentId,
                     reason = reason.toDataReason(),
                     commentAuthorId = comment.author?.id,

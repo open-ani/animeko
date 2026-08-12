@@ -10,22 +10,11 @@
 package me.him188.ani.app.data.models.comment
 
 /**
- * 被举报内容的类型.
+ * 被举报内容的类型. 只支持 Animeko 自有评论, Bangumi 源评论不可举报.
  */
 enum class CommentReportTargetType {
     EPISODE_COMMENT,
     SUBJECT_REVIEW,
-    PERSON_COMMENT,
-    CHARACTER_COMMENT,
-}
-
-/**
- * 被举报评论的来源平台. Bangumi 来源的评论不存在于 Animeko 服务端,
- * 审核依赖客户端提交的快照.
- */
-enum class CommentReportSource {
-    ANIMEKO,
-    BANGUMI,
 }
 
 /**

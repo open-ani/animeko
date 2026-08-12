@@ -95,7 +95,10 @@ fun SubjectDetailsDefaults.SubjectCommentColumn(
                     onOpenOriginal = if (commentWithOverlay.source == UICommentSource.BANGUMI) {
                         onOpenOriginal
                     } else null,
-                    onReport = reportState?.let { report -> { report.show(it) } },
+                    // 只支持举报 Animeko 自有评论
+                    onReport = if (commentWithOverlay.source == UICommentSource.ANI) {
+                        reportState?.let { report -> { report.show(it) } }
+                    } else null,
                 ),
             )
         }

@@ -22,7 +22,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import me.him188.ani.app.data.models.comment.CommentReportSource
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
@@ -105,7 +104,7 @@ fun CommentReportHost(state: CommentReportState) {
 }
 
 /**
- * 举报快照: 作者昵称 + 评论原文. Bangumi 来源的评论不存在于服务端, 审核依赖这个快照.
+ * 举报快照: 作者昵称 + 评论原文. 评论可能在举报后被编辑/删除, 审核以快照为准.
  */
 fun UIComment.reportSnapshotText(): String {
     val authorName = author?.nickname ?: author?.id ?: ""
@@ -120,9 +119,4 @@ fun CommentReportReason.toDataReason(): DataCommentReportReason = when (this) {
     CommentReportReason.NSFW -> DataCommentReportReason.NSFW
     CommentReportReason.ILLEGAL -> DataCommentReportReason.ILLEGAL
     CommentReportReason.OTHER -> DataCommentReportReason.OTHER
-}
-
-fun UICommentSource.toCommentReportSource(): CommentReportSource = when (this) {
-    UICommentSource.ANI -> CommentReportSource.ANIMEKO
-    UICommentSource.BANGUMI -> CommentReportSource.BANGUMI
 }

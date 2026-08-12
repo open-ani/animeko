@@ -22,7 +22,7 @@ import kotlinx.serialization.*
 /**
  *
  *
- * Values: EPISODE_COMMENT,SUBJECT_REVIEW,PERSON_COMMENT,CHARACTER_COMMENT
+ * Values: EPISODE_COMMENT,SUBJECT_REVIEW
  */
 @Serializable
 enum class AniCommentReportTargetType(val value: kotlin.String) {
@@ -31,13 +31,7 @@ enum class AniCommentReportTargetType(val value: kotlin.String) {
     EPISODE_COMMENT("episode_comment"),
 
     @SerialName(value = "subject_review")
-    SUBJECT_REVIEW("subject_review"),
-
-    @SerialName(value = "person_comment")
-    PERSON_COMMENT("person_comment"),
-
-    @SerialName(value = "character_comment")
-    CHARACTER_COMMENT("character_comment");
+    SUBJECT_REVIEW("subject_review");
 
     /**
      * Override [toString()] to avoid using the enum variable name as the value, and instead use

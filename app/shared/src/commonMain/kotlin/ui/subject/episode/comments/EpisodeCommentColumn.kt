@@ -115,7 +115,10 @@ fun EpisodeCommentColumn(
                     onOpenOriginal = if (commentWithOverlay.source == UICommentSource.BANGUMI) {
                         { uriHandler.openUri("https://bgm.tv/ep/$episodeId") }
                     } else null,
-                    onReport = reportState?.let { report -> { report.show(it) } },
+                    // 只支持举报 Animeko 自有评论
+                    onReport = if (commentWithOverlay.source == UICommentSource.ANI) {
+                        reportState?.let { report -> { report.show(it) } }
+                    } else null,
                 ),
             )
         }

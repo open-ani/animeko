@@ -119,7 +119,6 @@ import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.EditCommentSticker
 import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.comment.reportSnapshotText
-import me.him188.ani.app.ui.comment.toCommentReportSource
 import me.him188.ani.app.ui.comment.toDataReason
 import me.him188.ani.app.ui.danmaku.UIDanmakuEvent
 import me.him188.ani.app.ui.episode.PlayingEpisodeSummary
@@ -723,7 +722,6 @@ class EpisodeViewModel(
         onSubmitReport = { comment, reason, detail ->
             commentReportService.createReport(
                 targetType = CommentReportTargetType.EPISODE_COMMENT,
-                source = comment.source.toCommentReportSource(),
                 targetId = comment.sourceCommentId,
                 reason = reason.toDataReason(),
                 commentAuthorId = comment.author?.id,

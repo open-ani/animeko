@@ -17,7 +17,6 @@
 package me.him188.ani.client.models
 
 import me.him188.ani.client.models.AniCommentReportReason
-import me.him188.ani.client.models.AniCommentReportSource
 import me.him188.ani.client.models.AniCommentReportTargetType
 
 import kotlinx.serialization.*
@@ -28,7 +27,6 @@ import kotlinx.serialization.encoding.*
  *
  *
  * @param targetType
- * @param source
  * @param targetId
  * @param reason
  * @param commentAuthorId
@@ -42,8 +40,6 @@ import kotlinx.serialization.encoding.*
 data class AniCreateCommentReportRequest (
 
     @SerialName(value = "targetType") @Required val targetType: AniCommentReportTargetType,
-
-    @SerialName(value = "source") @Required val source: AniCommentReportSource,
 
     @SerialName(value = "targetId") @Required val targetId: kotlin.String,
 
