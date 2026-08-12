@@ -9,26 +9,31 @@
 
 package me.him188.ani.app.desktop
 
+import me.him188.ani.utils.platform.Arch
+import me.him188.ani.utils.platform.Platform
+
 /**
- * Initializes the selected player backend on the safe side of JCEF startup.
+ * Returns whether player native libraries should load before JCEF on [platform].
  *
- * Loading VLC before JCEF can make CEF's framework load crash in dyld on Intel macOS (#3269), while
- * mpv already initializes safely before JCEF on its supported platforms. Keep this ordering in one
- * place so changes to the selected player backend cannot accidentally reverse it again.
+ * The crash in #3269 occurred after VLC native libraries were loaded before JCEF on Intel macOS.
+ * Desktop now uses mpv on every platform, but keeping JCEF first on the affected architecture avoids
+ * reintroducing that native-loading order. Other platforms retain their existing mpv-first order.
  */
+internal fun shouldPreparePlayerBeforeJcef(platform: Platform.Desktop): Boolean =
+    platform !is Platform.MacOS || platform.arch != Arch.X86_64
+
 internal suspend fun initializeJcefAndPlayerBackend(
-    usesMpv: Boolean,
-    prepareMpv: suspend () -> Unit,
+    preparePlayerBeforeJcef: Boolean,
+    preparePlayer: suspend () -> Unit,
     initializeJcef: suspend () -> Unit,
-    prepareVlc: suspend () -> Unit,
 ) {
-    if (usesMpv) {
-        prepareMpv()
+    if (preparePlayerBeforeJcef) {
+        preparePlayer()
     }
 
     initializeJcef()
 
-    if (!usesMpv) {
-        prepareVlc()
+    if (!preparePlayerBeforeJcef) {
+        preparePlayer()
     }
 }

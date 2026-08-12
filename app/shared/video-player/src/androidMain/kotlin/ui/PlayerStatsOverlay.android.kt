@@ -108,11 +108,11 @@ private fun MediampPlayer.readAndroidPlayerStats(reflectionStats: ExoPlayerRefle
     val videoSize = exoPlayer.videoSize
     val width = videoFormat?.width?.validMedia3Value() ?: videoSize.width.validMedia3Value()
     val height = videoFormat?.height?.validMedia3Value() ?: videoSize.height.validMedia3Value()
-    val properties = getCurrentMediaProperties()
+    val properties = mediaProperties.value
 
     return PlayerStatsSnapshot(
         backend = "ExoPlayer",
-        playbackState = playbackState.value.toString(),
+        playbackState = state.value.toString(),
         title = properties?.title,
         positionMillis = exoPlayer.currentPosition,
         durationMillis = properties?.durationMillis?.takeIf { it >= 0 }
@@ -160,12 +160,12 @@ private fun Format.readableBitrate(): Long? {
 private fun Int.validMedia3Value(): Int? = takeIf { it != Format.NO_VALUE && it > 0 }
 
 private fun MediampPlayer.readFallbackPlayerStats(backend: String): PlayerStatsSnapshot {
-    val properties = getCurrentMediaProperties()
+    val properties = mediaProperties.value
     return PlayerStatsSnapshot(
         backend = backend,
-        playbackState = playbackState.value.toString(),
+        playbackState = state.value.toString(),
         title = properties?.title,
-        positionMillis = getCurrentPositionMillis(),
+        positionMillis = currentPositionMillis.value,
         durationMillis = properties?.durationMillis?.takeIf { it >= 0 },
         playbackSpeed = features[PlaybackSpeed]?.value,
         resolution = null,

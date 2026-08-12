@@ -10,35 +10,50 @@
 package me.him188.ani.app.desktop
 
 import kotlinx.coroutines.runBlocking
+import me.him188.ani.utils.platform.Arch
+import me.him188.ani.utils.platform.Platform
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class DesktopNativeStartupTest {
     @Test
-    fun `VLC is prepared after JCEF`() = runBlocking {
+    fun `player is prepared after JCEF when requested`() = runBlocking {
         val calls = mutableListOf<String>()
 
         initializeJcefAndPlayerBackend(
-            usesMpv = false,
-            prepareMpv = { error("mpv must not be prepared on a VLC platform") },
+            preparePlayerBeforeJcef = false,
+            preparePlayer = { calls += "player" },
             initializeJcef = { calls += "JCEF" },
-            prepareVlc = { calls += "VLC" },
         )
 
-        assertEquals(listOf("JCEF", "VLC"), calls)
+        assertEquals(listOf("JCEF", "player"), calls)
     }
 
     @Test
-    fun `mpv is prepared before JCEF`() = runBlocking {
+    fun `player is prepared before JCEF when requested`() = runBlocking {
         val calls = mutableListOf<String>()
 
         initializeJcefAndPlayerBackend(
-            usesMpv = true,
-            prepareMpv = { calls += "mpv" },
+            preparePlayerBeforeJcef = true,
+            preparePlayer = { calls += "player" },
             initializeJcef = { calls += "JCEF" },
-            prepareVlc = { error("VLC must not be prepared on an mpv platform") },
         )
 
-        assertEquals(listOf("mpv", "JCEF"), calls)
+        assertEquals(listOf("player", "JCEF"), calls)
+    }
+
+    @Test
+    fun `Intel macOS prepares player after JCEF`() {
+        assertFalse(shouldPreparePlayerBeforeJcef(Platform.MacOS(Arch.X86_64)))
+    }
+
+    @Test
+    fun `other desktop platforms prepare player before JCEF`() {
+        assertTrue(shouldPreparePlayerBeforeJcef(Platform.MacOS(Arch.AARCH64)))
+        assertTrue(shouldPreparePlayerBeforeJcef(Platform.Windows(Arch.X86_64)))
+        assertTrue(shouldPreparePlayerBeforeJcef(Platform.Windows(Arch.AARCH64)))
+        assertTrue(shouldPreparePlayerBeforeJcef(Platform.Linux(Arch.X86_64)))
     }
 }

@@ -36,7 +36,8 @@ import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
-import org.openani.mediamp.PlaybackState
+import org.openani.mediamp.MediaStatus
+import org.openani.mediamp.PlayerState
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -60,7 +61,7 @@ class SwitchMediaOnPlayerErrorExtension(
                 invoke(
                     session.fetchSelectFlow,
                     context.videoLoadingStateFlow,
-                    context.player.playbackState,
+                    context.player.state,
                 )
             }
         }
@@ -75,7 +76,7 @@ class SwitchMediaOnPlayerErrorExtension(
     private suspend fun invoke(
         mediaFetchSessionFlow: Flow<MediaFetchSelectBundle?>,
         videoLoadingStateFlow: Flow<VideoLoadingState>,
-        playbackStateFlow: Flow<PlaybackState>
+        playerStateFlow: Flow<PlayerState>
     ) {
         val handler = PlayerLoadErrorHandler(
             getPreferKind = { getMediaSelectorSettingsFlowUseCase().first().preferKind },
@@ -102,7 +103,7 @@ class SwitchMediaOnPlayerErrorExtension(
                         handler.observeLoadErrorAndHandle(
                             mediaFetchSessionFlow,
                             videoLoadingStateFlow,
-                            playbackStateFlow,
+                            playerStateFlow,
                         )
                     }
                 }
@@ -112,16 +113,16 @@ class SwitchMediaOnPlayerErrorExtension(
     private suspend fun PlayerLoadErrorHandler.observeLoadErrorAndHandle(
         mediaFetchSessionFlow: Flow<MediaFetchSelectBundle?>,
         videoLoadingStateFlow: Flow<VideoLoadingState>,
-        playbackStateFlow: Flow<PlaybackState>
+        playerStateFlow: Flow<PlayerState>
     ) {
         mediaFetchSessionFlow.collectLatest { bundle ->
             if (bundle == null) return@collectLatest
 
             combine(
                 videoLoadingStateFlow, // 解析链接出错 (未匹配到链接)
-                playbackStateFlow, // 解析成功, 但播放器出错 (无法链接到链接, 例如链接错误)
-            ) { videoLoadingState, playbackState ->
-                videoLoadingState is VideoLoadingState.Failed || playbackState == PlaybackState.ERROR
+                playerStateFlow, // 解析成功, 但播放器出错 (无法链接到链接, 例如链接错误)
+            ) { videoLoadingState, playerState ->
+                videoLoadingState is VideoLoadingState.Failed || playerState.mediaStatus is MediaStatus.Error
             }.distinctUntilChanged()
                 .collectLatest { isError ->
                     if (isError) {

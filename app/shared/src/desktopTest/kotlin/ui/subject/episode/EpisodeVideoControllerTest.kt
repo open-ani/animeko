@@ -11,6 +11,7 @@ package me.him188.ani.app.ui.subject.episode
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -109,8 +110,9 @@ import me.him188.ani.utils.platform.Arch
 import me.him188.ani.utils.platform.Platform
 import org.junit.jupiter.api.Disabled
 import org.openani.mediamp.InternalForInheritanceMediampApi
-import org.openani.mediamp.PlaybackState
+import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.features.PlaybackSpeed
+import org.openani.mediamp.source.UriMediaData
 import org.openani.mediamp.test.TestMediampPlayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -239,6 +241,14 @@ class EpisodeVideoControllerTest {
                 val scope = rememberCoroutineScope()
                 val playerState = remember {
                     TestMediampPlayer(scope.coroutineContext).also(onPlayerStateCreated)
+                }
+                // The v2 TestMediampPlayer starts with no media (MediaStatus.Idle), where seek and
+                // play/pause commands are no-ops and mediaProperties is null (which disables
+                // swipe-to-seek). Load the default 100s fake media paused, matching the v1 test
+                // player's always-loaded baseline. The machine runs on this composition's
+                // dispatcher, so the load completes during the next idle sync.
+                LaunchedEffect(playerState) {
+                    playerState.setMediaData(UriMediaData("file:///test.mp4"))
                 }
                 val cacheProgressInfoFlow = staticMediaCacheProgressState(cacheChunkState).flow
                 EpisodeVideoImpl(
@@ -415,13 +425,22 @@ class EpisodeVideoControllerTest {
             )
         }
 
+        runOnIdle {
+            assertEquals(MediaStatus.Ready, playerState.state.value.mediaStatus)
+        }
+
         for (durationSeconds in listOf(80, 85, 90)) {
             runOnIdle {
                 opEdSkipDuration = durationSeconds.seconds
-                playerState.currentPositionMillis.value = 5_000L
+                playerState.injectPosition(5_000L)
             }
+            waitForIdle() // let the state machine process the injected position
 
-            onNodeWithContentDescription("Fast forward $durationSeconds seconds").performClick()
+            // The click triggers playerState.skip; commands must run on the machine's
+            // dispatcher thread (the compose UI thread), so dispatch the input from it.
+            runOnIdle {
+                onNodeWithContentDescription("Fast forward $durationSeconds seconds").performClick()
+            }
 
             runOnIdle {
                 assertEquals((durationSeconds + 5) * 1_000L, playerState.currentPositionMillis.value)
@@ -649,9 +668,11 @@ class EpisodeVideoControllerTest {
         }
         waitForIdle()
         runOnIdle {
-            playerState.playbackState.value = PlaybackState.PAUSED
-            playerState.currentPositionMillis.value = 20_000L
+            // Media is loaded paused by Player; drive the fake playback clock to 20s.
+            assertEquals(MediaStatus.Ready, playerState.state.value.mediaStatus)
+            playerState.injectPosition(20_000L)
         }
+        waitForIdle() // let the state machine process the injected position
 
         videoGestureHost.performKeyInput {
             pressKey(Key.F)
@@ -665,24 +686,32 @@ class EpisodeVideoControllerTest {
             assertEquals(1, toggleDanmakuCount)
         }
 
-        videoGestureHost.performKeyInput {
-            pressKey(Key.Spacebar)
+        // Space/arrow keys trigger player commands, which must run on the machine's
+        // dispatcher thread (the compose UI thread), so dispatch these inputs from it.
+        runOnIdle {
+            videoGestureHost.performKeyInput {
+                pressKey(Key.Spacebar)
+            }
         }
         waitForIdle()
         runOnIdle {
-            assertEquals(PlaybackState.PLAYING, playerState.playbackState.value)
+            assertTrue(playerState.state.value.playWhenReady)
         }
 
-        videoGestureHost.performKeyInput {
-            pressKey(Key.DirectionRight)
+        runOnIdle {
+            videoGestureHost.performKeyInput {
+                pressKey(Key.DirectionRight)
+            }
         }
         waitForIdle()
         runOnIdle {
             assertEquals(25_000L, playerState.currentPositionMillis.value)
         }
 
-        videoGestureHost.performKeyInput {
-            pressKey(Key.DirectionLeft)
+        runOnIdle {
+            videoGestureHost.performKeyInput {
+                pressKey(Key.DirectionLeft)
+            }
         }
         waitForIdle()
         runOnIdle {
@@ -811,7 +840,9 @@ class EpisodeVideoControllerTest {
         }
         waitForIdle()
         runOnIdle {
-            playerState.playbackState.value = PlaybackState.PAUSED
+            // Media is loaded paused by Player (the v1 test's PAUSED baseline).
+            assertEquals(MediaStatus.Ready, playerState.state.value.mediaStatus)
+            assertFalse(playerState.state.value.playWhenReady)
         }
 
         videoGestureHost.assertIsFocused()
@@ -824,19 +855,25 @@ class EpisodeVideoControllerTest {
         waitForIdle()
         runOnIdle {
             assertEquals(0, toggleDanmakuCount)
-            assertEquals(PlaybackState.PAUSED, playerState.playbackState.value)
+            assertFalse(playerState.state.value.playWhenReady)
         }
 
         videoGestureHost.performClick()
+        // combinedClickable 带 onDoubleClick, onClick 要等双击判定窗口过后才发;
+        // CMP 1.11 起桌面端触摸输入会进入 Touch input mode, 不再有按下即抢焦点的捷径.
+        mainClock.advanceTimeBy(1000L)
         videoGestureHost.assertIsFocused()
-        videoGestureHost.performKeyInput {
-            pressKey(Key.B)
-            pressKey(Key.Spacebar)
+        // Spacebar triggers a player command; dispatch from the machine's (UI) thread.
+        runOnIdle {
+            videoGestureHost.performKeyInput {
+                pressKey(Key.B)
+                pressKey(Key.Spacebar)
+            }
         }
         waitForIdle()
         runOnIdle {
             assertEquals(1, toggleDanmakuCount)
-            assertEquals(PlaybackState.PLAYING, playerState.playbackState.value)
+            assertTrue(playerState.state.value.playWhenReady)
         }
     }
 
@@ -857,7 +894,9 @@ class EpisodeVideoControllerTest {
         }
         waitForIdle()
         runOnIdle {
-            playerState.playbackState.value = PlaybackState.PAUSED
+            // Media is loaded paused by Player (the v1 test's PAUSED baseline).
+            assertEquals(MediaStatus.Ready, playerState.state.value.mediaStatus)
+            assertFalse(playerState.state.value.playWhenReady)
         }
 
         danmakuEditor.performClick()
@@ -875,7 +914,7 @@ class EpisodeVideoControllerTest {
         waitForIdle()
         runOnIdle {
             assertEquals(0, toggleDanmakuCount)
-            assertEquals(PlaybackState.PAUSED, playerState.playbackState.value)
+            assertFalse(playerState.state.value.playWhenReady)
         }
     }
 
@@ -959,7 +998,9 @@ class EpisodeVideoControllerTest {
         }
         waitForIdle()
         runOnIdle {
-            playerState.playbackState.value = PlaybackState.PAUSED
+            // Media is loaded paused by Player (the v1 test's PAUSED baseline).
+            assertEquals(MediaStatus.Ready, playerState.state.value.mediaStatus)
+            assertFalse(playerState.state.value.playWhenReady)
         }
 
         danmakuEditor.performClick()
@@ -970,12 +1011,15 @@ class EpisodeVideoControllerTest {
         waitForIdle()
 
         videoGestureHost.assertIsFocused()
-        videoGestureHost.performKeyInput {
-            pressKey(Key.Spacebar)
+        // Spacebar triggers a player command; dispatch from the machine's (UI) thread.
+        runOnIdle {
+            videoGestureHost.performKeyInput {
+                pressKey(Key.Spacebar)
+            }
         }
         waitForIdle()
         runOnIdle {
-            assertEquals(PlaybackState.PLAYING, playerState.playbackState.value)
+            assertTrue(playerState.state.value.playWhenReady)
         }
     }
 
@@ -1017,7 +1061,9 @@ class EpisodeVideoControllerTest {
         }
         waitForIdle()
         runOnIdle {
-            playerState.playbackState.value = PlaybackState.PAUSED
+            // Media is loaded paused by Player (the v1 test's PAUSED baseline).
+            assertEquals(MediaStatus.Ready, playerState.state.value.mediaStatus)
+            assertFalse(playerState.state.value.playWhenReady)
         }
 
         videoGestureHost.assertIsFocused()
@@ -1027,7 +1073,8 @@ class EpisodeVideoControllerTest {
         }
         waitForIdle()
         runOnIdle {
-            assertEquals(PlaybackState.PAUSED, playerState.playbackState.value)
+            // Enter must not activate the click gesture (which would toggle play in MOUSE mode).
+            assertFalse(playerState.state.value.playWhenReady)
         }
     }
 
@@ -1364,9 +1411,11 @@ class EpisodeVideoControllerTest {
 //            root.assertScreenshot("/screenshots/EpisodeVideoControllerTest.touch___swipeToSeek_shows_detached_slider.png")
         }
 
-        // 松开手指
-        root.performTouchInput {
-            up()
+        // 松开手指 (释放会触发 playerState.skip, 播放器命令必须在机器线程 (UI 线程) 上调用)
+        runOnUiThread {
+            root.performTouchInput {
+                up()
+            }
         }
         runOnIdle {
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { detachedProgressSlider.doesNotExist() }
@@ -1555,9 +1604,11 @@ class EpisodeVideoControllerTest {
             assertEquals(PREVIEW_INLINE_SLIDER, controllerState.visibility)
         }
 
-        // 松开手指
-        root.performTouchInput {
-            up()
+        // 松开手指 (释放会触发 playerState.skip, 播放器命令必须在机器线程 (UI 线程) 上调用)
+        runOnUiThread {
+            root.performTouchInput {
+                up()
+            }
         }
         waitForIdle()
 
@@ -1751,9 +1802,11 @@ class EpisodeVideoControllerTest {
             assertEquals(0.47f, progressSliderState.displayPositionRatio)
         }
 
-        // 松开手指
-        root.performTouchInput {
-            up()
+        // 松开手指 (释放会触发 playerState.skip, 播放器命令必须在机器线程 (UI 线程) 上调用)
+        runOnUiThread {
+            root.performTouchInput {
+                up()
+            }
         }
         runOnIdle {
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { detachedProgressSlider.doesNotExist() }

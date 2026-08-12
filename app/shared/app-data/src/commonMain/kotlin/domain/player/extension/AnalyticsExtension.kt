@@ -15,7 +15,6 @@ import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodePlaying
 import org.koin.core.Koin
-import org.openani.mediamp.PlaybackState
 
 /**
  * 进入播放页后是否成功播放了视频.
@@ -31,8 +30,8 @@ class AnalyticsExtension(
             hasPlayedOnce.collectLatest { played ->
                 if (played) return@collectLatest
 
-                context.player.playbackState.collectLatest { state ->
-                    if (state == PlaybackState.PLAYING) {
+                context.player.state.collectLatest { state ->
+                    if (state.isPlaying) {
                         Analytics.recordEvent(
                             EpisodePlaying,
                             mapOf(

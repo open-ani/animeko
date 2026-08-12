@@ -58,7 +58,6 @@
 -keep class sun.misc.Unsafe { *; }
 -keep class androidx.datastore.** { *; }
 
--keep class uk.co.caprica.vlcj.** { *; } # native binding
 -keep class com.sun.jna.** { *; } # native binding
 -keep class ** implements com.sun.jna.Callback { *; } # JNA callbacks are invoked via native reflection; ProGuard optimization must not remove or inline them
 
@@ -78,7 +77,6 @@
 # Service loaders
 
 -keep class me.him188.ani.datasources.** { *; } # has service config
--keep class ** extends uk.co.caprica.vlcj.factory.discovery.provider.DiscoveryDirectoryProvider { *; }
 -keep class org.apache.logging.slf4j.SLF4JServiceProvider { *; }
 -keep class ** extends org.slf4j.spi.SLF4JServiceProvider { *; }
 -keep class org.freedesktop.dbus.** { *; } # dbus-java uses ServiceLoader and extensive reflection

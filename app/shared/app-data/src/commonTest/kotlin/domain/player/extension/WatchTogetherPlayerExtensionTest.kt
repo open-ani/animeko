@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -48,7 +49,9 @@ import me.him188.ani.client.models.AniWatchTogetherMembership
 import me.him188.ani.client.models.AniWatchTogetherReportResponse
 import me.him188.ani.client.models.AniWatchTogetherRoomSnapshot
 import me.him188.ani.client.models.AniWatchTogetherRoomStatus
-import org.openani.mediamp.PlaybackState
+import org.openani.mediamp.isMediaLoaded
+import org.openani.mediamp.source.UriMediaData
+import org.openani.mediamp.test.TestMediampPlayer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -83,20 +86,27 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
         state.onUIReady()
         runCurrent()
 
-        loadSelectedMedia(suite, state)
+        loadSelectedMedia(suite, state) // v2: the pipeline loads with playWhenReady = true, so it is playing
 
-        suite.player.currentPositionMillis.value = 30_000L
-        suite.player.playbackState.value = PlaybackState.PLAYING
+        suite.player.injectPosition(30_000L)
         advanceTimeBy(1_100)
         runCurrent()
         val playing = assertNotNull(bridge.localWatching.value)
         assertEquals(30_000L, playing.positionMillis)
         assertFalse(playing.paused)
 
-        // Simulate an in-episode source switch: the player drops back to READY and the
-        // position transiently resets to 0. No fix may be produced from this state.
-        suite.player.playbackState.value = PlaybackState.READY
-        suite.player.currentPositionMillis.value = 0L
+        // Simulate an in-episode source switch: the player re-opens a media (Opening) and the
+        // position transiently resets. No fix may be produced from this state.
+        val hold = TestMediampPlayer.OpenBehavior.Hold()
+        suite.player.openBehavior = hold
+        val reload = launch {
+            suite.player.setMediaData(
+                UriMediaData("file://reload.mp4"),
+                playWhenReady = true,
+                startPositionMillis = 31_000L,
+            )
+        }
+        runCurrent()
         advanceTimeBy(5_000)
         runCurrent()
         val duringReload = assertNotNull(bridge.localWatching.value)
@@ -104,8 +114,8 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
         assertFalse(duringReload.paused)
 
         // Once playback stabilizes again, fixes resume from the real position.
-        suite.player.currentPositionMillis.value = 31_000L
-        suite.player.playbackState.value = PlaybackState.PLAYING
+        hold.release()
+        reload.join()
         advanceTimeBy(1_100)
         runCurrent()
         assertEquals(31_000L, assertNotNull(bridge.localWatching.value).positionMillis)
@@ -130,7 +140,8 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
 
         // The player auto-plays right after loading; in a room the first play is held back so
         // the host can start everyone together.
-        assertEquals(PlaybackState.PAUSED, suite.player.playbackState.value)
+        assertTrue(suite.player.state.value.isMediaLoaded)
+        assertFalse(suite.player.state.value.playWhenReady) // held: paused by intent
         val heldFix = assertNotNull(bridge.localWatching.value)
         assertTrue(heldFix.paused)
         assertEquals(false, heldFix.loading)
@@ -141,10 +152,10 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
         )
 
         // The host's explicit play is not held back again and reports immediately.
-        suite.player.playbackState.value = PlaybackState.PLAYING
+        suite.player.play()
         advanceTimeBy(1_100)
         runCurrent()
-        assertEquals(PlaybackState.PLAYING, suite.player.playbackState.value)
+        assertTrue(suite.player.state.value.isPlaying)
         val playingFix = assertNotNull(bridge.localWatching.value)
         assertEquals(false, playingFix.paused)
         assertTrue(api.reports.mapNotNull { it.watching }.any { it.paused == false })
@@ -181,8 +192,8 @@ class WatchTogetherPlayerExtensionTest : AbstractPlayerExtensionTest() {
         val media = TestMediaList[0]
         val source = suite.mediaSelectorTestBuilder.delayedMediaSource("watch-together-0")
         source.complete(listOf(media))
+        suite.setMediaDuration(durationMillis) // configure the properties reported at the open's Ready point
         state.mediaSelectorFlow.filterNotNull().first().select(media)
-        suite.setMediaDuration(durationMillis)
         // Not advanceUntilIdle: once media loads, the reporter's sample ticker keeps the
         // scheduler busy forever. Bounded advancement is enough to finish the media load.
         runCurrent()

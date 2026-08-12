@@ -125,7 +125,6 @@ import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.openani.mediamp.ffmpeg.FFmpegKit
 import org.openani.mediamp.mpv.MPVHandle
-import org.openani.mediamp.vlc.VlcMediampPlayer
 import java.awt.Desktop
 import java.awt.Frame
 import java.io.File
@@ -152,7 +151,12 @@ object AniDesktop {
 
     private fun prepareMpvLibraries(composeResDir: String) {
         try {
-            if (currentProcessName()?.contains("java") == true) {
+            val devNativeDir = System.getProperty("mediamp.mpv.dev.native.dir")
+            if (devNativeDir != null) {
+                // mediamp composite 开发: 直接加载本地编译的 JNI wrapper (见 local.properties
+                // 的 ani.build.mediamp.mpv.devNativeDir)
+                MPVHandle.setRuntimeLibraryDirectory(devNativeDir, false)
+            } else if (currentProcessName()?.contains("java") == true) {
                 MPVHandle.useDefaultRuntimeLibraryDirectory()
             } else {
                 MPVHandle.setRuntimeLibraryDirectory(composeResDir, false)
@@ -399,8 +403,8 @@ object AniDesktop {
                 .proxy.first()
 
             initializeJcefAndPlayerBackend(
-                usesMpv = currentPlatformDesktop().usesMpv(),
-                prepareMpv = {
+                preparePlayerBeforeJcef = shouldPreparePlayerBeforeJcef(currentPlatformDesktop()),
+                preparePlayer = {
                     withContext(Dispatchers.IO) {
                         prepareMpvLibraries(composeResDir)
                     }
@@ -415,18 +419,6 @@ object AniDesktop {
                         proxyAuthPassword = proxySettings?.authorization?.password,
                     )
                     logger.info { "[JCEF init] AniCefApp is initialized." }
-                },
-                prepareVlc = {
-                    logger.info { "[VLC init] preparing VLC after JCEF." }
-                    runCatching {
-                        withContext(Dispatchers.IO) {
-                            VlcMediampPlayer.prepareLibraries()
-                        }
-                    }.onSuccess {
-                        logger.info { "[VLC init] VLC libraries are prepared." }
-                    }.onFailure {
-                        logger.error(it) { "Failed to prepare VLC." }
-                    }
                 },
             )
         }
