@@ -34,12 +34,15 @@ open class AniCommentReportService(
      *
      * @param contentSnapshot 被举报评论的快照 (作者昵称 + 评论原文).
      *        Bangumi 来源的评论不存在于服务端, 审核依赖这个快照.
+     * @param commentAuthorId 被举报评论的作者 ID, Animeko 源为服务端用户 UUID,
+     *        Bangumi 源为 bangumi 侧用户 id. 作者未知时为 `null`.
      */
     open suspend fun createReport(
         targetType: CommentReportTargetType,
         source: CommentReportSource,
         targetId: String,
         reason: CommentReportReason,
+        commentAuthorId: String? = null,
         detail: String? = null,
         contentSnapshot: String? = null,
         subjectId: Long? = null,
@@ -52,6 +55,7 @@ open class AniCommentReportService(
                         targetType = targetType.toAniCommentReportTargetType(),
                         source = source.toAniCommentReportSource(),
                         targetId = targetId,
+                        commentAuthorId = commentAuthorId,
                         reason = reason.toAniCommentReportReason(),
                         detail = detail,
                         contentSnapshot = contentSnapshot,

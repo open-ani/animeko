@@ -726,6 +726,7 @@ class EpisodeViewModel(
                 source = comment.source.toCommentReportSource(),
                 targetId = comment.sourceCommentId,
                 reason = reason.toDataReason(),
+                commentAuthorId = comment.author?.id,
                 detail = detail.takeIf { it.isNotEmpty() },
                 contentSnapshot = comment.reportSnapshotText(),
                 subjectId = subjectId.toLong(),

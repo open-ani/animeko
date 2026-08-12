@@ -31,6 +31,7 @@ import kotlinx.serialization.encoding.*
  * @param source
  * @param targetId
  * @param reason
+ * @param commentAuthorId
  * @param detail
  * @param contentSnapshot
  * @param subjectId
@@ -47,6 +48,8 @@ data class AniCreateCommentReportRequest (
     @SerialName(value = "targetId") @Required val targetId: kotlin.String,
 
     @SerialName(value = "reason") @Required val reason: AniCommentReportReason,
+
+    @SerialName(value = "commentAuthorId") val commentAuthorId: kotlin.String? = null,
 
     @SerialName(value = "detail") val detail: kotlin.String? = null,
 
