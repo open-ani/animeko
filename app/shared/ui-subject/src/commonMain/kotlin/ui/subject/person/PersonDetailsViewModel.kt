@@ -17,11 +17,17 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retryWhen
 import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.app.data.models.comment.CommentReportTargetType
 import me.him188.ani.app.data.models.person.PersonCommentInfo
+import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.repository.person.PersonDetailsRepository
 import me.him188.ani.app.ui.comment.CommentMapperContext
+import me.him188.ani.app.ui.comment.CommentReportState
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.UIComment
+import me.him188.ani.app.ui.comment.reportSnapshotText
+import me.him188.ani.app.ui.comment.toCommentReportSource
+import me.him188.ani.app.ui.comment.toDataReason
 import me.him188.ani.app.ui.foundation.AbstractViewModel
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -29,6 +35,10 @@ import kotlin.time.Duration.Companion.seconds
 
 class PersonDetailsViewModel(personId: Int) : AbstractViewModel(), KoinComponent {
     private val repository: PersonDetailsRepository by inject()
+    private val commentReportService: AniCommentReportService by inject()
+
+    /** 评论来源页 (人物吐槽箱), 用于菜单的 "在 Bangumi 打开". */
+    val originalCommentsUrl = "https://bgm.tv/person/$personId"
 
     val details = repository.personDetailsFlow(personId)
         .retryWithBackoff()
@@ -43,10 +53,28 @@ class PersonDetailsViewModel(personId: Int) : AbstractViewModel(), KoinComponent
         onSubmitCommentReaction = { _, _, _ -> },
         backgroundScope = backgroundScope,
     )
+
+    val commentReportState = CommentReportState(
+        onSubmitReport = { comment, reason, detail ->
+            commentReportService.createReport(
+                targetType = CommentReportTargetType.PERSON_COMMENT,
+                source = comment.source.toCommentReportSource(),
+                targetId = comment.sourceCommentId,
+                reason = reason.toDataReason(),
+                detail = detail.takeIf { it.isNotEmpty() },
+                contentSnapshot = comment.reportSnapshotText(),
+            )
+        },
+        backgroundScope = backgroundScope,
+    )
 }
 
 class CharacterDetailsViewModel(characterId: Int) : AbstractViewModel(), KoinComponent {
     private val repository: PersonDetailsRepository by inject()
+    private val commentReportService: AniCommentReportService by inject()
+
+    /** @see PersonDetailsViewModel.originalCommentsUrl */
+    val originalCommentsUrl = "https://bgm.tv/character/$characterId"
 
     val details = repository.characterDetailsFlow(characterId)
         .retryWithBackoff()
@@ -58,6 +86,21 @@ class CharacterDetailsViewModel(characterId: Int) : AbstractViewModel(), KoinCom
         list = repository.characterCommentsPager(characterId).toUICommentPager().cachedIn(backgroundScope),
         countState = details.map { it?.commentCount }.produceState(null),
         onSubmitCommentReaction = { _, _, _ -> },
+        backgroundScope = backgroundScope,
+    )
+
+    /** @see PersonDetailsViewModel.commentReportState */
+    val commentReportState = CommentReportState(
+        onSubmitReport = { comment, reason, detail ->
+            commentReportService.createReport(
+                targetType = CommentReportTargetType.CHARACTER_COMMENT,
+                source = comment.source.toCommentReportSource(),
+                targetId = comment.sourceCommentId,
+                reason = reason.toDataReason(),
+                detail = detail.takeIf { it.isNotEmpty() },
+                contentSnapshot = comment.reportSnapshotText(),
+            )
+        },
         backgroundScope = backgroundScope,
     )
 }
@@ -81,6 +124,7 @@ private fun PersonCommentInfo.toUIComment(): UIComment {
         briefReplies = emptyList(),
         replyCount = replyCount,
         rating = null,
+        rawContent = content,
     )
 }
 

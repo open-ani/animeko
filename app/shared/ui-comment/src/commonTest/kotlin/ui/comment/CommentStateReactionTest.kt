@@ -34,7 +34,7 @@ class CommentStateReactionTest {
 
         state.submitReaction(comment, "bgm1")
 
-        state.withReactionOverlay(comment).reaction("bgm1").let {
+        state.withOverlay(comment).reaction("bgm1").let {
             assertEquals(1, it.count)
             assertTrue(it.selected)
         }
@@ -49,7 +49,7 @@ class CommentStateReactionTest {
 
         state.submitReaction(comment, "bgm1")
 
-        assertNull(state.withReactionOverlay(comment).reactions.firstOrNull { it.value == "bgm1" })
+        assertNull(state.withOverlay(comment).reactions.firstOrNull { it.value == "bgm1" })
     }
 
     @Test
@@ -65,15 +65,15 @@ class CommentStateReactionTest {
         )
 
         state.submitReaction(comment, "bgm1")
-        assertNull(state.withReactionOverlay(comment).reactions.firstOrNull { it.value == "bgm1" })
+        assertNull(state.withOverlay(comment).reactions.firstOrNull { it.value == "bgm1" })
 
         runCurrent()
 
-        state.withReactionOverlay(comment).reaction("bgm1").let {
+        state.withOverlay(comment).reaction("bgm1").let {
             assertEquals(1, it.count)
             assertTrue(it.selected)
         }
-        state.withReactionOverlay(comment).reaction("bgm2").let {
+        state.withOverlay(comment).reaction("bgm2").let {
             assertEquals(3, it.count)
             assertFalse(it.selected)
         }
@@ -98,38 +98,210 @@ class CommentStateReactionTest {
         state.submitReaction(comment, "bgm1")
         runCurrent()
         firstStarted.await()
-        state.withReactionOverlay(comment).reaction("bgm1").let {
+        state.withOverlay(comment).reaction("bgm1").let {
             assertEquals(2, it.count)
             assertTrue(it.selected)
         }
 
         state.submitReaction(comment, "bgm1")
-        state.withReactionOverlay(comment).reaction("bgm1").let {
+        state.withOverlay(comment).reaction("bgm1").let {
             assertEquals(1, it.count)
             assertFalse(it.selected)
         }
         runCurrent()
 
         assertEquals(listOf("bgm1" to false), calls)
-        state.withReactionOverlay(comment).reaction("bgm1").let {
+        state.withOverlay(comment).reaction("bgm1").let {
             assertEquals(1, it.count)
             assertFalse(it.selected)
         }
     }
 
+    @Test
+    fun `toggle like optimistically increments like count`() = runTest {
+        val calls = mutableListOf<UICommentVote?>()
+        val state = createState(onSubmitCommentVote = { _, vote -> calls += vote })
+        val comment = comment(likeCount = 12, selfVote = null)
+
+        state.toggleVote(comment, UICommentVote.LIKE)
+
+        state.withOverlay(comment).let {
+            assertEquals(13, it.likeCount)
+            assertEquals(UICommentVote.LIKE, it.selfVote)
+        }
+        runCurrent()
+        assertEquals(listOf<UICommentVote?>(UICommentVote.LIKE), calls)
+    }
+
+    @Test
+    fun `toggle like again removes vote`() = runTest {
+        val calls = mutableListOf<UICommentVote?>()
+        val state = createState(onSubmitCommentVote = { _, vote -> calls += vote })
+        val comment = comment(likeCount = 12, selfVote = UICommentVote.LIKE)
+
+        state.toggleVote(comment, UICommentVote.LIKE)
+
+        state.withOverlay(comment).let {
+            assertEquals(11, it.likeCount)
+            assertNull(it.selfVote)
+        }
+        runCurrent()
+        assertEquals(listOf<UICommentVote?>(null), calls)
+    }
+
+    @Test
+    fun `dislike overrides like and decrements like count`() = runTest {
+        val calls = mutableListOf<UICommentVote?>()
+        val state = createState(onSubmitCommentVote = { _, vote -> calls += vote })
+        val comment = comment(likeCount = 12, selfVote = UICommentVote.LIKE)
+
+        state.toggleVote(comment, UICommentVote.DISLIKE)
+
+        state.withOverlay(comment).let {
+            assertEquals(11, it.likeCount)
+            assertEquals(UICommentVote.DISLIKE, it.selfVote)
+        }
+        runCurrent()
+        assertEquals(listOf<UICommentVote?>(UICommentVote.DISLIKE), calls)
+    }
+
+    @Test
+    fun `failed vote request rolls back`() = runTest {
+        val state = createState(onSubmitCommentVote = { _, _ -> error("network failed") })
+        val comment = comment(likeCount = 12, selfVote = null)
+
+        state.toggleVote(comment, UICommentVote.LIKE)
+        assertEquals(13, state.withOverlay(comment).likeCount)
+
+        runCurrent()
+
+        state.withOverlay(comment).let {
+            assertEquals(12, it.likeCount)
+            assertNull(it.selfVote)
+        }
+    }
+
+    @Test
+    fun `vote does not affect reactions overlay`() = runTest {
+        val state = createState()
+        val comment = comment(
+            reactions = listOf(UICommentReaction("bgm1", count = 1, selected = false)),
+            likeCount = 0,
+            selfVote = null,
+        )
+
+        state.toggleVote(comment, UICommentVote.LIKE)
+        state.submitReaction(comment, "bgm1")
+
+        state.withOverlay(comment).let {
+            assertEquals(1, it.likeCount)
+            assertEquals(UICommentVote.LIKE, it.selfVote)
+            assertEquals(2, it.reaction("bgm1").count)
+            assertTrue(it.reaction("bgm1").selected)
+        }
+    }
+
+    @Test
+    fun `clearStaleOverlays removes settled vote overlay`() = runTest {
+        val state = createState()
+        val comment = comment(likeCount = 12, selfVote = null)
+
+        state.toggleVote(comment, UICommentVote.LIKE)
+        runCurrent()
+        assertEquals(13, state.withOverlay(comment).likeCount)
+
+        state.clearStaleOverlays()
+
+        // 覆盖已清除, 列表回到以 (刷新后的) Paging 数据为准
+        state.withOverlay(comment).let {
+            assertEquals(12, it.likeCount)
+            assertNull(it.selfVote)
+        }
+    }
+
+    @Test
+    fun `clearStaleOverlays keeps in-flight vote overlay`() = runTest {
+        val started = CompletableDeferred<Unit>()
+        val gate = CompletableDeferred<Unit>()
+        val state = createState(
+            onSubmitCommentVote = { _, _ ->
+                started.complete(Unit)
+                gate.await()
+            },
+        )
+        val comment = comment(likeCount = 12, selfVote = null)
+
+        state.toggleVote(comment, UICommentVote.LIKE)
+        runCurrent()
+        started.await()
+
+        state.clearStaleOverlays()
+
+        state.withOverlay(comment).let {
+            assertEquals(13, it.likeCount)
+            assertEquals(UICommentVote.LIKE, it.selfVote)
+        }
+        gate.complete(Unit)
+        runCurrent()
+    }
+
+    @Test
+    fun `clearStaleOverlays removes settled reaction overlay`() = runTest {
+        val state = createState()
+        val comment = comment()
+
+        state.submitReaction(comment, "bgm1")
+        runCurrent()
+        assertTrue(state.withOverlay(comment).reaction("bgm1").selected)
+
+        state.clearStaleOverlays()
+
+        assertNull(state.withOverlay(comment).reactions.firstOrNull { it.value == "bgm1" })
+    }
+
+    @Test
+    fun `clearStaleOverlays keeps in-flight reaction overlay`() = runTest {
+        val started = CompletableDeferred<Unit>()
+        val gate = CompletableDeferred<Unit>()
+        val state = createState(
+            onSubmitCommentReaction = { _, _, _ ->
+                started.complete(Unit)
+                gate.await()
+            },
+        )
+        val comment = comment()
+
+        state.submitReaction(comment, "bgm1")
+        runCurrent()
+        started.await()
+
+        state.clearStaleOverlays()
+
+        state.withOverlay(comment).reaction("bgm1").let {
+            assertEquals(1, it.count)
+            assertTrue(it.selected)
+        }
+        gate.complete(Unit)
+        runCurrent()
+    }
+
     private fun TestScope.createState(
-        onSubmitCommentReaction: suspend (comment: UIComment, value: String, selected: Boolean) -> Unit,
+        onSubmitCommentVote: suspend (comment: UIComment, vote: UICommentVote?) -> Unit = { _, _ -> },
+        onSubmitCommentReaction: suspend (comment: UIComment, value: String, selected: Boolean) -> Unit = { _, _, _ -> },
     ): CommentState {
         return CommentState(
             list = emptyFlow<PagingData<UIComment>>(),
             countState = mutableStateOf(null),
             onSubmitCommentReaction = onSubmitCommentReaction,
             backgroundScope = this,
+            onSubmitCommentVote = onSubmitCommentVote,
         )
     }
 
     private fun comment(
         reactions: List<UICommentReaction> = emptyList(),
+        likeCount: Int = 0,
+        selfVote: UICommentVote? = null,
     ): UIComment {
         return UIComment(
             id = 1,
@@ -144,6 +316,8 @@ class CommentStateReactionTest {
             source = UICommentSource.ANI,
             sourceCommentId = "1",
             canReply = true,
+            likeCount = likeCount,
+            selfVote = selfVote,
         )
     }
 

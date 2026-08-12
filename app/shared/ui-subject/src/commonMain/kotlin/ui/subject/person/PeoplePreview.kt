@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.ui.comment.CommentReportHost
 import me.him188.ani.app.ui.foundation.widgets.ModalSideSheet
 import me.him188.ani.app.ui.foundation.widgets.rememberModalSideSheetState
 import me.him188.ani.app.ui.lang.Lang
@@ -138,6 +139,8 @@ private fun PersonPreviewContent(
 ) {
     val vm = viewModel<PersonDetailsViewModel>(key = "person-preview-$personId") { PersonDetailsViewModel(personId) }
     val details by vm.details.collectAsState()
+    // 预览用独立 vm, 需要自己的举报 Host (挂在内层评论 sheet 外)
+    CommentReportHost(vm.commentReportState)
     Column {
         PreviewSheetHeader(details?.person?.displayName ?: "", onOpenFullPage, onDismissRequest)
         Column(
@@ -148,6 +151,8 @@ private fun PersonPreviewContent(
                 casts = vm.castsPager.collectAsLazyPagingItems(),
                 works = vm.worksPager.collectAsLazyPagingItems(),
                 commentState = vm.commentState,
+                commentReportState = vm.commentReportState,
+                originalCommentsUrl = vm.originalCommentsUrl,
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp),
                 // 预览内点击跳转前先关闭预览
                 navigation = rememberPeopleDetailsNavigation(onBeforeNavigate = onDismissRequest),
@@ -166,6 +171,8 @@ private fun CharacterPreviewContent(
         CharacterDetailsViewModel(characterId)
     }
     val details by vm.details.collectAsState()
+    // 预览用独立 vm, 需要自己的举报 Host (挂在内层评论 sheet 外)
+    CommentReportHost(vm.commentReportState)
     Column {
         PreviewSheetHeader(details?.character?.displayName ?: "", onOpenFullPage, onDismissRequest)
         Column(
@@ -175,6 +182,8 @@ private fun CharacterPreviewContent(
                 details = details,
                 subjects = vm.subjectsPager.collectAsLazyPagingItems(),
                 commentState = vm.commentState,
+                commentReportState = vm.commentReportState,
+                originalCommentsUrl = vm.originalCommentsUrl,
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp),
                 // 预览内点击跳转前先关闭预览
                 navigation = rememberPeopleDetailsNavigation(onBeforeNavigate = onDismissRequest),
