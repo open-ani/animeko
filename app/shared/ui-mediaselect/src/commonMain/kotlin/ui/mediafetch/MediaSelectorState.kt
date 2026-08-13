@@ -300,11 +300,9 @@ class MediaSelectorState(
         resolvingCaptchaInstanceIds: Set<String>,
     ) = source.state.combine(preferredWebMediaSource) { a, b -> a to b }.map { (state, preferred) ->
         val channels = myMediaList.map { included ->
-            val media = included.result
             WebSourceChannel(
-                media.properties.alliance,
-                original = media,
-                episodeRange = media.episodeRange,
+                included.result.properties.alliance,
+                original = included.result,
                 hasCurrentEpisode = included.metadata.episodeMatchKind >= MatchMetadata.EpisodeMatchKind.EP,
             )
         }.toList()
