@@ -58,9 +58,13 @@ private class ExoPlayerVideoEnhancementController(
 
         exoPlayer.setVideoEffects(
             buildList {
-                add(Anime4kRestoreEffect)
-                if (mode == VideoEnhancementMode.QUALITY) {
-                    add(Anime4kUpscaleEffect)
+                when (mode) {
+                    VideoEnhancementMode.OFF -> Unit
+                    VideoEnhancementMode.PERFORMANCE -> add(Anime4kRestoreEffect)
+                    VideoEnhancementMode.QUALITY -> {
+                        add(Anime4kRestoreQualityEffect)
+                        add(Anime4kUpscaleQualityEffect)
+                    }
                 }
                 if (shouldApplyScaler) {
                     add(DesktopStyleLanczosSharpEffect(viewportSize.width, viewportSize.height))
