@@ -18,10 +18,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import me.him188.ani.app.ui.foundation.input.asGesturePointerType
 import org.openani.mediamp.features.PlaybackSpeed
 
 @Composable
@@ -86,9 +88,14 @@ enum class SkipDirection {
     FORWARD, BACKWARD
 }
 
+/**
+ * @param requiredPointerType 不为 null 时只响应同一手势约定的指针; Stylus/Eraser 视为 Touch.
+ * 用于让长按快进只属于触摸而不影响鼠标长按.
+ */
 fun Modifier.longPressFastSkip(
     state: FastSkipState,
     direction: SkipDirection,
+    requiredPointerType: PointerType? = null,
 ): Modifier {
     var ticket = 0
     return detectLongPressGesture(
@@ -98,6 +105,7 @@ fun Modifier.longPressFastSkip(
         onEnd = {
             state.stopSkipping(ticket)
         },
+        requiredPointerType = requiredPointerType,
     )
 }
 //    pointerInput(Unit) {
@@ -120,15 +128,23 @@ fun Modifier.longPressFastSkip(
 fun Modifier.detectLongPressGesture(
     onStart: () -> Unit,
     onEnd: () -> Unit,
-    longPressTimeout: Long = 500L
-): Modifier = pointerInput(Unit) {
+    longPressTimeout: Long = 500L,
+    requiredPointerType: PointerType? = null,
+): Modifier = pointerInput(requiredPointerType) {
     coroutineScope {
         val touchSlop = viewConfiguration.touchSlop
         var isLongPressDetected = false
 
         awaitEachGesture {
-            val initialPosition = awaitFirstDown(requireUnconsumed = false).position
+            val down = awaitFirstDown(requireUnconsumed = false)
             // note: we don't consume the down event
+            if (
+                requiredPointerType != null &&
+                down.type.asGesturePointerType() != requiredPointerType.asGesturePointerType()
+            ) {
+                return@awaitEachGesture
+            }
+            val initialPosition = down.position
 
             // Starts a job to mark long press detected if the user does not move the pointer, 
             // i.e. is holding at the same position for a certain time).

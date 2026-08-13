@@ -1,8 +1,7 @@
 ## Kotlin 多平台
 
-Animeko 客户端 基于 Kotlin 多平台技术，目前正式支持 Android、桌面 JVM（macOS、Windows）共三个实际平台。
-代码库中有正在开发中的
-iOS 代码，但还没有配置构建 iOS APP。
+Animeko 客户端基于 Kotlin 多平台技术，目前配置了 Android、桌面 JVM（Windows、macOS、Linux）和 iOS
+编译目标。iOS 目标默认不启用，只能在 macOS 上构建；启用方式参见[构建和打包](building.md#打包-ios-app)。
 
 ### 什么是 Kotlin 多平台
 
