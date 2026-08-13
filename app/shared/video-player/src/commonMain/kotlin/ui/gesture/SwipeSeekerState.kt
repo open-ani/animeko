@@ -228,21 +228,35 @@ class SwipeSeekerState internal constructor(
                     properties["seekerState"] = seekerState
                 },
             ) {
+                val currentOnDelta by rememberUpdatedState(onDelta)
+                val currentOnDragStarted by rememberUpdatedState(onDragStarted)
+                val currentOnDragStopped by rememberUpdatedState(onDragStopped)
+
+                // 传给 draggable 的这两个回调必须在重组之间保持同一实例. 每次重组新建 lambda 会让
+                // DraggableElement 不相等, 节点被 update 并重置正在识别的手势 —— 播放页在输入设备
+                // 切换时整体重组 (gestureFamily 默认值读 LocalActiveInputSource), 正在进行的滑动
+                // seek 会断在半路.
+                val handleDragStarted: suspend CoroutineScope.(Offset) -> Unit = remember(seekerState) {
+                    {
+                        seekerState.onSwipeStarted()
+                        currentOnDragStarted(it)
+                    }
+                }
+                val handleDragStopped: suspend CoroutineScope.(Float) -> Unit = remember(seekerState) {
+                    {
+                        val cancelled = seekerState.isCancelled
+                        seekerState.onSwipeStopped()
+                        currentOnDragStopped(it, cancelled)
+                    }
+                }
                 draggable(
                     rememberDraggableState {
                         seekerState.onSwipeOffset(it)
-                        onDelta(it)
+                        currentOnDelta(it)
                     },
                     orientation,
-                    onDragStarted = {
-                        seekerState.onSwipeStarted()
-                        onDragStarted(it)
-                    },
-                    onDragStopped = {
-                        val cancelled = seekerState.isCancelled
-                        seekerState.onSwipeStopped()
-                        onDragStopped(it, cancelled)
-                    },
+                    onDragStarted = handleDragStarted,
+                    onDragStopped = handleDragStopped,
                     enabled = enabled,
                     interactionSource = interactionSource,
                     reverseDirection = reverseDirection,

@@ -35,4 +35,4 @@
 ## 更多信息
 
 - [查找待解决的问题](issues.md) (如何查阅 issues)
-- [PR 审核](pr-review.md)
+- [PR 审核](code-style.md#pr-review-惯例)

@@ -39,7 +39,6 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import kotlinx.coroutines.flow.distinctUntilChanged
-import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.interaction.nestedScrollWorkaround
 import me.him188.ani.app.ui.foundation.layout.ConnectedScrollState
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
@@ -50,7 +49,6 @@ import me.him188.ani.app.ui.search.SearchResultLazyVerticalGrid
 import me.him188.ani.app.ui.search.isFinishedAndEmpty
 import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
 import me.him188.ani.app.ui.search.isLoadingNextPage
-import me.him188.ani.utils.platform.isMobile
 
 /**
  * 在 Paging 刷新完成时调用 [CommentState.clearStaleOverlays], 使乐观覆盖不会永久遮住服务端刷新后的数据.
@@ -103,7 +101,8 @@ fun CommentColumn(
         isRefreshing = items.isLoadingFirstPageOrRefreshing,
         onRefresh = { items.refresh() },
         modifier = modifier,
-        enabled = pullToRefreshEnabled && LocalPlatform.current.isMobile(),
+        enabled = pullToRefreshEnabled,
+        touchOnly = true,
         contentAlignment = Alignment.TopCenter,
     ) {
         if (items.isFinishedAndEmpty) {
