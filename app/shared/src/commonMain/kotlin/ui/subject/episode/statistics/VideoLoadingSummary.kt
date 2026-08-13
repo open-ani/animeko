@@ -37,6 +37,7 @@ import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.rememberAsyncHandler
 import me.him188.ani.app.ui.foundation.setClipEntryText
+import me.him188.ani.app.ui.foundation.widgets.dismissDialogButton
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_mediasource_close
@@ -74,11 +75,7 @@ fun SimpleErrorDialog(
                 Text(copyText)
             }
         },
-        dismissButton = {
-            TextButton(onDismissRequest) {
-                Text(closeText)
-            }
-        },
+        dismissButton = dismissDialogButton(closeText, onDismissRequest),
         title = { Text(errorDetailsText) },
         text = {
             OutlinedTextField(

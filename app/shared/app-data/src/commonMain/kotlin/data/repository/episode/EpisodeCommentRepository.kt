@@ -16,12 +16,15 @@ import androidx.paging.PagingState
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.data.network.AniEpisodeCommentService
+import me.him188.ani.app.data.network.BangumiReplyRelationService
 import me.him188.ani.app.data.network.toEpisodeComment
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.data.repository.runWrappingExceptionAsLoadResult
 
 class EpisodeCommentRepository(
     private val aniCommentService: AniEpisodeCommentService,
+    /** 补"回复了谁"的那层关系, 见 [BangumiReplyRelationService]; `null` 则只靠正文引用推断. */
+    private val replyRelationService: BangumiReplyRelationService? = null,
 ) : Repository() {
     /**
      * @param onBangumiUnavailable 首屏拿到了 Ani 评论但服务端没能取到 Bangumi 评论时调用一次
@@ -34,6 +37,7 @@ class EpisodeCommentRepository(
             EpisodeCommentPagingSource(
                 episodeId = episodeId,
                 aniCommentService = aniCommentService,
+                replyRelationService = replyRelationService,
                 onBangumiUnavailable = onBangumiUnavailable,
             )
         }.flow
@@ -59,6 +63,7 @@ class EpisodeCommentRepository(
 internal class EpisodeCommentPagingSource(
     private val episodeId: Long,
     private val aniCommentService: AniEpisodeCommentService,
+    private val replyRelationService: BangumiReplyRelationService? = null,
     private val onBangumiUnavailable: () -> Unit = {},
 ) : PagingSource<String, EpisodeComment>() {
     override fun getRefreshKey(state: PagingState<String, EpisodeComment>): String? = null
@@ -74,8 +79,10 @@ internal class EpisodeCommentPagingSource(
             if (response.bangumiUnavailable && params.key == null) {
                 onBangumiUnavailable()
             }
+            val comments = response.items.map { it.toEpisodeComment() }
             LoadResult.Page(
-                data = response.items.map { it.toEpisodeComment() },
+                // "回复了谁"服务端不给, 能连上 Bangumi 就补真值, 补不上就用正文引用推断出来的那份
+                data = replyRelationService?.fillInReplyTargets(episodeId, comments) ?: comments,
                 prevKey = null,
                 nextKey = response.nextCursor,
             )

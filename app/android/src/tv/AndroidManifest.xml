@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+  ~ Copyright (C) 2024-2026 OpenAni and contributors.
+  ~
+  ~ 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+  ~ Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
+  ~
+  ~ https://github.com/open-ani/ani/blob/main/LICENSE
+  -->
+
+<!--
+  ~ Android TV (tv flavor) 专属清单. AGP 会把本文件合并进 tv 变体, phone 变体完全不受影响.
+  -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 主屏预览频道 (热门动画 / 继续观看) 写入系统 TvProvider -->
+    <uses-permission android:name="com.android.providers.tv.permission.READ_EPG_DATA" />
+    <uses-permission android:name="com.android.providers.tv.permission.WRITE_EPG_DATA" />
+
+    <!-- 不声明为必需: 同一个包也允许装在带触摸屏的设备上 -->
+    <uses-feature
+            android:name="android.software.leanback"
+            android:required="false" />
+    <uses-feature
+            android:name="android.hardware.touchscreen"
+            android:required="false" />
+
+    <application android:banner="@drawable/tv_banner">
+
+        <!-- 电视主屏启动器入口 -->
+        <activity
+                android:name=".activity.MainActivity"
+                android:exported="true"
+                tools:node="merge">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- 系统屏保: 轮播在看/热门动画的 TMDB 剧照, 确定键跳详情页.
+             需用户在系统设置 → 屏保 里手动选择 Animeko -->
+        <service
+                android:name=".tv.AniDreamService"
+                android:exported="true"
+                android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+
+    </application>
+</manifest>

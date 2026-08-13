@@ -36,6 +36,24 @@ enum class FullscreenSwitchMode {
     ONLY_IN_CONTROLLER
 }
 
+/**
+ * 拿 OP/ED 怎么办 (见 [VideoScaffoldConfig.effectiveSkipOpEdMode]).
+ *
+ * @since 6.0.5
+ */
+@Immutable
+@Serializable
+enum class SkipOpEdMode {
+    /** 到点自动跳过; 跳之前给一颗"取消跳过"的按钮, 来得及反悔. */
+    AUTO,
+
+    /** 不自动跳, 只在 OP/ED 期间给一颗"跳过"的按钮, 按不按由人决定. */
+    MANUAL,
+
+    /** 两种按钮都不出现, 也不会自动跳. */
+    OFF,
+}
+
 @Serializable
 @Immutable
 data class VideoScaffoldConfig @SerializationOnly constructor(
@@ -70,9 +88,21 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      */
     val autoPlayNext: Boolean = true,
     /**
-     * 跳过 OP 和 ED
+     * 跳过 OP 和 ED.
+     *
+     * 6.0.5 起由三档的 [skipOpEdMode] 取代, 本字段只为**读旧配置**保留 (见 [effectiveSkipOpEdMode]);
+     * 新代码一律读 [effectiveSkipOpEdMode], 写 [skipOpEdMode].
      */
     val autoSkipOpEd: Boolean = true,
+    /**
+     * 拿 OP/ED 怎么办; null = 还没选过新选项, 按旧开关 [autoSkipOpEd] 换算 (见 [effectiveSkipOpEdMode]).
+     *
+     * 不直接把 [autoSkipOpEd] 改成枚举: 配置是 JSON 存的, 改类型会让老配置里那个布尔值读不出来,
+     * 关掉过自动跳过的人升级后会被悄悄打开.
+     *
+     * @since 6.0.5
+     */
+    val skipOpEdMode: SkipOpEdMode? = null,
     /**
      * 跳过 OP 和 ED 的时长. UI 仅提供 80, 85 和 90 秒三个选项.
      */
@@ -222,11 +252,20 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
             autoFullscreenOnLandscapeMode = false,
             autoPlayNext = false,
             autoSkipOpEd = false,
+            skipOpEdMode = SkipOpEdMode.OFF,
             autoSwitchMediaOnPlayerError = false,
             enableHighQualityAudioTimeStretch = false,
             enableExperimentalHlsSegmentFiltering = false,
         )
     }
+
+    /**
+     * 实际生效的 OP/ED 处理方式: 选过新选项就用它, 没选过则按旧版那个布尔开关换算.
+     *
+     * 计算属性而不是构造参数: 它不参与序列化, 也就不会把"没选过"这个信息写没了.
+     */
+    val effectiveSkipOpEdMode: SkipOpEdMode
+        get() = skipOpEdMode ?: if (autoSkipOpEd) SkipOpEdMode.AUTO else SkipOpEdMode.OFF
 
     @Serializable
     data class PlayerVolume(val level: Float, val mute: Boolean)

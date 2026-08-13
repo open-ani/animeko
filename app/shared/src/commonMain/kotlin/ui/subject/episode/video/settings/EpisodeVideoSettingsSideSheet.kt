@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.text.ProvideTextStyleContentColor
 
 @Composable
@@ -94,8 +95,12 @@ fun SideSheetLayout(
                         }
                     }
 
-                    Box(Modifier.padding(start = 12.dp)) {
-                        closeButton()
+                    // 返回键能关的形态 (遥控器) 上整块不渲染: 连它的左侧间距一起去掉, 否则标题
+                    // 行右边空出一块 (关闭按钮宽 48dp + 12dp 间距)
+                    if (LocalAniUiBehavior.current.showDismissButtons) {
+                        Box(Modifier.padding(start = 12.dp)) {
+                            closeButton()
+                        }
                     }
                 }
 

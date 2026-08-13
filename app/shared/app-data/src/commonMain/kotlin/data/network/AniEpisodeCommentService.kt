@@ -153,10 +153,52 @@ fun AniEpisodeComment.toEpisodeComment(): EpisodeComment {
             )
         },
         reactions = reactions.map { it.toEpisodeCommentReaction() },
-        replies = briefReplies.map { it.toEpisodeComment(episodeId, commentSource) },
+        replies = briefReplies.map { it.toEpisodeComment(episodeId, commentSource) }.withReplyTargets(),
         canReply = canReply,
     )
 }
+
+/**
+ * 给楼内回复补上"这条在回复谁" ([EpisodeComment.replyToCommentId]).
+ *
+ * 接口本身不带回复关系 (Bangumi 的 `relatedID` 只有客户端直连时拿得到), 所以从正文里认:
+ * 在 Bangumi 上回复某条楼内回复时, 站点会把被回复的内容以
+ * `[quote][b]昵称[/b] 说: ……[/quote]` 的形式塞在正文开头, 见 [quotedAuthorNicknameOrNull].
+ *
+ * 认出昵称后还要在**同一楼**里找到那条回复本身 —— 界面上要显示的是名字, 而名字只能由那条回复
+ * 提供 (见 `CommentMapperContext.parseToUIComment`). 找不到就留 `null` (只缩进不写名字), 与
+ * 原先"被回复的那条不在本楼 brief 列表里"时的表现一致.
+ *
+ * 同名的人在同一楼里各回一条时, 取时间上不晚于本条的那个最近的 —— 被回复的一定先发出来.
+ */
+private fun List<EpisodeComment>.withReplyTargets(): List<EpisodeComment> {
+    if (size < 2) return this // 一条回复不可能在回复本楼里的另一条
+    return map { reply ->
+        val nickname = quotedAuthorNicknameOrNull(reply.content) ?: return@map reply
+        val candidates = filter { it.sourceCommentId != reply.sourceCommentId && it.author?.nickname == nickname }
+        val target = candidates.filter { it.createdAt <= reply.createdAt }.maxByOrNull { it.createdAt }
+            ?: candidates.firstOrNull()
+            ?: return@map reply
+        reply.copy(replyToCommentId = target.sourceCommentId)
+    }
+}
+
+/**
+ * 认出正文开头那条引用是谁说的, 认不出返回 `null`.
+ *
+ * 只认**开头**的引用: 正文中间的引用是用户自己贴的, 不代表回复关系. 引用里的昵称可能带 `[b]`
+ * 也可能不带 (取决于发布时的客户端), 冒号半角全角都见过.
+ */
+internal fun quotedAuthorNicknameOrNull(contentBbcode: String): String? {
+    val match = QUOTED_AUTHOR_REGEX.find(contentBbcode) ?: return null
+    val nickname = match.groupValues[1].takeIf { it.isNotEmpty() } ?: match.groupValues[2]
+    return nickname.trim().takeIf { it.isNotBlank() }
+}
+
+private val QUOTED_AUTHOR_REGEX = Regex(
+    """^\s*\[quote]\s*(?:\[b]\s*([^\[\]]{1,64}?)\s*\[/b]|([^\[\]\n]{1,64}?))\s*说\s*[:：]""",
+    RegexOption.IGNORE_CASE,
+)
 
 private fun AniEpisodeCommentReply.toEpisodeComment(
     episodeId: Long,

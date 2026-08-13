@@ -113,9 +113,20 @@ sealed class SubjectCollectionRepository(
 
     abstract fun subjectCollectionsPager(
         query: CollectionsFilterQuery = CollectionsFilterQuery.Empty,
+        /**
+         * 这套 pager 是 Room + RemoteMediator: 每次 mediator 写库都会让 PagingSource 失效,
+         * 新 generation 只重载锚点附近 [PagingConfig.initialLoadSize] 的窗口, **窗口外的已加载
+         * 条目全部退回 placeholder**. 窗口必须盖住最大的视口 —— 4K 原生 density 的 TV 网格一屏
+         * 可见 60+ 张卡, 默认 30 (pageSize×3) 会让屏内卡片在每次 append 写库后变灰闪烁,
+         * 聚焦卡的 key 从 subjectId 换成 placeholder key 时节点还会被销毁 (焦点逃逸).
+         *
+         * pageSize 同时是 mediator 每批网络请求的 limit (见 [calculateIndexBasedLoadInfo]):
+         * REFRESH 会先清表再按这个批量回填, 批量越小回填波数越多, 每波都是一次全网格 invalidate.
+         */
         pagingConfig: PagingConfig = PagingConfig(
-            pageSize = 10,
-            prefetchDistance = 30,
+            pageSize = 30,
+            prefetchDistance = 60,
+            initialLoadSize = 120,
         ),
     ): Flow<PagingData<SubjectCollectionInfo>>
 

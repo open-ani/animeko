@@ -50,6 +50,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalDensity
@@ -60,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.ListDetailAnimatedPane
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -298,7 +300,12 @@ fun <T> AniListDetailPaneScaffold(
                 anchors = calculatePaneAnchors(minListPaneWidth, listPanePreferredWidth, minDetailPaneWidth),
             )
         },
-        paneExpansionDragHandle = if (layoutParameters.preferSinglePane) null else paneExpansionDragHandle,
+        paneExpansionDragHandle = when {
+            layoutParameters.preferSinglePane -> null
+            // 遥控器没有指针, 把手拖不动, 且它可聚焦, 会成为左右移动焦点时的意外落点
+            LocalAniUiBehavior.current.focusDrivenNavigation -> null
+            else -> paneExpansionDragHandle
+        },
     )
 }
 
@@ -413,17 +420,30 @@ data class ListDetailLayoutParameters(
         fun calculate(directive: PaneScaffoldDirective): ListDetailLayoutParameters {
             val isTwoPane = directive.maxHorizontalPartitions > 1
             val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
+            // 遥控器沉浸式界面上详情侧不做圆角卡片, 内容直接铺在页面背景上 (Prime Video 风格的两栏)
+            val focusDriven = LocalAniUiBehavior.current.focusDrivenNavigation
             return if (isTwoPane) {
                 ListDetailLayoutParameters(
                     listPaneContentStartPadding = windowSizeClass.paneHorizontalPadding,
                     listPaneContentEndPadding = windowSizeClass.paneHorizontalPadding,
                     detailPaneContentStartPadding = windowSizeClass.paneHorizontalPadding,
                     detailPaneContentEndPadding = windowSizeClass.paneHorizontalPadding,
-                    detailPaneShape = MaterialTheme.shapes.extraLarge.copy(
-                        topEnd = ZeroCornerSize,
-                        bottomEnd = ZeroCornerSize,
-                    ),
-                    detailPaneColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                    detailPaneShape = if (focusDriven) {
+                        RectangleShape
+                    } else {
+                        MaterialTheme.shapes.extraLarge.copy(
+                            topEnd = ZeroCornerSize,
+                            bottomEnd = ZeroCornerSize,
+                        )
+                    },
+                    detailPaneColors = if (focusDriven) {
+                        CardDefaults.cardColors(
+                            containerColor = Color.Transparent,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        )
+                    } else {
+                        CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+                    },
                     preferSinglePane = false,
                 )
             } else {

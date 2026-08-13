@@ -22,6 +22,10 @@ interface AniBuildConfig {
     val isDebug: Boolean
     val dandanplayAppId: String
     val dandanplayAppSecret: String
+
+    /** TMDB API Read Access Token (v4 Bearer), 用于获取横版背景图/剧集缩略图. 未配置时为空串. */
+    val tmdbApiToken: String
+        get() = ""
     val sentryDsn: String
     val overrideAniApiServer: String
         get() = ""

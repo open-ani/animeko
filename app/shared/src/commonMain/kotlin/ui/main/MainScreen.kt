@@ -10,6 +10,8 @@
 package me.him188.ani.app.ui.main
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -50,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.LinkAnnotation
@@ -74,6 +77,7 @@ import me.him188.ani.app.ui.adaptive.navigation.AniNavigationSuiteLayout
 import me.him188.ani.app.ui.cache.CacheManagementScreen
 import me.him188.ani.app.ui.cache.CacheManagementViewModel
 import me.him188.ani.app.ui.exploration.ExplorationScreen
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
 import me.him188.ani.app.ui.foundation.ifThen
@@ -103,6 +107,7 @@ import me.him188.ani.app.ui.lang.settings_update_version_expired_message
 import me.him188.ani.app.ui.lang.settings_update_version_expired_message_with_latest
 import me.him188.ani.app.ui.lang.settings_update_version_expired_title
 import me.him188.ani.app.ui.settings.SettingsViewModel
+import me.him188.ani.app.ui.settings.account.AccountLogoutDialog
 import me.him188.ani.app.ui.settings.account.ProfilePopup
 import me.him188.ani.app.ui.settings.account.ProfileViewModel
 import me.him188.ani.app.ui.subject.collection.CollectionPage
@@ -164,6 +169,7 @@ private fun MainScreenContent(
     val cacheManagementViewModel = viewModel { CacheManagementViewModel() }
 
     var showAccountSettingsPopup: Boolean by remember { mutableStateOf(false) }
+    var showLogoutDialog: Boolean by remember { mutableStateOf(false) }
     val profileViewModel = viewModel { ProfileViewModel() }
 
     val navigatorState = rememberUpdatedState(LocalNavigator.current)
@@ -179,6 +185,7 @@ private fun MainScreenContent(
             onNavigateToSettings = onNavigateToSettings,
             onNavigateToSearch = onNavigateToSearch,
             onLogin = { showAccountSettingsPopup = true },
+            onLogout = { showLogoutDialog = true },
             explorationPageViewModel = explorationPageViewModel,
             userCollectionsViewModel = userCollectionsViewModel,
             cacheManagementViewModel = cacheManagementViewModel,
@@ -209,6 +216,20 @@ private fun MainScreenContent(
             },
         )
     }
+
+    if (showLogoutDialog) {
+        val asyncHandler = rememberAsyncHandler()
+        AccountLogoutDialog(
+            onConfirm = {
+                asyncHandler.launch {
+                    profileViewModel.logout()
+                    showLogoutDialog = false
+                }
+            },
+            onCancel = { showLogoutDialog = false },
+            confirmEnabled = !asyncHandler.isWorking,
+        )
+    }
 }
 
 @Composable
@@ -219,6 +240,7 @@ private fun MainScreenNavigationLayout(
     onNavigateToSettings: (tab: SettingsTab?) -> Unit,
     onNavigateToSearch: () -> Unit,
     onLogin: () -> Unit,
+    onLogout: () -> Unit,
     explorationPageViewModel: ExplorationPageViewModel,
     userCollectionsViewModel: UserCollectionsViewModel,
     cacheManagementViewModel: CacheManagementViewModel,
@@ -230,6 +252,111 @@ private fun MainScreenNavigationLayout(
     val scope = rememberCoroutineScope()
     val navigatorState = rememberUpdatedState(LocalNavigator.current)
     val navigator by navigatorState
+
+    // 外壳变体 (如遥控器形态的沉浸式侧边栏布局); null 用默认外壳.
+    // 进入主页的初始焦点由各页面自理 (探索页把焦点落到最高热点第一张卡, 见 ExplorationScreen).
+    val shellVariant = LocalMainScreenShellVariant.current
+
+    // 页面内容 (三个 tab 的 AnimatedContent). 两种外壳共用同一份内容.
+    val pageContent: @Composable () -> Unit = {
+        val coroutineScope = rememberCoroutineScope()
+        // Windows caption button 在右侧, 没有足够空间放置按钮, 需要保留 title bar insets
+        val isRightCaptionButton = WindowInsets.desktopCaptionButton.isTopRight()
+        val toaster = LocalToaster.current
+
+        TabContent(
+            layoutType = navigationLayoutType,
+            Modifier.ifThen(navigationLayoutType != NavigationSuiteType.NavigationBar && !isRightCaptionButton) {
+                // macos 标题栏只会在 NavigationRail 的区域内, TabContent 区域无需这些 padding.
+                consumeWindowInsets(WindowInsets.desktopTitleBar())
+            },
+        ) {
+            val aniMotionScheme = LocalAniMotionScheme.current
+            // 毛玻璃导航栏覆盖在内容上方时, 页面内容需要额外的 bottom insets 才不会被遮挡.
+            val pageWindowInsets = AniWindowInsets.forPageContent()
+                .add(LocalAppChromeOverlayInsets.current)
+            // TV 沉浸壳: 关掉 AnimatedContent 默认 SizeTransform 的裁剪 —— 探索页卡片区
+            // 向左出血到侧边栏底下, 默认裁剪会把出血切掉; 三个 tab 都是 fillMaxSize 等大,
+            // 不依赖尺寸过渡裁剪. 非沉浸壳 (手机/桌面) 保持默认.
+            val immersiveShell = LocalAniUiBehavior.current.immersiveShell
+            AnimatedContent(
+                page,
+                Modifier.fillMaxSize(),
+                transitionSpec = {
+                    if (immersiveShell) {
+                        aniMotionScheme.topLevelTransition using SizeTransform(clip = false)
+                    } else {
+                        aniMotionScheme.topLevelTransition
+                    }
+                },
+            ) { page ->
+                when (page) {
+                    MainScreenPage.Exploration -> {
+                        ExplorationScreen(
+                            explorationPageViewModel.explorationPageState,
+                            selfInfo,
+                            onSearch = onNavigateToSearch,
+                            onClickSettings = { navigator.navigateSettings() },
+                            onClickLogin = onLogin,
+                            modifier = Modifier.fillMaxSize(),
+                            windowInsets = pageWindowInsets,
+                        )
+                    }
+
+                    MainScreenPage.Collection -> {
+                        CollectionPage(
+                            state = userCollectionsViewModel.state,
+                            selfInfo = selfInfo,
+                            fullSyncState = userCollectionsViewModel.fullSyncState.collectAsStateWithLifecycle().value,
+                            onClickSearch = onNavigateToSearch,
+                            onClickLogin = onLogin,
+                            onClickSettings = { navigator.navigateSettings() },
+                            onCollectionUpdate = { subjectId, episode ->
+                                coroutineScope.launch {
+                                    userCollectionsViewModel.toggleEpisodeCollection(
+                                        subjectId,
+                                        episode.episodeId,
+                                        episode.collectionType,
+                                    )?.let { toaster.showLoadError(it) }
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                            windowInsets = pageWindowInsets,
+                            enableAnimation = userCollectionsViewModel.myCollectionsSettings.enableListAnimation1,
+                        )
+                    }
+
+                    MainScreenPage.CacheManagement -> {
+                        CacheManagementScreen(
+                            cacheManagementViewModel,
+                            selfInfo = selfInfo,
+                            onPlay = { navigator.navigateEpisodeDetails(it.subjectId, it.episodeId) },
+                            onNavigateCacheDetail = { navigator.navigateCacheDetails(it) },
+                            onClickLogin = onLogin,
+                            modifier = Modifier.fillMaxSize(),
+                            navigationIcon = { },
+                            windowInsets = pageWindowInsets,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (shellVariant != null) {
+        shellVariant.Shell(
+            page = page,
+            selfInfo = selfInfo,
+            navigator = navigator,
+            onNavigateToPage = onNavigateToPage,
+            onNavigateToSettings = onNavigateToSettings,
+            onNavigateToSearch = onNavigateToSearch,
+            onLogout = onLogout,
+            modifier = modifier,
+            pageContent = pageContent,
+        )
+        return
+    }
 
     AniNavigationSuiteLayout(
         navigationSuite = {
@@ -299,86 +426,12 @@ private fun MainScreenNavigationLayout(
                 }
             }
         },
-        modifier,
+        modifier = modifier,
         layoutType = navigationLayoutType,
     ) {
-        val coroutineScope = rememberCoroutineScope()
-        // Windows caption button 在右侧, 没有足够空间放置按钮, 需要保留 title bar insets
-        val isRightCaptionButton = WindowInsets.desktopCaptionButton.isTopRight()
-        val toaster = LocalToaster.current
-
-        TabContent(
-            layoutType = navigationLayoutType,
-            Modifier.ifThen(navigationLayoutType != NavigationSuiteType.NavigationBar && !isRightCaptionButton) {
-                // macos 标题栏只会在 NavigationRail 的区域内, TabContent 区域无需这些 padding.
-                consumeWindowInsets(WindowInsets.desktopTitleBar())
-            },
-        ) {
-            val aniMotionScheme = LocalAniMotionScheme.current
-            // 毛玻璃导航栏覆盖在内容上方时, 页面内容需要额外的 bottom insets 才不会被遮挡.
-            val pageWindowInsets = AniWindowInsets.forPageContent()
-                .add(LocalAppChromeOverlayInsets.current)
-            AnimatedContent(
-                page,
-                Modifier.fillMaxSize(),
-                transitionSpec = {
-                    aniMotionScheme.topLevelTransition
-                },
-            ) { page ->
-                when (page) {
-                    MainScreenPage.Exploration -> {
-                        ExplorationScreen(
-                            explorationPageViewModel.explorationPageState,
-                            selfInfo,
-                            onSearch = onNavigateToSearch,
-                            onClickSettings = { navigator.navigateSettings() },
-                            onClickLogin = onLogin,
-                            modifier = Modifier.fillMaxSize(),
-                            windowInsets = pageWindowInsets,
-                        )
-                    }
-
-                    MainScreenPage.Collection -> {
-                        CollectionPage(
-                            state = userCollectionsViewModel.state,
-                            selfInfo = selfInfo,
-                            fullSyncState = userCollectionsViewModel.fullSyncState.collectAsStateWithLifecycle().value,
-                            onClickSearch = onNavigateToSearch,
-                            onClickLogin = onLogin,
-                            onClickSettings = { navigator.navigateSettings() },
-                            onCollectionUpdate = { subjectId, episode ->
-                                coroutineScope.launch {
-                                    userCollectionsViewModel.toggleEpisodeCollection(
-                                        subjectId,
-                                        episode.episodeId,
-                                        episode.collectionType,
-                                    )?.let { toaster.showLoadError(it) }
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize(),
-                            windowInsets = pageWindowInsets,
-                            enableAnimation = userCollectionsViewModel.myCollectionsSettings.enableListAnimation1,
-                        )
-                    }
-
-                    MainScreenPage.CacheManagement -> {
-                        CacheManagementScreen(
-                            cacheManagementViewModel,
-                            selfInfo = selfInfo,
-                            onPlay = { navigator.navigateEpisodeDetails(it.subjectId, it.episodeId) },
-                            onNavigateCacheDetail = { navigator.navigateCacheDetails(it) },
-                            onClickLogin = onLogin,
-                            modifier = Modifier.fillMaxSize(),
-                            navigationIcon = { },
-                            windowInsets = pageWindowInsets,
-                        )
-                    }
-                }
-            }
-        }
+        pageContent()
     }
 }
-
 
 @Composable
 private fun TabContent(
@@ -386,7 +439,9 @@ private fun TabContent(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val shape = when (layoutType) {
+    // 沉浸式外壳: 不套自身圆角白 Surface, 直角 + 透明, 透出外壳统一的全屏背景
+    val immersiveShell = LocalAniUiBehavior.current.immersiveShell
+    val shape = if (immersiveShell) RectangleShape else when (layoutType) {
         NavigationSuiteType.NavigationBar,
         NavigationSuiteType.None -> RectangleShape
 
@@ -398,11 +453,7 @@ private fun TabContent(
 
         else -> RectangleShape
     }
-    Surface(
-        modifier.clip(shape),
-        shape = shape,
-        color = AniThemeDefaults.pageContentBackgroundColor,
-    ) {
+    val inner: @Composable () -> Unit = {
         Box(Modifier.fillMaxWidth()) {
             content()
 
@@ -416,6 +467,23 @@ private fun TabContent(
                 UpdateNotifierWithVersionExpiryCheck()
             }
         }
+    }
+    // 沉浸式外壳 (TV): 不能用 Surface —— 它对内容按 shape 硬裁剪 (透明也裁), 会把探索页
+    // 卡片区向左出血到侧边栏底下的离场卡片切掉. 改为直接提供内容色, 不裁剪不画底
+    // (原本就是透明直角, 视觉不变).
+    if (immersiveShell) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            Box(modifier) { inner() }
+        }
+        return
+    }
+    Surface(
+        modifier.clip(shape),
+        shape = shape,
+        color = AniThemeDefaults.pageContentBackgroundColor,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
+        inner()
     }
 }
 

@@ -153,9 +153,13 @@ interface CaptchaBrowser : AutoCloseable {
     /** 视频资源嗅探 */
     fun setResourceInterceptor(handler: ((String) -> InterceptDecision)?)
 
-    /** SwingPanel / AndroidView */
+    /** SwingPanel / AndroidView; 两个回调只有 TV (遥控器虚拟光标) 用得上, 其余平台忽略 */
     @Composable
-    fun View(modifier: Modifier)
+    fun View(
+        modifier: Modifier,
+        onExitRequest: (() -> Unit)? = null,
+        onConfirmRequest: (() -> Unit)? = null,
+    )
 }
 
 interface CaptchaBrowserFactory {

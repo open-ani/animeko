@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -73,6 +74,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -97,6 +101,7 @@ import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.adaptive.ListDetailLayoutParameters
 import me.him188.ani.app.ui.adaptive.PaneScope
 import me.him188.ani.app.ui.adaptive.TopAppBarSize
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
@@ -140,6 +145,7 @@ import me.him188.ani.app.ui.lang.settings_tab_update
 import me.him188.ani.app.ui.settings.account.BangumiSyncTab
 import me.him188.ani.app.ui.settings.account.ProfileGroup
 import me.him188.ani.app.ui.settings.account.SelfInfoBanner
+import me.him188.ani.app.ui.settings.framework.components.LocalSliderBackKeyExitsLeft
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.app.ui.settings.rendering.P2p
 import me.him188.ani.app.ui.settings.tabs.AniHelperDestination
@@ -183,6 +189,9 @@ fun SettingsScreen(
     windowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
     navigationIcon: @Composable () -> Unit = {},
 ) {
+    // 界面缩放改动后, 离开设置页时把窗口层 (弹窗/菜单) 一并对齐
+    UiScaleSyncEffect()
+
     val navigator: ThreePaneScaffoldNavigator<Nothing?> = rememberListDetailPaneScaffoldNavigator(
         initialDestinationHistory = buildList {
             add(ThreePaneScaffoldDestinationItem(ListDetailPaneScaffoldRole.List))
@@ -251,7 +260,7 @@ fun SettingsScreen(
                 checked = bannerChecked,
                 { navigateToTab(SettingsTab.PROFILE) },
                 onNavigateToEmailLogin,
-                Modifier.fillMaxWidth(),
+                Modifier.fillMaxWidth().tabFocusTarget(SettingsTab.PROFILE),
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             )
 
@@ -336,7 +345,7 @@ fun SettingsScreen(
                                 onNavigateToBangumiOAuth = onNavigateToBangumiOAuth,
                             )
 
-                            SettingsTab.APPEARANCE -> AppearanceGroup(vm.uiSettings)
+                            SettingsTab.APPEARANCE -> AppearanceGroup(vm.uiSettings, vm.themeSettings)
                             SettingsTab.THEME -> ThemeGroup(vm.themeSettings)
                             SettingsTab.UPDATE -> SoftwareUpdateGroup(vm.softwareUpdateGroupState)
                             SettingsTab.PLAYER -> {
@@ -345,6 +354,7 @@ fun SettingsScreen(
                                     vm.danmakuFilterConfigState,
                                     vm.danmakuRegexFilterState,
                                     vm.isInDebugMode,
+                                    vm.themeSettings,
                                 )
                                 WatchTogetherGroup(vm.watchTogetherSettings)
                             }
@@ -398,7 +408,9 @@ fun SettingsScreen(
             }
         },
         detailPaneBottomBar = { currentTab, bottomBarInsets ->
-            if (currentTab == SettingsTab.MEDIA_SOURCE) {
+            // 浮动工具栏只给指针设备: 遥控器上够到屏幕底部这条要穿过整页设置项,
+            // 改成长按选中项出下拉菜单 (见 MediaSourceGroup)
+            if (currentTab == SettingsTab.MEDIA_SOURCE && !LocalAniUiBehavior.current.focusDrivenNavigation) {
                 AniAnimatedVisibility(
                     visible = mediaSourceSelectionState.inSelection,
                     modifier = Modifier.align(Alignment.BottomCenter),
@@ -452,13 +464,22 @@ internal fun SettingsPageLayout(
     // 毛玻璃模式下顶栏覆盖在内容上方并保持常驻, 以便展示模糊效果.
     val frostedGlassActive = isAppChromeFrostedGlassActive()
 
-    val listPaneTopAppBarScrollBehavior = if (LocalPlatform.current.hasScrollingBug()) {
+    val uiBehavior = LocalAniUiBehavior.current
+
+    // 遥控器: 详情栏按左键回到左侧导航的"当前选中项" (默认空间焦点搜索只找几何最近邻,
+    // 会落到没选中的项上). 请求器由 tabFocusTarget 挂在选中项上, 左侧导航列表 focusGroup
+    // 的 onEnter 负责重定向; slider 聚焦时左键被调值消费, 由返回键代替 (见 SliderItem).
+    val focusDriven = uiBehavior.focusDrivenNavigation
+    val selectedNavItemFocus = remember { FocusRequester() }
+
+    val usePinnedTopAppBar = LocalPlatform.current.hasScrollingBug() || uiBehavior.pinTopAppBar
+    val listPaneTopAppBarScrollBehavior = if (usePinnedTopAppBar) {
         TopAppBarDefaults.pinnedScrollBehavior()
     } else {
         TopAppBarDefaults.enterAlwaysScrollBehavior()
     }
 
-    val detailPaneTopAppBarScrollBehavior = if (LocalPlatform.current.hasScrollingBug()) {
+    val detailPaneTopAppBarScrollBehavior = if (usePinnedTopAppBar) {
         TopAppBarDefaults.pinnedScrollBehavior()
     } else {
         TopAppBarDefaults.enterAlwaysScrollBehavior()
@@ -505,10 +526,12 @@ internal fun SettingsPageLayout(
             size = topAppBarSize,
         )
     }
+    // 返回按钮隐藏时, 列表侧顶栏只剩"设置"标题占位, 整条不渲染
+    val hideNavigationTopAppBar = !uiBehavior.showNavigationTopAppBar
     AniListDetailPaneScaffold(
         navigator,
         // 毛玻璃模式下顶栏由 listPaneContent 内部覆盖绘制.
-        listPaneTopAppBar = if (frostedGlassActive) null else listPaneTopAppBar,
+        listPaneTopAppBar = if (frostedGlassActive || hideNavigationTopAppBar) null else listPaneTopAppBar,
         listPaneContent = paneScope@{
             var listTopAppBarHeight by remember { mutableStateOf(0) }
             val drawerSheet: @Composable PaneScope.() -> Unit = {
@@ -518,7 +541,15 @@ internal fun SettingsPageLayout(
                         .paneWindowInsetsPadding()
                         .fillMaxWidth()
                         .nestedScroll(listPaneTopAppBarScrollBehavior.nestedScrollConnection)
-                        .verticalScroll(listPaneScrollState),
+                        .verticalScroll(listPaneScrollState)
+                        .ifThen(focusDriven) {
+                            // 遥控器: 从详情栏回到导航列表时, 焦点恢复到上次在列表里停留的项
+                            // (没有历史时才落到当前选中项), 而不是每次都拉回选中项或几何最近邻.
+                            // 注意不能反过来在详情侧包组拦 onExit: 方向搜索是分层的, 详情滚动
+                            // scope 内的兜底候选 (如调色板) 会把"向左"消化在组内, 离组钩子
+                            // 根本不触发.
+                            focusRestorer(fallback = selectedNavItemFocus).focusGroup()
+                        },
                     drawerContainerColor = Color.Unspecified,
                 ) {
                     val highlightSelectedItemState = rememberUpdatedState(layoutParametersState.highlightSelectedItem)
@@ -533,8 +564,16 @@ internal fun SettingsPageLayout(
                                     onClick = {
                                         onSelectedTab(item)
                                     },
+                                    modifier = Modifier.tabFocusTarget(item),
                                 )
                             }
+
+                            override fun Modifier.tabFocusTarget(tab: SettingsTab): Modifier =
+                                // 兜底到默认 tab: focusRestorer 的 fallback 会无条件 requestFocus,
+                                // 请求器必须始终挂在某个节点上, 否则未选中任何 tab 的首帧会抛异常
+                                ifThen(tab == (currentTab() ?: SettingsTab.Default)) {
+                                    focusRequester(selectedNavItemFocus)
+                                }
                         }
                     }
 
@@ -562,8 +601,10 @@ internal fun SettingsPageLayout(
                     ) {
                         drawerSheet()
                     }
-                    Box(Modifier.onSizeChanged { listTopAppBarHeight = it.height }) {
-                        listPaneTopAppBar()
+                    if (!hideNavigationTopAppBar) {
+                        Box(Modifier.onSizeChanged { listTopAppBarHeight = it.height }) {
+                            listPaneTopAppBar()
+                        }
                     }
                 }
             } else {
@@ -607,6 +648,14 @@ internal fun SettingsPageLayout(
                             .ifThen(scrollable) {
                                 verticalScroll(rememberScrollState())
                             }
+                            .ifThen(focusDriven) {
+                                // 与左栏对称的停留历史: 从左栏回到详情栏时恢复上次聚焦的设置项,
+                                // 无历史 (首次进入/切了 tab 原节点已不在) 时走默认空间进入.
+                                // 必须挂在 verticalScroll 之后 (滚动 scope 之内): 滚动容器自带
+                                // 焦点节点, restorer 的存/取只看直接子焦点节点, 包在滚动外面
+                                // 存到的是滚动节点本身, 恢复不了具体条目.
+                                focusRestorer().focusGroup()
+                            }
                             .padding(horizontal = SettingsScope.itemExtraHorizontalPadding)
                             .fillMaxWidth()
                             .wrapContentWidth()
@@ -618,7 +667,9 @@ internal fun SettingsPageLayout(
                             Spacer(Modifier.height(with(LocalDensity.current) { topAppBarUnderlapHeight.toDp() }))
                         }
 
-                        scope.content()
+                        CompositionLocalProvider(LocalSliderBackKeyExitsLeft provides focusDriven) {
+                            scope.content()
+                        }
 
                         // 滚动容器底部留出安全区域
                         Spacer(
@@ -776,6 +827,10 @@ private fun PaneScope.DetailPaneRoute(
     floatingContent: @Composable BoxScope.() -> Unit = {},
     tabContent: @Composable (PaneScope.() -> Unit),
 ) {
+    // 返回按钮隐藏时, 详情侧顶栏只剩标题占位, 整条不渲染 (当前分类由左侧导航项高亮承担)
+    @Suppress("NAME_SHADOWING")
+    val topAppBar: @Composable () -> Unit =
+        if (LocalAniUiBehavior.current.showNavigationTopAppBar) topAppBar else ({})
     if (isAppChromeFrostedGlassActive()) {
         // 毛玻璃: 顶栏覆盖在内容上方, 内容从顶栏下方滚过并被模糊.
         // 内容通过 LocalSettingsTopAppBarUnderlapHeight 在滚动内容顶部留出顶栏的空间.
@@ -852,6 +907,13 @@ internal sealed class DetailPaneRoutes {
 abstract class SettingsDrawerScope internal constructor() : ColumnScope {
     @Composable
     abstract fun Item(item: SettingsTab)
+
+    /**
+     * 把此节点标记为 [tab] 选中时的焦点回归目标: 遥控器上详情栏按左键跳回它.
+     * [tab] 非当前选中项时无效果. [Item] 已自动挂载, 列表里不经 [Item] 渲染的入口
+     * (如账号横幅) 需要自行挂到可聚焦的根 modifier 上.
+     */
+    abstract fun Modifier.tabFocusTarget(tab: SettingsTab): Modifier
 
     @Composable
     fun Title(text: String, paddingTop: Dp = 20.dp) {

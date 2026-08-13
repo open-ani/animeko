@@ -112,6 +112,25 @@ data class SubjectDetailsLayoutParams(
             showCacheButtonLabel = false,
         )
 
+        /**
+         * TV (10-foot UI) 双栏: TV 逻辑分辨率通常约 960×540dp, 侧栏封面高度 = 侧栏宽 × 1200/849.
+         * 沿用 [MediumNarrow] 的 280dp 侧栏时封面高约 396dp, 几乎占满顶栏以下整屏,
+         * "开始观看"等主操作被挤出首屏. 收窄侧栏让封面高约 310dp, 主操作按钮回到首屏.
+         */
+        val TenFoot = SubjectDetailsLayoutParams(
+            kind = SubjectDetailsPaneKind.MEDIUM,
+            sidebarWidth = 220.dp,
+            sidebarItemSpacing = 16.dp,
+            railWidth = 0.dp,
+            railItemSpacing = 0.dp,
+            columnSpacing = 24.dp,
+            contentHorizontalPadding = 48.dp,
+            contentTopPadding = 12.dp,
+            contentBottomPadding = 24.dp,
+            sectionSpacing = 24.dp,
+            staffGridColumns = 3,
+        )
+
         // 三栏 1600 画板 (1515:336) Body: padTop 12 / padBottom 48 / padLR 48
         val Expanded = SubjectDetailsLayoutParams(
             kind = SubjectDetailsPaneKind.EXPANDED,
@@ -143,7 +162,10 @@ data class SubjectDetailsLayoutParams(
          * list-detail 详情栏中, 两者都远窄于窗口. 也不要用 [WindowSizeClass] 判断 1600 断点,
          * 桌面端它由已废弃的 `WindowSizeClass.compute()` 生成, 分档上限为 expanded(840).
          */
-        fun calculate(availableWidth: Dp): SubjectDetailsLayoutParams = when {
+        fun calculate(availableWidth: Dp, tenFoot: Boolean = false): SubjectDetailsLayoutParams = when {
+            // 10-foot UI (电视观看距离) 的屏幕高度小 (通常 ~540dp), 手机/平板档的侧栏封面会
+            // 占满整屏, 用专属参数档. 见 [TenFoot].
+            tenFoot && availableWidth >= MEDIUM_WIDTH_DP.dp -> TenFoot
             availableWidth >= EXPANDED_WIDTH_DP.dp -> Expanded
             availableWidth >= MEDIUM_WIDE_WIDTH_DP.dp -> Medium
             availableWidth >= MEDIUM_WIDTH_DP.dp -> MediumNarrow

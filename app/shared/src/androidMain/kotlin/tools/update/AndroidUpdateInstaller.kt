@@ -17,7 +17,6 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import me.him188.ani.app.platform.ContextMP
-import me.him188.ani.buildconfig.AndroidBuildConfig
 import me.him188.ani.utils.io.SystemPath
 import me.him188.ani.utils.io.toFile
 import me.him188.ani.utils.logging.info
@@ -61,7 +60,9 @@ class AndroidUpdateInstaller : UpdateInstaller {
         context: Context,
         file: File,
     ) {
-        val apkUri = FileProvider.getUriForFile(context, "${AndroidBuildConfig.APP_APPLICATION_ID}.fileprovider", file)
+        // 权限声明是 "${applicationId}.fileprovider", 而电视变体带 applicationIdSuffix ".tv" ——
+        // 用编译期常量 AndroidBuildConfig.APP_APPLICATION_ID 在电视上会拼出不存在的 authority
+        val apkUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         val intent = createApkInstallIntent(apkUri, file.name)
 
         // Some third-party installers are launched through a system installer replacement. In that flow, Android may

@@ -9,7 +9,9 @@
 
 package me.him188.ani.app.ui.subject.person
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +22,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -50,7 +51,12 @@ import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.ImageViewer
+import me.him188.ani.app.ui.foundation.LocalAniUiBehavior
 import me.him188.ani.app.ui.foundation.avatar.AvatarImage
+import me.him188.ani.app.ui.foundation.focus.FOCUS_BORDER_TEXT_INSET
+import me.him188.ani.app.ui.foundation.focus.TvAnchoredStrip
+import me.him188.ani.app.ui.foundation.focus.focusBorder
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.rememberConnectedScrollState
 import me.him188.ani.app.ui.foundation.rememberImageViewerHandler
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
@@ -79,6 +85,7 @@ import me.him188.ani.app.ui.subject.details.components.COVER_WIDTH_TO_HEIGHT_RAT
 import me.him188.ani.app.ui.subject.details.components.SubjectCommentColumn
 import me.him188.ani.app.ui.subject.details.components.SubjectDetailsDefaults
 import me.him188.ani.app.ui.subject.details.sections.SectionHeader
+import me.him188.ani.app.ui.subject.details.sections.CommentsGridDialog
 import me.him188.ani.app.ui.subject.details.sections.groupThousands
 import me.him188.ani.app.ui.subject.details.sections.toPlainText
 import org.jetbrains.compose.resources.stringResource
@@ -292,11 +299,26 @@ internal fun PeopleSubjectCard(
     modifier: Modifier = Modifier,
     width: Dp = 96.dp,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    // 描边与随之而来的文字内缩都只为遥控器示焦服务, 必须一起跟着形态走: 桌面端焦点本来就由涟漪的
+    // 状态层表示, 再叠一圈描边就是这里想避免的两层特效; 手机端压根不会聚焦, 内缩只会白白把标题挤窄.
+    val focusDriven = LocalAniUiBehavior.current.focusDrivenNavigation
+    val textInset = if (focusDriven) FOCUS_BORDER_TEXT_INSET else 0.dp
     Column(
         modifier
             .width(width)
+            // 示焦用主题色描边而不是涟漪的高亮状态层 (压在封面上分辨不出哪张有焦点)
+            .ifThen(focusDriven) { focusBorder(MaterialTheme.shapes.small) }
             .clip(MaterialTheme.shapes.small)
-            .clickable(onClick = onClick),
+            // 焦点驱动 (TV) 下不要涟漪的焦点状态层: 半透明高亮 + 描边 = 两层特效, 且高亮本身
+            // 在封面上分辨不出哪张有焦点 (与 FocusHighlightCard 的取舍一致). 触摸端保留涟漪.
+            .clickable(
+                interactionSource = interactionSource,
+                indication = if (focusDriven) null else LocalIndication.current,
+                onClick = onClick,
+            )
+            // 末行文字贴着卡底, 给聚焦描边留出余地 (横向内缩在文字上, 封面仍满宽)
+            .padding(bottom = textInset),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box(Modifier.fillMaxWidth().aspectRatio(COVER_WIDTH_TO_HEIGHT_RATIO).clip(MaterialTheme.shapes.small)) {
@@ -304,6 +326,7 @@ internal fun PeopleSubjectCard(
         }
         Text(
             subject.displayName,
+            Modifier.padding(horizontal = textInset),
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
@@ -312,6 +335,7 @@ internal fun PeopleSubjectCard(
         if (caption != null) {
             Text(
                 caption,
+                Modifier.padding(horizontal = textInset),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -338,11 +362,25 @@ internal fun PeoplePortraitCard(
     width: Dp = PersonCastCardWidth,
     circleCrop: Boolean = false,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    // 描边与文字内缩一起跟着形态走, 同 [PeopleSubjectCard]
+    val focusDriven = LocalAniUiBehavior.current.focusDrivenNavigation
+    val textInset = if (focusDriven) FOCUS_BORDER_TEXT_INSET else 0.dp
     Column(
         modifier
             .width(width)
+            // 示焦用主题色描边, 同 [PeopleSubjectCard]
+            .ifThen(focusDriven) { focusBorder(MaterialTheme.shapes.small) }
             .clip(MaterialTheme.shapes.small)
-            .clickable(onClick = onClick),
+            // 焦点驱动 (TV) 下不要涟漪的焦点状态层: 半透明高亮 + 描边 = 两层特效, 且高亮本身
+            // 在封面上分辨不出哪张有焦点 (与 FocusHighlightCard 的取舍一致). 触摸端保留涟漪.
+            .clickable(
+                interactionSource = interactionSource,
+                indication = if (focusDriven) null else LocalIndication.current,
+                onClick = onClick,
+            )
+            // 末行文字贴着卡底, 给聚焦描边留出余地 (横向内缩在文字上, 头像仍满宽)
+            .padding(bottom = textInset),
         horizontalAlignment = if (circleCrop) Alignment.CenterHorizontally else Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -367,6 +405,7 @@ internal fun PeoplePortraitCard(
         }
         Text(
             name,
+            Modifier.padding(horizontal = textInset),
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
@@ -375,6 +414,7 @@ internal fun PeoplePortraitCard(
         if (caption != null) {
             Text(
                 caption,
+                Modifier.padding(horizontal = textInset),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -384,7 +424,12 @@ internal fun PeoplePortraitCard(
     }
 }
 
-/** 通用横滑条区块: 标题 (+可选 查看全部) + LazyRow 内容. */
+/**
+ * 通用横滑条区块: 标题 (+可选 查看全部) + 横滑内容.
+ *
+ * TV 上是锚位条 (聚焦卡停在行首, 入场不横跳), 见 [TvAnchoredStrip]; 手机形态不变.
+ * [itemContent] 的第二个参数必须挂到卡片的可聚焦节点上.
+ */
 @Composable
 internal fun <T : Any> PeopleStripSection(
     title: String,
@@ -392,7 +437,7 @@ internal fun <T : Any> PeopleStripSection(
     modifier: Modifier = Modifier,
     onViewAll: (() -> Unit)? = null,
     itemSpacing: Dp = 12.dp,
-    itemContent: @Composable (T) -> Unit,
+    itemContent: @Composable (T, Modifier) -> Unit,
 ) {
     if (items.itemCount == 0) return
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -401,11 +446,9 @@ internal fun <T : Any> PeopleStripSection(
         } else {
             SectionHeader(title)
         }
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(itemSpacing)) {
-            items(items.itemCount) { i ->
-                val item = items[i] ?: return@items
-                itemContent(item)
-            }
+        TvAnchoredStrip(items.itemCount, itemSpacing = itemSpacing) { i, itemModifier ->
+            val item = items[i] ?: return@TvAnchoredStrip
+            itemContent(item, itemModifier)
         }
     }
 }
@@ -492,6 +535,8 @@ private fun PersonCommentPreviewItem(
 /**
  * 全量评论 sheet: 复用剧集/条目评论列 ([SubjectCommentColumn]), 支持 BBCode 表情/图片/链接.
  * 与条目评论 sheet 的差别: 人物评论无评分, 也没有 "写评价" 入口.
+ *
+ * TV 上改为大号居中弹窗 (可导航的纯文本评论卡片网格, 确认键展开全文, 返回键关闭).
  */
 @Composable
 internal fun PersonCommentsSheet(
@@ -499,6 +544,18 @@ internal fun PersonCommentsSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (LocalAniUiBehavior.current.panelsAsCenteredDialogs) {
+        val gridComments = state.list.collectAsLazyPagingItemsWithLifecycle()
+        CommentsGridDialog(
+            title = state.count?.takeIf { it > 0 }?.let {
+                stringResource(Lang.person_details_comments) + " · " + remember(it) { groupThousands(it) }
+            } ?: stringResource(Lang.person_details_comments),
+            comments = gridComments,
+            onDismissRequest = onDismissRequest,
+            showRating = false,
+        )
+        return
+    }
     val browserNavigator = LocalUriHandler.current
     val toaster = LocalToaster.current
     val externalAppLinkWarningPrefix = stringResource(Lang.foundation_richtext_external_app_link_warning_prefix)

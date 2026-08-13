@@ -65,6 +65,15 @@ class AndroidWebMediaResolver(
 
     private var attached: Context? = null
 
+    /**
+     * 当前挂载点的个数.
+     *
+     * 同一个 resolver 可能被同时挂在多处 (播放页的组合, 以及"退出播放页后保留播放会话"时替它
+     * 挂着的应用根部), 而这两处的销毁顺序不定 —— 只置 null 的话, 先走的那处会把仍然有效的挂载
+     * 一起抹掉, 表现为后台解析全部 "WebVideoSourceResolver not attached".
+     */
+    private var attachCount = 0
+
     @SuppressLint("SetJavaScriptEnabled")
     @Composable
     override fun ComposeContent() {
@@ -72,9 +81,17 @@ class AndroidWebMediaResolver(
 
         val context = LocalContext.current
         DisposableEffect(true) {
+            attachCount++
             attached = context
+            // 带上实例标识: 每个播放会话都有自己的 resolver (Koin 里是 factory), 只看计数分不清
+            // 是"新实例第一次挂上"还是"同一个实例又挂了一处"
+            logger.info { "Attached, count=$attachCount, resolver=${hashCode().toString(16)}" }
             onDispose {
-                attached = null
+                attachCount--
+                if (attachCount == 0) {
+                    attached = null
+                }
+                logger.info { "Detached, count=$attachCount, resolver=${hashCode().toString(16)}" }
             }
         }
     }
