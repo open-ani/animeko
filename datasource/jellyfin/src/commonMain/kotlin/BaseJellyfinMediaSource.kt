@@ -467,14 +467,21 @@ abstract class BaseJellyfinMediaSource(
         return mediaStreams
             .filter { it.Type == "Subtitle" && it.IsTextSubtitleStream && it.IsExternal && it.Codec != null }
             .map { stream ->
+                val codec = stream.Codec!!.lowercase()
+
                 Subtitle(
-                    uri = getSubtitleUri(itemId, stream.Index, stream.Codec!!),
+                    uri = getSubtitleUri(itemId, stream.Index, codec),
                     language = stream.Language,
-                    mimeType = when (stream.Codec.lowercase()) {
-                        "ass" -> "text/x-ass"
+                    // 必须是播放器认识的 MIME. Android 端会把它直接交给 ExoPlayer 的
+                    // MediaItem.SubtitleConfiguration, 只认 androidx.media3.common.MimeTypes 里的常量.
+                    // Jellyfin 的 Codec 直接透传 ffprobe 的 codec name, 所以 srt 会报成 "subrip".
+                    mimeType = when (codec) {
+                        "ass", "ssa" -> "text/x-ssa"
+                        "srt", "subrip" -> "application/x-subrip"
+                        "vtt", "webvtt" -> "text/vtt"
                         else -> "application/octet-stream"
                     },
-                    label = stream.Title,
+                    label = stream.Title ?: stream.Language ?: "Unknown",
                 )
             }
     }
