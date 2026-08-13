@@ -53,6 +53,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
@@ -348,6 +349,9 @@ internal fun EpisodeVideoImpl(
                         Modifier
                             .ifThen(statusBarHeight != 0.dp) {
                                 offset(x = -statusBarHeight / 2, y = 0.dp)
+                            }
+                            .onSizeChanged {
+                                videoEnhancement?.setViewportSize(it.width, it.height)
                             }
                             .matchParentSize(),
                     )

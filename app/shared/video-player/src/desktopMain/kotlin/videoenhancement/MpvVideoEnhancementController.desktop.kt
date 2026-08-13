@@ -10,7 +10,6 @@
 package me.him188.ani.app.videoplayer.videoenhancement
 
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.VideoDimensions
 import org.openani.mediamp.mpv.MPVHandle
 import java.nio.file.Files
 import java.nio.file.Path

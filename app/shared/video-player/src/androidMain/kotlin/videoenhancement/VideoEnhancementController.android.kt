@@ -13,7 +13,6 @@ package me.him188.ani.app.videoplayer.videoenhancement
 
 import androidx.media3.exoplayer.ExoPlayer
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.VideoDimensions
 import kotlin.coroutines.CoroutineContext
 
 actual fun createVideoEnhancementController(

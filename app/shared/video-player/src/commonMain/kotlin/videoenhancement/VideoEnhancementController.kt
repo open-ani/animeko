@@ -20,7 +20,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.VideoDimensions
 import kotlin.coroutines.CoroutineContext
 
 enum class VideoEnhancementMode {
@@ -33,6 +32,8 @@ interface VideoEnhancementController : AutoCloseable {
     val mode: StateFlow<VideoEnhancementMode>
 
     fun setMode(mode: VideoEnhancementMode)
+
+    fun setViewportSize(width: Int, height: Int)
 }
 
 expect fun createVideoEnhancementController(
@@ -47,17 +48,29 @@ internal abstract class BaseVideoEnhancementController(
     private val controllerJob = SupervisorJob(parentCoroutineContext[Job])
     private val scope = CoroutineScope(parentCoroutineContext + controllerJob + player.mainDispatcher)
     private val mutableMode = MutableStateFlow(VideoEnhancementMode.OFF)
+    private val viewportSize = MutableStateFlow<VideoDimensions?>(null)
 
     final override val mode: StateFlow<VideoEnhancementMode> = mutableMode.asStateFlow()
 
     protected fun startObserving() {
-        combine(mode, player.videoSize, player.viewportSize, ::EnhancementState)
-            .onEach { apply(it.mode, it.videoSize, it.viewportSize) }
+        combine(mode, player.mediaProperties, viewportSize) { mode, properties, viewportSize ->
+            EnhancementState(
+                mode = mode,
+                videoSize = properties?.let {
+                    dimensionsOrNull(it.videoWidth, it.videoHeight)
+                },
+                viewportSize = viewportSize,
+            )
+        }.onEach { apply(it.mode, it.videoSize, it.viewportSize) }
             .launchIn(scope)
     }
 
     final override fun setMode(mode: VideoEnhancementMode) {
         mutableMode.value = mode
+    }
+
+    final override fun setViewportSize(width: Int, height: Int) {
+        viewportSize.value = dimensionsOrNull(width, height)
     }
 
     final override fun close() {
@@ -79,3 +92,15 @@ private data class EnhancementState(
     val videoSize: VideoDimensions?,
     val viewportSize: VideoDimensions?,
 )
+
+internal data class VideoDimensions(
+    val width: Int,
+    val height: Int,
+)
+
+private fun dimensionsOrNull(width: Int?, height: Int?): VideoDimensions? =
+    if (width != null && height != null && width > 0 && height > 0) {
+        VideoDimensions(width, height)
+    } else {
+        null
+    }
