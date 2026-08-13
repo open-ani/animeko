@@ -93,7 +93,10 @@ private class MpvVideoEnhancementController(
             when (targetMode) {
                 VideoEnhancementMode.OFF -> Unit
                 VideoEnhancementMode.PERFORMANCE -> applyAnime4kShaderLocked(anime4kRestoreShaderResource)
-                VideoEnhancementMode.QUALITY -> anime4kQualityShaderResources.forEach(::applyAnime4kShaderLocked)
+                VideoEnhancementMode.QUALITY -> {
+                    applyAnime4kShaderLocked(anime4kRestoreShaderResource)
+                    applyAnime4kShaderLocked(anime4kUpscaleShaderResource)
+                }
             }
             effectiveMode = targetMode
         }
@@ -102,7 +105,7 @@ private class MpvVideoEnhancementController(
     private fun applyAnime4kShaderLocked(resource: String) {
         val shaderPath = ensureAnime4kShaderFileLocked(resource).toAbsolutePath().toString()
         check(handle.command("change-list", "glsl-shaders", "append", shaderPath)) {
-            "mpv rejected Anime4K shader: $shaderPath"
+            "mpv rejected Anime4K Lite shader: $shaderPath"
         }
         appliedAnime4kShaders += resource
     }
@@ -111,7 +114,7 @@ private class MpvVideoEnhancementController(
         appliedAnime4kShaders.asReversed().forEach { resource ->
             val shaderPath = checkNotNull(anime4kShaderFiles[resource]).toAbsolutePath().toString()
             check(handle.command("change-list", "glsl-shaders", "remove", shaderPath)) {
-                "mpv failed to remove Anime4K shader: $shaderPath"
+                "mpv failed to remove Anime4K Lite shader: $shaderPath"
             }
         }
         appliedAnime4kShaders.clear()
@@ -119,10 +122,10 @@ private class MpvVideoEnhancementController(
 
     private fun ensureAnime4kShaderFileLocked(resourceName: String): Path {
         anime4kShaderFiles[resourceName]?.let { return it }
-        val target = Files.createTempFile("animeko-anime4k-", ".glsl")
+        val target = Files.createTempFile("animeko-anime4k-lite-", ".glsl")
         try {
             val resource = checkNotNull(javaClass.getResourceAsStream(resourceName)) {
-                "Missing bundled Anime4K shader: $resourceName"
+                "Missing bundled Anime4K Lite shader: $resourceName"
             }
             resource.use { input ->
                 Files.newOutputStream(target).use { output -> input.copyTo(output) }
@@ -156,15 +159,8 @@ private class MpvVideoEnhancementController(
 
 private const val anime4kRestoreShaderResource =
     "/video-enhancement/Anime4K_Restore_CNN_S.glsl"
-
-private val anime4kQualityShaderResources = listOf(
-    "/video-enhancement/Anime4K_Clamp_Highlights.glsl",
-    "/video-enhancement/Anime4K_Restore_CNN_VL.glsl",
-    "/video-enhancement/Anime4K_Upscale_CNN_x2_VL.glsl",
-    "/video-enhancement/Anime4K_AutoDownscalePre_x2.glsl",
-    "/video-enhancement/Anime4K_AutoDownscalePre_x4.glsl",
-    "/video-enhancement/Anime4K_Upscale_CNN_x2_M.glsl",
-)
+private const val anime4kUpscaleShaderResource =
+    "/video-enhancement/Anime4K_Upscale_CNN_x2_S.glsl"
 
 private val enhancementPropertyNames = listOf(
     "correct-downscaling",
