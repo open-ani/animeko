@@ -69,7 +69,6 @@ import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.ui.comment.CommentColumn
 import me.him188.ani.app.ui.comment.generateUiComment
 import me.him188.ani.app.ui.episode.AdaptivePlayerScreenLayoutParams.Mode
-import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -77,13 +76,13 @@ import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.pagerTabIndicatorOffset
 import me.him188.ani.app.ui.foundation.theme.AniTheme
+import me.him188.ani.app.ui.foundation.input.touchHorizontalScrollOnly
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.episode_comments
 import me.him188.ani.app.ui.lang.episode_comments_with_count
 import me.him188.ani.app.ui.lang.subject_details_tab_details
 import me.him188.ani.app.ui.search.rememberTestLazyPagingItems
 import me.him188.ani.utils.platform.annotations.TestOnly
-import me.him188.ani.utils.platform.isMobile
 import org.jetbrains.compose.resources.stringResource
 
 @Stable
@@ -190,8 +189,7 @@ fun AdaptivePlayerScreenScaffold(
 
                     HorizontalPager(
                         state.pagerState,
-                        Modifier.fillMaxWidth().weight(1f),
-                        userScrollEnabled = LocalPlatform.current.isMobile(),
+                        Modifier.fillMaxWidth().weight(1f).touchHorizontalScrollOnly(),
                         verticalAlignment = Alignment.Top,
                     ) { page ->
                         when (page) {

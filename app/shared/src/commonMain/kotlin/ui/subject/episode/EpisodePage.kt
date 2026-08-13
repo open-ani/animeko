@@ -128,6 +128,7 @@ import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.foundation.theme.weaken
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
+import me.him188.ani.app.ui.foundation.input.touchHorizontalScrollOnly
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.episode_comments
 import me.him188.ani.app.ui.lang.episode_comments_with_count
@@ -167,7 +168,6 @@ import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isIos
-import me.him188.ani.utils.platform.isMobile
 import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.features.AudioLevelController
 import org.openani.mediamp.features.PlaybackSpeed
@@ -513,8 +513,7 @@ private fun EpisodeScreenTabletVeryWide(
 
                 HorizontalPager(
                     state = pagerState,
-                    Modifier.fillMaxSize(),
-                    userScrollEnabled = LocalPlatform.current.isMobile(),
+                    Modifier.fillMaxSize().touchHorizontalScrollOnly(),
                 ) { index ->
                     when (index) {
                         0 -> Box(Modifier.fillMaxSize()) {

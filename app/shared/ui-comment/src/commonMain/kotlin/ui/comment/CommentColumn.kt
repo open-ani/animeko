@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
-import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.interaction.nestedScrollWorkaround
 import me.him188.ani.app.ui.foundation.layout.ConnectedScrollState
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
@@ -46,7 +45,6 @@ import me.him188.ani.app.ui.search.SearchResultLazyVerticalGrid
 import me.him188.ani.app.ui.search.isFinishedAndEmpty
 import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
 import me.him188.ani.app.ui.search.isLoadingNextPage
-import me.him188.ani.utils.platform.isMobile
 
 /**
  * @param pullToRefreshEnabled 是否启用下拉刷新. 当此列表位于会优先消费向下滚动的容器中时
@@ -83,7 +81,8 @@ fun CommentColumn(
         isRefreshing = items.isLoadingFirstPageOrRefreshing,
         onRefresh = { items.refresh() },
         modifier = modifier,
-        enabled = pullToRefreshEnabled && LocalPlatform.current.isMobile(),
+        enabled = pullToRefreshEnabled,
+        touchOnly = true,
         contentAlignment = Alignment.TopCenter,
     ) {
         if (items.isFinishedAndEmpty) {
