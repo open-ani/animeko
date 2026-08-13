@@ -9,8 +9,6 @@
 
 package me.him188.ani.app.ui.foundation.input
 
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
@@ -28,7 +26,6 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChanged
 
 /**
  * 记录用户最近一次实际使用的指针设备. 输入方式是运行时属性而非平台属性:
@@ -115,38 +112,6 @@ fun Modifier.trackActiveInputSource(state: ActiveInputSourceState): Modifier =
             }
         }
     }
-
-/**
- * 只允许与 [requiredPointerType] 属于同一手势约定的指针发起拖动, 不影响其他指针类型的点击和滚轮事件.
- * Stylus/Eraser 与 Touch 属于同一约定.
- *
- * 必须按本次手势的 down 事件过滤, 不能用 [ActiveInputSourceState.current] 在组合期切换
- * `draggable.enabled`: 输入设备切换后的第一次拖动开始时, `current` 还是上一次的设备.
- */
-fun Modifier.dragFromPointerType(requiredPointerType: PointerType): Modifier =
-    pointerInput(requiredPointerType) {
-        awaitEachGesture {
-            val down = awaitFirstDown(
-                requireUnconsumed = false,
-                pass = PointerEventPass.Initial,
-            )
-            if (down.type.asGesturePointerType() == requiredPointerType.asGesturePointerType()) {
-                return@awaitEachGesture
-            }
-
-            do {
-                val event = awaitPointerEvent(PointerEventPass.Initial)
-                event.changes.forEach { change ->
-                    if (change.positionChanged()) {
-                        change.consume()
-                    }
-                }
-            } while (event.changes.any { it.pressed })
-        }
-    }
-
-/** 只允许触摸发起拖动. */
-fun Modifier.touchDragOnly(): Modifier = dragFromPointerType(PointerType.Touch)
 
 /**
  * 只允许 [requiredPointerType] 发起指定方向的 nested scroll.

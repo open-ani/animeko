@@ -9,7 +9,6 @@
 
 package me.him188.ani.app.ui.foundation.input
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -21,13 +20,10 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.test.click
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performTouchInput
@@ -49,59 +45,6 @@ class PointerTypeDragFilterTest {
         assertEquals(PointerType.Touch, inputSource.current)
         assertEquals(PointerType.Touch, inputSource.latest)
     }
-
-    @Test
-    fun `touchDragOnly accepts first touch drag and rejects mouse drag without blocking clicks`() =
-        runAniComposeUiTest {
-            var dragged by mutableFloatStateOf(0f)
-            var clicks by mutableIntStateOf(0)
-
-            setContent {
-                Box(
-                    Modifier
-                        .size(300.dp)
-                        .testTag("target")
-                        .touchDragOnly()
-                        .draggable(
-                            rememberDraggableState { dragged += it },
-                            Orientation.Horizontal,
-                        )
-                        .clickable { clicks++ },
-                )
-            }
-
-            val target = onNodeWithTag("target")
-            target.performMouseInput {
-                moveTo(centerLeft)
-                press()
-                moveTo(centerRight)
-                release()
-            }
-            runOnIdle {
-                assertEquals(0f, dragged)
-                assertEquals(0, clicks)
-            }
-
-            target.performMouseInput {
-                click()
-                // CMP 1.11: 松开最后一个键会清掉 cursor input source 但保留 hover 状态,
-                // 之后注入触摸事件会撞上 "Cursor is entered, but not associated with a specific
-                // input type". 显式退出 hover 才能切到触摸.
-                exit()
-            }
-            runOnIdle {
-                assertEquals(1, clicks)
-            }
-
-            target.performTouchInput {
-                down(centerLeft)
-                moveBy(Offset(width / 2f, 0f))
-                up()
-            }
-            runOnIdle {
-                assertNotEquals(0f, dragged)
-            }
-        }
 
     @Test
     fun `touchHorizontalScrollOnly blocks mouse paging without blocking child mouse drag`() =

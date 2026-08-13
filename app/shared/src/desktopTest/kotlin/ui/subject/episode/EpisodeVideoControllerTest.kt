@@ -86,7 +86,10 @@ import me.him188.ani.app.videoplayer.ui.NoOpVideoAspectRatio
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
+import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.videoplayer.ui.gesture.GestureFamily
+import me.him188.ani.app.videoplayer.ui.gesture.gestureFamilyOf
+import me.him188.ani.app.videoplayer.ui.gesture.mouseFamily
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION
@@ -209,7 +212,8 @@ class EpisodeVideoControllerTest {
 
     @Composable
     private fun Player(
-        gestureFamily: GestureFamily,
+        /** null 表示不写死, 由 [EpisodeVideoImpl] 按当前输入设备推导 —— 混合设备的行为只能这样测. */
+        gestureFamily: GestureFamily?,
         playerControllerState: PlayerControllerState = controllerState,
         onClickFullScreen: () -> Unit = {},
         onExitFullscreen: () -> Unit = {},
@@ -368,7 +372,10 @@ class EpisodeVideoControllerTest {
                         },
                     )
                 },
-                gestureFamily = gestureFamily,
+                gestureFamily = gestureFamily ?: gestureFamilyOf(
+                    LocalActiveInputSource.current.current,
+                    LocalPlatform.current.mouseFamily,
+                ),
                 shareData = MediaShareData(null, null),
                 onClickCache = {},
                 isFullscreen = isFullscreen,
@@ -598,7 +605,9 @@ class EpisodeVideoControllerTest {
             Player(GestureFamily.MOUSE, onPlayerStateCreated = { playerState = it })
         }
         runOnIdle {
-            playerState.playbackState.value = PlaybackState.PAUSED
+            // Media is loaded paused by Player (the v1 test's PAUSED baseline).
+            assertEquals(MediaStatus.Ready, playerState.state.value.mediaStatus)
+            assertFalse(playerState.state.value.playWhenReady)
             assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
         }
 
@@ -606,38 +615,102 @@ class EpisodeVideoControllerTest {
         mainClock.autoAdvance = false
 
         // 鼠标点击: 鼠标语义 = 播放/暂停, 控制器不显示
-        root.performMouseInput { click() }
+        // (点击会触发播放器命令, 必须在机器线程 (UI 线程) 上派发)
+        runOnUiThread {
+            root.performMouseInput { click() }
+        }
         mainClock.advanceTimeBy(1000L)
         runOnIdle {
-            assertEquals(PlaybackState.PLAYING, playerState.playbackState.value)
+            assertTrue(playerState.state.value.playWhenReady)
             assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
         }
 
         // 紧接着的第一次触摸: 必须立刻显示控制器, 且不能再切换播放状态
-        root.performTouchInput { click() }
+        runOnUiThread {
+            root.performTouchInput { click() }
+        }
         mainClock.advanceTimeBy(1000L)
         runOnIdle {
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
             assertEquals(NORMAL_VISIBLE, controllerState.visibility)
-            assertEquals(PlaybackState.PLAYING, playerState.playbackState.value)
+            assertTrue(playerState.state.value.playWhenReady)
         }
     }
 
+    /**
+     * 鼠标按下到抬起之间必然会有位移 (手抖、触控板按压), 这一下必须仍然是一次点击.
+     *
+     * 滑动手势不能靠消费位移来做指针类型过滤: 消费会让 combinedClickable 的点击判定被取消,
+     * 桌面上就成了「按下动一像素就点不动播放器」. 过滤只能由 family 在组合期门控挂载.
+     */
     @Test
-    fun `hybrid - touch drag works while mouse gesture family is mounted`() = runAniComposeUiTest {
+    fun `mouse - click with pointer drift still toggles playback`() = runAniComposeUiTest {
+        lateinit var playerState: TestMediampPlayer
         setContent {
-            Player(GestureFamily.MOUSE)
+            Player(GestureFamily.MOUSE, onPlayerStateCreated = { playerState = it })
+        }
+        runOnIdle {
+            assertEquals(MediaStatus.Ready, playerState.state.value.mediaStatus)
+            assertFalse(playerState.state.value.playWhenReady)
+        }
+
+        val root = onAllNodes(isRoot()).onFirst()
+        runOnUiThread {
+            root.performMouseInput {
+                moveTo(center)
+                press()
+                moveTo(center + Offset(1f, 0f))
+                release()
+            }
+        }
+        waitForIdle()
+        runOnIdle {
+            assertTrue(playerState.state.value.playWhenReady)
+        }
+    }
+
+    /**
+     * 混合设备从鼠标切到手指后, 滑动 seek 从第二次手势起生效.
+     *
+     * 第一次触摸只能把 family 切过来: 触摸没有 hover, 类型要到 down 才知道, 而 Compose 在 down
+     * 时就为这个 pointer 固定了命中路径, 随后才挂载的 draggable 不在路径里, 收不到后续 Move.
+     * 这是门控方案的既定代价 —— 换成在事件里消费位移来过滤, 代价会变成鼠标按下漂移就点不动播放器.
+     */
+    @Test
+    fun `hybrid - touch drag after mouse takes effect from the second gesture`() = runAniComposeUiTest {
+        setContent {
+            Player(gestureFamily = null)
         }
         waitForIdle()
 
         val root = onAllNodes(isRoot()).onFirst()
 
+        // 鼠标走一遍, family 落到 MOUSE (MOUSE 语义下点击会切换播放, 命令必须在 UI 线程派发)
+        runOnUiThread {
+            root.performMouseInput {
+                moveTo(center)
+                click()
+                exit()
+            }
+        }
         runOnIdle {
-            assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
             detachedProgressSlider.assertDoesNotExist()
         }
 
-        // 不做触摸预热, 第一次触摸直接拖动就必须进入 seek.
+        // 第一次触摸: 只把 family 切到 TOUCH, 拖不出 seek.
+        // 位移没有拖动手势接管, 于是被判成一次点击 —— 会切换播放状态, 命令必须在 UI 线程派发.
+        runOnUiThread {
+            root.performTouchInput {
+                down(centerLeft)
+                moveBy(Offset(width / 2f, 0f))
+                up()
+            }
+        }
+        runOnIdle {
+            assertEquals(false, progressSliderState.isPreviewing)
+        }
+
+        // 第二次触摸: draggable 已挂载, 正常进入 seek
         root.performTouchInput {
             down(centerLeft)
             moveBy(Offset(width / 2f, 0f))
@@ -648,7 +721,10 @@ class EpisodeVideoControllerTest {
             assertEquals(PREVIEW_DETACHED_SLIDER, controllerState.visibility)
         }
 
-        root.performTouchInput { up() }
+        // 松开手指 (释放会触发 playerState.skip, 播放器命令必须在机器线程 (UI 线程) 上调用)
+        runOnUiThread {
+            root.performTouchInput { up() }
+        }
     }
 
     @Test

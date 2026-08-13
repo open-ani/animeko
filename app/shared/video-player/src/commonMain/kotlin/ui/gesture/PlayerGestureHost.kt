@@ -85,7 +85,6 @@ import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
 import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.ui.foundation.input.asGesturePointerType
-import me.him188.ani.app.ui.foundation.input.touchDragOnly
 import me.him188.ani.app.ui.foundation.input.trackActiveInputSource
 import me.him188.ani.app.ui.foundation.ifNotNullThen
 import me.him188.ani.app.ui.foundation.ifThen
@@ -458,8 +457,11 @@ fun hasPointerDevice(platform: Platform, hasSeenMouse: Boolean): Boolean =
     hasSeenMouse || platform.isDesktop()
 
 /**
- * 一套点击/双击约定. 滑动、长按、滚轮不在这里 —— 它们按本次手势 down 事件的
- * [PointerType] 过滤 (见 [touchDragOnly]、[longPressFastSkip]), 不经过 family.
+ * 一套点击/双击约定. 滑动类手势的挂载也由它决定 (见 [PlayerGestureHost] 中的 swipeGesturesEnabled):
+ * 拖动必须靠 enabled 门控, 不能在事件里按指针类型消费位移, 否则会取消同一区域的点击判定.
+ *
+ * 长按不走 family, 而是按本次手势 down 事件的 [PointerType] 过滤 (见 [longPressFastSkip]) ——
+ * 它不消费任何事件, 因此不会干扰点击, 也就不需要等 family 提交.
  */
 @Immutable
 enum class GestureFamily(
@@ -586,6 +588,15 @@ fun PlayerGestureHost(
     val onTogglePauseResumeState by rememberUpdatedState(onTogglePauseResume)
 
     val inputSourceState = LocalActiveInputSource.current
+
+    // 滑动类手势只属于触摸约定, 用组合期的 [family] 门控挂载, 而不是在事件里按指针类型消费位移:
+    // 消费会让 combinedClickable 的点击判定被取消, 鼠标按下后漂移一个像素就点不动播放器.
+    //
+    // 鼠标按下前必然先 hover, family 那时已经切到 MOUSE, 门控对鼠标一定及时. 触摸没有 hover,
+    // 类型要到 down 才知道, 而 Compose 在 down 时就为该 pointer 固定了命中路径, 之后挂载的
+    // draggable 收不到本次手势的后续事件 —— 从鼠标切到手指的第一次滑动只能切换 family (且会被
+    // 判成一次点击), 抬手再滑才进入 seek. 这是门控换来的代价.
+    val swipeGesturesEnabled = family == GestureFamily.TOUCH
     BoxWithConstraints(Modifier.trackActiveInputSource(inputSourceState)) {
         Row(
             Modifier.align(Alignment.TopCenter)
@@ -728,11 +739,11 @@ fun PlayerGestureHost(
                         seekerState,
                         progressSliderState,
                     )
-                    touchDragOnly().swipeToSeek(
+                    swipeToSeek(
                         seekerState,
                         Orientation.Horizontal,
                         //调节音量/亮度时禁用水平seek
-                        enabled = !adjustingVolumeOrBrightness,
+                        enabled = swipeGesturesEnabled && !adjustingVolumeOrBrightness,
                         onDragStarted = {
                             swipeSeekInteraction.onStarted()
                         },
@@ -797,12 +808,12 @@ fun PlayerGestureHost(
                         // 挂载看能力 (桌面没有 BrightnessManager, 传进来是 NoOp), 是否响应看 enabled;
                         // 分开之后切换输入方式后的第一次滑动不会因为修饰符尚未挂上而丢失
                         .ifThen(brightnessController !== NoOpLevelController) {
-                            touchDragOnly().swipeLevelControlWithIndicator(
+                            swipeLevelControlWithIndicator(
                                 brightnessController,
                                 ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
                                 Orientation.Vertical,
                                 indicatorState,
-                                enabled = !seekerState.isSeeking && !adjustingForwardOrBackward,
+                                enabled = swipeGesturesEnabled && !seekerState.isSeeking && !adjustingForwardOrBackward,
                                 step = 0.01f,
                                 setup = {
                                     indicatorState.state = BRIGHTNESS
@@ -815,9 +826,9 @@ fun PlayerGestureHost(
 
                 Box(
                     Modifier
-                        .touchDragOnly()
                         .swipeToFullscreen(
-                            enabled = !seekerState.isSeeking && !adjustingVolumeOrBrightness && !adjustingForwardOrBackward,
+                            enabled = swipeGesturesEnabled && !seekerState.isSeeking && !adjustingVolumeOrBrightness &&
+                                    !adjustingForwardOrBackward,
                             onEnterFullscreen = {
                                 if (!systemFullscreen) onToggleFullscreen()
                             },
@@ -832,12 +843,12 @@ fun PlayerGestureHost(
                 Box(
                     Modifier
                         .ifThen(audioController !== NoOpLevelController) {
-                            touchDragOnly().swipeLevelControlWithIndicator(
+                            swipeLevelControlWithIndicator(
                                 audioController,
                                 ((maxHeight - 100.dp) / 40).coerceAtLeast(2.dp),
                                 Orientation.Vertical,
                                 indicatorState,
-                                enabled = !seekerState.isSeeking && !adjustingForwardOrBackward,
+                                enabled = swipeGesturesEnabled && !seekerState.isSeeking && !adjustingForwardOrBackward,
                                 step = 0.05f,
                                 setup = {
                                     indicatorState.state = VOLUME
