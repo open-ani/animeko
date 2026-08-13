@@ -102,6 +102,10 @@ data class SelectorSearchConfig(
     val onlySupportsPlayers: List<String> = emptyList(),
 
     // Search done. Now we should have Medias.
+    /**
+     * App 播放流程现在会保留线路上的所有剧集 (按线路聚合为一个 media), 不再按当前集过滤.
+     * 此开关目前仅影响编辑数据源界面中的测试结果列表.
+     */
     val filterByEpisodeSort: Boolean = true,
     val filterBySubjectName: Boolean = true,
 

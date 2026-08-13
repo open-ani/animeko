@@ -31,9 +31,7 @@ import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.app.data.repository.RepositoryRateLimitedException
 import me.him188.ani.app.domain.mediasource.MediaListFilter
 import me.him188.ani.app.domain.mediasource.MediaListFilterContext
-import me.him188.ani.app.domain.mediasource.MediaListFilters
 import me.him188.ani.app.domain.mediasource.MediaSourceEngineHelpers
-import me.him188.ani.app.domain.mediasource.asCandidate
 import me.him188.ani.app.domain.mediasource.web.format.SelectedChannelEpisodes
 import me.him188.ani.app.domain.mediasource.web.format.SelectorChannelFormat
 import me.him188.ani.app.domain.mediasource.web.format.SelectorFormatConfig
@@ -196,6 +194,14 @@ abstract class SelectorMediaSourceEngine {
         val filteredList: List<DefaultMedia>,
     )
 
+    /**
+     * 将一个条目页面上的剧集列表转换为 [Media] 列表.
+     *
+     * 每个线路 (channel) 的所有剧集聚合为一个 [Media]:
+     * - [Media.episodeRange] 覆盖该线路上解析到的所有剧集;
+     * - [Media.download] 指向匹配 [query] 当前播放剧集的那一集的播放页面.
+     *   若该线路缺少当前集则回退到最后一集, 此时 media selector 不会自动选择它, UI 会标记缺少当前集.
+     */
     fun selectMedia(
         episodes: Sequence<WebSearchEpisodeInfo>,
         config: SelectorSearchConfig,
@@ -204,58 +210,59 @@ abstract class SelectorMediaSourceEngine {
         subjectName: String,
     ): SelectMediaResult {
         val parser = LabelFirstRawTitleParser()
-        val originalMediaList = episodes.mapNotNull { info ->
-            val subtitleLanguages = guessSubtitleLanguages(info, parser)
-            info.episodeSortOrEp ?: return@mapNotNull null
-            DefaultMedia(
-                mediaId = buildString {
-                    append(mediaSourceId)
-                    append(".")
-                    if (config.selectMedia.distinguishSubjectName) {
-                        append(subjectName)
-                        append("-")
-                    }
-                    if (config.selectMedia.distinguishChannelName) {
-                        append(info.channel)
-                        append("-")
-                    }
-                    append(info.name)
-                    append("-")
-                    append(info.episodeSortOrEp)
-                },
-                mediaSourceId = mediaSourceId,
-                originalUrl = info.playUrl,
-                download = ResourceLocation.WebVideo(info.playUrl),
-                originalTitle = buildString {
-                    if (config.selectMedia.distinguishSubjectName) {
-                        append(subjectName)
-                        append(" ")
-                    }
-                    append(info.name)
-                },
-                publishedTime = 0L,
-                properties = MediaProperties(
-                    subjectName = subjectName,
-                    episodeName = info.name,
-                    subtitleLanguageIds = subtitleLanguages ?: listOf(config.defaultSubtitleLanguage.id),
-                    resolution = config.defaultResolution.id,
-                    alliance = info.channel ?: "",
-                    size = FileSize.Unspecified,
-                    subtitleKind = SubtitleKind.EMBEDDED,
-                ),
-                episodeRange = EpisodeRange.single(info.episodeSortOrEp),
-                location = MediaSourceLocation.Online,
-                kind = MediaSourceKind.WEB,
-            )
-        }.toList()
+        val mediaList = episodes
+            .filter { it.episodeSortOrEp != null }
+            .groupBy { it.channel }
+            .mapNotNull { (channel, channelEpisodes) ->
+                val episodeSorts = channelEpisodes.mapNotNull { it.episodeSortOrEp }.distinct()
+                if (episodeSorts.isEmpty()) return@mapNotNull null
 
-        return with(query.toFilterContext()) {
-            val filters = config.createFiltersForEpisode()
-            val filteredList = originalMediaList.filter {
-                filters.applyOn(it.asCandidate())
+                val currentEpisode = channelEpisodes.findMatchingEpisodeOrNull(
+                    query.episodeSort, query.episodeEp, query.episodeName,
+                )
+                val playEpisode = currentEpisode ?: channelEpisodes.last()
+                val subtitleLanguages = guessSubtitleLanguages(playEpisode, parser)
+                DefaultMedia(
+                    mediaId = buildString {
+                        append(mediaSourceId)
+                        append(".")
+                        if (config.selectMedia.distinguishSubjectName) {
+                            append(subjectName)
+                        }
+                        if (config.selectMedia.distinguishChannelName && channel != null) {
+                            append("-")
+                            append(channel)
+                        }
+                    },
+                    mediaSourceId = mediaSourceId,
+                    originalUrl = playEpisode.playUrl,
+                    download = ResourceLocation.WebVideo(playEpisode.playUrl),
+                    originalTitle = subjectName,
+                    publishedTime = 0L,
+                    properties = MediaProperties(
+                        subjectName = subjectName,
+                        episodeName = playEpisode.name,
+                        subtitleLanguageIds = subtitleLanguages ?: listOf(config.defaultSubtitleLanguage.id),
+                        resolution = config.defaultResolution.id,
+                        alliance = channel ?: "",
+                        size = FileSize.Unspecified,
+                        subtitleKind = SubtitleKind.EMBEDDED,
+                    ),
+                    episodeRange = buildEpisodeRange(episodeSorts),
+                    location = MediaSourceLocation.Online,
+                    kind = MediaSourceKind.WEB,
+                )
             }
-            SelectMediaResult(originalMediaList, filteredList)
-        }
+        return SelectMediaResult(mediaList, mediaList)
+    }
+
+    private fun buildEpisodeRange(sorts: List<EpisodeSort>): EpisodeRange {
+        sorts.singleOrNull()?.let { return EpisodeRange.single(it) }
+        // 连续的普通剧集用紧凑的 range 表示, 否则精确列出所有集数
+        val sorted = sorts.sorted()
+        val contiguous = EpisodeRange.range(sorted.first(), sorted.last())
+        if (contiguous.knownSorts.toList() == sorted) return contiguous
+        return EpisodeRange.range(sorts)
     }
 
     /**
@@ -388,11 +395,6 @@ fun WebSearchSubjectInfo.asCandidate(): MediaListFilter.Candidate {
  */
 internal fun SelectorSearchConfig.createFiltersForSubject(): List<MediaListFilter<MediaListFilterContext>> = buildList {
 //    if (filterBySubjectName) add(MediaListFilters.ContainsSubjectName)
-}
-
-internal fun SelectorSearchConfig.createFiltersForEpisode(): List<MediaListFilter<MediaListFilterContext>> = buildList {
-    // 不使用 filterBySubjectName, 因为 web 的剧集名称通常为 "第x集", 不包含 subject
-    if (filterByEpisodeSort) add(MediaListFilters.ContainsAnyEpisodeInfo)
 }
 
 class DefaultSelectorMediaSourceEngine(
