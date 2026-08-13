@@ -54,14 +54,17 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.media_selector_web_captcha_unsupported
+import me.him188.ani.app.ui.lang.media_selector_web_channel_missing_episode
 import me.him188.ani.app.ui.lang.media_selector_web_edit_query_action
 import me.him188.ani.app.ui.lang.media_selector_web_edit_query_prompt
 import me.him188.ani.app.ui.lang.media_selector_web_rate_limited
 import me.him188.ani.app.ui.lang.media_selector_web_waiting_captcha
 import me.him188.ani.app.ui.lang.settings_mediasource_refresh
+import me.him188.ani.app.ui.mediafetch.renderEpisodeRange
 import me.him188.ani.app.ui.mediaselect.common.SourceIcon
 import kotlinx.coroutines.delay
 import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.currentTimeMillis
 import org.jetbrains.compose.resources.stringResource
@@ -70,6 +73,14 @@ import org.jetbrains.compose.resources.stringResource
 data class WebSourceChannel(
     val name: String,
     val original: Media? = null,
+    /**
+     * 该线路上找到的所有剧集. `null` 表示未知.
+     */
+    val episodeRange: EpisodeRange? = null,
+    /**
+     * 该线路是否包含当前正在播放的剧集. 为 `false` 时该线路不可选择, UI 会标记缺少当前集.
+     */
+    val hasCurrentEpisode: Boolean = true,
 )
 
 data class WebSource(
@@ -181,6 +192,7 @@ private fun WebSourceCard(
     val waitingCaptchaText = stringResource(Lang.media_selector_web_waiting_captcha)
     val captchaUnsupportedText = stringResource(Lang.media_selector_web_captcha_unsupported)
     val refreshText = stringResource(Lang.settings_mediasource_refresh)
+    val missingEpisodeText = stringResource(Lang.media_selector_web_channel_missing_episode)
     Row(
         modifier,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -249,7 +261,22 @@ private fun WebSourceCard(
                 InputChip(
                     selected = channel == selectedChannel(),
                     onClick = { onSelect(channel) },
-                    label = { Text(channel.name) },
+                    enabled = channel.hasCurrentEpisode,
+                    label = {
+                        Text(
+                            buildString {
+                                append(channel.name)
+                                channel.episodeRange?.let {
+                                    append(" · ")
+                                    append(renderEpisodeRange(it))
+                                }
+                                if (!channel.hasCurrentEpisode) {
+                                    append(" · ")
+                                    append(missingEpisodeText)
+                                }
+                            },
+                        )
+                    },
                 )
             }
 

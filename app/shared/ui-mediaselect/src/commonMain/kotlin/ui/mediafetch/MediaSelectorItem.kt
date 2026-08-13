@@ -50,6 +50,8 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import me.him188.ani.app.domain.media.selector.MatchMetadata
+import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
 import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
 import me.him188.ani.app.platform.currentAniBuildConfig
@@ -63,14 +65,17 @@ import me.him188.ani.app.ui.lang.media_selector_item_season_mismatch
 import me.him188.ani.app.ui.lang.media_selector_item_single_episode_resource
 import me.him188.ani.app.ui.lang.media_selector_item_subject_title_mismatch
 import me.him188.ani.app.ui.lang.media_selector_item_unsupported_playback
+import me.him188.ani.app.ui.lang.media_selector_web_channel_missing_episode
 import me.him188.ani.app.ui.lang.settings_debug_copied
 import me.him188.ani.app.ui.media.rememberMediaDetailsStrings
 import me.him188.ani.app.ui.media.renderSubtitleLanguage
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcon
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcons
 import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.ResourceLocation
+import me.him188.ani.datasources.api.topic.isSingleEpisode
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
@@ -96,6 +101,9 @@ internal fun MediaSelectorItem(
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
     val noSubtitleText = stringResource(Lang.media_selector_item_no_subtitle)
+    val missingEpisodeText = stringResource(Lang.media_selector_web_channel_missing_episode)
+    val missingCurrentEpisode = media.kind == MediaSourceKind.WEB &&
+            (group.first as? MaybeExcludedMedia.Included)?.metadata?.episodeMatchKind == MatchMetadata.EpisodeMatchKind.NONE
     val singleEpisodeResourceText = stringResource(Lang.media_selector_item_single_episode_resource)
     val unsupportedPlaybackText = stringResource(Lang.media_selector_item_unsupported_playback)
     val seasonMismatchText = stringResource(Lang.media_selector_item_season_mismatch)
@@ -139,6 +147,32 @@ internal fun MediaSelectorItem(
                     selected = false,
                     onClick = { /* no-op */ },
                     label = { Text(media.properties.size.toString()) },
+                )
+            }
+            // Episode range chip, 多集资源 (聚合的 web 线路或 BT 合集) 显示集数范围
+            media.episodeRange?.let { range ->
+                if (!range.isSingleEpisode()) {
+                    InputChip(
+                        selected = false,
+                        onClick = { /* no-op */ },
+                        label = { Text(renderEpisodeRange(range)) },
+                    )
+                }
+            }
+            // 聚合的 web 线路缺少当前播放的剧集
+            if (missingCurrentEpisode) {
+                InputChip(
+                    selected = false,
+                    onClick = { /* no-op */ },
+                    label = { Text(missingEpisodeText) },
+                    colors = InputChipDefaults.inputChipColors(
+                        labelColor = MaterialTheme.colorScheme.error,
+                    ),
+                    border = InputChipDefaults.inputChipBorder(
+                        enabled = true,
+                        selected = false,
+                        borderColor = MaterialTheme.colorScheme.error,
+                    ),
                 )
             }
             // Resolution chip
