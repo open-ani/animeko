@@ -13,11 +13,14 @@ import io.ktor.http.Url
 import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.ResourceLocation
+import me.him188.ani.datasources.api.topic.contains
 import me.him188.ani.utils.xml.Document
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * 测试 [SelectorMediaSourceEngine.selectMedia] 将线路上的所有剧集聚合为单个 media 的行为.
@@ -87,6 +90,47 @@ class SelectorMediaSourceEngineSelectMediaTest {
         val media = result.filteredList.single()
         assertEquals("https://example.com/线路1/2", media.originalUrl) // 回退到最后一集
         assertEquals(EpisodeRange.range(EpisodeSort(1), EpisodeSort(2)), media.episodeRange)
+        // 不能把当前集补进 range, 否则下游会误判为"含当前集", 缺本集标记与自动选择保护都会失效
+        assertFalse(EpisodeSort(99) in assertNotNull(media.episodeRange))
+    }
+
+    @Test
+    fun `special episode matched by name is contained in episode range`() {
+        // 页面把 "OVA上" 解析成了第 13 集, 与条目的 sort ("OVA上") 不一致, 只能靠名称匹配
+        val episodes = sequenceOf(
+            episode("线路1", 1),
+            WebSearchEpisodeInfo("线路1", "OVA上", EpisodeSort(13), "https://example.com/线路1/ova"),
+        )
+        val result = TestEngine.selectMedia(
+            episodes, config,
+            query(EpisodeSort("OVA上"), ep = null, episodeName = "OVA上"),
+            "test-source", "孤独摇滚",
+        )
+
+        val media = result.filteredList.single()
+        assertEquals("https://example.com/线路1/ova", media.originalUrl)
+        val range = assertNotNull(media.episodeRange)
+        // MediaSelector 只按 sort/ep 是否落在 episodeRange 内计算 MatchMetadata,
+        // 名称匹配到的当前集必须补进 range, 否则会与 download 指向当前集的事实矛盾
+        assertTrue(EpisodeSort("OVA上") in range)
+        // 页面上原有的集数不受影响
+        assertTrue(EpisodeSort(1) in range)
+        assertTrue(EpisodeSort(13) in range)
+    }
+
+    @Test
+    fun `episode range is untouched when current episode matches by sort`() {
+        val episodes = sequenceOf(episode("线路1", 1), episode("线路1", 2))
+        val result = TestEngine.selectMedia(
+            episodes, config,
+            query(EpisodeSort(2), ep = EpisodeSort(2), episodeName = "第02集"),
+            "test-source", "孤独摇滚",
+        )
+
+        assertEquals(
+            EpisodeRange.range(EpisodeSort(1), EpisodeSort(2)),
+            result.filteredList.single().episodeRange,
+        )
     }
 
     @Test

@@ -48,6 +48,8 @@ import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.topic.EpisodeRange
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.ResourceLocation
+import me.him188.ani.datasources.api.topic.contains
+import me.him188.ani.datasources.api.topic.plus
 import me.him188.ani.datasources.api.topic.SubtitleLanguage
 import me.him188.ani.datasources.api.topic.titles.LabelFirstRawTitleParser
 import me.him188.ani.utils.coroutines.IO_
@@ -222,6 +224,8 @@ abstract class SelectorMediaSourceEngine {
                 )
                 val playEpisode = currentEpisode ?: channelEpisodes.last()
                 val subtitleLanguages = guessSubtitleLanguages(playEpisode, parser)
+                val episodeRange = buildEpisodeRange(episodeSorts)
+                    .withCurrentEpisode(currentEpisode, query)
                 DefaultMedia(
                     mediaId = buildString {
                         append(mediaSourceId)
@@ -248,12 +252,34 @@ abstract class SelectorMediaSourceEngine {
                         size = FileSize.Unspecified,
                         subtitleKind = SubtitleKind.EMBEDDED,
                     ),
-                    episodeRange = buildEpisodeRange(episodeSorts),
+                    episodeRange = episodeRange,
                     location = MediaSourceLocation.Online,
                     kind = MediaSourceKind.WEB,
                 )
             }
         return SelectMediaResult(mediaList, mediaList)
+    }
+
+    /**
+     * 保证在找到了当前播放剧集时, [EpisodeRange] 一定包含它.
+     *
+     * [findMatchingEpisodeOrNull] 除了 sort 与 ep, 还支持按剧集名称匹配特殊剧集
+     * (页面上解析出的 sort 与条目的 sort 不一致时, 例如 "OVA上" 被解析为第 13 集).
+     * 而下游 (`MediaSelectorFilterSortAlgorithm.calculateMatchMetadata`) 只按
+     * sort/ep 是否落在 [EpisodeRange] 内来判定 `episodeMatchKind`.
+     *
+     * 若不在此补上正在播放的 sort, 就会出现 [Media.download] 已经指向当前集,
+     * 却被判定为 "不含当前集" 而不能自动选择、UI 还标记缺少当前集的矛盾情况.
+     */
+    private fun EpisodeRange.withCurrentEpisode(
+        currentEpisode: WebSearchEpisodeInfo?,
+        query: SelectorSearchQuery,
+    ): EpisodeRange {
+        if (currentEpisode == null) return this // 该线路确实没有当前集, 保持原样以便下游标记
+        if (query.episodeSort in this) return this
+        if (query.episodeEp?.let { it in this } == true) return this
+        // 只能靠名称匹配到, 补上正在播放的 sort
+        return this + EpisodeRange.single(query.episodeSort)
     }
 
     private fun buildEpisodeRange(sorts: List<EpisodeSort>): EpisodeRange {
