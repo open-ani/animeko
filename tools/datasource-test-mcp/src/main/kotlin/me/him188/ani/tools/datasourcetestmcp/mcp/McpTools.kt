@@ -147,7 +147,7 @@ fun buildToolRegistrations(
             description = "Resolve playable video links for an Ani episode using a selector media source config, " +
                     "by running the full SelectorMediaSourceEngine pipeline: " +
                     "searchSubjects -> selectSubjects -> searchEpisodes -> selectEpisodes -> selectMedia, " +
-                    "then optionally WebView (CEF) video extraction and a playback probe. " +
+                    "then optionally WebView (CEF) video extraction and an HTTP availability probe. " +
                     "Returns a per-step trace (inputs, parsed results, errors) for debugging. " +
                     "If the site is behind a captcha, it is solved automatically using the same strategies as the app " +
                     "(reported as details.autoSolvedCaptcha); if it cannot be solved, the whole run stops immediately " +

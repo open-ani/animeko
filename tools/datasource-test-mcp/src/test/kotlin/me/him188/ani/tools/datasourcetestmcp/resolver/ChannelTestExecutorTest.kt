@@ -9,7 +9,10 @@
 
 package me.him188.ani.tools.datasourcetestmcp.resolver
 
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import me.him188.ani.datasources.api.DefaultMedia
@@ -36,6 +39,9 @@ import me.him188.ani.tools.datasourcetestmcp.video.VideoProbeResult
 import me.him188.ani.tools.datasourcetestmcp.video.VideoUrlProbeEngine
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 
 class ChannelTestExecutorTest {
     @Test
@@ -139,6 +145,49 @@ class ChannelTestExecutorTest {
     }
 
     @Test
+    fun execute_probeTimeout_preservesResolvedVideo() = runTest {
+        val url = "https://video.example.com/slow.m3u8"
+        val resolver = FakeResolver(
+            mapOf("c1" to ResolveResult(resolvedVideo = resolved(url))),
+        )
+
+        val result = ChannelTestExecutor(resolver, NeverCompletingProbe()).execute(
+            playableCandidates = listOf(candidate("c1")),
+            matchersFor = { emptyList() },
+            probeTimeoutMillis = 1,
+            candidateTestMode = CandidateTestMode.ALL_CHANNELS,
+        ).single()
+
+        assertEquals("success", result.resolveStatus)
+        assertEquals("timeout", result.probeStatus)
+        assertFalse(result.ok)
+        assertEquals(url, assertNotNull(result.resolvedVideo).url)
+        assertEquals("Resolved final video URL, but HTTP probe timed out", result.summary)
+    }
+
+    @Test
+    fun execute_parentTimeout_isNotConvertedToProbeTimeout() = runTest {
+        val resolver = FakeResolver(
+            mapOf(
+                "c1" to ResolveResult(
+                    resolvedVideo = resolved("https://video.example.com/slow.m3u8"),
+                ),
+            ),
+        )
+
+        assertFailsWith<TimeoutCancellationException> {
+            withTimeout(1) {
+                ChannelTestExecutor(resolver, NeverCompletingProbe()).execute(
+                    playableCandidates = listOf(candidate("c1")),
+                    matchersFor = { emptyList() },
+                    probeTimeoutMillis = 60_000,
+                    candidateTestMode = CandidateTestMode.ALL_CHANNELS,
+                )
+            }
+        }
+    }
+
+    @Test
     fun subjectEpisodeInput_defaults_to_allChannels() {
         val input = TestSubjectEpisodeSourceInput(
             subjectId = 1,
@@ -224,6 +273,12 @@ private class FakeProbe(
     override suspend fun probe(url: String, headers: Map<String, String>): VideoProbeResult {
         calls += url
         return results.getValue(url)
+    }
+}
+
+private class NeverCompletingProbe : VideoUrlProbeEngine {
+    override suspend fun probe(url: String, headers: Map<String, String>): VideoProbeResult {
+        awaitCancellation()
     }
 }
 

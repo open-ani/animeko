@@ -10,8 +10,9 @@
 package me.him188.ani.tools.datasourcetestmcp.selector
 
 import io.ktor.http.Url
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
@@ -332,12 +333,15 @@ class SelectorEngineService(
         errors += extractResults.flatMap { it.errors }
 
         val resolved = extractResults.filter { it.resolvedVideo != null }
-        val playable = extractResults.filter { it.ok }
+        val probeSucceeded = extractResults.filter { it.probeStatus == "success" }
+        val probeFailed = extractResults.filter { it.probeStatus == "failed" }
+        val probeTimedOut = extractResults.filter { it.probeStatus == "timeout" }
         steps += StageResult(
             name = "extractVideo",
             status = if (resolved.isNotEmpty()) "success" else "failed",
             summary = if (input.probeVideo) {
-                "视频解析: ${resolved.size}/${extractResults.size} 个候选解析出视频 URL, ${playable.size} 个通过播放探测"
+                "视频解析: ${resolved.size}/${extractResults.size} 个候选解析出视频 URL, " +
+                        "${probeSucceeded.size} 个通过 HTTP 探测"
             } else {
                 "视频解析: ${resolved.size}/${extractResults.size} 个候选解析出视频 URL (未探测)"
             },
@@ -346,16 +350,25 @@ class SelectorEngineService(
         )
 
         return SelectorResolveEpisodeResult(
-            ok = playable.isNotEmpty(),
+            ok = if (input.probeVideo) probeSucceeded.isNotEmpty() else resolved.isNotEmpty(),
             summary = when {
-                playable.isNotEmpty() -> "成功: ${playable.size}/${extractResults.size} 个候选可播放"
-                resolved.isNotEmpty() -> "解析出视频 URL, 但未通过播放探测"
+                !input.probeVideo && resolved.isNotEmpty() ->
+                    "成功: ${resolved.size}/${extractResults.size} 个候选解析出视频 URL (未探测)"
+
+                probeSucceeded.isNotEmpty() ->
+                    "成功: ${probeSucceeded.size}/${extractResults.size} 个候选通过 HTTP 探测"
+
+                resolved.isNotEmpty() -> "解析出视频 URL, 但未通过 HTTP 探测"
                 else -> "找到候选播放页, 但未能解析出视频 URL"
             },
             steps = steps,
             medias = candidates,
             extractResults = extractResults,
             errors = errors,
+            resolvedCount = resolved.size,
+            probeSucceededCount = probeSucceeded.size,
+            probeFailedCount = probeFailed.size,
+            probeTimedOutCount = probeTimedOut.size,
         )
     }
 
@@ -392,6 +405,8 @@ class SelectorEngineService(
                 durationMillis = System.currentTimeMillis() - start,
                 errors = listOf("WebPageCaptchaException: url=${e.url}, kind=${e.kind}"),
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             SelectorRunStepResult(
                 step = input.step,
@@ -595,18 +610,20 @@ class SelectorEngineService(
         val resolved = resolveResult.resolvedVideo
 
         val probeResult = if (resolved != null && input.probeResolvedVideo) {
-            withTimeout(input.probeTimeoutMillis) {
+            withTimeoutOrNull(input.probeTimeoutMillis) {
                 probe.probe(resolved.url, resolved.headers)
             }
         } else {
             null
         }
+        val probeTimedOut = resolved != null && input.probeResolvedVideo && probeResult == null
 
         return SelectorRunStepResult(
             step = input.step,
-            ok = resolved != null && (probeResult?.ok != false),
+            ok = resolved != null && !probeTimedOut && (probeResult?.ok != false),
             summary = when {
                 resolved == null -> "WebView 未拦截到匹配的视频 URL"
+                probeTimedOut -> "解析出视频 URL 但 HTTP 探测超时: ${resolved.url}"
                 probeResult == null -> "解析出视频 URL: ${resolved.url}"
                 probeResult.ok -> "解析出视频 URL 且探测通过: ${resolved.url}"
                 else -> "解析出视频 URL 但探测失败: ${probeResult.summary}"
@@ -620,9 +637,14 @@ class SelectorEngineService(
                 probeResult?.let {
                     put("probe", json.encodeToJsonElement(VideoProbeResult.serializer(), it))
                 }
+                put("probeTimedOut", probeTimedOut)
                 resolveResult.diagnostics?.let { put("diagnostics", it) }
             },
-            errors = resolveResult.errors + probeResult?.errors.orEmpty(),
+            errors = resolveResult.errors + probeResult?.errors.orEmpty() + if (probeTimedOut) {
+                listOf("HTTP probe timed out after ${input.probeTimeoutMillis}ms")
+            } else {
+                emptyList()
+            },
         )
     }
 
@@ -741,6 +763,8 @@ class SelectorEngineService(
                 errors = listOf(e.message.orEmpty()),
                 durationMillis = System.currentTimeMillis() - start,
             )
+            throw e
+        } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             steps += StageResult(

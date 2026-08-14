@@ -14,7 +14,8 @@ searchSubjects → selectSubjects → searchEpisodes → selectEpisodes → sele
 MCP 工具对应关系:
 
 - `selector_resolve_episode` 自动跑完整流程并返回每步 trace。**默认**还会继续做 WebView 视频解析与
-  VLC 播放探测(会启动 CEF 与播放器,耗时较长),只测解析层请传 `extractVideo=false`。
+  HTTP 可达性探测(会启动 CEF,不会启动播放器)。只提取最终视频 URL 请传 `probeVideo=false`;
+  连 WebView 解析也不需要时传 `extractVideo=false`。HTTP 探测超时/失败不会丢弃已解析出的 URL。
   每个搜索词默认只访问前 3 个条目的详情页(`maxSubjectsPerName`;App 内无此限制。条目按名称长度
   升序排序,目标条目排名靠后时把它调大);
 - `selector_run_step` 单独跑其中一个步骤;

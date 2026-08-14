@@ -156,6 +156,8 @@ internal class WindowsPointerSequenceStateMachine {
     private val suppressedPointerIds = mutableSetOf<Long>()
 
     fun handle(message: WindowsPointerMessage, pointer: WindowsPointerData): WindowsPointerDispatch {
+        // TODO: Read PT_PEN details through JNA and inject Stylus/Eraser into ComposeScene instead
+        //  of letting Windows synthesize the current AWT mouse sequence.
         if (pointer.pointerType != PT_TOUCH) return WindowsPointerDispatch.Pass
 
         if (pointer.isCanceled) {

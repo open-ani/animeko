@@ -33,7 +33,6 @@ import me.him188.ani.utils.platform.isLinux
 import org.koin.core.context.GlobalContext
 import org.koin.mp.KoinPlatform
 import org.openani.mediamp.ffmpeg.FFmpegKit
-import org.openani.mediamp.vlc.VlcMediampPlayer
 import java.io.File
 import kotlin.system.exitProcess
 
@@ -51,11 +50,6 @@ object TestTasks {
 
             "mediamp-ffmpeg-smoke-test" -> {
                 checkMediampFfmpeg()
-                exitProcess(0)
-            }
-
-            "mediamp-vlc-load-test" -> {
-                VlcMediampPlayer.prepareLibraries()
                 exitProcess(0)
             }
 

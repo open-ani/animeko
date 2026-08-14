@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import me.him188.ani.app.ui.foundation.LocalPlatform
+import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
@@ -149,7 +150,10 @@ fun LockableVideoGestureHost(
     onExitFullscreen: () -> Unit = {},
     onToggleDanmaku: () -> Unit = {},
     onTogglePlayerStats: () -> Unit = {},
-    family: GestureFamily = LocalPlatform.current.mouseFamily,
+    family: GestureFamily = gestureFamilyOf(
+        LocalActiveInputSource.current.current,
+        LocalPlatform.current.mouseFamily,
+    ),
     gestureIndicatorState: GestureIndicatorState = rememberGestureIndicatorState(),
     fastForwardSpeed: Float = 3f,
     fastSkipState: FastSkipState? = playerState.features[PlaybackSpeed]?.let {

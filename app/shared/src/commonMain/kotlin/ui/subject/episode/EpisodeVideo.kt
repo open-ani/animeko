@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.rounded.DisplaySettings
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material3.DropdownMenu
@@ -38,6 +39,7 @@ import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -47,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -79,6 +82,7 @@ import me.him188.ani.app.ui.foundation.icons.RightPanelClose
 import me.him188.ani.app.ui.foundation.icons.RightPanelOpen
 import me.him188.ani.app.ui.foundation.icons.SubtitleGear
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.rememberDebugSettingsViewModel
 import me.him188.ani.app.ui.foundation.theme.AniTheme
@@ -95,6 +99,7 @@ import me.him188.ani.app.ui.lang.subject_episode_preview_mode
 import me.him188.ani.app.ui.lang.subject_episode_select_media_source
 import me.him188.ani.app.ui.lang.video_player_stats_title_hide
 import me.him188.ani.app.ui.lang.video_player_stats_title_show
+import me.him188.ani.app.ui.lang.watch_together_title
 import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
 import me.him188.ani.app.ui.mediafetch.ViewKind
 import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
@@ -113,6 +118,7 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeSelectorState
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
+import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.NoOpVideoAspectRatio
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
@@ -130,6 +136,8 @@ import me.him188.ani.app.videoplayer.ui.gesture.LockableVideoGestureHost
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.ScreenshotButton
 import me.him188.ani.app.videoplayer.ui.gesture.SwipeSeekerConfig
+import me.him188.ani.app.videoplayer.ui.gesture.gestureFamilyOf
+import me.him188.ani.app.videoplayer.ui.gesture.hasPointerDevice
 import me.him188.ani.app.videoplayer.ui.gesture.mouseFamily
 import me.him188.ani.app.videoplayer.ui.gesture.rememberGestureIndicatorState
 import me.him188.ani.app.videoplayer.ui.gesture.rememberSwipeSeekerState
@@ -161,9 +169,8 @@ import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.audioTracks
 import org.openani.mediamp.features.subtitleTracks
-import org.openani.mediamp.isPlaying
 import org.openani.mediamp.test.TestMediampPlayer
-import org.openani.mediamp.togglePause
+import org.openani.mediamp.togglePlayWhenReady
 import kotlin.time.Duration
 
 internal const val TAG_EPISODE_VIDEO_TOP_BAR = "EpisodeVideoTopBar"
@@ -172,6 +179,7 @@ internal const val TAG_DANMAKU_SETTINGS_SHEET = "DanmakuSettingsSheet"
 internal const val TAG_SHOW_MEDIA_SELECTOR = "ShowMediaSelector"
 internal const val TAG_SHOW_SETTINGS = "ShowSettings"
 internal const val TAG_COLLAPSE_SIDEBAR = "collapseSidebar"
+internal const val TAG_WATCH_TOGETHER_MENU_ITEM = "WatchTogetherMenuItem"
 
 internal const val TAG_MEDIA_SELECTOR_SHEET = "MediaSelectorSheet"
 internal const val TAG_EPISODE_SELECTOR_SHEET = "EpisodeSelectorSheet"
@@ -220,7 +228,10 @@ internal fun EpisodeVideoImpl(
     modifier: Modifier = Modifier,
     maintainAspectRatio: Boolean = !expanded,
     isFullscreen: Boolean = expanded,
-    gestureFamily: GestureFamily = LocalPlatform.current.mouseFamily,
+    gestureFamily: GestureFamily = gestureFamilyOf(
+        LocalActiveInputSource.current.current,
+        LocalPlatform.current.mouseFamily,
+    ),
     fastForwardSpeed: Float = 3f,
     contentWindowInsets: WindowInsets = WindowInsets(0.dp),
 ) {
@@ -231,6 +242,22 @@ internal fun EpisodeVideoImpl(
     val sheetsController = rememberVideoSideSheetsController<EpisodeVideoSideSheetPage>()
     val anySideSheetVisible by sheetsController.hasPageAsState()
     val previewModeText = stringResource(Lang.subject_episode_preview_mode)
+    val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
+
+    LaunchedEffect(isFullscreen, playerControllerState, watchTogetherPlayerController) {
+        if (isFullscreen) {
+            snapshotFlow { playerControllerState.visibility.topBar }.collect {
+                watchTogetherPlayerController.setDraggablePopupVisibility(it)
+            }
+        } else {
+            watchTogetherPlayerController.setDraggablePopupVisibility(true)
+        }
+    }
+    DisposableEffect(watchTogetherPlayerController) {
+        onDispose {
+            watchTogetherPlayerController.setDraggablePopupVisibility(true)
+        }
+    }
 
     // auto hide cursor
     val videoInteractionSource = remember { MutableInteractionSource() }
@@ -244,11 +271,7 @@ internal fun EpisodeVideoImpl(
     }
     val indicatorState = rememberGestureIndicatorState()
     val swipeSeekerConfig = SwipeSeekerConfig.Default
-    // 桌面设备可能同时支持鼠标和触摸；当前 GestureFamily 不能按单次输入来源分流，
-    // 因此桌面端仍使用 MOUSE 分支。后续实现来源级分流时再支持桌面触摸手势。
-    // TODO: 根据触控能力与平台特性建立设备抽象，并据此选择手势策略。
     val touchSeekState = rememberPlayerTouchSeekState(
-        enabled = gestureFamily == GestureFamily.TOUCH,
         controllerState = playerControllerState,
         indicatorState = indicatorState,
         swipeSeekerConfig = swipeSeekerConfig,
@@ -283,6 +306,7 @@ internal fun EpisodeVideoImpl(
                                 sheetsController = sheetsController,
                                 shareData = shareData,
                                 onClickCache = onClickCache,
+                                onClickWatchTogether = watchTogetherPlayerController::toggle,
                                 playerControllerState = playerControllerState,
                                 sidebarVisible = sidebarVisible,
                                 onToggleSidebar = onToggleSidebar,
@@ -356,7 +380,7 @@ internal fun EpisodeVideoImpl(
                     playbackSpeedControllerState,
                     Modifier,
                     onTogglePauseResume = {
-                        if (playerState.playbackState.value.isPlaying) {
+                        if (playerState.state.value.playWhenReady) {
                             indicatorTasker.launch {
                                 indicatorState.showPausedLong()
                             }
@@ -365,7 +389,7 @@ internal fun EpisodeVideoImpl(
                                 indicatorState.showResumedLong()
                             }
                         }
-                        playerState.togglePause()
+                        playerState.togglePlayWhenReady()
                     },
                     onToggleFullscreen = onClickFullScreen,
                     onExitFullscreen = onExitFullscreen,
@@ -435,11 +459,11 @@ internal fun EpisodeVideoImpl(
             bottomBar = {
                 PlayerControllerBar(
                     startActions = {
-                        val isPlaying by remember(playerState) { playerState.playbackState.map { it.isPlaying } }
+                        val playWhenReady by remember(playerState) { playerState.state.map { it.playWhenReady } }
                             .collectAsStateWithLifecycle(false)
                         PlayerControllerDefaults.PlaybackIcon(
-                            isPlaying = { isPlaying },
-                            onClick = { playerState.togglePause() },
+                            isPlaying = { playWhenReady },
+                            onClick = { playerState.togglePlayWhenReady() },
                         )
 
                         if (hasNextEpisode && expanded) {
@@ -453,7 +477,12 @@ internal fun EpisodeVideoImpl(
                         )
 
                         val audioLevelController = audioController as? MediampAudioLevelController
-                        if (expanded && audioLevelController != null && gestureFamily == GestureFamily.MOUSE) {
+                        // 用「有没有鼠标」而不是「此刻在用鼠标」: 后者会让这个常驻控件随输入方式反复显隐.
+                        val hasMouse = hasPointerDevice(
+                            LocalPlatform.current,
+                            LocalActiveInputSource.current.hasSeenMouse,
+                        )
+                        if (expanded && audioLevelController != null && hasMouse) {
                             val level by audioLevelController.levelFlow.collectAsState()
                             val isMute by audioLevelController.muteFlow.collectAsState()
 
@@ -547,17 +576,17 @@ internal fun EpisodeVideoImpl(
 
 /**
  * 将进度条的通用触摸状态机接入播放器 UI：拖动期间保留 inline progress slider，
- * 手指向上滑过取消阈值时持续显示取消提示。非触屏分支返回 `null`，不改变原有交互。
+ * 手指向上滑过取消阈值时持续显示取消提示。
+ *
+ * 状态始终存在，是否响应触摸由 [MediaProgressSlider] 按本次指针事件判断，避免输入设备切换后的
+ * 第一次拖动仍受组合期 [GestureFamily] 影响。
  */
 @Composable
 private fun rememberPlayerTouchSeekState(
-    enabled: Boolean,
     controllerState: PlayerControllerState,
     indicatorState: GestureIndicatorState,
     swipeSeekerConfig: SwipeSeekerConfig,
-): TouchSeekState? {
-    if (!enabled) return null
-
+): TouchSeekState {
     val density = LocalDensity.current
     return remember(controllerState, indicatorState, swipeSeekerConfig, density) {
         // 同一 TouchSeekState 生命周期内，每次请求都由固定 requester 和 indicator ticket 撤销。
@@ -603,6 +632,7 @@ private fun EpisodeVideoTopBarActions(
     sheetsController: VideoSideSheetsController<EpisodeVideoSideSheetPage>,
     shareData: MediaShareData,
     onClickCache: () -> Unit,
+    onClickWatchTogether: () -> Unit,
     playerControllerState: PlayerControllerState,
     sidebarVisible: Boolean,
     onToggleSidebar: (isCollapsed: Boolean) -> Unit,
@@ -622,6 +652,7 @@ private fun EpisodeVideoTopBarActions(
     val moreOptionsText = stringResource(Lang.subject_episode_more_options)
     val externalLinksText = stringResource(Lang.subject_episode_external_links)
     val cacheText = stringResource(Lang.subject_episode_cache)
+    val watchTogetherText = stringResource(Lang.watch_together_title)
     val showPlayerStatsText = stringResource(Lang.video_player_stats_title_show)
     val hidePlayerStatsText = stringResource(Lang.video_player_stats_title_hide)
     val collapseSidebarText = stringResource(Lang.subject_episode_collapse_sidebar)
@@ -640,7 +671,7 @@ private fun EpisodeVideoTopBarActions(
         }
     }
 
-    IconButton({ onClickSkipOpEd(playerState.getCurrentPositionMillis()) }) {
+    IconButton({ onClickSkipOpEd(playerState.currentPositionMillis.value) }) {
         val icon = when (skipDurationSeconds) {
             85L -> AniIcons.Forward85
             90L -> AniIcons.Forward90
@@ -689,6 +720,15 @@ private fun EpisodeVideoTopBarActions(
             expanded = showMoreDropdown,
             onDismissRequest = { showMoreDropdown = false },
         ) {
+            DropdownMenuItem(
+                text = { Text(watchTogetherText) },
+                onClick = {
+                    showMoreDropdown = false
+                    onClickWatchTogether()
+                },
+                leadingIcon = { Icon(Icons.Rounded.Groups, null) },
+                modifier = Modifier.testTag(TAG_WATCH_TOGETHER_MENU_ITEM),
+            )
             DropdownMenuItem(
                 text = { Text(if (playerStatsVisible) hidePlayerStatsText else showPlayerStatsText) },
                 onClick = {

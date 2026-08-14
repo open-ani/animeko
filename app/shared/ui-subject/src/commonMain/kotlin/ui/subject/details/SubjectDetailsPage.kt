@@ -101,7 +101,6 @@ import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.ImageViewer
-import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.Tag
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
@@ -133,6 +132,7 @@ import me.him188.ani.app.ui.foundation.toComposeImageBitmap
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
+import me.him188.ani.app.ui.foundation.input.touchHorizontalScrollOnly
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_richtext_external_app_link_warning_prefix
 import me.him188.ani.app.ui.lang.foundation_richtext_open_failed_prefix
@@ -173,7 +173,6 @@ import me.him188.ani.app.ui.user.TestSelfInfoUiState
 import me.him188.ani.datasources.api.PackedDate
 import me.him188.ani.datasources.api.topic.toggleCollected
 import me.him188.ani.utils.platform.annotations.TestOnly
-import me.him188.ani.utils.platform.isMobile
 import org.jetbrains.compose.resources.stringResource
 
 // region screen
@@ -941,8 +940,7 @@ private fun SubjectDetailsContentPager(
     ) {
         HorizontalPager(
             state = pagerState,
-            Modifier.fillMaxHeight(),
-            userScrollEnabled = LocalPlatform.current.isMobile(),
+            Modifier.fillMaxHeight().touchHorizontalScrollOnly(),
             verticalAlignment = Alignment.Top,
         ) { index ->
             val type = SubjectDetailsTab.entries[index]
