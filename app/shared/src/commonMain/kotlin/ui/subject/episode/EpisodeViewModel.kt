@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.paging.cachedIn
 import androidx.paging.map
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -50,6 +51,7 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.comment.CommentReportTargetType
 import me.him188.ani.app.data.models.episode.displayName
@@ -193,6 +195,7 @@ import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.features.chapters
 import org.openani.mediamp.metadata.Chapter
+import org.openani.mediamp.mpv.MpvMediampPlayer
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -289,8 +292,14 @@ class EpisodeViewModel(
 
     private val tasker = SingleTaskExecutor(backgroundScope.coroutineContext)
 
-    val player: MediampPlayer =
-        playerStateFactory.create(context, backgroundScope.coroutineContext)
+    val player: MediampPlayer = playerStateFactory
+        .create(context, backgroundScope.coroutineContext)
+        .apply {
+            if (this !is MpvMediampPlayer) return@apply
+            // 用户自定义的 mpv 选项. 仅在使用 mpv 内核的平台生效, 修改设置后立即应用到当前播放器.
+            // datastore 读取很快
+            runBlocking { applyCustomOptions() }
+        }
 
     val videoEnhancement = createVideoEnhancementController(player, backgroundScope.coroutineContext)
 
@@ -1097,17 +1106,6 @@ class EpisodeViewModel(
             )
         }
 
-        // 用户自定义的 mpv 选项. 仅在使用 mpv 内核的平台 (桌面端) 生效, 修改设置后立即应用到当前播放器.
-        launchInBackground {
-            settingsRepository.playerKernelConfig.flow
-                .map { it.mpvOptions }
-                .distinctUntilChanged()
-                .map { parseMpvOptions(it) }
-                .collect { options ->
-                    applyMpvOptions(player, options)
-                }
-        }
-
         // 跳过 OP 和 ED
         launchInBackground {
             settingsRepository.videoScaffoldConfig.flow
@@ -1133,8 +1131,8 @@ class EpisodeViewModel(
     }
 
     override fun onCleared() {
-        videoEnhancement?.close()
         super.onCleared()
+        videoEnhancement?.close()
         webSessionManager.cancelAutoSolves()
         backgroundScope.launch(NonCancellable + CoroutineName("EpisodeViewModel#onCleared")) {
             fetchPlayState.onClose()
@@ -1190,5 +1188,16 @@ class EpisodeViewModel(
                 }
             }
         }
+    }
+
+    private suspend fun MpvMediampPlayer.applyCustomOptions() {
+        val config = try {
+            settingsRepository.playerKernelConfig.flow.map { it.mpvOptions }.first()
+        } catch (e: Exception) {
+            if (e !is CancellationException) logger.warn(e) { "Failed to get custom mpv options." }
+            return
+        }
+
+        applyOptions(parseMpvOptions(config))
     }
 }
