@@ -24,8 +24,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -36,25 +34,18 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
-import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
 import me.him188.ani.app.domain.media.selector.MediaSelector
-import me.him188.ani.app.domain.mediasource.web.WebSearchEpisodeInfo
 import me.him188.ani.app.domain.player.ExtensionException
 import me.him188.ani.app.domain.player.PlayerExtensionManager
-import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.player.extension.EpisodePlayerExtensionFactory
 import me.him188.ani.app.domain.player.extension.ExtensionBackgroundTaskScope
 import me.him188.ani.app.domain.player.extension.PlayerExtension
 import me.him188.ani.app.domain.player.extension.PlayerExtensionEvent
 import me.him188.ani.app.domain.usecase.GlobalKoin
-import me.him188.ani.datasources.api.DefaultMedia
-import me.him188.ani.datasources.api.source.MediaFetchRequest
-import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeSwitch
 import me.him188.ani.utils.logging.info
@@ -116,11 +107,13 @@ class EpisodeFetchSelectPlayState(
         mainDispatcher,
     )
 
-    /**
-     * 跨 episode 共享的 Web 源剧集链接缓存, 用于切换 episode 时跳过搜索直接播放.
-     * @see WebEpisodeLinkCacheExtension
-     */
-    val webEpisodeLinkCache = WebEpisodeLinkCache()
+    init {
+        // Web 源的剧集缓存 (SelectorMediaSource 切集时用它跳过搜索) 只在当前播放 session 内有效:
+        // 进入播放页时清空上次残留的缓存. 退出时也会清空, 见 [onClose].
+        backgroundScope.launch {
+            koin.getOrNull<SelectorMediaSourceEpisodeCacheRepository>()?.clearSubjectAndEpisodeCache()
+        }
+    }
 
     private val extensionManager by lazy {
         val intrinsicExtensions = listOf(
@@ -129,7 +122,6 @@ class EpisodeFetchSelectPlayState(
                     backgroundScope.launch { context.broadcast(MediaLoadedEvent(episodeId)) }
                 }
             },
-            EpisodePlayerExtensionFactory { _, _ -> WebEpisodeLinkCacheExtension() },
         )
 
         PlayerExtensionManager(
@@ -241,6 +233,8 @@ class EpisodeFetchSelectPlayState(
     suspend fun onClose() {
         extensionManager.call { it.onClose() }
         playerSession.stopPlayback()
+        // 退出播放页: 清空播放 session 的 web 剧集缓存
+        koin.getOrNull<SelectorMediaSourceEpisodeCacheRepository>()?.clearSubjectAndEpisodeCache()
     }
 
     /**
@@ -321,118 +315,6 @@ class EpisodeFetchSelectPlayState(
                     }
                 }
             }
-        }
-    }
-
-    /**
-     * An intrinsic extension that remembers all episode links of the selected web source channel,
-     * and fast-selects from that cache when switching episodes.
-     *
-     * @see WebEpisodeLinkCache
-     */
-    private inner class WebEpisodeLinkCacheExtension : PlayerExtension("WebEpisodeLinkCache") {
-        override fun onStart(episodeSession: EpisodeSession, backgroundTaskScope: ExtensionBackgroundTaskScope) {
-            // 快速路径: 新 session 启动时, 若缓存的线路上有当前集的链接,
-            // 直接选择合成的 media, 跳过搜索, 直达「匹配视频」阶段.
-            // 决策结果写入 EpisodeSession.webFastPathHit: 命中时数据源搜索和自动选择都不会启动.
-            backgroundTaskScope.launch("SelectFromCache") {
-                var hit = false
-                try {
-                    if (webEpisodeLinkCache.state.value == null) return@launch
-                    val episodeInfo = episodeSession.infoBundleFlow.filterNotNull().first().episodeInfo
-                    val media = webEpisodeLinkCache.createMediaFor(
-                        episodeInfo.sort, episodeInfo.ep, episodeInfo.displayName,
-                    ) ?: return@launch
-                    val fetchSelect = episodeSession.fetchSelectFlow.filterNotNull().first()
-                    if (fetchSelect.mediaSelector.selected.value != null) return@launch
-                    // 先决策再选择: 下游 (summary 等) 观察到 selected 时必须已能看到 hit = true,
-                    // 否则会走「查询候选列表」路径触发搜索.
-                    hit = true
-                    episodeSession.decideWebFastPath(hit = true)
-                    logger.info {
-                        "WebEpisodeLinkCache: fast-selecting cached link for episode ${episodeInfo.sort}: ${media.originalUrl}"
-                    }
-                    fetchSelect.mediaSelector.select(media)
-                } finally {
-                    if (!hit) episodeSession.decideWebFastPath(hit = false)
-                }
-            }
-
-            // 快速路径命中后, 若有任意数据源开始查询 (例如用户打开了数据源选择器, 其 UI 订阅会触发查询),
-            // 解除门控, 让查询保持存活并跑完, 避免 UI 关闭后查询被取消.
-            backgroundTaskScope.launch("ReleaseGateOnQueryStart") {
-                if (episodeSession.webFastPathHit.filterNotNull().first() != true) return@launch
-                val fetchSelect = episodeSession.fetchSelectFlow.filterNotNull().first()
-                val results = fetchSelect.mediaFetchSession.mediaSourceResults
-                if (results.isEmpty()) return@launch
-                combine(results.map { it.state }) { states ->
-                    states.any { it !is MediaSourceFetchState.Idle && it !is MediaSourceFetchState.Disabled }
-                }.first { it }
-                logger.info { "WebEpisodeLinkCache: a media source query has started, releasing the fetch gate" }
-                episodeSession.decideWebFastPath(hit = false)
-            }
-
-            // 记录选中的 web 线路上的所有剧集链接; 选中非 web 资源时清除缓存.
-            backgroundTaskScope.launch("RememberLinks") {
-                val repository = koin.getOrNull<SelectorMediaSourceEpisodeCacheRepository>() ?: return@launch
-                episodeSession.fetchSelectFlow.collectLatest { fetchSelect ->
-                    if (fetchSelect == null) return@collectLatest
-                    fetchSelect.mediaSelector.selected.filterNotNull().distinctUntilChanged().collect { media ->
-                        if (media.kind != MediaSourceKind.WEB) {
-                            webEpisodeLinkCache.invalidate()
-                            return@collect
-                        }
-                        val defaultMedia = media as? DefaultMedia ?: return@collect
-                        val request = fetchSelect.mediaFetchSession.request.first()
-                        val episodes = findCachedEpisodes(repository, defaultMedia, request) ?: return@collect
-                        webEpisodeLinkCache.update(defaultMedia, episodes)
-                    }
-                }
-            }
-
-            // 缓存的链接加载失败时清除缓存, 之后回到完整搜索流程.
-            backgroundTaskScope.launch("InvalidateOnFailure") {
-                playerSession.videoLoadingState.collect { state ->
-                    if (state !is VideoLoadingState.Failed) return@collect
-                    if (state is VideoLoadingState.Cancelled) return@collect // 正常切换也会产生 Cancelled
-                    val cached = webEpisodeLinkCache.state.value ?: return@collect
-                    val fetchSelect = episodeSession.fetchSelectFlow.filterNotNull().first()
-                    val selected = fetchSelect.mediaSelector.selected.value ?: return@collect
-                    if (selected.mediaId != cached.media.mediaId) return@collect
-
-                    logger.info { "WebEpisodeLinkCache: invalidating cache because loading failed: $state" }
-                    webEpisodeLinkCache.invalidate()
-                    if (episodeSession.webFastPathHit.value == true) {
-                        // 本集是快速路径选中的, 搜索还没启动:
-                        // 撤销选择并解除门控 (顺序重要: 自动选择重启时 selected 必须已为 null),
-                        // 让自动选择在搜索结果上重新选择
-                        // (可能会选到同线路的新链接, 若仍失败则由 SwitchMediaOnPlayerErrorExtension 拉黑换源).
-                        fetchSelect.mediaSelector.unselect()
-                        episodeSession.decideWebFastPath(hit = false)
-                    }
-                }
-            }
-        }
-
-        /**
-         * 从 [SelectorMediaSourceEpisodeCacheRepository] (搜索时写入的全量剧集缓存) 中
-         * 找到 [media] 所在线路上的所有剧集.
-         */
-        private suspend fun findCachedEpisodes(
-            repository: SelectorMediaSourceEpisodeCacheRepository,
-            media: DefaultMedia,
-            request: MediaFetchRequest,
-        ): List<WebSearchEpisodeInfo>? {
-            val pageSubjectName = media.properties.subjectName ?: return null
-            val channel = media.properties.alliance.ifEmpty { null }
-            for (searchName in request.subjectNames) {
-                for (cache in repository.getCache(media.mediaSourceId, searchName)) {
-                    if (cache.webSubjectInfo.name != pageSubjectName) continue
-                    val episodes = cache.webEpisodeInfos.filter { it.channel == channel && it.episodeSortOrEp != null }
-                    if (episodes.isNotEmpty()) return episodes
-                }
-            }
-            return null
         }
     }
 

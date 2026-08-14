@@ -35,7 +35,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -84,11 +83,10 @@ import me.him188.ani.app.domain.episode.mediaSelectorFlow
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.media.cache.EpisodeCacheStatus
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
+import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.domain.media.fetch.MediaSourceManager
 import me.him188.ani.app.domain.media.fetch.MediaSourceResultsFilterer
 import me.him188.ani.app.domain.media.resolver.MediaResolver
-import me.him188.ani.app.domain.media.selector.MatchMetadata
-import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
 import me.him188.ani.app.domain.mediasource.GetPreferredWebMediaSourceUseCase
 import me.him188.ani.app.domain.mediasource.instance.GetMediaSourceInstancesUseCase
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
@@ -267,6 +265,7 @@ class EpisodeViewModel(
     private val autoSkipRepository: AutoSkipRepository by inject()
     private val getMediaSelectorSettings: GetMediaSelectorSettingsUseCase by inject()
     private val getMediaSourceInstances: GetMediaSourceInstancesUseCase by inject()
+    private val selectorEpisodeCacheRepository: SelectorMediaSourceEpisodeCacheRepository by inject()
     val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase by inject()
     private val getSubjectRecommendations: GetSubjectRecommendationUseCase by inject()
     private val getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase by inject()
@@ -799,16 +798,9 @@ class EpisodeViewModel(
     val danmakuHostState = DanmakuHostState(danmakuConfigState, DanmakuTrackProperties.Default)
 
     private fun CoroutineScope.createPageStateFlow(episodeSession: EpisodeSession): Flow<EpisodePageState> {
-        // 保证数据源会一直查询, 否则会显示许多 CANCELLED 日志.
-        // web 切集快速路径命中时不启动查询 (决策翻转为 false 时再启动), 详见 EpisodeSession.webFastPathHit.
-        episodeSession.webFastPathHit.flatMapLatest { fastPathHit ->
-            if (fastPathHit == false) {
-                episodeSession.fetchSelectFlow.flatMapLatest {
-                    it?.mediaFetchSession?.cumulativeResults ?: flowOfEmptyList()
-                }
-            } else {
-                emptyFlow()
-            }
+        // 保证数据源会一直查询, 否则会显示许多 CANCELLED 日志
+        episodeSession.fetchSelectFlow.flatMapLatest {
+            it?.mediaFetchSession?.cumulativeResults ?: flowOfEmptyList()
         }.launchIn(this)
 
         val filteredSourceResults = MediaSourceResultsFilterer(
@@ -833,28 +825,10 @@ class EpisodeViewModel(
                 ?.let { MatchingDanmakuPresenter(it, this) }
         }.shareIn(this, started = SharingStarted.Lazily, replay = 1)
 
-        val selectorFlow = episodeSession.fetchSelectFlow.mapNotNull { it?.mediaSelector }
         val mediaSelectorSummaryStateProducer = MediaSelectorSummaryStateProducer(
-            episodeSession.webFastPathHit.flatMapLatest { fastPathHit ->
-                if (fastPathHit == true) {
-                    // web 切集快速路径命中: 搜索未启动, 候选流为空, 不能走 selectedMaybeExcludedMediaFlow
-                    // (它会 collect 候选流从而触发搜索). 合成的 media 按构造精确匹配当前集.
-                    selectorFlow.flatMapLatest { it.selected }.map { selected ->
-                        selected?.let {
-                            MaybeExcludedMedia.Included(
-                                it,
-                                MatchMetadata(
-                                    MatchMetadata.SubjectMatchKind.EXACT,
-                                    MatchMetadata.EpisodeMatchKind.SORT,
-                                    similarity = 100,
-                                ),
-                            )
-                        }
-                    }
-                } else {
-                    selectorFlow.flatMapLatest { it.selectedMaybeExcludedMediaFlow }
-                }
-            }.onStart { emit(null) },
+            episodeSession.fetchSelectFlow.mapNotNull { it?.mediaSelector }
+                .flatMapLatest { it.selectedMaybeExcludedMediaFlow }
+                .onStart { emit(null) },
             filteredSourceResults,
             getMediaSelectorSettings(),
             getMediaSourceInstances.getAsMediaSourceInfoWithId(),
@@ -997,6 +971,8 @@ class EpisodeViewModel(
 
     fun refreshFetch() {
         launchInBackground {
+            // 手动重新查询: 清空播放 session 的 web 剧集缓存, 让数据源真正重新搜索
+            selectorEpisodeCacheRepository.clearSubjectAndEpisodeCache()
             // Although it's flow, it should be ready.
             fetchPlayState.episodeSessionFlow.flatMapLatest { it.fetchSelectFlow }
                 .map { it?.mediaFetchSession }
@@ -1041,6 +1017,8 @@ class EpisodeViewModel(
 
     fun restartSource(instanceId: String) {
         launchInBackground {
+            // 手动刷新单个源: 清空播放 session 的 web 剧集缓存, 让该源真正重新搜索
+            selectorEpisodeCacheRepository.clearSubjectAndEpisodeCache()
             fetchPlayState.episodeSessionFlow.flatMapLatest { it.fetchSelectFlow }
                 .map { it?.mediaFetchSession }
                 .filterNotNull()
@@ -1122,6 +1100,8 @@ class EpisodeViewModel(
 
     fun updateFetchRequest(request: MediaFetchRequest) {
         launchInBackground {
+            // 编辑查询条件后会重启所有源的搜索, 同样清空播放 session 的 web 剧集缓存
+            selectorEpisodeCacheRepository.clearSubjectAndEpisodeCache()
             fetchPlayState.episodeSessionFlow
                 .firstOrNull()
                 ?.fetchSelectFlow

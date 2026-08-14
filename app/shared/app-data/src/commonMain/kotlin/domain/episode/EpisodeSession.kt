@@ -14,14 +14,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.transformLatest
-import kotlinx.coroutines.flow.update
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.fetch.MediaFetcher
@@ -105,53 +102,23 @@ class EpisodeSession(
     // TODO: 2025/1/4 test fetchSelectFlow changes only when infoBundleFlow's value equality changes 
 
     /**
-     * Web 源切集快速路径对本 session 的决策:
-     *
-     * - `null`: 尚未决定;
-     * - `true`: 已直接使用缓存的剧集链接完成选择, 无需启动数据源搜索 (下游应暂缓 collect 查询结果 flow);
-     * - `false`: 缓存未命中或已失效, 走完整搜索流程.
-     *
-     * `false` 是终态; `true` 可被降级为 `false` (缓存链接失效, 或有查询已被其他途径触发).
-     *
-     * @see EpisodeFetchSelectPlayState.webEpisodeLinkCache
-     */
-    private val _webFastPathHit = MutableStateFlow<Boolean?>(null)
-    val webFastPathHit: StateFlow<Boolean?> = _webFastPathHit.asStateFlow()
-
-    internal fun decideWebFastPath(hit: Boolean) {
-        _webFastPathHit.update { current ->
-            when {
-                current == null -> hit
-                current && !hit -> false
-                else -> current
-            }
-        }
-    }
-
-    /**
      * A cold flow that emits `true` when media sources are loading.
      *
      * - When all media sources have completed, this flow emits `false`.
      * - If there is an error when loading episode data, this flow emits `false`.
-     * - 快速路径命中时 ([webFastPathHit]), 搜索不会启动, 此 flow 为 `false`.
      */
-    val mediaSourceLoadingFlow = webFastPathHit.flatMapLatest { hit ->
-        if (hit == true) {
-            flowOf(false)
-        } else {
-            fetchSelectFlow.transformLatest { bundle ->
-                if (bundle == null) {
-                    emit(false)
-                    return@transformLatest
-                }
-                emitAll(
-                    bundle.mediaFetchSession.hasCompleted.map {
-                        !it.allCompleted()
-                    },
-                )
+    val mediaSourceLoadingFlow = fetchSelectFlow
+        .transformLatest { bundle ->
+            if (bundle == null) {
+                emit(false)
+                return@transformLatest
             }
+            emitAll(
+                bundle.mediaFetchSession.hasCompleted.map {
+                    !it.allCompleted()
+                },
+            )
         }
-    }
 
     /**
      * Restart the loading of the info bundle.

@@ -55,12 +55,14 @@ import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.source.deserializeArgumentsOrNull
 import me.him188.ani.utils.ktor.ScopedHttpClient
+import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 
 @Suppress("unused") // bug
@@ -274,14 +276,50 @@ class SelectorMediaSource(
         }
     }
 
+    /**
+     * 尝试从 [repository] 缓存中构建搜索结果.
+     *
+     * 仅当缓存的条目页面剧集列表中能找到 [query] 请求的剧集时才命中, 否则返回 `null` 走完整搜索
+     * (页面可能已更新, 例如刚开播的新集在缓存里还没有).
+     */
+    private suspend fun EngineType.searchFromCacheOrNull(
+        searchConfig: SelectorSearchConfig,
+        query: SelectorSearchQuery,
+        mediaSourceId: String,
+    ): List<DefaultMedia>? {
+        val caches = try {
+            repository.getCache(mediaSourceId, query.subjectName)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.warn(e) { "SelectorMediaSource '$mediaSourceId': failed to read episode cache, falling back to search" }
+            return null
+        }
+        for (cache in caches) {
+            val episodes = cache.webEpisodeInfos
+            if (episodes.findMatchingEpisodeOrNull(query.episodeSort, query.episodeEp, query.episodeName) == null) {
+                continue
+            }
+            logger.info {
+                "SelectorMediaSource '$mediaSourceId': serving '${query.subjectName}' ${query.episodeSort} from session cache (${episodes.size} episodes)"
+            }
+            return selectMedia(
+                episodes.asSequence(),
+                searchConfig,
+                query,
+                mediaSourceId,
+                subjectName = cache.webSubjectInfo.name,
+            ).filteredList
+        }
+        return null
+    }
+
     // all-in-one search
     private suspend fun EngineType.search(
         searchConfig: SelectorSearchConfig,
         query: SelectorSearchQuery,
         mediaSourceId: String,
     ): List<DefaultMedia> = withContext(Dispatchers.Default) {
-        delayUntilNextAllowedSearch()
-
         val currentPlayerNames = when (currentPlatform()) {
             // 桌面端已迁移至 mpv, 但许多现有订阅仍声明 "vlc", 暂时保持兼容
             is Platform.Desktop -> listOf("mpv", "vlc")
@@ -302,6 +340,13 @@ class SelectorMediaSource(
             }
             return@withContext emptyList()
         }
+
+        // 播放 session 内缓存: 上一次真实搜索已把条目页面的全部剧集写入缓存 (addCache).
+        // 若缓存的剧集列表包含当前请求的剧集 (典型场景: 切集), 直接从缓存构建结果, 不发起任何网络请求.
+        // 缓存的有效期由播放页控制: 进入/退出播放页与手动重新查询时清空全部缓存.
+        searchFromCacheOrNull(searchConfig, query, mediaSourceId)?.let { return@withContext it }
+
+        delayUntilNextAllowedSearch()
 
         val searchUrl = searchConfig.searchUrl.replace(
             "{keyword}",
