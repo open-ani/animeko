@@ -28,6 +28,7 @@ kotlin {
     }
     sourceSets.named("jvmTest").dependencies {
         implementation(kotlin("reflect"))
+        implementation(projects.utils.uiTesting)
     }
     sourceSets.androidMain.dependencies {
     }
