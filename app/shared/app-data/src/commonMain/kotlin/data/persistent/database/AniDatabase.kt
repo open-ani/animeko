@@ -140,7 +140,7 @@ abstract class AniDatabase : RoomDatabase() {
     abstract fun episodeCommentDao(): EpisodeCommentDao
 
     /**
-     * @since 5.4.0
+     * @since 6.1.0
      */
     abstract fun webSearchSessionCacheDao(): WebSearchSessionCacheDao
 

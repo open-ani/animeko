@@ -47,6 +47,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.web.SolveRequest
 import me.him188.ani.app.ui.foundation.IconButton
@@ -54,14 +55,12 @@ import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.media_selector_web_captcha_unsupported
-import me.him188.ani.app.ui.lang.media_selector_web_channel_missing_episode
 import me.him188.ani.app.ui.lang.media_selector_web_edit_query_action
 import me.him188.ani.app.ui.lang.media_selector_web_edit_query_prompt
 import me.him188.ani.app.ui.lang.media_selector_web_rate_limited
 import me.him188.ani.app.ui.lang.media_selector_web_waiting_captcha
 import me.him188.ani.app.ui.lang.settings_mediasource_refresh
 import me.him188.ani.app.ui.mediaselect.common.SourceIcon
-import kotlinx.coroutines.delay
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.currentTimeMillis
@@ -186,7 +185,6 @@ private fun WebSourceCard(
     val waitingCaptchaText = stringResource(Lang.media_selector_web_waiting_captcha)
     val captchaUnsupportedText = stringResource(Lang.media_selector_web_captcha_unsupported)
     val refreshText = stringResource(Lang.settings_mediasource_refresh)
-    val missingEpisodeText = stringResource(Lang.media_selector_web_channel_missing_episode)
     Row(
         modifier,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -256,15 +254,7 @@ private fun WebSourceCard(
                     selected = channel == selectedChannel(),
                     onClick = { onSelect(channel) },
                     enabled = channel.hasCurrentEpisode,
-                    label = {
-                        Text(
-                            if (channel.hasCurrentEpisode) {
-                                channel.name
-                            } else {
-                                "${channel.name} · $missingEpisodeText"
-                            },
-                        )
-                    },
+                    label = { Text(channel.name) },
                 )
             }
 

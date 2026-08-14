@@ -107,14 +107,6 @@ class EpisodeFetchSelectPlayState(
         mainDispatcher,
     )
 
-    init {
-        // Web 源的剧集缓存 (SelectorMediaSource 切集时用它跳过搜索) 只在当前播放 session 内有效:
-        // 进入播放页时清空上次残留的缓存. 退出时也会清空, 见 [onClose].
-        backgroundScope.launch {
-            koin.getOrNull<SelectorMediaSourceEpisodeCacheRepository>()?.clearAll()
-        }
-    }
-
     private val extensionManager by lazy {
         val intrinsicExtensions = listOf(
             EpisodePlayerExtensionFactory { context, _ ->
@@ -221,6 +213,7 @@ class EpisodeFetchSelectPlayState(
         episodeSessionFlow.value.let { session ->
             if (!session.sessionScopeTasksStarted.value) {
                 backgroundScope.launch {
+                    koin.getOrNull<SelectorMediaSourceEpisodeCacheRepository>()?.clearAll()
                     session.startSessionScopeTasks() // Will check again if backgroundTasksStarted so thread-safe.
                 }
             }

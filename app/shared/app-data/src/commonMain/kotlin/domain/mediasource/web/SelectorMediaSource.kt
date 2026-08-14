@@ -55,7 +55,6 @@ import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.source.deserializeArgumentsOrNull
 import me.him188.ani.utils.ktor.ScopedHttpClient
-import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
@@ -291,27 +290,27 @@ class SelectorMediaSource(
             repository.getCache(mediaSourceId, query.subjectName)
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
-            logger.warn(e) { "SelectorMediaSource '$mediaSourceId': failed to read episode cache, falling back to search" }
+        } catch (_: Exception) {
             return null
         }
-        for (cache in caches) {
-            val episodes = cache.webEpisodeInfos
-            if (episodes.findMatchingEpisodeOrNull(query.episodeSort, query.episodeEp, query.episodeName) == null) {
-                continue
+
+        return buildList {
+            for (cache in caches) {
+                val episodes = cache.webEpisodeInfos
+                if (episodes.findMatchingEpisodeOrNull(query.episodeSort, query.episodeEp, query.episodeName) == null) {
+                    continue
+                }
+                addAll(
+                    selectMedia(
+                        episodes.asSequence(),
+                        searchConfig,
+                        query,
+                        mediaSourceId,
+                        subjectName = cache.webSubjectInfo.name,
+                    ).filteredList,
+                )
             }
-            logger.info {
-                "SelectorMediaSource '$mediaSourceId': serving '${query.subjectName}' ${query.episodeSort} from session cache (${episodes.size} episodes)"
-            }
-            return selectMedia(
-                episodes.asSequence(),
-                searchConfig,
-                query,
-                mediaSourceId,
-                subjectName = cache.webSubjectInfo.name,
-            ).filteredList
-        }
-        return null
+        }.takeIf(List<DefaultMedia>::isNotEmpty)
     }
 
     // all-in-one search
