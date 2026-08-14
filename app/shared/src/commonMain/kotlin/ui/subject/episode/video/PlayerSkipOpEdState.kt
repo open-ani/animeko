@@ -16,14 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
-import me.him188.ani.datasources.api.MediaChapter
-import me.him188.ani.datasources.api.MediaChapterKind
-import org.openani.mediamp.InternalMediampApi
 import org.openani.mediamp.metadata.Chapter
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 
 internal val DEFAULT_OP_ED_SKIP_DURATION = VideoScaffoldConfig.Default.opEdSkipDuration
 
@@ -80,59 +73,4 @@ class PlayerSkipOpEdState(
 @Stable
 class CurrentChapter(val chapter: Chapter, skipped: Boolean) {
     var skipped by mutableStateOf(skipped)
-}
-
-internal data class SkipChapterCandidate(
-    val chapter: Chapter,
-    val kind: MediaChapterKind? = null,
-)
-
-@OptIn(InternalMediampApi::class)
-internal fun MediaChapter.toSkipChapterCandidateOrNull(): SkipChapterCandidate? {
-    if (kind == MediaChapterKind.CHAPTER) return null
-    return SkipChapterCandidate(
-        chapter = Chapter(name, durationMillis, offsetMillis),
-        kind = kind,
-    )
-}
-
-internal fun mergeSkipChapterCandidates(
-    primary: List<SkipChapterCandidate>,
-    fallback: List<SkipChapterCandidate>,
-): List<SkipChapterCandidate> = buildList {
-    addAll(primary)
-    fallback.forEach { candidate ->
-        val alreadyCovered = candidate.kind?.let { kind ->
-            any { it.kind == kind }
-        } ?: any { chaptersOverlap(it.chapter, candidate.chapter) }
-        if (!alreadyCovered) add(candidate)
-    }
-}
-
-private fun chaptersOverlap(first: Chapter, second: Chapter): Boolean {
-    val firstEnd = first.offsetMillis + first.durationMillis
-    val secondEnd = second.offsetMillis + second.durationMillis
-    return first.offsetMillis < secondEnd && second.offsetMillis < firstEnd
-}
-
-internal fun isLikelyOpEdChapter(chapter: Chapter, videoLength: Duration): Boolean {
-    return OpEdLength.fromVideoLengthOrNull(videoLength)
-        ?.isOpEdChapter(chapter.durationMillis.milliseconds) == true
-}
-
-fun interface OpEdLength {
-    fun isOpEdChapter(chapterLength: Duration): Boolean
-
-    companion object {
-        private val Normal = OpEdLength { it in 80.seconds..95.seconds }
-        private val Short = OpEdLength { it in 55.seconds..65.seconds }
-
-        fun fromVideoLengthOrNull(length: Duration): OpEdLength? {
-            return when {
-                length > 20.minutes -> Normal
-                length > 10.minutes -> Short
-                else -> null
-            }
-        }
-    }
 }
