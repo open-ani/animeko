@@ -302,6 +302,11 @@
     <string name="settings_player_remember_playback_speed_description">在播放器内调整的倍速跨剧集和重启保持。关闭后仅对本次播放生效，退出播放器即回到默认倍速。</string>
     <string name="settings_player_default_playback_speed">默认倍速</string>
     <string name="settings_player_default_playback_speed_description">每次进入播放器时的起始倍速</string>
+    <string name="settings_player_mpv_options">自定义 mpv 选项</string>
+    <string name="settings_player_mpv_options_description">每行一个选项，格式为 key=value，以 # 开头的行为注释。保存后立即生效，但只能在 mpv 启动时设置的选项（例如 vo）不会生效。</string>
+    <string name="settings_player_mpv_options_empty">未设置</string>
+    <string name="settings_player_mpv_options_count">已设置 %1$d 个选项</string>
+    <string name="settings_player_mpv_options_placeholder">hwdec=auto\nprofile=fast</string>
 
     <!-- Version Expired Overlay -->
     <string name="settings_update_version_expired_title">版本过期</string>

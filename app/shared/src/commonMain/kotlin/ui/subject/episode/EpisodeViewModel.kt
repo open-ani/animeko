@@ -54,6 +54,7 @@ import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.data.models.preference.parseMpvOptions
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.nameCnOrName
@@ -1042,6 +1043,17 @@ class EpisodeViewModel(
     }
 
     init {
+        // 用户自定义的 mpv 选项. 仅在使用 mpv 内核的平台 (桌面端) 生效, 修改设置后立即应用到当前播放器.
+        launchInBackground {
+            settingsRepository.playerKernelConfig.flow
+                .map { it.mpvOptions }
+                .distinctUntilChanged()
+                .map { parseMpvOptions(it) }
+                .collect { options ->
+                    applyMpvOptions(player, options)
+                }
+        }
+
         // 跳过 OP 和 ED
         launchInBackground {
             settingsRepository.videoScaffoldConfig.flow
