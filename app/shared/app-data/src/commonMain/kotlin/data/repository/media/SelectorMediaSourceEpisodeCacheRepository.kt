@@ -9,12 +9,20 @@
 
 package me.him188.ani.app.data.repository.media
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheDao
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheEntity
 import me.him188.ani.app.data.repository.Repository
 import me.him188.ani.app.domain.mediasource.web.WebSearchEpisodeInfo
 import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
+import me.him188.ani.utils.platform.currentTimeMillis
+import kotlin.time.Duration
 
 /**
  * Web 源搜索结果的播放 session 级缓存.
@@ -22,20 +30,50 @@ import me.him188.ani.app.domain.mediasource.web.WebSearchSubjectInfo
  * 由 `SelectorMediaSource` 在真实搜索成功后写入 ([addCache]), 并在下次搜索前读取 ([getCache]):
  * 缓存的条目页面剧集列表包含请求的剧集时 (典型场景: 切集), 无需发起网络请求.
  *
- * 缓存仅在当前播放 session 内有效: 进入/退出播放页与手动重新查询时调用 [clearAll] 全部清空.
+ * ## 有效期
+ *
+ * 每行的 TTL 在写入时确定, 取数据源配置 (`SelectorSearchConfig.searchCacheTtl`) 与
+ * 用户设置 (`MediaSelectorSettings.webSearchCacheTtl`) 中的较小者. 过期行不会被读取.
+ *
+ * 清理时机:
+ * - 进入播放页: [purgeExpired] 清除所有已过期的行 (短暂退出后重进可复用未过期的缓存);
+ * - 退出播放页: [scheduleExitCleanup] 在用户设置的 TTL 之后清除该条目的已过期行;
+ * - 手动重新查询: [clearAll] 立即清空全部.
  */
 class SelectorMediaSourceEpisodeCacheRepository(
     private val dao: WebSearchSessionCacheDao,
+    /**
+     * 用户设置的缓存有效期, 通常来自 `MediaSelectorSettings.webSearchCacheTtl`.
+     */
+    private val userTtlFlow: Flow<Duration>,
 ) : Repository() {
+    private val cleanupScope = CoroutineScope(defaultDispatcher + SupervisorJob())
+
+    private suspend fun userTtl(): Duration = userTtlFlow.first()
+
     suspend fun addCache(
         mediaSourceId: String,
         subjectName: String,
         subjectInfo: WebSearchSubjectInfo,
         episodeInfos: List<WebSearchEpisodeInfo>,
+        sourceCacheTtl: Duration,
     ) = withContext(defaultDispatcher) {
+        val ttl = minOf(sourceCacheTtl, userTtl())
+        if (ttl <= Duration.ZERO) {
+            // 缓存被禁用. 同时删除该页面可能残留的旧行 (例如用户刚把 TTL 改为 0).
+            dao.deletePage(mediaSourceId, subjectName, subjectInfo.fullUrl)
+            return@withContext
+        }
+        val now = currentTimeMillis()
         dao.replacePage(
             mediaSourceId, subjectName, subjectInfo.fullUrl,
-            episodeInfos.map { it.toEntity(mediaSourceId, subjectName, subjectInfo) },
+            episodeInfos.map {
+                it.toEntity(
+                    mediaSourceId, subjectName, subjectInfo,
+                    cachedAt = now,
+                    expiresAt = now + ttl.inWholeMilliseconds,
+                )
+            },
         )
     }
 
@@ -44,11 +82,32 @@ class SelectorMediaSourceEpisodeCacheRepository(
     }
 
     /**
-     * 返回该查询名下缓存的所有条目页面, 每个页面附带其全部剧集 (保持页面上的顺序).
+     * 清除所有已过期的行. 在进入播放页时调用.
+     */
+    suspend fun purgeExpired() = withContext(defaultDispatcher) {
+        dao.deleteExpired(currentTimeMillis())
+    }
+
+    /**
+     * 退出播放页时调用: 在用户设置的 TTL 之后清除 [subjectNames] 条目的已过期行.
+     *
+     * 只删除届时已过期的行, 因此若用户在此期间重新进入该条目并产生了新的缓存, 新行不受影响.
+     * 若进程在此之前退出, 由下次进入播放页时的 [purgeExpired] 兜底.
+     */
+    fun scheduleExitCleanup(subjectNames: List<String>) {
+        if (subjectNames.isEmpty()) return
+        cleanupScope.launch {
+            delay(userTtl())
+            dao.deleteExpiredBySubjectNames(subjectNames, currentTimeMillis())
+        }
+    }
+
+    /**
+     * 返回该查询名下缓存的所有未过期的条目页面, 每个页面附带其全部剧集 (保持页面上的顺序).
      */
     suspend fun getCache(mediaSourceId: String, subjectName: String): List<WebSearchCache> =
         withContext(defaultDispatcher) {
-            dao.filterBySubjectName(mediaSourceId, subjectName)
+            dao.filterBySubjectName(mediaSourceId, subjectName, currentTimeMillis())
                 .groupBy { it.subjectUrl } // preserves encounter (insertion) order
                 .map { (_, rows) ->
                     val first = rows.first()
@@ -75,6 +134,8 @@ private fun WebSearchEpisodeInfo.toEntity(
     mediaSourceId: String,
     subjectName: String,
     subjectInfo: WebSearchSubjectInfo,
+    cachedAt: Long,
+    expiresAt: Long,
 ): WebSearchSessionCacheEntity {
     return WebSearchSessionCacheEntity(
         mediaSourceId = mediaSourceId,
@@ -87,6 +148,8 @@ private fun WebSearchEpisodeInfo.toEntity(
         episodeName = name,
         episodeSortOrEp = episodeSortOrEp,
         playUrl = playUrl,
+        cachedAt = cachedAt,
+        expiresAt = expiresAt,
     )
 }
 

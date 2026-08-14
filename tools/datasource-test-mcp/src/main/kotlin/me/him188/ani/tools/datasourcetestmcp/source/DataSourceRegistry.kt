@@ -25,8 +25,10 @@ import me.him188.ani.datasources.jellyfin.EmbyMediaSource
 import me.him188.ani.datasources.jellyfin.JellyfinMediaSource
 import me.him188.ani.datasources.mikan.MikanCNMediaSource
 import me.him188.ani.datasources.mikan.MikanMediaSource
+import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import java.util.ServiceLoader
+import kotlin.time.Duration
 
 class DataSourceRegistry(
     private val client: ScopedHttpClient,
@@ -36,7 +38,10 @@ class DataSourceRegistry(
      */
     private val webSessionManager: WebSessionManager,
 ) {
-    private val selectorRepository = SelectorMediaSourceEpisodeCacheRepository(NoopWebSearchSessionCacheDao())
+    private val selectorRepository = SelectorMediaSourceEpisodeCacheRepository(
+        NoopWebSearchSessionCacheDao(),
+        userTtlFlow = flowOf(Duration.INFINITE),
+    )
 
     private val factories: Map<String, MediaSourceFactory> = buildMap {
         ServiceLoader.load(MediaSourceFactory::class.java).forEach { put(it.factoryId.value, it) }
@@ -96,7 +101,14 @@ private class NoopWebSearchSessionCacheDao : WebSearchSessionCacheDao {
     override suspend fun filterBySubjectName(
         mediaSourceId: String,
         subjectName: String,
+        now: Long,
     ): List<WebSearchSessionCacheEntity> = emptyList()
+
+    override suspend fun deleteExpired(now: Long) {
+    }
+
+    override suspend fun deleteExpiredBySubjectNames(subjectNames: List<String>, now: Long) {
+    }
 
     override suspend fun deleteAll() {
     }

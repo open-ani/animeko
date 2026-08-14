@@ -549,6 +549,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<SelectorMediaSourceEpisodeCacheRepository> {
         SelectorMediaSourceEpisodeCacheRepository(
             dao = database.webSearchSessionCacheDao(),
+            userTtlFlow = get<SettingsRepository>().mediaSelectorSettings.flow.map { it.webSearchCacheTtl },
         )
     }
 

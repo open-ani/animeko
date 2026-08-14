@@ -66,6 +66,15 @@ data class WebSearchSessionCacheEntity(
     val episodeName: String,
     val episodeSortOrEp: EpisodeSort?,
     val playUrl: String,
+    /**
+     * 缓存写入时间 (epoch millis).
+     */
+    val cachedAt: Long,
+    /**
+     * 过期时间 (epoch millis), 即 [cachedAt] + 有效 TTL.
+     * TTL 在写入时取数据源配置与用户设置中的较小者, 之后的读取与清理只依据本字段.
+     */
+    val expiresAt: Long,
 )
 
 @Dao
@@ -96,16 +105,31 @@ interface WebSearchSessionCacheDao {
     }
 
     /**
-     * 按 `id` 升序返回, 保持写入 (页面上的剧集) 顺序.
+     * 返回未过期的行. 按 `id` 升序, 保持写入 (页面上的剧集) 顺序.
      */
     @Query(
         """
         SELECT * FROM web_search_session_cache
-        WHERE mediaSourceId = :mediaSourceId AND subjectName = :subjectName
+        WHERE mediaSourceId = :mediaSourceId AND subjectName = :subjectName AND expiresAt > :now
         ORDER BY id
         """,
     )
-    suspend fun filterBySubjectName(mediaSourceId: String, subjectName: String): List<WebSearchSessionCacheEntity>
+    suspend fun filterBySubjectName(
+        mediaSourceId: String,
+        subjectName: String,
+        now: Long,
+    ): List<WebSearchSessionCacheEntity>
+
+    @Query("DELETE FROM web_search_session_cache WHERE expiresAt <= :now")
+    suspend fun deleteExpired(now: Long)
+
+    @Query(
+        """
+        DELETE FROM web_search_session_cache
+        WHERE subjectName IN (:subjectNames) AND expiresAt <= :now
+        """,
+    )
+    suspend fun deleteExpiredBySubjectNames(subjectNames: List<String>, now: Long)
 
     @Query("DELETE FROM web_search_session_cache")
     suspend fun deleteAll()

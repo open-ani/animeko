@@ -384,7 +384,10 @@ class SelectorMediaSource(
                     logger.warn(e) { "SelectorMediaSource '$mediaSourceId': failed to load subject page ${subjectInfo.fullUrl}" }
                     null
                 } ?: continue
-                repository.addCache(mediaSourceId, query.subjectName, subjectInfo, episodes)
+                repository.addCache(
+                    mediaSourceId, query.subjectName, subjectInfo, episodes,
+                    sourceCacheTtl = searchConfig.searchCacheTtl,
+                )
                 addAll(
                     selectMedia(
                         episodes.asSequence(),
