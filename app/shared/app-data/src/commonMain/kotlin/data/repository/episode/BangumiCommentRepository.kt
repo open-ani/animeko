@@ -23,9 +23,11 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.app.data.models.comment.CommentVoteValue
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.data.models.episode.EpisodeCommentSource
 import me.him188.ani.app.data.models.subject.SubjectReview
+import me.him188.ani.app.data.models.subject.SubjectReviewSource
 import me.him188.ani.app.data.network.BangumiCommentService
 import me.him188.ani.app.data.persistent.database.dao.SubjectReviewDao
 import me.him188.ani.app.data.persistent.database.entity.SubjectReviewEntity
@@ -44,6 +46,14 @@ class BangumiCommentRepository(
                 SubjectReviewPagingSource(subjectId)
             },
         ).flow
+    }
+
+    /**
+     * 对条目评价投票 (点赞/点踩). [vote] 为 `null` 表示取消投票.
+     * 只支持 [SubjectReviewSource.ANI] 来源的评价, [reviewId] 为服务端评价 ID.
+     */
+    suspend fun voteSubjectReview(subjectId: Int, reviewId: String, vote: CommentVoteValue?) {
+        commentService.voteSubjectReview(subjectId, reviewId, vote)
     }
 
     private inner class SubjectReviewPagingSource(
@@ -123,6 +133,8 @@ private fun SubjectReview.toEntity(subjectId: Int): SubjectReviewEntity? {
 private fun SubjectReviewEntity.toInfo(): SubjectReview {
     return SubjectReview(
         id = packInts(subjectId, authorId),
+        reviewId = "",
+        source = SubjectReviewSource.BANGUMI,
         updatedAt = updatedAt,
         content = content,
         creator = UserInfo(

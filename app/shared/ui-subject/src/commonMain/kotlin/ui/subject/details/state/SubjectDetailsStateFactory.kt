@@ -50,8 +50,15 @@ import me.him188.ani.app.data.repository.episode.EpisodeProgressRepository
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
+import me.him188.ani.app.data.models.comment.CommentReportTargetType
+import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.ui.comment.CommentMapperContext.parseToUIComment
+import me.him188.ani.app.ui.comment.CommentMapperContext.toCommentVoteValue
+import me.him188.ani.app.ui.comment.CommentReportState
 import me.him188.ani.app.ui.comment.CommentState
+import me.him188.ani.app.ui.comment.UICommentSource
+import me.him188.ani.app.ui.comment.reportSnapshotText
+import me.him188.ani.app.ui.comment.toDataReason
 import me.him188.ani.app.ui.foundation.produceState
 import me.him188.ani.app.ui.foundation.stateOf
 import me.him188.ani.app.ui.rating.EditableRatingState
@@ -93,6 +100,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
     private val bangumiRelatedPeopleService: BangumiRelatedPeopleService by inject()
     private val subjectRelationsRepository: SubjectRelationsRepository by inject()
     private val bangumiCommentRepository: BangumiCommentRepository by inject()
+    private val commentReportService: AniCommentReportService by inject()
     private val setSubjectCollectionTypeOrDeleteUseCase: SetSubjectCollectionTypeOrDeleteUseCase by inject()
 
     override fun create(
@@ -253,6 +261,31 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             countState = stateOf(null),
             onSubmitCommentReaction = { _, _, _ -> },
             backgroundScope = this,
+            onSubmitCommentVote = { comment, vote ->
+                // 只有 Ani 源的评价可投票; Bangumi 源的评价 reviewId 为空
+                if (comment.source == UICommentSource.ANI && comment.sourceCommentId.isNotEmpty()) {
+                    bangumiCommentRepository.voteSubjectReview(
+                        subjectId = subjectId,
+                        reviewId = comment.sourceCommentId,
+                        vote = vote?.toCommentVoteValue(),
+                    )
+                }
+            },
+        )
+
+        val subjectCommentReportState = CommentReportState(
+            onSubmitReport = { comment, reason, detail ->
+                commentReportService.createReport(
+                    targetType = CommentReportTargetType.SUBJECT_REVIEW,
+                    targetId = comment.sourceCommentId,
+                    reason = reason.toDataReason(),
+                    commentAuthorId = comment.author?.id,
+                    detail = detail.takeIf { it.isNotEmpty() },
+                    contentSnapshot = comment.reportSnapshotText(),
+                    subjectId = subjectId.toLong(),
+                )
+            },
+            backgroundScope = this,
         )
 
 //        val relatedPersonsFlow = bangumiRelatedPeopleService.relatedPersonsFlow(subjectId)
@@ -338,6 +371,7 @@ class DefaultSubjectDetailsStateFactory : SubjectDetailsStateFactory, KoinCompon
             editableRatingState = editableRatingState,
             subjectProgressState = subjectProgressState,
             subjectCommentState = subjectCommentState,
+            subjectCommentReportState = subjectCommentReportState,
             presentation = combine(minuteTicker, subjectCollectionFlow) { _, collection ->
                 val now = Clock.System.now()
                 SubjectDetailsPresentation(
