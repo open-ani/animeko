@@ -60,9 +60,10 @@ import me.him188.ani.app.data.models.subject.nameCnOrName
 import me.him188.ani.app.data.models.comment.CommentReportTargetType
 import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AutoSkipRepository
+import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
-import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
+import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -105,8 +106,8 @@ import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
 import me.him188.ani.app.domain.player.extension.WatchTogetherPlayerExtension
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsUseCase
-import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.app.domain.usecase.GlobalKoin
+import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.app.navigation.EpisodeNavigationGuardRegistry
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.ui.comment.BangumiCommentSticker
@@ -271,6 +272,7 @@ class EpisodeViewModel(
     private val autoSkipRepository: AutoSkipRepository by inject()
     private val getMediaSelectorSettings: GetMediaSelectorSettingsUseCase by inject()
     private val getMediaSourceInstances: GetMediaSourceInstancesUseCase by inject()
+    private val selectorEpisodeCacheRepository: SelectorMediaSourceEpisodeCacheRepository by inject()
     val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase by inject()
     private val getSubjectRecommendations: GetSubjectRecommendationUseCase by inject()
     private val getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase by inject()
@@ -1005,10 +1007,11 @@ class EpisodeViewModel(
 
     fun refreshFetch() {
         launchInBackground {
+            // 手动重新查询: 清除本条目的 web 源搜索缓存, 让所有数据源真正重新搜索
+            selectorEpisodeCacheRepository.clearByRequestedSubject(subjectId)
             // Although it's flow, it should be ready.
             fetchPlayState.episodeSessionFlow.flatMapLatest { it.fetchSelectFlow }
-                .map { it?.mediaFetchSession }
-                .filterNotNull()
+                .mapNotNull { it?.mediaFetchSession }
                 .firstOrNull()
                 ?.restartAll()
         }
@@ -1049,13 +1052,15 @@ class EpisodeViewModel(
 
     fun restartSource(instanceId: String) {
         launchInBackground {
-            fetchPlayState.episodeSessionFlow.flatMapLatest { it.fetchSelectFlow }
-                .map { it?.mediaFetchSession }
-                .filterNotNull()
+            val result = fetchPlayState.episodeSessionFlow.flatMapLatest { it.fetchSelectFlow }
+                .mapNotNull { it?.mediaFetchSession }
                 .firstOrNull()
                 ?.mediaSourceResults
                 ?.find { it.instanceId == instanceId }
-                ?.restart()
+                ?: return@launchInBackground
+            // 手动刷新单个源: 只清除该源的搜索缓存, 让它真正重新搜索, 不影响其他源的缓存
+            selectorEpisodeCacheRepository.clearByRequestedSubjectAndSource(subjectId, result.mediaSourceId)
+            result.restart()
         }
     }
 
@@ -1130,6 +1135,8 @@ class EpisodeViewModel(
 
     fun updateFetchRequest(request: MediaFetchRequest) {
         launchInBackground {
+            // 编辑查询条件后会重启所有源的搜索, 同样清除本条目的 web 源搜索缓存
+            selectorEpisodeCacheRepository.clearByRequestedSubject(subjectId)
             fetchPlayState.episodeSessionFlow
                 .firstOrNull()
                 ?.fetchSelectFlow

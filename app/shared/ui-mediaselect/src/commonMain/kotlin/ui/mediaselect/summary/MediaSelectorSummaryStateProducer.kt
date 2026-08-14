@@ -117,7 +117,7 @@ val MediaSelector.selectedMaybeExcludedMediaFlow: Flow<MaybeExcludedMedia?>
         if (selected == null) {
             null
         } else {
-            filteredCandidates.first() // No need to subscribe to flow change. When selected is updated, filteredCandidates should have already been updated. 
+            filteredCandidates.first() // No need to subscribe to flow change. When selected is updated, filteredCandidates should have already been updated.
                 .firstOrNull { it.original === selected } // identity check is enough and fast
         }
     }

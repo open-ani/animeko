@@ -136,6 +136,8 @@
     <string name="settings_mediasource_selector_config_search_subject_names_count_description">每次播放使用多少個條目名稱進行查詢。\n為 1 則只使用主名稱，為 2 額外使用日文原名，大於 2 將額外使用其他別名，別名的數量不固定。\n一般用 1 就夠了，使用多個名稱將會顯著增加播放時的等待時間。</string>
     <string name="settings_mediasource_selector_config_request_interval">搜索請求間隔時間 (毫秒)</string>
     <string name="settings_mediasource_selector_config_request_interval_description">控制每發送一個請求後等待多久後再發送下一個請求</string>
+    <string name="settings_mediasource_selector_config_search_cache_ttl">搜尋快取有效期 (分鐘)</string>
+    <string name="settings_mediasource_selector_config_search_cache_ttl_description">在此時間內切換劇集時複用搜尋結果。實際生效值為此值與使用者設定中的較小者，0 表示不快取</string>
     <string name="settings_mediasource_selector_config_filter_settings">過濾設置</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name">使用條目名稱過濾</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name_description">要求資源標題包含條目名稱。適用於數據源可能搜到無關內容的情況。此功能只對 4.4.0 以前版本有效，對其他版本無效</string>

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -50,6 +50,8 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import me.him188.ani.app.domain.media.selector.MatchMetadata
+import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
 import me.him188.ani.app.domain.media.selector.MediaExclusionReason
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
 import me.him188.ani.app.platform.currentAniBuildConfig
@@ -69,8 +71,10 @@ import me.him188.ani.app.ui.media.renderSubtitleLanguage
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcon
 import me.him188.ani.app.ui.settings.rendering.MediaSourceIcons
 import me.him188.ani.datasources.api.Media
+import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.ResourceLocation
+import me.him188.ani.datasources.api.topic.isSingleEpisode
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
@@ -96,6 +100,8 @@ internal fun MediaSelectorItem(
     val toaster = LocalToaster.current
     val scope = rememberCoroutineScope()
     val noSubtitleText = stringResource(Lang.media_selector_item_no_subtitle)
+    val missingCurrentEpisode = media.kind == MediaSourceKind.WEB &&
+            (group.first as? MaybeExcludedMedia.Included)?.metadata?.episodeMatchKind == MatchMetadata.EpisodeMatchKind.NONE
     val singleEpisodeResourceText = stringResource(Lang.media_selector_item_single_episode_resource)
     val unsupportedPlaybackText = stringResource(Lang.media_selector_item_unsupported_playback)
     val seasonMismatchText = stringResource(Lang.media_selector_item_season_mismatch)
@@ -140,6 +146,17 @@ internal fun MediaSelectorItem(
                     onClick = { /* no-op */ },
                     label = { Text(media.properties.size.toString()) },
                 )
+            }
+            // Episode range chip, 多集资源 (聚合的 web 线路或 BT 合集) 显示集数范围
+            media.episodeRange?.let { range ->
+                if (!range.isSingleEpisode()) {
+                    InputChip(
+                        selected = false,
+                        onClick = { /* no-op */ },
+                        label = { Text(renderEpisodeRange(range)) },
+                        enabled = !missingCurrentEpisode,
+                    )
+                }
             }
             // Resolution chip
             InputChip(

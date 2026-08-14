@@ -47,6 +47,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import me.him188.ani.app.domain.mediasource.instance.MediaSourceInstance
 import me.him188.ani.app.domain.mediasource.web.SolveRequest
 import me.him188.ani.app.ui.foundation.IconButton
@@ -60,7 +61,6 @@ import me.him188.ani.app.ui.lang.media_selector_web_rate_limited
 import me.him188.ani.app.ui.lang.media_selector_web_waiting_captcha
 import me.him188.ani.app.ui.lang.settings_mediasource_refresh
 import me.him188.ani.app.ui.mediaselect.common.SourceIcon
-import kotlinx.coroutines.delay
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.currentTimeMillis
@@ -70,6 +70,10 @@ import org.jetbrains.compose.resources.stringResource
 data class WebSourceChannel(
     val name: String,
     val original: Media? = null,
+    /**
+     * 该线路是否包含当前正在播放的剧集. 为 `false` 时该线路不可选择, UI 会标记缺少当前集.
+     */
+    val hasCurrentEpisode: Boolean = true,
 )
 
 data class WebSource(
@@ -249,6 +253,7 @@ private fun WebSourceCard(
                 InputChip(
                     selected = channel == selectedChannel(),
                     onClick = { onSelect(channel) },
+                    enabled = channel.hasCurrentEpisode,
                     label = { Text(channel.name) },
                 )
             }

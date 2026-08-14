@@ -150,6 +150,8 @@
     <string name="settings_mediasource_selector_config_search_subject_names_count_description">How many item names to query with for each playback.\n1 uses only the primary name, 2 also uses the original Japanese title, and values above 2 also use other aliases. The number of aliases is not fixed.\nUsually 1 is enough. Using multiple names will significantly increase wait time during playback.</string>
     <string name="settings_mediasource_selector_config_request_interval">Search request interval (ms)</string>
     <string name="settings_mediasource_selector_config_request_interval_description">Controls how long to wait after sending each request before sending the next one</string>
+    <string name="settings_mediasource_selector_config_search_cache_ttl">Search cache duration (minutes)</string>
+    <string name="settings_mediasource_selector_config_search_cache_ttl_description">Reuse search results when switching episodes within this duration. The effective value is the smaller of this and the user\'s setting. 0 disables caching</string>
     <string name="settings_mediasource_selector_config_filter_settings">Filter settings</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name">Filter by item name</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name_description">Require the resource title to contain the item name. Useful when the source may return irrelevant results. This only works in versions before 4.4.0 and has no effect in other versions</string>

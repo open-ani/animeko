@@ -153,6 +153,8 @@
     <string name="settings_mediasource_selector_config_search_subject_names_count_description">每次播放使用多少个条目名称进行查询。\n为 1 则只使用主名称，为 2 额外使用日文原名，大于 2 将额外使用其他别名，别名的数量不固定。\n一般用 1 就够了，使用多个名称将会显著增加播放时的等待时间。</string>
     <string name="settings_mediasource_selector_config_request_interval">搜索请求间隔时间 (毫秒)</string>
     <string name="settings_mediasource_selector_config_request_interval_description">控制每发送一个请求后等待多久后再发送下一个请求</string>
+    <string name="settings_mediasource_selector_config_search_cache_ttl">搜索缓存有效期 (分钟)</string>
+    <string name="settings_mediasource_selector_config_search_cache_ttl_description">在此时间内切换剧集时复用搜索结果。实际生效值为此值与用户设置中的较小者，0 表示不缓存</string>
     <string name="settings_mediasource_selector_config_filter_settings">过滤设置</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name">使用条目名称过滤</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name_description">要求资源标题包含条目名称。适用于数据源可能搜到无关内容的情况。此功能只对 4.4.0 以前版本有效，对其他版本无效</string>
