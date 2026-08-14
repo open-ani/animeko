@@ -34,16 +34,14 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.openani.mediamp.ExperimentalMediampApi
 import org.openani.mediamp.InternalForInheritanceMediampApi
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
-import org.openani.mediamp.PlaybackState
 import org.openani.mediamp.exoplayer.ExoPlayerAudioTimeStretch
 import org.openani.mediamp.exoplayer.ExoPlayerMediampPlayer
 import org.openani.mediamp.io.SeekableInput
@@ -57,42 +55,52 @@ import kotlin.time.Duration.Companion.milliseconds
 /**
  * Adds libass parsing and rendering to MediaMP's ExoPlayer backend.
  *
- * MediaMP currently creates ExoPlayer without a renderer/source customization hook. This adapter
- * keeps MediaMP as the owner of playback state and track selection, then replaces the initial
- * Media3 source with one that uses libass's Matroska extractor and subtitle parser.
+ * The v2 backend exposes a media source interceptor hook (`docs/playback-state-v2.md` §11)
+ * invoked on the main dispatcher during each open, after the default media source is built and
+ * before ExoPlayer prepares it. [LibassMediaSourcePipeline] is installed as that interceptor and
+ * replaces the default source with one using libass's Matroska extractor and subtitle parser, so
+ * MediaMP remains the sole owner of playback state and no source is ever swapped behind its back.
+ *
+ * For [SeekableInputMediaData], the backend opens the session's [SeekableInput] eagerly during
+ * the open, before the interceptor runs, and the `createInput` contract allows only one open
+ * input at a time. [setMediaData] therefore wraps the data in [TrackingSeekableInputMediaData]
+ * so the interceptor can route playback reads through that already-open input.
  */
 @OptIn(InternalForInheritanceMediampApi::class)
 @AndroidxOptIn(UnstableApi::class)
 class LibassExoPlayerMediampPlayer private constructor(
-    private val context: Context,
     parentCoroutineContext: CoroutineContext,
+    private val pipeline: LibassMediaSourcePipeline,
     internal val exoMediampPlayer: ExoPlayerMediampPlayer,
 ) : MediampPlayer by exoMediampPlayer {
     constructor(
         context: Context,
         parentCoroutineContext: CoroutineContext,
         audioTimeStretch: ExoPlayerAudioTimeStretch = ExoPlayerAudioTimeStretch.HighQualityWsola,
+    ) : this(context, parentCoroutineContext, audioTimeStretch, LibassMediaSourcePipeline(context))
+
+    private constructor(
+        context: Context,
+        parentCoroutineContext: CoroutineContext,
+        audioTimeStretch: ExoPlayerAudioTimeStretch,
+        pipeline: LibassMediaSourcePipeline,
     ) : this(
-        context,
         parentCoroutineContext,
-        ExoPlayerMediampPlayer(context, parentCoroutineContext, audioTimeStretch),
+        pipeline,
+        ExoPlayerMediampPlayer(
+            context,
+            parentCoroutineContext,
+            audioTimeStretch,
+            mediaSourceInterceptor = pipeline::intercept,
+        ),
     )
 
-    internal val assHandler = AssHandler(
-        renderType = AssRenderType.OVERLAY_OPEN_GL,
-        config = AssHandlerConfig(maxRenderPixels = 1920 * 1080),
-    )
+    internal val assHandler: AssHandler get() = pipeline.assHandler
 
     private val exoPlayer: ExoPlayer get() = exoMediampPlayer.impl
     private val backgroundScope = CoroutineScope(
         parentCoroutineContext + SupervisorJob(parentCoroutineContext[Job.Key]),
     )
-    private val subtitleParserFactory = AssSubtitleParserFactory(assHandler)
-    private val extractorsFactory = DefaultExtractorsFactory()
-        .withAssMkvSupport(subtitleParserFactory, assHandler)
-
-    private var currentMediaData: MediaData? = null
-    private var pendingMediaSource: MediaSource? = null
     private var closed = false
 
     init {
@@ -107,54 +115,31 @@ class LibassExoPlayerMediampPlayer private constructor(
         }
     }
 
-    override val mediaData: Flow<MediaData?> = exoMediampPlayer.mediaData.map { data ->
-        (data as? TrackingSeekableInputMediaData)?.source ?: data
-    }
-
-    override suspend fun setMediaData(data: MediaData) {
-        if (data == currentMediaData) return
-
+    override suspend fun setMediaData(data: MediaData, playWhenReady: Boolean, startPositionMillis: Long) {
+        // Wrap so the interceptor can reuse the SeekableInput the backend opens for the
+        // session; see TrackingSeekableInputMediaData.
         val playerData = if (data is SeekableInputMediaData) {
             TrackingSeekableInputMediaData(data)
         } else {
             data
         }
-        // MediaMP 0.2.1 prepares media on Dispatchers.Default and stops active playback there.
-        // Stop first on ExoPlayer's application thread so MediaMP only prepares the replacement.
-        stopPlaybackOnMain {
-            exoMediampPlayer.stopPlayback()
-        }
-        exoMediampPlayer.setMediaData(playerData)
-
-        pendingMediaSource = createMediaSource(data, playerData)
-        currentMediaData = data
+        exoMediampPlayer.setMediaData(playerData, playWhenReady, startPositionMillis)
     }
 
-    override fun resume() {
-        val mediaSource = pendingMediaSource
-        if (mediaSource == null || exoMediampPlayer.getCurrentPlaybackState() != PlaybackState.READY) {
-            exoMediampPlayer.resume()
-            return
-        }
-
-        pendingMediaSource = null
-        // Let MediaMP perform its READY -> PLAYING transition, then immediately replace the
-        // default source before its loader can consume media. The replacement keeps MediaMP's
-        // listeners and track selector while enabling libass parsing.
-        exoMediampPlayer.resume()
-        exoPlayer.setMediaSource(mediaSource)
-        exoPlayer.prepare()
-        exoPlayer.play()
-    }
-
-    override fun stopPlayback() {
-        pendingMediaSource = null
-        currentMediaData = null
-        exoMediampPlayer.stopPlayback()
+    /**
+     * Unwraps [TrackingSeekableInputMediaData] so consumers observe the exact [MediaData]
+     * instance they loaded (e.g. `is TorrentMediaData` checks in `CacheProgressProvider`).
+     */
+    override val mediaData: StateFlow<MediaData?> = object : StateFlow<MediaData?> {
+        override val value: MediaData? get() = exoMediampPlayer.mediaData.value.unwrapTracking()
+        override val replayCache: List<MediaData?> get() = listOf(value)
+        override suspend fun collect(collector: FlowCollector<MediaData?>): Nothing =
+            exoMediampPlayer.mediaData.collect(
+                FlowCollector { value -> collector.emit(value.unwrapTracking()) },
+            )
     }
 
     override fun seekTo(positionMillis: Long) {
-        if (exoMediampPlayer.getCurrentPlaybackState() < PlaybackState.READY) return
         exoMediampPlayer.seekTo(positionMillis)
         // ExoPlayer applies a seek asynchronously. Update libass immediately as well so the
         // paused overlay does not retain the subtitle from the previous playback position.
@@ -165,21 +150,45 @@ class LibassExoPlayerMediampPlayer private constructor(
         assHandler.videoTimeCallback?.invoke(positionUs)
     }
 
+    override fun skip(deltaMillis: Long) {
+        // The interface default would delegate to the backend's seekTo (bypassing the override
+        // above via class delegation), skipping the libass clock refresh; route it explicitly.
+        seekTo(currentPositionMillis.value + deltaMillis)
+    }
+
     override fun close() {
         if (closed) return
         closed = true
-        pendingMediaSource = null
-        currentMediaData = null
         backgroundScope.cancel()
         exoPlayer.removeListener(assHandler)
         assHandler.release()
         exoMediampPlayer.close()
     }
+}
 
-    private fun createMediaSource(
-        data: MediaData,
-        playerData: MediaData,
-    ): MediaSource {
+/**
+ * Builds libass-enabled media sources. Installed as the backend's media source interceptor
+ * (`docs/playback-state-v2.md` §11): invoked on the main dispatcher during each open, after
+ * [ExoPlayerMediampPlayer] built the default source (and, for non-`file://`
+ * [SeekableInputMediaData], eagerly opened the session's [SeekableInput]), and before ExoPlayer
+ * prepares it.
+ */
+@AndroidxOptIn(UnstableApi::class)
+private class LibassMediaSourcePipeline(
+    private val context: Context,
+) {
+    val assHandler = AssHandler(
+        renderType = AssRenderType.OVERLAY_OPEN_GL,
+        config = AssHandlerConfig(maxRenderPixels = 1920 * 1080),
+    )
+    private val subtitleParserFactory = AssSubtitleParserFactory(assHandler)
+    private val extractorsFactory = DefaultExtractorsFactory()
+        .withAssMkvSupport(subtitleParserFactory, assHandler)
+
+    fun intercept(defaultSource: MediaSource, data: MediaData): MediaSource =
+        createLibassMediaSource(data) ?: defaultSource
+
+    private fun createLibassMediaSource(data: MediaData): MediaSource? {
         val dataSourceFactory = when (data) {
             is UriMediaData -> DefaultHttpDataSource.Factory()
                 .setUserAgent(data.headers["User-Agent"] ?: DEFAULT_USER_AGENT)
@@ -190,11 +199,18 @@ class LibassExoPlayerMediampPlayer private constructor(
                 if (data.uri.startsWith("file://")) {
                     DefaultDataSource.Factory(context)
                 } else {
-                    val trackingData = playerData as TrackingSeekableInputMediaData
+                    // ExoPlayerMediampPlayer.openImpl opened the session's SeekableInput before
+                    // invoking this interceptor and registered it as a session resource (the
+                    // state machine closes it when the session ends). The createInput contract
+                    // allows only one open input at a time, so reuse that input rather than
+                    // opening another. If the wrapper or its input is missing (unexpected),
+                    // fall back to the backend's default source.
+                    val tracking = data as? TrackingSeekableInputMediaData ?: return null
+                    val primaryInput = tracking.primaryInput ?: return null
                     RoutingDataSourceFactory(
                         mediaUri = data.uri,
                         mediaDataSourceFactory = DataSource.Factory {
-                            VideoDataDataSource(data, trackingData.primaryInput)
+                            VideoDataDataSource(tracking.source, primaryInput)
                         },
                         fallbackDataSourceFactory = DefaultDataSource.Factory(context),
                     )
@@ -227,72 +243,6 @@ class LibassExoPlayerMediampPlayer private constructor(
             is SeekableInputMediaData -> uri
         }
 
-    @OptIn(ExperimentalMediampApi::class)
-    private class TrackingSeekableInputMediaData(
-        val source: SeekableInputMediaData,
-    ) : SeekableInputMediaData by source {
-        lateinit var primaryInput: SeekableInput
-            private set
-
-        override suspend fun createInput(coroutineContext: CoroutineContext): SeekableInput {
-            return source.createInput(coroutineContext).also { input ->
-                if (!::primaryInput.isInitialized) {
-                    primaryInput = input
-                }
-            }
-        }
-    }
-
-    private class RoutingDataSourceFactory(
-        private val mediaUri: String,
-        private val mediaDataSourceFactory: DataSource.Factory,
-        private val fallbackDataSourceFactory: DataSource.Factory,
-    ) : DataSource.Factory {
-        override fun createDataSource(): DataSource = RoutingDataSource(
-            mediaUri,
-            mediaDataSourceFactory,
-            fallbackDataSourceFactory,
-        )
-    }
-
-    private class RoutingDataSource(
-        private val mediaUri: String,
-        private val mediaDataSourceFactory: DataSource.Factory,
-        private val fallbackDataSourceFactory: DataSource.Factory,
-    ) : DataSource {
-        private val transferListeners = mutableListOf<TransferListener>()
-        private var activeDataSource: DataSource? = null
-
-        override fun addTransferListener(transferListener: TransferListener) {
-            transferListeners += transferListener
-        }
-
-        override fun open(dataSpec: DataSpec): Long {
-            check(activeDataSource == null) { "Data source is already open" }
-            val dataSource = if (dataSpec.uri.toString() == mediaUri) {
-                mediaDataSourceFactory.createDataSource()
-            } else {
-                fallbackDataSourceFactory.createDataSource()
-            }
-            transferListeners.forEach(dataSource::addTransferListener)
-            activeDataSource = dataSource
-            return dataSource.open(dataSpec)
-        }
-
-        override fun read(buffer: ByteArray, offset: Int, length: Int): Int =
-            checkNotNull(activeDataSource) { "Data source is not open" }.read(buffer, offset, length)
-
-        override fun getUri(): Uri? = activeDataSource?.uri
-
-        override fun getResponseHeaders(): Map<String, List<String>> =
-            activeDataSource?.responseHeaders.orEmpty()
-
-        override fun close() {
-            activeDataSource?.close()
-            activeDataSource = null
-        }
-    }
-
     private companion object {
         const val CONNECT_TIMEOUT_MILLIS = 30_000
         const val DEFAULT_USER_AGENT =
@@ -301,9 +251,82 @@ class LibassExoPlayerMediampPlayer private constructor(
     }
 }
 
-internal suspend fun stopPlaybackOnMain(stopPlayback: () -> Unit) {
-    withContext(Dispatchers.Main.immediate) {
-        stopPlayback()
+private fun MediaData?.unwrapTracking(): MediaData? =
+    (this as? TrackingSeekableInputMediaData)?.source ?: this
+
+/**
+ * Captures the first [SeekableInput] created from [source] — the one
+ * [ExoPlayerMediampPlayer.openImpl] opens for the session before the media source interceptor
+ * runs — so [LibassMediaSourcePipeline] can route playback reads through it.
+ *
+ * Ownership: the captured input belongs to the backend session ([ExoPlayerMediampPlayer]'s
+ * state machine closes it when the session ends); neither this class nor [VideoDataDataSource]
+ * closes it.
+ */
+@OptIn(ExperimentalMediampApi::class)
+private class TrackingSeekableInputMediaData(
+    val source: SeekableInputMediaData,
+) : SeekableInputMediaData by source {
+    var primaryInput: SeekableInput? = null
+        private set
+
+    override suspend fun createInput(coroutineContext: CoroutineContext): SeekableInput =
+        source.createInput(coroutineContext).also { input ->
+            if (primaryInput == null) {
+                primaryInput = input
+            }
+        }
+}
+
+@AndroidxOptIn(UnstableApi::class)
+private class RoutingDataSourceFactory(
+    private val mediaUri: String,
+    private val mediaDataSourceFactory: DataSource.Factory,
+    private val fallbackDataSourceFactory: DataSource.Factory,
+) : DataSource.Factory {
+    override fun createDataSource(): DataSource = RoutingDataSource(
+        mediaUri,
+        mediaDataSourceFactory,
+        fallbackDataSourceFactory,
+    )
+}
+
+@AndroidxOptIn(UnstableApi::class)
+private class RoutingDataSource(
+    private val mediaUri: String,
+    private val mediaDataSourceFactory: DataSource.Factory,
+    private val fallbackDataSourceFactory: DataSource.Factory,
+) : DataSource {
+    private val transferListeners = mutableListOf<TransferListener>()
+    private var activeDataSource: DataSource? = null
+
+    override fun addTransferListener(transferListener: TransferListener) {
+        transferListeners += transferListener
+    }
+
+    override fun open(dataSpec: DataSpec): Long {
+        check(activeDataSource == null) { "Data source is already open" }
+        val dataSource = if (dataSpec.uri.toString() == mediaUri) {
+            mediaDataSourceFactory.createDataSource()
+        } else {
+            fallbackDataSourceFactory.createDataSource()
+        }
+        transferListeners.forEach(dataSource::addTransferListener)
+        activeDataSource = dataSource
+        return dataSource.open(dataSpec)
+    }
+
+    override fun read(buffer: ByteArray, offset: Int, length: Int): Int =
+        checkNotNull(activeDataSource) { "Data source is not open" }.read(buffer, offset, length)
+
+    override fun getUri(): Uri? = activeDataSource?.uri
+
+    override fun getResponseHeaders(): Map<String, List<String>> =
+        activeDataSource?.responseHeaders.orEmpty()
+
+    override fun close() {
+        activeDataSource?.close()
+        activeDataSource = null
     }
 }
 

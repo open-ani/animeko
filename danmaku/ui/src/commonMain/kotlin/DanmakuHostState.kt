@@ -129,9 +129,15 @@ class DanmakuHostState(
     internal var elapsedFrameTimeNanos by elapsedFrameTimeNanoState
 
     /**
-     * 当前的帧生成时间
+     * 当前的帧生成时间 (经 [FrameTimeSmoother] 平滑后)
      */
     internal var currentFrameTimeDeltaNanos by mutableLongStateOf(0L)
+        private set
+
+    /**
+     * 当前的帧生成时间 (平滑前的原始值, 仅用于调试)
+     */
+    internal var currentFrameRawDeltaNanos by mutableLongStateOf(0L)
         private set
 
     /**
@@ -237,7 +243,7 @@ class DanmakuHostState(
                         // 如果弹幕字体大小变化了也会导致弹幕重置和浮动弹幕的一个静态属性更新
                         if (lastFontSize != newConfig.style.fontSize) {
                             updateTrackStaticProperties(newBaseSpeedTextWidth = baseTrackSpeedWidth)
-                            repopulatePresentDanmaku(elapsedFrameTimeNanos)
+                            repopulatePresentDanmaku()
                             lastFontSize = newConfig.style.fontSize
                         }
                         danmakuUpdateSubscription++ // update subscription manually if paused
@@ -255,7 +261,7 @@ class DanmakuHostState(
                     old.safeSeparation == new.safeSeparation && old.isDebug == new.isDebug
                 }.collect { newConfig ->
                     updateTrackStaticProperties(newConfigSafeSeparation = newConfig.safeSeparation)
-                    repopulatePresentDanmaku(elapsedFrameTimeNanos)
+                    repopulatePresentDanmaku()
                     danmakuUpdateSubscription++ // update subscription manually if paused
                 }
             }
@@ -372,7 +378,7 @@ class DanmakuHostState(
 
     /**
      * 更新一些 DanmakuTrack 的一些静态属性, 这些属性不是 State, 需要手动更新.
-     * - [FloatingDanmakuTrack.baseSpeedPxPerSecond]
+     * - [FloatingDanmakuTrack.baseSpeedPxPerSecond]: 修改时轨道会重新锚定已有弹幕, 位置连续不跳变.
      * - [FloatingDanmakuTrack.safeSeparation]
      * - [FloatingDanmakuTrack.baseSpeedTextWidth]
      *
@@ -397,17 +403,16 @@ class DanmakuHostState(
     }
 
     /**
-     * Recomputes the position of all currently displayed danmakus (both floating and fixed) without
-     * fully clearing them. 此方法的行为与 [repopulate] 相同, 但是具有更高的执行效率.
+     * Re-places all currently displayed danmakus (both floating and fixed), for example to re-measure
+     * text after a font size change. 此方法的行为与 [repopulate] 相同, 但是具有更高的执行效率.
      *
-     * @param currentElapsedFrameTimeNanos The current frame time in nanos, used to recalculate positions.
+     * 浮动弹幕保留原有的[放置时间][FloatingDanmaku.placeFrameTimeNanos]和[速度倍率][FloatingDanmaku.speedMultiplier],
+     * 因此重新放置前后位置与速度完全一致, 不会跳变.
      */
-    private suspend fun repopulatePresentDanmaku(currentElapsedFrameTimeNanos: Long) {
+    private suspend fun repopulatePresentDanmaku() {
         uiContext.await()
         val presentFloatingDanmakuCopied = DanmakuCollectionIterator(floatingTrack).toList()
         val presentFixedDanmakuCopied = DanmakuCollectionIterator(listOf(topTrack, bottomTrack).flatten()).toList()
-
-        val floatingTrackSpeed = with(uiContext.density) { danmakuConfig.speed.dp.toPx() }
 
         clearPresentDanmaku()
 
@@ -415,18 +420,16 @@ class DanmakuHostState(
         presentFixedDanmakuCopied.forEach {
             trySend(it.danmaku.presentation, it.placeFrameTimeNanos)
         }
-        // Restore floating danmakus, adjusting for how far they've moved so far.
+        // Restore floating danmakus, keeping their original anchors and speeds.
         presentFloatingDanmakuCopied.forEach {
-            val placeFrameTimeNanos = currentElapsedFrameTimeNanos -
-                    ((it.distanceX / (floatingTrackSpeed * it.speedMultiplier)) * 1_000_000_000f).toLong()
-            if (placeFrameTimeNanos >= 0) {
-                trySend(it.danmaku.presentation, placeFrameTimeNanos)
+            if (it.placeFrameTimeNanos >= 0) {
+                trySendImpl(it.danmaku.presentation, it.placeFrameTimeNanos, it.speedMultiplier)
             }
         }
 
         // 暂停时重新放置后需要计算一次位置, 否则重新填充弹幕后,
         // 暂停的这一帧中所有填充的弹幕的静态属性都没有被计算而导致屏幕上没有弹幕
-        if (paused) calculateDanmakuInFrame(0L, 0f)
+        if (paused) calculateDanmakuInFrame()
     }
 
     /**
@@ -435,64 +438,47 @@ class DanmakuHostState(
      * remains active (e.g., from a LaunchedEffect).
      *
      * This method will:
-     * - Update [elapsedFrameTimeNanos] every frame.
-     * - Call [calculateDanmakuInFrame] to move floating danmakus and finalize fixed danmaku positions.
+     * - Update [elapsedFrameTimeNanos] every frame, using [FrameTimeSmoother] to filter out
+     *   frame callback timestamp jitter (which is significant on desktop, see [FrameTimeSmoother]).
+     * - Call [calculateDanmakuInFrame] to finalize fixed danmaku positions.
      *
      * If [paused] is true, danmakus remain in place, but the loop keeps running.
      */
     internal suspend fun interpolateFrameLoop() {
         uiContext.await()
-        coroutineScope {
-            var currentFloatingTrackSpeed = with(uiContext.density) { danmakuConfig.speed.dp.toPx() }
+        val frameTimeSmoother = FrameTimeSmoother()
+        var currentFrameTimeNanos = withFrameNanos {
+            // 使用了这一帧来获取时间, 需要补偿平均帧时间
+            // elapsedFrameTimeNanos += avgFrameTimeNanos.avg()
+            it
+        }
 
-            // Observe dynamic changes in speed.
-            launch {
-                snapshotFlow { danmakuConfig.speed }.collect {
-                    currentFloatingTrackSpeed = with(uiContext.density) { it.dp.toPx() }
-                }
-            }
+        while (true) {
+            withFrameNanos { nanos ->
+                val rawDelta = nanos - currentFrameTimeNanos
+                val delta = frameTimeSmoother.smooth(rawDelta)
 
-            // Frame loop: increment time, compute positions.
-            launch {
-                var currentFrameTimeNanos = withFrameNanos {
-                    // 使用了这一帧来获取时间, 需要补偿平均帧时间
-                    // elapsedFrameTimeNanos += avgFrameTimeNanos.avg()
-                    it
-                }
+                elapsedFrameTimeNanos += delta
+                currentFrameTimeDeltaNanos = delta
+                currentFrameRawDeltaNanos = rawDelta
+                currentFrameTimeNanos = nanos
 
-                while (true) {
-                    withFrameNanos { nanos ->
-                        val delta = nanos - currentFrameTimeNanos
-
-                        elapsedFrameTimeNanos += delta
-                        currentFrameTimeDeltaNanos = delta
-                        currentFrameTimeNanos = nanos
-
-                        calculateDanmakuInFrame(delta, currentFloatingTrackSpeed)
-                        danmakuUpdateSubscription++ // update subscription manually if paused
-                    }
-                }
+                calculateDanmakuInFrame()
+                danmakuUpdateSubscription++ // update subscription manually if paused
             }
         }
     }
 
     /**
      * Calculates the position of all currently displayed danmakus.
-     * - For floating danmakus, updates [FloatingDanmaku.distanceX] based on [appendedFrameTime] and the provided [floatingTrackSpeed].
+     * - For floating danmakus, initializes the [FloatingDanmaku.y] coordinate.
+     *   ([FloatingDanmaku.distanceX] is a pure function of [elapsedFrameTimeNanos] and needs no update.)
      * - For fixed danmakus, ensures placement time and [FixedDanmaku.y] coordinate are set.
-     *
-     * @param appendedFrameTime The time in nanoseconds to move forward since the last frame.
-     * @param floatingTrackSpeed The base speed (px/s) of floating danmakus.
      */
-    private fun calculateDanmakuInFrame(
-        appendedFrameTime: Long,
-        floatingTrackSpeed: Float
-    ) {
+    private fun calculateDanmakuInFrame() {
         for (danmaku in DanmakuCollectionIterator(floatingTrack)) {
             // calculate y once
             if (danmaku.y.isNaN()) danmaku.y = danmaku.calculatePosY()
-            // always calculate distance x
-            danmaku.distanceX += appendedFrameTime / 1_000_000_000f * (floatingTrackSpeed * danmaku.speedMultiplier)
         }
         forEachFixedDanmaku {
             if (it.placeFrameTimeNanos == DanmakuTrack.NOT_PLACED) {
@@ -530,6 +516,15 @@ class DanmakuHostState(
     suspend fun trySend(
         danmaku: DanmakuPresentation,
         placeFrameTimeNanos: Long = DanmakuTrack.NOT_PLACED
+    ): Boolean = trySendImpl(danmaku, placeFrameTimeNanos, overrideSpeedMultiplier = null)
+
+    /**
+     * @param overrideSpeedMultiplier 重新放置已在屏幕上的浮动弹幕时, 指定原速度倍率以保证位置与速度完全不变.
+     */
+    private suspend fun trySendImpl(
+        danmaku: DanmakuPresentation,
+        placeFrameTimeNanos: Long,
+        overrideSpeedMultiplier: Float?,
     ): Boolean {
         uiContext.await()
         val styledDanmaku = StyledDanmaku(
@@ -545,7 +540,7 @@ class DanmakuHostState(
             when (danmaku.danmaku.location) {
                 DanmakuLocation.NORMAL -> {
                     val floatingDanmaku = floatingTrack.firstNotNullOfOrNull {
-                        it.tryPlace(styledDanmaku, placeFrameTimeNanos)
+                        it.tryPlace(styledDanmaku, placeFrameTimeNanos, overrideSpeedMultiplier)
                     }
                     floatingDanmaku != null
                 }
@@ -679,17 +674,90 @@ class DanmakuHostState(
     }
 
     /**
-     * 清空屏幕并填充[新弹幕列表][list]到屏幕.
+     * 以[新弹幕列表][list]填充屏幕.
+     *
+     * 如果播放进度与当前屏幕上的弹幕连续 (例如弹幕列表刷新, 弹幕源开关, 过滤规则变更等而触发的 repopulate),
+     * 则增量更新: 已在屏幕上的弹幕保持原位置和速度完全不变, 仅添加缺少的和移除多余的弹幕.
+     * 这可以避免屏幕上所有弹幕同时跳变位置.
+     *
+     * 如果不连续 (快进/快退等), 则清空屏幕后按 [currentPlayMillis] 重新装填.
      *
      * @see DanmakuRepopulator.repopulate
      */
     suspend fun repopulate(list: List<DanmakuPresentation>, currentPlayMillis: Long) {
-        withContext(Dispatchers.Main.immediate) { clearPresentDanmaku() }
+        val newDanmaku = withContext(Dispatchers.Main.immediate) {
+            prepareRepopulate(list, currentPlayMillis)
+        }
 
-        if (list.isEmpty()) return
-        uiContext.await()
+        if (newDanmaku.isNotEmpty()) {
+            uiContext.await()
+            danmakuRepopulator.repopulate(newDanmaku, currentPlayMillis)
+        }
 
-        danmakuRepopulator.repopulate(list, currentPlayMillis)
+        withContext(Dispatchers.Main.immediate) {
+            // 暂停时帧循环不在运行, 需要手动计算一次位置并触发重绘
+            if (paused) calculateDanmakuInFrame()
+            danmakuUpdateSubscription++
+        }
+    }
+
+    /**
+     * 移除屏幕上不应再显示的弹幕, 并返回 [list] 中需要新放置的弹幕.
+     *
+     * 只有当 [currentPlayMillis] 与屏幕上最新弹幕的[发送时间][DanmakuInfo.playTimeMillis]接近时
+     * 才增量更新, 否则视为快进/快退, 清空屏幕并重新装填全部.
+     * 屏幕上最新的弹幕来自最近的 Add 事件或上一次 repopulate, 它的发送时间戳始终紧跟播放进度,
+     * 因此这个判断不受播放倍速影响.
+     */
+    private fun prepareRepopulate(
+        list: List<DanmakuPresentation>,
+        currentPlayMillis: Long,
+    ): List<DanmakuPresentation> {
+        // 弹幕 id 仅保证服务内唯一, 用 serviceId + id 作为全局唯一键
+        fun key(info: DanmakuInfo) = "${info.serviceId.value}:${info.id}"
+
+        var newestPresentPlayTime = Long.MIN_VALUE
+        forEachFloatingDanmaku {
+            newestPresentPlayTime = maxOf(newestPresentPlayTime, it.danmaku.presentation.danmaku.playTimeMillis)
+        }
+        forEachFixedDanmaku {
+            newestPresentPlayTime = maxOf(newestPresentPlayTime, it.danmaku.presentation.danmaku.playTimeMillis)
+        }
+
+        val isContinuous = list.isNotEmpty() &&
+                newestPresentPlayTime != Long.MIN_VALUE &&
+                (currentPlayMillis - newestPresentPlayTime).absoluteValue <= REPOPULATE_CONTINUOUS_THRESHOLD_MILLIS
+
+        if (!isContinuous) {
+            clearPresentDanmaku()
+            return list
+        }
+
+        val incomingKeys = list.mapTo(HashSet(list.size)) { key(it.danmaku) }
+        // list 覆盖的时间范围的起点. 比这更早的弹幕不在本次 repopulate 范围内, 无法判断去留, 保留它们自然滚出屏幕.
+        val coveredStartMillis = list.minOf { it.danmaku.playTimeMillis }
+
+        fun shouldRemove(info: DanmakuInfo): Boolean {
+            if (key(info) in incomingKeys) return false
+            // 在 list 覆盖范围内却不在 list 中: 已被过滤或弹幕源被关闭; 晚于当前进度: 稍微快退了一点
+            return info.playTimeMillis >= coveredStartMillis || info.playTimeMillis > currentPlayMillis
+        }
+
+        floatingTrack.forEach { track ->
+            track.removeAll { shouldRemove(it.danmaku.presentation.danmaku) }
+        }
+        topTrack.forEach { track ->
+            track.removeCurrentIf { shouldRemove(it.danmaku.presentation.danmaku) }
+        }
+        bottomTrack.forEach { track ->
+            track.removeCurrentIf { shouldRemove(it.danmaku.presentation.danmaku) }
+        }
+
+        val presentKeys = HashSet<String>()
+        forEachFloatingDanmaku { presentKeys += key(it.danmaku.presentation.danmaku) }
+        forEachFixedDanmaku { presentKeys += key(it.danmaku.presentation.danmaku) }
+
+        return list.filter { key(it.danmaku) !in presentKeys }
     }
 
     /**
@@ -764,6 +832,11 @@ class DanmakuHostState(
 
     private companion object {
         val logger = logger<DanmakuHostState>()
+
+        /**
+         * repopulate 时, 播放进度与屏幕上最新弹幕的发送时间差在此范围内视为连续播放 (增量更新而不清屏).
+         */
+        const val REPOPULATE_CONTINUOUS_THRESHOLD_MILLIS = 10_000L
     }
 }
 

@@ -19,6 +19,7 @@ import kotlinx.coroutines.sync.withLock
 import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.media.cache.MediaCache
+import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.requester.CacheRequestStage.MediaSelected
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
 import me.him188.ani.app.domain.media.cache.storage.contains
@@ -32,6 +33,7 @@ import me.him188.ani.app.domain.media.selector.autoSelect
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
 import me.him188.ani.datasources.api.source.MediaFetchRequest
+import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.contains
 import me.him188.ani.datasources.api.topic.isSingleEpisode
 import me.him188.ani.datasources.api.unwrapCached
@@ -226,6 +228,10 @@ class EpisodeCacheRequesterImpl(
 
         override val storages: List<MediaCacheStorage> = storages.filter {
             it.engine.supports(selectedMedia)
+        }.let { supported ->
+            preferredCacheEngineKey(selectedMedia, supported.map { it.engine.engineKey })
+                ?.let { preferred -> supported.filter { it.engine.engineKey == preferred } }
+                ?: supported
         }
 
         override val fetchSession: MediaFetchSession get() = previous.fetchSession
@@ -323,4 +329,14 @@ class EpisodeCacheRequesterImpl(
             stage.value = it
         }
     }
+}
+
+private fun preferredCacheEngineKey(
+    media: Media,
+    supported: List<MediaCacheEngineKey>,
+): MediaCacheEngineKey? {
+    if (media.kind != MediaSourceKind.BitTorrent) return null
+
+    // 启用 PikPak 后，自动接管 BT 源缓存并通过 HTTP 下载。
+    return MediaCacheEngineKey.WebM3u.takeIf { it in supported }
 }

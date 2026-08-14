@@ -51,7 +51,6 @@ import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
 import org.koin.core.Koin
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.PlaybackState
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
@@ -163,7 +162,8 @@ class EpisodeFetchSelectPlayState(
                     // 2. 暂停播放, '冻结'播放器状态. 此时还不能 stop, 因为要调用扩展.
                     logger.info { "SwitchEpisode($episodeId): Pausing player" }
                     withContext(mainDispatcher) {
-                        if (player.playbackState.value == PlaybackState.PLAYING) {
+                        // 按播放意图判断: 缓冲中也应当暂停 (v1 只在 PLAYING 时暂停, 是个缺陷)
+                        if (player.state.value.playWhenReady) {
                             player.pause()
                         }
                     }

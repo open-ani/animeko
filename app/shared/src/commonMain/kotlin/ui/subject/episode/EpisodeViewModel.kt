@@ -635,7 +635,7 @@ class EpisodeViewModel(
                             .filter { it.text.any { c -> !c.isWhitespace() } }
                             .map { createDanmakuPresentation(it, selfId) },
                         withContext(Dispatchers.Main) {
-                            player.getCurrentPositionMillis()
+                            player.currentPositionMillis.value
                         },
                     )
                 }

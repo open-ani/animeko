@@ -63,7 +63,8 @@ import org.koin.dsl.module
 import org.openani.mediamp.InternalForInheritanceMediampApi
 import org.openani.mediamp.InternalMediampApi
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.PlaybackState
+import org.openani.mediamp.PlaybackErrorCode
+import org.openani.mediamp.PlaybackException
 import org.openani.mediamp.features.MediaMetadata
 import org.openani.mediamp.features.PlayerFeatures
 import org.openani.mediamp.features.buildPlayerFeatures
@@ -166,26 +167,30 @@ class PlayerSessionJellyfinQualityTest {
             TestMediaList.first(),
             EpisodeMetadata(title = "EP1", ep = EpisodeSort(1), sort = EpisodeSort(1)),
         )
-        backingPlayer.currentPositionMillis.value = 42_000L
+        backingPlayer.injectPosition(42_000L)
+        runCurrent()
 
         assertTrue(session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(8_000_000)).isSuccess)
         assertEquals(42_000L, backingPlayer.currentPositionMillis.value)
         assertEquals(JellyfinPlaybackQuality.fixed(8_000_000), repository.quality)
         assertEquals(emptyList(), stoppedSessions)
 
-        backingPlayer.playbackState.value = PlaybackState.PAUSED
+        player.pause()
         assertTrue(session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(4_000_000)).isSuccess)
         assertEquals(42_000L, backingPlayer.currentPositionMillis.value)
-        assertEquals(PlaybackState.PAUSED, backingPlayer.playbackState.value)
+        assertFalse(backingPlayer.state.value.playWhenReady)
         assertEquals(listOf("transcode-1"), stoppedSessions)
 
-        backingPlayer.playbackState.value = PlaybackState.PAUSED_BUFFERING
+        player.play()
+        backingPlayer.injectStall(true)
+        runCurrent()
+        assertTrue(backingPlayer.state.value.playWhenReady)
+        assertTrue(backingPlayer.state.value.isBuffering)
         player.holdNextMediaStart()
         val switching = async {
             session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(2_000_000))
         }
-        runCurrent()
-        backingPlayer.mediaProperties.first { it?.durationMillis == -1L }
+        player.awaitCurrentMediaStart()
 
         assertEquals(
             JellyfinPlaybackProgressSnapshot(
@@ -194,8 +199,9 @@ class PlayerSessionJellyfinQualityTest {
             ),
             session.jellyfinPlaybackProgressSnapshot.value,
         )
-        assertEquals(0L, backingPlayer.currentPositionMillis.value)
-        assertEquals(-1L, backingPlayer.mediaProperties.value?.durationMillis)
+        // Mediamp 0.3 keeps the previous timeline visible while the replacement open is pending.
+        assertEquals(42_000L, backingPlayer.currentPositionMillis.value)
+        assertEquals(1_000_000L, backingPlayer.mediaProperties.value?.durationMillis)
 
         player.releaseCurrentMediaStart()
         advanceUntilIdle()
@@ -203,7 +209,7 @@ class PlayerSessionJellyfinQualityTest {
         assertTrue(switching.await().isSuccess)
         assertNull(session.jellyfinPlaybackProgressSnapshot.value)
         assertEquals(42_000L, backingPlayer.currentPositionMillis.value)
-        assertEquals(PlaybackState.PLAYING, backingPlayer.playbackState.value)
+        assertTrue(backingPlayer.state.value.playWhenReady)
         assertEquals(listOf("transcode-1", "transcode-2"), stoppedSessions)
         assertEquals(JellyfinPlaybackQuality.fixed(2_000_000), repository.quality)
 
@@ -211,8 +217,7 @@ class PlayerSessionJellyfinQualityTest {
         val failedSwitch = async {
             session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(1_000_000))
         }
-        runCurrent()
-        backingPlayer.mediaProperties.first { it?.durationMillis == -1L }
+        player.awaitCurrentMediaStart()
 
         assertEquals(
             JellyfinPlaybackProgressSnapshot(
@@ -221,15 +226,16 @@ class PlayerSessionJellyfinQualityTest {
             ),
             session.jellyfinPlaybackProgressSnapshot.value,
         )
-        assertEquals(0L, backingPlayer.currentPositionMillis.value)
-        assertEquals(-1L, backingPlayer.mediaProperties.value?.durationMillis)
+        assertEquals(42_000L, backingPlayer.currentPositionMillis.value)
+        assertEquals(1_000_000L, backingPlayer.mediaProperties.value?.durationMillis)
 
+        player.failCurrentMediaStart()
         advanceUntilIdle()
 
         assertTrue(failedSwitch.await().isFailure)
         assertNull(session.jellyfinPlaybackProgressSnapshot.value)
         assertEquals(42_000L, backingPlayer.currentPositionMillis.value)
-        assertEquals(PlaybackState.PLAYING, backingPlayer.playbackState.value)
+        assertTrue(backingPlayer.state.value.playWhenReady)
         assertEquals(JellyfinPlaybackQuality.fixed(2_000_000), repository.quality)
         assertEquals(listOf("transcode-1", "transcode-2", "transcode-4"), stoppedSessions)
         assertEquals(listOf(0L, 0L, 0L, 0L, 0L), startTimeTicks)
@@ -370,14 +376,14 @@ class PlayerSessionJellyfinQualityTest {
         val player = ResumeBeforeSeekPlayer(backingPlayer)
         val session = PlayerSession(player, koin(provider.mediaDataProvider), EmptyCoroutineContext)
         session.loadMedia(TestMediaList.first(), episodeMetadata(1))
-        backingPlayer.currentPositionMillis.value = 42_000L
+        backingPlayer.injectPosition(42_000L)
+        runCurrent()
 
         player.holdNextMediaStart()
         val switching = async {
             session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(8_000_000))
         }
-        runCurrent()
-        backingPlayer.mediaProperties.first { it?.durationMillis == -1L }
+        player.awaitCurrentMediaStart()
         switching.cancelAndJoin()
 
         assertEquals(listOf("cancelled-transcode"), stoppedSessions)
@@ -452,10 +458,13 @@ class PlayerSessionJellyfinQualityTest {
         val switching = async {
             session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(8_000_000))
         }
-        runCurrent()
-        backingPlayer.mediaProperties.first { it?.durationMillis == -1L }
+        player.awaitCurrentMediaStart()
 
-        session.loadMedia(newMedia, episodeMetadata(2))
+        val loadingNewMedia = async {
+            session.loadMedia(newMedia, episodeMetadata(2))
+        }
+        player.awaitCurrentMediaStartCancelled()
+        loadingNewMedia.await()
         switching.join()
 
         assertTrue(switching.isCancelled)
@@ -713,9 +722,10 @@ class PlayerSessionJellyfinQualityTest {
         audioTracks: List<AudioTrack>? = null,
         selectedAudioTrackIndex: Int? = null,
     ) : MediampPlayer by delegate {
-        private var resumedSinceMediaSet = false
         private var holdNextMediaStart = false
-        private var currentMediaStartHeld = false
+        private var currentMediaStartHold: TestMediampPlayer.OpenBehavior.Hold? = null
+        private var nextMediaStartReached: CompletableDeferred<Unit>? = null
+        private var currentMediaStartCancelled: CompletableDeferred<Unit>? = null
         private val audioTrackGroup = audioTracks?.let { tracks ->
             TestTrackGroup(
                 candidates = tracks,
@@ -725,6 +735,10 @@ class PlayerSessionJellyfinQualityTest {
         private var nextAudioTracks: Pair<List<AudioTrack>, Int?>? = null
         val mediaUris = mutableListOf<String>()
         val selectedAudioTrack: AudioTrack? get() = audioTrackGroup?.selected?.value
+
+        init {
+            delegate.defaultMediaProperties = MediaProperties(durationMillis = 1_000_000L)
+        }
 
         override val features: PlayerFeatures = if (audioTrackGroup == null) {
             delegate.features
@@ -742,12 +756,28 @@ class PlayerSessionJellyfinQualityTest {
         }
 
         fun holdNextMediaStart() {
+            check(nextMediaStartReached == null) { "A held media start is already pending" }
             holdNextMediaStart = true
+            nextMediaStartReached = CompletableDeferred()
+            currentMediaStartCancelled = CompletableDeferred()
+        }
+
+        suspend fun awaitCurrentMediaStart() {
+            checkNotNull(nextMediaStartReached).await()
+        }
+
+        suspend fun awaitCurrentMediaStartCancelled() {
+            checkNotNull(currentMediaStartCancelled).await()
         }
 
         fun releaseCurrentMediaStart() {
-            currentMediaStartHeld = false
-            exposeMediaTimeline()
+            checkNotNull(currentMediaStartHold).release()
+        }
+
+        fun failCurrentMediaStart() {
+            checkNotNull(currentMediaStartHold).fail(
+                PlaybackException(PlaybackErrorCode.IO, "simulated replacement open failure"),
+            )
         }
 
         fun replaceAudioTracksOnNextMedia(
@@ -757,7 +787,11 @@ class PlayerSessionJellyfinQualityTest {
             nextAudioTracks = tracks to selectedAudioTrackIndex
         }
 
-        override suspend fun setMediaData(data: MediaData) {
+        override suspend fun setMediaData(
+            data: MediaData,
+            playWhenReady: Boolean,
+            startPositionMillis: Long,
+        ) {
             (data as? UriMediaData)?.uri?.let(mediaUris::add)
             nextAudioTracks?.let { (tracks, selectedIndex) ->
                 checkNotNull(audioTrackGroup).replace(
@@ -766,30 +800,32 @@ class PlayerSessionJellyfinQualityTest {
                 )
                 nextAudioTracks = null
             }
-            resumedSinceMediaSet = false
-            currentMediaStartHeld = holdNextMediaStart
-            holdNextMediaStart = false
-            delegate.setMediaData(data)
-            delegate.currentPositionMillis.value = 0L
-            delegate.mediaProperties.value = MediaProperties(durationMillis = -1L)
-        }
-
-        override fun resume() {
-            delegate.resume()
-            if (!currentMediaStartHeld) {
-                exposeMediaTimeline()
+            val hold = if (holdNextMediaStart) {
+                TestMediampPlayer.OpenBehavior.Hold().also {
+                    currentMediaStartHold = it
+                    delegate.openBehavior = it
+                    checkNotNull(nextMediaStartReached).complete(Unit)
+                }
+            } else {
+                null
             }
-        }
-
-        private fun exposeMediaTimeline() {
-            delegate.mediaProperties.value = MediaProperties(durationMillis = 1_000_000L)
-            delegate.currentPositionMillis.value = 100L
-            resumedSinceMediaSet = true
-        }
-
-        override fun seekTo(positionMillis: Long) {
-            if (resumedSinceMediaSet) {
-                delegate.seekTo(positionMillis)
+            holdNextMediaStart = false
+            try {
+                delegate.setMediaData(data, playWhenReady, startPositionMillis)
+            } catch (e: CancellationException) {
+                currentMediaStartCancelled?.complete(Unit)
+                throw e
+            } finally {
+                if (currentMediaStartHold === hold) {
+                    currentMediaStartHold = null
+                }
+                if (hold != null) {
+                    nextMediaStartReached = null
+                    currentMediaStartCancelled = null
+                }
+                if (hold != null && delegate.openBehavior === hold) {
+                    delegate.openBehavior = TestMediampPlayer.OpenBehavior.Immediate
+                }
             }
         }
     }

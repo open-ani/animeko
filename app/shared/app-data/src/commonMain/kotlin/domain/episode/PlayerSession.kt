@@ -15,13 +15,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -55,7 +54,7 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.koin.core.Koin
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.PlaybackState
+import org.openani.mediamp.PlaybackException
 import org.openani.mediamp.features.audioTracks
 import org.openani.mediamp.features.subtitleTracks
 import org.openani.mediamp.metadata.AudioTrack
@@ -158,25 +157,24 @@ class PlayerSession(
             }.data
             ensureCurrentPlaybackGeneration(generation)
 
+            logger.info { "Set media data to player" }
+            // Mediamp 0.3 opens the media before returning and carries the playback intent.
+            // Do not hold playbackMutationMutex while opening: stopPlayback or a newer setMediaData
+            // must remain able to cancel a superseded open.
+            player.setMediaData(preparedData, playWhenReady = true)
+
             playbackMutationMutex.withLock {
                 ensureCurrentPlaybackGeneration(generation)
                 jellyfinMediaDataProvider = jellyfinProvider
                 uninstalledJellyfinProvider = null
                 installedPlaybackGeneration = generation
                 _jellyfinPlaybackQualityState.value = jellyfinProvider?.qualityState?.value
-
-                logger.info { "Set media data to player" }
-                player.setMediaData(preparedData)
                 hlsPlaybackProxySession = preparedHlsPlaybackProxySession
                 preparedHlsPlaybackProxySession = null
 
                 _videoLoadingStateFlow.value = VideoLoadingState.Succeed(
                     isBt = source is TorrentBackedMediaDataProvider,
                 )
-                withContext(mainDispatcher) {
-                    player.resume()
-                }
-                logger.info { "resuming" }
             }
         } catch (_: PlaybackSupersededException) {
             // A newer load or stop owns the player. Only the uninstalled resources are cleaned below.
@@ -217,7 +215,7 @@ class PlayerSession(
                 }
             }
             stopPlayback(generation)
-        } catch (e: CancellationException) { // 切换数据源
+        } catch (e: CancellationException) { // 切换数据源 (含 MediaLoadCancellationException)
             if (isCurrentPlaybackGeneration(generation)) {
                 _videoLoadingStateFlow.value = VideoLoadingState.Cancelled
             }
@@ -225,6 +223,12 @@ class PlayerSession(
                 stopPlayback(generation)
             }
             throw e
+        } catch (e: PlaybackException) { // during player.setMediaData, 播放器拒绝了这个媒体
+            logger.warn { IllegalStateException("Player rejected the media data", e) }
+            if (isCurrentPlaybackGeneration(generation)) {
+                _videoLoadingStateFlow.value = VideoLoadingState.UnknownError(e)
+            }
+            stopPlayback(generation)
         } catch (e: Throwable) {
             logger.error { IllegalStateException("Failed to resolve video source with unknown error", e) }
             if (isCurrentPlaybackGeneration(generation)) {
@@ -421,8 +425,8 @@ class PlayerSession(
             val nextPlayback = owner.provider.prepare(
                 quality = quality,
                 // Keep the player timeline aligned with the complete episode. Starting the Jellyfin
-                // transcode at the current position would expose a new zero-based stream, so restore
-                // the position in the player after the replacement media has actually started.
+                // transcode at the current position would expose a new zero-based stream. Instead,
+                // start the complete replacement timeline at the snapshot position in Mediamp.
                 startPositionMillis = 0L,
                 forceAutoDetection = quality.mode == JellyfinPlaybackQualityMode.AUTO,
                 audioStreamIndex = selectedAudioStreamIndex,
@@ -438,8 +442,17 @@ class PlayerSession(
             playbackMutationMutex.withLock {
                 ensureCurrentPlaybackOwner(owner)
                 installedNewData = true
-                player.setMediaData(preparedData)
-                restorePlayback(snapshot, owner, nextPlayback.plan)
+            }
+            // Mediamp serializes media opens and cancels a superseded open. Keeping this call out of
+            // playbackMutationMutex lets a new episode stop or replace an in-flight quality switch.
+            player.setMediaData(
+                preparedData,
+                playWhenReady = snapshot.shouldResume,
+                startPositionMillis = snapshot.positionMillis,
+            )
+            playbackMutationMutex.withLock {
+                ensureCurrentPlaybackOwner(owner)
+                restoreTrackSelection(snapshot.trackSelection, nextPlayback.plan)
                 currentCoroutineContext().ensureActive()
                 ensureCurrentPlaybackOwner(owner)
 
@@ -460,10 +473,11 @@ class PlayerSession(
                 if (!committed) {
                     stopEncodingSafely(owner.provider, prepared?.plan)
                 }
-                playbackMutationMutex.withLock {
-                    if (!committed && installedNewData && isCurrentPlaybackOwner(owner)) {
-                        rollbackPlayback(snapshot, owner)
-                    }
+                val shouldRollback = playbackMutationMutex.withLock {
+                    !committed && installedNewData && isCurrentPlaybackOwner(owner)
+                }
+                if (shouldRollback) {
+                    rollbackPlayback(snapshot, owner)
                 }
             }
             throw e
@@ -477,75 +491,21 @@ class PlayerSession(
                 ?.takeIf { it > 0L }
                 ?: return@withContext null
             JellyfinPlaybackProgressSnapshot(
-                positionMillis = player.getCurrentPositionMillis().coerceIn(0L, durationMillis),
+                positionMillis = player.currentPositionMillis.value.coerceIn(0L, durationMillis),
                 durationMillis = durationMillis,
             )
         }
         val positionMillis = progressSnapshot?.positionMillis ?: withContext(mainDispatcher) {
-            player.getCurrentPositionMillis().coerceAtLeast(0L)
+            player.currentPositionMillis.value.coerceAtLeast(0L)
         }
         _jellyfinPlaybackProgressSnapshot.value = progressSnapshot
-        // Buffering is a transient pause while playback is still intended to continue.
-        // PlaybackState.isPlaying only recognizes PLAYING, which would turn this stall into
-        // a user pause after replacing the media.
-        val playbackState = player.playbackState.value
-        val shouldResume =
-            playbackState == PlaybackState.PLAYING || playbackState == PlaybackState.PAUSED_BUFFERING
         return JellyfinPlaybackSwitchSnapshot(
             positionMillis = positionMillis,
-            shouldResume = shouldResume,
+            // playWhenReady represents user intent independently of transient buffering.
+            shouldResume = player.state.value.playWhenReady,
             previousData = checkNotNull(player.mediaData.first { it != null }),
             trackSelection = snapshotTrackSelection(),
         )
-    }
-
-    private suspend fun resumeAndAwaitMediaStart(owner: JellyfinPlaybackOwner) {
-        withContext(mainDispatcher) {
-            ensureCurrentPlaybackOwner(owner)
-            player.resume()
-        }
-        val state = withTimeoutOrNull(JELLYFIN_SWITCH_TIMEOUT_MILLIS) {
-            while (true) {
-                currentCoroutineContext().ensureActive()
-                ensureCurrentPlaybackOwner(owner)
-                val playbackState = player.playbackState.value
-                if (playbackState == PlaybackState.ERROR || playbackState == PlaybackState.DESTROYED) {
-                    return@withTimeoutOrNull playbackState
-                }
-                val positionMillis = withContext(mainDispatcher) {
-                    player.getCurrentPositionMillis()
-                }
-                val durationMillis = player.mediaProperties.value?.durationMillis ?: 0L
-                if (positionMillis > 0L && durationMillis > 0L) {
-                    return@withTimeoutOrNull playbackState
-                }
-                delay(MEDIA_START_POLL_INTERVAL_MILLIS)
-            }
-            error("Unreachable")
-        } ?: error("Timed out waiting for the selected Jellyfin playback quality")
-        check(state != PlaybackState.ERROR && state != PlaybackState.DESTROYED) {
-            "The player rejected the selected Jellyfin playback quality"
-        }
-    }
-
-    private suspend fun restorePlayback(
-        snapshot: JellyfinPlaybackSwitchSnapshot,
-        owner: JellyfinPlaybackOwner,
-        playbackPlan: JellyfinPlaybackPlan? = null,
-    ) {
-        // Both mpv and ExoPlayer install replacement media only after resume. Their public state can
-        // become PLAYING before the replacement timeline is usable, so wait for it to advance before
-        // seeking. Otherwise the media initialization can overwrite the restored position.
-        resumeAndAwaitMediaStart(owner)
-        withContext(mainDispatcher) {
-            ensureCurrentPlaybackOwner(owner)
-            player.seekTo(snapshot.positionMillis)
-            if (!snapshot.shouldResume) {
-                player.pause()
-            }
-        }
-        ensureCurrentPlaybackOwner(owner)
-        restoreTrackSelection(snapshot.trackSelection, playbackPlan)
     }
 
     private suspend fun rollbackPlayback(
@@ -554,8 +514,16 @@ class PlayerSession(
     ) {
         try {
             ensureCurrentPlaybackOwner(owner)
-            player.setMediaData(snapshot.previousData)
-            restorePlayback(snapshot, owner)
+            player.setMediaData(
+                snapshot.previousData,
+                playWhenReady = snapshot.shouldResume,
+                startPositionMillis = snapshot.positionMillis,
+            )
+            playbackMutationMutex.withLock {
+                ensureCurrentPlaybackOwner(owner)
+                restoreTrackSelection(snapshot.trackSelection, playbackPlan = null)
+                ensureCurrentPlaybackOwner(owner)
+            }
         } catch (rollbackError: Throwable) {
             logger.warn(rollbackError) {
                 "Failed to restore the previous playback after a Jellyfin quality switch error"
@@ -678,8 +646,6 @@ class PlayerSession(
 
     companion object {
         private const val NO_PLAYBACK_GENERATION = -1L
-        private const val JELLYFIN_SWITCH_TIMEOUT_MILLIS = 15_000L
-        private const val MEDIA_START_POLL_INTERVAL_MILLIS = 50L
         private const val TRACK_RESTORE_TIMEOUT_MILLIS = 2_000L
         private val logger = logger<PlayerSession>()
     }

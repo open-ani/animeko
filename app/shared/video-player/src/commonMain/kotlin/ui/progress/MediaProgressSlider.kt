@@ -85,6 +85,7 @@ import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
+import me.him188.ani.app.ui.foundation.input.asGesturePointerType
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.weaken
 import me.him188.ani.app.videoplayer.ui.gesture.SwipeSeekerConfig
@@ -667,7 +668,7 @@ fun MediaProgressSlider(
                     pass = PointerEventPass.Initial,
                 ) { event ->
                     val touchChange = event.changes.firstOrNull()
-                        ?.takeIf { it.type == PointerType.Touch }
+                        ?.takeIf { it.type.asGesturePointerType() == PointerType.Touch }
                     handlingTouchInput = touchChange != null
                     touchChange?.let { touchSeekState?.onPointerDown(it.position) }
                 }
