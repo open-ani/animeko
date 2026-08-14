@@ -10,7 +10,7 @@
 package me.him188.ani.app.domain.player.extension
 
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.filterNotNull
 import me.him188.ani.app.domain.episode.EpisodeSession
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.MediaSelectorAutoSelectUseCase
@@ -32,9 +32,17 @@ class AutoSelectExtension(
         backgroundTaskScope: ExtensionBackgroundTaskScope
     ) {
         backgroundTaskScope.launch("AutoSelect") {
-            context.sessionFlow.flatMapLatest { it.fetchSelectFlow }.collectLatest { fetchSelect ->
-                if (fetchSelect == null) return@collectLatest
-                mediaSelectorAutoSelectUseCase(fetchSelect.mediaFetchSession, fetchSelect.mediaSelector)
+            context.sessionFlow.collectLatest { session ->
+                session.fetchSelectFlow.collectLatest { fetchSelect ->
+                    if (fetchSelect == null) return@collectLatest
+                    // 等待 web 切集快速路径的决策: 命中时已完成选择, 不启动自动选择
+                    // (自动选择的部分策略会 collect 查询结果, 从而触发数据源搜索).
+                    // 快速路径失效时决策会翻转为 false, 此时重新启动自动选择.
+                    session.webFastPathHit.filterNotNull().collectLatest fastPath@{ hit ->
+                        if (hit) return@fastPath
+                        mediaSelectorAutoSelectUseCase(fetchSelect.mediaFetchSession, fetchSelect.mediaSelector)
+                    }
+                }
             }
         }
     }
