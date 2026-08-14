@@ -15,7 +15,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -75,7 +75,7 @@ constructor(
      * Web 源播放 session 搜索缓存的有效期, 用于切换剧集或短暂退出后重新进入播放页时复用搜索结果.
      * 实际生效值为此值与数据源配置中定义的值的较小者. 为 0 时禁用缓存.
      */
-    val webSearchCacheTtl: Duration = 1.hours, // 注意, 这是 'enum'. 查看 UI 代码以确定有哪些值可以选.
+    val webSearchCacheTtl: Duration = 30.minutes, // 注意, 这是 'enum'. 查看 UI 代码以确定有哪些值可以选.
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     companion object {
