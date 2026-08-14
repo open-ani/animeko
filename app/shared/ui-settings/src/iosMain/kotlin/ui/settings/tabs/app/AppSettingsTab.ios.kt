@@ -15,7 +15,9 @@ import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import me.him188.ani.app.data.models.preference.PlayerKernelConfig
 import me.him188.ani.app.data.models.preference.UISettings
+import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_app_language
 import me.him188.ani.app.ui.settings.framework.SettingsState
@@ -28,6 +30,15 @@ import platform.UIKit.UIApplicationOpenSettingsURLString
 
 @Composable
 internal actual fun SettingsScope.AppSettingsTabPlatform() {
+}
+
+@Suppress("UNUSED_PARAMETER")
+@Composable
+internal actual fun SettingsScope.PlayerGroupPlatform(
+    videoScaffoldConfig: SettingsState<VideoScaffoldConfig>,
+    playerKernelConfig: SettingsState<PlayerKernelConfig>,
+) {
+    // NOOP
 }
 
 @Suppress("UNUSED_PARAMETER")

@@ -342,6 +342,7 @@ fun SettingsScreen(
                             SettingsTab.PLAYER -> {
                                 PlayerGroup(
                                     vm.videoScaffoldConfig,
+                                    vm.playerKernelConfig,
                                     vm.danmakuFilterConfigState,
                                     vm.danmakuRegexFilterState,
                                     vm.isInDebugMode,
