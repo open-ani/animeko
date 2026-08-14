@@ -13,6 +13,7 @@ import androidx.room.AutoMigration
 import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.DeleteColumn
+import androidx.room.DeleteTable
 import androidx.room.RenameColumn
 import androidx.room.RenameTable
 import androidx.room.RoomDatabase
@@ -46,10 +47,8 @@ import me.him188.ani.app.data.persistent.database.dao.SubjectRelationsDao
 import me.him188.ani.app.data.persistent.database.dao.SubjectReviewDao
 import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoDao
 import me.him188.ani.app.data.persistent.database.dao.TorrentCacheInfoEntity
-import me.him188.ani.app.data.persistent.database.dao.WebSearchEpisodeInfoDao
-import me.him188.ani.app.data.persistent.database.dao.WebSearchEpisodeInfoEntity
-import me.him188.ani.app.data.persistent.database.dao.WebSearchSubjectInfoDao
-import me.him188.ani.app.data.persistent.database.dao.WebSearchSubjectInfoEntity
+import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheDao
+import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheEntity
 import me.him188.ani.app.data.persistent.database.entity.CharacterActorEntity
 import me.him188.ani.app.data.persistent.database.entity.CharacterEntity
 import me.him188.ani.app.data.persistent.database.entity.EpisodeCommentEntity
@@ -76,8 +75,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         SubjectReviewEntity::class,
         EpisodeCommentEntity::class,
 
-        WebSearchSubjectInfoEntity::class,
-        WebSearchEpisodeInfoEntity::class,
+        WebSearchSessionCacheEntity::class,
 
         TorrentCacheInfoEntity::class,
         DownloadState::class,
@@ -87,7 +85,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         PlaybackHistoryRecordEntity::class,
         PlaybackHistoryPendingOpEntity::class,
     ],
-    version = 21,
+    version = 22,
     autoMigrations = [
         AutoMigration(from = 1, to = 2, spec = Migrations.Migration_1_2::class),
         AutoMigration(from = 2, to = 3, spec = Migrations.Migration_2_3::class),
@@ -108,6 +106,7 @@ import me.him188.ani.utils.httpdownloader.DownloadState
         AutoMigration(from = 17, to = 18, spec = Migrations.Migration_17_18::class),
         AutoMigration(from = 18, to = 19, spec = Migrations.Migration_18_19::class),
         AutoMigration(from = 20, to = 21, spec = Migrations.Migration_20_21::class),
+        AutoMigration(from = 21, to = 22, spec = Migrations.Migration_21_22::class),
     ],
     exportSchema = true,
 )
@@ -141,10 +140,9 @@ abstract class AniDatabase : RoomDatabase() {
     abstract fun episodeCommentDao(): EpisodeCommentDao
 
     /**
-     * @since 4.1.0-alpha03
+     * @since 6.1.0
      */
-    abstract fun webSearchSubjectInfoDao(): WebSearchSubjectInfoDao
-    abstract fun webSearchEpisodeInfoDao(): WebSearchEpisodeInfoDao
+    abstract fun webSearchSessionCacheDao(): WebSearchSessionCacheDao
 
     /**
      * @since 5.1.0
@@ -384,6 +382,17 @@ internal object Migrations {
      * @since 5.3.0
      */
     class Migration_20_21 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+        }
+    }
+
+    /**
+     * Web 源搜索缓存改用新表 [WebSearchSessionCacheEntity] (播放 session 级缓存, 完整复合唯一键),
+     * 删除旧的 `web_search_subject` / `web_search_episode`.
+     */
+    @DeleteTable("web_search_episode")
+    @DeleteTable("web_search_subject")
+    class Migration_21_22 : AutoMigrationSpec {
         override fun onPostMigrate(connection: SQLiteConnection) {
         }
     }

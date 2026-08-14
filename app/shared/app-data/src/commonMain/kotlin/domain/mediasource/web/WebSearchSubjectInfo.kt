@@ -9,7 +9,10 @@
 
 package me.him188.ani.app.domain.mediasource.web
 
+import me.him188.ani.app.domain.mediasource.MediaListFilters
 import me.him188.ani.datasources.api.EpisodeSort
+import me.him188.ani.datasources.api.topic.EpisodeRange
+import me.him188.ani.datasources.api.topic.contains
 import me.him188.ani.utils.xml.Element
 
 data class WebSearchSubjectInfo(
@@ -44,3 +47,30 @@ data class WebSearchEpisodeInfo(
      */
     val playUrl: String
 )
+
+/**
+ * 从剧集列表中找到正在播放的剧集.
+ *
+ * 匹配优先级 (与旧版按当前集过滤 media 的语义一致, 见 `MediaListFilters.ContainsAnyEpisodeInfo`):
+ * 1. [WebSearchEpisodeInfo.episodeSortOrEp] 匹配系列内集数 [episodeSort];
+ * 2. 特殊剧集 (非 [EpisodeSort.Normal]) 按剧集名称匹配 [episodeName];
+ * 3. [WebSearchEpisodeInfo.episodeSortOrEp] 匹配季度内集数 [episodeEp].
+ */
+fun List<WebSearchEpisodeInfo>.findMatchingEpisodeOrNull(
+    episodeSort: EpisodeSort,
+    episodeEp: EpisodeSort?,
+    episodeName: String?,
+): WebSearchEpisodeInfo? {
+    firstOrNull { info ->
+        info.episodeSortOrEp?.let { EpisodeRange.single(it).contains(episodeSort) } == true
+    }?.let { return it }
+    if (episodeSort !is EpisodeSort.Normal && !episodeName.isNullOrBlank()) {
+        firstOrNull { MediaListFilters.specialContains(it.name, episodeName) }?.let { return it }
+    }
+    if (episodeEp != null) {
+        firstOrNull { info ->
+            info.episodeSortOrEp?.let { EpisodeRange.single(it).contains(episodeEp) } == true
+        }?.let { return it }
+    }
+    return null
+}
