@@ -318,6 +318,7 @@ class SelectorMediaSource(
         searchConfig: SelectorSearchConfig,
         query: SelectorSearchQuery,
         mediaSourceId: String,
+        subjectId: Int?,
     ): List<DefaultMedia> = withContext(Dispatchers.Default) {
         val currentPlayerNames = when (currentPlatform()) {
             // 桌面端已迁移至 mpv, 但许多现有订阅仍声明 "vlc", 暂时保持兼容
@@ -385,7 +386,7 @@ class SelectorMediaSource(
                     null
                 } ?: continue
                 repository.addCache(
-                    mediaSourceId, query.subjectName, subjectInfo, episodes,
+                    subjectId, mediaSourceId, query.subjectName, subjectInfo, episodes,
                     sourceCacheTtl = searchConfig.searchCacheTtl,
                 )
                 addAll(
@@ -420,6 +421,7 @@ class SelectorMediaSource(
                             episodeName = query.episodeName,
                         ),
                         mediaSourceId,
+                        query.subjectId.toIntOrNull(),
                     ).asFlow()
                 }.map {
                     MediaMatch(it, MatchKind.FUZZY)

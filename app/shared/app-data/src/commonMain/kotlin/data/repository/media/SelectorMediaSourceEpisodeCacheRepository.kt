@@ -9,12 +9,8 @@
 
 package me.him188.ani.app.data.repository.media
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheDao
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheEntity
@@ -47,11 +43,11 @@ class SelectorMediaSourceEpisodeCacheRepository(
      */
     private val userTtlFlow: Flow<Duration>,
 ) : Repository() {
-    private val cleanupScope = CoroutineScope(defaultDispatcher + SupervisorJob())
 
     private suspend fun userTtl(): Duration = userTtlFlow.first()
 
     suspend fun addCache(
+        requesterSubjectId: Int?,
         mediaSourceId: String,
         subjectName: String,
         subjectInfo: WebSearchSubjectInfo,
@@ -69,7 +65,7 @@ class SelectorMediaSourceEpisodeCacheRepository(
             mediaSourceId, subjectName, subjectInfo.fullUrl,
             episodeInfos.map {
                 it.toEntity(
-                    mediaSourceId, subjectName, subjectInfo,
+                    requesterSubjectId, mediaSourceId, subjectName, subjectInfo,
                     cachedAt = now,
                     expiresAt = now + ttl.inWholeMilliseconds,
                 )
@@ -77,8 +73,8 @@ class SelectorMediaSourceEpisodeCacheRepository(
         )
     }
 
-    suspend fun clearAll() = withContext(defaultDispatcher) {
-        dao.deleteAll()
+    suspend fun clearByRequestedSubject(requesterSubjectId: Int) = withContext(defaultDispatcher) {
+        dao.deleteByRequestedSubject(requesterSubjectId)
     }
 
     /**
@@ -86,20 +82,6 @@ class SelectorMediaSourceEpisodeCacheRepository(
      */
     suspend fun purgeExpired() = withContext(defaultDispatcher) {
         dao.deleteExpired(currentTimeMillis())
-    }
-
-    /**
-     * 退出播放页时调用: 在用户设置的 TTL 之后清除 [subjectNames] 条目的已过期行.
-     *
-     * 只删除届时已过期的行, 因此若用户在此期间重新进入该条目并产生了新的缓存, 新行不受影响.
-     * 若进程在此之前退出, 由下次进入播放页时的 [purgeExpired] 兜底.
-     */
-    fun scheduleExitCleanup(subjectNames: List<String>) {
-        if (subjectNames.isEmpty()) return
-        cleanupScope.launch {
-            delay(userTtl())
-            dao.deleteExpiredBySubjectNames(subjectNames, currentTimeMillis())
-        }
     }
 
     /**
@@ -131,6 +113,7 @@ data class WebSearchCache(
 )
 
 private fun WebSearchEpisodeInfo.toEntity(
+    requesterSubjectId: Int?,
     mediaSourceId: String,
     subjectName: String,
     subjectInfo: WebSearchSubjectInfo,
@@ -138,6 +121,7 @@ private fun WebSearchEpisodeInfo.toEntity(
     expiresAt: Long,
 ): WebSearchSessionCacheEntity {
     return WebSearchSessionCacheEntity(
+        requesterSubjectId = requesterSubjectId,
         mediaSourceId = mediaSourceId,
         subjectName = subjectName,
         subjectPageName = subjectInfo.name,

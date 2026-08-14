@@ -91,6 +91,8 @@ class EpisodeFetchSelectPlayState(
         suspend fun isFullscreen(): Boolean? = false
     }
 
+    private val selectorCacheRepo by koin.inject<SelectorMediaSourceEpisodeCacheRepository>()
+
     private val _episodeSessionFlow = MutableStateFlow(
         newEpisodeSession(initialEpisodeId),
     )
@@ -213,9 +215,7 @@ class EpisodeFetchSelectPlayState(
         episodeSessionFlow.value.let { session ->
             if (!session.sessionScopeTasksStarted.value) {
                 backgroundScope.launch {
-                    // 进入播放页: 清除已过期的 web 剧集搜索缓存, 未过期的保留 (短暂退出后重进可复用).
-                    // 必须在启动 session 任务 (即启动搜索) 之前完成, 避免读到过期缓存.
-                    koin.getOrNull<SelectorMediaSourceEpisodeCacheRepository>()?.purgeExpired()
+                    selectorCacheRepo.purgeExpired()
                     session.startSessionScopeTasks() // Will check again if backgroundTasksStarted so thread-safe.
                 }
             }
@@ -228,14 +228,7 @@ class EpisodeFetchSelectPlayState(
     suspend fun onClose() {
         extensionManager.call { it.onClose() }
         playerSession.stopPlayback()
-        // 退出播放页: TTL 之后清理本条目的搜索缓存. 在此之前快速重进播放页可继续复用.
-        koin.getOrNull<SelectorMediaSourceEpisodeCacheRepository>()?.let { repository ->
-            val subjectNames = episodeSessionFlow.value.infoBundleFlow.replayCache.firstOrNull()
-                ?.subjectCollectionInfo?.subjectInfo?.allNames
-            if (!subjectNames.isNullOrEmpty()) {
-                repository.scheduleExitCleanup(subjectNames)
-            }
-        }
+        selectorCacheRepo.purgeExpired()
     }
 
     /**

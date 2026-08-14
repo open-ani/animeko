@@ -40,6 +40,10 @@ import me.him188.ani.datasources.api.EpisodeSort
 )
 data class WebSearchSessionCacheEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /**
+     * 创建此缓存的 subject 的 id, 在重启
+     */
+    val requesterSubjectId: Int?,
     val mediaSourceId: String,
     /**
      * 搜索时使用的条目名 (查询 key), 来自 MediaFetchRequest.subjectNames.
@@ -131,6 +135,11 @@ interface WebSearchSessionCacheDao {
     )
     suspend fun deleteExpiredBySubjectNames(subjectNames: List<String>, now: Long)
 
-    @Query("DELETE FROM web_search_session_cache")
-    suspend fun deleteAll()
+    @Query(
+        """
+        DELETE FROM web_search_session_cache
+        WHERE requesterSubjectId = :requesterSubjectId
+    """,
+    )
+    suspend fun deleteByRequestedSubject(requesterSubjectId: Int)
 }

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 22,
-    "identityHash": "ab97f2a27a1db30ac24ebf4f1cc1b064",
+    "identityHash": "7a00119720047c0b6171a9e641970312",
     "entities": [
       {
         "tableName": "search_history",
@@ -1055,13 +1055,18 @@
       },
       {
         "tableName": "web_search_session_cache",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mediaSourceId` TEXT NOT NULL, `subjectName` TEXT NOT NULL, `subjectPageName` TEXT NOT NULL, `subjectInternalId` TEXT NOT NULL, `subjectUrl` TEXT NOT NULL, `subjectPartialUrl` TEXT NOT NULL, `channel` TEXT NOT NULL, `episodeName` TEXT NOT NULL, `episodeSortOrEp` TEXT, `playUrl` TEXT NOT NULL, `cachedAt` INTEGER NOT NULL, `expiresAt` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `requesterSubjectId` INTEGER, `mediaSourceId` TEXT NOT NULL, `subjectName` TEXT NOT NULL, `subjectPageName` TEXT NOT NULL, `subjectInternalId` TEXT NOT NULL, `subjectUrl` TEXT NOT NULL, `subjectPartialUrl` TEXT NOT NULL, `channel` TEXT NOT NULL, `episodeName` TEXT NOT NULL, `episodeSortOrEp` TEXT, `playUrl` TEXT NOT NULL, `cachedAt` INTEGER NOT NULL, `expiresAt` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "requesterSubjectId",
+            "columnName": "requesterSubjectId",
+            "affinity": "INTEGER"
           },
           {
             "fieldPath": "mediaSourceId",
@@ -1699,7 +1704,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ab97f2a27a1db30ac24ebf4f1cc1b064')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7a00119720047c0b6171a9e641970312')"
     ]
   }
 }
