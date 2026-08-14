@@ -331,6 +331,13 @@ object RichTextDefaults {
             style = TextStyle.Default,
             maxLines = maxLine ?: Int.MAX_VALUE,
             overflow = TextOverflow.Ellipsis,
+            shouldConsumeTap = { textPos ->
+                // 只消费落在未揭开的遮罩或链接上的点击, 其余点击传给父级 (如整条评论点击回复)
+                val annotations = content.getStringAnnotations(textPos, textPos)
+                val maskAnno = annotations.firstOrNull { it.tag == "mask" }
+                val maskActive = maskAnno?.item?.toIntOrNull()?.let { maskState[it] == true } == true
+                maskActive || annotations.any { it.tag == "url" }
+            },
             onClick = { textPos ->
                 val annotations = content.getStringAnnotations(textPos, textPos)
 

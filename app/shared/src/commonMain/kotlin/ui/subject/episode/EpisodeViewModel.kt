@@ -51,17 +51,21 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.models.comment.CommentReportTargetType
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.data.models.preference.VideoEnhancementDefaultMode
+import me.him188.ani.app.data.models.preference.parseMpvOptions
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.nameCnOrName
+import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AutoSkipRepository
+import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.episode.EpisodeCommentRepository
-import me.him188.ani.app.data.repository.RepositoryServiceUnavailableException
+import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.subject.SetSubjectCollectionTypeOrDeleteUseCase
 import me.him188.ani.app.data.repository.user.SettingsRepository
@@ -104,17 +108,21 @@ import me.him188.ani.app.domain.player.extension.SwitchNextEpisodeExtension
 import me.him188.ani.app.domain.player.extension.WatchTogetherPlayerExtension
 import me.him188.ani.app.domain.settings.GetDanmakuRegexFilterListFlowUseCase
 import me.him188.ani.app.domain.settings.GetMediaSelectorSettingsUseCase
-import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.app.domain.usecase.GlobalKoin
+import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.app.navigation.EpisodeNavigationGuardRegistry
 import me.him188.ani.app.platform.Context
 import me.him188.ani.app.ui.comment.BangumiCommentSticker
 import me.him188.ani.app.ui.comment.CommentEditorState
 import me.him188.ani.app.ui.comment.CommentMapperContext
 import me.him188.ani.app.ui.comment.CommentMapperContext.parseToUIComment
+import me.him188.ani.app.ui.comment.CommentMapperContext.toCommentVoteValue
+import me.him188.ani.app.ui.comment.CommentReportState
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.EditCommentSticker
 import me.him188.ani.app.ui.comment.UICommentSource
+import me.him188.ani.app.ui.comment.reportSnapshotText
+import me.him188.ani.app.ui.comment.toDataReason
 import me.him188.ani.app.ui.danmaku.UIDanmakuEvent
 import me.him188.ani.app.ui.episode.PlayingEpisodeSummary
 import me.him188.ani.app.ui.episode.danmaku.MatchingDanmakuPresenter
@@ -261,12 +269,14 @@ class EpisodeViewModel(
     private val danmakuRegexFilterRepository: DanmakuRegexFilterRepository by inject()
     private val mediaSourceManager: MediaSourceManager by inject()
     private val episodeCommentRepository: EpisodeCommentRepository by inject()
+    private val commentReportService: AniCommentReportService by inject()
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory by inject()
     private val setDanmakuEnabledUseCase: SetDanmakuEnabledUseCase by inject()
     private val postCommentUseCase: PostCommentUseCase by inject()
     private val autoSkipRepository: AutoSkipRepository by inject()
     private val getMediaSelectorSettings: GetMediaSelectorSettingsUseCase by inject()
     private val getMediaSourceInstances: GetMediaSourceInstancesUseCase by inject()
+    private val selectorEpisodeCacheRepository: SelectorMediaSourceEpisodeCacheRepository by inject()
     val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase by inject()
     private val getSubjectRecommendations: GetSubjectRecommendationUseCase by inject()
     private val getDanmakuRegexFilterListFlowUseCase: GetDanmakuRegexFilterListFlowUseCase by inject()
@@ -693,7 +703,8 @@ class EpisodeViewModel(
             // Bangumi 评论只读, 不支持提交表情回应
             if (comment.source == UICommentSource.ANI) {
                 episodeCommentRepository.submitReaction(
-                    episodeId = episodeIdFlow.first().toLong(),
+                    // 用评论所属集而非当前播放集: 自动连播/页内切集后两者可能不一致
+                    episodeId = comment.episodeId ?: episodeIdFlow.first().toLong(),
                     commentId = comment.sourceCommentId,
                     value = value,
                     selected = selected,
@@ -702,6 +713,34 @@ class EpisodeViewModel(
         },
         backgroundScope = backgroundScope,
         commentLoadFailures = commentLoadFailureChannel.receiveAsFlow(),
+        onSubmitCommentVote = { comment, vote ->
+            // Bangumi 评论只读, 不支持点赞
+            if (comment.source == UICommentSource.ANI) {
+                episodeCommentRepository.submitVote(
+                    episodeId = comment.episodeId ?: episodeIdFlow.first().toLong(),
+                    commentId = comment.sourceCommentId,
+                    vote = vote?.toCommentVoteValue(),
+                )
+            }
+        },
+    )
+
+    @OptIn(UnsafeEpisodeSessionApi::class)
+    val commentReportState: CommentReportState = CommentReportState(
+        onSubmitReport = { comment, reason, detail ->
+            commentReportService.createReport(
+                targetType = CommentReportTargetType.EPISODE_COMMENT,
+                targetId = comment.sourceCommentId,
+                reason = reason.toDataReason(),
+                commentAuthorId = comment.author?.id,
+                detail = detail.takeIf { it.isNotEmpty() },
+                contentSnapshot = comment.reportSnapshotText(),
+                subjectId = subjectId.toLong(),
+                // 举报里的 episodeId 必须是评论所属集
+                episodeId = comment.episodeId ?: episodeIdFlow.first().toLong(),
+            )
+        },
+        backgroundScope = backgroundScope,
     )
 
     @OptIn(UnsafeEpisodeSessionApi::class)
@@ -974,10 +1013,11 @@ class EpisodeViewModel(
 
     fun refreshFetch() {
         launchInBackground {
+            // 手动重新查询: 清除本条目的 web 源搜索缓存, 让所有数据源真正重新搜索
+            selectorEpisodeCacheRepository.clearByRequestedSubject(subjectId)
             // Although it's flow, it should be ready.
             fetchPlayState.episodeSessionFlow.flatMapLatest { it.fetchSelectFlow }
-                .map { it?.mediaFetchSession }
-                .filterNotNull()
+                .mapNotNull { it?.mediaFetchSession }
                 .firstOrNull()
                 ?.restartAll()
         }
@@ -1018,13 +1058,15 @@ class EpisodeViewModel(
 
     fun restartSource(instanceId: String) {
         launchInBackground {
-            fetchPlayState.episodeSessionFlow.flatMapLatest { it.fetchSelectFlow }
-                .map { it?.mediaFetchSession }
-                .filterNotNull()
+            val result = fetchPlayState.episodeSessionFlow.flatMapLatest { it.fetchSelectFlow }
+                .mapNotNull { it?.mediaFetchSession }
                 .firstOrNull()
                 ?.mediaSourceResults
                 ?.find { it.instanceId == instanceId }
-                ?.restart()
+                ?: return@launchInBackground
+            // 手动刷新单个源: 只清除该源的搜索缓存, 让它真正重新搜索, 不影响其他源的缓存
+            selectorEpisodeCacheRepository.clearByRequestedSubjectAndSource(subjectId, result.mediaSourceId)
+            result.restart()
         }
     }
 
@@ -1053,6 +1095,17 @@ class EpisodeViewModel(
                     VideoEnhancementDefaultMode.QUALITY -> VideoEnhancementMode.QUALITY
                 },
             )
+        }
+
+        // 用户自定义的 mpv 选项. 仅在使用 mpv 内核的平台 (桌面端) 生效, 修改设置后立即应用到当前播放器.
+        launchInBackground {
+            settingsRepository.playerKernelConfig.flow
+                .map { it.mpvOptions }
+                .distinctUntilChanged()
+                .map { parseMpvOptions(it) }
+                .collect { options ->
+                    applyMpvOptions(player, options)
+                }
         }
 
         // 跳过 OP 和 ED
@@ -1113,6 +1166,8 @@ class EpisodeViewModel(
 
     fun updateFetchRequest(request: MediaFetchRequest) {
         launchInBackground {
+            // 编辑查询条件后会重启所有源的搜索, 同样清除本条目的 web 源搜索缓存
+            selectorEpisodeCacheRepository.clearByRequestedSubject(subjectId)
             fetchPlayState.episodeSessionFlow
                 .firstOrNull()
                 ?.fetchSelectFlow

@@ -117,8 +117,12 @@ fun PersonDetailsScreen(
         summary = details?.person?.summary.orEmpty(),
         centerStrips = { PersonStrips(casts, works) },
         commentState = vm.commentState,
+        originalCommentsUrl = vm.originalCommentsUrl,
         compactContent = {
-            PersonDetailsContentColumn(details, casts, works, vm.commentState)
+            PersonDetailsContentColumn(
+                details, casts, works, vm.commentState,
+                originalCommentsUrl = vm.originalCommentsUrl,
+            )
         },
         modifier = modifier,
     )
@@ -155,8 +159,12 @@ fun CharacterDetailsScreen(
         summary = details?.summary.orEmpty(),
         centerStrips = { CharacterStrips(details, subjects) },
         commentState = vm.commentState,
+        originalCommentsUrl = vm.originalCommentsUrl,
         compactContent = {
-            CharacterDetailsContentColumn(details, subjects, vm.commentState)
+            CharacterDetailsContentColumn(
+                details, subjects, vm.commentState,
+                originalCommentsUrl = vm.originalCommentsUrl,
+            )
         },
         modifier = modifier,
     )
@@ -184,6 +192,7 @@ private fun PeopleDetailsScaffold(
     commentState: CommentState,
     compactContent: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    originalCommentsUrl: String? = null,
 ) {
     var showAllComments by rememberSaveable { mutableStateOf(false) }
 
@@ -360,7 +369,11 @@ private fun PeopleDetailsScaffold(
     }
 
     if (showAllComments) {
-        PersonCommentsSheet(commentState, onDismissRequest = { showAllComments = false })
+        PersonCommentsSheet(
+            commentState,
+            onDismissRequest = { showAllComments = false },
+            originalCommentsUrl = originalCommentsUrl,
+        )
     }
 }
 
@@ -379,6 +392,7 @@ internal fun PersonDetailsContentColumn(
     casts: LazyPagingItems<PersonCastInfo>,
     works: LazyPagingItems<PersonWorkInfo>,
     commentState: CommentState,
+    originalCommentsUrl: String? = null,
     modifier: Modifier = Modifier,
     navigation: PeopleDetailsNavigation = rememberPeopleDetailsNavigation(),
 ) {
@@ -407,7 +421,11 @@ internal fun PersonDetailsContentColumn(
         PersonCommentsSection(commentState, onShowAll = { showAllComments = true })
     }
     if (showAllComments) {
-        PersonCommentsSheet(commentState, onDismissRequest = { showAllComments = false })
+        PersonCommentsSheet(
+            commentState,
+            onDismissRequest = { showAllComments = false },
+            originalCommentsUrl = originalCommentsUrl,
+        )
     }
 }
 
@@ -487,6 +505,7 @@ internal fun CharacterDetailsContentColumn(
     details: CharacterDetailsInfo?,
     subjects: LazyPagingItems<CharacterSubjectInfo>,
     commentState: CommentState,
+    originalCommentsUrl: String? = null,
     modifier: Modifier = Modifier,
     navigation: PeopleDetailsNavigation = rememberPeopleDetailsNavigation(),
 ) {
@@ -515,7 +534,11 @@ internal fun CharacterDetailsContentColumn(
         PersonCommentsSection(commentState, onShowAll = { showAllComments = true })
     }
     if (showAllComments) {
-        PersonCommentsSheet(commentState, onDismissRequest = { showAllComments = false })
+        PersonCommentsSheet(
+            commentState,
+            onDismissRequest = { showAllComments = false },
+            originalCommentsUrl = originalCommentsUrl,
+        )
     }
 }
 

@@ -498,6 +498,7 @@ internal fun PersonCommentsSheet(
     state: CommentState,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    originalCommentsUrl: String? = null,
 ) {
     val browserNavigator = LocalUriHandler.current
     val toaster = LocalToaster.current
@@ -530,6 +531,9 @@ internal fun PersonCommentsSheet(
                     )
                 },
                 onClickImage = { imageViewer.viewImage(it) },
+                onOpenOriginal = originalCommentsUrl?.let { url ->
+                    { browserNavigator.openUri(url) }
+                },
                 connectedScrollState = rememberConnectedScrollState(),
                 modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
             )

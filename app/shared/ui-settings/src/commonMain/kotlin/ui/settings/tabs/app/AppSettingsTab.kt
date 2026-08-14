@@ -39,6 +39,7 @@ import me.him188.ani.app.data.models.preference.DesktopCloseBehavior
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
 import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
 import me.him188.ani.app.data.models.preference.NsfwMode
+import me.him188.ani.app.data.models.preference.PlayerKernelConfig
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.UpdateSettings
@@ -183,6 +184,7 @@ fun AppSettingsTab(
     uiSettings: SettingsState<UISettings>,
     themeSettings: SettingsState<ThemeSettings>,
     videoScaffoldConfig: SettingsState<VideoScaffoldConfig>,
+    playerKernelConfig: SettingsState<PlayerKernelConfig>,
     watchTogetherSettings: SettingsState<WatchTogetherSettings>,
     danmakuFilterConfig: SettingsState<DanmakuFilterConfig>,
     danmakuRegexFilterState: DanmakuRegexFilterState,
@@ -195,6 +197,7 @@ fun AppSettingsTab(
         ThemeGroup(themeSettings)
         PlayerGroup(
             videoScaffoldConfig,
+            playerKernelConfig,
             danmakuFilterConfig,
             danmakuRegexFilterState,
             showDebug,
@@ -463,6 +466,7 @@ fun SettingsScope.SoftwareUpdateGroup(
 @Composable
 fun SettingsScope.PlayerGroup(
     videoScaffoldConfig: SettingsState<VideoScaffoldConfig>,
+    playerKernelConfig: SettingsState<PlayerKernelConfig>,
     danmakuFilterConfig: SettingsState<DanmakuFilterConfig>,
     danmakuRegexFilterState: DanmakuRegexFilterState,
     showDebug: Boolean
@@ -631,7 +635,7 @@ fun SettingsScope.PlayerGroup(
         )
         HorizontalDividerItem()
         PlaybackSpeedItems(config, videoScaffoldConfig)
-        PlayerGroupPlatform(videoScaffoldConfig)
+        PlayerGroupPlatform(videoScaffoldConfig, playerKernelConfig)
     }
 }
 
@@ -799,6 +803,7 @@ private fun DesktopCloseBehavior.renderText(): String {
 @Composable
 internal expect fun SettingsScope.PlayerGroupPlatform(
     videoScaffoldConfig: SettingsState<VideoScaffoldConfig>,
+    playerKernelConfig: SettingsState<PlayerKernelConfig>,
 )
 
 @Composable
@@ -830,6 +835,7 @@ private fun PreviewAppSettingsTab() {
         uiSettings = rememberTestSettingsState(UISettings.Default),
         themeSettings = rememberTestSettingsState(ThemeSettings.Default),
         videoScaffoldConfig = rememberTestSettingsState(VideoScaffoldConfig.Default),
+        playerKernelConfig = rememberTestSettingsState(PlayerKernelConfig.Default),
         watchTogetherSettings = rememberTestSettingsState(WatchTogetherSettings.Default),
         danmakuFilterConfig = rememberTestSettingsState(DanmakuFilterConfig.Default),
         danmakuRegexFilterState = createTestDanmakuRegexFilterState(),

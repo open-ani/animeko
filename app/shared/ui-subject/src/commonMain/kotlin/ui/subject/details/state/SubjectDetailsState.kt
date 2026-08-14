@@ -23,6 +23,7 @@ import me.him188.ani.app.data.models.subject.RelatedCharacterInfo
 import me.him188.ani.app.data.models.subject.RelatedPersonInfo
 import me.him188.ani.app.data.models.subject.RelatedSubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.ui.comment.CommentReportState
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.rating.EditableRatingState
 import me.him188.ani.app.ui.subject.AiringLabelState
@@ -54,6 +55,7 @@ class SubjectDetailsState(
     val subjectProgressState: SubjectProgressState,
     val subjectCommentState: CommentState,
     val presentation: StateFlow<SubjectDetailsPresentation>, // default to placeholder
+    val subjectCommentReportState: CommentReportState? = null,
 ) {
     private val selfCollectionTypeOrNull by selfCollectionTypeState
     val selfCollectionType by derivedStateOf { selfCollectionTypeOrNull }

@@ -99,6 +99,8 @@ import me.him188.ani.app.data.models.subject.TestSubjectInfo
 import me.him188.ani.app.domain.episode.SetEpisodeCollectionTypeRequest
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.ui.comment.CommentReportHost
+import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.ImageViewer
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
@@ -338,6 +340,10 @@ private fun SubjectDetailsPage(
         )
     }
     val onClickCommentImage = { url: String -> imageViewer.viewImage(url) }
+    // Bangumi 源评价的 "在 Bangumi 打开" 菜单项
+    val onOpenCommentOriginal = { _: UIComment ->
+        browserNavigator.openUri("https://bgm.tv/subject/${presentation.subjectId}")
+    }
 
     val themeSettings = LocalThemeSettings.current
     var bitmap by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -366,6 +372,9 @@ private fun SubjectDetailsPage(
             )
         }
 
+        // 页面级唯一 Host: 评论 sheet 提交后立即关闭也能收到举报结果提示
+        state.subjectCommentReportState?.let { CommentReportHost(it) }
+
         if (layoutParams.isMultiColumn && state.info != null) {
             // 双栏 / 三栏: 全新自适应布局 (复用现有 SubjectDetailsState 数据).
             // 桌面无"评价" tab, 完整评论流与"写评价"从评价预览/热门评价卡进入.
@@ -378,6 +387,8 @@ private fun SubjectDetailsPage(
                     onClickImage = onClickCommentImage,
                     onClickWriteReview = { state.editableRatingState.requestEdit() },
                     onDismissRequest = { showComments = false },
+                    reportState = state.subjectCommentReportState,
+                    onOpenOriginal = onOpenCommentOriginal,
                 )
             }
             // 中大屏点击人物/角色先打开右侧预览 (方案C), 手机上则直接导航到全页
@@ -496,6 +507,8 @@ private fun SubjectDetailsPage(
                         state = state.subjectCommentState,
                         onClickUrl = onClickCommentUrl,
                         onClickImage = onClickCommentImage,
+                        reportState = state.subjectCommentReportState,
+                        onOpenOriginal = onOpenCommentOriginal,
                         modifier = Modifier
                             .fillMaxSize()
                             .nestedScrollWorkaround(state.commentTabLazyGridState),

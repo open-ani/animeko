@@ -48,8 +48,16 @@ import me.him188.ani.app.ui.lang.settings_media_hide_single_episode
 import me.him188.ani.app.ui.lang.settings_media_hide_single_episode_description
 import me.him188.ani.app.ui.lang.settings_media_image_captcha_auto_solve
 import me.him188.ani.app.ui.lang.settings_media_image_captcha_auto_solve_description
+import me.him188.ani.app.ui.lang.settings_media_cache_ttl_15min
+import me.him188.ani.app.ui.lang.settings_media_cache_ttl_1d
+import me.him188.ani.app.ui.lang.settings_media_cache_ttl_1h
+import me.him188.ani.app.ui.lang.settings_media_cache_ttl_30min
+import me.him188.ani.app.ui.lang.settings_media_cache_ttl_5min
+import me.him188.ani.app.ui.lang.settings_media_cache_ttl_none
 import me.him188.ani.app.ui.lang.settings_media_max_wait_time
 import me.him188.ani.app.ui.lang.settings_media_max_wait_time_description
+import me.him188.ani.app.ui.lang.settings_media_web_search_cache_ttl
+import me.him188.ani.app.ui.lang.settings_media_web_search_cache_ttl_description
 import me.him188.ani.app.ui.lang.settings_media_none
 import me.him188.ani.app.ui.lang.settings_media_prefer_seasons
 import me.him188.ani.app.ui.lang.settings_media_prefer_seasons_description
@@ -96,6 +104,9 @@ import me.him188.ani.datasources.api.topic.SubtitleLanguage
 import me.him188.ani.utils.platform.isIos
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 @Stable
@@ -372,6 +383,42 @@ internal fun SettingsScope.MediaSelectionGroup(
                     HorizontalDividerItem()
                 }
             }
+
+            DropdownItem(
+                selected = { mediaSelectorSettings.webSearchCacheTtl },
+                values = {
+                    listOf(
+                        Duration.ZERO,
+                        5.minutes,
+                        15.minutes,
+                        30.minutes,
+                        1.hours,
+                        1.days,
+                    )
+                },
+                itemText = { duration ->
+                    Text(
+                        when (duration) {
+                            Duration.ZERO -> stringResource(Lang.settings_media_cache_ttl_none)
+                            5.minutes -> stringResource(Lang.settings_media_cache_ttl_5min)
+                            15.minutes -> stringResource(Lang.settings_media_cache_ttl_15min)
+                            30.minutes -> stringResource(Lang.settings_media_cache_ttl_30min)
+                            1.hours -> stringResource(Lang.settings_media_cache_ttl_1h)
+                            1.days -> stringResource(Lang.settings_media_cache_ttl_1d)
+                            else -> duration.toString() // non-reachable
+                        },
+                    )
+                },
+                onSelect = {
+                    state.mediaSelectorSettingsState.update(
+                        mediaSelectorSettings.copy(webSearchCacheTtl = it),
+                    )
+                },
+                title = { Text(stringResource(Lang.settings_media_web_search_cache_ttl)) },
+                description = { Text(stringResource(Lang.settings_media_web_search_cache_ttl_description)) },
+            )
+
+            HorizontalDividerItem()
 
             // iOS 上暂不暴露该开关: iOS 注入的是 UnsupportedCaptchaBrowserFactory, 没有交互式验证码
             // 填写入口, 一旦关闭自动识别, 带图片验证码的数据源将没有任何兜底手段而直接不可用.
