@@ -971,7 +971,7 @@ class EpisodeViewModel(
 
     fun refreshFetch() {
         launchInBackground {
-            // 手动重新查询: 清空播放 session 的 web 剧集缓存, 让数据源真正重新搜索
+            // 手动重新查询: 清除本条目的 web 源搜索缓存, 让所有数据源真正重新搜索
             selectorEpisodeCacheRepository.clearByRequestedSubject(subjectId)
             // Although it's flow, it should be ready.
             fetchPlayState.episodeSessionFlow.flatMapLatest { it.fetchSelectFlow }
@@ -1016,15 +1016,15 @@ class EpisodeViewModel(
 
     fun restartSource(instanceId: String) {
         launchInBackground {
-            // 手动刷新单个源: 清空播放 session 的 web 剧集缓存, 让该源真正重新搜索
-            selectorEpisodeCacheRepository.clearByRequestedSubject(subjectId)
-            fetchPlayState.episodeSessionFlow.flatMapLatest { it.fetchSelectFlow }
-                .map { it?.mediaFetchSession }
-                .filterNotNull()
+            val result = fetchPlayState.episodeSessionFlow.flatMapLatest { it.fetchSelectFlow }
+                .mapNotNull { it?.mediaFetchSession }
                 .firstOrNull()
                 ?.mediaSourceResults
                 ?.find { it.instanceId == instanceId }
-                ?.restart()
+                ?: return@launchInBackground
+            // 手动刷新单个源: 只清除该源的搜索缓存, 让它真正重新搜索, 不影响其他源的缓存
+            selectorEpisodeCacheRepository.clearByRequestedSubjectAndSource(subjectId, result.mediaSourceId)
+            result.restart()
         }
     }
 
@@ -1099,7 +1099,7 @@ class EpisodeViewModel(
 
     fun updateFetchRequest(request: MediaFetchRequest) {
         launchInBackground {
-            // 编辑查询条件后会重启所有源的搜索, 同样清空播放 session 的 web 剧集缓存
+            // 编辑查询条件后会重启所有源的搜索, 同样清除本条目的 web 源搜索缓存
             selectorEpisodeCacheRepository.clearByRequestedSubject(subjectId)
             fetchPlayState.episodeSessionFlow
                 .firstOrNull()

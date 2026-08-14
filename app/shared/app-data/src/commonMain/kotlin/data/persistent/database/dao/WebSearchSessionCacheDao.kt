@@ -20,28 +20,32 @@ import androidx.room.Transaction
 import me.him188.ani.datasources.api.EpisodeSort
 
 /**
- * Web 源搜索结果的播放 session 级缓存. 一行为一个条目页面上的一个剧集.
+ * Web 源搜索结果的缓存. 一行为一个条目页面上的一个剧集.
  *
- * 生命周期由播放页控制: 进入/退出播放页与手动重新查询时全部清空,
- * 因此表中数据总是当前播放 session 内的新鲜搜索结果.
+ * 每行按 [expiresAt] 过期, TTL 在写入时取数据源配置与用户设置中的较小者.
+ * 读取只返回未过期的行; 已过期的行在进入播放页时被清除.
  *
- * 一行的完整身份是 (mediaSourceId, subjectName, subjectUrl, channel, episodeName):
- * 同一查询 ([subjectName]) 的多个搜索结果页面以 [subjectUrl] 区分, 互不覆盖.
+ * 一行的完整身份是
+ * ([requesterSubjectId], [mediaSourceId], [subjectName], [subjectUrl], [channel], [episodeName]):
+ * - 缓存按发起查询的条目 ([requesterSubjectId]) 隔离, 读取与清除使用相同口径;
+ * - 同一查询 ([subjectName]) 的多个搜索结果页面以 [subjectUrl] 区分, 互不覆盖.
  */
 @Entity(
     tableName = "web_search_session_cache",
     indices = [
         Index(
-            value = ["mediaSourceId", "subjectName", "subjectUrl", "channel", "episodeName"],
+            value = ["requesterSubjectId", "mediaSourceId", "subjectName", "subjectUrl", "channel", "episodeName"],
             unique = true,
         ),
-        Index(value = ["mediaSourceId", "subjectName"]),
+        Index(value = ["requesterSubjectId", "mediaSourceId", "subjectName"]),
     ],
 )
 data class WebSearchSessionCacheEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     /**
-     * 创建此缓存的 subject 的 id, 在重启
+     * 发起本次查询的条目 id, 来自 `MediaFetchRequest.subjectId`.
+     * 缓存以此隔离: 只有同一条目的查询能读到, 该条目手动重新查询时被清除.
+     * 无法解析出 id 时为 `null`, 此时也只有同样为 `null` 的查询能读到.
      */
     val requesterSubjectId: Int?,
     val mediaSourceId: String,
@@ -86,39 +90,55 @@ interface WebSearchSessionCacheDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<WebSearchSessionCacheEntity>)
 
+    /**
+     * `requesterSubjectId` 使用 `IS` 比较, 以便 `null` 也能正确匹配.
+     */
     @Query(
         """
         DELETE FROM web_search_session_cache
-        WHERE mediaSourceId = :mediaSourceId AND subjectName = :subjectName AND subjectUrl = :subjectUrl
+        WHERE requesterSubjectId IS :requesterSubjectId
+            AND mediaSourceId = :mediaSourceId
+            AND subjectName = :subjectName
+            AND subjectUrl = :subjectUrl
         """,
     )
-    suspend fun deletePage(mediaSourceId: String, subjectName: String, subjectUrl: String)
+    suspend fun deletePage(
+        requesterSubjectId: Int?,
+        mediaSourceId: String,
+        subjectName: String,
+        subjectUrl: String,
+    )
 
     /**
      * 以条目页面为单位整体替换: 先删除该页面的旧行再插入, 避免残留页面上已不存在的剧集.
      */
     @Transaction
     suspend fun replacePage(
+        requesterSubjectId: Int?,
         mediaSourceId: String,
         subjectName: String,
         subjectUrl: String,
         items: List<WebSearchSessionCacheEntity>,
     ) {
-        deletePage(mediaSourceId, subjectName, subjectUrl)
+        deletePage(requesterSubjectId, mediaSourceId, subjectName, subjectUrl)
         insertAll(items)
     }
 
     /**
-     * 返回未过期的行. 按 `id` 升序, 保持写入 (页面上的剧集) 顺序.
+     * 返回该条目名下未过期的行. 按 `id` 升序, 保持写入 (页面上的剧集) 顺序.
      */
     @Query(
         """
         SELECT * FROM web_search_session_cache
-        WHERE mediaSourceId = :mediaSourceId AND subjectName = :subjectName AND expiresAt > :now
+        WHERE requesterSubjectId IS :requesterSubjectId
+            AND mediaSourceId = :mediaSourceId
+            AND subjectName = :subjectName
+            AND expiresAt > :now
         ORDER BY id
         """,
     )
     suspend fun filterBySubjectName(
+        requesterSubjectId: Int?,
         mediaSourceId: String,
         subjectName: String,
         now: Long,
@@ -127,19 +147,14 @@ interface WebSearchSessionCacheDao {
     @Query("DELETE FROM web_search_session_cache WHERE expiresAt <= :now")
     suspend fun deleteExpired(now: Long)
 
-    @Query(
-        """
-        DELETE FROM web_search_session_cache
-        WHERE subjectName IN (:subjectNames) AND expiresAt <= :now
-        """,
-    )
-    suspend fun deleteExpiredBySubjectNames(subjectNames: List<String>, now: Long)
+    @Query("DELETE FROM web_search_session_cache WHERE requesterSubjectId IS :requesterSubjectId")
+    suspend fun deleteByRequestedSubject(requesterSubjectId: Int?)
 
     @Query(
         """
         DELETE FROM web_search_session_cache
-        WHERE requesterSubjectId = :requesterSubjectId
-    """,
+        WHERE requesterSubjectId IS :requesterSubjectId AND mediaSourceId = :mediaSourceId
+        """,
     )
-    suspend fun deleteByRequestedSubject(requesterSubjectId: Int)
+    suspend fun deleteByRequestedSubjectAndSource(requesterSubjectId: Int?, mediaSourceId: String)
 }

@@ -21,10 +21,12 @@ import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.time.Duration
 
 /**
- * Web 源搜索结果的播放 session 级缓存.
+ * Web 源搜索结果的缓存.
  *
  * 由 `SelectorMediaSource` 在真实搜索成功后写入 ([addCache]), 并在下次搜索前读取 ([getCache]):
  * 缓存的条目页面剧集列表包含请求的剧集时 (典型场景: 切集), 无需发起网络请求.
+ *
+ * 缓存按发起查询的条目隔离: 写入、读取与清除都以 `requesterSubjectId` 为口径.
  *
  * ## 有效期
  *
@@ -32,9 +34,10 @@ import kotlin.time.Duration
  * 用户设置 (`MediaSelectorSettings.webSearchCacheTtl`) 中的较小者. 过期行不会被读取.
  *
  * 清理时机:
- * - 进入播放页: [purgeExpired] 清除所有已过期的行 (短暂退出后重进可复用未过期的缓存);
- * - 退出播放页: [scheduleExitCleanup] 在用户设置的 TTL 之后清除该条目的已过期行;
- * - 手动重新查询: [clearAll] 立即清空全部.
+ * - 进入/退出播放页: [purgeExpired] 清除所有已过期的行.
+ *   未过期的行会保留, 因此短暂退出后重进播放页仍可复用;
+ * - 手动重新查询: [clearByRequestedSubject] (全部数据源) 或
+ *   [clearByRequestedSubjectAndSource] (单个数据源) 立即清除该条目的缓存.
  */
 class SelectorMediaSourceEpisodeCacheRepository(
     private val dao: WebSearchSessionCacheDao,
@@ -57,12 +60,12 @@ class SelectorMediaSourceEpisodeCacheRepository(
         val ttl = minOf(sourceCacheTtl, userTtl())
         if (ttl <= Duration.ZERO) {
             // 缓存被禁用. 同时删除该页面可能残留的旧行 (例如用户刚把 TTL 改为 0).
-            dao.deletePage(mediaSourceId, subjectName, subjectInfo.fullUrl)
+            dao.deletePage(requesterSubjectId, mediaSourceId, subjectName, subjectInfo.fullUrl)
             return@withContext
         }
         val now = currentTimeMillis()
         dao.replacePage(
-            mediaSourceId, subjectName, subjectInfo.fullUrl,
+            requesterSubjectId, mediaSourceId, subjectName, subjectInfo.fullUrl,
             episodeInfos.map {
                 it.toEntity(
                     requesterSubjectId, mediaSourceId, subjectName, subjectInfo,
@@ -73,23 +76,40 @@ class SelectorMediaSourceEpisodeCacheRepository(
         )
     }
 
+    /**
+     * 清除该条目在所有数据源上的缓存.
+     */
     suspend fun clearByRequestedSubject(requesterSubjectId: Int) = withContext(defaultDispatcher) {
         dao.deleteByRequestedSubject(requesterSubjectId)
     }
 
     /**
-     * 清除所有已过期的行. 在进入播放页时调用.
+     * 清除该条目在单个数据源上的缓存. 用于只重启一个数据源的场景, 不影响其他数据源.
+     */
+    suspend fun clearByRequestedSubjectAndSource(
+        requesterSubjectId: Int,
+        mediaSourceId: String,
+    ) = withContext(defaultDispatcher) {
+        dao.deleteByRequestedSubjectAndSource(requesterSubjectId, mediaSourceId)
+    }
+
+    /**
+     * 清除所有已过期的行. 在进入/退出播放页时调用.
      */
     suspend fun purgeExpired() = withContext(defaultDispatcher) {
         dao.deleteExpired(currentTimeMillis())
     }
 
     /**
-     * 返回该查询名下缓存的所有未过期的条目页面, 每个页面附带其全部剧集 (保持页面上的顺序).
+     * 返回该条目该查询名下缓存的所有未过期的条目页面, 每个页面附带其全部剧集 (保持页面上的顺序).
      */
-    suspend fun getCache(mediaSourceId: String, subjectName: String): List<WebSearchCache> =
+    suspend fun getCache(
+        requesterSubjectId: Int?,
+        mediaSourceId: String,
+        subjectName: String,
+    ): List<WebSearchCache> =
         withContext(defaultDispatcher) {
-            dao.filterBySubjectName(mediaSourceId, subjectName, currentTimeMillis())
+            dao.filterBySubjectName(requesterSubjectId, mediaSourceId, subjectName, currentTimeMillis())
                 .groupBy { it.subjectUrl } // preserves encounter (insertion) order
                 .map { (_, rows) ->
                     val first = rows.first()

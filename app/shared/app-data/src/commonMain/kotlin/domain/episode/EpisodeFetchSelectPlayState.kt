@@ -215,10 +215,14 @@ class EpisodeFetchSelectPlayState(
         episodeSessionFlow.value.let { session ->
             if (!session.sessionScopeTasksStarted.value) {
                 backgroundScope.launch {
-                    selectorCacheRepo.purgeExpired()
                     session.startSessionScopeTasks() // Will check again if backgroundTasksStarted so thread-safe.
                 }
             }
+        }
+
+        // 清除已过期的 web 源搜索缓存. 与启动查询无关 (读取本身就会过滤过期行), 因此不阻塞 session 启动.
+        backgroundScope.launch {
+            selectorCacheRepo.purgeExpired()
         }
     }
 
@@ -228,6 +232,7 @@ class EpisodeFetchSelectPlayState(
     suspend fun onClose() {
         extensionManager.call { it.onClose() }
         playerSession.stopPlayback()
+        // 未过期的缓存会保留, 短暂退出后重进播放页仍可复用; 这里只是顺手回收已过期的行.
         selectorCacheRepo.purgeExpired()
     }
 

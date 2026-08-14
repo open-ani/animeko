@@ -22,7 +22,6 @@ import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchResult
 import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.fetch.MediaSourceInfoWithId
-import me.him188.ani.app.domain.media.selector.MatchMetadata
 import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
 import me.him188.ani.app.domain.media.selector.MediaSelector
 import me.him188.ani.app.domain.media.selector.UnsafeOriginalMediaAccess
@@ -119,17 +118,7 @@ val MediaSelector.selectedMaybeExcludedMediaFlow: Flow<MaybeExcludedMedia?>
             null
         } else {
             filteredCandidates.first() // No need to subscribe to flow change. When selected is updated, filteredCandidates should have already been updated.
-                .firstOrNull { it.original === selected || it.original == selected } // fast path first
-            // 选中的 media 可能不在候选列表中 (例如 web 切集快速路径合成的 media).
-            // 此时仍应显示为已选择, 而不是回落到 "自动选择中".
-                ?: MaybeExcludedMedia.Included(
-                    selected,
-                    MatchMetadata(
-                        MatchMetadata.SubjectMatchKind.EXACT,
-                        MatchMetadata.EpisodeMatchKind.SORT,
-                        similarity = 100,
-                    ),
-                )
+                .firstOrNull { it.original === selected } // identity check is enough and fast
         }
     }
 

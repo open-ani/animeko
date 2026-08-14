@@ -95,10 +95,16 @@ private class NoopWebSearchSessionCacheDao : WebSearchSessionCacheDao {
     override suspend fun insertAll(items: List<WebSearchSessionCacheEntity>) {
     }
 
-    override suspend fun deletePage(mediaSourceId: String, subjectName: String, subjectUrl: String) {
+    override suspend fun deletePage(
+        requesterSubjectId: Int?,
+        mediaSourceId: String,
+        subjectName: String,
+        subjectUrl: String,
+    ) {
     }
 
     override suspend fun filterBySubjectName(
+        requesterSubjectId: Int?,
         mediaSourceId: String,
         subjectName: String,
         now: Long,
@@ -107,9 +113,9 @@ private class NoopWebSearchSessionCacheDao : WebSearchSessionCacheDao {
     override suspend fun deleteExpired(now: Long) {
     }
 
-    override suspend fun deleteExpiredBySubjectNames(subjectNames: List<String>, now: Long) {
+    override suspend fun deleteByRequestedSubject(requesterSubjectId: Int?) {
     }
 
-    override suspend fun deleteAll() {
+    override suspend fun deleteByRequestedSubjectAndSource(requesterSubjectId: Int?, mediaSourceId: String) {
     }
 }

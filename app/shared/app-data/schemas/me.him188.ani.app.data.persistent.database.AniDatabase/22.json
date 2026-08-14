@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 22,
-    "identityHash": "7a00119720047c0b6171a9e641970312",
+    "identityHash": "a87dfb35aef94db786bc5cd5c21e117e",
     "entities": [
       {
         "tableName": "search_history",
@@ -1148,9 +1148,10 @@
         },
         "indices": [
           {
-            "name": "index_web_search_session_cache_mediaSourceId_subjectName_subjectUrl_channel_episodeName",
+            "name": "index_web_search_session_cache_requesterSubjectId_mediaSourceId_subjectName_subjectUrl_channel_episodeName",
             "unique": true,
             "columnNames": [
+              "requesterSubjectId",
               "mediaSourceId",
               "subjectName",
               "subjectUrl",
@@ -1158,17 +1159,18 @@
               "episodeName"
             ],
             "orders": [],
-            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_web_search_session_cache_mediaSourceId_subjectName_subjectUrl_channel_episodeName` ON `${TABLE_NAME}` (`mediaSourceId`, `subjectName`, `subjectUrl`, `channel`, `episodeName`)"
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_web_search_session_cache_requesterSubjectId_mediaSourceId_subjectName_subjectUrl_channel_episodeName` ON `${TABLE_NAME}` (`requesterSubjectId`, `mediaSourceId`, `subjectName`, `subjectUrl`, `channel`, `episodeName`)"
           },
           {
-            "name": "index_web_search_session_cache_mediaSourceId_subjectName",
+            "name": "index_web_search_session_cache_requesterSubjectId_mediaSourceId_subjectName",
             "unique": false,
             "columnNames": [
+              "requesterSubjectId",
               "mediaSourceId",
               "subjectName"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_web_search_session_cache_mediaSourceId_subjectName` ON `${TABLE_NAME}` (`mediaSourceId`, `subjectName`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_web_search_session_cache_requesterSubjectId_mediaSourceId_subjectName` ON `${TABLE_NAME}` (`requesterSubjectId`, `mediaSourceId`, `subjectName`)"
           }
         ]
       },
@@ -1704,7 +1706,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7a00119720047c0b6171a9e641970312')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a87dfb35aef94db786bc5cd5c21e117e')"
     ]
   }
 }

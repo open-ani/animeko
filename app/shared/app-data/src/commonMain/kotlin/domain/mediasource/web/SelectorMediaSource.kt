@@ -285,12 +285,15 @@ class SelectorMediaSource(
         searchConfig: SelectorSearchConfig,
         query: SelectorSearchQuery,
         mediaSourceId: String,
+        subjectId: Int?,
     ): List<DefaultMedia>? {
         val caches = try {
-            repository.getCache(mediaSourceId, query.subjectName)
+            repository.getCache(subjectId, mediaSourceId, query.subjectName)
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            // 读缓存失败不影响功能, 退化为真实搜索. 但要记录, 否则缓存彻底失效时没有任何线索.
+            logger.warn(e) { "SelectorMediaSource '$mediaSourceId': failed to read search cache, falling back to search" }
             return null
         }
 
@@ -341,10 +344,10 @@ class SelectorMediaSource(
             return@withContext emptyList()
         }
 
-        // 播放 session 内缓存: 上一次真实搜索已把条目页面的全部剧集写入缓存 (addCache).
+        // 搜索缓存: 上一次真实搜索已把条目页面的全部剧集写入缓存 (addCache).
         // 若缓存的剧集列表包含当前请求的剧集 (典型场景: 切集), 直接从缓存构建结果, 不发起任何网络请求.
-        // 缓存的有效期由播放页控制: 进入/退出播放页与手动重新查询时清空全部缓存.
-        searchFromCacheOrNull(searchConfig, query, mediaSourceId)?.let { return@withContext it }
+        // 缓存按 TTL 过期, 也会在该条目手动重新查询时被清除.
+        searchFromCacheOrNull(searchConfig, query, mediaSourceId, subjectId)?.let { return@withContext it }
 
         delayUntilNextAllowedSearch()
 
