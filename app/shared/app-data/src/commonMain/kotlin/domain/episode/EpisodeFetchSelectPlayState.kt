@@ -111,7 +111,7 @@ class EpisodeFetchSelectPlayState(
         // Web 源的剧集缓存 (SelectorMediaSource 切集时用它跳过搜索) 只在当前播放 session 内有效:
         // 进入播放页时清空上次残留的缓存. 退出时也会清空, 见 [onClose].
         backgroundScope.launch {
-            koin.getOrNull<SelectorMediaSourceEpisodeCacheRepository>()?.clearSubjectAndEpisodeCache()
+            koin.getOrNull<SelectorMediaSourceEpisodeCacheRepository>()?.clearAll()
         }
     }
 
@@ -234,7 +234,7 @@ class EpisodeFetchSelectPlayState(
         extensionManager.call { it.onClose() }
         playerSession.stopPlayback()
         // 退出播放页: 清空播放 session 的 web 剧集缓存
-        koin.getOrNull<SelectorMediaSourceEpisodeCacheRepository>()?.clearSubjectAndEpisodeCache()
+        koin.getOrNull<SelectorMediaSourceEpisodeCacheRepository>()?.clearAll()
     }
 
     /**
