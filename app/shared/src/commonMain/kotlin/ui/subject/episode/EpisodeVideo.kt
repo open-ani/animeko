@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.DisplaySettings
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Groups
@@ -31,6 +32,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
@@ -51,6 +53,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
@@ -99,6 +102,7 @@ import me.him188.ani.app.ui.lang.subject_episode_preview_mode
 import me.him188.ani.app.ui.lang.subject_episode_select_media_source
 import me.him188.ani.app.ui.lang.video_player_stats_title_hide
 import me.him188.ani.app.ui.lang.video_player_stats_title_show
+import me.him188.ani.app.ui.lang.video_player_video_enhancement
 import me.him188.ani.app.ui.lang.watch_together_title
 import me.him188.ani.app.ui.mediafetch.TestMediaSourceResultListPresentation
 import me.him188.ani.app.ui.mediafetch.ViewKind
@@ -106,6 +110,7 @@ import me.him188.ani.app.ui.mediafetch.rememberTestMediaSelectorState
 import me.him188.ani.app.ui.mediafetch.request.TestMediaFetchRequest
 import me.him188.ani.app.ui.settings.danmaku.createTestDanmakuRegexFilterState
 import me.him188.ani.app.ui.subject.episode.details.components.ShareEpisodeDropdown
+import me.him188.ani.app.ui.subject.episode.details.components.VideoEnhancementDropdown
 import me.him188.ani.app.ui.subject.episode.video.DEFAULT_OP_ED_SKIP_DURATION
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheetPage
 import me.him188.ani.app.ui.subject.episode.video.components.EpisodeVideoSideSheets
@@ -161,6 +166,8 @@ import me.him188.ani.app.videoplayer.ui.rememberVideoControllerState
 import me.him188.ani.app.videoplayer.ui.rememberVideoSideSheetsController
 import me.him188.ani.app.videoplayer.ui.top.PlayerTopBar
 import me.him188.ani.app.videoplayer.ui.top.SystemTime
+import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementController
+import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
 import me.him188.ani.utils.platform.annotations.TestOnly
 import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
@@ -177,6 +184,7 @@ internal const val TAG_EPISODE_VIDEO_TOP_BAR = "EpisodeVideoTopBar"
 
 internal const val TAG_DANMAKU_SETTINGS_SHEET = "DanmakuSettingsSheet"
 internal const val TAG_SHOW_MEDIA_SELECTOR = "ShowMediaSelector"
+internal const val TAG_VIDEO_ENHANCEMENT = "VideoEnhancement"
 internal const val TAG_SHOW_SETTINGS = "ShowSettings"
 internal const val TAG_COLLAPSE_SIDEBAR = "collapseSidebar"
 internal const val TAG_WATCH_TOGETHER_MENU_ITEM = "WatchTogetherMenuItem"
@@ -220,6 +228,7 @@ internal fun EpisodeVideoImpl(
     brightnessController: LevelController,
     playbackSpeedControllerState: PlaybackSpeedControllerState?,
     videoAspectRatioControllerState: VideoAspectRatioControllerState?,
+    videoEnhancement: VideoEnhancementController? = null,
     leftBottomTips: @Composable () -> Unit,
     fullscreenSwitchButton: @Composable () -> Unit,
     sideSheets: @Composable (controller: VideoSideSheetsController<EpisodeVideoSideSheetPage>) -> Unit,
@@ -308,6 +317,7 @@ internal fun EpisodeVideoImpl(
                                 onClickCache = onClickCache,
                                 onClickWatchTogether = watchTogetherPlayerController::toggle,
                                 playerControllerState = playerControllerState,
+                                videoEnhancement = videoEnhancement,
                                 sidebarVisible = sidebarVisible,
                                 onToggleSidebar = onToggleSidebar,
                                 playerStatsVisible = showPlayerStats,
@@ -339,6 +349,9 @@ internal fun EpisodeVideoImpl(
                         Modifier
                             .ifThen(statusBarHeight != 0.dp) {
                                 offset(x = -statusBarHeight / 2, y = 0.dp)
+                            }
+                            .onSizeChanged {
+                                videoEnhancement?.setViewportSize(it.width, it.height)
                             }
                             .matchParentSize(),
                     )
@@ -634,6 +647,7 @@ private fun EpisodeVideoTopBarActions(
     onClickCache: () -> Unit,
     onClickWatchTogether: () -> Unit,
     playerControllerState: PlayerControllerState,
+    videoEnhancement: VideoEnhancementController?,
     sidebarVisible: Boolean,
     onToggleSidebar: (isCollapsed: Boolean) -> Unit,
     playerStatsVisible: Boolean,
@@ -643,9 +657,12 @@ private fun EpisodeVideoTopBarActions(
 ) {
     var showShareDropdown by rememberSaveable { mutableStateOf(false) }
     var showMoreDropdown by rememberSaveable { mutableStateOf(false) }
+    var showVideoEnhancementDropdown by rememberSaveable { mutableStateOf(false) }
+
     val dropdownAlwaysOnRequester = rememberAlwaysOnRequester(playerControllerState, "topBarExternalActions")
-    val isExternalDropdownVisible = showShareDropdown || showMoreDropdown
+    val isExternalDropdownVisible = showShareDropdown || showMoreDropdown || showVideoEnhancementDropdown
     val skipDurationSeconds = opEdSkipDuration.inWholeSeconds
+
     val fastForwardSecondsText = stringResource(Lang.subject_episode_fast_forward_seconds, skipDurationSeconds)
     val selectMediaSourceText = stringResource(Lang.subject_episode_select_media_source)
     val danmakuSettingsTitleText = stringResource(Lang.subject_episode_danmaku_settings_title)
@@ -657,6 +674,7 @@ private fun EpisodeVideoTopBarActions(
     val hidePlayerStatsText = stringResource(Lang.video_player_stats_title_hide)
     val collapseSidebarText = stringResource(Lang.subject_episode_collapse_sidebar)
     val expandSidebarText = stringResource(Lang.subject_episode_expand_sidebar)
+    val videoEnhancementTitleText = stringResource(Lang.video_player_video_enhancement)
 
     DisposableEffect(dropdownAlwaysOnRequester, isExternalDropdownVisible) {
         if (isExternalDropdownVisible) {
@@ -681,6 +699,32 @@ private fun EpisodeVideoTopBarActions(
     }
 
     if (expanded) {
+        if (videoEnhancement != null) {
+            Box {
+                val mode by videoEnhancement.mode.collectAsState()
+                IconButton(
+                    onClick = { showVideoEnhancementDropdown = true },
+                    modifier = Modifier.testTag(TAG_VIDEO_ENHANCEMENT),
+                ) {
+                    Icon(
+                        Icons.Rounded.AutoAwesome,
+                        contentDescription = videoEnhancementTitleText,
+                        tint = if (mode != VideoEnhancementMode.OFF) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            LocalContentColor.current
+                        },
+                    )
+                }
+
+                VideoEnhancementDropdown(
+                    videoEnhancement,
+                    showVideoEnhancementDropdown,
+                    onDismissRequest = { showVideoEnhancementDropdown = false },
+                )
+            }
+        }
+
         IconButton(
             { sheetsController.navigateTo(EpisodeVideoSideSheetPage.MEDIA_SELECTOR) },
             Modifier.testTag(TAG_SHOW_MEDIA_SELECTOR),
@@ -729,6 +773,27 @@ private fun EpisodeVideoTopBarActions(
                 leadingIcon = { Icon(Icons.Rounded.Groups, null) },
                 modifier = Modifier.testTag(TAG_WATCH_TOGETHER_MENU_ITEM),
             )
+            if (!expanded && videoEnhancement != null) {
+                val mode by videoEnhancement.mode.collectAsState()
+                DropdownMenuItem(
+                    text = { Text(videoEnhancementTitleText) },
+                    onClick = {
+                        showMoreDropdown = false
+                        showVideoEnhancementDropdown = true
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Rounded.AutoAwesome,
+                            contentDescription = videoEnhancementTitleText,
+                            tint = if (mode != VideoEnhancementMode.OFF) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                LocalContentColor.current
+                            },
+                        )
+                    },
+                )
+            }
             DropdownMenuItem(
                 text = { Text(if (playerStatsVisible) hidePlayerStatsText else showPlayerStatsText) },
                 onClick = {
@@ -759,6 +824,13 @@ private fun EpisodeVideoTopBarActions(
             showShareDropdown,
             onDismissRequest = { showShareDropdown = false },
         )
+        if (videoEnhancement != null && !expanded) {
+            VideoEnhancementDropdown(
+                videoEnhancement,
+                showVideoEnhancementDropdown,
+                onDismissRequest = { showVideoEnhancementDropdown = false },
+            )
+        }
     }
 
     if (expanded && LocalPlatform.current.isDesktop()) {
@@ -883,7 +955,7 @@ private fun PreviewVideoScaffoldImpl(
         leftBottomTips = {
             PlayerControllerDefaults.LeftBottomTips(
                 onClick = {},
-                modifier = Modifier.padding(if (expanded) 16.dp else 8.dp)
+                modifier = Modifier.padding(if (expanded) 16.dp else 8.dp),
             )
         },
         fullscreenSwitchButton = {

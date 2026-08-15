@@ -264,6 +264,8 @@
     <string name="settings_player_fullscreen_only_in_controller">Do not show</string>
     <string name="settings_player_fullscreen_button">Show fullscreen button in portrait mode</string>
     <string name="settings_player_fullscreen_button_description">Always show the fullscreen toggle button in the lower-right corner of the player, for easy switching</string>
+    <string name="settings_player_video_enhancement_default">Default video enhancement mode</string>
+    <string name="settings_player_video_enhancement_default_description">Choose the video enhancement mode used when entering the player</string>
     <string name="settings_player_frame_preview">Show frame preview on the progress bar</string>
     <string name="settings_player_frame_preview_description">Show the video frame at the target position when hovering over or dragging the progress bar</string>
     <string name="settings_player_enable_regex_filter">Enable regex danmaku filter</string>
@@ -701,6 +703,10 @@
     <string name="video_player_auto">Auto</string>
     <string name="video_player_audio_track">Audio</string>
     <string name="video_player_off">Off</string>
+    <string name="video_player_on">On</string>
+    <string name="video_player_performance">Prioritize performance</string>
+    <string name="video_player_quality">Highest quality</string>
+    <string name="video_player_video_enhancement">Video enhancement</string>
     <string name="video_player_subtitle">Subtitle</string>
     <string name="video_player_disable_danmaku">Disable danmaku</string>
     <string name="video_player_enable_danmaku">Enable danmaku</string>

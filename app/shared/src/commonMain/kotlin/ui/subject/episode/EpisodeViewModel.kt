@@ -57,6 +57,7 @@ import me.him188.ani.app.data.models.comment.CommentReportTargetType
 import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.models.episode.renderEpisodeEp
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.data.models.preference.VideoEnhancementDefaultMode
 import me.him188.ani.app.data.models.preference.parseMpvOptions
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
@@ -163,6 +164,8 @@ import me.him188.ani.app.videoplayer.player.applyMpvOptions
 import me.him188.ani.app.videoplayer.player.isMpv
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.videoenhancement.VideoEnhancementMode
+import me.him188.ani.app.videoplayer.videoenhancement.createVideoEnhancementController
 import me.him188.ani.danmaku.api.DanmakuContent
 import me.him188.ani.danmaku.api.DanmakuEvent
 import me.him188.ani.danmaku.api.DanmakuInfo
@@ -297,6 +300,8 @@ class EpisodeViewModel(
             // datastore 读取很快, 可以接受这里的 blocking coroutine
             runBlocking { applyCustomOptions() }
         }
+
+    val videoEnhancement = createVideoEnhancementController(player, backgroundScope.coroutineContext)
 
     /** `null` 表示本次播放尚未调整过倍速, 此时跟随配置. */
     private val playbackSpeedOverride = MutableStateFlow<Float?>(null)
@@ -1088,6 +1093,19 @@ class EpisodeViewModel(
     }
 
     init {
+        launchInBackground {
+            val defaultMode = settingsRepository.videoScaffoldConfig.flow
+                .first()
+                .videoEnhancementDefaultMode
+            videoEnhancement?.setMode(
+                when (defaultMode) {
+                    VideoEnhancementDefaultMode.OFF -> VideoEnhancementMode.OFF
+                    VideoEnhancementDefaultMode.PERFORMANCE -> VideoEnhancementMode.PERFORMANCE
+                    VideoEnhancementDefaultMode.QUALITY -> VideoEnhancementMode.QUALITY
+                },
+            )
+        }
+
         // 跳过 OP 和 ED
         launchInBackground {
             settingsRepository.videoScaffoldConfig.flow
@@ -1114,6 +1132,7 @@ class EpisodeViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        videoEnhancement?.close()
         webSessionManager.cancelAutoSolves()
         backgroundScope.launch(NonCancellable + CoroutineName("EpisodeViewModel#onCleared")) {
             fetchPlayState.onClose()

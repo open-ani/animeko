@@ -37,6 +37,13 @@ enum class FullscreenSwitchMode {
 }
 
 @Serializable
+enum class VideoEnhancementDefaultMode {
+    OFF,
+    PERFORMANCE,
+    QUALITY,
+}
+
+@Serializable
 @Immutable
 data class VideoScaffoldConfig @SerializationOnly constructor(
     // TODO: 这个名字可能不好 
@@ -48,6 +55,8 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      * 悬浮或拖动播放进度条时显示视频帧预览.
      */
     val enableFramePreview: Boolean = true,
+    /** 进入播放器时使用的默认超分档位. */
+    val videoEnhancementDefaultMode: VideoEnhancementDefaultMode = VideoEnhancementDefaultMode.OFF,
     /**
      * 在编辑弹幕时暂停视频.
      * @since 3.2.0-beta01
@@ -216,6 +225,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
         val AllDisabled = VideoScaffoldConfig(
             fullscreenSwitchMode = FullscreenSwitchMode.ONLY_IN_CONTROLLER,
             enableFramePreview = false,
+            videoEnhancementDefaultMode = VideoEnhancementDefaultMode.OFF,
             pauseVideoOnEditDanmaku = false,
             autoMarkDone = false,
             hideSelectorOnSelect = false,
