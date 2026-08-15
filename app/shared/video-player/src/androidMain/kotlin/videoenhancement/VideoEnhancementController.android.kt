@@ -86,3 +86,5 @@ private class ExoPlayerVideoEnhancementController(
         appliedHeight = 0
     }
 }
+
+internal const val exoEffectShaderDirectory = "exo-effects"

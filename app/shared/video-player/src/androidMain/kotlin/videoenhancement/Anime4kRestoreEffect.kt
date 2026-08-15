@@ -166,7 +166,6 @@ private class Anime4kRestoreShaderSources(context: Context) {
 }
 
 private const val anime4kShaderResource = "Anime4K_Restore_CNN_S.glsl"
-private const val exoEffectShaderDirectory = "exo-effects"
 private val restoreFragmentShaderResources = listOf(
     "restore_pass_1.frag",
     "restore_pass_2.frag",

@@ -273,4 +273,3 @@ private fun createProgram(vertexShader: String, fragmentShader: String, passName
 private const val convolutionPassCount = 7
 private const val anime4kRestoreMediumAsset = "Anime4K_Restore_CNN_M.glsl"
 private const val anime4kUpscaleMediumAsset = "Anime4K_Upscale_CNN_x2_M.glsl"
-private const val exoEffectShaderDirectory = "exo-effects"
