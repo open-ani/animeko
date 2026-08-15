@@ -9,6 +9,9 @@
 
 package me.him188.ani.app.videoplayer.videoenhancement
 
+import me.him188.ani.utils.platform.currentPlatformDesktop
+import me.him188.ani.utils.platform.isLinux
+import me.him188.ani.utils.platform.isWindows
 import me.him188.ani.utils.video.enhancement.shader.provider.VideoEnhancementShaderProvider
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.mpv.MPVHandle
@@ -20,8 +23,7 @@ actual fun createVideoEnhancementController(
     player: MediampPlayer,
     parentCoroutineContext: CoroutineContext,
 ): VideoEnhancementController? {
-    val osName = System.getProperty("os.name")
-    if (!osName.startsWith("Mac", ignoreCase = true) && !osName.startsWith("Windows", ignoreCase = true)) {
+    if (currentPlatformDesktop().isLinux()) {
         return null
     }
     val handle = player.impl as? MPVHandle ?: return null
@@ -37,7 +39,7 @@ private class MpvVideoEnhancementController(
     private val originalProperties = enhancementPropertyNames.associateWith { name ->
         checkNotNull(handle.getPropertyString(name)) { "mpv property is unavailable: $name" }
     }
-    private val clearProperties = if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) {
+    private val clearProperties = if (currentPlatformDesktop().isWindows()) {
         windowsLiteClearProperties
     } else {
         fullClearProperties
