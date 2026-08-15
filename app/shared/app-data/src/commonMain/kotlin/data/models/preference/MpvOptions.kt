@@ -9,19 +9,6 @@
 
 package me.him188.ani.app.data.models.preference
 
-import androidx.compose.runtime.Immutable
-
-/**
- * 一条已解析的 mpv 选项, 可直接传给 `MPVHandle.option`.
- *
- * @see parseMpvOptions
- */
-@Immutable
-data class MpvOption(
-    val key: String,
-    val value: String,
-)
-
 /**
  * 解析用户配置的 mpv 选项 ([PlayerKernelConfig.mpvOptions]), 每个元素是一行.
  *
@@ -35,8 +22,8 @@ data class MpvOption(
  *
  * 无法识别的行 (例如键为空) 会被忽略. 选项名和值本身不做校验, 是否有效由 mpv 决定.
  */
-fun parseMpvOptions(lines: List<String>): List<MpvOption> {
-    return lines.mapNotNull { parseMpvOptionLine(it) }
+fun parseMpvOptions(lines: List<String>): Map<String, String> {
+    return lines.mapNotNull { parseMpvOptionLine(it) }.toMap()
 }
 
 /**
@@ -50,7 +37,7 @@ fun splitMpvOptionLines(text: String): List<String> {
         .dropLastWhile { it.isBlank() }
 }
 
-private fun parseMpvOptionLine(line: String): MpvOption? {
+private fun parseMpvOptionLine(line: String): Pair<String, String>? {
     val trimmed = line.trim()
     if (trimmed.isEmpty() || trimmed.startsWith("#")) return null
 
@@ -71,7 +58,7 @@ private fun parseMpvOptionLine(line: String): MpvOption? {
         trimmed.substring(separatorIndex + 1).trim().removeSurroundingQuotes()
     }
 
-    return MpvOption(key, value)
+    return key to value
 }
 
 private fun String.removeSurroundingQuotes(): String {
