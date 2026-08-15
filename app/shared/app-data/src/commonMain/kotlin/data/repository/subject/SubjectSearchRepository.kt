@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.models.schedule.AnimeSeason
 import me.him188.ani.app.data.models.schedule.AnimeSeasonId
 import me.him188.ani.app.data.models.schedule.yearMonths
 import me.him188.ani.app.data.network.AniSubjectSearchService
@@ -109,17 +110,28 @@ class SubjectSearchRepository(
         private fun SubjectSearchQuery.toSubjectSearchFilters(): SubjectSearchFilters {
             return SubjectSearchFilters(
                 tags,
-                airDates = season?.toBangumiAirDates(),
+                airDates = toBangumiAirDates(),
                 ratings = rating?.toBangumiRatings(),
                 nsfw = nsfw,
             )
         }
 
-        private fun AnimeSeasonId.toBangumiAirDates(): List<String> {
-            val (begin, _, end) = this.yearMonths
+        /**
+         * 年份/季度筛选对应的 Bangumi airDates 区间.
+         *
+         * 仅年份: 该年全年. 年份+季度: 该季度三个月. 无年份: null (不限).
+         */
+        private fun SubjectSearchQuery.toBangumiAirDates(): List<String>? {
+            val y = year ?: return null
+            val q = quarter
+            if (q == null) {
+                return listOf(">=" + y + "-01-01", "<" + (y + 1) + "-01-01")
+            }
+            val seasonId = AnimeSeasonId(y, AnimeSeason.fromQuarterNumber(q) ?: return null)
+            val (begin, _, end) = seasonId.yearMonths
             return listOf(
-                ">=${begin.first}-${begin.second}-01",
-                "<${end.first}-${end.second}-31",
+                ">=" + begin.first + "-" + begin.second + "-01",
+                "<" + end.first + "-" + end.second + "-31",
             )
         }
 

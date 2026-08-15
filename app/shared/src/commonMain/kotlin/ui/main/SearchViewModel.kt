@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -26,6 +27,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectInfo
+import me.him188.ani.app.domain.episode.GetAnimeSeasonIdsFlowUseCase
+import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchCompletionRepository
@@ -62,6 +65,7 @@ class SearchViewModel(
     private val subjectSearchRepository: SubjectSearchRepository by inject()
     private val subjectDetailsStateFactory: SubjectDetailsStateFactory by inject()
     private val settingsRepository: SettingsRepository by inject()
+    private val getAnimeSeasonIdsFlowUseCase: GetAnimeSeasonIdsFlowUseCase by inject()
     val setEpisodeCollectionType: SetEpisodeCollectionTypeUseCase by inject()
 
     private val initialQuery = initialSearchQuery.normalized()
@@ -133,6 +137,20 @@ class SearchViewModel(
     private var currentPreviewingSubject: SubjectInfo? = null
     private var initialSearchQueryStarted = false
 
+    init {
+        // 拉取可浏览的季度列表, 供番剧索引的季度筛选使用.
+        launchInBackground {
+            try {
+                val seasons = getAnimeSeasonIdsFlowUseCase().first()
+                updateSearchPageState { it.copy(seasons = seasons) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                updateSearchPageState { it.copy(seasonsError = LoadError.fromException(e)) }
+            }
+        }
+    }
+
     fun suggestionsPager(query: String): Flow<PagingData<String>> {
         return subjectSearchCompletionRepository.completionsFlow(query.trim())
     }
@@ -151,6 +169,14 @@ class SearchViewModel(
 
             is SearchPageIntent.ChangeSort -> {
                 refreshSearch(_searchPageState.value.query.copy(sort = intent.sort))
+            }
+
+            is SearchPageIntent.ChangeYear -> {
+                applyQueryAndRefresh(_searchPageState.value.query.copy(year = intent.year))
+            }
+
+            is SearchPageIntent.ChangeQuarter -> {
+                applyQueryAndRefresh(_searchPageState.value.query.copy(quarter = intent.quarter))
             }
 
             is SearchPageIntent.Play -> {
@@ -256,6 +282,20 @@ class SearchViewModel(
         }
     }
 
+    /**
+     * 更新 query 并视筛选条件触发或清空搜索.
+     */
+    private fun applyQueryAndRefresh(query: SubjectSearchQuery) {
+        if (query.shouldTriggerSearch()) {
+            refreshSearch(query)
+        } else {
+            // 没有任何筛选条件: 回到未搜索状态, 展示历史/建议.
+            updateQueryState(query)
+            clearSearchResults()
+            updateSearchPageState { it.copy(hasActiveSearch = false) }
+        }
+    }
+
     private fun refreshSearch(query: SubjectSearchQuery) {
         val normalizedQuery = query.normalized()
         updateQueryState(normalizedQuery)
@@ -313,7 +353,7 @@ class SearchViewModel(
 private fun SubjectSearchQuery.shouldTriggerSearch(): Boolean {
     return keywords.isNotEmpty() ||
             !tags.isNullOrEmpty() ||
-            season != null ||
+            year != null ||
             rating != null ||
             nsfw != null
 }

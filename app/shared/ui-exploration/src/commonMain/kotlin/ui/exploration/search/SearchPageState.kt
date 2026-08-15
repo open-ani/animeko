@@ -15,7 +15,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import me.him188.ani.app.data.models.schedule.AnimeSeasonId
 import me.him188.ani.app.data.models.subject.CanonicalTagKind
+import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.search.SearchSort
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.ui.search.PagingSearchState
@@ -32,6 +34,14 @@ data class SearchPageState(
     val selectedItemIndex: Int,
     val searchHistoryPager: Flow<PagingData<String>>,
     val searchState: SearchState<SubjectPreviewItemInfo>,
+    /**
+     * 可选的浏览季度列表, 按时间降序 (最新在前). 由 ViewModel 从 GetAnimeSeasonIdsFlowUseCase 填充.
+     */
+    val seasons: List<AnimeSeasonId> = emptyList(),
+    /**
+     * 季度列表加载失败原因; 为 null 表示加载中或加载成功.
+     */
+    val seasonsError: LoadError? = null,
 ) {
     data class EpisodeTarget(
         val subjectId: Int,
@@ -51,6 +61,17 @@ sealed interface SearchPageIntent {
     data object StartInitialSearch : SearchPageIntent
     data class RemoveHistory(val text: String) : SearchPageIntent
     data class ChangeSort(val sort: SearchSort) : SearchPageIntent
+
+    /**
+     * 切换浏览年份; [year] 为 null 表示"全部年份" (清除年份筛选).
+     */
+    data class ChangeYear(val year: Int?) : SearchPageIntent
+
+    /**
+     * 切换浏览季度 (1..4); [quarter] 为 null 表示"全部季度".
+     * 季度从属于年份, 仅当年份已选中时才有意义.
+     */
+    data class ChangeQuarter(val quarter: Int?) : SearchPageIntent
     data class SelectResult(
         val index: Int,
         val item: SubjectPreviewItemInfo,
@@ -112,6 +133,22 @@ fun SearchPageState.toggleTagSelection(
         query.copy(tags = updatedTags),
         tagKinds = tagKinds,
     )
+}
+
+/**
+ * 更新浏览年份. [year] 为 null 表示"全部年份", 即清除年份筛选.
+ */
+fun SearchPageState.withYear(year: Int?): SearchPageState {
+    return withQuery(query.copy(year = year))
+}
+
+/**
+ * 更新浏览季度 (1..4). [quarter] 为 null 表示"全部季度".
+ *
+ * 切换年份时若之前选中了季度, 季度保留 (语义上"该季度在新年份内").
+ */
+fun SearchPageState.withQuarter(quarter: Int?): SearchPageState {
+    return withQuery(query.copy(quarter = quarter))
 }
 
 fun buildSearchFilterState(

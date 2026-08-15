@@ -15,7 +15,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -220,7 +222,29 @@ fun SearchPage(
                     },
                     headers = {
                         item(span = { GridItemSpan(maxLineSpan) }) {
-                            SearchFilterChipsRow(
+                            // LazyGrid 的 item 槽不会自动垂直排列多个根组件,
+                            // 必须用 Column 包裹, 否则筛选 chips 会与标签 chips 重叠绘制.
+                            Column {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    YearFilterChip(
+                                        years = state.seasons.map { it.year }.distinct(),
+                                        selectedYear = state.query.year,
+                                        onSelect = { year ->
+                                            onIntent(SearchPageIntent.ChangeYear(year))
+                                        },
+                                        modifier = Modifier.padding(bottom = 8.dp),
+                                    )
+                                    QuarterFilterChip(
+                                        selectedQuarter = state.query.quarter,
+                                        onSelect = { quarter ->
+                                            onIntent(SearchPageIntent.ChangeQuarter(quarter))
+                                        },
+                                        // 季度从属于年份: 未选年份时禁用.
+                                        enabled = state.query.year != null,
+                                        modifier = Modifier.padding(bottom = 8.dp),
+                                    )
+                                }
+                                SearchFilterChipsRow(
                                 state = state.searchFilterState,
                                 onClickItemText = { chip, value ->
                                     val updatedQuery = state.toggleTagSelection(
@@ -247,7 +271,8 @@ fun SearchPage(
                                     )
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                            )
+                                )
+                            }
                         }
                     },
                     highlightSelected = !isSinglePane,

@@ -64,4 +64,43 @@ class SearchPageStateTest {
 
         assertEquals(listOf("百合", value), updated.query.tags)
     }
+
+    @Test
+    fun `withYear sets year and keeps tags`() {
+        val state = createTestSearchPageState(
+            query = SubjectSearchQuery("", tags = listOf("原创")),
+            hasActiveSearch = true,
+        )
+
+        val updated = state.withYear(2026)
+
+        assertEquals(2026, updated.query.year)
+        assertEquals(listOf("原创"), updated.query.tags)
+        assertTrue(updated.searchFilterState.chips.any { "原创" in it.selected })
+    }
+
+    @Test
+    fun `withYear null clears year`() {
+        val state = createTestSearchPageState(
+            query = SubjectSearchQuery("", year = 2026),
+            hasActiveSearch = true,
+        )
+
+        val updated = state.withYear(null)
+
+        assertEquals(null, updated.query.year)
+    }
+
+    @Test
+    fun `withQuarter sets quarter and keeps year`() {
+        val state = createTestSearchPageState(
+            query = SubjectSearchQuery("", year = 2026),
+            hasActiveSearch = true,
+        )
+
+        val updated = state.withQuarter(3)
+
+        assertEquals(3, updated.query.quarter)
+        assertEquals(2026, updated.query.year)
+    }
 }

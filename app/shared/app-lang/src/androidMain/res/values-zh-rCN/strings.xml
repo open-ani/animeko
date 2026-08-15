@@ -1208,6 +1208,8 @@
     <string name="exploration_search_filter_character">角色</string>
     <string name="exploration_search_filter_emotion">情感</string>
     <string name="exploration_search_filter_genre">类型</string>
+    <string name="exploration_search_filter_season_all">全部季度</string>
+    <string name="exploration_search_filter_year_all">全部年份</string>
     <string name="exploration_search_filter_rating">分级</string>
     <string name="exploration_search_filter_region">地区</string>
     <string name="exploration_search_filter_series">系列</string>
