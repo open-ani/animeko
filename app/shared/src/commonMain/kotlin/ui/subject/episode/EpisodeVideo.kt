@@ -36,12 +36,12 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -51,7 +51,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -252,21 +251,6 @@ internal fun EpisodeVideoImpl(
     val anySideSheetVisible by sheetsController.hasPageAsState()
     val previewModeText = stringResource(Lang.subject_episode_preview_mode)
     val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
-
-    LaunchedEffect(isFullscreen, playerControllerState, watchTogetherPlayerController) {
-        if (isFullscreen) {
-            snapshotFlow { playerControllerState.visibility.topBar }.collect {
-                watchTogetherPlayerController.setDraggablePopupVisibility(it)
-            }
-        } else {
-            watchTogetherPlayerController.setDraggablePopupVisibility(true)
-        }
-    }
-    DisposableEffect(watchTogetherPlayerController) {
-        onDispose {
-            watchTogetherPlayerController.setDraggablePopupVisibility(true)
-        }
-    }
 
     // auto hide cursor
     val videoInteractionSource = remember { MutableInteractionSource() }
@@ -733,17 +717,10 @@ private fun EpisodeVideoTopBarActions(
         }
     }
 
-    IconButton(
-        { sheetsController.navigateTo(EpisodeVideoSideSheetPage.PLAYER_SETTINGS) },
-        Modifier.testTag(TAG_SHOW_SETTINGS),
-    ) {
-        Icon(AniIcons.SubtitleGear, contentDescription = danmakuSettingsTitleText)
-    }
-
     if (LocalPlatform.current.isDesktop() && onToggleAlwaysOnTop != null) {
         val alwaysOnTopText = stringResource(Lang.always_on_top)
         TooltipBox(
-            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
+            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
             tooltip = { PlainTooltip { Text(alwaysOnTopText) } },
             state = rememberTooltipState(),
         ) {
@@ -794,6 +771,16 @@ private fun EpisodeVideoTopBarActions(
                     },
                 )
             }
+            DropdownMenuItem(
+                text = { Text(danmakuSettingsTitleText) },
+                onClick = {
+                    showMoreDropdown = false
+                    sheetsController.navigateTo(EpisodeVideoSideSheetPage.PLAYER_SETTINGS)
+                },
+                leadingIcon = {
+                    Icon(AniIcons.SubtitleGear, contentDescription = danmakuSettingsTitleText)
+                },
+            )
             DropdownMenuItem(
                 text = { Text(if (playerStatsVisible) hidePlayerStatsText else showPlayerStatsText) },
                 onClick = {

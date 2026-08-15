@@ -62,6 +62,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -151,6 +152,7 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSe
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
+import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerFocusState
@@ -590,6 +592,23 @@ private fun EpisodeScreenTabletVeryWide(
                 }
             }
         }
+
+        // compact 布局只在全屏时跟随 controller visibility
+        val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
+        LaunchedEffect(vm.isFullscreen, vm.sidebarVisible, vm.playerControllerState, watchTogetherPlayerController) {
+            if (vm.isFullscreen || !vm.sidebarVisible) {
+                snapshotFlow { vm.playerControllerState.visibility.topBar }.collect {
+                    watchTogetherPlayerController.setDraggablePopupVisibility(it)
+                }
+            } else {
+                watchTogetherPlayerController.setDraggablePopupVisibility(true)
+            }
+        }
+        DisposableEffect(watchTogetherPlayerController) {
+            onDispose {
+                watchTogetherPlayerController.setDraggablePopupVisibility(true)
+            }
+        }
     }
 }
 
@@ -763,6 +782,23 @@ private fun EpisodeScreenContentPhone(
             },
         ),
     )
+
+    // medium/expand 布局在全屏或关闭 sidesheet 时跟随 controller visibility
+    val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
+    LaunchedEffect(vm.isFullscreen, vm.playerControllerState, watchTogetherPlayerController) {
+        if (vm.isFullscreen) {
+            snapshotFlow { vm.playerControllerState.visibility.topBar }.collect {
+                watchTogetherPlayerController.setDraggablePopupVisibility(it)
+            }
+        } else {
+            watchTogetherPlayerController.setDraggablePopupVisibility(true)
+        }
+    }
+    DisposableEffect(watchTogetherPlayerController) {
+        onDispose {
+            watchTogetherPlayerController.setDraggablePopupVisibility(true)
+        }
+    }
 
     if (showDanmakuEditor) {
         val focusRequester = remember { FocusRequester() }
