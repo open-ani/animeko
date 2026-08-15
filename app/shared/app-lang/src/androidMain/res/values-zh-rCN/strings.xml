@@ -277,8 +277,8 @@
     <string name="settings_player_fullscreen_only_in_controller">不显示</string>
     <string name="settings_player_fullscreen_button">竖屏模式下显示全屏按钮</string>
     <string name="settings_player_fullscreen_button_description">总是显示播放器右下角的切换全屏按钮，方便切换</string>
-    <string name="settings_player_video_enhancement_default">超分默认状态</string>
-    <string name="settings_player_video_enhancement_default_description">设置每次进入播放器时使用的超分档位</string>
+    <string name="settings_player_video_enhancement_default">默认画质增强模式</string>
+    <string name="settings_player_video_enhancement_default_description">设置每次进入播放器时使用的画质增强档位</string>
     <string name="settings_player_frame_preview">显示进度条画面预览</string>
     <string name="settings_player_frame_preview_description">悬停或拖动进度条时，显示目标位置的视频画面</string>
     <string name="settings_player_enable_regex_filter">启用正则弹幕过滤器</string>
@@ -744,9 +744,9 @@
     <string name="video_player_audio_track">音轨</string>
     <string name="video_player_off">关闭</string>
     <string name="video_player_on">开启</string>
-    <string name="video_player_performance">性能</string>
-    <string name="video_player_quality">质量</string>
-    <string name="video_player_video_enhancement">超分模式</string>
+    <string name="video_player_performance">性能优先</string>
+    <string name="video_player_quality">最高质量</string>
+    <string name="video_player_video_enhancement">画质增强</string>
     <string name="video_player_subtitle">字幕</string>
     <string name="video_player_disable_danmaku">禁用弹幕</string>
     <string name="video_player_enable_danmaku">启用弹幕</string>
