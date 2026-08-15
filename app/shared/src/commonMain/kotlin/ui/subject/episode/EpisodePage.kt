@@ -341,6 +341,13 @@ private fun EpisodeScreenContent(
                     )
                 }
 
+                WatchTogetherPopupVisibilityEffect(
+                    playerControllerState = vm.playerControllerState,
+                    isFullscreen = vm.isFullscreen,
+                    isExpandedLayout = showExpandedUI,
+                    sidebarVisible = vm.sidebarVisible,
+                )
+
                 page.matchingDanmakuUiState?.let { uiState ->
                     MatchingDanmakuDialog(
                         onDismissRequest = { vm.cancelMatchingDanmaku() },
@@ -418,6 +425,32 @@ private fun EpisodeScreenContent(
     }
 
     vm.mediaResolver.ComposeContent()
+}
+
+@Composable
+internal fun WatchTogetherPopupVisibilityEffect(
+    playerControllerState: PlayerControllerState,
+    isFullscreen: Boolean,
+    isExpandedLayout: Boolean,
+    sidebarVisible: Boolean,
+) {
+    val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
+    val followControllerVisibility = isFullscreen || (isExpandedLayout && !sidebarVisible)
+
+    LaunchedEffect(followControllerVisibility, playerControllerState, watchTogetherPlayerController) {
+        if (followControllerVisibility) {
+            snapshotFlow { playerControllerState.visibility.topBar }.collect {
+                watchTogetherPlayerController.setDraggablePopupVisibility(it)
+            }
+        } else {
+            watchTogetherPlayerController.setDraggablePopupVisibility(true)
+        }
+    }
+    DisposableEffect(watchTogetherPlayerController) {
+        onDispose {
+            watchTogetherPlayerController.setDraggablePopupVisibility(true)
+        }
+    }
 }
 
 @Composable
@@ -590,23 +623,6 @@ private fun EpisodeScreenTabletVeryWide(
                         }
                     }
                 }
-            }
-        }
-
-        // compact 布局只在全屏时跟随 controller visibility
-        val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
-        LaunchedEffect(vm.isFullscreen, vm.sidebarVisible, vm.playerControllerState, watchTogetherPlayerController) {
-            if (vm.isFullscreen || !vm.sidebarVisible) {
-                snapshotFlow { vm.playerControllerState.visibility.topBar }.collect {
-                    watchTogetherPlayerController.setDraggablePopupVisibility(it)
-                }
-            } else {
-                watchTogetherPlayerController.setDraggablePopupVisibility(true)
-            }
-        }
-        DisposableEffect(watchTogetherPlayerController) {
-            onDispose {
-                watchTogetherPlayerController.setDraggablePopupVisibility(true)
             }
         }
     }
@@ -782,23 +798,6 @@ private fun EpisodeScreenContentPhone(
             },
         ),
     )
-
-    // medium/expand 布局在全屏或关闭 sidesheet 时跟随 controller visibility
-    val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
-    LaunchedEffect(vm.isFullscreen, vm.playerControllerState, watchTogetherPlayerController) {
-        if (vm.isFullscreen) {
-            snapshotFlow { vm.playerControllerState.visibility.topBar }.collect {
-                watchTogetherPlayerController.setDraggablePopupVisibility(it)
-            }
-        } else {
-            watchTogetherPlayerController.setDraggablePopupVisibility(true)
-        }
-    }
-    DisposableEffect(watchTogetherPlayerController) {
-        onDispose {
-            watchTogetherPlayerController.setDraggablePopupVisibility(true)
-        }
-    }
 
     if (showDanmakuEditor) {
         val focusRequester = remember { FocusRequester() }

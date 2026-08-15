@@ -488,18 +488,22 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
-    fun `watch together popup follows controller only in fullscreen`() = runAniComposeUiTest {
+    fun `watch together popup follows controller while video fills page`() = runAniComposeUiTest {
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         val watchTogetherPlayerController = WatchTogetherPlayerController()
         var isFullscreen by mutableStateOf(true)
+        var isExpandedLayout by mutableStateOf(false)
+        var sidebarVisible by mutableStateOf(true)
         mainClock.autoAdvance = false
         setContent {
-            Player(
-                GestureFamily.MOUSE,
-                playerControllerState = visibleControllerState,
-                watchTogetherPlayerController = watchTogetherPlayerController,
-                isFullscreen = isFullscreen,
-            )
+            CompositionLocalProvider(LocalWatchTogetherPlayerController provides watchTogetherPlayerController) {
+                WatchTogetherPopupVisibilityEffect(
+                    playerControllerState = visibleControllerState,
+                    isFullscreen = isFullscreen,
+                    isExpandedLayout = isExpandedLayout,
+                    sidebarVisible = sidebarVisible,
+                )
+            }
         }
 
         runOnIdle {
@@ -526,6 +530,21 @@ class EpisodeVideoControllerTest {
 
         runOnIdle {
             isFullscreen = false
+        }
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            watchTogetherPlayerController.isDraggablePopupVisible
+        }
+
+        runOnIdle {
+            isExpandedLayout = true
+            sidebarVisible = false
+        }
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            !watchTogetherPlayerController.isDraggablePopupVisible
+        }
+
+        runOnIdle {
+            sidebarVisible = true
         }
         waitUntil(timeoutMillis = WAIT_TIMEOUT) {
             watchTogetherPlayerController.isDraggablePopupVisible
