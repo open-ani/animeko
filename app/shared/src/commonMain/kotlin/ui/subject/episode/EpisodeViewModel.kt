@@ -159,6 +159,8 @@ import me.him188.ani.app.ui.subject.episode.video.PlayerSkipOpEdState
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorState
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.app.ui.user.SelfInfoUiState
+import me.him188.ani.app.videoplayer.player.applyMpvOptions
+import me.him188.ani.app.videoplayer.player.isMpv
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.danmaku.api.DanmakuContent
@@ -192,7 +194,6 @@ import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.MediampPlayerFactory
 import org.openani.mediamp.features.chapters
 import org.openani.mediamp.metadata.Chapter
-import org.openani.mediamp.mpv.MpvMediampPlayer
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -292,9 +293,8 @@ class EpisodeViewModel(
     val player: MediampPlayer = playerStateFactory
         .create(context, backgroundScope.coroutineContext)
         .apply {
-            if (this !is MpvMediampPlayer) return@apply
-            // 用户自定义的 mpv 选项. 仅在使用 mpv 内核的平台生效, 修改设置后立即应用到当前播放器.
-            // datastore 读取很快
+            if (!isMpv()) return@apply
+            // datastore 读取很快, 可以接受这里的 blocking coroutine
             runBlocking { applyCustomOptions() }
         }
 
@@ -1171,7 +1171,7 @@ class EpisodeViewModel(
         }
     }
 
-    private suspend fun MpvMediampPlayer.applyCustomOptions() {
+    private suspend fun MediampPlayer.applyCustomOptions() {
         val config = try {
             settingsRepository.playerKernelConfig.flow.map { it.mpvOptions }.first()
         } catch (e: Exception) {
@@ -1179,6 +1179,6 @@ class EpisodeViewModel(
             return
         }
 
-        applyOptions(parseMpvOptions(config))
+        applyMpvOptions(parseMpvOptions(config))
     }
 }
