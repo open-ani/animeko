@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -20,6 +20,7 @@ import androidx.media3.common.util.Size
 import androidx.media3.effect.BaseGlShaderProgram
 import androidx.media3.effect.GlEffect
 import androidx.media3.effect.GlShaderProgram
+import me.him188.ani.utils.video.enhancement.shader.provider.VideoEnhancementShaderProvider
 
 /** Official Anime4K Restore CNN S executed at the source frame size with two FP16 ping-pong textures. */
 internal object Anime4kRestoreEffect : GlEffect {
@@ -33,9 +34,10 @@ private class Anime4kRestoreShaderProgram(
     /* useHighPrecisionColorComponents = */ true,
     /* texturePoolCapacity = */ 1,
 ) {
+    private val shaderSources = Anime4kRestoreShaderSources(context)
     private val programs: List<GlProgram> = readPassBodies(context).mapIndexed { index, body ->
         try {
-            GlProgram(vertexShader, fragmentShader(index, body)).also { program ->
+            GlProgram(shaderSources.vertexShader, shaderSources.fragmentShader(index, body)).also { program ->
                 program.setBufferAttribute(
                     "aFramePosition",
                     GlUtil.getNormalizedCoordinateBounds(),
@@ -136,7 +138,7 @@ private class Anime4kRestoreShaderProgram(
 }
 
 private fun readPassBodies(context: Context): List<String> {
-    val source = context.assets.open(anime4kShaderAsset).bufferedReader().use { it.readText() }
+    val source = VideoEnhancementShaderProvider.getShaderSource(context, anime4kShaderResource)
     return source.split(Regex("(?m)^//!DESC "))
         .drop(1)
         .map { section ->
@@ -147,55 +149,27 @@ private fun readPassBodies(context: Context): List<String> {
         }
 }
 
-private fun fragmentShader(pass: Int, body: String): String {
-    val bindings = when (pass) {
-        0 -> """
-            uniform sampler2D uTexSampler;
-            #define MAIN_pos vTexSamplingCoord
-            #define MAIN_texOff(offset) texture2D(uTexSampler, vTexSamplingCoord + (offset) * uTexelSize)
-        """.trimIndent()
-
-        1 -> """
-            uniform sampler2D uTexSampler;
-            #define conv2d_tf_texOff(offset) texture2D(uTexSampler, vTexSamplingCoord + (offset) * uTexelSize)
-        """.trimIndent()
-
-        2 -> """
-            uniform sampler2D uTexSampler;
-            #define conv2d_1_tf_texOff(offset) texture2D(uTexSampler, vTexSamplingCoord + (offset) * uTexelSize)
-        """.trimIndent()
-
-        3 -> """
-            uniform sampler2D uTexSampler;
-            uniform sampler2D uOriginalSampler;
-            #define MAIN_pos vTexSamplingCoord
-            #define MAIN_tex(position) texture2D(uOriginalSampler, position)
-            #define conv2d_2_tf_texOff(offset) texture2D(uTexSampler, vTexSamplingCoord + (offset) * uTexelSize)
-        """.trimIndent()
-
-        else -> error("Unsupported Anime4K pass: $pass")
+private class Anime4kRestoreShaderSources(context: Context) {
+    val vertexShader = VideoEnhancementShaderProvider.getShaderSource(
+        context,
+        "$exoEffectShaderDirectory/common.vert",
+    )
+    private val fragmentShaderTemplates = restoreFragmentShaderResources.map { resource ->
+        VideoEnhancementShaderProvider.getShaderSource(context, "$exoEffectShaderDirectory/$resource")
     }
-    return """
-        #version 100
-        precision highp float;
-        varying vec2 vTexSamplingCoord;
-        uniform vec2 uTexelSize;
-        $bindings
-        $body
-        void main() {
-            gl_FragColor = hook();
-        }
-    """.trimIndent()
+
+    fun fragmentShader(pass: Int, body: String): String {
+        val template = fragmentShaderTemplates.getOrNull(pass)
+            ?: error("Unsupported Anime4K pass: $pass")
+        return VideoEnhancementShaderProvider.renderShaderTemplate(template, "PASS_BODY" to body)
+    }
 }
 
-private const val anime4kShaderAsset = "video-enhancement/Anime4K_Restore_CNN_S.glsl"
-
-private const val vertexShader = """
-    #version 100
-    attribute vec4 aFramePosition;
-    varying vec2 vTexSamplingCoord;
-    void main() {
-        gl_Position = aFramePosition;
-        vTexSamplingCoord = aFramePosition.xy * 0.5 + 0.5;
-    }
-"""
+private const val anime4kShaderResource = "Anime4K_Restore_CNN_S.glsl"
+private const val exoEffectShaderDirectory = "exo-effects"
+private val restoreFragmentShaderResources = listOf(
+    "restore_pass_1.frag",
+    "restore_pass_2.frag",
+    "restore_pass_3.frag",
+    "restore_pass_4.frag",
+)

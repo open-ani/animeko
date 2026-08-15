@@ -201,7 +201,6 @@ internal const val TAG_EPISODE_SELECTOR_SHEET = "EpisodeSelectorSheet"
 @Composable
 internal fun EpisodeVideoImpl(
     playerState: MediampPlayer,
-    videoEnhancement: VideoEnhancementController? = null,
     expanded: Boolean,
     hasNextEpisode: Boolean,
     onClickNextEpisode: () -> Unit,
@@ -231,6 +230,7 @@ internal fun EpisodeVideoImpl(
     brightnessController: LevelController,
     playbackSpeedControllerState: PlaybackSpeedControllerState?,
     videoAspectRatioControllerState: VideoAspectRatioControllerState?,
+    videoEnhancement: VideoEnhancementController? = null,
     leftBottomTips: @Composable () -> Unit,
     fullscreenSwitchButton: @Composable () -> Unit,
     sideSheets: @Composable (controller: VideoSideSheetsController<EpisodeVideoSideSheetPage>) -> Unit,

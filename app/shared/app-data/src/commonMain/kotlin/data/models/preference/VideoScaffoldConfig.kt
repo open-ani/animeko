@@ -56,7 +56,7 @@ data class VideoScaffoldConfig @SerializationOnly constructor(
      */
     val enableFramePreview: Boolean = true,
     /** 进入播放器时使用的默认超分档位. */
-    val videoEnhancementDefaultMode: VideoEnhancementDefaultMode = VideoEnhancementDefaultMode.PERFORMANCE,
+    val videoEnhancementDefaultMode: VideoEnhancementDefaultMode = VideoEnhancementDefaultMode.OFF,
     /**
      * 在编辑弹幕时暂停视频.
      * @since 3.2.0-beta01

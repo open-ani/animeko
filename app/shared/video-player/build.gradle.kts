@@ -26,6 +26,7 @@ kotlin {
         api(libs.kotlinx.coroutines.core)
         api(projects.utils.coroutines)
         api(projects.danmaku.danmakuApi)
+        implementation(projects.utils.videoEnhancementShaderProvider)
     }
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)
