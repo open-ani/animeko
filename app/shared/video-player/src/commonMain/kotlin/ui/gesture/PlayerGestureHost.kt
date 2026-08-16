@@ -69,10 +69,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.coerceAtLeast
@@ -83,13 +81,14 @@ import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.effects.onPointerEventMultiplatform
+import me.him188.ani.app.ui.foundation.ifNotNullThen
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.ui.foundation.input.asGesturePointerType
 import me.him188.ani.app.ui.foundation.input.trackActiveInputSource
-import me.him188.ani.app.ui.foundation.ifNotNullThen
-import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
-import me.him188.ani.app.ui.lang.*
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.video_player_release_to_cancel
 import me.him188.ani.app.utils.fixToString
 import me.him188.ani.app.utils.formatSpeedValue
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
@@ -108,9 +107,9 @@ import me.him188.ani.app.videoplayer.ui.playerFocusHost
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.isDesktop
+import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.AudioLevelController
-import org.jetbrains.compose.resources.stringResource
 import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.seconds
 
@@ -218,10 +217,13 @@ class GestureIndicatorState {
     suspend fun showSeeking(
         deltaSeconds: Int,
     ) {
-        show(SEEKING, setup = {
-            this.deltaSeconds = deltaSeconds
-            seekCancelled = false
-        }) {
+        show(
+            SEEKING,
+            setup = {
+                this.deltaSeconds = deltaSeconds
+                seekCancelled = false
+            },
+        ) {
             delay(SHORT)
         }
     }
@@ -664,7 +666,6 @@ fun PlayerGestureHost(
                 },
                 onTogglePauseResume = onTogglePauseResumeState,
                 onToggleFullscreen = onToggleFullscreen,
-                onExitFullscreen = onExitFullscreen,
                 onToggleDanmaku = onToggleDanmaku,
                 onTogglePlayerStats = onTogglePlayerStats,
             )

@@ -99,13 +99,13 @@ import me.him188.ani.app.ui.settings.mediasource.selector.EditSelectorMediaSourc
 import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsScreen
 import me.him188.ani.app.ui.settings.tabs.media.torrent.peer.PeerFilterSettingsViewModel
 import me.him188.ani.app.ui.subject.details.SubjectDetailsScreen
+import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
+import me.him188.ani.app.ui.subject.episode.EpisodeScreen
+import me.him188.ani.app.ui.subject.episode.EpisodeViewModel
 import me.him188.ani.app.ui.subject.person.CharacterDetailsScreen
 import me.him188.ani.app.ui.subject.person.CharacterDetailsViewModel
 import me.him188.ani.app.ui.subject.person.PersonDetailsScreen
 import me.him188.ani.app.ui.subject.person.PersonDetailsViewModel
-import me.him188.ani.app.ui.subject.details.SubjectDetailsViewModel
-import me.him188.ani.app.ui.subject.episode.EpisodeScreen
-import me.him188.ani.app.ui.subject.episode.EpisodeViewModel
 import me.him188.ani.app.ui.user.SelfInfoStateProducer
 import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
 import me.him188.ani.app.ui.watchtogether.WatchTogetherOverlayHost
@@ -243,433 +243,450 @@ private fun AniAppContentImpl(
                 vm = emailLoginViewModel,
             )
         }
-            composable<NavRoutes.BangumiAuthorize>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-            ) {
-                val vm = viewModel<BangumiAuthorizeViewModel> { BangumiAuthorizeViewModel() }
-                BangumiAuthorizeScreen(
-                    vm,
-                    onNavigateBack = {
-                        aniNavigator.popBackStack(NavRoutes.BangumiAuthorize, true)
-                    },
-                    onNavigateSettings = {
-                        aniNavigator.navigateSettings()
-                    },
-                    contactActions = {
-                        AniContactList()
-                    },
-                    onAuthorizeSuccess = {
-                        aniNavigator.popBackStack(NavRoutes.BangumiAuthorize, true)
-                        aniNavigator.popBackStack(NavRoutes.EmailLoginVerify, true)
-                        aniNavigator.popBackStack(NavRoutes.EmailLoginStart, true)
-                    },
-                )
-            }
-            composable<NavRoutes.Onboarding>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-                typeMap = mapOf(
-                    typeOf<NavRoutes?>() to NavRoutes.NavType,
-                ),
-            ) { backStackEntry ->
-                OnboardingScreen(
-                    viewModel { OnboardingViewModel() },
-                    onFinishOnboarding = {
-                        // 传递 popUpTarget 给 OnboardingComplete
-                        val currentRoute = backStackEntry.toRoute<NavRoutes.Onboarding>()
-                        aniNavigator.navigateOnboardingComplete(currentRoute.popUpTargetInclusive)
-                    },
-                    contactActions = { AniContactList() },
-                    navigationIcon = {
-                        BackNavigationIconButton(
-                            {
-                                navController.popBackStack()
-                            },
-                        )
-                    },
-                    Modifier
-                        .widthIn(max = WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND.dp)
-                        .fillMaxHeight(),
-                    windowInsets,
-                )
-            }
-            composable<NavRoutes.OnboardingComplete>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-                typeMap = mapOf(
-                    typeOf<NavRoutes?>() to NavRoutes.NavType,
-                ),
-            ) { backStackEntry ->
-                OnboardingCompleteScreen(
-                    viewModel { OnboardingCompleteViewModel() },
-                    onClickContinue = {
-                        // 传递 popUpTarget 给 OnboardingComplete
-                        val currentRoute = backStackEntry.toRoute<NavRoutes.OnboardingComplete>()
-                        aniNavigator.navigateMain(
-                            page = mainSceneInitialPage,
-                            popUpTargetInclusive = currentRoute.popUpTargetInclusive,
-                        )
-                    },
-                    backNavigation = {
-                        BackNavigationIconButton(
-                            {
-                                aniNavigator.popBackStack()
-                            },
-                        )
-                    },
-                    Modifier.fillMaxSize(),
-                    windowInsets,
-                )
-            }
-            composable<NavRoutes.Main>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-                typeMap = mapOf(
-                    typeOf<MainScreenPage>() to MainScreenPage.NavType,
-                ),
-            ) { backStack ->
-                val route = backStack.toRoute<NavRoutes.Main>()
-                val navigationLayoutType =
-                    AniNavigationSuiteDefaults.calculateLayoutType(
-                        currentWindowAdaptiveInfo1(),
+        composable<NavRoutes.BangumiAuthorize>(
+            enterTransition = enterTransition,
+            exitTransition = exitTransition,
+            popEnterTransition = popEnterTransition,
+            popExitTransition = popExitTransition,
+        ) {
+            val vm = viewModel<BangumiAuthorizeViewModel> { BangumiAuthorizeViewModel() }
+            BangumiAuthorizeScreen(
+                vm,
+                onNavigateBack = {
+                    aniNavigator.popBackStack(NavRoutes.BangumiAuthorize, true)
+                },
+                onNavigateSettings = {
+                    aniNavigator.navigateSettings()
+                },
+                contactActions = {
+                    AniContactList()
+                },
+                onAuthorizeSuccess = {
+                    aniNavigator.popBackStack(NavRoutes.BangumiAuthorize, true)
+                    aniNavigator.popBackStack(NavRoutes.EmailLoginVerify, true)
+                    aniNavigator.popBackStack(NavRoutes.EmailLoginStart, true)
+                },
+            )
+        }
+        composable<NavRoutes.Onboarding>(
+            enterTransition = enterTransition,
+            exitTransition = exitTransition,
+            popEnterTransition = popEnterTransition,
+            popExitTransition = popExitTransition,
+            typeMap = mapOf(
+                typeOf<NavRoutes?>() to NavRoutes.NavType,
+            ),
+        ) { backStackEntry ->
+            OnboardingScreen(
+                viewModel { OnboardingViewModel() },
+                onFinishOnboarding = {
+                    // 传递 popUpTarget 给 OnboardingComplete
+                    val currentRoute = backStackEntry.toRoute<NavRoutes.Onboarding>()
+                    aniNavigator.navigateOnboardingComplete(currentRoute.popUpTargetInclusive)
+                },
+                contactActions = { AniContactList() },
+                navigationIcon = {
+                    BackNavigationIconButton(
+                        {
+                            navController.popBackStack()
+                        },
                     )
+                },
+                Modifier
+                    .widthIn(max = WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND.dp)
+                    .fillMaxHeight(),
+                windowInsets,
+            )
+        }
+        composable<NavRoutes.OnboardingComplete>(
+            enterTransition = enterTransition,
+            exitTransition = exitTransition,
+            popEnterTransition = popEnterTransition,
+            popExitTransition = popExitTransition,
+            typeMap = mapOf(
+                typeOf<NavRoutes?>() to NavRoutes.NavType,
+            ),
+        ) { backStackEntry ->
+            OnboardingCompleteScreen(
+                viewModel { OnboardingCompleteViewModel() },
+                onClickContinue = {
+                    // 传递 popUpTarget 给 OnboardingComplete
+                    val currentRoute = backStackEntry.toRoute<NavRoutes.OnboardingComplete>()
+                    aniNavigator.navigateMain(
+                        page = mainSceneInitialPage,
+                        popUpTargetInclusive = currentRoute.popUpTargetInclusive,
+                    )
+                },
+                backNavigation = {
+                    BackNavigationIconButton(
+                        {
+                            aniNavigator.popBackStack()
+                        },
+                    )
+                },
+                Modifier.fillMaxSize(),
+                windowInsets,
+            )
+        }
+        composable<NavRoutes.Main>(
+            enterTransition = enterTransition,
+            exitTransition = exitTransition,
+            popEnterTransition = popEnterTransition,
+            popExitTransition = popExitTransition,
+            typeMap = mapOf(
+                typeOf<MainScreenPage>() to MainScreenPage.NavType,
+            ),
+        ) { backStack ->
+            val route = backStack.toRoute<NavRoutes.Main>()
+            val navigationLayoutType =
+                AniNavigationSuiteDefaults.calculateLayoutType(
+                    currentWindowAdaptiveInfo1(),
+                )
 
-                val vm = viewModel { MainScreenSharedViewModel() }
-                var currentPage by rememberSaveable { mutableStateOf(route.initialPage) }
+            val vm = viewModel { MainScreenSharedViewModel() }
+            var currentPage by rememberSaveable { mutableStateOf(route.initialPage) }
 
-                OverrideNavigation(
-                    {
-                        object : AniNavigator by it {
-                            override fun navigateMain(page: MainScreenPage, popUpTargetInclusive: NavRoutes?) {
-                                currentPage = page
-                            }
+            OverrideNavigation(
+                {
+                    object : AniNavigator by it {
+                        override fun navigateMain(page: MainScreenPage, popUpTargetInclusive: NavRoutes?) {
+                            currentPage = page
                         }
-                    },
-                ) {
-                    /*CompositionLocalProvider(
-                        LocalSharedTransitionScopeProvider provides SharedTransitionScopeProvider(
-                            this@SharedTransitionLayout, this,
-                        ),
-                    ) {*/
-                    val selfInfo by vm.selfInfo.collectAsState() // not -WithLifecycle
-                    MainScreen(
-                        page = currentPage,
-                        selfInfo = selfInfo,
-                        onNavigateToPage = { currentPage = it },
-                        onNavigateToSettings = { aniNavigator.navigateSettings(it) },
-                        onNavigateToSearch = { aniNavigator.navigateSubjectSearch() },
-                        navigationLayoutType = navigationLayoutType,
-                    )
-                    // }
-                }
-            }
-            composable<NavRoutes.SubjectSearch>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-            ) {
-                val route = it.toRoute<NavRoutes.SubjectSearch>()
-                val navigator = LocalNavigator.current
-                val vm = viewModel(key = route.toString()) { SearchViewModel(route.toQuery()) }
-
-                SearchScreen(
-                    vm,
-                    onNavigateBack = {
-                        aniNavigator.popBackStack()
-                    },
-                    onNavigateToSubjectDetails = { subjectId, placeholder ->
-                        navigator.navigateSubjectDetails(subjectId, placeholder)
-                    },
-                    onNavigateToEpisodeDetails = { subjectId, episodeId ->
-                        navigator.navigateEpisodeDetails(subjectId, episodeId)
-                    },
-                    windowInsets = windowInsets,
-                )
-            }
-            composable<NavRoutes.SubjectDetail>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-                typeMap = mapOf(
-                    typeOf<SubjectDetailPlaceholder?>() to SubjectDetailPlaceholder.NavType,
-                ),
-            ) { backStackEntry ->
-                val details = backStackEntry.toRoute<NavRoutes.SubjectDetail>()
-                val vm = viewModel<SubjectDetailsViewModel>(key = details.subjectId.toString()) {
-                    val placeholder = details.placeholder?.run {
-                        SubjectInfo.createPlaceholder(id, name, coverUrl, nameCN)
                     }
-                    SubjectDetailsViewModel(details.subjectId, placeholder)
-                }
+                },
+            ) {
                 /*CompositionLocalProvider(
                     LocalSharedTransitionScopeProvider provides SharedTransitionScopeProvider(
                         this@SharedTransitionLayout, this,
                     ),
                 ) {*/
-                SubjectDetailsScreen(
-                    vm,
-                    onPlay = { aniNavigator.navigateEpisodeDetails(details.subjectId, it) },
-                    onLoadErrorRetry = { vm.reload() },
-                    onClickTag = { aniNavigator.navigateSubjectSearch(NavRoutes.SubjectSearch(tags = listOf(it.name))) },
-                    windowInsets = windowInsets,
-                    navigationIcon = {
-                        Row {
-                            BackNavigationIconButton(
-                                {
-                                    aniNavigator.popBackStack(details, inclusive = true)
-                                },
-                            )
-                            TopAppBarActionButton(
-                                {
-                                    aniNavigator.popBackOrNavigateToMain(mainSceneInitialPage)
-                                },
-                            ) {
-                                Icon(
-                                    Icons.Rounded.Home,
-                                    contentDescription = null,
-                                )
-                            }
-                        }
-                    },
+                val selfInfo by vm.selfInfo.collectAsState() // not -WithLifecycle
+                MainScreen(
+                    page = currentPage,
+                    selfInfo = selfInfo,
+                    onNavigateToPage = { currentPage = it },
+                    onNavigateToSettings = { aniNavigator.navigateSettings(it) },
+                    onNavigateToSearch = { aniNavigator.navigateSubjectSearch() },
+                    navigationLayoutType = navigationLayoutType,
                 )
                 // }
             }
-            composable<NavRoutes.EpisodeDetail>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-            ) { backStackEntry ->
-                val route = backStackEntry.toRoute<NavRoutes.EpisodeDetail>()
-                val context = LocalContext.current
-                val vm = viewModel<EpisodeViewModel>(
-                    key = route.toString(),
-                ) {
-                    EpisodeViewModel(
-                        subjectId = route.subjectId,
-                        initialEpisodeId = route.episodeId,
-                        initialIsFullscreen = false,
-                        context,
-                    )
+        }
+        composable<NavRoutes.SubjectSearch>(
+            enterTransition = enterTransition,
+            exitTransition = exitTransition,
+            popEnterTransition = popEnterTransition,
+            popExitTransition = popExitTransition,
+        ) {
+            val route = it.toRoute<NavRoutes.SubjectSearch>()
+            val navigator = LocalNavigator.current
+            val vm = viewModel(key = route.toString()) { SearchViewModel(route.toQuery()) }
+
+            SearchScreen(
+                vm,
+                onNavigateBack = {
+                    aniNavigator.popBackStack()
+                },
+                onNavigateToSubjectDetails = { subjectId, placeholder ->
+                    navigator.navigateSubjectDetails(subjectId, placeholder)
+                },
+                onNavigateToEpisodeDetails = { subjectId, episodeId ->
+                    navigator.navigateEpisodeDetails(subjectId, episodeId)
+                },
+                windowInsets = windowInsets,
+            )
+        }
+        composable<NavRoutes.SubjectDetail>(
+            enterTransition = enterTransition,
+            exitTransition = exitTransition,
+            popEnterTransition = popEnterTransition,
+            popExitTransition = popExitTransition,
+            typeMap = mapOf(
+                typeOf<SubjectDetailPlaceholder?>() to SubjectDetailPlaceholder.NavType,
+            ),
+        ) { backStackEntry ->
+            val details = backStackEntry.toRoute<NavRoutes.SubjectDetail>()
+            val vm = viewModel<SubjectDetailsViewModel>(key = details.subjectId.toString()) {
+                val placeholder = details.placeholder?.run {
+                    SubjectInfo.createPlaceholder(id, name, coverUrl, nameCN)
                 }
-                EpisodeScreen(vm, Modifier.fillMaxSize(), windowInsets)
+                SubjectDetailsViewModel(details.subjectId, placeholder)
             }
-            composable<NavRoutes.Settings>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-                typeMap = mapOf(
-                    typeOf<SettingsTab?>() to SettingsTab.NavType,
+            /*CompositionLocalProvider(
+                LocalSharedTransitionScopeProvider provides SharedTransitionScopeProvider(
+                    this@SharedTransitionLayout, this,
                 ),
-            ) { backStackEntry ->
-                val route = backStackEntry.toRoute<NavRoutes.Settings>()
-                SettingsScreen(
-                    viewModel {
-                        SettingsViewModel()
-                    },
-                    onNavigateToEmailLogin = { aniNavigator.navigateEmailLoginStart() },
-                    onNavigateToBangumiOAuth = { aniNavigator.navigateBangumiAuthorize() },
-                    Modifier.fillMaxSize(),
-                    route.tab,
-                    navigationIcon = {
+            ) {*/
+            SubjectDetailsScreen(
+                vm,
+                onPlay = { aniNavigator.navigateEpisodeDetails(details.subjectId, it) },
+                onLoadErrorRetry = { vm.reload() },
+                onClickTag = { aniNavigator.navigateSubjectSearch(NavRoutes.SubjectSearch(tags = listOf(it.name))) },
+                windowInsets = windowInsets,
+                navigationIcon = {
+                    Row {
                         BackNavigationIconButton(
                             {
-                                aniNavigator.popBackStack(route, inclusive = true)
+                                aniNavigator.popBackStack(details, inclusive = true)
                             },
                         )
-                    },
-                )
-            }
-            composable<NavRoutes.PlaybackHistory>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-            ) { backStackEntry ->
-                val route = backStackEntry.toRoute<NavRoutes.PlaybackHistory>()
-                PlaybackHistoryScreen(
-                    vm = viewModel { PlaybackHistoryViewModel() },
-                    onNavigateBack = { aniNavigator.popBackStack(route, inclusive = true) },
-                    onOpenHistory = { history ->
-                        val subjectId = history.subjectId
-                        if (subjectId != null) {
-                            aniNavigator.navigateEpisodeDetails(subjectId, history.episodeId)
-                        }
-                    },
-                    onOpenSyncStatus = {
-                        aniNavigator.navigatePlaybackHistorySyncStatus()
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                    navigationIcon = {
-                        BackNavigationIconButton(
+                        TopAppBarActionButton(
                             {
-                                aniNavigator.popBackStack(route, inclusive = true)
+                                aniNavigator.popBackOrNavigateToMain(mainSceneInitialPage)
                             },
-                        )
-                    },
-                    windowInsets = windowInsetsWithoutTitleBar,
-                )
-            }
-            composable<NavRoutes.PlaybackHistorySyncStatus>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-            ) { backStackEntry ->
-                val route = backStackEntry.toRoute<NavRoutes.PlaybackHistorySyncStatus>()
-                PlaybackHistorySyncStatusScreen(
-                    vm = viewModel { PlaybackHistoryViewModel() },
-                    onNavigateBack = { aniNavigator.popBackStack(route, inclusive = true) },
-                    modifier = Modifier.fillMaxSize(),
-                    navigationIcon = {
-                        BackNavigationIconButton(
-                            {
-                                aniNavigator.popBackStack(route, inclusive = true)
-                            },
-                        )
-                    },
-                    windowInsets = windowInsetsWithoutTitleBar,
-                )
-            }
-            composable<NavRoutes.Caches>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-            ) { backStackEntry ->
-                val route = backStackEntry.toRoute<NavRoutes.Caches>()
-                val selfInfo by remember { SelfInfoStateProducer() }.flow.collectAsState(null)
-                CacheManagementScreen(
-                    vm = viewModel { CacheManagementViewModel() },
-                    selfInfo = selfInfo,
-                    onPlay = {
-                        aniNavigator.navigateEpisodeDetails(it.subjectId, it.episodeId)
-                    },
-                    onClickLogin = { },
-                    onNavigateCacheDetail = { aniNavigator.navigateCacheDetails(it) },
-                    modifier = Modifier.fillMaxSize(),
-                    navigationIcon = {
-                        BackNavigationIconButton(
-                            {
-                                aniNavigator.popBackStack(route, inclusive = true)
-                            },
-                        )
-                    },
-                )
-            }
-            composable<NavRoutes.CacheDetail>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-            ) { backStackEntry ->
-                val route = backStackEntry.toRoute<NavRoutes.CacheDetail>()
-                MediaCacheDetailsScreen(
-                    viewModel(key = route.toString()) { MediaCacheDetailsPageViewModel(route.cacheId) },
-                    navigationIcon = {
-                        BackNavigationIconButton(
-                            {
-                                aniNavigator.popBackStack(route, inclusive = true)
-                            },
-                        )
-                    },
-                    Modifier.fillMaxSize(),
-                    windowInsets = windowInsets,
-                )
-            }
-            composable<NavRoutes.PersonDetail>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-            ) { backStackEntry ->
-                val route = backStackEntry.toRoute<NavRoutes.PersonDetail>()
-                val vm = viewModel<PersonDetailsViewModel>(key = "person-${route.personId}") {
-                    PersonDetailsViewModel(route.personId)
-                }
-                PersonDetailsScreen(
-                    vm,
-                    Modifier.fillMaxSize(),
-                    windowInsets = windowInsets,
-                    navigationIcon = {
-                        BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
-                    },
-                )
-            }
-            composable<NavRoutes.CharacterDetail>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-            ) { backStackEntry ->
-                val route = backStackEntry.toRoute<NavRoutes.CharacterDetail>()
-                val vm = viewModel<CharacterDetailsViewModel>(key = "character-${route.characterId}") {
-                    CharacterDetailsViewModel(route.characterId)
-                }
-                CharacterDetailsScreen(
-                    vm,
-                    Modifier.fillMaxSize(),
-                    windowInsets = windowInsets,
-                    navigationIcon = {
-                        BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
-                    },
-                )
-            }
-            composable<NavRoutes.SubjectCaches>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-            ) { backStackEntry ->
-                val route = backStackEntry.toRoute<NavRoutes.SubjectCaches>()
-                // Don't use rememberViewModel to save memory
-                val vm = remember(route.subjectId) { SubjectCacheViewModelImpl(route.subjectId) }
-                SubjectCacheScreen(
-                    vm, Modifier.fillMaxSize(), windowInsets,
-                    navigationIcon = {
-                        BackNavigationIconButton(
-                            {
-                                aniNavigator.popBackStack(route, inclusive = true)
-                            },
-                        )
-                    },
-                )
-            }
-            composable<NavRoutes.EditMediaSource>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-            ) { backStackEntry ->
-                val route = backStackEntry.toRoute<NavRoutes.EditMediaSource>()
-                val factoryId = FactoryId(route.factoryId)
-                val mediaSourceInstanceId = route.mediaSourceInstanceId
-                when (factoryId) {
-                    RssMediaSource.FactoryId -> EditRssMediaSourceScreen(
-                        viewModel<EditRssMediaSourceViewModel>(key = mediaSourceInstanceId) {
-                            EditRssMediaSourceViewModel(mediaSourceInstanceId)
-                        },
-                        mediaDetailsColumn = { media ->
-                            MediaDetailsLazyGrid(
-                                MediaDetails.from(media, null, null),
-                                Modifier.fillMaxSize(),
-                                showSourceInfo = false,
+                        ) {
+                            Icon(
+                                Icons.Rounded.Home,
+                                contentDescription = null,
                             )
+                        }
+                    }
+                },
+            )
+            // }
+        }
+        composable<NavRoutes.EpisodeDetail>(
+            enterTransition = enterTransition,
+            exitTransition = exitTransition,
+            popEnterTransition = popEnterTransition,
+            popExitTransition = popExitTransition,
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<NavRoutes.EpisodeDetail>()
+            val context = LocalContext.current
+            val vm = viewModel<EpisodeViewModel>(
+                key = route.toString(),
+            ) {
+                EpisodeViewModel(
+                    subjectId = route.subjectId,
+                    initialEpisodeId = route.episodeId,
+                    initialIsFullscreen = false,
+                    context,
+                )
+            }
+            EpisodeScreen(vm, Modifier.fillMaxSize(), windowInsets)
+        }
+        composable<NavRoutes.Settings>(
+            enterTransition = enterTransition,
+            exitTransition = exitTransition,
+            popEnterTransition = popEnterTransition,
+            popExitTransition = popExitTransition,
+            typeMap = mapOf(
+                typeOf<SettingsTab?>() to SettingsTab.NavType,
+            ),
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<NavRoutes.Settings>()
+            SettingsScreen(
+                viewModel {
+                    SettingsViewModel()
+                },
+                onNavigateToEmailLogin = { aniNavigator.navigateEmailLoginStart() },
+                onNavigateToBangumiOAuth = { aniNavigator.navigateBangumiAuthorize() },
+                Modifier.fillMaxSize(),
+                route.tab,
+                navigationIcon = {
+                    BackNavigationIconButton(
+                        {
+                            aniNavigator.popBackStack(route, inclusive = true)
+                        },
+                    )
+                },
+            )
+        }
+        composable<NavRoutes.PlaybackHistory>(
+            enterTransition = enterTransition,
+            exitTransition = exitTransition,
+            popEnterTransition = popEnterTransition,
+            popExitTransition = popExitTransition,
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<NavRoutes.PlaybackHistory>()
+            PlaybackHistoryScreen(
+                vm = viewModel { PlaybackHistoryViewModel() },
+                onNavigateBack = { aniNavigator.popBackStack(route, inclusive = true) },
+                onOpenHistory = { history ->
+                    val subjectId = history.subjectId
+                    if (subjectId != null) {
+                        aniNavigator.navigateEpisodeDetails(subjectId, history.episodeId)
+                    }
+                },
+                onOpenSyncStatus = {
+                    aniNavigator.navigatePlaybackHistorySyncStatus()
+                },
+                modifier = Modifier.fillMaxSize(),
+                navigationIcon = {
+                    BackNavigationIconButton(
+                        {
+                            aniNavigator.popBackStack(route, inclusive = true)
+                        },
+                    )
+                },
+                windowInsets = windowInsetsWithoutTitleBar,
+            )
+        }
+        composable<NavRoutes.PlaybackHistorySyncStatus>(
+            enterTransition = enterTransition,
+            exitTransition = exitTransition,
+            popEnterTransition = popEnterTransition,
+            popExitTransition = popExitTransition,
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<NavRoutes.PlaybackHistorySyncStatus>()
+            PlaybackHistorySyncStatusScreen(
+                vm = viewModel { PlaybackHistoryViewModel() },
+                onNavigateBack = { aniNavigator.popBackStack(route, inclusive = true) },
+                modifier = Modifier.fillMaxSize(),
+                navigationIcon = {
+                    BackNavigationIconButton(
+                        {
+                            aniNavigator.popBackStack(route, inclusive = true)
+                        },
+                    )
+                },
+                windowInsets = windowInsetsWithoutTitleBar,
+            )
+        }
+        composable<NavRoutes.Caches>(
+            enterTransition = enterTransition,
+            exitTransition = exitTransition,
+            popEnterTransition = popEnterTransition,
+            popExitTransition = popExitTransition,
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<NavRoutes.Caches>()
+            val selfInfo by remember { SelfInfoStateProducer() }.flow.collectAsState(null)
+            CacheManagementScreen(
+                vm = viewModel { CacheManagementViewModel() },
+                selfInfo = selfInfo,
+                onPlay = {
+                    aniNavigator.navigateEpisodeDetails(it.subjectId, it.episodeId)
+                },
+                onClickLogin = { },
+                onNavigateCacheDetail = { aniNavigator.navigateCacheDetails(it) },
+                modifier = Modifier.fillMaxSize(),
+                navigationIcon = {
+                    BackNavigationIconButton(
+                        {
+                            aniNavigator.popBackStack(route, inclusive = true)
+                        },
+                    )
+                },
+            )
+        }
+        composable<NavRoutes.CacheDetail>(
+            enterTransition = enterTransition,
+            exitTransition = exitTransition,
+            popEnterTransition = popEnterTransition,
+            popExitTransition = popExitTransition,
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<NavRoutes.CacheDetail>()
+            MediaCacheDetailsScreen(
+                viewModel(key = route.toString()) { MediaCacheDetailsPageViewModel(route.cacheId) },
+                navigationIcon = {
+                    BackNavigationIconButton(
+                        {
+                            aniNavigator.popBackStack(route, inclusive = true)
+                        },
+                    )
+                },
+                Modifier.fillMaxSize(),
+                windowInsets = windowInsets,
+            )
+        }
+        composable<NavRoutes.PersonDetail>(
+            enterTransition = enterTransition,
+            exitTransition = exitTransition,
+            popEnterTransition = popEnterTransition,
+            popExitTransition = popExitTransition,
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<NavRoutes.PersonDetail>()
+            val vm = viewModel<PersonDetailsViewModel>(key = "person-${route.personId}") {
+                PersonDetailsViewModel(route.personId)
+            }
+            PersonDetailsScreen(
+                vm,
+                Modifier.fillMaxSize(),
+                windowInsets = windowInsets,
+                navigationIcon = {
+                    BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
+                },
+            )
+        }
+        composable<NavRoutes.CharacterDetail>(
+            enterTransition = enterTransition,
+            exitTransition = exitTransition,
+            popEnterTransition = popEnterTransition,
+            popExitTransition = popExitTransition,
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<NavRoutes.CharacterDetail>()
+            val vm = viewModel<CharacterDetailsViewModel>(key = "character-${route.characterId}") {
+                CharacterDetailsViewModel(route.characterId)
+            }
+            CharacterDetailsScreen(
+                vm,
+                Modifier.fillMaxSize(),
+                windowInsets = windowInsets,
+                navigationIcon = {
+                    BackNavigationIconButton({ aniNavigator.popBackStack(route, inclusive = true) })
+                },
+            )
+        }
+        composable<NavRoutes.SubjectCaches>(
+            enterTransition = enterTransition,
+            exitTransition = exitTransition,
+            popEnterTransition = popEnterTransition,
+            popExitTransition = popExitTransition,
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<NavRoutes.SubjectCaches>()
+            // Don't use rememberViewModel to save memory
+            val vm = remember(route.subjectId) { SubjectCacheViewModelImpl(route.subjectId) }
+            SubjectCacheScreen(
+                vm, Modifier.fillMaxSize(), windowInsets,
+                navigationIcon = {
+                    BackNavigationIconButton(
+                        {
+                            aniNavigator.popBackStack(route, inclusive = true)
+                        },
+                    )
+                },
+            )
+        }
+        composable<NavRoutes.EditMediaSource>(
+            enterTransition = enterTransition,
+            exitTransition = exitTransition,
+            popEnterTransition = popEnterTransition,
+            popExitTransition = popExitTransition,
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<NavRoutes.EditMediaSource>()
+            val factoryId = FactoryId(route.factoryId)
+            val mediaSourceInstanceId = route.mediaSourceInstanceId
+            when (factoryId) {
+                RssMediaSource.FactoryId -> EditRssMediaSourceScreen(
+                    viewModel<EditRssMediaSourceViewModel>(key = mediaSourceInstanceId) {
+                        EditRssMediaSourceViewModel(mediaSourceInstanceId)
+                    },
+                    mediaDetailsColumn = { media ->
+                        MediaDetailsLazyGrid(
+                            MediaDetails.from(media, null, null),
+                            Modifier.fillMaxSize(),
+                            showSourceInfo = false,
+                        )
+                    },
+                    Modifier,
+                    windowInsets,
+                    navigationIcon = {
+                        BackNavigationIconButton(
+                            {
+                                aniNavigator.popBackStack(route, inclusive = true)
+                            },
+                        )
+                    },
+                )
+
+                SelectorMediaSource.FactoryId -> {
+                    val context = LocalContext.current
+                    EditSelectorMediaSourceScreen(
+                        viewModel<EditSelectorMediaSourceViewModel>(key = mediaSourceInstanceId) {
+                            EditSelectorMediaSourceViewModel(mediaSourceInstanceId, context)
                         },
                         Modifier,
-                        windowInsets,
+                        windowInsets = windowInsets,
                         navigationIcon = {
                             BackNavigationIconButton(
                                 {
@@ -678,90 +695,73 @@ private fun AniAppContentImpl(
                             )
                         },
                     )
-
-                    SelectorMediaSource.FactoryId -> {
-                        val context = LocalContext.current
-                        EditSelectorMediaSourceScreen(
-                            viewModel<EditSelectorMediaSourceViewModel>(key = mediaSourceInstanceId) {
-                                EditSelectorMediaSourceViewModel(mediaSourceInstanceId, context)
-                            },
-                            Modifier,
-                            windowInsets = windowInsets,
-                            navigationIcon = {
-                                BackNavigationIconButton(
-                                    {
-                                        aniNavigator.popBackStack(route, inclusive = true)
-                                    },
-                                )
-                            },
-                        )
-                    }
-
-                    else -> error("Unknown factoryId: $factoryId")
                 }
-            }
-            composable<NavRoutes.TorrentPeerSettings>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-            ) { backStackEntry ->
-                val route = backStackEntry.toRoute<NavRoutes.TorrentPeerSettings>()
-                val viewModel = viewModel { PeerFilterSettingsViewModel() }
-                PeerFilterSettingsScreen(
-                    viewModel.state,
-                    navigationIcon = {
-                        BackNavigationIconButton(
-                            {
-                                aniNavigator.popBackStack(route, inclusive = true)
-                            },
-                        )
-                    },
-                )
-            }
-            composable<NavRoutes.Schedule>(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-            ) { backStackEntry ->
-                val route = backStackEntry.toRoute<NavRoutes.Schedule>()
 
-                val vm = viewModel { ScheduleViewModel() }
-                val presentation by vm.presentationFlow.collectAsStateWithLifecycle()
-                ScheduleScreen(
-                    presentation,
-                    onRetry = { vm.refresh() },
-                    onClickItem = {
-                        aniNavigator.navigateSubjectDetails(
-                            it.subjectId,
-                            placeholder = SubjectDetailPlaceholder(
-                                id = it.subjectId,
-                                nameCN = it.subjectTitle,
-                                coverUrl = it.imageUrl,
-                            ),
-                        )
-                    },
-                    Modifier.fillMaxSize(),
-                    windowInsets = windowInsets,
-                    navigationIcon = {
-                        BackNavigationIconButton(
-                            {
-                                aniNavigator.popBackStack(route, inclusive = true)
-                            },
-                        )
-                    },
-                    state = vm.pageState,
-                )
+                else -> error("Unknown factoryId: $factoryId")
             }
         }
+        composable<NavRoutes.TorrentPeerSettings>(
+            enterTransition = enterTransition,
+            exitTransition = exitTransition,
+            popEnterTransition = popEnterTransition,
+            popExitTransition = popExitTransition,
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<NavRoutes.TorrentPeerSettings>()
+            val viewModel = viewModel { PeerFilterSettingsViewModel() }
+            PeerFilterSettingsScreen(
+                viewModel.state,
+                navigationIcon = {
+                    BackNavigationIconButton(
+                        {
+                            aniNavigator.popBackStack(route, inclusive = true)
+                        },
+                    )
+                },
+            )
+        }
+        composable<NavRoutes.Schedule>(
+            enterTransition = enterTransition,
+            exitTransition = exitTransition,
+            popEnterTransition = popEnterTransition,
+            popExitTransition = popExitTransition,
+        ) { backStackEntry ->
+            val route = backStackEntry.toRoute<NavRoutes.Schedule>()
 
-        LaunchedEffect(true, navController) {
-            navController.currentBackStack.collect { list ->
-                if (list.isEmpty()) { // workaround for 快速点击左上角返回键会白屏.
-                    navController.navigate(initialRoute)
-                }
+            val vm = viewModel { ScheduleViewModel() }
+            val presentation by vm.presentationFlow.collectAsStateWithLifecycle()
+            ScheduleScreen(
+                presentation,
+                onRetry = { vm.refresh() },
+                onClickItem = {
+                    aniNavigator.navigateSubjectDetails(
+                        it.subjectId,
+                        placeholder = SubjectDetailPlaceholder(
+                            id = it.subjectId,
+                            nameCN = it.subjectTitle,
+                            coverUrl = it.imageUrl,
+                        ),
+                    )
+                },
+                Modifier.fillMaxSize(),
+                windowInsets = windowInsets,
+                navigationIcon = {
+                    BackNavigationIconButton(
+                        {
+                            aniNavigator.popBackStack(route, inclusive = true)
+                        },
+                    )
+                },
+                state = vm.pageState,
+            )
+        }
+    }
+
+    LaunchedEffect(true, navController) {
+        navController.currentBackStack.collect { list ->
+            if (list.isEmpty()) { // workaround for 快速点击左上角返回键会白屏.
+                navController.navigate(initialRoute)
             }
+        }
     }
 }
 

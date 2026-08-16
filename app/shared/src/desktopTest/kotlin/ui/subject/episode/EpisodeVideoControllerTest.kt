@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.ui.subject.episode
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -61,6 +63,7 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
+import me.him188.ani.app.ui.foundation.navigation.onBackNavigationInput
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.doesNotExist
 import me.him188.ani.app.ui.framework.exists
@@ -1107,7 +1110,7 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
-    fun `touch - keyboard shortcuts - escape dismisses detached editor before exiting fullscreen`() =
+    fun `touch - back navigation input - escape dismisses detached editor before exiting fullscreen`() =
         runAniComposeUiTest {
             var exitFullscreenCount = 0
             var editorEscapeCount = 0
@@ -1115,16 +1118,22 @@ class EpisodeVideoControllerTest {
             val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
             setContent {
                 CompositionLocalProvider(LocalPlatform provides Platform.Android(Arch.ARMV8A)) {
-                    Player(
-                        GestureFamily.TOUCH,
-                        playerControllerState = visibleControllerState,
-                        onExitFullscreen = { exitFullscreenCount++ },
-                        showDanmakuEditor = { showDanmakuEditor },
-                        onEditorEscape = {
-                            editorEscapeCount++
-                            showDanmakuEditor = false
-                        },
-                    )
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .onBackNavigationInput { exitFullscreenCount++ },
+                    ) {
+                        Player(
+                            GestureFamily.TOUCH,
+                            playerControllerState = visibleControllerState,
+                            onExitFullscreen = { exitFullscreenCount++ },
+                            showDanmakuEditor = { showDanmakuEditor },
+                            onEditorEscape = {
+                                editorEscapeCount++
+                                showDanmakuEditor = false
+                            },
+                        )
+                    }
                 }
             }
             waitForIdle()
