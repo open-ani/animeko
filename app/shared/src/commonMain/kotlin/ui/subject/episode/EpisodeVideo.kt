@@ -375,6 +375,7 @@ internal fun EpisodeVideoImpl(
                     audioController = audioController,
                     brightnessController = brightnessController,
                     playbackSpeedControllerState,
+                    isUnderlyingPlayerFullscreen = isFullscreen,
                     Modifier,
                     onTogglePauseResume = {
                         if (playerState.state.value.playWhenReady) {
@@ -388,8 +389,9 @@ internal fun EpisodeVideoImpl(
                         }
                         playerState.togglePlayWhenReady()
                     },
-                    onToggleFullscreen = onClickFullScreen,
-                    onExitFullscreen = onExitFullscreen,
+                    onToggleFullscreen = {
+                        if (!isFullscreen) onClickFullScreen() else onExitFullscreen()
+                    },
                     onToggleDanmaku = onToggleDanmaku,
                     onTogglePlayerStats = {
                         showPlayerStats = !showPlayerStats

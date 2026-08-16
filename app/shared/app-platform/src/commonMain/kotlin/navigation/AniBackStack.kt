@@ -41,7 +41,7 @@ private val AniBackStackSaver: Saver<SnapshotStateList<NavRoutes>, Any> = listSa
         if (saved.isEmpty()) {
             null
         } else {
-            saved.map { json.decodeFromString(NavRoutes.serializer(), it as String) }.toMutableStateList()
+            saved.map { json.decodeFromString(NavRoutes.serializer(), it) }.toMutableStateList()
         }
     },
 )

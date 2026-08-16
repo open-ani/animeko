@@ -252,7 +252,7 @@ private class AniNavigatorImpl : AniNavigator {
         val index = stack.indexOfLast { it == route }
         if (index == -1) return
         val targetSize = if (inclusive) index else index + 1
-        popTo(stack, targetSize)
+        stack.popTo(targetSize)
     }
 
     override fun navigateMain(page: MainScreenPage, popUpTargetInclusive: NavRoutes?) {
@@ -262,7 +262,7 @@ private class AniNavigatorImpl : AniNavigator {
             if (popUpTargetInclusive != null) {
                 val index = stack.indexOfLast { it == popUpTargetInclusive }
                 if (index != -1) {
-                    popTo(stack, index, keepAtLeastOne = false)
+                    stack.popTo(index, keepAtLeastOne = false)
                 }
             }
             stack.add(NavRoutes.Main(page))
@@ -273,7 +273,7 @@ private class AniNavigatorImpl : AniNavigator {
         val stack = currentBackStack
         val firstMain = stack.indexOfFirst { it is NavRoutes.Main }
         if (firstMain != -1) {
-            popTo(stack, firstMain + 1)
+            stack.popTo(firstMain + 1)
             return
         }
         Snapshot.withMutableSnapshot {
@@ -288,10 +288,10 @@ private class AniNavigatorImpl : AniNavigator {
      * [keepAtLeastOne] 为 `true` 时至少保留一个元素, 避免空栈让 NavDisplay 抛异常.
      * 只有在调用方保证紧接着会压入新页面时才能传 `false`.
      */
-    private fun popTo(stack: SnapshotStateList<NavRoutes>, targetSize: Int, keepAtLeastOne: Boolean = true) {
+    private fun SnapshotStateList<NavRoutes>.popTo(targetSize: Int, keepAtLeastOne: Boolean = true) {
         val size = if (keepAtLeastOne) targetSize.coerceAtLeast(1) else targetSize
-        while (stack.size > size) {
-            stack.removeAt(stack.lastIndex)
+        while (this.size > size) {
+            removeAt(lastIndex)
         }
     }
 }

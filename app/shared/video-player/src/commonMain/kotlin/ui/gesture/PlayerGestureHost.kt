@@ -86,7 +86,6 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.ui.foundation.input.asGesturePointerType
 import me.him188.ani.app.ui.foundation.input.trackActiveInputSource
-import me.him188.ani.app.ui.foundation.layout.isSystemInFullscreen
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.video_player_release_to_cancel
 import me.him188.ani.app.utils.fixToString
@@ -576,6 +575,7 @@ fun PlayerGestureHost(
     audioController: LevelController,
     brightnessController: LevelController,
     playbackSpeedControllerState: PlaybackSpeedControllerState?,
+    isUnderlyingPlayerFullscreen: Boolean,
     modifier: Modifier = Modifier,
     family: GestureFamily = gestureFamilyOf(
         LocalActiveInputSource.current.current,
@@ -583,7 +583,6 @@ fun PlayerGestureHost(
     ),
     onTogglePauseResume: () -> Unit = {},
     onToggleFullscreen: () -> Unit = {},
-    onExitFullscreen: () -> Unit = {},
     onToggleDanmaku: () -> Unit = {},
     onTogglePlayerStats: () -> Unit = {},
 ) {
@@ -618,7 +617,6 @@ fun PlayerGestureHost(
         // 平台问题而非输入方式问题: 桌面没有系统级 AudioManager, 音量由 mediamp 提供.
         // 用 GestureFamily 判断会让混合设备上键盘音量键的作用目标随输入方式跳变.
         val useMediaAudioController = LocalPlatform.current.isDesktop()
-        val systemFullscreen = isSystemInFullscreen()
         val playerFocusState = controllerState.focusState
 
         val keyboardModifier = modifier
@@ -669,7 +667,7 @@ fun PlayerGestureHost(
                 onToggleDanmaku = onToggleDanmaku,
                 onTogglePlayerStats = onTogglePlayerStats,
             )
-            .playerFocusHost(playerFocusState, systemFullscreen)
+            .playerFocusHost(playerFocusState, isUnderlyingPlayerFullscreen)
 
         if (family.autoHideController) {
             LaunchedEffect(controllerState.visibility, controllerState.alwaysOn) {
@@ -831,10 +829,10 @@ fun PlayerGestureHost(
                             enabled = swipeGesturesEnabled && !seekerState.isSeeking && !adjustingVolumeOrBrightness &&
                                     !adjustingForwardOrBackward,
                             onEnterFullscreen = {
-                                if (!systemFullscreen) onToggleFullscreen()
+                                if (!isUnderlyingPlayerFullscreen) onToggleFullscreen()
                             },
                             onExitFullscreen = {
-                                if (systemFullscreen) onExitFullscreen()
+                                if (isUnderlyingPlayerFullscreen) onToggleFullscreen()
                             },
                         )
                         .weight(1f)
@@ -862,7 +860,7 @@ fun PlayerGestureHost(
             }
         }
 
-        if (family.clickToToggleController && systemFullscreen) {
+        if (family.clickToToggleController && isUnderlyingPlayerFullscreen) {
             // 状态栏区域响应点击手势
             Box(
                 Modifier.fillMaxWidth()
