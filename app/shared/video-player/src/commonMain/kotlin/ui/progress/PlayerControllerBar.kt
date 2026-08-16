@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -97,23 +97,53 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.domain.media.player.MediaCacheProgressInfo
+import me.him188.ani.app.ui.foundation.SteppedSlider
 import me.him188.ani.app.ui.foundation.dialogs.PlatformPopupProperties
 import me.him188.ani.app.ui.foundation.effects.onKey
 import me.him188.ani.app.ui.foundation.ifThen
-import me.him188.ani.app.ui.foundation.SteppedSlider
-import me.him188.ani.app.ui.lang.*
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.video_player_cancel
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_1
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_10
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_11
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_12
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_13
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_14
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_15
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_16
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_17
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_18
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_19
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_2
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_20
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_3
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_4
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_5
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_6
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_7
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_8
+import me.him188.ani.app.ui.lang.video_player_danmaku_placeholder_9
+import me.him188.ani.app.ui.lang.video_player_disable_danmaku
+import me.him188.ani.app.ui.lang.video_player_enable_danmaku
+import me.him188.ani.app.ui.lang.video_player_mute
+import me.him188.ani.app.ui.lang.video_player_next_episode
+import me.him188.ani.app.ui.lang.video_player_select_episode
+import me.him188.ani.app.ui.lang.video_player_send
+import me.him188.ani.app.ui.lang.video_player_skip_op_ed
+import me.him188.ani.app.ui.lang.video_player_speed
+import me.him188.ani.app.ui.lang.video_player_volume
+import me.him188.ani.app.utils.formatSpeedValue
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.keepLayoutWhenHidden
 import me.him188.ani.app.videoplayer.ui.renderAspectRatioMode
 import me.him188.ani.app.videoplayer.ui.top.needWorkaroundForFocusManager
-import me.him188.ani.app.utils.formatSpeedValue
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
-import org.jetbrains.compose.resources.*
 
 const val TAG_SELECT_EPISODE_ICON_BUTTON = "SelectEpisodeIconButton"
 const val TAG_SPEED_SWITCHER_TEXT_BUTTON = "SpeedSwitcherTextButton"
@@ -123,6 +153,8 @@ const val TAG_SPEED_SWITCHER_VALUE_INDICATOR = "SpeedSwitcherValueIndicator"
 const val TAG_DANMAKU_ICON_BUTTON = "DanmakuIconButton"
 const val TAG_VIDEO_ASPECT_RATIO_SELECTOR_TEXT_BUTTON = "VideoAspectRatioTextButton"
 const val TAG_VIDEO_ASPECT_RATIO_SELECTOR_DROPDOWN_MENU = "VideoAspectRatioDropdownMenu"
+
+const val TAG_FULL_SCREEN_BUTTON = "FullScreenButton"
 
 @Stable
 object PlayerControllerDefaults {
@@ -485,7 +517,7 @@ object PlayerControllerDefaults {
                         focusManager.clearFocus()
                     }
                 }
-            },
+            }.testTag(TAG_FULL_SCREEN_BUTTON),
         ) {
             if (isFullscreen) {
                 Icon(Icons.Rounded.FullscreenExit, contentDescription = "Exit Fullscreen", Modifier.size(32.dp))

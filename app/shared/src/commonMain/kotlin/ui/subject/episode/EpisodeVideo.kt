@@ -389,9 +389,7 @@ internal fun EpisodeVideoImpl(
                         }
                         playerState.togglePlayWhenReady()
                     },
-                    onToggleFullscreen = {
-                        if (!isFullscreen) onClickFullScreen() else onExitFullscreen()
-                    },
+                    onToggleFullscreen = if (!isFullscreen) onClickFullScreen else onExitFullscreen,
                     onToggleDanmaku = onToggleDanmaku,
                     onTogglePlayerStats = {
                         showPlayerStats = !showPlayerStats

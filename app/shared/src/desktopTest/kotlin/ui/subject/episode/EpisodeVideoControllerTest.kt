@@ -46,8 +46,6 @@ import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.swipe
-import androidx.compose.ui.window.WindowPlacement
-import androidx.compose.ui.window.WindowState
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.preference.DarkMode
@@ -63,6 +61,7 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
+import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.navigation.onBackNavigationInput
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.doesNotExist
@@ -101,6 +100,7 @@ import me.him188.ani.app.videoplayer.ui.progress.MediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.TAG_DANMAKU_ICON_BUTTON
+import me.him188.ani.app.videoplayer.ui.progress.TAG_FULL_SCREEN_BUTTON
 import me.him188.ani.app.videoplayer.ui.progress.TAG_MEDIA_PROGRESS_INDICATOR_TEXT
 import me.him188.ani.app.videoplayer.ui.progress.TAG_PROGRESS_SLIDER
 import me.him188.ani.app.videoplayer.ui.progress.TAG_PROGRESS_SLIDER_CENTERED_PREVIEW_FRAME
@@ -208,6 +208,9 @@ class EpisodeVideoControllerTest {
         get() = onNodeWithTag(TAG_DANMAKU_ICON_BUTTON, useUnmergedTree = true)
     private val SemanticsNodeInteractionsProvider.player
         get() = onNodeWithTag("PLAYER", useUnmergedTree = true)
+
+    private val SemanticsNodeInteractionsProvider.fullScreenButton
+        get() = onNodeWithTag(TAG_FULL_SCREEN_BUTTON, useUnmergedTree = true)
     private val SemanticsNodeInteractionsProvider.videoGestureHost
         get() = onNodeWithTag("VideoGestureHost", useUnmergedTree = true)
     private val SemanticsNodeInteractionsProvider.mediaProgressIndicatorText: SemanticsNodeInteraction
@@ -257,6 +260,7 @@ class EpisodeVideoControllerTest {
                 LaunchedEffect(playerState) {
                     playerState.setMediaData(UriMediaData("file:///test.mp4"))
                 }
+                BackHandler(enabled = isFullscreen, onExitFullscreen)
                 val cacheProgressInfoFlow = staticMediaCacheProgressState(cacheChunkState).flow
                 EpisodeVideoImpl(
                     playerState = playerState,
@@ -320,8 +324,8 @@ class EpisodeVideoControllerTest {
                     fullscreenSwitchButton = {
                         EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
                             FullscreenSwitchMode.ONLY_IN_CONTROLLER,
-                            isFullscreen = expanded,
-                            onClickFullScreen = {},
+                            isFullscreen = isFullscreen,
+                            onClickFullScreen = if (!isFullscreen) onClickFullScreen else onExitFullscreen,
                         )
                     },
                     sideSheets = { sheetsController ->
@@ -387,12 +391,6 @@ class EpisodeVideoControllerTest {
             }
         }
     }
-
-    private fun placementBackedPlatformWindow(): PlatformWindow = PlatformWindow(
-        windowHandle = 0L,
-        windowState = WindowState(),
-        platform = Platform.Linux(Arch.X86_64),
-    )
 
     private class TestLevelController(
         initialLevel: Float,
@@ -775,18 +773,34 @@ class EpisodeVideoControllerTest {
      */
     @Test
     fun `touch - swipeMidForFullscreen - swipe up enters and swipe down exits`() = runAniComposeUiTest {
-        val platformWindow = placementBackedPlatformWindow()
         var fullscreenCount = 0
         var exitFullscreenCount = 0
         setContent {
+            var fullscreen by remember { mutableStateOf(false) }
             Player(
                 GestureFamily.TOUCH,
-                onClickFullScreen = { fullscreenCount++ },
-                onExitFullscreen = { exitFullscreenCount++ },
-                platformWindowOverride = platformWindow,
+                onClickFullScreen = {
+                    fullscreen = true
+                    fullscreenCount++
+                },
+                onExitFullscreen = {
+                    fullscreen = false
+                    exitFullscreenCount++
+                },
+                isFullscreen = fullscreen,
             )
         }
         waitForIdle()
+
+        // 未在全屏时, 在中间区域向下滑动：无效果
+        videoGestureHost.performTouchInput {
+            swipe(start = Offset(centerX, centerY - 200f), end = Offset(centerX, centerY + 200f))
+        }
+
+        runOnIdle {
+            assertEquals(0, fullscreenCount)
+            assertEquals(0, exitFullscreenCount)
+        }
 
         // 未在全屏时, 在中间区域向上滑动: 进入全屏
         videoGestureHost.performTouchInput {
@@ -797,21 +811,16 @@ class EpisodeVideoControllerTest {
             assertEquals(0, exitFullscreenCount)
         }
 
-        // 未在全屏时向下滑动: 无效果
+        // 全屏时, 在中间区域向上滑动: 无效果
         videoGestureHost.performTouchInput {
-            swipe(start = Offset(centerX, centerY - 200f), end = Offset(centerX, centerY + 200f))
+            swipe(start = Offset(centerX, centerY + 200f), end = Offset(centerX, centerY - 200f))
         }
         runOnIdle {
             assertEquals(1, fullscreenCount)
             assertEquals(0, exitFullscreenCount)
         }
 
-        runOnIdle {
-            platformWindow.windowState.placement = WindowPlacement.Fullscreen
-        }
-        waitForIdle()
-
-        // 全屏时向下滑动: 退出全屏
+        // 全屏时，向下滑动，退出全屏
         videoGestureHost.performTouchInput {
             swipe(start = Offset(centerX, centerY - 200f), end = Offset(centerX, centerY + 200f))
         }
@@ -820,9 +829,9 @@ class EpisodeVideoControllerTest {
             assertEquals(1, exitFullscreenCount)
         }
 
-        // 全屏时向上滑动: 无效果
+        // 退出全屏后向下滑动，无效果
         videoGestureHost.performTouchInput {
-            swipe(start = Offset(centerX, centerY + 200f), end = Offset(centerX, centerY - 200f))
+            swipe(start = Offset(centerX, centerY - 200f), end = Offset(centerX, centerY + 200f))
         }
         runOnIdle {
             assertEquals(1, fullscreenCount)
@@ -842,16 +851,24 @@ class EpisodeVideoControllerTest {
         setContent {
             CompositionLocalProvider(LocalPlatform provides Platform.Android(Arch.ARMV8A)) {
                 val scope = rememberCoroutineScope()
+                var fullscreen by remember { mutableStateOf(false) }
                 playbackSpeed = remember { TestPlaybackSpeed(1f) }
                 Player(
                     GestureFamily.TOUCH,
-                    onClickFullScreen = { fullscreenCount++ },
-                    onExitFullscreen = { exitFullscreenCount++ },
+                    onClickFullScreen = {
+                        fullscreenCount++
+                        fullscreen = true
+                    },
+                    onExitFullscreen = {
+                        exitFullscreenCount++
+                        fullscreen = false
+                    },
                     onToggleDanmaku = { toggleDanmakuCount++ },
                     audioController = audioController,
                     playbackSpeed = playbackSpeed,
                     onCommitPlaybackSpeed = { committedPlaybackSpeeds.add(it) },
                     onPlayerStateCreated = { playerState = it },
+                    isFullscreen = fullscreen,
                 )
             }
         }
@@ -866,6 +883,7 @@ class EpisodeVideoControllerTest {
         videoGestureHost.performKeyInput {
             pressKey(Key.F)
             pressKey(Key.Escape)
+            pressKey(Key.F)
             pressKey(Key.B)
         }
         waitForIdle()
@@ -1236,7 +1254,7 @@ class EpisodeVideoControllerTest {
             waitForIdle()
 
             videoGestureHost.assertIsFocused()
-            onNodeWithContentDescription("Exit Fullscreen").performClick()
+            fullScreenButton.performClick()
             waitForIdle()
             runOnIdle {
                 assertEquals(1, fullscreenCount)
@@ -1335,58 +1353,62 @@ class EpisodeVideoControllerTest {
 
     @Test
     fun `mouse - keyboard shortcuts - reclaim focus when fullscreen changes`() = runAniComposeUiTest {
-        val platformWindow = placementBackedPlatformWindow()
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+        var currentFullscreen = false
         setContent {
+            var fullscreen by remember { mutableStateOf(currentFullscreen) }
             Player(
                 GestureFamily.MOUSE,
                 playerControllerState = visibleControllerState,
-                platformWindowOverride = platformWindow,
+                onClickFullScreen = {
+                    fullscreen = true
+                    currentFullscreen = true
+                },
+                onExitFullscreen = {
+                    fullscreen = false
+                    currentFullscreen = false
+                },
+                isFullscreen = fullscreen,
             )
         }
         waitForIdle()
 
-        onNodeWithContentDescription("Exit Fullscreen").performClick()
-        runOnIdle {
-            platformWindow.windowState.placement = WindowPlacement.Fullscreen
-        }
+        fullScreenButton.performClick()
         waitForIdle()
+        assertTrue(currentFullscreen)
         videoGestureHost.assertIsFocused()
 
-        onNodeWithContentDescription("Exit Fullscreen").performClick()
-        runOnIdle {
-            platformWindow.windowState.placement = WindowPlacement.Floating
-        }
+        fullScreenButton.performClick()
         waitForIdle()
+        assertFalse(currentFullscreen)
         videoGestureHost.assertIsFocused()
     }
 
     @Test
-    fun `mouse - keyboard shortcuts - preserve editor focus when fullscreen changes`() = runAniComposeUiTest {
-        val platformWindow = placementBackedPlatformWindow()
+    fun `mouse - keyboard shortcuts - lost editor focus when fullscreen changes`() = runAniComposeUiTest {
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         setContent {
+            var fullscreen by remember { mutableStateOf(false) }
             Player(
                 GestureFamily.MOUSE,
                 playerControllerState = visibleControllerState,
-                platformWindowOverride = platformWindow,
+                onClickFullScreen = { fullscreen = true },
+                onExitFullscreen = { fullscreen = false },
+                isFullscreen = fullscreen,
             )
         }
         waitForIdle()
 
         danmakuEditor.performClick()
         danmakuEditor.onChild().assertIsFocused()
-        runOnIdle {
-            platformWindow.windowState.placement = WindowPlacement.Fullscreen
-        }
-        waitForIdle()
-        danmakuEditor.onChild().assertIsFocused()
 
-        runOnIdle {
-            platformWindow.windowState.placement = WindowPlacement.Floating
-        }
+        fullScreenButton.performClick()
         waitForIdle()
-        danmakuEditor.onChild().assertIsFocused()
+        danmakuEditor.onChild().assertIsNotFocused()
+
+        fullScreenButton.performClick()
+        waitForIdle()
+        danmakuEditor.onChild().assertIsNotFocused()
     }
 
     private fun AniComposeUiTest.testClickAndWaitForHide() {
