@@ -39,10 +39,12 @@ import me.him188.ani.app.data.models.preference.DesktopCloseBehavior
 import me.him188.ani.app.data.models.preference.EpisodeListProgressTheme
 import me.him188.ani.app.data.models.preference.FullscreenSwitchMode
 import me.him188.ani.app.data.models.preference.NsfwMode
+import me.him188.ani.app.data.models.preference.PlayerKernelConfig
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.UpdateSettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
+import me.him188.ani.app.data.models.preference.VideoEnhancementDefaultMode
 import me.him188.ani.app.data.models.preference.WatchTogetherSettings
 import me.him188.ani.app.data.network.protocol.ReleaseClass
 import me.him188.ani.app.navigation.MainScreenPage
@@ -105,6 +107,11 @@ import me.him188.ani.app.ui.lang.settings_player_playback_speed_range
 import me.him188.ani.app.ui.lang.settings_player_playback_speed_range_description
 import me.him188.ani.app.ui.lang.settings_player_remember_playback_speed
 import me.him188.ani.app.ui.lang.settings_player_remember_playback_speed_description
+import me.him188.ani.app.ui.lang.settings_player_video_enhancement_default
+import me.him188.ani.app.ui.lang.settings_player_video_enhancement_default_description
+import me.him188.ani.app.ui.lang.video_player_off
+import me.him188.ani.app.ui.lang.video_player_performance
+import me.him188.ani.app.ui.lang.video_player_quality
 import me.him188.ani.app.ui.lang.settings_update_auto_check
 import me.him188.ani.app.ui.lang.settings_update_auto_check_description
 import me.him188.ani.app.ui.lang.settings_update_auto_download
@@ -177,6 +184,7 @@ fun AppSettingsTab(
     uiSettings: SettingsState<UISettings>,
     themeSettings: SettingsState<ThemeSettings>,
     videoScaffoldConfig: SettingsState<VideoScaffoldConfig>,
+    playerKernelConfig: SettingsState<PlayerKernelConfig>,
     watchTogetherSettings: SettingsState<WatchTogetherSettings>,
     danmakuFilterConfig: SettingsState<DanmakuFilterConfig>,
     danmakuRegexFilterState: DanmakuRegexFilterState,
@@ -189,6 +197,7 @@ fun AppSettingsTab(
         ThemeGroup(themeSettings)
         PlayerGroup(
             videoScaffoldConfig,
+            playerKernelConfig,
             danmakuFilterConfig,
             danmakuRegexFilterState,
             showDebug,
@@ -457,6 +466,7 @@ fun SettingsScope.SoftwareUpdateGroup(
 @Composable
 fun SettingsScope.PlayerGroup(
     videoScaffoldConfig: SettingsState<VideoScaffoldConfig>,
+    playerKernelConfig: SettingsState<PlayerKernelConfig>,
     danmakuFilterConfig: SettingsState<DanmakuFilterConfig>,
     danmakuRegexFilterState: DanmakuRegexFilterState,
     showDebug: Boolean
@@ -480,6 +490,33 @@ fun SettingsScope.PlayerGroup(
             },
             title = { Text(stringResource(Lang.settings_player_fullscreen_button)) },
             description = { Text(stringResource(Lang.settings_player_fullscreen_button_description)) },
+        )
+        HorizontalDividerItem()
+        DropdownItem(
+            selected = { config.videoEnhancementDefaultMode },
+            values = {
+                listOf(
+                    VideoEnhancementDefaultMode.PERFORMANCE,
+                    VideoEnhancementDefaultMode.QUALITY,
+                    VideoEnhancementDefaultMode.OFF,
+                )
+            },
+            itemText = {
+                Text(
+                    when (it) {
+                        VideoEnhancementDefaultMode.OFF -> stringResource(Lang.video_player_off)
+                        VideoEnhancementDefaultMode.PERFORMANCE -> stringResource(Lang.video_player_performance)
+                        VideoEnhancementDefaultMode.QUALITY -> stringResource(Lang.video_player_quality)
+                    },
+                )
+            },
+            onSelect = {
+                videoScaffoldConfig.update(config.copy(videoEnhancementDefaultMode = it))
+            },
+            title = { Text(stringResource(Lang.settings_player_video_enhancement_default)) },
+            description = {
+                Text(stringResource(Lang.settings_player_video_enhancement_default_description))
+            },
         )
         HorizontalDividerItem()
         SwitchItem(
@@ -598,7 +635,7 @@ fun SettingsScope.PlayerGroup(
         )
         HorizontalDividerItem()
         PlaybackSpeedItems(config, videoScaffoldConfig)
-        PlayerGroupPlatform(videoScaffoldConfig)
+        PlayerGroupPlatform(videoScaffoldConfig, playerKernelConfig)
     }
 }
 
@@ -766,6 +803,7 @@ private fun DesktopCloseBehavior.renderText(): String {
 @Composable
 internal expect fun SettingsScope.PlayerGroupPlatform(
     videoScaffoldConfig: SettingsState<VideoScaffoldConfig>,
+    playerKernelConfig: SettingsState<PlayerKernelConfig>,
 )
 
 @Composable
@@ -797,6 +835,7 @@ private fun PreviewAppSettingsTab() {
         uiSettings = rememberTestSettingsState(UISettings.Default),
         themeSettings = rememberTestSettingsState(ThemeSettings.Default),
         videoScaffoldConfig = rememberTestSettingsState(VideoScaffoldConfig.Default),
+        playerKernelConfig = rememberTestSettingsState(PlayerKernelConfig.Default),
         watchTogetherSettings = rememberTestSettingsState(WatchTogetherSettings.Default),
         danmakuFilterConfig = rememberTestSettingsState(DanmakuFilterConfig.Default),
         danmakuRegexFilterState = createTestDanmakuRegexFilterState(),

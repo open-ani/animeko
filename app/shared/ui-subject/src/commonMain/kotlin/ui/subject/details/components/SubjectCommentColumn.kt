@@ -9,58 +9,71 @@
 
 package me.him188.ani.app.ui.subject.details.components
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
-import me.him188.ani.app.tools.formatDateTime
-import me.him188.ani.app.ui.comment.Comment
+import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.comment.CommentColumn
-import me.him188.ani.app.ui.comment.CommentDefaults
+import me.him188.ani.app.ui.comment.CommentItem
+import me.him188.ani.app.ui.comment.CommentMenuHandlers
+import me.him188.ani.app.ui.comment.CommentOverlayCleanupEffect
+import me.him188.ani.app.ui.comment.CommentReportState
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.UIComment
+import me.him188.ani.app.ui.comment.UICommentSource
 import me.him188.ani.app.ui.comment.generateUiComment
 import me.him188.ani.app.ui.comment.rememberTestCommentState
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.layout.ConnectedScrollState
 import me.him188.ani.app.ui.foundation.layout.rememberConnectedScrollState
-import me.him188.ani.app.ui.rating.FiveRatingStars
-import me.him188.ani.app.ui.richtext.RichText
+import me.him188.ani.app.ui.foundation.widgets.LocalToaster
+import me.him188.ani.app.ui.foundation.widgets.showLoadError
 import me.him188.ani.utils.platform.annotations.TestOnly
 
+/**
+ * 条目评价列表. 也被人物/角色评论复用 (人物评论无评分, 全部只读).
+ *
+ * @param onOpenOriginal 在来源平台打开原始评论, 只对 [UICommentSource.BANGUMI] 来源的评论生效.
+ * @param reportState 举报状态. `null` 时隐藏举报入口. 弹层与结果提示由页面级的
+ *   [me.him188.ani.app.ui.comment.CommentReportHost] 渲染, 调用方需在 sheet 外层挂一个.
+ */
 @Composable
 fun SubjectDetailsDefaults.SubjectCommentColumn(
     state: CommentState,
     onClickUrl: (url: String) -> Unit,
     onClickImage: (String) -> Unit,
     modifier: Modifier = Modifier,
+    reportState: CommentReportState? = null,
+    onOpenOriginal: ((UIComment) -> Unit)? = null,
+    showRating: Boolean = true,
     connectedScrollState: ConnectedScrollState? = null,
     gridState: LazyGridState = rememberLazyGridState(),
     contentPadding: PaddingValues = PaddingValues(0.dp),
     pullToRefreshEnabled: Boolean = true,
 ) {
+    val toaster = LocalToaster.current
+    LaunchedEffect(state) {
+        state.actionSubmitFailures.collect { error ->
+            toaster.showLoadError(LoadError.fromException(error))
+        }
+    }
     Box(modifier, contentAlignment = Alignment.TopCenter) {
+        val items = state.list.collectAsLazyPagingItemsWithLifecycle()
+        CommentOverlayCleanupEffect(state, items)
         CommentColumn(
-            state.list.collectAsLazyPagingItemsWithLifecycle(),
+            items,
             modifier = Modifier
                 .fillMaxWidth()
                 .wrapContentWidth(align = Alignment.CenterHorizontally)
@@ -71,95 +84,24 @@ fun SubjectDetailsDefaults.SubjectCommentColumn(
             connectedScrollState = connectedScrollState,
             pullToRefreshEnabled = pullToRefreshEnabled,
         ) { _, comment ->
-            val commentWithOverlay = state.withReactionOverlay(comment)
-            SubjectComment(
+            val commentWithOverlay = state.withOverlay(comment)
+            CommentItem(
                 comment = commentWithOverlay,
-                modifier = Modifier.fillMaxWidth().padding(12.dp),
-                onClickImage = onClickImage,
                 onClickUrl = onClickUrl,
-                onClickReaction = { reactionValue ->
-                    state.submitReaction(commentWithOverlay, reactionValue)
-                },
+                onClickImage = onClickImage,
+                showRating = showRating,
+                onToggleVote = { c, vote -> state.toggleVote(c, vote) },
+                menu = CommentMenuHandlers(
+                    onOpenOriginal = if (commentWithOverlay.source == UICommentSource.BANGUMI) {
+                        onOpenOriginal
+                    } else null,
+                    // 只支持举报 Animeko 自有评论
+                    onReport = if (commentWithOverlay.source == UICommentSource.ANI) {
+                        reportState?.let { report -> { report.show(it) } }
+                    } else null,
+                ),
             )
         }
-    }
-}
-
-@Composable
-fun SubjectComment(
-    comment: UIComment,
-    onClickUrl: (String) -> Unit,
-    onClickImage: (String) -> Unit,
-    onClickReaction: (reactionValue: String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val uriHandler = LocalUriHandler.current
-    val interactionSource = remember { MutableInteractionSource() }
-    val authorModifier = Modifier.clickable(
-        enabled = comment.author != null,
-        indication = ripple(),
-        interactionSource = interactionSource,
-        onClick = {
-            comment.author?.id?.let {
-                val url = "https://bgm.tv/user/" + comment.author?.id.toString()
-                uriHandler.openUri(url)
-            }
-        },
-    )
-
-    Comment(
-        avatar = { CommentDefaults.Avatar(comment.author?.avatarUrl, authorModifier) },
-        primaryTitle = {
-            Text(
-                text = comment.author?.nickname ?: comment.author?.id.toString(),
-                textAlign = TextAlign.Center,
-                overflow = TextOverflow.Ellipsis,
-                modifier = authorModifier,
-            )
-        },
-        secondaryTitle = {
-            Text(
-                formatDateTime(comment.createdAt),
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        content = {
-            RichText(
-                elements = comment.content.elements,
-                modifier = Modifier.fillMaxWidth(),
-                onClickUrl = onClickUrl,
-                onClickImage = onClickImage,
-            )
-        },
-        modifier = modifier,
-        rhsTitle = {
-            val rating = comment.rating
-            if (rating != null && rating > 0) {
-                FiveRatingStars(rating)
-            }
-        },
-        reactionRow = {
-            CommentDefaults.ReactionRow(
-                comment.reactions,
-                onClickItem = onClickReaction,
-            )
-        },
-    )
-}
-
-@OptIn(TestOnly::class)
-@Preview
-@Composable
-private fun PreviewSubjectComment() {
-    ProvideCompositionLocalsForPreview {
-        SubjectComment(
-            comment = remember { generateUiComment(1).single() },
-            modifier = Modifier.fillMaxWidth(),
-            onClickImage = { },
-            onClickUrl = { },
-            onClickReaction = { },
-        )
-
     }
 }
 

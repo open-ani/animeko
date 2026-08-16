@@ -62,6 +62,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -90,6 +91,8 @@ import me.him188.ani.app.platform.features.StreamType
 import me.him188.ani.app.platform.features.getComponentAccessors
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.comment.CommentEditorState
+import me.him188.ani.app.ui.comment.CommentReportHost
+import me.him188.ani.app.ui.comment.CommentReportState
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.danmaku.DanmakuEditorState
 import me.him188.ani.app.ui.danmaku.DummyDanmakuEditor
@@ -109,6 +112,7 @@ import me.him188.ani.app.ui.foundation.effects.OverrideCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.effects.ScreenOnEffect
 import me.him188.ani.app.ui.foundation.effects.ScreenRotationEffect
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.input.touchHorizontalScrollOnly
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
@@ -128,7 +132,6 @@ import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
 import me.him188.ani.app.ui.foundation.theme.weaken
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
-import me.him188.ani.app.ui.foundation.input.touchHorizontalScrollOnly
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.episode_comments
 import me.him188.ani.app.ui.lang.episode_comments_with_count
@@ -150,6 +153,7 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSe
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
+import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerFocusState
@@ -339,6 +343,13 @@ private fun EpisodeScreenContent(
                     )
                 }
 
+                WatchTogetherPopupVisibilityEffect(
+                    playerControllerState = vm.playerControllerState,
+                    isFullscreen = vm.isFullscreen,
+                    isExpandedLayout = showExpandedUI,
+                    sidebarVisible = vm.sidebarVisible,
+                )
+
                 page.matchingDanmakuUiState?.let { uiState ->
                     MatchingDanmakuDialog(
                         onDismissRequest = { vm.cancelMatchingDanmaku() },
@@ -396,6 +407,9 @@ private fun EpisodeScreenContent(
         ImageViewer(imageViewer) { imageViewer.clear() }
     }
 
+    // 页面级唯一 Host: 评论列表所在 tab 切走时也能收到举报结果提示
+    CommentReportHost(vm.commentReportState)
+
     if (showEditCommentSheet) {
         EpisodeEditCommentSheet(
             state = vm.commentEditorState,
@@ -413,6 +427,32 @@ private fun EpisodeScreenContent(
     }
 
     vm.mediaResolver.ComposeContent()
+}
+
+@Composable
+internal fun WatchTogetherPopupVisibilityEffect(
+    playerControllerState: PlayerControllerState,
+    isFullscreen: Boolean,
+    isExpandedLayout: Boolean,
+    sidebarVisible: Boolean,
+) {
+    val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
+    val followControllerVisibility = isFullscreen || (isExpandedLayout && !sidebarVisible)
+
+    LaunchedEffect(followControllerVisibility, playerControllerState, watchTogetherPlayerController) {
+        if (followControllerVisibility) {
+            snapshotFlow { playerControllerState.visibility.topBar }.collect {
+                watchTogetherPlayerController.setDraggablePopupVisibility(it)
+            }
+        } else {
+            watchTogetherPlayerController.setDraggablePopupVisibility(true)
+        }
+    }
+    DisposableEffect(watchTogetherPlayerController) {
+        onDispose {
+            watchTogetherPlayerController.setDraggablePopupVisibility(true)
+        }
+    }
 }
 
 @Composable
@@ -574,6 +614,7 @@ private fun EpisodeScreenTabletVeryWide(
                         1 -> {
                             EpisodeCommentColumn(
                                 commentState = vm.episodeCommentState,
+                                commentReportState = vm.commentReportState,
                                 commentEditorState = vm.commentEditorState,
                                 subjectId = vm.subjectId,
                                 episodeId = page.episodePresentation.episodeId,
@@ -742,6 +783,7 @@ private fun EpisodeScreenContentPhone(
         commentColumn = {
             EpisodeCommentColumn(
                 commentState = vm.episodeCommentState,
+                commentReportState = vm.commentReportState,
                 commentEditorState = vm.commentEditorState,
                 subjectId = vm.subjectId,
                 episodeId = page.episodePresentation.episodeId,
@@ -1074,6 +1116,7 @@ private fun EpisodeVideo(
         videoAspectRatioControllerState = remember {
             vm.player.features[VideoAspectRatio]?.let { VideoAspectRatioControllerState(it, scope = scope) }
         },
+        videoEnhancement = vm.videoEnhancement,
         leftBottomTips = {
             AniAnimatedVisibility(
                 visible = vm.playerSkipOpEdState.showSkipTips,
@@ -1153,6 +1196,7 @@ private fun EpisodeVideo(
 @Composable
 private fun EpisodeCommentColumn(
     commentState: CommentState,
+    commentReportState: CommentReportState,
     commentEditorState: CommentEditorState,
     subjectId: Int,
     episodeId: Int,
@@ -1168,6 +1212,8 @@ private fun EpisodeCommentColumn(
 
     EpisodeCommentColumn(
         state = commentState,
+        reportState = commentReportState,
+        episodeId = episodeId,
         onClickReply = {
             setShowEditCommentSheet(true)
             commentEditorState.startEdit(CommentContext.EpisodeReply(subjectId, episodeId.toLong(), it))

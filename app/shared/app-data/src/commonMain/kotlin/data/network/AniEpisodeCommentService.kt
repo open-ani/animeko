@@ -12,11 +12,13 @@ package me.him188.ani.app.data.network
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.app.data.models.comment.CommentVoteValue
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.data.models.episode.EpisodeCommentReaction
 import me.him188.ani.app.data.models.episode.EpisodeCommentSource
 import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.client.apis.EpisodesAniApi
+import me.him188.ani.client.models.AniCommentVoteValue
 import me.him188.ani.client.models.AniCreateEpisodeCommentRequest
 import me.him188.ani.client.models.AniCreateEpisodeReplyRequest
 import me.him188.ani.client.models.AniEpisodeComment
@@ -128,6 +130,45 @@ open class AniEpisodeCommentService(
             throw RepositoryException.wrapOrThrowCancellation(e)
         }
     }
+
+    /**
+     * 对评论投票. [vote] 为 `null` 表示取消投票.
+     * 只有 Ani 源的根评论可投票.
+     */
+    open suspend fun voteEpisodeComment(
+        episodeId: Long,
+        commentId: String,
+        vote: CommentVoteValue?,
+    ) = withContext(ioDispatcher) {
+        try {
+            episodesApi.invoke {
+                if (vote == null) {
+                    removeEpisodeCommentVote(
+                        episodeId = episodeId,
+                        commentId = commentId,
+                    ).body()
+                } else {
+                    voteEpisodeComment(
+                        episodeId = episodeId,
+                        commentId = commentId,
+                        vote = vote.toAniCommentVoteValue(),
+                    ).body()
+                }
+            }
+        } catch (e: Exception) {
+            throw RepositoryException.wrapOrThrowCancellation(e)
+        }
+    }
+}
+
+internal fun CommentVoteValue.toAniCommentVoteValue(): AniCommentVoteValue = when (this) {
+    CommentVoteValue.LIKE -> AniCommentVoteValue.LIKE
+    CommentVoteValue.DISLIKE -> AniCommentVoteValue.DISLIKE
+}
+
+internal fun AniCommentVoteValue.toCommentVoteValue(): CommentVoteValue = when (this) {
+    AniCommentVoteValue.LIKE -> CommentVoteValue.LIKE
+    AniCommentVoteValue.DISLIKE -> CommentVoteValue.DISLIKE
 }
 
 fun AniEpisodeComment.toEpisodeComment(): EpisodeComment {
@@ -155,6 +196,9 @@ fun AniEpisodeComment.toEpisodeComment(): EpisodeComment {
         reactions = reactions.map { it.toEpisodeCommentReaction() },
         replies = briefReplies.map { it.toEpisodeComment(episodeId, commentSource) },
         canReply = canReply,
+        replyCount = replyCount,
+        likeCount = likeCount,
+        selfVote = selfVote?.toCommentVoteValue(),
     )
 }
 

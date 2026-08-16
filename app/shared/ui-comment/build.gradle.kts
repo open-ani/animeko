@@ -28,6 +28,7 @@ kotlin {
     }
     sourceSets.commonTest.dependencies {
         implementation(libs.kotlinx.coroutines.test)
+        implementation(projects.utils.uiTesting)
     }
     sourceSets.named("jvmTest").dependencies {
         implementation(kotlin("reflect"))

@@ -150,6 +150,8 @@
     <string name="settings_mediasource_selector_config_search_subject_names_count_description">How many item names to query with for each playback.\n1 uses only the primary name, 2 also uses the original Japanese title, and values above 2 also use other aliases. The number of aliases is not fixed.\nUsually 1 is enough. Using multiple names will significantly increase wait time during playback.</string>
     <string name="settings_mediasource_selector_config_request_interval">Search request interval (ms)</string>
     <string name="settings_mediasource_selector_config_request_interval_description">Controls how long to wait after sending each request before sending the next one</string>
+    <string name="settings_mediasource_selector_config_search_cache_ttl">Search cache duration (minutes)</string>
+    <string name="settings_mediasource_selector_config_search_cache_ttl_description">Reuse search results when switching episodes within this duration. The effective value is the smaller of this and the user\'s setting. 0 disables caching</string>
     <string name="settings_mediasource_selector_config_filter_settings">Filter settings</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name">Filter by item name</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name_description">Require the resource title to contain the item name. Useful when the source may return irrelevant results. This only works in versions before 4.4.0 and has no effect in other versions</string>
@@ -262,6 +264,8 @@
     <string name="settings_player_fullscreen_only_in_controller">Do not show</string>
     <string name="settings_player_fullscreen_button">Show fullscreen button in portrait mode</string>
     <string name="settings_player_fullscreen_button_description">Always show the fullscreen toggle button in the lower-right corner of the player, for easy switching</string>
+    <string name="settings_player_video_enhancement_default">Default video enhancement mode</string>
+    <string name="settings_player_video_enhancement_default_description">Choose the video enhancement mode used when entering the player</string>
     <string name="settings_player_frame_preview">Show frame preview on the progress bar</string>
     <string name="settings_player_frame_preview_description">Show the video frame at the target position when hovering over or dragging the progress bar</string>
     <string name="settings_player_enable_regex_filter">Enable regex danmaku filter</string>
@@ -287,6 +291,11 @@
     <string name="settings_player_remember_playback_speed_description">Keep the speed you set in the player across episodes and restarts. When off, it applies only until you leave the player, then returns to the default speed.</string>
     <string name="settings_player_default_playback_speed">Default playback speed</string>
     <string name="settings_player_default_playback_speed_description">Speed to start at each time you open the player</string>
+    <string name="settings_player_mpv_options">Custom mpv options</string>
+    <string name="settings_player_mpv_options_description">One option per line, in the form key=value. Lines starting with # are comments. Changes apply immediately.</string>
+    <string name="settings_player_mpv_options_empty">Not configured</string>
+    <string name="settings_player_mpv_options_count">%1$d options configured</string>
+    <string name="settings_player_mpv_options_placeholder">hwdec=auto\nprofile=fast</string>
     <string name="settings_storage_title">Storage settings</string>
     <string name="settings_storage_bt_cache_location">BT video cache location</string>
     <string name="settings_storage_bt_cache_location_description">Changing this won\'t automatically migrate data nor delete old data.\nIf you want to remove old data, please click &quot;Open BT cache directory&quot; before making changes and remove all files in that directory.\n\nRestart required to take effect.</string>
@@ -697,6 +706,10 @@
     <string name="video_player_quality_switch_failed">Failed to switch playback bitrate</string>
     <string name="video_player_audio_track">Audio</string>
     <string name="video_player_off">Off</string>
+    <string name="video_player_on">On</string>
+    <string name="video_player_performance">Prioritize performance</string>
+    <string name="video_player_quality">Highest quality</string>
+    <string name="video_player_video_enhancement">Video enhancement</string>
     <string name="video_player_subtitle">Subtitle</string>
     <string name="video_player_disable_danmaku">Disable danmaku</string>
     <string name="video_player_enable_danmaku">Enable danmaku</string>
@@ -1164,6 +1177,27 @@
     <string name="comment_rendering">Rendering...</string>
     <string name="comment_reply">Reply to comment</string>
     <string name="comment_view_more_replies">View %1$d more replies &gt;</string>
+    <string name="comment_like">Like</string>
+    <string name="comment_dislike">Dislike</string>
+    <string name="comment_more_actions">More actions</string>
+    <string name="comment_expand_replies">Show %1$d replies</string>
+    <string name="comment_copy_content">Copy content</string>
+    <string name="comment_open_in_bangumi">Open in Bangumi</string>
+    <string name="comment_block_user">Block this user</string>
+    <string name="comment_report">Report</string>
+    <string name="comment_copied">Copied</string>
+    <string name="comment_report_title">Report comment</string>
+    <string name="comment_report_subtitle">Reports are reviewed by Animeko. The author will not be notified</string>
+    <string name="comment_report_reason_spam">Spam or advertising</string>
+    <string name="comment_report_reason_harassment">Harassment or personal attacks</string>
+    <string name="comment_report_reason_spoiler">Spoilers</string>
+    <string name="comment_report_reason_nsfw">Sexual, gory, or disturbing content</string>
+    <string name="comment_report_reason_illegal">Illegal content</string>
+    <string name="comment_report_reason_other">Other</string>
+    <string name="comment_report_detail_hint">Additional details (optional)</string>
+    <string name="comment_report_submit">Submit report</string>
+    <string name="comment_report_cancel">Cancel</string>
+    <string name="comment_report_submitted">Report received</string>
     <string name="comment_add_emoji">Add emoji</string>
     <string name="comment_bold">Bold</string>
     <string name="comment_italic">Italic</string>

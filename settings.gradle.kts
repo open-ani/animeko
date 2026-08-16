@@ -84,6 +84,7 @@ includeProject(":utils:ui-preview")
 includeProject(":utils:analytics")
 includeProject(":utils:http-downloader")
 includeProject(":utils:build-config")
+includeProject(":utils:video-enhancement-shader-provider")
 
 
 includeProject(":torrent:torrent-api", "torrent/api") // Torrent 系统 API
@@ -158,7 +159,10 @@ includeProject(
 
 // ci
 includeProject(":ci-helper", "ci-helper") // 
-includeProject(":ci-helper:sqlite-woa64", "ci-helper/sqlite-woa64") // Windows ARM64 SQLite natives, see its build.gradle.kts
+includeProject(
+    ":ci-helper:sqlite-woa64",
+    "ci-helper/sqlite-woa64",
+) // Windows ARM64 SQLite natives, see its build.gradle.kts
 includeProject(":tools:datasource-test-mcp", "tools/datasource-test-mcp")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")

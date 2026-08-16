@@ -125,6 +125,54 @@ fun AbstractJPackageTask.unpackComposeDesktopNativeLibraries() {
         tempWorkDir.deleteRecursively()
     }
     // endregion
+
+    // region: unpack Anime4K shaders, re-pack the provider jar without shaders inside
+    val shaderProviderJar = destinationDirFile.walk()
+        .find {
+            it.isFile &&
+                    it.extension == "jar" &&
+                    it.name.startsWith("video-enhancement-shader-provider-desktop-")
+        }
+        ?: throw FileNotFoundException(
+            "video enhancement shader provider jar doesn't exist at app runtime directory " +
+                    "after compose jpackage task.",
+        )
+    val shaderAppRuntimeDir = shaderProviderJar.parentFile.toPath()
+    val composeResourcesDir = shaderAppRuntimeDir.resolve("resources")
+    val bundledShaderDir = composeResourcesDir.resolve(ANIME4K_SHADER_DIRECTORY)
+    val shaderTempWorkDir = Files.createTempDirectory(shaderAppRuntimeDir, ".ani-build-anime4k-")
+    val tempRepackedShaderProviderJar = shaderTempWorkDir.resolve(shaderProviderJar.name)
+    val tempShaderDir = shaderTempWorkDir.resolve(ANIME4K_SHADER_DIRECTORY)
+    try {
+        val extractedShaderCount = extractShadersAndRepackProviderJar(
+            shaderProviderJar = shaderProviderJar,
+            repackedJar = tempRepackedShaderProviderJar,
+            extractedShaderDir = tempShaderDir,
+        )
+
+        Files.createDirectories(composeResourcesDir)
+        if (Files.exists(bundledShaderDir)) {
+            bundledShaderDir.deleteRecursively()
+        }
+        Files.move(
+            tempShaderDir,
+            bundledShaderDir,
+            StandardCopyOption.REPLACE_EXISTING,
+        )
+        Files.move(
+            tempRepackedShaderProviderJar,
+            shaderProviderJar.toPath(),
+            StandardCopyOption.REPLACE_EXISTING,
+        )
+
+        logger.lifecycle(
+            "Extracted $extractedShaderCount video enhancement shader files into $bundledShaderDir " +
+                    "and replaced ${shaderProviderJar.name} with all shader resources stripped.",
+        )
+    } finally {
+        shaderTempWorkDir.deleteRecursively()
+    }
+    // endregion
 }
 
 fun AbstractJPackageTask.reconstructLinuxSolink() {
@@ -427,6 +475,73 @@ private fun unpackJar(jar: File, dest: File, filter: (ZipEntry) -> Boolean = { t
 }
 
 private const val ONNXRUNTIME_NATIVE_ROOT = "ai/onnxruntime/native/"
+
+private const val VIDEO_ENHANCEMENT_SHADER_ROOT =
+    "composeResources/me.him188.ani.utils.video.enhancement.shader.provider/files/shaders/"
+
+private const val ANIME4K_SHADER_DIRECTORY = "anime4k"
+
+private fun extractShadersAndRepackProviderJar(
+    shaderProviderJar: File,
+    repackedJar: Path,
+    extractedShaderDir: Path,
+): Int {
+    var extractedShaderCount = 0
+    Files.createDirectories(extractedShaderDir)
+
+    ZipOutputStream(
+        BufferedOutputStream(
+            Files.newOutputStream(
+                repackedJar,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.WRITE,
+            ),
+        ),
+    ).use { zipOutput ->
+        ZipFile(shaderProviderJar).use { sourceJar ->
+            sourceJar.entries().asSequence().forEach { entry ->
+                if (entry.name.startsWith(VIDEO_ENHANCEMENT_SHADER_ROOT)) {
+                    if (!entry.isDirectory) {
+                        val relativeName = entry.name.removePrefix(VIDEO_ENHANCEMENT_SHADER_ROOT)
+                        require(relativeName.isNotEmpty()) {
+                            "Shader resource has no file name: ${entry.name}"
+                        }
+                        val target = extractedShaderDir.resolve(relativeName).normalize()
+                        require(target.startsWith(extractedShaderDir)) {
+                            "Shader resource escapes the destination directory: ${entry.name}"
+                        }
+                        target.parent?.let(Files::createDirectories)
+                        sourceJar.getInputStream(entry).use { input ->
+                            Files.copy(input, target, StandardCopyOption.REPLACE_EXISTING)
+                        }
+                        extractedShaderCount++
+                    }
+                    return@forEach
+                }
+
+                val repackedEntry = ZipEntry(entry.name).apply {
+                    entry.comment?.let { comment = it }
+                    entry.lastModifiedTime?.let { lastModifiedTime = it }
+                }
+                zipOutput.putNextEntry(repackedEntry)
+                if (!entry.isDirectory) {
+                    sourceJar.getInputStream(entry).use { input ->
+                        input.copyTo(zipOutput)
+                    }
+                }
+                zipOutput.closeEntry()
+            }
+        }
+    }
+
+    if (extractedShaderCount == 0) {
+        throw FileNotFoundException(
+            "Shader resources don't exist in ${shaderProviderJar.name}: $VIDEO_ENHANCEMENT_SHADER_ROOT",
+        )
+    }
+    return extractedShaderCount
+}
 
 private fun extractNativesAndRepackOnnxRuntimeJar(
     onnxruntimeJar: File,

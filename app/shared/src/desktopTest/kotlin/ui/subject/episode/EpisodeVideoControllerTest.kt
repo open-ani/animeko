@@ -60,6 +60,7 @@ import me.him188.ani.app.ui.danmaku.PlayerDanmakuEditor
 import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.doesNotExist
@@ -87,14 +88,13 @@ import me.him188.ani.app.videoplayer.ui.NoOpVideoAspectRatio
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
-import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.videoplayer.ui.gesture.GestureFamily
-import me.him188.ani.app.videoplayer.ui.gesture.gestureFamilyOf
-import me.him188.ani.app.videoplayer.ui.gesture.mouseFamily
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION
 import me.him188.ani.app.videoplayer.ui.gesture.VIDEO_GESTURE_TOUCH_SHOW_CONTROLLER_DURATION
+import me.him188.ani.app.videoplayer.ui.gesture.gestureFamilyOf
+import me.him188.ani.app.videoplayer.ui.gesture.mouseFamily
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
@@ -260,132 +260,132 @@ class EpisodeVideoControllerTest {
                 }
                 val cacheProgressInfoFlow = staticMediaCacheProgressState(cacheChunkState).flow
                 EpisodeVideoImpl(
-                playerState = playerState,
-                expanded = expanded,
-                hasNextEpisode = true,
-                onClickNextEpisode = {},
-                jellyfinPlaybackQualityState = jellyfinPlaybackQualityState,
-                onSelectJellyfinPlaybackQuality = onSelectJellyfinPlaybackQuality,
-                playerControllerState = playerControllerState,
-                opEdSkipDuration = opEdSkipDuration,
-                title = { PlayerTopBar() },
-                danmakuHost = {},
-                danmakuEnabled = false,
-                onToggleDanmaku = onToggleDanmaku,
-                videoLoadingStateFlow = remember { MutableStateFlow(VideoLoadingState.Succeed(isBt = true)) },
-                onClickFullScreen = onClickFullScreen,
-                onExitFullscreen = onExitFullscreen,
-                danmakuEditor = {
-                    if (showDanmakuEditor()) {
-                        PlayerDanmakuEditor(
-                            text = "",
-                            onTextChange = {},
-                            isSending = { false },
-                            onSend = {},
-                            danmakuTextPlaceholder = "",
-                            playerState = playerState,
-                            videoScaffoldConfig = VideoScaffoldConfig.Default,
-                            playerControllerState = playerControllerState,
-                            modifier = Modifier.testTag(TAG_DANMAKU_EDITOR),
-                            onEscape = onEditorEscape,
+                    playerState = playerState,
+                    expanded = expanded,
+                    hasNextEpisode = true,
+                    onClickNextEpisode = {},
+                    jellyfinPlaybackQualityState = jellyfinPlaybackQualityState,
+                    onSelectJellyfinPlaybackQuality = onSelectJellyfinPlaybackQuality,
+                    playerControllerState = playerControllerState,
+                    opEdSkipDuration = opEdSkipDuration,
+                    title = { PlayerTopBar() },
+                    danmakuHost = {},
+                    danmakuEnabled = false,
+                    onToggleDanmaku = onToggleDanmaku,
+                    videoLoadingStateFlow = remember { MutableStateFlow(VideoLoadingState.Succeed(isBt = true)) },
+                    onClickFullScreen = onClickFullScreen,
+                    onExitFullscreen = onExitFullscreen,
+                    danmakuEditor = {
+                        if (showDanmakuEditor()) {
+                            PlayerDanmakuEditor(
+                                text = "",
+                                onTextChange = {},
+                                isSending = { false },
+                                onSend = {},
+                                danmakuTextPlaceholder = "",
+                                playerState = playerState,
+                                videoScaffoldConfig = VideoScaffoldConfig.Default,
+                                playerControllerState = playerControllerState,
+                                modifier = Modifier.testTag(TAG_DANMAKU_EDITOR),
+                                onEscape = onEditorEscape,
+                            )
+                        }
+                    },
+                    onClickScreenshot = {},
+                    detachedProgressSlider = {
+                        PlayerControllerDefaults.MediaProgressSlider(
+                            progressSliderState,
+                            cacheProgressInfoFlow = cacheProgressInfoFlow,
+                            Modifier.testTag(TAG_DETACHED_PROGRESS_SLIDER),
+                            enabled = false,
+                            framePreview = framePreview,
+                            showFramePreviewInPopup = expanded,
                         )
-                    }
-                },
-                onClickScreenshot = {},
-                detachedProgressSlider = {
-                    PlayerControllerDefaults.MediaProgressSlider(
-                        progressSliderState,
-                        cacheProgressInfoFlow = cacheProgressInfoFlow,
-                        Modifier.testTag(TAG_DETACHED_PROGRESS_SLIDER),
-                        enabled = false,
-                        framePreview = framePreview,
-                        showFramePreviewInPopup = expanded,
-                    )
-                },
-                sidebarVisible = true,
-                onToggleSidebar = {},
-                progressSliderState = progressSliderState,
-                cacheProgressInfoFlow = cacheProgressInfoFlow,
-                framePreview = framePreview,
-                audioController = audioController,
-                brightnessController = NoOpLevelController,
-                playbackSpeedControllerState = remember(playbackSpeed) {
-                    PlaybackSpeedControllerState(
-                        playbackSpeed = playbackSpeed,
-                        onCommitSpeed = onCommitPlaybackSpeed,
-                        scope = scope,
-                    )
-                },
-                videoAspectRatioControllerState = remember {
-                    VideoAspectRatioControllerState(NoOpVideoAspectRatio, scope)
-                },
-                leftBottomTips = {},
-                fullscreenSwitchButton = {
-                    EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
-                        FullscreenSwitchMode.ONLY_IN_CONTROLLER,
-                        isFullscreen = expanded,
-                        onClickFullScreen = {},
-                    )
-                },
-                sideSheets = { sheetsController ->
-                    EpisodeVideoDefaults.SideSheets(
-                        sheetsController,
-                        playerControllerState,
-                        playerSettingsPage = {
-                            EpisodeVideoSideSheets.DanmakuSettingsSheet(
-                                danmakuConfig = DanmakuConfig.Default,
-                                setDanmakuConfig = {},
-                                enableRegexFilter = true,
-                                onNavigateToFilterSettings = {
-                                    sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
-                                },
-                                switchDanmakuRegexFilterCompletely = {},
-                                onDismissRequest = { goBack() },
-                                Modifier.testTag(TAG_DANMAKU_SETTINGS_SHEET),
-                            )
-                        },
-                        editDanmakuRegexFilterPage = {
-                            DanmakuRegexFilterSettings(
-                                state = createTestDanmakuRegexFilterState(),
-                                onDismissRequest = { goBack() },
-                                expanded = expanded,
-                            )
-                        },
-                        mediaSelectorPage = {
-                            val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(ViewKind.WEB) }
-                            val (fetchRequest, onFetchRequestChange) = rememberSaveable {
-                                mutableStateOf(
-                                    TestMediaFetchRequest,
+                    },
+                    sidebarVisible = true,
+                    onToggleSidebar = {},
+                    progressSliderState = progressSliderState,
+                    cacheProgressInfoFlow = cacheProgressInfoFlow,
+                    framePreview = framePreview,
+                    audioController = audioController,
+                    brightnessController = NoOpLevelController,
+                    playbackSpeedControllerState = remember(playbackSpeed) {
+                        PlaybackSpeedControllerState(
+                            playbackSpeed = playbackSpeed,
+                            onCommitSpeed = onCommitPlaybackSpeed,
+                            scope = scope,
+                        )
+                    },
+                    videoAspectRatioControllerState = remember {
+                        VideoAspectRatioControllerState(NoOpVideoAspectRatio, scope)
+                    },
+                    leftBottomTips = {},
+                    fullscreenSwitchButton = {
+                        EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
+                            FullscreenSwitchMode.ONLY_IN_CONTROLLER,
+                            isFullscreen = expanded,
+                            onClickFullScreen = {},
+                        )
+                    },
+                    sideSheets = { sheetsController ->
+                        EpisodeVideoDefaults.SideSheets(
+                            sheetsController,
+                            playerControllerState,
+                            playerSettingsPage = {
+                                EpisodeVideoSideSheets.DanmakuSettingsSheet(
+                                    danmakuConfig = DanmakuConfig.Default,
+                                    setDanmakuConfig = {},
+                                    enableRegexFilter = true,
+                                    onNavigateToFilterSettings = {
+                                        sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
+                                    },
+                                    switchDanmakuRegexFilterCompletely = {},
+                                    onDismissRequest = { goBack() },
+                                    Modifier.testTag(TAG_DANMAKU_SETTINGS_SHEET),
                                 )
-                            }
-                            EpisodeVideoSideSheets.MediaSelectorSheet(
-                                mediaSelectorState = rememberTestMediaSelectorState(),
-                                mediaSourceResultListPresentation = TestMediaSourceResultListPresentation,
-                                viewKind = viewKind,
-                                onViewKindChange = onViewKindChange,
-                                fetchRequest = fetchRequest,
-                                onFetchRequestChange = onFetchRequestChange,
-                                onDismissRequest = { goBack() },
-                                onRefresh = {},
-                                onRestartSource = {},
-                            )
-                        },
-                        episodeSelectorPage = {
-                            EpisodeVideoSideSheets.EpisodeSelectorSheet(
-                                state = rememberTestEpisodeSelectorState(),
-                                onDismissRequest = { goBack() },
-                            )
-                        },
-                    )
-                },
-                gestureFamily = gestureFamily ?: gestureFamilyOf(
-                    LocalActiveInputSource.current.current,
-                    LocalPlatform.current.mouseFamily,
-                ),
-                shareData = MediaShareData(null, null),
-                onClickCache = {},
-                isFullscreen = isFullscreen,
-                modifier = Modifier.testTag("PLAYER"),
+                            },
+                            editDanmakuRegexFilterPage = {
+                                DanmakuRegexFilterSettings(
+                                    state = createTestDanmakuRegexFilterState(),
+                                    onDismissRequest = { goBack() },
+                                    expanded = expanded,
+                                )
+                            },
+                            mediaSelectorPage = {
+                                val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(ViewKind.WEB) }
+                                val (fetchRequest, onFetchRequestChange) = rememberSaveable {
+                                    mutableStateOf(
+                                        TestMediaFetchRequest,
+                                    )
+                                }
+                                EpisodeVideoSideSheets.MediaSelectorSheet(
+                                    mediaSelectorState = rememberTestMediaSelectorState(),
+                                    mediaSourceResultListPresentation = TestMediaSourceResultListPresentation,
+                                    viewKind = viewKind,
+                                    onViewKindChange = onViewKindChange,
+                                    fetchRequest = fetchRequest,
+                                    onFetchRequestChange = onFetchRequestChange,
+                                    onDismissRequest = { goBack() },
+                                    onRefresh = {},
+                                    onRestartSource = {},
+                                )
+                            },
+                            episodeSelectorPage = {
+                                EpisodeVideoSideSheets.EpisodeSelectorSheet(
+                                    state = rememberTestEpisodeSelectorState(),
+                                    onDismissRequest = { goBack() },
+                                )
+                            },
+                        )
+                    },
+                    gestureFamily = gestureFamily ?: gestureFamilyOf(
+                        LocalActiveInputSource.current.current,
+                        LocalPlatform.current.mouseFamily,
+                    ),
+                    shareData = MediaShareData(null, null),
+                    onClickCache = {},
+                    isFullscreen = isFullscreen,
+                    modifier = Modifier.testTag("PLAYER"),
                 )
             }
         }
@@ -494,18 +494,22 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
-    fun `watch together popup follows controller only in fullscreen`() = runAniComposeUiTest {
+    fun `watch together popup follows controller while video fills page`() = runAniComposeUiTest {
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         val watchTogetherPlayerController = WatchTogetherPlayerController()
         var isFullscreen by mutableStateOf(true)
+        var isExpandedLayout by mutableStateOf(false)
+        var sidebarVisible by mutableStateOf(true)
         mainClock.autoAdvance = false
         setContent {
-            Player(
-                GestureFamily.MOUSE,
-                playerControllerState = visibleControllerState,
-                watchTogetherPlayerController = watchTogetherPlayerController,
-                isFullscreen = isFullscreen,
-            )
+            CompositionLocalProvider(LocalWatchTogetherPlayerController provides watchTogetherPlayerController) {
+                WatchTogetherPopupVisibilityEffect(
+                    playerControllerState = visibleControllerState,
+                    isFullscreen = isFullscreen,
+                    isExpandedLayout = isExpandedLayout,
+                    sidebarVisible = sidebarVisible,
+                )
+            }
         }
 
         runOnIdle {
@@ -532,6 +536,21 @@ class EpisodeVideoControllerTest {
 
         runOnIdle {
             isFullscreen = false
+        }
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            watchTogetherPlayerController.isDraggablePopupVisible
+        }
+
+        runOnIdle {
+            isExpandedLayout = true
+            sidebarVisible = false
+        }
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            !watchTogetherPlayerController.isDraggablePopupVisible
+        }
+
+        runOnIdle {
+            sidebarVisible = true
         }
         waitUntil(timeoutMillis = WAIT_TIMEOUT) {
             watchTogetherPlayerController.isDraggablePopupVisible
@@ -1256,49 +1275,50 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
-    fun `touch - keyboard shortcuts - escape dismisses detached editor before exiting fullscreen`() = runAniComposeUiTest {
-        var exitFullscreenCount = 0
-        var editorEscapeCount = 0
-        var showDanmakuEditor by mutableStateOf(true)
-        val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
-        setContent {
-            CompositionLocalProvider(LocalPlatform provides Platform.Android(Arch.ARMV8A)) {
-                Player(
-                    GestureFamily.TOUCH,
-                    playerControllerState = visibleControllerState,
-                    onExitFullscreen = { exitFullscreenCount++ },
-                    showDanmakuEditor = { showDanmakuEditor },
-                    onEditorEscape = {
-                        editorEscapeCount++
-                        showDanmakuEditor = false
-                    },
-                )
+    fun `touch - keyboard shortcuts - escape dismisses detached editor before exiting fullscreen`() =
+        runAniComposeUiTest {
+            var exitFullscreenCount = 0
+            var editorEscapeCount = 0
+            var showDanmakuEditor by mutableStateOf(true)
+            val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+            setContent {
+                CompositionLocalProvider(LocalPlatform provides Platform.Android(Arch.ARMV8A)) {
+                    Player(
+                        GestureFamily.TOUCH,
+                        playerControllerState = visibleControllerState,
+                        onExitFullscreen = { exitFullscreenCount++ },
+                        showDanmakuEditor = { showDanmakuEditor },
+                        onEditorEscape = {
+                            editorEscapeCount++
+                            showDanmakuEditor = false
+                        },
+                    )
+                }
+            }
+            waitForIdle()
+
+            danmakuEditor.performClick()
+            danmakuEditor.onChild().assertIsFocused()
+            danmakuEditor.performKeyInput {
+                pressKey(Key.Escape)
+            }
+            waitForIdle()
+
+            videoGestureHost.assertIsFocused()
+            danmakuEditor.doesNotExist()
+            runOnIdle {
+                assertEquals(1, editorEscapeCount)
+                assertEquals(0, exitFullscreenCount)
+            }
+
+            videoGestureHost.performKeyInput {
+                pressKey(Key.Escape)
+            }
+            waitForIdle()
+            runOnIdle {
+                assertEquals(1, exitFullscreenCount)
             }
         }
-        waitForIdle()
-
-        danmakuEditor.performClick()
-        danmakuEditor.onChild().assertIsFocused()
-        danmakuEditor.performKeyInput {
-            pressKey(Key.Escape)
-        }
-        waitForIdle()
-
-        videoGestureHost.assertIsFocused()
-        danmakuEditor.doesNotExist()
-        runOnIdle {
-            assertEquals(1, editorEscapeCount)
-            assertEquals(0, exitFullscreenCount)
-        }
-
-        videoGestureHost.performKeyInput {
-            pressKey(Key.Escape)
-        }
-        waitForIdle()
-        runOnIdle {
-            assertEquals(1, exitFullscreenCount)
-        }
-    }
 
     @Test
     fun `mouse - keyboard shortcuts - reclaim focus from editor on mouse move`() = runAniComposeUiTest {
@@ -1361,29 +1381,30 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
-    fun `mouse - keyboard shortcuts - reclaim focus after fullscreen button click on mouse move`() = runAniComposeUiTest {
-        var fullscreenCount = 0
-        val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
-        setContent {
-            Player(
-                GestureFamily.MOUSE,
-                playerControllerState = visibleControllerState,
-                onClickFullScreen = { fullscreenCount++ },
-            )
-        }
-        waitForIdle()
+    fun `mouse - keyboard shortcuts - reclaim focus after fullscreen button click on mouse move`() =
+        runAniComposeUiTest {
+            var fullscreenCount = 0
+            val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+            setContent {
+                Player(
+                    GestureFamily.MOUSE,
+                    playerControllerState = visibleControllerState,
+                    onClickFullScreen = { fullscreenCount++ },
+                )
+            }
+            waitForIdle()
 
-        videoGestureHost.assertIsFocused()
-        onNodeWithContentDescription("Exit Fullscreen").performClick()
-        waitForIdle()
-        runOnIdle {
-            assertEquals(1, fullscreenCount)
-        }
+            videoGestureHost.assertIsFocused()
+            onNodeWithContentDescription("Exit Fullscreen").performClick()
+            waitForIdle()
+            runOnIdle {
+                assertEquals(1, fullscreenCount)
+            }
 
-        videoGestureHost.slightlyMoveFromCenterToRight()
-        waitForIdle()
-        videoGestureHost.assertIsFocused()
-    }
+            videoGestureHost.slightlyMoveFromCenterToRight()
+            waitForIdle()
+            videoGestureHost.assertIsFocused()
+        }
 
     @Test
     fun `mouse - keyboard shortcuts - enter does not activate click gesture`() = runAniComposeUiTest {
@@ -1901,7 +1922,7 @@ class EpisodeVideoControllerTest {
         }
         waitUntil(timeoutMillis = WAIT_TIMEOUT) {
             previewPopup.exists() &&
-                onNodeWithTag(TAG_PROGRESS_SLIDER_CENTERED_PREVIEW_FRAME, useUnmergedTree = true).exists()
+                    onNodeWithTag(TAG_PROGRESS_SLIDER_CENTERED_PREVIEW_FRAME, useUnmergedTree = true).exists()
         }
 
         onNodeWithTag(TAG_PROGRESS_SLIDER_PREVIEW_FRAME, useUnmergedTree = true).assertDoesNotExist()
@@ -2164,16 +2185,6 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
-    fun `touch - hover to always on - danmaku settings sheet`() = runAniComposeUiTest {
-        testSideSheetRequestAlwaysOn(
-            gestureFamily = GestureFamily.TOUCH,
-            openSideSheet = { onNodeWithTag(TAG_SHOW_SETTINGS).performClick() },
-            waitForSideSheetOpen = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_DANMAKU_SETTINGS_SHEET).exists() } },
-            waitForSideSheetClose = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_DANMAKU_SETTINGS_SHEET).doesNotExist() } },
-        )
-    }
-
-    @Test
     @Disabled // Sometimes fail on CI
     fun `touch - hover to always on - media selector sheet`() = runAniComposeUiTest {
         testSideSheetRequestAlwaysOn(
@@ -2425,16 +2436,6 @@ class EpisodeVideoControllerTest {
         }
         waitForIdle()
         assertControllerVisible(false)
-    }
-
-    @Test
-    fun `mouse - hover to always on - danmaku settings sheet`() = runAniComposeUiTest {
-        testSideSheetRequestAlwaysOn(
-            gestureFamily = GestureFamily.MOUSE,
-            openSideSheet = { onNodeWithTag(TAG_SHOW_SETTINGS).performClick() },
-            waitForSideSheetOpen = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_DANMAKU_SETTINGS_SHEET).exists() } },
-            waitForSideSheetClose = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_DANMAKU_SETTINGS_SHEET).doesNotExist() } },
-        )
     }
 
     @Test
