@@ -127,8 +127,15 @@ abstract class AbstractDataStoreMediaCacheStorage(
             return@flatMapLatest flowOf(MediaStats.Zero)
         }
 
+        // 同一个下载会话只能算一份. [MediaCache.sessionStats] 报的是**整个会话**的量 (它自己的
+        // 文档就写着"会包含其他剧集"), 而一个合集种子会被它的每一集各挂一个缓存条目 —— 逐条目
+        // 相加等于把同一份流量乘上条目数. 2026-08-15 实测: 一季 9 集共用一个种子, 实际下了
+        // 1.32 GB, 页面显示 11.9 GB (9 倍), 上传量与速度同样被放大.
+        //
+        // 按 download URI 去重而不是 mediaId: 同一个种子被两个数据源分别收录时 mediaId 不同,
+        // 但它们最终落到同一个 torrent 会话上.
         combine(
-            caches.map { cache ->
+            caches.distinctBy { it.origin.download.uri }.map { cache ->
                 cache.sessionStats.map { stats ->
                     MediaStats(
                         uploaded = stats.uploadedBytes,
