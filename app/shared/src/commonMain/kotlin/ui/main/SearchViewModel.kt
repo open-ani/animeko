@@ -28,7 +28,6 @@ import kotlinx.coroutines.flow.update
 import me.him188.ani.app.data.models.preference.NsfwMode
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.episode.GetAnimeSeasonIdsFlowUseCase
-import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.data.repository.episode.EpisodeCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchCompletionRepository
@@ -146,7 +145,7 @@ class SearchViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                updateSearchPageState { it.copy(seasonsError = LoadError.fromException(e)) }
+                // 季度列表加载失败: 静默降级, 年份下拉为空 (仅"全部年份"可选), 不影响搜索主功能.
             }
         }
     }

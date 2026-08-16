@@ -12,6 +12,7 @@ package me.him188.ani.app.ui.exploration.search
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -97,8 +98,13 @@ fun SearchFilterChipsRow(
     onClickItemText: (SearchFilterChipState, value: String) -> Unit,
     onCheckedChange: (SearchFilterChipState, value: String) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * 渲染在标签 chips 之前的自定义内容 (如年份/季度筛选), 与标签 chips 共处同一 FlowRow.
+     */
+    leadingContent: @Composable FlowRowScope.() -> Unit = {},
 ) {
     FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        leadingContent()
         for (chipState in state.chips) {
             SearchFilterChip(
                 chipState,

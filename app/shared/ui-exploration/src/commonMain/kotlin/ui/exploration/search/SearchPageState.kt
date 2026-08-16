@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.data.models.schedule.AnimeSeasonId
 import me.him188.ani.app.data.models.subject.CanonicalTagKind
-import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.search.SearchSort
 import me.him188.ani.app.domain.search.SubjectSearchQuery
 import me.him188.ani.app.ui.search.PagingSearchState
@@ -38,10 +37,6 @@ data class SearchPageState(
      * 可选的浏览季度列表, 按时间降序 (最新在前). 由 ViewModel 从 GetAnimeSeasonIdsFlowUseCase 填充.
      */
     val seasons: List<AnimeSeasonId> = emptyList(),
-    /**
-     * 季度列表加载失败原因; 为 null 表示加载中或加载成功.
-     */
-    val seasonsError: LoadError? = null,
 ) {
     data class EpisodeTarget(
         val subjectId: Int,
