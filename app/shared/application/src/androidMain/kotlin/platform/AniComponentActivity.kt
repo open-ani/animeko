@@ -1,29 +1,20 @@
 /*
- * Ani
- * Copyright (C) 2022-2024 Him188
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
+ * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
 package me.him188.ani.app.platform
 
 import android.net.Uri
 import android.os.Bundle
+import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -40,19 +31,10 @@ import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.ConcurrentLinkedQueue
 
 
-abstract class BaseComponentActivity : AppCompatActivity() {
+abstract class AniComponentActivity : ComponentActivity() {
     @Stable
     val snackbarHostState = SnackbarHostState()
 
-    /**
-     * [AppCompatActivity.setContentView] 用的是 appcompat 自己的一套 view tree owner 初始化,
-     * 它早于 `androidx.navigationevent`, 因此不会设置 `ViewTreeNavigationEventDispatcherOwner`.
-     *
-     * 结果是 Navigation 3 的 `NavDisplay` 在 composition 时找不到 dispatcher 而崩溃
-     * ("No NavigationEventDispatcher was provided via LocalNavigationEventDispatcherOwner").
-     * [ComponentActivity.initializeViewTreeOwners][androidx.activity.ComponentActivity.initializeViewTreeOwners]
-     * 会把包括它在内的所有 owner 都设置好, 这里补上一次. 重复设置是幂等的.
-     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         initializeViewTreeOwners()
@@ -117,7 +99,7 @@ abstract class BaseComponentActivity : AppCompatActivity() {
     }
 }
 
-suspend fun BaseComponentActivity.showSnackbar(
+suspend fun AniComponentActivity.showSnackbar(
     message: String,
     actionLabel: String? = null,
     withDismissAction: Boolean = false,
@@ -126,7 +108,7 @@ suspend fun BaseComponentActivity.showSnackbar(
     return snackbarHostState.showSnackbar(message, actionLabel, withDismissAction, duration)
 }
 
-fun BaseComponentActivity.showSnackbarAsync(
+fun AniComponentActivity.showSnackbarAsync(
     message: String,
     actionLabel: String? = null,
     withDismissAction: Boolean = false,
