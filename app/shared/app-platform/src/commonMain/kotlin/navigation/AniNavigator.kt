@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -13,18 +13,15 @@ import androidx.annotation.MainThread
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisallowComposableCalls
-import androidx.compose.runtime.State
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.navigation.NavHostController
-import androidx.navigation.NavOptionsBuilder
-import androidx.navigation.toRoute
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
+import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.utils.analytics.Analytics
@@ -34,59 +31,65 @@ import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeEnter
 /**
  * Supports navigation to any page in the app.
  *
- * 应当总是使用 [AniNavigator], 而不要访问 [currentNavigator].
+ * 这是 Navigation 3 的导航入口. 导航状态就是一个 [NavRoutes] 的栈 ([backStack]), 栈顶为最后一个元素.
+ * 所有导航操作都是对这个栈的增删, 由 `NavDisplay` 观察并渲染.
+ *
+ * 应当总是使用 [AniNavigator] 提供的方法, 而不要直接修改 [backStack].
  *
  * @see LocalNavigator
  */
 interface AniNavigator {
-    fun setNavController(
-        controller: NavHostController,
-    )
+    /**
+     * 绑定 back stack. 由 UI 入口点 (`AniAppContent`) 在创建 back stack 后调用.
+     */
+    fun setBackStack(backStack: SnapshotStateList<NavRoutes>)
 
-    fun isNavControllerReady(): Boolean
+    fun isBackStackReady(): Boolean
 
-    suspend fun awaitNavController(): NavHostController
+    suspend fun awaitBackStack(): List<NavRoutes>
 
+    /**
+     * 当前的 back stack, 栈顶为最后一个元素. 在 composition 中读取它会自动订阅变化.
+     *
+     * 在 [setBackStack] 之前访问会抛出异常.
+     */
     // Not @Stable
-    val currentNavigator: NavHostController
+    val backStack: List<NavRoutes>
 
-    @Composable
-    fun collectNavigatorAsState(): State<NavHostController>
+    /**
+     * 入栈一个页面.
+     */
+    fun navigate(route: NavRoutes)
 
-    fun popBackStack() {
-        currentNavigator.popBackStack()
-    }
+    /**
+     * 弹出栈顶页面. 如果栈中只剩一个页面, 则不做任何操作 (由系统决定是否退出 APP).
+     */
+    fun popBackStack()
 
-    fun popBackStack(route: NavRoutes, inclusive: Boolean, saveState: Boolean = false) {
-        currentNavigator.popBackStack(route, inclusive, saveState)
-    }
-
-//    fun popBackStack(
-//        route: String,
-//        inclusive: Boolean,
-//    ) {
-//        navigator.popBackStackIfExist(route, inclusive = true)
-//    }
+    /**
+     * 弹出到栈中最近的 [route] 为止. [inclusive] 为 `true` 时 [route] 自身也会被弹出.
+     *
+     * 如果栈中没有 [route], 则不做任何操作. 永远不会把栈弹空.
+     */
+    fun popBackStack(route: NavRoutes, inclusive: Boolean)
 
     fun navigateSubjectDetails(
         subjectId: Int,
         placeholder: SubjectDetailPlaceholder?,
     ) {
-        currentNavigator.navigate(
-            NavRoutes.SubjectDetail(subjectId, placeholder),
-        )
+        navigate(NavRoutes.SubjectDetail(subjectId, placeholder))
     }
 
     fun navigateSubjectCaches(subjectId: Int) {
-        currentNavigator.navigate(NavRoutes.SubjectCaches(subjectId))
+        navigate(NavRoutes.SubjectCaches(subjectId))
     }
 
     fun navigatePersonDetails(personId: Int) {
-        currentNavigator.navigate(NavRoutes.PersonDetail(personId))
+        navigate(NavRoutes.PersonDetail(personId))
     }
 
     fun navigateCharacterDetails(characterId: Int) {
-        currentNavigator.navigate(NavRoutes.CharacterDetail(characterId))
+        navigate(NavRoutes.CharacterDetail(characterId))
     }
 
     fun navigateEpisodeDetails(
@@ -98,8 +101,9 @@ interface AniNavigator {
         if (!force && !EpisodeNavigationGuardRegistry.checkOrNotifyDenied(subjectId, episodeId)) {
             return
         }
-        currentNavigator.popBackStack(NavRoutes.EpisodeDetail(subjectId, episodeId), inclusive = true)
-        currentNavigator.navigate(NavRoutes.EpisodeDetail(subjectId, episodeId))
+        // 避免同一个剧集在栈中重复出现
+        popBackStack(NavRoutes.EpisodeDetail(subjectId, episodeId), inclusive = true)
+        navigate(NavRoutes.EpisodeDetail(subjectId, episodeId))
         Analytics.recordEvent(
             EpisodeEnter,
             mapOf("subject_id" to subjectId, "episode_id" to episodeId),
@@ -107,174 +111,202 @@ interface AniNavigator {
     }
 
     fun navigateWelcome() {
-        currentNavigator.navigate(NavRoutes.Welcome)
+        navigate(NavRoutes.Welcome)
     }
 
     /**
-     * 向导结束后, 导航到主页时 [NavOptionsBuilder.popUpTo] 的目标.
+     * 向导结束后, 导航到主页时要弹出的目标.
      *
      * @see NavRoutes.Onboarding.popUpTargetInclusive
      */
     fun navigateOnboarding(completionPopUpTargetInclusive: NavRoutes?) {
-        currentNavigator.navigate(NavRoutes.Onboarding(completionPopUpTargetInclusive))
+        navigate(NavRoutes.Onboarding(completionPopUpTargetInclusive))
     }
 
     /**
-     * 向导结束后, 导航到主页时 [NavOptionsBuilder.popUpTo] 的目标.
+     * 向导结束后, 导航到主页时要弹出的目标.
      *
      * @see NavRoutes.Onboarding.popUpTargetInclusive
      */
     fun navigateOnboardingComplete(completionPopUpTargetInclusive: NavRoutes?) {
-        currentNavigator.navigate(NavRoutes.OnboardingComplete(completionPopUpTargetInclusive))
+        navigate(NavRoutes.OnboardingComplete(completionPopUpTargetInclusive))
         Analytics.recordEvent(AnalyticsEvent.OnboardingDone)
     }
 
+    /**
+     * 导航到主页. 如果指定了 [popUpTargetInclusive], 则先把它 (含) 之上的页面全部弹出.
+     *
+     * 注意这里允许把栈弹空 (例如从 [NavRoutes.Welcome] 开始的向导结束时), 因为紧接着就会压入主页.
+     */
     fun navigateMain(
         page: MainScreenPage,
         popUpTargetInclusive: NavRoutes? = null,
-    ) {
-        currentNavigator.navigate(NavRoutes.Main(page)) {
-            if (popUpTargetInclusive != null) {
-                popUpTo(popUpTargetInclusive) { inclusive = true }
-            }
-        }
-    }
+    )
 
     @MainThread
     fun navigateEmailLoginStart() {
-        currentNavigator.navigate(NavRoutes.EmailLoginStart)
+        navigate(NavRoutes.EmailLoginStart)
     }
 
     @MainThread
     fun navigateEmailLoginVerify() {
-        currentNavigator.navigate(NavRoutes.EmailLoginVerify)
+        navigate(NavRoutes.EmailLoginVerify)
     }
 
     /**
-     * 返回到第一个 [NavRoutes.Main], 根据当前的 back stack 进行不同的操作:
+     * 返回到第一个 [NavRoutes.Main], 根据当前的 [backStack] 进行不同的操作:
      *
-     * * 如果 [currentBackStack][NavHostController.currentBackStack] 中有 [NavRoutes.Main],
-     *   则 [pop back][NavHostController.popBackStack] 到 back stack 中第一个 [NavRoutes.Main].
-     * * 如果 [currentBackStack][NavHostController.currentBackStack] 没有 [NavRoutes.Main],
-     *   则 [navigate][NavHostController.navigate] 到 [NavRoutes.Main], 并 pop 所有的 back stack,
-     *   此时 back stack 中将只有一个 [NavRoutes.Main]. **这种情况通常不会出现**.
-     *
-     * TODO: ios uses restricted api.
+     * * 如果 [backStack] 中有 [NavRoutes.Main], 则弹出到栈中**第一个** [NavRoutes.Main] 为止 (不含它自己).
+     * * 如果 [backStack] 中没有 [NavRoutes.Main], 则清空栈并导航到 [NavRoutes.Main],
+     *   此时栈中将只有一个 [NavRoutes.Main]. **这种情况通常不会出现**.
      */
-    fun popBackOrNavigateToMain(mainSceneInitialPage: MainScreenPage) {
-        currentNavigator.popBackOrNavigateToMain(mainSceneInitialPage)
-    }
+    fun popBackOrNavigateToMain(mainSceneInitialPage: MainScreenPage)
 
     /**
      * 登录页面
      */
     fun navigateLogin() {
-        currentNavigator.navigate(NavRoutes.EmailLoginStart)
+        navigate(NavRoutes.EmailLoginStart)
     }
 
     fun navigateBangumiAuthorize() {
-        currentNavigator.navigate(NavRoutes.BangumiAuthorize)
+        navigate(NavRoutes.BangumiAuthorize)
     }
 
     fun navigatePlaybackHistorySyncStatus() {
-        currentNavigator.navigate(NavRoutes.PlaybackHistorySyncStatus)
+        navigate(NavRoutes.PlaybackHistorySyncStatus)
     }
 
     fun navigateSettings(tab: SettingsTab? = null) {
-        currentNavigator.navigate(NavRoutes.Settings(tab))
+        navigate(NavRoutes.Settings(tab))
     }
 
     fun navigateSubjectSearch(search: NavRoutes.SubjectSearch = NavRoutes.SubjectSearch()) {
-        currentNavigator.navigate(search)
+        navigate(search)
     }
 
     fun navigateSubjectSearch(tag: String) {
-        currentNavigator.navigate(NavRoutes.SubjectSearch(tags = listOf(tag)))
+        navigate(NavRoutes.SubjectSearch(tags = listOf(tag)))
     }
 
     fun navigateEditMediaSource(
         factoryId: FactoryId,
         mediaSourceInstanceId: String,
     ) {
-        currentNavigator.navigate(
-            NavRoutes.EditMediaSource(factoryId.value, mediaSourceInstanceId),
-        )
+        navigate(NavRoutes.EditMediaSource(factoryId.value, mediaSourceInstanceId))
     }
 
     fun navigateTorrentPeerSettings() {
-        currentNavigator.navigate(NavRoutes.TorrentPeerSettings)
+        navigate(NavRoutes.TorrentPeerSettings)
     }
 
     fun navigateCaches() {
-        currentNavigator.navigate(NavRoutes.Caches)
+        navigate(NavRoutes.Caches)
     }
 
     fun navigateCacheDetails(cacheId: String) {
-        currentNavigator.navigate(NavRoutes.CacheDetail(cacheId))
+        navigate(NavRoutes.CacheDetail(cacheId))
     }
 
     fun navigateSchedule() {
-        currentNavigator.navigate(NavRoutes.Schedule)
+        navigate(NavRoutes.Schedule)
     }
 
     fun navigatePlaybackHistory() {
-        currentNavigator.navigate(NavRoutes.PlaybackHistory)
+        navigate(NavRoutes.PlaybackHistory)
     }
 }
-
-// Workaround for calling restricted API on common source
-// - androidx.navigation.NavDestination#id
-// - androidx.navigation.NavOptionsBuilder#popUpTo(id: Int, popUpToBuilder: PopUpToBuilder.() -> Unit = {})
-expect fun NavHostController.popBackOrNavigateToMain(mainSceneInitialPage: MainScreenPage)
 
 fun AniNavigator(): AniNavigator = AniNavigatorImpl()
 
 private class AniNavigatorImpl : AniNavigator {
-    private val _navigator: MutableSharedFlow<NavHostController> =
-        MutableSharedFlow(
-            replay = 1,
-            onBufferOverflow = BufferOverflow.DROP_OLDEST,
-        )
+    private val _backStack: MutableStateFlow<SnapshotStateList<NavRoutes>?> = MutableStateFlow(null)
 
-    override val currentNavigator: NavHostController
-        get() = _navigator.replayCache.firstOrNull() ?: error("Navigator is not yet set")
+    private val currentBackStack: SnapshotStateList<NavRoutes>
+        get() = _backStack.value ?: error("Back stack is not yet set")
 
-    @Composable
-    override fun collectNavigatorAsState(): State<NavHostController> = _navigator.collectAsState(currentNavigator)
+    override val backStack: List<NavRoutes>
+        get() = currentBackStack
 
-    override fun setNavController(controller: NavHostController) {
-        check(this._navigator.tryEmit(controller)) {
-            "Failed to set NavController"
+    override fun setBackStack(backStack: SnapshotStateList<NavRoutes>) {
+        _backStack.value = backStack
+    }
+
+    override fun isBackStackReady(): Boolean = _backStack.value != null
+
+    override suspend fun awaitBackStack(): List<NavRoutes> = _backStack.filterNotNull().first()
+
+    override fun navigate(route: NavRoutes) {
+        currentBackStack.add(route)
+    }
+
+    override fun popBackStack() {
+        val stack = currentBackStack
+        // 栈至少要保留一个页面, 否则 NavDisplay 会抛异常. 根页面的返回由系统处理 (如 Android 退出 APP).
+        if (stack.size <= 1) return
+        stack.removeAt(stack.lastIndex)
+    }
+
+    override fun popBackStack(route: NavRoutes, inclusive: Boolean) {
+        val stack = currentBackStack
+        val index = stack.indexOfLast { it == route }
+        if (index == -1) return
+        val targetSize = if (inclusive) index else index + 1
+        popTo(stack, targetSize)
+    }
+
+    override fun navigateMain(page: MainScreenPage, popUpTargetInclusive: NavRoutes?) {
+        val stack = currentBackStack
+        // pop 和 push 必须原子完成: pop 可能会把栈清空, 而空栈会让 NavDisplay 抛异常
+        Snapshot.withMutableSnapshot {
+            if (popUpTargetInclusive != null) {
+                val index = stack.indexOfLast { it == popUpTargetInclusive }
+                if (index != -1) {
+                    popTo(stack, index, keepAtLeastOne = false)
+                }
+            }
+            stack.add(NavRoutes.Main(page))
         }
     }
 
-    override fun isNavControllerReady(): Boolean = _navigator.replayCache.isNotEmpty()
+    override fun popBackOrNavigateToMain(mainSceneInitialPage: MainScreenPage) {
+        val stack = currentBackStack
+        val firstMain = stack.indexOfFirst { it is NavRoutes.Main }
+        if (firstMain != -1) {
+            popTo(stack, firstMain + 1)
+            return
+        }
+        Snapshot.withMutableSnapshot {
+            stack.clear()
+            stack.add(NavRoutes.Main(mainSceneInitialPage))
+        }
+    }
 
-    override suspend fun awaitNavController(): NavHostController {
-        return _navigator.first()
+    /**
+     * 把 [stack] 弹到只剩 [targetSize] 个元素.
+     *
+     * [keepAtLeastOne] 为 `true` 时至少保留一个元素, 避免空栈让 NavDisplay 抛异常.
+     * 只有在调用方保证紧接着会压入新页面时才能传 `false`.
+     */
+    private fun popTo(stack: SnapshotStateList<NavRoutes>, targetSize: Int, keepAtLeastOne: Boolean = true) {
+        val size = if (keepAtLeastOne) targetSize.coerceAtLeast(1) else targetSize
+        while (stack.size > size) {
+            stack.removeAt(stack.lastIndex)
+        }
     }
 }
 
 /**
  * Find last route of type [T] in the back stack.
  */
-inline fun <reified T : NavRoutes> NavHostController.findLast(): NavRoutes? {
-    val routeFQN = T::class.qualifiedName ?: return null
-    return currentBackStack.value
-        .asReversed()
-        .firstOrNull { it.destination.route?.contains(routeFQN) == true }
-        ?.toRoute<T>()
-}
+inline fun <reified T : NavRoutes> AniNavigator.findLast(): T? =
+    backStack.lastOrNull { it is T } as T?
 
 /**
  * Find first route of type [T] in the back stack.
  */
-inline fun <reified T : NavRoutes> NavHostController.findFirst(): NavRoutes? {
-    val routeFQN = T::class.qualifiedName ?: return null
-    return currentBackStack.value
-        .firstOrNull { it.destination.route?.contains(routeFQN) == true }
-        ?.toRoute<T>()
-}
+inline fun <reified T : NavRoutes> AniNavigator.findFirst(): T? =
+    backStack.firstOrNull { it is T } as T?
 
 /**
  * It is always provided.

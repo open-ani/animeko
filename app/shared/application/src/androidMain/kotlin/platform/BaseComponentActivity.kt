@@ -19,6 +19,7 @@
 package me.him188.ani.app.platform
 
 import android.net.Uri
+import android.os.Bundle
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -42,6 +43,20 @@ import java.util.concurrent.ConcurrentLinkedQueue
 abstract class BaseComponentActivity : AppCompatActivity() {
     @Stable
     val snackbarHostState = SnackbarHostState()
+
+    /**
+     * [AppCompatActivity.setContentView] 用的是 appcompat 自己的一套 view tree owner 初始化,
+     * 它早于 `androidx.navigationevent`, 因此不会设置 `ViewTreeNavigationEventDispatcherOwner`.
+     *
+     * 结果是 Navigation 3 的 `NavDisplay` 在 composition 时找不到 dispatcher 而崩溃
+     * ("No NavigationEventDispatcher was provided via LocalNavigationEventDispatcherOwner").
+     * [ComponentActivity.initializeViewTreeOwners][androidx.activity.ComponentActivity.initializeViewTreeOwners]
+     * 会把包括它在内的所有 owner 都设置好, 这里补上一次. 重复设置是幂等的.
+     */
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        initializeViewTreeOwners()
+    }
 
     private val requestPermissionHandlers: MutableCollection<(Boolean) -> Unit> = ConcurrentLinkedQueue()
     private val requestPermissionLauncher =

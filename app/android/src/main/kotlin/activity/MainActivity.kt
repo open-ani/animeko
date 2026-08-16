@@ -61,8 +61,8 @@ class MainActivity : AniComponentActivity() {
             val id = data.pathSegments.getOrNull(0)?.toIntOrNull() ?: return
             lifecycleScope.launch {
                 try {
-                    if (!aniNavigator.isNavControllerReady()) {
-                        aniNavigator.awaitNavController()
+                    if (!aniNavigator.isBackStackReady()) {
+                        aniNavigator.awaitBackStack()
                         delay(1000) // 等待初始化好, 否则跳转可能无效
                     }
                     aniNavigator.navigateSubjectDetails(id, placeholder = null)

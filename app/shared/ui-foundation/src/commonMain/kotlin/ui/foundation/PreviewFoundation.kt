@@ -20,7 +20,6 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import androidx.navigation.compose.rememberNavController
 import coil3.ImageLoader
 import coil3.compose.LocalPlatformContext
 import coil3.serviceLoaderEnabled
@@ -28,7 +27,10 @@ import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.navigation.AniNavigator
 import me.him188.ani.app.navigation.LocalNavigator
+import me.him188.ani.app.navigation.MainScreenPage
+import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.navigation.NoopBrowserNavigator
+import me.him188.ani.app.navigation.rememberAniBackStack
 import me.him188.ani.app.platform.navigation.LocalBrowserNavigator
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
@@ -103,8 +105,7 @@ inline fun ProvideCompositionLocalsForPreview(
         },
         LocalBrowserNavigator providesDefault NoopBrowserNavigator,
     ) {
-        val navController = rememberNavController()
-        aniNavigator.setNavController(navController)
+        aniNavigator.setBackStack(rememberAniBackStack(NavRoutes.Main(MainScreenPage.Exploration)))
         ProvidePlatformCompositionLocalsForPreview {
             AniTheme(darkModeOverride = darkMode) {
                 ProvideAniMotionCompositionLocals {
