@@ -93,6 +93,7 @@ import me.him188.ani.app.utils.formatSpeedValue
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.BRIGHTNESS
 import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.FAST_BACKWARD
 import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.FAST_FORWARD
@@ -104,6 +105,7 @@ import me.him188.ani.app.videoplayer.ui.gesture.GestureIndicatorState.State.VOLU
 import me.him188.ani.app.videoplayer.ui.gesture.SwipeSeekerState.Companion.swipeToSeek
 import me.him188.ani.app.videoplayer.ui.playerFocusHost
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
+import me.him188.ani.app.videoplayer.ui.toggle
 import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.isDesktop
 import org.jetbrains.compose.resources.stringResource
@@ -575,18 +577,18 @@ fun PlayerGestureHost(
     audioController: LevelController,
     brightnessController: LevelController,
     playbackSpeedControllerState: PlaybackSpeedControllerState?,
-    isUnderlyingPlayerFullscreen: Boolean,
+    fullscreenState: PlayerFullscreenState,
     modifier: Modifier = Modifier,
     family: GestureFamily = gestureFamilyOf(
         LocalActiveInputSource.current.current,
         LocalPlatform.current.mouseFamily,
     ),
     onTogglePauseResume: () -> Unit = {},
-    onToggleFullscreen: () -> Unit = {},
     onToggleDanmaku: () -> Unit = {},
     onTogglePlayerStats: () -> Unit = {},
 ) {
     val onTogglePauseResumeState by rememberUpdatedState(onTogglePauseResume)
+    val isFullscreen = fullscreenState.isFullscreen
 
     val inputSourceState = LocalActiveInputSource.current
 
@@ -663,11 +665,11 @@ fun PlayerGestureHost(
                     }
                 },
                 onTogglePauseResume = onTogglePauseResumeState,
-                onToggleFullscreen = onToggleFullscreen,
+                onToggleFullscreen = remember(fullscreenState) { { fullscreenState.toggle() } },
                 onToggleDanmaku = onToggleDanmaku,
                 onTogglePlayerStats = onTogglePlayerStats,
             )
-            .playerFocusHost(playerFocusState, isUnderlyingPlayerFullscreen)
+            .playerFocusHost(playerFocusState, isFullscreen)
 
         if (family.autoHideController) {
             LaunchedEffect(controllerState.visibility, controllerState.alwaysOn) {
@@ -714,11 +716,11 @@ fun PlayerGestureHost(
                             playerFocusState.requestPlayerFocus()
                         }
                     },
-                    onDoubleClick = remember(family, onToggleFullscreen, playerFocusState, inputSourceState) {
+                    onDoubleClick = remember(family, fullscreenState, playerFocusState, inputSourceState) {
                         {
                             val tapFamily = gestureFamilyOf(inputSourceState.latest, family)
                             if (tapFamily.doubleClickToFullscreen) {
-                                onToggleFullscreen()
+                                fullscreenState.toggle()
                             }
                             if (tapFamily.doubleClickToPauseResume) {
                                 onTogglePauseResumeState()
@@ -828,12 +830,9 @@ fun PlayerGestureHost(
                         .swipeToFullscreen(
                             enabled = swipeGesturesEnabled && !seekerState.isSeeking && !adjustingVolumeOrBrightness &&
                                     !adjustingForwardOrBackward,
-                            onEnterFullscreen = {
-                                if (!isUnderlyingPlayerFullscreen) onToggleFullscreen()
-                            },
-                            onExitFullscreen = {
-                                if (isUnderlyingPlayerFullscreen) onToggleFullscreen()
-                            },
+                            // request 幂等, 已在目标状态时是 no-op, 不需要在这里判断当前状态
+                            onEnterFullscreen = { fullscreenState.request(true) },
+                            onExitFullscreen = { fullscreenState.request(false) },
                         )
                         .weight(1f)
                         .fillMaxHeight(),
@@ -860,7 +859,7 @@ fun PlayerGestureHost(
             }
         }
 
-        if (family.clickToToggleController && isUnderlyingPlayerFullscreen) {
+        if (family.clickToToggleController && isFullscreen) {
             // 状态栏区域响应点击手势
             Box(
                 Modifier.fillMaxWidth()

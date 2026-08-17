@@ -54,13 +54,11 @@ import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
 import me.him188.ani.app.domain.player.VideoLoadingState
-import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.app.ui.danmaku.PlayerDanmakuEditor
 import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
-import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.navigation.onBackNavigationInput
 import me.him188.ani.app.ui.framework.AniComposeUiTest
@@ -88,6 +86,7 @@ import me.him188.ani.app.videoplayer.ui.NoOpPlaybackSpeedController
 import me.him188.ani.app.videoplayer.ui.NoOpVideoAspectRatio
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.gesture.GestureFamily
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
@@ -221,8 +220,6 @@ class EpisodeVideoControllerTest {
         /** null 表示不写死, 由 [EpisodeVideoImpl] 按当前输入设备推导 —— 混合设备的行为只能这样测. */
         gestureFamily: GestureFamily?,
         playerControllerState: PlayerControllerState = controllerState,
-        onClickFullScreen: () -> Unit = {},
-        onExitFullscreen: () -> Unit = {},
         onToggleDanmaku: () -> Unit = {},
         audioController: LevelController = NoOpLevelController,
         playbackSpeed: PlaybackSpeed = NoOpPlaybackSpeedController,
@@ -230,24 +227,19 @@ class EpisodeVideoControllerTest {
         opEdSkipDuration: Duration = 85.seconds,
         watchTogetherPlayerController: WatchTogetherPlayerController? = null,
         onPlayerStateCreated: (TestMediampPlayer) -> Unit = {},
-        onPlatformWindow: (PlatformWindow) -> Unit = {},
-        platformWindowOverride: PlatformWindow? = null,
         showDanmakuEditor: () -> Boolean = { true },
         onEditorEscape: (() -> Unit)? = null,
         expanded: Boolean = true,
-        isFullscreen: Boolean = expanded,
+        fullscreenState: PlayerFullscreenState = remember(expanded) { TestFullscreenState(expanded) },
         framePreview: MediaProgressFramePreviewState? = null,
         cacheChunkState: ChunkState = ChunkState.NONE,
     ) {
         ProvideCompositionLocalsForPreview(darkMode = DarkMode.DARK) {
-            val platformWindow = platformWindowOverride ?: LocalPlatformWindow.current
             val actualWatchTogetherPlayerController = watchTogetherPlayerController
                 ?: remember { WatchTogetherPlayerController() }
             CompositionLocalProvider(
-                LocalPlatformWindow provides platformWindow,
                 LocalWatchTogetherPlayerController provides actualWatchTogetherPlayerController,
             ) {
-                onPlatformWindow(platformWindow)
                 val scope = rememberCoroutineScope()
                 val playerState = remember {
                     TestMediampPlayer(scope.coroutineContext).also(onPlayerStateCreated)
@@ -260,7 +252,7 @@ class EpisodeVideoControllerTest {
                 LaunchedEffect(playerState) {
                     playerState.setMediaData(UriMediaData("file:///test.mp4"))
                 }
-                BackHandler(enabled = isFullscreen, onExitFullscreen)
+                BackHandler(enabled = fullscreenState.isFullscreen) { fullscreenState.request(false) }
                 val cacheProgressInfoFlow = staticMediaCacheProgressState(cacheChunkState).flow
                 EpisodeVideoImpl(
                     playerState = playerState,
@@ -274,8 +266,7 @@ class EpisodeVideoControllerTest {
                     danmakuEnabled = false,
                     onToggleDanmaku = onToggleDanmaku,
                     videoLoadingStateFlow = remember { MutableStateFlow(VideoLoadingState.Succeed(isBt = true)) },
-                    onClickFullScreen = onClickFullScreen,
-                    onExitFullscreen = onExitFullscreen,
+                    fullscreenState = fullscreenState,
                     danmakuEditor = {
                         if (showDanmakuEditor()) {
                             PlayerDanmakuEditor(
@@ -324,8 +315,7 @@ class EpisodeVideoControllerTest {
                     fullscreenSwitchButton = {
                         EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
                             FullscreenSwitchMode.ONLY_IN_CONTROLLER,
-                            isFullscreen = isFullscreen,
-                            onClickFullScreen = if (!isFullscreen) onClickFullScreen else onExitFullscreen,
+                            fullscreenState,
                         )
                     },
                     sideSheets = { sheetsController ->
@@ -385,10 +375,27 @@ class EpisodeVideoControllerTest {
                     ),
                     shareData = MediaShareData(null, null),
                     onClickCache = {},
-                    isFullscreen = isFullscreen,
                     modifier = Modifier.testTag("PLAYER"),
                 )
             }
+        }
+    }
+
+    /**
+     * 记录每一次真正生效的全屏请求. 幂等地被忽略掉的请求 (已在目标状态) 不记录.
+     */
+    private class TestFullscreenState(
+        initialIsFullscreen: Boolean,
+    ) : PlayerFullscreenState {
+        override var isFullscreen: Boolean by mutableStateOf(initialIsFullscreen)
+            private set
+
+        val requests = mutableListOf<Boolean>()
+
+        override fun request(fullscreen: Boolean) {
+            if (isFullscreen == fullscreen) return
+            requests.add(fullscreen)
+            isFullscreen = fullscreen
         }
     }
 
@@ -773,22 +780,9 @@ class EpisodeVideoControllerTest {
      */
     @Test
     fun `touch - swipeMidForFullscreen - swipe up enters and swipe down exits`() = runAniComposeUiTest {
-        var fullscreenCount = 0
-        var exitFullscreenCount = 0
+        val fullscreenState = TestFullscreenState(initialIsFullscreen = false)
         setContent {
-            var fullscreen by remember { mutableStateOf(false) }
-            Player(
-                GestureFamily.TOUCH,
-                onClickFullScreen = {
-                    fullscreen = true
-                    fullscreenCount++
-                },
-                onExitFullscreen = {
-                    fullscreen = false
-                    exitFullscreenCount++
-                },
-                isFullscreen = fullscreen,
-            )
+            Player(GestureFamily.TOUCH, fullscreenState = fullscreenState)
         }
         waitForIdle()
 
@@ -798,8 +792,7 @@ class EpisodeVideoControllerTest {
         }
 
         runOnIdle {
-            assertEquals(0, fullscreenCount)
-            assertEquals(0, exitFullscreenCount)
+            assertEquals(emptyList<Boolean>(), fullscreenState.requests)
         }
 
         // 未在全屏时, 在中间区域向上滑动: 进入全屏
@@ -807,17 +800,15 @@ class EpisodeVideoControllerTest {
             swipe(start = Offset(centerX, centerY + 200f), end = Offset(centerX, centerY - 200f))
         }
         runOnIdle {
-            assertEquals(1, fullscreenCount)
-            assertEquals(0, exitFullscreenCount)
+            assertEquals(listOf(true), fullscreenState.requests)
         }
 
-        // 全屏时, 在中间区域向上滑动: 无效果
+        // 全屏时, 在中间区域向上滑动: 无效果 (request 幂等)
         videoGestureHost.performTouchInput {
             swipe(start = Offset(centerX, centerY + 200f), end = Offset(centerX, centerY - 200f))
         }
         runOnIdle {
-            assertEquals(1, fullscreenCount)
-            assertEquals(0, exitFullscreenCount)
+            assertEquals(listOf(true), fullscreenState.requests)
         }
 
         // 全屏时，向下滑动，退出全屏
@@ -825,8 +816,7 @@ class EpisodeVideoControllerTest {
             swipe(start = Offset(centerX, centerY - 200f), end = Offset(centerX, centerY + 200f))
         }
         runOnIdle {
-            assertEquals(1, fullscreenCount)
-            assertEquals(1, exitFullscreenCount)
+            assertEquals(listOf(true, false), fullscreenState.requests)
         }
 
         // 退出全屏后向下滑动，无效果
@@ -834,8 +824,7 @@ class EpisodeVideoControllerTest {
             swipe(start = Offset(centerX, centerY - 200f), end = Offset(centerX, centerY + 200f))
         }
         runOnIdle {
-            assertEquals(1, fullscreenCount)
-            assertEquals(1, exitFullscreenCount)
+            assertEquals(listOf(true, false), fullscreenState.requests)
         }
     }
 
@@ -845,30 +834,19 @@ class EpisodeVideoControllerTest {
         lateinit var playbackSpeed: TestPlaybackSpeed
         val committedPlaybackSpeeds = mutableListOf<Float>()
         val audioController = TestLevelController(0.5f, levelStep = 0.04f)
-        var fullscreenCount = 0
-        var exitFullscreenCount = 0
+        val fullscreenState = TestFullscreenState(initialIsFullscreen = false)
         var toggleDanmakuCount = 0
         setContent {
             CompositionLocalProvider(LocalPlatform provides Platform.Android(Arch.ARMV8A)) {
-                val scope = rememberCoroutineScope()
-                var fullscreen by remember { mutableStateOf(false) }
                 playbackSpeed = remember { TestPlaybackSpeed(1f) }
                 Player(
                     GestureFamily.TOUCH,
-                    onClickFullScreen = {
-                        fullscreenCount++
-                        fullscreen = true
-                    },
-                    onExitFullscreen = {
-                        exitFullscreenCount++
-                        fullscreen = false
-                    },
                     onToggleDanmaku = { toggleDanmakuCount++ },
                     audioController = audioController,
                     playbackSpeed = playbackSpeed,
                     onCommitPlaybackSpeed = { committedPlaybackSpeeds.add(it) },
                     onPlayerStateCreated = { playerState = it },
-                    isFullscreen = fullscreen,
+                    fullscreenState = fullscreenState,
                 )
             }
         }
@@ -880,6 +858,7 @@ class EpisodeVideoControllerTest {
         }
         waitForIdle() // let the state machine process the injected position
 
+        // F 是 toggle: 第一次进入, 第二次退出. Escape 不是播放器快捷键, 在这里没有 back dispatcher 接管
         videoGestureHost.performKeyInput {
             pressKey(Key.F)
             pressKey(Key.Escape)
@@ -888,8 +867,7 @@ class EpisodeVideoControllerTest {
         }
         waitForIdle()
         runOnIdle {
-            assertEquals(1, fullscreenCount)
-            assertEquals(1, exitFullscreenCount)
+            assertEquals(listOf(true, false), fullscreenState.requests)
             assertEquals(1, toggleDanmakuCount)
         }
 
@@ -1144,7 +1122,6 @@ class EpisodeVideoControllerTest {
                         Player(
                             GestureFamily.TOUCH,
                             playerControllerState = visibleControllerState,
-                            onExitFullscreen = { exitFullscreenCount++ },
                             showDanmakuEditor = { showDanmakuEditor },
                             onEditorEscape = {
                                 editorEscapeCount++
@@ -1242,22 +1219,23 @@ class EpisodeVideoControllerTest {
     @Test
     fun `mouse - keyboard shortcuts - reclaim focus after fullscreen button click on mouse move`() =
         runAniComposeUiTest {
-            var fullscreenCount = 0
             val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+            val fullscreenState = TestFullscreenState(initialIsFullscreen = true)
             setContent {
                 Player(
                     GestureFamily.MOUSE,
                     playerControllerState = visibleControllerState,
-                    onClickFullScreen = { fullscreenCount++ },
+                    fullscreenState = fullscreenState,
                 )
             }
             waitForIdle()
 
             videoGestureHost.assertIsFocused()
+            // 已在全屏, 控制栏上的这个按钮此时是「退出全屏」
             fullScreenButton.performClick()
             waitForIdle()
             runOnIdle {
-                assertEquals(1, fullscreenCount)
+                assertEquals(listOf(false), fullscreenState.requests)
             }
 
             videoGestureHost.slightlyMoveFromCenterToRight()
@@ -1354,33 +1332,24 @@ class EpisodeVideoControllerTest {
     @Test
     fun `mouse - keyboard shortcuts - reclaim focus when fullscreen changes`() = runAniComposeUiTest {
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
-        var currentFullscreen = false
+        val fullscreenState = TestFullscreenState(initialIsFullscreen = false)
         setContent {
-            var fullscreen by remember { mutableStateOf(currentFullscreen) }
             Player(
                 GestureFamily.MOUSE,
                 playerControllerState = visibleControllerState,
-                onClickFullScreen = {
-                    fullscreen = true
-                    currentFullscreen = true
-                },
-                onExitFullscreen = {
-                    fullscreen = false
-                    currentFullscreen = false
-                },
-                isFullscreen = fullscreen,
+                fullscreenState = fullscreenState,
             )
         }
         waitForIdle()
 
         fullScreenButton.performClick()
         waitForIdle()
-        assertTrue(currentFullscreen)
+        assertTrue(fullscreenState.isFullscreen)
         videoGestureHost.assertIsFocused()
 
         fullScreenButton.performClick()
         waitForIdle()
-        assertFalse(currentFullscreen)
+        assertFalse(fullscreenState.isFullscreen)
         videoGestureHost.assertIsFocused()
     }
 
@@ -1388,13 +1357,10 @@ class EpisodeVideoControllerTest {
     fun `mouse - keyboard shortcuts - lost editor focus when fullscreen changes`() = runAniComposeUiTest {
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         setContent {
-            var fullscreen by remember { mutableStateOf(false) }
             Player(
                 GestureFamily.MOUSE,
                 playerControllerState = visibleControllerState,
-                onClickFullScreen = { fullscreen = true },
-                onExitFullscreen = { fullscreen = false },
-                isFullscreen = fullscreen,
+                fullscreenState = TestFullscreenState(initialIsFullscreen = false),
             )
         }
         waitForIdle()

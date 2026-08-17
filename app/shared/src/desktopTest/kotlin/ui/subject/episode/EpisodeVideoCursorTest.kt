@@ -47,6 +47,7 @@ import me.him188.ani.app.ui.framework.exists
 import me.him188.ani.app.ui.framework.runAniComposeUiTest
 import me.him188.ani.app.ui.subject.episode.video.components.FloatingFullscreenSwitchButton
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
+import me.him188.ani.app.videoplayer.ui.MutablePlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.NoOpPlaybackSpeedController
 import me.him188.ani.app.videoplayer.ui.NoOpVideoAspectRatio
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
@@ -96,7 +97,7 @@ class EpisodeVideoCursorTest {
             Row {
                 val expanded = true
                 val videoScaffoldConfig = VideoScaffoldConfig.Default
-                val onClickFullScreen = {}
+                val fullscreenState = remember { MutablePlayerFullscreenState(expanded) }
                 val cacheProgressInfoFlow = staticMediaCacheProgressState(ChunkState.NONE).flow
                 EpisodeVideoImpl(
                     playerState = playerState,
@@ -109,8 +110,7 @@ class EpisodeVideoCursorTest {
                     danmakuEnabled = false,
                     onToggleDanmaku = {},
                     videoLoadingStateFlow = remember { MutableStateFlow(VideoLoadingState.Succeed(isBt = true)) },
-                    onClickFullScreen = onClickFullScreen,
-                    onExitFullscreen = {},
+                    fullscreenState = fullscreenState,
                     danmakuEditor = {},
                     onClickScreenshot = {},
                     detachedProgressSlider = {
@@ -136,8 +136,7 @@ class EpisodeVideoCursorTest {
                     fullscreenSwitchButton = {
                         EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
                             videoScaffoldConfig.fullscreenSwitchMode,
-                            isFullscreen = expanded,
-                            onClickFullScreen,
+                            fullscreenState,
                         )
                     },
                     sideSheets = {},

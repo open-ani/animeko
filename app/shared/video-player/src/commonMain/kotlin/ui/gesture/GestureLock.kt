@@ -38,6 +38,7 @@ import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import org.openani.mediamp.MediampPlayer
 import org.openani.mediamp.features.PlaybackSpeed
@@ -144,10 +145,9 @@ fun LockableVideoGestureHost(
     audioController: LevelController,
     brightnessController: LevelController,
     playbackSpeedControllerState: PlaybackSpeedControllerState?,
-    isUnderlyingPlayerFullscreen: Boolean,
+    fullscreenState: PlayerFullscreenState,
     modifier: Modifier = Modifier,
     onTogglePauseResume: () -> Unit = {},
-    onToggleFullscreen: () -> Unit = {},
     onToggleDanmaku: () -> Unit = {},
     onTogglePlayerStats: () -> Unit = {},
     family: GestureFamily = gestureFamilyOf(
@@ -182,10 +182,9 @@ fun LockableVideoGestureHost(
             audioController,
             brightnessController,
             playbackSpeedControllerState,
-            isUnderlyingPlayerFullscreen,
+            fullscreenState,
             modifier,
             onTogglePauseResume = onTogglePauseResume,
-            onToggleFullscreen = onToggleFullscreen,
             onToggleDanmaku = onToggleDanmaku,
             onTogglePlayerStats = onTogglePlayerStats,
             family = family,

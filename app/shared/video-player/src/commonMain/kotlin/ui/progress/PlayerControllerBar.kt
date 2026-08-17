@@ -138,9 +138,11 @@ import me.him188.ani.app.ui.lang.video_player_volume
 import me.him188.ani.app.utils.formatSpeedValue
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.keepLayoutWhenHidden
 import me.him188.ani.app.videoplayer.ui.renderAspectRatioMode
+import me.him188.ani.app.videoplayer.ui.toggle
 import me.him188.ani.app.videoplayer.ui.top.needWorkaroundForFocusManager
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
@@ -500,17 +502,19 @@ object PlayerControllerDefaults {
     }
 
     /**
-     * To enter/exit fullscreen
+     * To enter/exit fullscreen.
+     *
+     * 图标方向和点击行为都取自同一个 [fullscreenState], 不可能对不上.
      */
     @Composable
     fun FullscreenIcon(
-        isFullscreen: Boolean,
-        onClickFullscreen: () -> Unit,
+        fullscreenState: PlayerFullscreenState,
         modifier: Modifier = Modifier,
     ) {
+        val isFullscreen = fullscreenState.isFullscreen
         val focusManager by rememberUpdatedState(LocalFocusManager.current) // workaround for #288
         IconButton(
-            onClick = onClickFullscreen,
+            onClick = remember(fullscreenState) { { fullscreenState.toggle() } },
             modifier.ifThen(needWorkaroundForFocusManager) {
                 onFocusEvent {
                     if (it.hasFocus) {
