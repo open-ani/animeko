@@ -367,6 +367,7 @@ private fun MainScreenNavigationLayout(
                             selfInfo = selfInfo,
                             onPlay = { navigator.navigateEpisodeDetails(it.subjectId, it.episodeId) },
                             onNavigateCacheDetail = { navigator.navigateCacheDetails(it) },
+                            onNavigateToSubjectCache = { navigator.navigateSubjectCaches(it) },
                             onClickLogin = onLogin,
                             modifier = Modifier.fillMaxSize(),
                             navigationIcon = { },

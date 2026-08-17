@@ -838,7 +838,7 @@
     <string name="cache_subject_manage_all">管理全部緩存</string>
     <string name="cache_unknown">未知</string>
     <string name="cache_management_select_item_for_details">選擇一個條目查看具體緩存</string>
-    <string name="cache_management_selected_count">%1$d 個已選</string>
+    <string name="cache_management_selected_count">已選 %1$d</string>
     <string name="cache_management_exit_selection">退出選擇</string>
     <string name="cache_management_select_all">選擇所有</string>
     <string name="cache_management_delete_selected">刪除所選</string>
@@ -850,6 +850,12 @@
     <string name="cache_management_delete_cache_confirmation">刪除後不可恢復，確認刪除嗎？</string>
     <string name="cache_management_finished_count">%1$d/%2$d 已完成</string>
     <string name="cache_management_downloading_count">%1$d 個下載中</string>
+    <string name="cache_subject_pause_all">全部暫停</string>
+    <string name="cache_subject_resume_all">全部繼續</string>
+    <string name="cache_management_selection_downloading_count">含 %1$d 個下載中</string>
+    <string name="cache_management_select_all_action">全選</string>
+    <string name="cache_management_deselect_all">取消全選</string>
+    <string name="cache_episode_status_paused">已暫停</string>
     <string name="cache_management_episode_label">第%1$d話 · %2$s</string>
     <string name="cache_management_more_actions">更多操作</string>
     <string name="cache_management_play">播放</string>

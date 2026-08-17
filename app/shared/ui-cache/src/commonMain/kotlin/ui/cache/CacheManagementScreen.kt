@@ -9,19 +9,15 @@
 
 package me.him188.ani.app.ui.cache
 
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -32,25 +28,20 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Deselect
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -60,7 +51,6 @@ import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
-import androidx.compose.material3.adaptive.navigation.ThreePaneScaffoldNavigator
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
@@ -73,36 +63,34 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
-import me.him188.ani.app.tools.getOrZero
 import me.him188.ani.app.ui.adaptive.AniListDetailPaneScaffold
 import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
-import me.him188.ani.app.ui.adaptive.ListDetailLayoutParameters
+import me.him188.ani.app.ui.adaptive.PaneScope
+import me.him188.ani.app.ui.cache.components.CacheEpisodeRow
 import me.him188.ani.app.ui.cache.components.CacheEpisodeState
 import me.him188.ani.app.ui.cache.components.CacheFilterAndSortBar
-import me.him188.ani.app.ui.cache.components.CacheFilterAndSortState
 import me.him188.ani.app.ui.cache.components.CacheGroupState
 import me.him188.ani.app.ui.cache.components.CacheManagementOverallStats
 import me.him188.ani.app.ui.cache.components.CacheSelectionFloatingToolbar
 import me.him188.ani.app.ui.cache.components.CacheSelectionState
-import me.him188.ani.app.ui.cache.components.DownloadStateIcon
+import me.him188.ani.app.ui.cache.components.CacheSubjectGroupCard
 import me.him188.ani.app.ui.cache.components.TestCacheGroupSates
 import me.him188.ani.app.ui.cache.components.createTestMediaStats
 import me.him188.ani.app.ui.cache.components.rememberCacheFilterAndSortState
 import me.him188.ani.app.ui.cache.components.rememberCacheSelectionState
+import me.him188.ani.app.ui.cache.subject.SubjectCacheDetailHeader
+import me.him188.ani.app.ui.cache.subject.SubjectCacheDetailPaneContent
+import me.him188.ani.app.ui.cache.subject.rememberSubjectCacheViewModel
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
@@ -122,25 +110,20 @@ import me.him188.ani.app.ui.lang.cache_episode_pause_download
 import me.him188.ani.app.ui.lang.cache_episode_resume_download
 import me.him188.ani.app.ui.lang.cache_management_delete_cache_confirmation
 import me.him188.ani.app.ui.lang.cache_management_delete_cache_title
-import me.him188.ani.app.ui.lang.cache_management_downloading_count
 import me.him188.ani.app.ui.lang.cache_management_enter_selection_mode
-import me.him188.ani.app.ui.lang.cache_management_episode_label
 import me.him188.ani.app.ui.lang.cache_management_exit_selection
-import me.him188.ani.app.ui.lang.cache_management_finished_count
 import me.him188.ani.app.ui.lang.cache_management_invalid_cache_info
-import me.him188.ani.app.ui.lang.cache_management_more_actions
 import me.him188.ani.app.ui.lang.cache_management_more_info
 import me.him188.ani.app.ui.lang.cache_management_play
 import me.him188.ani.app.ui.lang.cache_management_select_all
 import me.him188.ani.app.ui.lang.cache_management_select_item_for_details
 import me.him188.ani.app.ui.lang.cache_management_selected_count
+import me.him188.ani.app.ui.lang.cache_management_selection_downloading_count
 import me.him188.ani.app.ui.lang.cache_management_selection_summary
 import me.him188.ani.app.ui.lang.cache_management_streaming_not_supported
 import me.him188.ani.app.ui.lang.cache_subject_cancel
 import me.him188.ani.app.ui.lang.cache_subject_delete
-import me.him188.ani.app.ui.lang.cache_unknown
 import me.him188.ani.app.ui.lang.main_screen_page_cache_management
-import me.him188.ani.app.ui.settings.rendering.P2p
 import me.him188.ani.app.ui.user.SelfInfoUiState
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.utils.platform.annotations.TestOnly
@@ -166,7 +149,12 @@ data class CacheManagementState(
 
 
 /**
- * 全局缓存管理页面
+ * 全局缓存管理页面.
+ *
+ * 手机布局: 按条目分组的卡片列表, 点击卡片直接打开条目缓存页.
+ * 宽屏布局 (≥840dp): 左栏为分组卡片, 右栏为选中条目的完整缓存内容 (含未缓存剧集).
+ *
+ * 设计稿: [Figma](https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Animeko?node-id=1655-6587)
  */
 @Composable
 fun CacheManagementScreen(
@@ -175,6 +163,7 @@ fun CacheManagementScreen(
     onPlay: (CacheEpisodeState) -> Unit,
     onClickLogin: () -> Unit,
     onNavigateCacheDetail: (cacheId: String) -> Unit,
+    onNavigateToSubjectCache: (subjectId: Int) -> Unit,
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
@@ -192,6 +181,20 @@ fun CacheManagementScreen(
         modifier = modifier,
         navigationIcon = navigationIcon,
         windowInsets = windowInsets,
+        onNavigateToSubjectCache = onNavigateToSubjectCache,
+        detailPaneContent = { group, selectionState ->
+            if (group == null) {
+                EmptyDetailPanePlaceholder(Modifier.fillMaxSize())
+            } else {
+                SubjectCacheDetailPaneContent(
+                    vm = rememberSubjectCacheViewModel(group.subjectId),
+                    selectionState = selectionState,
+                    onPlay = onPlay,
+                    onViewDetail = { onNavigateCacheDetail(it.cacheId) },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        },
     )
 }
 
@@ -209,21 +212,21 @@ fun CacheManagementScreen(
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
+    onNavigateToSubjectCache: ((subjectId: Int) -> Unit)? = null,
+    detailPaneContent: (@Composable PaneScope.(group: CacheGroupState?, selectionState: CacheSelectionState) -> Unit)? = null,
 ) {
     val appBarColors = AniThemeDefaults.topAppBarColors()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     val listState = rememberLazyListState()
-    val detailListState = rememberLazyListState()
     val cacheFilterState = rememberCacheFilterAndSortState()
     val selectionState = rememberCacheSelectionState()
 
     val navigator = rememberListDetailPaneScaffoldNavigator<String>()
-    val listDetailLayoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective)
 
-    // 已过滤的 entries
-    val selectionEntries = if (listDetailLayoutParameters.preferSinglePane)
-        cacheFilterState.applyFilterAndSort(state.entries) else state.entries
+    // 设计稿: 筛选先过滤剧集再重组分组.
+    val filteredGroups = cacheFilterState.applyFilterAndSortGrouped(state.groups)
+    val selectionEntries = remember(filteredGroups) { filteredGroups.flatMap { it.entries } }
 
     // region selection
     var deleteSelectedCacheDialog by rememberSaveable { mutableStateOf(false) }
@@ -239,10 +242,12 @@ fun CacheManagementScreen(
         selectionEntries.isNotEmpty() && selectionCount == selectionEntries.size
     }
 
-    // 当 list detail pane 的类型改变并且在编辑模式时, 需要确保 selectedIds 只能是当前可见的 entries
-    LaunchedEffect(state.entries, selectionState.inSelection) {
-        if (selectionState.inSelection) {
-            val validIds = state.entries.map { it.cacheId }.toSet()
+    // 当缓存列表或筛选条件变化并且在编辑模式时, 需要确保 selectedIds 只能是当前可见的 entries,
+    // 否则顶栏计数会包含被筛选隐藏 (无法反选) 的项, 而批量操作又不会作用于它们.
+    // 列表尚未加载时 (为空) 跳过, 避免清空刚恢复的选择状态.
+    LaunchedEffect(selectionEntries, selectionState.inSelection) {
+        if (selectionState.inSelection && selectionEntries.isNotEmpty()) {
+            val validIds = selectionEntries.mapTo(hashSetOf()) { it.cacheId }
             selectionState.overrideSelected(selectionState.selectedIds.filter { id -> id in validIds }.toSet())
         }
     }
@@ -275,15 +280,12 @@ fun CacheManagementScreen(
             },
         )
     }
+    // endregion
 
-    CacheManagementLayout(
-        state = state,
-        cacheFilterState = cacheFilterState,
-        selectionState = selectionState,
-        navigator = navigator,
-        cacheEntries = state.entries,
-        filteredEntries = selectionEntries,
-        groupedEntries = state.groups,
+    val tasker = rememberAsyncHandler()
+
+    Scaffold(
+        modifier = modifier,
         topBar = {
             CacheManagementTopBar(
                 selectionMode = selectionState.inSelection,
@@ -322,79 +324,14 @@ fun CacheManagementScreen(
                 )
             }
         },
-        selectedEntries = selectedEntries,
-        selectedGroup = currentViewingGroup,
-        appBarColors = appBarColors,
-        scrollBehavior = scrollBehavior,
-        listState = listState,
-        detailListState = detailListState,
-        onSelectGroup = { currentViewingGroupKey = it?.key },
-        onToggleSelected = { entry -> selectionState.toggleSelection(entry.cacheId) },
-        onEnterSelection = { entry ->
-            selectionState.enterSelectionWith(selectionState.selectedIds + entry.cacheId)
-        },
-        onToggleGroupSelection = { group ->
-            selectionState.toggleSelection(*group.entries.map { it.cacheId }.toTypedArray())
-        },
-        onEnterGroupSelection = { group ->
-            selectionState.enterSelectionWith(selectionState.selectedIds + group.entries.map { it.cacheId })
-        },
-        onPlay = onPlay,
-        onResume = onResume,
-        onPause = onPause,
-        onDelete = onDelete,
-        onViewDetail = onViewDetail,
-        windowInsets = windowInsets,
-        listDetailLayoutParameters = listDetailLayoutParameters,
-        modifier = modifier,
-    )
-}
-
-
-@Composable
-private fun CacheManagementLayout(
-    state: CacheManagementState,
-    cacheFilterState: CacheFilterAndSortState,
-    selectionState: CacheSelectionState,
-    navigator: ThreePaneScaffoldNavigator<String>,
-    cacheEntries: List<CacheEpisodeState>,
-    filteredEntries: List<CacheEpisodeState>,
-    groupedEntries: List<CacheGroupState>,
-    selectedGroup: CacheGroupState?,
-    onSelectGroup: (CacheGroupState?) -> Unit,
-    onToggleSelected: (CacheEpisodeState) -> Unit,
-    onEnterSelection: (CacheEpisodeState) -> Unit,
-    onToggleGroupSelection: (CacheGroupState) -> Unit,
-    onEnterGroupSelection: (CacheGroupState) -> Unit,
-    onPlay: (CacheEpisodeState) -> Unit,
-    onResume: (CacheEpisodeState) -> Unit,
-    onPause: (CacheEpisodeState) -> Unit,
-    onDelete: (CacheEpisodeState) -> Unit,
-    onViewDetail: (CacheEpisodeState) -> Unit,
-    appBarColors: TopAppBarColors,
-    topBar: @Composable () -> Unit,
-    bottomBar: @Composable () -> Unit,
-    selectedEntries: List<CacheEpisodeState>,
-    scrollBehavior: TopAppBarScrollBehavior,
-    listState: LazyListState,
-    detailListState: LazyListState,
-    windowInsets: WindowInsets,
-    listDetailLayoutParameters: ListDetailLayoutParameters,
-    modifier: Modifier = Modifier
-) {
-    val tasker = rememberAsyncHandler()
-
-    Scaffold(
-        modifier = modifier,
-        topBar = topBar,
-        bottomBar = bottomBar,
         containerColor = AniThemeDefaults.pageContentBackgroundColor,
         contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
     ) { paddingValues ->
         val layoutDirection = LocalLayoutDirection.current
         // bottom padding 作为列表的 contentPadding, 让内容可以滚动到毛玻璃导航栏下方.
         val listBottomPadding = PaddingValues(bottom = paddingValues.calculateBottomPadding())
-        val paneExtraPadding = currentWindowAdaptiveInfo1().windowSizeClass.paneHorizontalPadding
+        val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
+        val paneExtraPadding = windowSizeClass.paneHorizontalPadding
         AniListDetailPaneScaffold(
             // 毛玻璃 app chrome 的模糊来源.
             modifier = Modifier
@@ -403,180 +340,238 @@ private fun CacheManagementLayout(
                     start = paddingValues.calculateStartPadding(layoutDirection),
                     top = paddingValues.calculateTopPadding(),
                     end = paddingValues.calculateEndPadding(layoutDirection),
-                ),
+                )
+                // 设计稿: 超大屏时整体限宽.
+                .fillMaxWidth()
+                .wrapContentWidth()
+                .widthIn(max = 1200.dp),
             navigator = navigator,
             listPaneTopAppBar = null,
             listPaneContent = {
-                val listSpacedBy = if (isSinglePane) 0.dp else 24.dp
-                if (isSinglePane) {
-                    val topAppBarContainerColor by rememberCurrentTopAppBarContainerColor(appBarColors, scrollBehavior)
-                    LazyColumn(
-                        modifier = Modifier
-                            .paneWindowInsetsPadding()
-                            .nestedScroll(scrollBehavior.nestedScrollConnection)
-                            .fillMaxWidth()
-                            .wrapContentWidth()
-                            .widthIn(max = 1300.dp),
-                        state = listState,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = listBottomPadding + PaddingValues(bottom = paneExtraPadding),
-                    ) {
-                        item("overall_stats") {
-                            Surface(
-                                color = appBarColors.containerColor,
-                                contentColor = contentColorFor(appBarColors.containerColor),
-                            ) {
-                                if (selectionState.inSelection) {
-                                    CacheSelectionSummary(
-                                        selectedEntries,
-                                        Modifier
-                                            .paneContentPadding()
-                                            .padding(horizontal = listSpacedBy)
-                                            .fillMaxWidth(),
-                                    )
-                                } else {
-                                    CacheManagementOverallStats(
-                                        { state.overallStats },
-                                        Modifier
-                                            .paneContentPadding()
-                                            .padding(horizontal = listSpacedBy)
-                                            .fillMaxWidth(),
-                                    )
-                                }
+                CacheGroupCardsList(
+                    state = state,
+                    filteredGroups = filteredGroups,
+                    selectionEntries = selectionEntries,
+                    selectedEntries = selectedEntries,
+                    selectionState = selectionState,
+                    cacheFilterState = cacheFilterState,
+                    appBarColors = appBarColors,
+                    scrollBehavior = scrollBehavior,
+                    listState = listState,
+                    listBottomPadding = listBottomPadding,
+                    paneExtraPadding = paneExtraPadding,
+                    highlightSelectedGroupKey = if (isSinglePane) null else currentViewingGroupKey,
+                    onClickGroup = { group ->
+                        if (isSinglePane && onNavigateToSubjectCache != null) {
+                            // 设计稿: 手机上点击条目卡片直接打开条目缓存页.
+                            onNavigateToSubjectCache(group.subjectId)
+                        } else {
+                            currentViewingGroupKey = group.key
+                            tasker.launch {
+                                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
                             }
                         }
-                        stickyHeader("filter_row") {
-                            CacheFilterAndSortBar(
-                                state = cacheFilterState,
-                                modifier = Modifier.paneContentPadding().fillMaxWidth(),
-                                containerColor = topAppBarContainerColor,
-                                mediaCacheEngineOptions = remember(cacheEntries) {
-                                    cacheEntries.mapNotNull { it.engineKey }.distinct()
-                                },
-                            )
-                        }
-                        items(filteredEntries, key = { it.listItemKey }) { entry ->
-                            CacheListItem(
-                                entry = entry,
-                                selectionMode = selectionState.inSelection,
-                                selected = entry.cacheId in selectionState.selectedIds,
-                                onToggleSelected = { onToggleSelected(entry) },
-                                onEnterSelection = { onEnterSelection(entry) },
-                                onPlay = { onPlay(entry) },
-                                onResume = { onResume(entry) },
-                                onPause = { onPause(entry) },
-                                onViewDetail = { onViewDetail(entry) },
-                                onDelete = { onDelete(entry) },
-                                modifier = Modifier.paneContentPadding().padding(horizontal = listSpacedBy),
-                            )
-                        }
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .paneContentPadding()
-                            .paneWindowInsetsPadding()
-                            .nestedScroll(scrollBehavior.nestedScrollConnection),
-                        state = listState,
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = listBottomPadding + PaddingValues(bottom = paneExtraPadding),
-                    ) {
-                        item("overall_stats") {
-                            Surface(
-                                color = appBarColors.containerColor,
-                                contentColor = contentColorFor(appBarColors.containerColor),
-                            ) {
-                                if (selectionState.inSelection) {
-                                    CacheSelectionSummary(
-                                        selectedEntries,
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                                    )
-                                } else {
-                                    CacheManagementOverallStats(
-                                        { state.overallStats },
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                                    )
-                                }
-                            }
-                        }
-                        items(groupedEntries, key = { it.key }) { group ->
-                            CacheSubjectListItem(
-                                group = group,
-                                selected = group.key == selectedGroup?.key,
-                                selectionMode = selectionState.inSelection,
-                                selectedCacheIds = selectionState.selectedIds,
-                                onToggleGroupSelection = onToggleGroupSelection,
-                                onLongClick = { onEnterGroupSelection(group) },
-                                onClick = {
-                                    onSelectGroup(group)
-                                    tasker.launch {
-                                        navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                    }
-                }
+                    },
+                    onToggleGroupSelection = { group ->
+                        selectionState.toggleSelection(*group.entries.map { it.cacheId }.toTypedArray())
+                    },
+                    onEnterGroupSelection = { group ->
+                        selectionState.enterSelectionWith(selectionState.selectedIds + group.entries.map { it.cacheId })
+                    },
+                )
             },
             detailPane = {
-                if (isSinglePane) {
-                    Box(
-                        Modifier
-                            .paneContentPadding()
-                            .paneWindowInsetsPadding(),
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .paneContentPadding(extraStart = -paneExtraPadding, extraEnd = -paneExtraPadding)
-                            .paneWindowInsetsPadding()
-                            .fillMaxHeight(),
-                        state = detailListState,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = listBottomPadding + PaddingValues(vertical = paneExtraPadding),
-                    ) {
-                        val entries = selectedGroup?.entries.orEmpty()
-                        if (entries.isEmpty()) {
-                            item("empty_detail") {
-                                Box(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 48.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(stringResource(Lang.cache_management_select_item_for_details))
-                                }
-                            }
-                        } else {
-                            items(entries, key = { it.listItemKey }) { entry ->
-                                CacheListItem(
-                                    entry = entry,
-                                    selectionMode = selectionState.inSelection,
-                                    selected = entry.cacheId in selectionState.selectedIds,
-                                    onToggleSelected = { onToggleSelected(entry) },
-                                    onEnterSelection = { onEnterSelection(entry) },
-                                    onPlay = { onPlay(entry) },
-                                    onResume = { onResume(entry) },
-                                    onPause = { onPause(entry) },
-                                    onViewDetail = { onViewDetail(entry) },
-                                    onDelete = { onDelete(entry) },
-                                    contentPadding = PaddingValues(paneExtraPadding),
-                                    transparentBackgroundIfUnselected = true,
-                                )
-                            }
-                        }
+                Column(
+                    Modifier
+                        .paneContentPadding(extraStart = (-16).dp, extraEnd = (-16).dp)
+                        .paneWindowInsetsPadding()
+                        .padding(listBottomPadding)
+                        .fillMaxSize(),
+                ) {
+                    if (detailPaneContent != null) {
+                        detailPaneContent(currentViewingGroup, selectionState)
+                    } else {
+                        DefaultCacheGroupDetailPane(
+                            group = currentViewingGroup,
+                            selectionState = selectionState,
+                            onPlay = onPlay,
+                            onResume = onResume,
+                            onPause = onPause,
+                            onDelete = onDelete,
+                            onViewDetail = onViewDetail,
+                            modifier = Modifier.fillMaxSize(),
+                        )
                     }
                 }
             },
             // Bottom 通过 listBottomPadding 应用, 这里不再包含, 避免重复.
             contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal),
             useSharedTransition = false,
+            listPanePreferredWidth = preferredListPaneWidth(),
+            // 默认的 min 为 412.dp (≥1200dp 时), 会顶掉 400.dp 的 preferred 宽度.
+            minListPaneWidth = preferredListPaneWidth(),
         )
+    }
+}
+
+/**
+ * 设计稿: 超大屏 (1600dp+) 时左栏固定 400dp.
+ */
+@Composable
+private fun preferredListPaneWidth(): Dp {
+    val windowSizeClass = currentWindowAdaptiveInfo1().windowSizeClass
+    return when {
+        windowSizeClass.isWidthAtLeastBreakpoint(1600) -> 400.dp
+        windowSizeClass.isWidthAtLeastBreakpoint(1200) -> 412.dp // Large, M3 spec
+        windowSizeClass.isWidthAtLeastBreakpoint(840) -> 360.dp // Expanded, M3 spec
+        else -> (((windowSizeClass.minWidthDp - 24 * 3).toFloat() / 2).dp).coerceAtLeast(360.dp) // M3 spec
+    }
+}
+
+/**
+ * 列表栏: 总体统计 + 筛选栏 + 按条目分组的卡片.
+ */
+@Composable
+private fun PaneScope.CacheGroupCardsList(
+    state: CacheManagementState,
+    filteredGroups: List<CacheGroupState>,
+    selectionEntries: List<CacheEpisodeState>,
+    selectedEntries: List<CacheEpisodeState>,
+    selectionState: CacheSelectionState,
+    cacheFilterState: me.him188.ani.app.ui.cache.components.CacheFilterAndSortState,
+    appBarColors: TopAppBarColors,
+    scrollBehavior: TopAppBarScrollBehavior,
+    listState: LazyListState,
+    listBottomPadding: PaddingValues,
+    paneExtraPadding: Dp,
+    highlightSelectedGroupKey: String?,
+    onClickGroup: (CacheGroupState) -> Unit,
+    onToggleGroupSelection: (CacheGroupState) -> Unit,
+    onEnterGroupSelection: (CacheGroupState) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val topAppBarContainerColor by rememberCurrentTopAppBarContainerColor(appBarColors, scrollBehavior)
+    LazyColumn(
+        modifier = modifier
+            .paneWindowInsetsPadding()
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .fillMaxWidth(),
+        state = listState,
+        contentPadding = listBottomPadding + PaddingValues(bottom = paneExtraPadding),
+    ) {
+        item("overall_stats") {
+            Surface(
+                color = appBarColors.containerColor,
+                contentColor = contentColorFor(appBarColors.containerColor),
+            ) {
+                if (selectionState.inSelection) {
+                    CacheSelectionSummary(
+                        selectedEntries,
+                        Modifier
+                            .paneContentPadding()
+                            .fillMaxWidth(),
+                    )
+                } else {
+                    CacheManagementOverallStats(
+                        { state.overallStats },
+                        Modifier
+                            .paneContentPadding()
+                            .fillMaxWidth(),
+                    )
+                }
+            }
+        }
+        stickyHeader("filter_row") {
+            CacheFilterAndSortBar(
+                state = cacheFilterState,
+                modifier = Modifier.paneContentPadding().fillMaxWidth().padding(vertical = 8.dp),
+                containerColor = topAppBarContainerColor,
+                mediaCacheEngineOptions = remember(state.entries) {
+                    state.entries.mapNotNull { it.engineKey }.distinct()
+                },
+            )
+        }
+        items(filteredGroups, key = { it.key }) { group ->
+            CacheSubjectGroupCard(
+                group = group,
+                selected = group.key == highlightSelectedGroupKey,
+                selectionMode = selectionState.inSelection,
+                allEntriesSelected = group.entries.all { it.cacheId in selectionState.selectedIds },
+                onToggleGroupSelection = { onToggleGroupSelection(group) },
+                onLongClick = { onEnterGroupSelection(group) },
+                onClick = {
+                    if (selectionState.inSelection) {
+                        onToggleGroupSelection(group)
+                    } else {
+                        onClickGroup(group)
+                    }
+                },
+                modifier = Modifier.paneContentPadding().fillMaxWidth(),
+                showChevron = isSinglePane,
+            )
+        }
+    }
+}
+
+/**
+ * 无状态版本的详情栏内容, 供测试与预览使用: 仅展示已缓存的剧集, 不包含追加缓存.
+ */
+@Composable
+private fun DefaultCacheGroupDetailPane(
+    group: CacheGroupState?,
+    selectionState: CacheSelectionState,
+    onPlay: (CacheEpisodeState) -> Unit,
+    onResume: (CacheEpisodeState) -> Unit,
+    onPause: (CacheEpisodeState) -> Unit,
+    onDelete: (CacheEpisodeState) -> Unit,
+    onViewDetail: (CacheEpisodeState) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (group == null) {
+        EmptyDetailPanePlaceholder(modifier)
+        return
+    }
+    LazyColumn(modifier) {
+        item("detail_header") {
+            SubjectCacheDetailHeader(
+                title = group.subjectName,
+                cachedEpisodes = group.entries,
+                totalEpisodeCount = group.totalEpisodeCount,
+                onPauseAll = {
+                    group.entries.filter { !it.isFinished && !it.isPaused && !it.isFailed }.forEach(onPause)
+                },
+                onResumeAll = {
+                    group.entries.filter { it.isPaused }.forEach(onResume)
+                },
+            )
+        }
+        items(group.entries, key = { it.listItemKey }) { entry ->
+            CacheEpisodeRow(
+                episode = entry,
+                mediaSourceInfoProvider = null,
+                selectionMode = selectionState.inSelection,
+                selected = entry.cacheId in selectionState.selectedIds,
+                onToggleSelected = { selectionState.toggleSelection(entry.cacheId) },
+                onEnterSelection = {
+                    selectionState.enterSelectionWith(selectionState.selectedIds + entry.cacheId)
+                },
+                onPlay = { onPlay(entry) },
+                onResume = { onResume(entry) },
+                onPause = { onPause(entry) },
+                onDelete = { onDelete(entry) },
+                onViewDetail = { onViewDetail(entry) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyDetailPanePlaceholder(modifier: Modifier = Modifier) {
+    Box(
+        modifier.padding(vertical = 48.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(stringResource(Lang.cache_management_select_item_for_details))
     }
 }
 
@@ -652,7 +647,7 @@ private fun CacheManagementTopBar(
 
 
 /**
- * 多选模式下代替总体统计的选择摘要: "已选 n 项 · 共 x GB · n 个下载中".
+ * 多选模式下代替总体统计的选择摘要: "已选 n 项 · 共 x GB · 含 n 个下载中".
  */
 @Composable
 private fun CacheSelectionSummary(
@@ -666,7 +661,7 @@ private fun CacheSelectionSummary(
         selectedEntries.count { !it.isFinished && !it.isPaused && !it.isFailed }
     }
     val summaryText = stringResource(Lang.cache_management_selection_summary, selectedEntries.size, "$totalSize")
-    val downloadingText = stringResource(Lang.cache_management_downloading_count, downloadingCount)
+    val downloadingText = stringResource(Lang.cache_management_selection_downloading_count, downloadingCount)
     Text(
         if (downloadingCount > 0) "$summaryText · $downloadingText" else summaryText,
         modifier.padding(vertical = 12.dp),
@@ -699,250 +694,6 @@ internal fun DeleteActionDialog(
             TextButton(onDismiss) { Text(stringResource(Lang.cache_subject_cancel)) }
         },
     )
-}
-
-@Composable
-private fun CacheSubjectListItem(
-    group: CacheGroupState,
-    selected: Boolean,
-    selectionMode: Boolean,
-    selectedCacheIds: Set<String>,
-    onToggleGroupSelection: (CacheGroupState) -> Unit,
-    onLongClick: () -> Unit,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.large)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = MaterialTheme.shapes.large,
-        tonalElevation = if (selected) 6.dp else 1.dp,
-        color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
-    ) {
-        Row(
-            Modifier.padding(vertical = 12.dp, horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (selectionMode) {
-                val allGroupSelected = group.entries.all { it.cacheId in selectedCacheIds }
-                Checkbox(
-                    checked = allGroupSelected,
-                    onCheckedChange = { onToggleGroupSelection(group) },
-                    modifier = Modifier.padding(end = 8.dp),
-                )
-            }
-
-            Column(
-                Modifier.weight(1f).animateContentSize(),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                val finishedCountText = stringResource(
-                    Lang.cache_management_finished_count,
-                    group.finishedCount,
-                    group.entries.size,
-                )
-                Text(
-                    group.subjectName,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        finishedCountText,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    if (group.downloadingCount > 0) {
-                        val downloadingCountText = stringResource(
-                            Lang.cache_management_downloading_count,
-                            group.downloadingCount,
-                        )
-                        Text(
-                            downloadingCountText,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
-                Row {
-                    LinearProgressIndicator(
-                        progress = { group.averageProgress.coerceIn(0f, 1f) },
-                        strokeCap = StrokeCap.Round,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
-
-        }
-    }
-}
-
-@Composable
-private fun CacheListItem(
-    entry: CacheEpisodeState,
-    selectionMode: Boolean,
-    selected: Boolean,
-    onToggleSelected: () -> Unit,
-    onEnterSelection: () -> Unit,
-    onPlay: () -> Unit,
-    onResume: () -> Unit,
-    onPause: () -> Unit,
-    onDelete: () -> Unit,
-    onViewDetail: () -> Unit,
-    modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(16.dp),
-    transparentBackgroundIfUnselected: Boolean = false,
-) {
-    var showMenu by rememberSaveable { mutableStateOf(false) }
-    var showConfirm by rememberSaveable { mutableStateOf(false) }
-
-    if (showConfirm) {
-        DeleteActionDialog(
-            onDismiss = { showConfirm = false },
-            onConfirm = {
-                onDelete()
-                showConfirm = false
-            },
-        )
-    }
-
-    Surface(
-        modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.large)
-            .combinedClickable(
-                onClick = {
-                    if (selectionMode) {
-                        onToggleSelected()
-                    } else {
-                        showMenu = true
-                    }
-                },
-                onLongClick = {
-                    onEnterSelection()
-                },
-            ),
-        shape = MaterialTheme.shapes.large,
-        tonalElevation = 1.dp,
-        // 多选选中态用较轻的 surfaceContainer (≈ primary 8% 状态层), 强指示交给 Checkbox.
-        color = if (selected) MaterialTheme.colorScheme.surfaceContainer else
-            (if (transparentBackgroundIfUnselected) Color.Transparent else MaterialTheme.colorScheme.surface),
-    ) {
-        Column(Modifier.padding(contentPadding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // 设计稿: 多选模式下复选框在行首, 行尾单项操作隐藏.
-                if (selectionMode) {
-                    Checkbox(
-                        checked = selected,
-                        onCheckedChange = { onToggleSelected() },
-                    )
-                }
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        entry.engineKey?.let { key ->
-                            val icon = renderEngineIcon(key)
-                            val desc = when (key) {
-                                MediaCacheEngineKey.Anitorrent -> "BT"
-                                MediaCacheEngineKey.WebM3u -> "Web"
-                                else -> stringResource(Lang.cache_unknown)
-                            }
-                            Icon(icon, desc, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-
-                        Text(
-                            entry.subjectName,
-                            style = MaterialTheme.typography.titleMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    Text(
-                        stringResource(Lang.cache_management_episode_label, entry.sort, entry.displayName),
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-
-                if (!selectionMode) Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    DownloadStateIcon(entry.state)
-                    val moreActionsText = stringResource(Lang.cache_management_more_actions)
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Rounded.MoreVert, moreActionsText)
-                    }
-
-                    CacheActionDropdown(
-                        show = showMenu,
-                        onDismiss = { showMenu = false },
-                        episode = entry,
-                        onPlay = {
-                            onPlay()
-                            showMenu = false
-                        },
-                        onResume = {
-                            onResume()
-                            showMenu = false
-                        },
-                        onPause = {
-                            onPause()
-                            showMenu = false
-                        },
-                        onViewDetail = {
-                            onViewDetail()
-                            showMenu = false
-                        },
-                        onDelete = {
-                            showConfirm = true
-                        },
-                    )
-                }
-            }
-
-            AniAnimatedVisibility(
-                !entry.isFinished,
-            ) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    val progress by animateFloatAsState(entry.progress.getOrZero())
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier.weight(1f),
-                        strokeCap = StrokeCap.Round,
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        entry.speedText?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
-                        entry.progressText?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
-                    }
-                }
-            }
-        }
-    }
-}
-
-private fun renderEngineIcon(key: MediaCacheEngineKey) = when (key) {
-    MediaCacheEngineKey.Anitorrent -> Icons.Filled.P2p
-    MediaCacheEngineKey.WebM3u -> Icons.Filled.Language
-    else -> Icons.AutoMirrored.Rounded.HelpOutline
 }
 
 @Composable

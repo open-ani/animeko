@@ -167,6 +167,12 @@ sealed class SubjectCollectionRepository(
      */
     abstract fun getSubjectCollectionTypeOffline(subjectId: Int): Flow<UnifiedCollectionType?>
 
+    /**
+     * 只从本地数据库中获取条目的展示信息 (名称/封面/总集数), 不进行网络请求.
+     * 未收藏 (本地无记录) 时 emit `null`.
+     */
+    abstract fun getSubjectDisplayInfoOffline(subjectId: Int): Flow<OfflineSubjectDisplayInfo?>
+
     abstract suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>>
 
     abstract suspend fun getSubjectNamesCnByCollectionType(types: List<UnifiedCollectionType>): Flow<List<String>>
@@ -505,6 +511,19 @@ class SubjectCollectionRepositoryImpl(
         return subjectCollectionDao.findById(subjectId).map { it?.collectionType }
     }
 
+    override fun getSubjectDisplayInfoOffline(subjectId: Int): Flow<OfflineSubjectDisplayInfo?> {
+        return subjectCollectionDao.findById(subjectId).map { entity ->
+            entity?.run {
+                OfflineSubjectDisplayInfo(
+                    subjectId = this.subjectId,
+                    displayName = nameCn.ifEmpty { name },
+                    imageLarge = imageLarge,
+                    totalEpisodes = totalEpisodes,
+                )
+            }
+        }
+    }
+
     override suspend fun getSubjectIdsByCollectionType(types: List<UnifiedCollectionType>): Flow<List<Int>> {
         return subjectCollectionDao.subjectIdsByCollectionType(types).flowOn(defaultDispatcher)
     }
@@ -711,8 +730,22 @@ fun AniSubjectCollection.toEntity(
     )
 }
 
-private fun staticSubjectImageLargeUrl(subjectId: Int): String =
+/**
+ * 条目大封面的静态 CDN 地址. 不依赖本地数据库, 可用于本地无记录时的兜底展示.
+ */
+fun staticSubjectImageLargeUrl(subjectId: Int): String =
     "https://static.myani.org/bangumi/subjects/$subjectId/large"
+
+/**
+ * 本地数据库中缓存的条目展示信息.
+ * @see SubjectCollectionRepository.getSubjectDisplayInfoOffline
+ */
+data class OfflineSubjectDisplayInfo(
+    val subjectId: Int,
+    val displayName: String,
+    val imageLarge: String,
+    val totalEpisodes: Int,
+)
 
 fun AniSubjectRelations.toSubjectRelationsEntity(): SubjectRelations {
     return SubjectRelations(

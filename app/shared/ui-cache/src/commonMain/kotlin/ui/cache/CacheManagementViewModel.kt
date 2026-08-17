@@ -21,31 +21,24 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
+import me.him188.ani.app.data.repository.subject.staticSubjectImageLargeUrl
 import me.him188.ani.app.domain.media.cache.DeleteCacheByCacheIdUseCase
-import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
-import me.him188.ani.app.domain.media.cache.MediaCacheState
-import me.him188.ani.app.domain.media.cache.engine.MediaCacheEngineKey
 import me.him188.ani.app.domain.media.cache.engine.MediaStats
 import me.him188.ani.app.domain.media.cache.engine.sum
 import me.him188.ani.app.domain.media.cache.storage.MediaCacheStorage
-import me.him188.ani.app.torrent.api.files.averageRate
-import me.him188.ani.app.ui.cache.components.CacheEpisodePaused
 import me.him188.ani.app.ui.cache.components.CacheEpisodeState
 import me.him188.ani.app.ui.cache.components.CacheGroupState
+import me.him188.ani.app.ui.cache.components.CacheWithEngine
+import me.him188.ani.app.ui.cache.components.allCachesWithEngineFlow
+import me.him188.ani.app.ui.cache.components.createCacheEpisodeStateFlow
 import me.him188.ani.app.ui.foundation.AbstractViewModel
-import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.UnifiedCollectionType
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.coroutines.sampleWithInitial
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.time.Duration.Companion.seconds
-
-internal data class CacheWithEngine(
-    val cache: MediaCache,
-    val engineKey: MediaCacheEngineKey,
-)
 
 @Stable
 class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
@@ -60,15 +53,8 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
             .stateInBackground(MediaStats.Unspecified)
 
         val allCachesFlow = cacheManager.enabledStorages
-            .flatMapLatest { list ->
-                if (list.isEmpty()) return@flatMapLatest flowOfEmptyList()
-                val listFlow = list.map { storage ->
-                    storage.listFlow.map { caches ->
-                        caches.map { CacheWithEngine(it, storage.engine.engineKey) }
-                    }
-                }
-                combine(listFlow) { it.asSequence().flatten().toList() }
-            }.shareInBackground()
+            .allCachesWithEngineFlow()
+            .shareInBackground()
 
         val groupsFlow = allCachesFlow.transformLatest {
             supervisorScope { emitAll(createCacheGroupStates(it)) } // supervisorScope won't finish itself
@@ -85,17 +71,25 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
                 val groupId = subjectId
                 val collectionType = subjectRepository.getSubjectCollectionTypeOffline(subjectId.toInt())
                     .onStart { emit(UnifiedCollectionType.NOT_COLLECTED) }
+                val displayInfo = subjectRepository.getSubjectDisplayInfoOffline(subjectId.toInt())
+                    .onStart { emit(null) }
 
-                combine(caches.map { createCacheEpisodeFlow(groupId, it, collectionType) }) { states ->
-                    // 防止意外情况出现了相同的 list key, 也就是相同的数据源的同一剧集缓存.
-                    // 就算出现了 duplicated key, 这两个 item 对应的 cache 是同一个引用.
-                    states.toList().distinctBy { it.listItemKey }
-                }.combine(collectionType) { entries, type ->
+                val entriesFlow =
+                    combine(caches.map { createCacheEpisodeStateFlow(groupId, it, collectionType) }) { states ->
+                        // 防止意外情况出现了相同的 list key, 也就是相同的数据源的同一剧集缓存.
+                        // 就算出现了 duplicated key, 这两个 item 对应的 cache 是同一个引用.
+                        states.toList().distinctBy { it.listItemKey }
+                    }
+
+                combine(entriesFlow, collectionType, displayInfo) { entries, type, info ->
                     CacheGroupState(
-                        subjectId.toInt(),
-                        caches.first().cache.metadata.run { subjectNameCN ?: subjectNames.firstOrNull() ?: "" },
+                        subjectId = subjectId.toInt(),
+                        subjectName = info?.displayName
+                            ?: caches.first().cache.metadata.run { subjectNameCN ?: subjectNames.firstOrNull() ?: "" },
                         entries = entries,
                         collectionType = type,
+                        imageUrl = info?.imageLarge ?: staticSubjectImageLargeUrl(subjectId.toInt()),
+                        totalEpisodeCount = info?.totalEpisodes?.takeIf { it > 0 },
                     )
                 }
             }
@@ -108,62 +102,6 @@ class CacheManagementViewModel : AbstractViewModel(), KoinComponent {
             array.sortedWith(
                 compareByDescending<CacheGroupState> { it.entries.any { entry -> !entry.isFinished } }
                     .thenByDescending { it.entries.maxOfOrNull { entry -> entry.creationTime ?: 0 } },
-            )
-        }
-    }
-
-    private fun createCacheEpisodeFlow(
-        groupId: String,
-        mediaCache: CacheWithEngine,
-        subjectCollectionType: Flow<UnifiedCollectionType?>,
-    ): Flow<CacheEpisodeState> {
-        val statsFlow = mediaCache.cache.fileStats
-            .combine(
-                mediaCache.cache.fileStats
-                    .shareInBackground(replay = 1).map { it.downloadedBytes.inBytes }.averageRate(),
-            ) { stats, downloadSpeed ->
-                CacheEpisodeState.Stats(
-                    downloadSpeed = downloadSpeed.bytes,
-                    progress = stats.downloadProgress,
-                    totalSize = stats.totalSize,
-                )
-            }
-            .sampleWithInitial(1.seconds)
-            .stateInBackground(CacheEpisodeState.Stats.Unspecified)
-        // stateInBackground has distinctUntilChanged
-
-        val stateFlow = mediaCache.cache.state
-            .map(::toCacheEpisodePaused)
-            .stateInBackground(CacheEpisodePaused.IN_PROGRESS)
-
-        val metadata = mediaCache.cache.metadata
-        return combine(
-            statsFlow,
-            stateFlow,
-            subjectCollectionType,
-            mediaCache.cache.canPlay,
-        ) { stats, state, type, canPlay ->
-            val subjectId = metadata.subjectId.toInt()
-            val episodeId = metadata.episodeId.toInt()
-            CacheEpisodeState(
-                groupId = groupId,
-                subjectId = subjectId,
-                episodeId = episodeId,
-                cacheId = mediaCache.cache.cacheId,
-                sort = metadata.episodeSort,
-                subjectName = metadata.subjectNameCN ?: metadata.subjectNames.firstOrNull() ?: "",
-                displayName = metadata.episodeName,
-                creationTime = metadata.creationTime,
-                screenShots = emptyList(),
-                stats = stats,
-                state = state,
-                engineKey = mediaCache.engineKey,
-                subjectCollectionType = type,
-                playability = when {
-                    subjectId == 0 || episodeId == 0 -> CacheEpisodeState.Playability.INVALID_SUBJECT_EPISODE_ID
-                    !canPlay -> CacheEpisodeState.Playability.STREAMING_NOT_SUPPORTED
-                    else -> CacheEpisodeState.Playability.PLAYABLE
-                },
             )
         }
     }
@@ -194,14 +132,5 @@ internal fun Flow<List<MediaCacheStorage>>.overallStatsFlow(): Flow<MediaStats> 
         } else {
             storages.map { it.stats }.sum()
         }
-    }
-}
-
-internal fun toCacheEpisodePaused(state: MediaCacheState): CacheEpisodePaused {
-    return when (state) {
-        MediaCacheState.IN_PROGRESS -> CacheEpisodePaused.IN_PROGRESS
-        MediaCacheState.PAUSED -> CacheEpisodePaused.PAUSED
-        MediaCacheState.FAILED -> CacheEpisodePaused.FAILED
-        MediaCacheState.COMPLETED -> CacheEpisodePaused.COMPLETED
     }
 }
