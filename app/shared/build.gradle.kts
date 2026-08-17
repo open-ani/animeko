@@ -124,9 +124,6 @@ kotlin {
 
         // Others
         api(libs.koin.core)
-        api(libs.coil.core)
-        api(libs.coil.svg)
-        api(libs.coil.compose.core)
         implementation(libs.constraintlayout.compose)
     }
 
@@ -160,7 +157,6 @@ kotlin {
         api(libs.androidx.activity.ktx)
         api(libs.koin.android)
         implementation(libs.androidx.browser)
-        api(libs.coil)
         api(libs.logback.android)
         api(projects.utils.buildConfig)
     }

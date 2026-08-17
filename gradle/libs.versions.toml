@@ -68,7 +68,7 @@ koin = "3.5.6" # https://github.com/InsertKoinIO/koin/releases
 slf4j = "2.0.16"
 jsoup = "1.18.1" # https://github.com/jhy/jsoup/releases
 snakeyaml = "2.2"
-coil = "3.1.0" # https://github.com/coil-kt/coil/releases
+sketch = "4.6.0" # https://github.com/panpf/sketch/releases
 constraintlayout-compose = "0.6.1"
 antlr-kotlin = "1.0.2"
 diamondedge-logging = "2.0.3" # Only for native. On JVM we use slf4j directly.
@@ -191,15 +191,11 @@ slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
 logback-android = { module = "com.github.tony19:logback-android", version = "3.0.0" }
 
-# Coil 
-# https://github.com/coil-kt/coil
-coil = { module = "io.coil-kt.coil3:coil", version.ref = "coil" }
-coil-core = { module = "io.coil-kt.coil3:coil-core", version.ref = "coil" }
-coil-compose-core = { module = "io.coil-kt.coil3:coil-compose-core", version.ref = "coil" }
-coil-svg = { module = "io.coil-kt.coil3:coil-svg", version.ref = "coil" }
-#coil-gif = { module = "io.coil-kt.coil3:coil-gif", version.ref = "coil" }
-coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
-coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
+# Sketch
+# https://github.com/panpf/sketch
+sketch-compose-core = { module = "io.github.panpf.sketch4:sketch-compose-core", version.ref = "sketch" }
+sketch-http-core = { module = "io.github.panpf.sketch4:sketch-http-core", version.ref = "sketch" }
+sketch-svg = { module = "io.github.panpf.sketch4:sketch-svg", version.ref = "sketch" }
 
 # Android Datastore
 datastore = { module = "androidx.datastore:datastore", version.ref = "datastore" }

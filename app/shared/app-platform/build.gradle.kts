@@ -52,10 +52,6 @@ kotlin {
         api(libs.kotlinx.collections.immutable)
         api(projects.app.shared.imageViewer)
 
-        api(libs.coil.compose.core)
-        api(libs.coil.svg)
-        api(libs.coil.network.ktor3)
-
         api(libs.compose.lifecycle.viewmodel.compose)
         api(libs.compose.lifecycle.runtime.compose)
         api(libs.compose.navigation.compose)
