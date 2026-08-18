@@ -32,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -62,6 +63,8 @@ fun CacheSubjectGroupCard(
     modifier: Modifier = Modifier,
     // 设计稿: 手机上点击卡片会跳转页面, 显示 chevron; 宽屏双栏在右侧展示详情, 不显示.
     showChevron: Boolean = true,
+    // 设计稿: 手机上卡片通栏无圆角, 宽屏列表栏为圆角卡片.
+    shape: Shape = MaterialTheme.shapes.large,
 ) {
     val containerColor by animateColorAsState(
         when {
@@ -73,9 +76,9 @@ fun CacheSubjectGroupCard(
     Surface(
         modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.large)
+            .clip(shape)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        shape = MaterialTheme.shapes.large,
+        shape = shape,
         color = containerColor,
     ) {
         Row(

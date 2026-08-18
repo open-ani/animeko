@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -88,6 +89,8 @@ fun CacheEpisodeRow(
     onViewDetail: (() -> Unit)?,
     modifier: Modifier = Modifier,
     showSubjectTitle: Boolean = false,
+    // 设计稿: 手机上行通栏无圆角 (选中高亮铺满全宽), 宽屏详情栏内为圆角.
+    shape: Shape = MaterialTheme.shapes.medium,
 ) {
     var showMenu by rememberSaveable { mutableStateOf(false) }
     var showConfirmDelete by rememberSaveable { mutableStateOf(false) }
@@ -108,7 +111,7 @@ fun CacheEpisodeRow(
     Surface(
         modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
+            .clip(shape)
             .combinedClickable(
                 onClick = {
                     if (selectionMode) {
@@ -119,7 +122,7 @@ fun CacheEpisodeRow(
                 },
                 onLongClick = onEnterSelection,
             ),
-        shape = MaterialTheme.shapes.medium,
+        shape = shape,
         color = containerColor,
     ) {
         Column(

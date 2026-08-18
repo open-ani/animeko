@@ -63,6 +63,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
@@ -506,8 +507,14 @@ private fun PaneScope.CacheGroupCardsList(
                         onClickGroup(group)
                     }
                 },
-                modifier = Modifier.paneContentPadding().fillMaxWidth(),
+                // 设计稿: 手机上卡片通栏 (内部自带 16dp padding); 宽屏列表栏卡片距 pane 边 8dp.
+                modifier = if (isSinglePane) {
+                    Modifier.fillMaxWidth()
+                } else {
+                    Modifier.padding(horizontal = 8.dp).fillMaxWidth()
+                },
                 showChevron = isSinglePane,
+                shape = if (isSinglePane) RectangleShape else MaterialTheme.shapes.large,
             )
         }
     }
@@ -531,7 +538,12 @@ private fun DefaultCacheGroupDetailPane(
         EmptyDetailPanePlaceholder(modifier)
         return
     }
-    LazyColumn(modifier) {
+    LazyColumn(
+        modifier,
+        // 设计稿: 详情栏头部距卡片顶部 16dp, 行间距 8dp.
+        contentPadding = PaddingValues(top = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         item("detail_header") {
             SubjectCacheDetailHeader(
                 title = group.subjectName,

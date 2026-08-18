@@ -52,6 +52,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
@@ -77,6 +79,7 @@ import me.him188.ani.app.ui.cache.components.rememberCacheSelectionState
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
+import me.him188.ani.app.ui.foundation.layout.plus
 import me.him188.ani.app.ui.foundation.navigation.BackHandler
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.appChromeHazeSource
@@ -398,6 +401,8 @@ fun LazyGridScope.subjectCacheEpisodeItems(
     onPause: (CacheEpisodeState) -> Unit,
     onDelete: (CacheEpisodeState) -> Unit,
     onViewDetail: ((CacheEpisodeState) -> Unit)?,
+    // 设计稿: 手机上行通栏无圆角, 宽屏详情栏内为圆角.
+    rowShape: Shape = RectangleShape,
 ) {
     val cachesByEpisodeId = cachedEpisodes.groupBy { it.episodeId }
     val consumedCacheIds = mutableSetOf<String>()
@@ -418,6 +423,7 @@ fun LazyGridScope.subjectCacheEpisodeItems(
                 onPause = { onPause(cache) },
                 onDelete = { onDelete(cache) },
                 onViewDetail = onViewDetail?.let { { it(cache) } },
+                shape = rowShape,
             )
         }
     }
@@ -654,12 +660,15 @@ fun SubjectCacheDetailPaneContent(
 
     val uiScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val rowShape = MaterialTheme.shapes.medium
 
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 480.dp),
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(24.dp),
-        contentPadding = contentPadding,
+        // 设计稿: 详情栏头部距卡片顶部 16dp, 行间距 8dp.
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = contentPadding + PaddingValues(top = 16.dp),
     ) {
         item(key = "detail_header", span = { GridItemSpan(maxLineSpan) }, contentType = "header") {
             SubjectCacheDetailHeader(
@@ -692,6 +701,7 @@ fun SubjectCacheDetailPaneContent(
             onPause = { vm.pauseCache(it) },
             onDelete = { vm.deleteCache(it) },
             onViewDetail = onViewDetail,
+            rowShape = rowShape,
         )
     }
 }
