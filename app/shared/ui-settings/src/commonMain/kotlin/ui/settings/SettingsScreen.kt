@@ -124,6 +124,7 @@ import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.acknowledgements
 import me.him188.ani.app.ui.lang.developer_list
 import me.him188.ani.app.ui.lang.settings
+import me.him188.ani.app.ui.lang.settings_acknowledgements_oss_licenses
 import me.him188.ani.app.ui.lang.settings_category_app_ui
 import me.him188.ani.app.ui.lang.settings_category_data_playback
 import me.him188.ani.app.ui.lang.settings_category_network_storage
@@ -154,6 +155,7 @@ import me.him188.ani.app.ui.settings.tabs.DebugTab
 import me.him188.ani.app.ui.settings.tabs.about.AboutTab
 import me.him188.ani.app.ui.settings.tabs.about.AcknowledgementsTab
 import me.him188.ani.app.ui.settings.tabs.about.DevelopersTab
+import me.him188.ani.app.ui.settings.tabs.about.OpenSourceLibrariesTab
 import me.him188.ani.app.ui.settings.tabs.app.AppearanceGroup
 import me.him188.ani.app.ui.settings.tabs.app.PlayerGroup
 import me.him188.ani.app.ui.settings.tabs.app.SoftwareUpdateGroup
@@ -185,6 +187,7 @@ fun SettingsScreen(
     vm: SettingsViewModel,
     onNavigateToEmailLogin: () -> Unit,
     onNavigateToBangumiOAuth: () -> Unit,
+    loadOpenSourceLibrariesJson: suspend () -> ByteArray,
     modifier: Modifier = Modifier,
     initialTab: SettingsTab? = null,
     windowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
@@ -424,6 +427,7 @@ fun SettingsScreen(
         contentWindowInsets = windowInsets,
         navigationIcon = navigationIcon,
         layoutParameters = layoutParameters,
+        loadOpenSourceLibrariesJson = loadOpenSourceLibrariesJson,
     )
 }
 
@@ -443,6 +447,7 @@ internal fun SettingsPageLayout(
     containerColor: Color = AniThemeDefaults.pageContentBackgroundColor,
     layoutParameters: ListDetailLayoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective),
     navigationIcon: @Composable () -> Unit = {},
+    loadOpenSourceLibrariesJson: suspend () -> ByteArray,
 ) = SettingsPageSurface(containerColor) {
     val layoutParametersState by rememberUpdatedState(layoutParameters)
 
@@ -725,7 +730,41 @@ internal fun SettingsPageLayout(
                             detailPaneTopAppBarScrollBehavior,
                         ) {
                             RouteContent {
-                                AcknowledgementsTab(Modifier.fillMaxSize())
+                                AcknowledgementsTab(
+                                    onClickOpenSourceLicenses = {
+                                        navigateTo(DetailPaneRoutes.OpenSourceLicenses)
+                                    },
+                                    Modifier.fillMaxSize(),
+                                )
+                            }
+                        }
+                    }
+                    entry<DetailPaneRoutes.OpenSourceLicenses> {
+                        DetailPaneRoute(
+                            topAppBar = {
+                                AniTopAppBar(
+                                    title = {
+                                        AniTopAppBarDefaults.Title(
+                                            stringResource(Lang.settings_acknowledgements_oss_licenses),
+                                        )
+                                    },
+                                    navigationIcon = {
+                                        BackNavigationIconButton(navigateUp)
+                                    },
+                                    colors = topAppBarColors,
+                                    windowInsets = topAppBarWindowInsets,
+                                    size = topAppBarSize,
+                                    scrollBehavior = detailPaneTopAppBarScrollBehavior,
+                                )
+                            },
+                            detailPaneTopAppBarScrollBehavior,
+                        ) {
+                            // LibrariesContainer 自带 LazyColumn, 不能套在 verticalScroll 里
+                            RouteContent(scrollable = false) {
+                                OpenSourceLibrariesTab(
+                                    loadOpenSourceLibrariesJson,
+                                    Modifier.fillMaxSize(),
+                                )
                             }
                         }
                     }
@@ -888,6 +927,9 @@ sealed class DetailPaneRoutes : NavKey {
     data object Acknowledgements : DetailPaneRoutes()
 
     @Serializable
+    data object OpenSourceLicenses : DetailPaneRoutes()
+
+    @Serializable
     data object Developers : DetailPaneRoutes()
 
     @Serializable
@@ -904,6 +946,7 @@ private val DetailPaneBackStackSaver: Saver<SnapshotStateList<DetailPaneRoutes>,
             saved.map { name ->
                 when (name as String) {
                     "Acknowledgements" -> DetailPaneRoutes.Acknowledgements
+                    "OpenSourceLicenses" -> DetailPaneRoutes.OpenSourceLicenses
                     "Developers" -> DetailPaneRoutes.Developers
                     "BangumiSync" -> DetailPaneRoutes.BangumiSync
                     else -> DetailPaneRoutes.Main

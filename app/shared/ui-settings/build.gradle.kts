@@ -37,6 +37,7 @@ kotlin {
         implementation(libs.filekit.dialogs)
         implementation(libs.filekit.dialogs.compose)
         implementation(libs.atomicfu)
+        implementation(libs.aboutlibraries.compose.m3)
     }
     sourceSets.commonTest.dependencies {
         implementation(libs.kotlinx.coroutines.test)

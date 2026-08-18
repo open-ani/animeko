@@ -20,12 +20,27 @@ plugins {
 
     // alias(libs.plugins.kotlinx.atomicfu)
     alias(libs.plugins.sentry.kotlin.multiplatform)
+    alias(libs.plugins.aboutlibraries)
     idea
 }
 
 compose.resources {
     packageOfResClass = "me.him188.ani.app"
     generateResClass = always
+}
+
+aboutLibraries {
+    export {
+        // 开源许可页 (设置 - 关于 - 鸣谢 - 开源许可) 的数据.
+        // 依赖变更后运行 ./gradlew :app:shared:exportLibraryDefinitions 更新并提交.
+        outputFile = file("src/commonMain/composeResources/files/aboutlibraries.json")
+        prettyPrint = true
+    }
+    library {
+        // KMP 库会解析出 -jvm/-android 等多个平台构件, 按名字合并成一个条目.
+        duplicationMode = com.mikepenz.aboutlibraries.plugin.DuplicateMode.MERGE
+        duplicationRule = com.mikepenz.aboutlibraries.plugin.DuplicateRule.SIMPLE
+    }
 }
 
 

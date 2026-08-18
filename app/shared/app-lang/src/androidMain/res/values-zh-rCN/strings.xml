@@ -213,6 +213,8 @@
     <string name="settings_acknowledgements_bangumi_description">条目数据与收藏服务</string>
     <string name="settings_acknowledgements_dandanplay">弹弹play</string>
     <string name="settings_acknowledgements_dandanplay_description">弹幕聚合</string>
+    <string name="settings_acknowledgements_oss_licenses">开源许可</string>
+    <string name="settings_acknowledgements_oss_licenses_description">本应用使用的开源库及其许可证</string>
 
     <!-- AppSettingsTab -->
     <string name="settings_app_initial_page">初始页面</string>

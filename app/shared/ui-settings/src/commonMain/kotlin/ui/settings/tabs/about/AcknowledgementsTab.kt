@@ -33,11 +33,16 @@ import me.him188.ani.app.ui.lang.settings_acknowledgements_bangumi
 import me.him188.ani.app.ui.lang.settings_acknowledgements_bangumi_description
 import me.him188.ani.app.ui.lang.settings_acknowledgements_dandanplay
 import me.him188.ani.app.ui.lang.settings_acknowledgements_dandanplay_description
+import me.him188.ani.app.ui.lang.settings_acknowledgements_oss_licenses
+import me.him188.ani.app.ui.lang.settings_acknowledgements_oss_licenses_description
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun AcknowledgementsTab(modifier: Modifier = Modifier) {
+fun AcknowledgementsTab(
+    onClickOpenSourceLicenses: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier) {
         val uriHandler = LocalUriHandler.current
         val listItemColors = ListItemDefaults.colors(
@@ -68,6 +73,13 @@ fun AcknowledgementsTab(modifier: Modifier = Modifier) {
             supportingContent = { Text(stringResource(Lang.settings_acknowledgements_dandanplay_description)) },
             colors = listItemColors,
         )
+
+        ListItem(
+            headlineContent = { Text(stringResource(Lang.settings_acknowledgements_oss_licenses)) },
+            Modifier.clickable(onClick = onClickOpenSourceLicenses),
+            supportingContent = { Text(stringResource(Lang.settings_acknowledgements_oss_licenses_description)) },
+            colors = listItemColors,
+        )
     }
 }
 
@@ -75,6 +87,6 @@ fun AcknowledgementsTab(modifier: Modifier = Modifier) {
 @Preview
 private fun PreviewAcknowledgementsTab() = ProvideCompositionLocalsForPreview {
     Surface {
-        AcknowledgementsTab()
+        AcknowledgementsTab(onClickOpenSourceLicenses = {})
     }
 }
