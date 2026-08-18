@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.SystemFileSystem
+import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.data.repository.user.UserRepository
@@ -52,11 +53,6 @@ import me.him188.ani.app.domain.media.resolver.LocalFileUriMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.OfflineDownloadMediaResolver
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
-import me.him188.ani.torrent.offline.OfflineDownloadEngine
-import me.him188.ani.app.data.models.preference.PikPakConfig
-import me.him188.ani.torrent.pikpak.PikPakCredentials
-import me.him188.ani.torrent.pikpak.PikPakOfflineDownloadEngine
-import me.him188.ani.torrent.pikpak.PikPakSessionStoreAdapter
 import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
 import me.him188.ani.app.domain.mediasource.web.captcha.ImageCaptchaRecognizer
 import me.him188.ani.app.domain.mediasource.web.captcha.UnsupportedCaptchaBrowserFactory
@@ -92,6 +88,10 @@ import me.him188.ani.app.ui.foundation.widgets.ToastViewModel
 import me.him188.ani.app.ui.foundation.widgets.Toaster
 import me.him188.ani.app.ui.main.AniApp
 import me.him188.ani.app.ui.main.AniAppContent
+import me.him188.ani.torrent.offline.OfflineDownloadEngine
+import me.him188.ani.torrent.pikpak.PikPakCredentials
+import me.him188.ani.torrent.pikpak.PikPakOfflineDownloadEngine
+import me.him188.ani.torrent.pikpak.PikPakSessionStoreAdapter
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.io.SystemCacheDir
@@ -207,38 +207,41 @@ private fun initializeIosFfmpegRuntime() {
 fun MainViewController(app: AniIosApplication): UIViewController {
     val contentViewController = ComposeUIViewController {
         ProvideIosResourceEnvironment {
-            AniApp {
-                val platformWindow = rememberPlatformWindow()
-                CompositionLocalProvider(
-                    LocalContext provides app.context,
-                    LocalPlatformWindow provides platformWindow,
-                    LocalOnBackPressedDispatcherOwner provides app.onBackPressedDispatcherOwner,
-                ) {
-                    Box(
-                        Modifier.background(color = MaterialTheme.colorScheme.surfaceContainerLowest)
-                            .fillMaxSize(),
+            CompositionLocalProvider(
+                LocalOnBackPressedDispatcherOwner provides app.onBackPressedDispatcherOwner,
+            ) {
+                AniApp {
+                    val platformWindow = rememberPlatformWindow()
+                    CompositionLocalProvider(
+                        LocalContext provides app.context,
+                        LocalPlatformWindow provides platformWindow,
                     ) {
-                        Box(Modifier.fillMaxSize()) {
-                            val paddingByWindowSize by animateDpAsState(0.dp)
+                        Box(
+                            Modifier.background(color = MaterialTheme.colorScheme.surfaceContainerLowest)
+                                .fillMaxSize(),
+                        ) {
+                            Box(Modifier.fillMaxSize()) {
+                                val paddingByWindowSize by animateDpAsState(0.dp)
 
-                            val vm = viewModel { ToastViewModel() }
+                                val vm = viewModel { ToastViewModel() }
 
-                            val showing by vm.showing.collectAsStateWithLifecycle()
-                            val content by vm.content.collectAsStateWithLifecycle()
+                                val showing by vm.showing.collectAsStateWithLifecycle()
+                                val content by vm.content.collectAsStateWithLifecycle()
 
-                            CompositionLocalProvider(
-                                LocalNavigator provides app.aniNavigator,
-                                LocalToaster provides remember {
-                                    object : Toaster {
-                                        override fun toast(text: String) {
-                                            vm.show(text)
+                                CompositionLocalProvider(
+                                    LocalNavigator provides app.aniNavigator,
+                                    LocalToaster provides remember {
+                                        object : Toaster {
+                                            override fun toast(text: String) {
+                                                vm.show(text)
+                                            }
                                         }
+                                    },
+                                ) {
+                                    Box(Modifier.padding(all = paddingByWindowSize)) {
+                                        AniAppContent(app.aniNavigator)
+                                        Toast({ showing }, { Text(content) })
                                     }
-                                },
-                            ) {
-                                Box(Modifier.padding(all = paddingByWindowSize)) {
-                                    AniAppContent(app.aniNavigator)
-                                    Toast({ showing }, { Text(content) })
                                 }
                             }
                         }

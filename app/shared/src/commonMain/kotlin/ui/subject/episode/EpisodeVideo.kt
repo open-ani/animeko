@@ -124,9 +124,11 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.rememberTestEpisodeS
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
 import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
 import me.him188.ani.app.videoplayer.ui.ControllerVisibility
+import me.him188.ani.app.videoplayer.ui.MutablePlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.NoOpVideoAspectRatio
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.PlayerStatsOverlay
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.VideoPlayer
@@ -194,6 +196,7 @@ internal const val TAG_EPISODE_SELECTOR_SHEET = "EpisodeSelectorSheet"
 /**
  * 剧集详情页面顶部的视频控件.
  * @param title 仅在全屏时显示的标题
+ * @param fullscreenState 全屏状态与全屏请求. 控制栏按钮、双击、F 键、上下滑手势全部走它
  */
 @Composable
 internal fun EpisodeVideoImpl(
@@ -211,8 +214,7 @@ internal fun EpisodeVideoImpl(
     danmakuEnabled: Boolean,
     onToggleDanmaku: () -> Unit,
     videoLoadingStateFlow: Flow<VideoLoadingState>,
-    onClickFullScreen: () -> Unit,
-    onExitFullscreen: () -> Unit,
+    fullscreenState: PlayerFullscreenState,
     alwaysOnTop: Boolean = false,
     onToggleAlwaysOnTop: (() -> Unit)? = null,
     danmakuEditor: @Composable() (RowScope.() -> Unit),
@@ -235,7 +237,6 @@ internal fun EpisodeVideoImpl(
     onClickCache: () -> Unit,
     modifier: Modifier = Modifier,
     maintainAspectRatio: Boolean = !expanded,
-    isFullscreen: Boolean = expanded,
     gestureFamily: GestureFamily = gestureFamilyOf(
         LocalActiveInputSource.current.current,
         LocalPlatform.current.mouseFamily,
@@ -375,6 +376,7 @@ internal fun EpisodeVideoImpl(
                     audioController = audioController,
                     brightnessController = brightnessController,
                     playbackSpeedControllerState,
+                    fullscreenState,
                     Modifier,
                     onTogglePauseResume = {
                         if (playerState.state.value.playWhenReady) {
@@ -388,8 +390,6 @@ internal fun EpisodeVideoImpl(
                         }
                         playerState.togglePlayWhenReady()
                     },
-                    onToggleFullscreen = onClickFullScreen,
-                    onExitFullscreen = onExitFullscreen,
                     onToggleDanmaku = onToggleDanmaku,
                     onTogglePlayerStats = {
                         showPlayerStats = !showPlayerStats
@@ -554,10 +554,7 @@ internal fun EpisodeVideoImpl(
                                 }
                             }
                         }
-                        PlayerControllerDefaults.FullscreenIcon(
-                            isFullscreen,
-                            onClickFullscreen = onClickFullScreen,
-                        )
+                        PlayerControllerDefaults.FullscreenIcon(fullscreenState)
                     },
                     expanded = expanded,
                     sliderOnly = playerControllerState.visibility == ControllerVisibility.InlineSliderOnly,
@@ -891,7 +888,7 @@ private fun PreviewVideoScaffoldImpl(
         },
     )
     val videoScaffoldConfig = VideoScaffoldConfig.Default
-    val onClickFullScreen = { }
+    val fullscreenState = remember(expanded) { MutablePlayerFullscreenState(expanded) }
     val cacheProgressInfoFlow = staticMediaCacheProgressState(ChunkState.NONE).flow
     EpisodeVideoImpl(
         playerState = playerState,
@@ -911,8 +908,7 @@ private fun PreviewVideoScaffoldImpl(
         danmakuEnabled = danmakuEnabled,
         onToggleDanmaku = { danmakuEnabled = !danmakuEnabled },
         videoLoadingStateFlow = MutableStateFlow(VideoLoadingState.Succeed(isBt = true)),
-        onClickFullScreen = onClickFullScreen,
-        onExitFullscreen = { },
+        fullscreenState = fullscreenState,
         danmakuEditor = {
             val (value, onValueChange) = remember { mutableStateOf("") }
             PlayerControllerDefaults.DanmakuTextField(
@@ -948,8 +944,7 @@ private fun PreviewVideoScaffoldImpl(
         fullscreenSwitchButton = {
             EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
                 videoScaffoldConfig.fullscreenSwitchMode,
-                isFullscreen = expanded,
-                onClickFullScreen,
+                fullscreenState,
             )
         },
         sideSheets = { sheetsController ->
