@@ -16,7 +16,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.toRoute
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.preference.DebugSettings
 import me.him188.ani.app.data.models.preference.UISettings
@@ -113,12 +112,11 @@ fun DebugTab(
         Group(title = { Text(stringResource(Lang.settings_debug_onboarding)) }, useThinHeader = true) {
             TextItem(
                 onClick = {
-                    val navController = navigator.currentNavigator
                     // 从 SettingsScreen 进入 onboarding, 最后 navigateMain 要 popUpTo Main
                     // 如果 back stack 没有 Main, 那就 popUpTo Settings, 这个一定有
                     navigator.navigateOnboarding(
-                        navController.findLast<NavRoutes.Main>()
-                            ?: navController.currentBackStackEntry?.toRoute<NavRoutes.Settings>(),
+                        navigator.findLast<NavRoutes.Main>()
+                            ?: navigator.findLast<NavRoutes.Settings>(),
                     )
                 },
             ) {

@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import me.him188.ani.app.tools.formatDateTime
+import me.him188.ani.app.ui.comment.CommentReportState
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.comment.UIRichText
@@ -234,6 +235,8 @@ fun SubjectCommentsSheet(
     onClickWriteReview: () -> Unit,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
+    reportState: CommentReportState? = null,
+    onOpenOriginal: ((UIComment) -> Unit)? = null,
 ) {
     ModalBottomSheet(
         onDismissRequest,
@@ -267,6 +270,8 @@ fun SubjectCommentsSheet(
                 state = state,
                 onClickUrl = onClickUrl,
                 onClickImage = onClickImage,
+                reportState = reportState,
+                onOpenOriginal = onOpenOriginal,
                 connectedScrollState = rememberConnectedScrollState(),
                 modifier = Modifier.fillMaxWidth().weight(1f),
             )

@@ -24,6 +24,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.network.AniApiProvider
+import me.him188.ani.app.data.network.AniCommentReportService
 import me.him188.ani.app.data.network.AniEpisodeCommentService
 import me.him188.ani.app.data.network.AniSubjectRelationIndexService
 import me.him188.ani.app.data.network.AniSubjectSearchService
@@ -381,6 +382,7 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     single<EpisodeScreenshotRepository> { WhatslinkEpisodeScreenshotRepository() }
     single<BangumiCommentService> { BangumiBangumiCommentServiceImpl(get<AniApiProvider>().subjectApi) }
     single<AniEpisodeCommentService> { AniEpisodeCommentService(get<AniApiProvider>().episodesApi) }
+    single<AniCommentReportService> { AniCommentReportService(get<AniApiProvider>().commentsApi) }
     single<EpisodeCommentRepository> { EpisodeCommentRepository(aniCommentService = get()) }
     single<MediaSourceInstanceRepository> {
         MediaSourceInstanceRepositoryImpl(getContext().dataStores.mediaSourceSaveStore)
@@ -548,8 +550,8 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
     }
     single<SelectorMediaSourceEpisodeCacheRepository> {
         SelectorMediaSourceEpisodeCacheRepository(
-            webSubjectInfoDao = database.webSearchSubjectInfoDao(),
-            webEpisodeInfoDao = database.webSearchEpisodeInfoDao(),
+            dao = database.webSearchSessionCacheDao(),
+            userTtlFlow = get<SettingsRepository>().mediaSelectorSettings.flow.map { it.webSearchCacheTtl },
         )
     }
 

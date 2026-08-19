@@ -9,34 +9,11 @@
 
 package me.him188.ani.app.ui.comment
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.LocalTextStyle
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.dp
 import androidx.paging.PagingData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
@@ -50,103 +27,10 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import me.him188.ani.app.data.models.UserInfo
-import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
-import me.him188.ani.app.ui.foundation.theme.slightlyWeaken
 import me.him188.ani.app.ui.richtext.UIRichElement
 
 /**
- * 评论项目
- *
- * @param avatar 用户头像
- * @param primaryTitle 主标题，一般是评论者用户名
- * @param secondaryTitle 副标题，一般是评论发送时间
- * @param rhsTitle 靠右的标题，一般是番剧打分
- * @param content 评论内容
- * @param reactionRow 评论回应的各种表情
- * @param actionRow 评论操作，例如包含回复，添加回应，绝交，举报等按钮
- * @param reply 评论回复
- */
-@Composable
-fun Comment(
-    avatar: @Composable BoxScope.() -> Unit,
-    primaryTitle: @Composable ColumnScope.() -> Unit,
-    secondaryTitle: @Composable ColumnScope.() -> Unit,
-    content: @Composable ColumnScope.() -> Unit,
-    modifier: Modifier = Modifier,
-    rhsTitle: @Composable RowScope.() -> Unit = { },
-    reactionRow: @Composable ColumnScope.() -> Unit = {},
-    actionRow: (@Composable ColumnScope.() -> Unit)? = null,
-    reply: (@Composable () -> Unit)? = null,
-) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.Top,
-    ) {
-        Box(modifier = Modifier.padding(top = 2.dp).clip(CircleShape)) {
-            avatar()
-        }
-        val horizontalPadding = 12.dp
-        Column {
-            Row(
-                modifier = Modifier.padding(horizontal = horizontalPadding).fillMaxWidth(),
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    CompositionLocalProvider(LocalTextStyle provides MaterialTheme.typography.bodyMedium) {
-                        primaryTitle()
-                    }
-                    Spacer(modifier = Modifier.height(2.dp))
-                    CompositionLocalProvider(
-                        LocalTextStyle provides MaterialTheme.typography.labelMedium.copy(
-                            color = LocalContentColor.current.slightlyWeaken(),
-                        ),
-                    ) {
-                        secondaryTitle()
-                    }
-                }
-                rhsTitle()
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            SelectionContainer(
-                modifier = Modifier.padding(horizontal = horizontalPadding).fillMaxWidth(),
-            ) {
-                content()
-            }
-
-            SelectionContainer(
-                modifier = Modifier
-                    .paddingIfNotEmpty(top = 4.dp)
-                    .padding(horizontal = horizontalPadding).fillMaxWidth(),
-            ) {
-                reactionRow()
-            }
-
-            if (actionRow != null) {
-                SelectionContainer(
-                    modifier = Modifier.padding(horizontal = horizontalPadding - 8.dp).fillMaxWidth(),
-                ) {
-                    actionRow()
-                }
-            } else {
-                Spacer(Modifier.height(8.dp))
-            }
-            if (reply != null) {
-                Surface(
-                    modifier = Modifier.padding(horizontal = horizontalPadding)
-                        .padding(top = if (actionRow == null) 12.dp else 0.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    shape = MaterialTheme.shapes.small,
-                ) {
-                    reply()
-                }
-            }
-        }
-    }
-}
-
-/**
- * A state which is read by Comment composable
+ * A state which is read by comment composables ([CommentItem]).
  */
 @Stable
 class CommentState(
@@ -155,21 +39,34 @@ class CommentState(
     private val onSubmitCommentReaction: suspend (comment: UIComment, value: String, selected: Boolean) -> Unit,
     private val backgroundScope: CoroutineScope,
     val commentLoadFailures: Flow<Throwable> = emptyFlow(),
+    private val onSubmitCommentVote: suspend (comment: UIComment, vote: UICommentVote?) -> Unit = { _, _ -> },
 ) {
     val count by countState
-    private val reactionSubmitFailureChannel = Channel<Throwable>(Channel.BUFFERED)
-    val reactionSubmitFailures: Flow<Throwable> = reactionSubmitFailureChannel.receiveAsFlow()
+    private val actionSubmitFailureChannel = Channel<Throwable>(Channel.BUFFERED)
+
+    /**
+     * 提交回应或投票失败的事件流.
+     */
+    val actionSubmitFailures: Flow<Throwable> = actionSubmitFailureChannel.receiveAsFlow()
 
     private val reactionOverrides = mutableStateMapOf<String, List<UICommentReaction>>()
     private val reactionJobs = mutableMapOf<ReactionKey, Job>()
 
-    fun withReactionOverlay(comment: UIComment): UIComment {
-        val overrideReactions = reactionOverrides[comment.stableId] ?: return comment
-        return comment.copyWithReactions(overrideReactions)
+    private val voteOverrides = mutableStateMapOf<String, VoteOverride>()
+    private val voteJobs = mutableMapOf<String, Job>()
+
+    /**
+     * 应用本地乐观更新 (回应与投票) 后的评论.
+     */
+    fun withOverlay(comment: UIComment): UIComment {
+        var result = comment
+        reactionOverrides[comment.stableId]?.let { result = result.copyWithReactions(it) }
+        voteOverrides[comment.stableId]?.let { result = result.copyWithVote(it.likeCount, it.selfVote) }
+        return result
     }
 
     fun submitReaction(comment: UIComment, value: String) {
-        val currentComment = withReactionOverlay(comment)
+        val currentComment = withOverlay(comment)
         val before = currentComment.reactions.firstOrNull { it.value == value }
         val afterReactions = currentComment.reactions.toggle(value)
         val after = afterReactions.firstOrNull { it.value == value }
@@ -187,7 +84,7 @@ class CommentState(
                 reactionOverrides[comment.stableId] = reactionOverrides[comment.stableId]
                     .orEmpty()
                     .restore(value, before)
-                reactionSubmitFailureChannel.trySend(e)
+                actionSubmitFailureChannel.trySend(e)
             } finally {
                 if (reactionJobs[key] === coroutineContext[Job]) {
                     reactionJobs.remove(key)
@@ -197,7 +94,62 @@ class CommentState(
         reactionJobs[key] = job
     }
 
+    /**
+     * 点赞或点踩. 再次点击同一按钮则取消投票, 点另一个按钮则覆盖之前的投票.
+     *
+     * 乐观更新本地状态, 失败时回滚并发送错误到 [actionSubmitFailures].
+     */
+    fun toggleVote(comment: UIComment, target: UICommentVote) {
+        // 已完成的 job 在这里 (UI 线程) 惰性清理, 使 voteJobs 只被 UI 线程改写
+        voteJobs.entries.removeAll { it.value.isCompleted }
+
+        val current = withOverlay(comment)
+        val before = VoteOverride(current.likeCount, current.selfVote)
+        val newVote = if (current.selfVote == target) null else target
+        val likeDelta = (if (newVote == UICommentVote.LIKE) 1 else 0) -
+                (if (current.selfVote == UICommentVote.LIKE) 1 else 0)
+        val after = VoteOverride((current.likeCount + likeDelta).coerceAtLeast(0), newVote)
+        val stableId = comment.stableId
+
+        voteOverrides[stableId] = after
+        voteJobs[stableId]?.cancel()
+        val job = backgroundScope.launch {
+            try {
+                onSubmitCommentVote(comment, newVote)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                voteOverrides[stableId] = before
+                actionSubmitFailureChannel.trySend(e)
+            }
+        }
+        voteJobs[stableId] = job
+    }
+
+    /**
+     * 清除已结算 (没有在途提交) 的乐观覆盖, 让列表回到以服务端数据为准.
+     *
+     * 应在 Paging 刷新完成后调用 (see [CommentOverlayCleanupEffect]); 在途提交的覆盖保留, 避免丢失乐观状态.
+     */
+    fun clearStaleOverlays() {
+        voteOverrides.keys.toList().forEach { stableId ->
+            val job = voteJobs[stableId]
+            if (job == null || job.isCompleted) {
+                voteOverrides.remove(stableId)
+            }
+        }
+        val activeReactionIds = reactionJobs.entries.toList()
+            .filter { !it.value.isCompleted }
+            .mapTo(HashSet()) { it.key.stableId }
+        reactionOverrides.keys.toList().forEach { stableId ->
+            if (stableId !in activeReactionIds) {
+                reactionOverrides.remove(stableId)
+            }
+        }
+    }
+
     private data class ReactionKey(val stableId: String, val value: String)
+    private data class VoteOverride(val likeCount: Int, val selfVote: UICommentVote?)
 }
 
 
@@ -218,7 +170,31 @@ class UIComment(
     val source: UICommentSource = UICommentSource.BANGUMI,
     val sourceCommentId: String = stableId,
     val canReply: Boolean = false,
+    /**
+     * 点赞总数. [UICommentSource.BANGUMI] 来源的评论恒为 `0`.
+     */
+    val likeCount: Int = 0,
+    /**
+     * 当前登录用户对这条评论的投票, 未投票或未登录时为 `null`.
+     */
+    val selfVote: UICommentVote? = null,
+    /**
+     * 原始 BBCode 内容, 用于复制评论与举报快照.
+     */
+    val rawContent: String? = null,
+    /**
+     * 评论所属的剧集 ID. 仅剧集评论有值; 提交投票/举报时应优先用它而不是当前播放的剧集.
+     */
+    val episodeId: Long? = null,
 )
+
+/**
+ * 用户对一条评论的投票. 同一用户对同一条评论只能持有一个值.
+ */
+enum class UICommentVote {
+    LIKE,
+    DISLIKE,
+}
 
 @Immutable
 class UICommentReaction(
@@ -241,6 +217,31 @@ private fun UIComment.copyWithReactions(reactions: List<UICommentReaction>): UIC
         source = source,
         sourceCommentId = sourceCommentId,
         canReply = canReply,
+        likeCount = likeCount,
+        selfVote = selfVote,
+        rawContent = rawContent,
+        episodeId = episodeId,
+    )
+}
+
+private fun UIComment.copyWithVote(likeCount: Int, selfVote: UICommentVote?): UIComment {
+    return UIComment(
+        id = id,
+        stableId = stableId,
+        author = author,
+        content = content,
+        createdAt = createdAt,
+        reactions = reactions,
+        briefReplies = briefReplies,
+        replyCount = replyCount,
+        rating = rating,
+        source = source,
+        sourceCommentId = sourceCommentId,
+        canReply = canReply,
+        likeCount = likeCount,
+        selfVote = selfVote,
+        rawContent = rawContent,
+        episodeId = episodeId,
     )
 }
 

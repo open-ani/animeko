@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -56,6 +56,11 @@ import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalPlatformFontFamily
 import me.him188.ani.app.ui.foundation.createDefaultImageLoader
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.input.ActiveInputSourceState
+import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
+import me.him188.ani.app.ui.foundation.input.trackActiveInputSource
+import me.him188.ani.app.ui.foundation.navigation.LocalBackDispatcher
+import me.him188.ani.app.ui.foundation.navigation.onBackNavigationInput
 import me.him188.ani.app.ui.foundation.rememberPlatformFontFamily
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
@@ -95,12 +100,13 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
 
     val browserNavigator by inject<BrowserNavigator>()
 
-    val bangumiSessionExpired = combine(userRepository.selfInfoFlow, sessionStateProvider.stateFlow) { selfInfo, sessionState ->
-        val isBound = selfInfo?.bangumiUsername?.isNotBlank() == true
-        val serverTokenInvalid = selfInfo?.isBangumiSessionValid == false
-        val localTokenMissing = sessionState is SessionState.Valid && !sessionState.bangumiConnected
-        isBound && (serverTokenInvalid || localTokenMissing)
-    }.distinctUntilChanged().stateInBackground(false)
+    val bangumiSessionExpired =
+        combine(userRepository.selfInfoFlow, sessionStateProvider.stateFlow) { selfInfo, sessionState ->
+            val isBound = selfInfo?.bangumiUsername?.isNotBlank() == true
+            val serverTokenInvalid = selfInfo?.isBangumiSessionValid == false
+            val localTokenMissing = sessionState is SessionState.Valid && !sessionState.bangumiConnected
+            isBound && (serverTokenInvalid || localTokenMissing)
+        }.distinctUntilChanged().stateInBackground(false)
 
     val appState: Flow<AniAppState?> = combine(
         settings.themeSettings.flow,
@@ -199,21 +205,26 @@ fun AniApp(
         LocalTimeFormatter provides remember { TimeFormatter() },
         LocalThemeSettings provides appState.themeSettings,
         LocalPlatformFontFamily provides rememberPlatformFontFamily(appState.platformFont),
+        LocalActiveInputSource provides remember { ActiveInputSourceState() },
     ) {
         val focusManager by rememberUpdatedState(LocalFocusManager.current)
         val keyboard by rememberUpdatedState(LocalSoftwareKeyboardController.current)
+        val backDispatcher = LocalBackDispatcher.current
 
         AniTheme {
             Box(
-                modifier = modifier.ifThen(LocalPlatform.current.isMobile()) {
-                    focusable(false).clickable(
-                        remember { MutableInteractionSource() },
-                        null,
-                    ) {
-                        keyboard?.hide()
-                        focusManager.clearFocus()
-                    }
-                },
+                modifier = modifier
+                    .trackActiveInputSource(LocalActiveInputSource.current)
+                    .onBackNavigationInput(backDispatcher::onBackPressed)
+                    .ifThen(LocalPlatform.current.isMobile()) {
+                        focusable(false).clickable(
+                            remember { MutableInteractionSource() },
+                            null,
+                        ) {
+                            keyboard?.hide()
+                            focusManager.clearFocus()
+                        }
+                    },
             ) {
                 Box {
                     for (composable in appState.overlayComposables) {

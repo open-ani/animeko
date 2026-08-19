@@ -42,6 +42,14 @@
     <string name="settings_media_video_link_resolve_timeout_description">Maximum time allowed to resolve the final playable URL for online video sources. If resolution takes too long, playback will fail faster and switch or retry sooner. 8-15 seconds is recommended</string>
     <string name="settings_media_max_wait_time">Maximum Wait Time</string>
     <string name="settings_media_max_wait_time_description">Maximum wait time for each query. At the end of this time, a data source will be automatically selected from those already queried based on your preferences. If the wait time is too short, your preference settings may be ignored; if longer, it can better meet your preferences but may cause slow playback starts. 5–10 seconds is recommended</string>
+    <string name="settings_media_web_search_cache_ttl">Web Search Cache Duration</string>
+    <string name="settings_media_web_search_cache_ttl_description">Reuse web source search results when switching episodes or quickly re-entering the player. The effective duration is the smaller of this value and the one defined by each data source</string>
+    <string name="settings_media_cache_ttl_none">Off</string>
+    <string name="settings_media_cache_ttl_5min">5 minutes</string>
+    <string name="settings_media_cache_ttl_15min">15 minutes</string>
+    <string name="settings_media_cache_ttl_30min">30 minutes</string>
+    <string name="settings_media_cache_ttl_1h">1 hour</string>
+    <string name="settings_media_cache_ttl_1d">1 day</string>
     <string name="settings_media_show_disabled">Show Disabled Data Sources</string>
     <string name="settings_media_show_disabled_description">During playback, display disabled data sources from the "Data Source Management" settings in gray, rather than hiding them. This allows temporarily enabling disabled sources when preferred sources don\'t have resources</string>
     <string name="settings_media_image_captcha_auto_solve">Auto-solve image captchas</string>

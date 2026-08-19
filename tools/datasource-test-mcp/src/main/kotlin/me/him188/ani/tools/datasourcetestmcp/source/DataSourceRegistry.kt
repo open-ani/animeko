@@ -9,11 +9,8 @@
 
 package me.him188.ani.tools.datasourcetestmcp.source
 
-import me.him188.ani.app.data.persistent.database.dao.WebSearchEpisodeInfoDao
-import me.him188.ani.app.data.persistent.database.dao.WebSearchEpisodeInfoEntity
-import me.him188.ani.app.data.persistent.database.dao.WebSearchSubjectInfoAndEpisodes
-import me.him188.ani.app.data.persistent.database.dao.WebSearchSubjectInfoDao
-import me.him188.ani.app.data.persistent.database.dao.WebSearchSubjectInfoEntity
+import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheDao
+import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheEntity
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
@@ -28,9 +25,10 @@ import me.him188.ani.datasources.jellyfin.EmbyMediaSource
 import me.him188.ani.datasources.jellyfin.JellyfinMediaSource
 import me.him188.ani.datasources.mikan.MikanCNMediaSource
 import me.him188.ani.datasources.mikan.MikanMediaSource
+import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import java.util.ServiceLoader
-import java.util.concurrent.atomic.AtomicLong
+import kotlin.time.Duration
 
 class DataSourceRegistry(
     private val client: ScopedHttpClient,
@@ -41,8 +39,8 @@ class DataSourceRegistry(
     private val webSessionManager: WebSessionManager,
 ) {
     private val selectorRepository = SelectorMediaSourceEpisodeCacheRepository(
-        InMemoryWebSearchSubjectInfoDao(),
-        InMemoryWebSearchEpisodeInfoDao(),
+        NoopWebSearchSessionCacheDao(),
+        userTtlFlow = flowOf(Duration.INFINITE),
     )
 
     private val factories: Map<String, MediaSourceFactory> = buildMap {
@@ -89,46 +87,35 @@ class DataSourceRegistry(
     fun factoryIds(): List<String> = factories.keys.sorted()
 }
 
-private class InMemoryWebSearchSubjectInfoDao : WebSearchSubjectInfoDao {
-    private val nextId = AtomicLong(1L)
-    private val items = linkedMapOf<Long, WebSearchSubjectInfoEntity>()
-
-    override suspend fun insert(item: WebSearchSubjectInfoEntity): Long {
-        val existing = items.values.firstOrNull {
-            it.mediaSourceId == item.mediaSourceId && it.subjectName == item.subjectName
-        }
-        if (existing != null) {
-            items[existing.id] = item.copy(id = existing.id)
-            return existing.id
-        }
-
-        val id = nextId.getAndIncrement()
-        items[id] = item.copy(id = id)
-        return id
+/**
+ * 测试工具总是执行真实搜索: 不存储任何缓存行, `SelectorMediaSource` 的
+ * 播放 session 缓存路径因此永远不会命中.
+ */
+private class NoopWebSearchSessionCacheDao : WebSearchSessionCacheDao {
+    override suspend fun insertAll(items: List<WebSearchSessionCacheEntity>) {
     }
 
-    override suspend fun upsert(item: List<WebSearchSubjectInfoEntity>) {
-        item.forEach { insert(it) }
-    }
-
-    override suspend fun filterByMediaSourceIdAndSubjectName(
+    override suspend fun deletePage(
+        requesterSubjectId: Int?,
         mediaSourceId: String,
         subjectName: String,
-    ): List<WebSearchSubjectInfoAndEpisodes> {
-        return items.values
-            .filter { it.mediaSourceId == mediaSourceId && it.subjectName == subjectName }
-            .map { WebSearchSubjectInfoAndEpisodes(it, emptyList()) }
+        subjectUrl: String,
+    ) {
     }
 
-    override suspend fun deleteAll() {
-        items.clear()
-    }
-}
+    override suspend fun filterBySubjectName(
+        requesterSubjectId: Int?,
+        mediaSourceId: String,
+        subjectName: String,
+        now: Long,
+    ): List<WebSearchSessionCacheEntity> = emptyList()
 
-private class InMemoryWebSearchEpisodeInfoDao : WebSearchEpisodeInfoDao {
-    override suspend fun upsert(item: WebSearchEpisodeInfoEntity) {
+    override suspend fun deleteExpired(now: Long) {
     }
 
-    override suspend fun upsert(item: List<WebSearchEpisodeInfoEntity>) {
+    override suspend fun deleteByRequestedSubject(requesterSubjectId: Int?) {
+    }
+
+    override suspend fun deleteByRequestedSubjectAndSource(requesterSubjectId: Int?, mediaSourceId: String) {
     }
 }

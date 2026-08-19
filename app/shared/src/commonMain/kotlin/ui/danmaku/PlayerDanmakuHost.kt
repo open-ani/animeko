@@ -17,7 +17,6 @@ import me.him188.ani.danmaku.ui.DanmakuHost
 import me.him188.ani.danmaku.ui.DanmakuHostState
 import me.him188.ani.danmaku.ui.DanmakuPresentation
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.isPlaying
 
 /**
  * A [DanmakuHost] that is connected with the [player].
@@ -30,7 +29,7 @@ fun PlayerDanmakuHost(
     modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(player, danmakuHostState) {
-        player.playbackState.collect {
+        player.state.collect {
             danmakuHostState.setPaused(!it.isPlaying)
         }
     }

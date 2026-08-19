@@ -8,19 +8,14 @@
  */
 
 plugins {
-    alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.kotlin.multiplatform.library)
-    alias(libs.plugins.kotlin.plugin.compose)
-    alias(libs.plugins.jetbrains.compose)
-
-    `ani-mpp-lib-targets`
+    id("ani.kmp-compose")
     alias(libs.plugins.kotlin.plugin.serialization)
 
     // alias(libs.plugins.kotlinx.atomicfu)
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.app.ui.comment"
     }
     sourceSets.commonMain.dependencies {
@@ -33,6 +28,7 @@ kotlin {
     }
     sourceSets.commonTest.dependencies {
         implementation(libs.kotlinx.coroutines.test)
+        implementation(projects.utils.uiTesting)
     }
     sourceSets.named("jvmTest").dependencies {
         implementation(kotlin("reflect"))

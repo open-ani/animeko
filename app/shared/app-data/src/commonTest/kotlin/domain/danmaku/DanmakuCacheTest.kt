@@ -28,6 +28,7 @@ import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.models.preference.OneshotActionConfig
 import me.him188.ani.app.data.models.preference.PikPakConfig
+import me.him188.ani.app.data.models.preference.PlayerKernelConfig
 import me.him188.ani.app.data.models.preference.ProfileSettings
 import me.him188.ani.app.data.models.preference.ProxySettings
 import me.him188.ani.app.data.models.preference.ThemeSettings
@@ -259,6 +260,7 @@ class DanmakuCacheTest {
         override val themeSettings: Settings<ThemeSettings> by lazy { error("no implemented") }
         override val updateSettings: Settings<UpdateSettings> by lazy { error("no implemented") }
         override val videoScaffoldConfig: Settings<VideoScaffoldConfig> by lazy { error("no implemented") }
+        override val playerKernelConfig: Settings<PlayerKernelConfig> by lazy { error("no implemented") }
         override val videoResolverSettings: Settings<VideoResolverSettings> by lazy { error("no implemented") }
         override val anitorrentConfig: Settings<AnitorrentConfig> by lazy { error("no implemented") }
         override val pikpakConfig: Settings<PikPakConfig> by lazy { error("no implemented") }

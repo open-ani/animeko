@@ -13,26 +13,16 @@ import com.android.build.gradle.ProguardFiles.getDefaultProguardFile
 
 
 plugins {
-    alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.kotlin.multiplatform.library)
-    alias(libs.plugins.kotlin.plugin.compose)
-    alias(libs.plugins.jetbrains.compose)
+    id("ani.kmp-compose")
     // 注意! 前几个插件顺序非常重要, 调整后可能导致 compose multiplatform resources 生成错误
-
-    `ani-mpp-lib-targets`
 
     alias(libs.plugins.kotlin.plugin.serialization)
 
     // alias(libs.plugins.kotlinx.atomicfu)
     alias(libs.plugins.sentry.kotlin.multiplatform)
+    alias(libs.plugins.aboutlibraries)
     idea
 }
-
-compose.resources {
-    packageOfResClass = "me.him188.ani.app"
-    generateResClass = always
-}
-
 
 //atomicfu {
 //    transformJvm = false // 这东西很不靠谱, 等 atomicfu 正式版了可能可以考虑下
@@ -41,7 +31,7 @@ compose.resources {
 val enableIosFramework = enableIos && buildIosFramework
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani"
         compileSdk = getIntProperty("android.compile.sdk")
         minSdk = getIntProperty("android.min.sdk")
@@ -94,6 +84,9 @@ kotlin {
         api(libs.compose.lifecycle.runtime.compose)
         api(libs.compose.navigation.compose)
         api(libs.compose.navigation.runtime)
+        api(libs.compose.navigation3.runtime)
+        api(libs.compose.navigation3.ui)
+        api(libs.compose.lifecycle.viewmodel.navigation3)
         api(libs.compose.material3.adaptive.navigation.suite)
         implementation(libs.compose.components.resources)
         implementation(projects.app.shared.reorderable)
@@ -200,6 +193,39 @@ kotlin {
         implementation(libs.log4j.slf4j.impl)
 
         implementation(libs.ktor.serialization.kotlinx.json)
+    }
+}
+
+val aboutLibrariesExportedJson = layout.buildDirectory.file("generated/aboutLibrariesExport/aboutlibraries.json")
+val mergeCommonMainComposeResources = tasks.register<Sync>("mergeCommonMainComposeResources") {
+    description = "Merge "
+    from(layout.projectDirectory.dir("src/commonMain/composeResources"))
+    from(aboutLibrariesExportedJson) { into("files") }
+    dependsOn("exportLibraryDefinitions")
+    into(layout.buildDirectory.dir("generated/mergedCommonMainComposeResources"))
+}
+
+compose.resources {
+    packageOfResClass = "me.him188.ani.app"
+    generateResClass = always
+    // provider 从 merge task 派生, 自动携带任务依赖.
+    customDirectory(
+        "commonMain",
+        mergeCommonMainComposeResources.map {
+            layout.buildDirectory.dir("generated/mergedCommonMainComposeResources").get()
+        },
+    )
+}
+
+aboutLibraries {
+    export {
+        outputFile = aboutLibrariesExportedJson
+        prettyPrint = true
+    }
+    library {
+        // KMP 库会解析出 -jvm/-android 等多个平台构件, 按名字合并成一个条目.
+        duplicationMode = com.mikepenz.aboutlibraries.plugin.DuplicateMode.MERGE
+        duplicationRule = com.mikepenz.aboutlibraries.plugin.DuplicateRule.SIMPLE
     }
 }
 

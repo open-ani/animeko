@@ -22,6 +22,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.io.files.Path
 import me.him188.ani.android.navigation.AndroidBrowserNavigator
 import me.him188.ani.android.provider.ExternalContentProviderFactoryImpl
+import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.data.persistent.database.AniDatabase
 import me.him188.ani.app.data.repository.user.SettingsRepository
 import me.him188.ani.app.domain.foundation.HttpClientProvider
@@ -41,11 +42,6 @@ import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.OfflineDownloadMediaResolver
 import me.him188.ani.app.domain.media.resolver.TorrentMediaResolver
-import me.him188.ani.torrent.offline.OfflineDownloadEngine
-import me.him188.ani.app.data.models.preference.PikPakConfig
-import me.him188.ani.torrent.pikpak.PikPakCredentials
-import me.him188.ani.torrent.pikpak.PikPakOfflineDownloadEngine
-import me.him188.ani.torrent.pikpak.PikPakSessionStoreAdapter
 import me.him188.ani.app.domain.mediasource.web.AndroidOnnxImageCaptchaRecognizer
 import me.him188.ani.app.domain.mediasource.web.captcha.AndroidCaptchaBrowserFactory
 import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
@@ -62,8 +58,8 @@ import me.him188.ani.app.domain.torrent.service.TorrentServiceConnectionManager
 import me.him188.ani.app.navigation.BrowserNavigator
 import me.him188.ani.app.platform.AndroidContextFiles
 import me.him188.ani.app.platform.AndroidPermissionManager
+import me.him188.ani.app.platform.AniComponentActivity
 import me.him188.ani.app.platform.AppTerminator
-import me.him188.ani.app.platform.BaseComponentActivity
 import me.him188.ani.app.platform.ContextMP
 import me.him188.ani.app.platform.PermissionManager
 import me.him188.ani.app.platform.files
@@ -72,6 +68,10 @@ import me.him188.ani.app.tools.update.AndroidUpdateInstaller
 import me.him188.ani.app.tools.update.UpdateInstaller
 import me.him188.ani.app.ui.exprovider.ExternalContentProviderFactory
 import me.him188.ani.app.videoplayer.media.LibassExoPlayerMediampPlayerFactory
+import me.him188.ani.torrent.offline.OfflineDownloadEngine
+import me.him188.ani.torrent.pikpak.PikPakCredentials
+import me.him188.ani.torrent.pikpak.PikPakOfflineDownloadEngine
+import me.him188.ani.torrent.pikpak.PikPakSessionStoreAdapter
 import me.him188.ani.utils.httpdownloader.HttpDownloader
 import me.him188.ani.utils.io.absolutePath
 import me.him188.ani.utils.io.deleteRecursively
@@ -163,6 +163,8 @@ fun getAndroidModules(
 
     single<HttpMediaCacheEngine> {
         val logger = logger<TorrentManager>()
+        val pikpakConfig = get<SettingsRepository>().pikpakConfig.flow
+            .stateIn(coroutineScope, SharingStarted.Eagerly, PikPakConfig.Default)
 
         val saveDir = get<MediaSaveDirProvider>().saveDir
             .let { Path(it).resolve(HttpMediaCacheEngine.MEDIA_CACHE_DIR) }
@@ -174,6 +176,7 @@ fun getAndroidModules(
             downloader = get<HttpDownloader>(),
             saveDir = saveDir,
             mediaResolver = get<MediaResolver>(),
+            pikpakConfig = { pikpakConfig.value },
         )
     }
 
@@ -250,7 +253,7 @@ fun getAndroidModules(
         object : AppTerminator {
             override fun exitApp(context: ContextMP, status: Int): Nothing {
                 runBlocking(Dispatchers.Main.immediate) {
-                    (context.findActivity() as? BaseComponentActivity)?.finishAffinity()
+                    (context.findActivity() as? AniComponentActivity)?.finishAffinity()
                     context.startService(
                         Intent(context, AniTorrentService.actualServiceClass)
                             .apply { putExtra("stopService", true) },

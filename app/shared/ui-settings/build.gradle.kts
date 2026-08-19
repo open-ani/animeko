@@ -8,19 +8,14 @@
  */
 
 plugins {
-    alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.kotlin.multiplatform.library)
-    alias(libs.plugins.kotlin.plugin.compose)
-    alias(libs.plugins.jetbrains.compose)
-
-    `ani-mpp-lib-targets`
+    id("ani.kmp-compose")
     alias(libs.plugins.kotlin.plugin.serialization)
 
     // alias(libs.plugins.kotlinx.atomicfu)
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.app.ui.settings"
         packaging {
             resources {
@@ -42,6 +37,7 @@ kotlin {
         implementation(libs.filekit.dialogs)
         implementation(libs.filekit.dialogs.compose)
         implementation(libs.atomicfu)
+        implementation(libs.aboutlibraries.compose.m3)
     }
     sourceSets.commonTest.dependencies {
         implementation(libs.kotlinx.coroutines.test)

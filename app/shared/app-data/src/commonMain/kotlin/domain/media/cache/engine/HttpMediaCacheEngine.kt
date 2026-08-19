@@ -22,6 +22,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
 import me.him188.ani.app.data.persistent.database.dao.HttpCacheDownloadStateDao
+import me.him188.ani.app.data.models.preference.PikPakConfig
 import me.him188.ani.app.domain.media.cache.MediaCache
 import me.him188.ani.app.domain.media.cache.MediaCacheState
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
@@ -34,6 +35,7 @@ import me.him188.ani.datasources.api.DefaultMedia
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.MediaCacheMetadata
 import me.him188.ani.datasources.api.MediaCacheProperties
+import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import me.him188.ani.datasources.api.topic.ResourceLocation
@@ -65,6 +67,7 @@ class HttpMediaCacheEngine(
     private val mediaResolver: MediaResolver,
     private val mediaSourceId: String,
     private val dao: HttpCacheDownloadStateDao,
+    private val pikpakConfig: () -> PikPakConfig = { PikPakConfig.Default },
 ) : MediaCacheEngine {
     override val engineKey: MediaCacheEngineKey = MediaCacheEngineKey.WebM3u
 
@@ -96,8 +99,10 @@ class HttpMediaCacheEngine(
         return when (media.download) {
             is ResourceLocation.HttpStreamingFile -> mediaResolver.supports(media)
             is ResourceLocation.HttpTorrentFile,
-            is ResourceLocation.LocalFile,
             is ResourceLocation.MagnetLink,
+                -> pikpakConfig().enabled && mediaResolver.supports(media)
+
+            is ResourceLocation.LocalFile,
                 -> {
                 false
             }
@@ -160,10 +165,22 @@ class HttpMediaCacheEngine(
             is UriMediaData -> {
                 // TODO: 用 [Media.mediaId] 当作 DownloadId 好吗?
                 val downloadId = origin.toSafeDownloadId()
+                var options = DownloadOptions(headers = mediaData.headers)
+                if (origin.kind == MediaSourceKind.BitTorrent) {
+                    val config = pikpakConfig()
+                    options = options.copy(
+                        maxConcurrentSegments = config.downloadConcurrency.coerceIn(
+                            PikPakConfig.MIN_DOWNLOAD_CONCURRENCY,
+                            PikPakConfig.MAX_DOWNLOAD_CONCURRENCY,
+                        ),
+                        // PikPak CDN rejects Ktor's default JSON Accept header with 406.
+                        headers = options.headers + ("Accept" to "application/octet-stream"),
+                    )
+                }
                 val state = downloader.downloadWithId(
                     downloadId = downloadId,
                     mediaData.uri,
-                    options = DownloadOptions(headers = mediaData.headers),
+                    options = options,
                 ) ?: throw UnsupportedOperationException("Failed to create download job of $downloadId, state is null.")
 
                 return HttpMediaCache(

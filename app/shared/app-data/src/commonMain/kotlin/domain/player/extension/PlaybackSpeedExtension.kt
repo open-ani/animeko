@@ -11,6 +11,7 @@ package me.him188.ani.app.domain.player.extension
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.episode.EpisodeSession
 import org.koin.core.Koin
 import org.openani.mediamp.features.PlaybackSpeed
@@ -33,7 +34,11 @@ class PlaybackSpeedExtension(
         backgroundTaskScope.launch("PlaybackSpeed") {
             playbackSpeedFlow
                 .distinctUntilChanged()
-                .collect { context.player.features[PlaybackSpeed]?.set(it) }
+                .collect { speed ->
+                    withContext(context.player.mainDispatcher) {
+                        context.player.features[PlaybackSpeed]?.set(speed)
+                    }
+                }
         }
     }
 

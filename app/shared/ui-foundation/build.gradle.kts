@@ -8,19 +8,14 @@
  */
 
 plugins {
-    alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.kotlin.multiplatform.library)
-    alias(libs.plugins.kotlin.plugin.compose)
-    alias(libs.plugins.jetbrains.compose)
-
-    `ani-mpp-lib-targets`
+    id("ani.kmp-compose")
     alias(libs.plugins.kotlin.plugin.serialization)
 
     // alias(libs.plugins.kotlinx.atomicfu)
 }
 
 kotlin {
-    androidLibrary {
+    android {
         namespace = "me.him188.ani.app.foundation"
     }
     sourceSets.commonMain.dependencies {
@@ -44,6 +39,9 @@ kotlin {
         api(libs.compose.lifecycle.runtime.compose)
         api(libs.compose.navigation.compose)
         api(libs.compose.navigation.runtime)
+        api(libs.compose.navigation3.runtime)
+        api(libs.compose.navigation3.ui)
+        api(libs.compose.lifecycle.viewmodel.navigation3)
         api(libs.compose.material3.adaptive.core.get().toString())
         api(libs.compose.material3.adaptive.layout.get().toString())
         api(libs.compose.material3.adaptive.navigation0.get().toString())

@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.models.episode.EpisodeInfo
 import me.him188.ani.app.data.models.preference.MediaPreference
 import me.him188.ani.app.data.models.preference.MediaPreference.Companion.ANY_FILTER
 import me.him188.ani.app.data.models.preference.MediaSelectorSettings
@@ -566,6 +567,17 @@ class DefaultMediaSelector(
             it.allFieldsLoaded()
         }.first()
         val mediaSelectorSettings = mediaSelectorSettings.first()
+
+        @Suppress("NAME_SHADOWING")
+        val candidates = if (mediaSelectorContext.episodeInfo?.takeIf { it != EpisodeInfo.Empty } == null) {
+            candidates
+        } else {
+            candidates.filter {
+                // WEB 源的资源按线路聚合, episodeRange 覆盖线路上的所有剧集.
+                // 已知正在播放的剧集时, 不包含该剧集的线路不能被自动选择 (其播放地址是回退值).
+                !(it.result.kind == MediaSourceKind.WEB && it.metadata.episodeMatchKind == MatchMetadata.EpisodeMatchKind.NONE)
+            }
+        }
 
 
         val shouldPreferSeasons = mediaSelectorContext.subjectFinished == true

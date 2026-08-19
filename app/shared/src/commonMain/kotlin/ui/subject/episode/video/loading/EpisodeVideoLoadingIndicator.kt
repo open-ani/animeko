@@ -52,13 +52,10 @@ import me.him188.ani.datasources.api.topic.FileSize
 import me.him188.ani.datasources.api.topic.FileSize.Companion.Unspecified
 import me.him188.ani.datasources.api.topic.FileSize.Companion.bytes
 import org.jetbrains.compose.resources.stringResource
-import org.openani.mediamp.ExperimentalMediampApi
+import org.openani.mediamp.MediaStatus
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.PlaybackState
-import org.openani.mediamp.features.Buffering
 import kotlin.time.Duration.Companion.seconds
 
-@OptIn(ExperimentalMediampApi::class)
 @Composable // see preview
 fun EpisodeVideoLoadingIndicator(
     playerState: MediampPlayer,
@@ -66,9 +63,7 @@ fun EpisodeVideoLoadingIndicator(
     optimizeForFullscreen: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val buffering = playerState.features[Buffering]
-    val isBuffering by (buffering?.isBuffering ?: remember { flowOf(false) }).collectAsStateWithLifecycle(false)
-    val state by playerState.playbackState.collectAsStateWithLifecycle()
+    val state by playerState.state.collectAsStateWithLifecycle()
 
     val speed by remember(playerState) {
         playerState.mediaData.filterNotNull().flatMapLatest { video ->
@@ -80,9 +75,8 @@ fun EpisodeVideoLoadingIndicator(
         }
     }.collectAsStateWithLifecycle(null)
 
-    if (isBuffering ||
-        state == PlaybackState.PAUSED_BUFFERING || // 如果不加这个, 就会有一段时间资源名字还没显示出来, 也没显示缓冲中
-        state == PlaybackState.ERROR ||
+    if (state.isBuffering ||
+        state.mediaStatus is MediaStatus.Error ||
         videoLoadingState !is VideoLoadingState.Succeed
     ) {
         EpisodeVideoLoadingIndicator(
@@ -91,7 +85,7 @@ fun EpisodeVideoLoadingIndicator(
                 speed?.downloadSpeed?.bytes ?: FileSize.Unspecified
             },
             optimizeForFullscreen = optimizeForFullscreen,
-            playerError = state == PlaybackState.ERROR,
+            playerError = state.mediaStatus is MediaStatus.Error,
             modifier = modifier,
         )
     }

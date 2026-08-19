@@ -301,6 +301,7 @@ fun PlaybackHistoryScreen(
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .fillMaxSize(),
             enabled = !inSelection,
+            touchOnly = true,
         ) {
             if (histories.isEmpty()) {
                 EmptyPlaybackHistory(Modifier.fillMaxSize())

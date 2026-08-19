@@ -24,6 +24,7 @@ expect fun PlatformDialogPropertiesImpl(
     usePlatformInsets: Boolean = true,
     decorFitsSystemWindows: Boolean = true,
     scrimColor: Color = Color.Transparent,
+    animateTransition: Boolean = true,
 ): DialogProperties
 
 @Suppress("FunctionName")
@@ -38,6 +39,7 @@ fun PlatformDialogProperties(
     // Skiko-only:
     usePlatformInsets: Boolean = true,
     scrimColor: Color = Color.Transparent,
+    animateTransition: Boolean = true,
 ): DialogProperties = PlatformDialogPropertiesImpl(
     dismissOnBackPress = dismissOnBackPress,
     dismissOnClickOutside = dismissOnClickOutside,
@@ -46,4 +48,5 @@ fun PlatformDialogProperties(
     usePlatformInsets = usePlatformInsets,
     decorFitsSystemWindows = decorFitsSystemWindows,
     scrimColor = scrimColor,
+    animateTransition = animateTransition,
 )

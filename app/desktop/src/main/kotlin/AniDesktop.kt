@@ -120,14 +120,15 @@ import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.currentPlatformDesktop
 import me.him188.ani.utils.platform.isMacOS
 import me.him188.ani.utils.platform.isWindows
+import me.him188.ani.utils.video.enhancement.shader.provider.VideoEnhancementShaderProvider
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.openani.mediamp.ffmpeg.FFmpegKit
 import org.openani.mediamp.mpv.MPVHandle
-import org.openani.mediamp.vlc.VlcMediampPlayer
 import java.awt.Desktop
 import java.awt.Frame
 import java.io.File
+import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.Locale
 import kotlin.io.path.absolutePathString
@@ -328,66 +329,12 @@ object AniDesktop {
         }
 
         val loadLibraryJob = coroutineScope.launch(Dispatchers.IO) {
-            try {
-                AnitorrentLibraryLoader.loadLibraries()
-                logger.info { "Anitorrent is loaded." }
-            } catch (e: Throwable) {
-                logger.error(e) { "Failed to load anitorrent libraries" }
-            }
-
-            // 为什么是这个目录?
-            // CMP 打包 task 会把 resource dir 放到 jar 包的目录里
-            // 我们 hack 打包 task 把包含 runtime library 的 jar 包解压到那一堆 jar 包的目录
-            val composeResDir = File(System.getProperty("compose.application.resources.dir"))
-                .parentFile.absolutePath
-
-            try {
-                if (currentProcessName()?.contains("java") == true) {
-                    FFmpegKit.useDefaultRuntimeLibraryDirectory()
-                } else {
-                    FFmpegKit.setRuntimeLibraryDirectory(composeResDir, false)
-                }
-                logger.info { "FFmpegKit is loaded." }
-            } catch (e: Throwable) {
-                logger.error(e) { "Failed to load FFmpeg component of mediamp." }
-            }
-
-            if (currentPlatformDesktop().usesMpv()) {
-                try {
-                    if (currentProcessName()?.contains("java") == true) {
-                        MPVHandle.useDefaultRuntimeLibraryDirectory()
-                    } else {
-                        MPVHandle.setRuntimeLibraryDirectory(composeResDir, false)
-                    }
-                    val mpvLogger = logger<MPVHandle>()
-                    // mpv_log_level in https://github.com/mpv-player/mpv/blob/master/include/mpv/client.h
-                    MPVHandle.setLogHandler {
-                        val prefix = it.prefix.padStart(9, ' ')
-                        val handle = "0x${it.instanceHandle.toHexString().trimStart('0')}"
-                        if (it.level in 1..20) {
-                            mpvLogger.error { "[$prefix@$handle] ${it.line}" }
-                        } else if (it.level <= 30) {
-                            mpvLogger.warn { "[$prefix@$handle] ${it.line}" }
-                        } else if (it.level <= 40) {
-                            mpvLogger.info { "[$prefix@$handle] ${it.line}" }
-                        } else if (it.level <= 50) {
-                            mpvLogger.debug { "[$prefix@$handle] ${it.line}" }
-                        } else {
-                            mpvLogger.trace { "[$prefix@$handle] ${it.line}" }
-                        }
-                    }
-                } catch (e: Throwable) {
-                    logger.error(e) { "Failed to load libmpv component of mediamp." }
-                }
-                logger.info { "mediampv is loaded." }
-            } else {
-                VlcMediampPlayer.prepareLibraries()
-            }
+            configureLibrariesAndResources()
         }
 
         // Initialize CEF application.
         coroutineScope.launch {
-            logger.info { "[JCEF init] awaiting anitorrent, FFmpegKit and VLC/libmpv loaded." }
+            logger.info { "[JCEF init] awaiting anitorrent, FFmpegKit and libmpv loaded." }
             try {
                 analyticsInitializer.join()
                 loadLibraryJob.join()
@@ -595,6 +542,73 @@ object AniDesktop {
 
         }
         // unreachable here
+    }
+
+    private fun configureLibrariesAndResources() {
+        try {
+            AnitorrentLibraryLoader.loadLibraries()
+            logger.info { "Anitorrent is loaded." }
+        } catch (e: Throwable) {
+            logger.error(e) { "Failed to load anitorrent libraries" }
+        }
+
+        // 为什么是这个目录?
+        // CMP 打包 task 会把 resource dir 放到 jar 包的目录里
+        // 我们 hack 打包 task 把包含 runtime library 的 jar 包解压到那一堆 jar 包的目录
+        val composeResDir = File(System.getProperty("compose.application.resources.dir"))
+            .parentFile.absolutePath
+
+        try {
+            if (currentProcessName()?.contains("java") == true) {
+                FFmpegKit.useDefaultRuntimeLibraryDirectory()
+            } else {
+                FFmpegKit.setRuntimeLibraryDirectory(composeResDir, false)
+            }
+            logger.info { "FFmpegKit is loaded." }
+        } catch (e: Throwable) {
+            logger.error(e) { "Failed to load FFmpeg component of mediamp." }
+        }
+
+        run {
+            try {
+                val devNativeDir = System.getProperty("mediamp.mpv.dev.native.dir")
+                if (devNativeDir != null) {
+                    // mediamp composite 开发: 直接加载本地编译的 JNI wrapper (见 local.properties
+                    // 的 ani.build.mediamp.mpv.devNativeDir)
+                    MPVHandle.setRuntimeLibraryDirectory(devNativeDir, false)
+                } else if (currentProcessName()?.contains("java") == true) {
+                    MPVHandle.useDefaultRuntimeLibraryDirectory()
+                } else {
+                    MPVHandle.setRuntimeLibraryDirectory(composeResDir, false)
+                }
+                val mpvLogger = logger<MPVHandle>()
+                // mpv_log_level in https://github.com/mpv-player/mpv/blob/master/include/mpv/client.h
+                MPVHandle.setLogHandler {
+                    val prefix = it.prefix.padStart(9, ' ')
+                    val handle = "0x${it.instanceHandle.toHexString().trimStart('0')}"
+                    if (it.level in 1..20) {
+                        mpvLogger.error { "[$prefix@$handle] ${it.line}" }
+                    } else if (it.level <= 30) {
+                        mpvLogger.warn { "[$prefix@$handle] ${it.line}" }
+                    } else if (it.level <= 40) {
+                        mpvLogger.info { "[$prefix@$handle] ${it.line}" }
+                    } else if (it.level <= 50) {
+                        mpvLogger.debug { "[$prefix@$handle] ${it.line}" }
+                    } else {
+                        mpvLogger.trace { "[$prefix@$handle] ${it.line}" }
+                    }
+                }
+            } catch (e: Throwable) {
+                logger.error(e) { "Failed to load libmpv component of mediamp." }
+            }
+            logger.info { "mediampv is loaded." }
+        }
+
+        if (currentProcessName()?.contains("java") != true) {
+            val shaderPath = Path.of(composeResDir, "resources", "anime4k")
+            VideoEnhancementShaderProvider.setShaderBasePath(Path.of(composeResDir, "resources", "anime4k"))
+            logger.info { "Using bundled video enhancement shaders from $${shaderPath.toAbsolutePath()}" }
+        }
     }
 
     fun currentProcessName(): String? {

@@ -39,10 +39,8 @@ class FloatingDanmakuTrackTest {
         )
 
         suspend fun elapseTime(milliseconds: Long) {
+            // distanceX 是帧时间的纯函数, 推进帧时间即可
             frameTimeNanos += milliseconds.ms2ns
-            DanmakuCollectionIterator(listOf(track)).forEach {
-                it.distanceX += milliseconds / 1000.0f * (baseTrackSpeed * it.speedMultiplier)
-            }
             track.tick()
             takeSnapshot()
         }
@@ -106,10 +104,8 @@ class FloatingDanmakuTrackTest {
         )
 
         suspend fun elapseTime(milliseconds: Long) {
+            // distanceX 是帧时间的纯函数, 推进帧时间即可
             frameTimeNanos += milliseconds.ms2ns
-            DanmakuCollectionIterator(listOf(track)).forEach {
-                it.distanceX += milliseconds / 1000.0f * (baseTrackSpeed * it.speedMultiplier)
-            }
             track.tick()
             takeSnapshot()
         }
@@ -147,6 +143,12 @@ class FloatingDanmakuTrackTest {
         val danmakuInLeft2 = track.tryPlace(TestDanmaku(baseSpeedTextWidth * 2), 0L)
         assertNotNull(danmakuInLeft2)
         assertEquals(1000f, danmakuInLeft2.distanceX)
+
+        // 修改基础速度不跳变: 位置保持, 之后以新速度运动
+        track.baseSpeedPxPerSecond = 200f
+        assertEquals(1000f, danmakuInLeft2.distanceX, absoluteTolerance = 0.01f)
+        track.baseSpeedPxPerSecond = baseTrackSpeed
+        assertEquals(1000f, danmakuInLeft2.distanceX, absoluteTolerance = 0.01f)
 
         // 运动了 5000ms 后, 尝试放 danmakuWillClash2 紧跟着 danmakuInLeft2
         // danmakuWillClash2 的速度比 danmakuInLeft2 快, 所以一定会撞车, 因此放不下

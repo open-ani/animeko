@@ -108,6 +108,7 @@ import me.him188.ani.app.ui.adaptive.AniTopAppBar
 import me.him188.ani.app.ui.adaptive.AniTopAppBarDefaults
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.input.touchHorizontalScrollOnly
 import me.him188.ani.app.ui.foundation.layout.AniWindowInsets
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isHeightAtLeastMedium
@@ -151,7 +152,6 @@ import me.him188.ani.utils.coroutines.flows.FlowRestarter
 import me.him188.ani.utils.coroutines.flows.restartable
 import me.him188.ani.utils.platform.hasScrollingBug
 import me.him188.ani.utils.platform.isDesktop
-import me.him188.ani.utils.platform.isMobile
 import org.jetbrains.compose.resources.stringResource
 import kotlin.time.Clock
 
@@ -359,7 +359,8 @@ fun CollectionPage(
                 isPullToRefreshing,
                 onRefresh = { items.refresh() },
                 state = pullToRefreshState,
-                enabled = LocalPlatform.current.isMobile() && !isBangumiSyncing,
+                enabled = !isBangumiSyncing,
+                touchOnly = true,
                 indicator = {
                     // 内容延伸到 top bar 下方, 指示器需要避开 top bar.
                     PullToRefreshDefaults.Indicator(
@@ -498,7 +499,11 @@ private fun CollectionPageLayout(
 }
 
 /**
- * 在移动端使用 [HorizontalPager] 支持左右滑动切换标签.
+ * 使用 [HorizontalPager] 支持左右滑动切换标签.
+ *
+ * 是否能滑动取决于有没有触摸, 而不是平台: 之前桌面端整个走另一条分支, 连 [HorizontalPager]
+ * 都不创建, 带触屏的二合一设备也就无从滑动 (标签点击里的 `animateScrollToPage` 同样一直在空转).
+ * 现在统一挂载, 由 [touchHorizontalScrollOnly] 按本次手势的指针类型过滤, 鼠标拖动依然不会翻页.
  */
 @Composable
 private fun CollectionPageColumnLayout(
@@ -506,36 +511,24 @@ private fun CollectionPageColumnLayout(
     modifier: Modifier = Modifier,
     content: @Composable (items: LazyPagingItems<SubjectCollectionInfo>, pageIndex: Int) -> Unit,
 ) {
-    val platform = LocalPlatform.current
-
-    if (platform.isMobile()) {
-        LaunchedEffect(state.pagerState.currentPage) {
-            if (state.pagerState.currentPage != state.selectedTypeIndex) {
-                state.selectTypeIndex(state.pagerState.currentPage)
-            }
+    LaunchedEffect(state.pagerState.currentPage) {
+        if (state.pagerState.currentPage != state.selectedTypeIndex) {
+            state.selectTypeIndex(state.pagerState.currentPage)
         }
+    }
 
-        HorizontalPager(
-            state = state.pagerState,
-            modifier = modifier,
-            beyondViewportPageCount = 1,
-            pageSpacing = 0.dp,
-        ) { pageIndex ->
-            val items = state
-                .getCollectionLazyPagingItems(pageIndex)
-                .collectWithLifecycle()
+    HorizontalPager(
+        state = state.pagerState,
+        modifier = modifier.touchHorizontalScrollOnly(),
+        beyondViewportPageCount = 1,
+        pageSpacing = 0.dp,
+    ) { pageIndex ->
+        val items = state
+            .getCollectionLazyPagingItems(pageIndex)
+            .collectWithLifecycle()
 
-            Column(Modifier.fillMaxSize()) {
-                content(items, pageIndex)
-            }
-        }
-    } else {
-        val items = remember(state.selectedTypeIndex) {
-            state.getCollectionLazyPagingItems(state.selectedTypeIndex)
-        }.collectWithLifecycle()
-
-        Box(modifier) {
-            content(items, state.selectedTypeIndex)
+        Column(Modifier.fillMaxSize()) {
+            content(items, pageIndex)
         }
     }
 }

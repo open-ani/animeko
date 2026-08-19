@@ -59,7 +59,9 @@ private suspend fun RoutingContext.handleMcpPost(handler: McpRequestHandler) {
         return
     }
 
-    val element = runCatching { protocolJson.parseToJsonElement(call.receiveText()) }.getOrNull()
+    // receiveText 是挂起调用, 不可放进 runCatching, 否则客户端断开导致的取消会被误报成 JSON 解析错误.
+    val requestBody = call.receiveText()
+    val element = runCatching { protocolJson.parseToJsonElement(requestBody) }.getOrNull()
         ?: return respondRpcError(protocolJson, -32700, "Parse error")
     if (element is JsonArray) {
         return respondRpcError(protocolJson, -32600, "Batch requests are not supported")

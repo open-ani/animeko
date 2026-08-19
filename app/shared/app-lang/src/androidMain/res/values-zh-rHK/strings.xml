@@ -136,6 +136,8 @@
     <string name="settings_mediasource_selector_config_search_subject_names_count_description">每次播放使用多少個條目名稱進行查詢。\n為 1 則只使用主名稱，為 2 額外使用日文原名，大於 2 將額外使用其他別名，別名的數量不固定。\n一般用 1 就夠了，使用多個名稱將會顯著增加播放時的等待時間。</string>
     <string name="settings_mediasource_selector_config_request_interval">搜索請求間隔時間 (毫秒)</string>
     <string name="settings_mediasource_selector_config_request_interval_description">控制每發送一個請求後等待多久後再發送下一個請求</string>
+    <string name="settings_mediasource_selector_config_search_cache_ttl">搜尋快取有效期 (分鐘)</string>
+    <string name="settings_mediasource_selector_config_search_cache_ttl_description">在此時間內切換劇集時複用搜尋結果。實際生效值為此值與使用者設定中的較小者，0 表示不快取</string>
     <string name="settings_mediasource_selector_config_filter_settings">過濾設置</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name">使用條目名稱過濾</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name_description">要求資源標題包含條目名稱。適用於數據源可能搜到無關內容的情況。此功能只對 4.4.0 以前版本有效，對其他版本無效</string>
@@ -194,6 +196,14 @@
     <string name="settings_acknowledgements_bangumi_description">條目數據與收藏服務</string>
     <string name="settings_acknowledgements_dandanplay">彈彈play</string>
     <string name="settings_acknowledgements_dandanplay_description">彈幕聚合</string>
+    <string name="settings_acknowledgements_mikan">蜜柑計劃</string>
+    <string name="settings_acknowledgements_mikan_description">新番 BT 資源索引</string>
+    <string name="settings_acknowledgements_dmhy">動漫花園</string>
+    <string name="settings_acknowledgements_dmhy_description">BT 資源分享社區</string>
+    <string name="settings_acknowledgements_oss_licenses">開源許可</string>
+    <string name="settings_acknowledgements_oss_licenses_description">本應用使用的開源庫及其許可證</string>
+    <string name="settings_oss_licenses_homepage">主頁</string>
+    <string name="settings_oss_licenses_license">許可證</string>
 
     <!-- AppSettingsTab -->
     <string name="settings_app_initial_page">初始頁面</string>
@@ -258,6 +268,8 @@
     <string name="settings_player_fullscreen_only_in_controller">不顯示</string>
     <string name="settings_player_fullscreen_button">豎屏模式下顯示全螢幕按鈕</string>
     <string name="settings_player_fullscreen_button_description">總是顯示播放器右下角的切換全螢幕按鈕，方便切換</string>
+    <string name="settings_player_video_enhancement_default">畫質增強預設狀態</string>
+    <string name="settings_player_video_enhancement_default_description">設定每次進入播放器時使用的畫質增強模式</string>
     <string name="settings_player_frame_preview">顯示進度條畫面預覽</string>
     <string name="settings_player_frame_preview_description">懸停或拖動進度條時，顯示目標位置的影片畫面</string>
     <string name="settings_player_enable_regex_filter">啟用正則彈幕過濾器</string>
@@ -283,6 +295,11 @@
     <string name="settings_player_remember_playback_speed_description">在播放器內調整的倍速跨劇集和重啟保持。關閉後僅對本次播放生效，退出播放器即回到預設倍速。</string>
     <string name="settings_player_default_playback_speed">預設倍速</string>
     <string name="settings_player_default_playback_speed_description">每次進入播放器時的起始倍速</string>
+    <string name="settings_player_mpv_options">自訂 mpv 選項</string>
+    <string name="settings_player_mpv_options_description">每行一個選項，格式為 key=value，以 # 開頭的行為註釋。儲存後立即生效</string>
+    <string name="settings_player_mpv_options_empty">未設定</string>
+    <string name="settings_player_mpv_options_count">已設定 %1$d 個選項</string>
+    <string name="settings_player_mpv_options_placeholder">hwdec=auto\nprofile=fast</string>
 
     <!-- Storage Settings -->
     <string name="settings_storage_title">存儲設置</string>
@@ -707,6 +724,10 @@
     <string name="video_player_auto">自動</string>
     <string name="video_player_audio_track">音軌</string>
     <string name="video_player_off">關閉</string>
+    <string name="video_player_on">開啟</string>
+    <string name="video_player_performance">效能優先</string>
+    <string name="video_player_quality">最高品質</string>
+    <string name="video_player_video_enhancement">畫質增強</string>
     <string name="video_player_subtitle">字幕</string>
     <string name="video_player_disable_danmaku">禁用彈幕</string>
     <string name="video_player_enable_danmaku">啟用彈幕</string>
@@ -1174,6 +1195,27 @@
     <string name="comment_rendering">渲染中...</string>
     <string name="comment_reply">回覆評論</string>
     <string name="comment_view_more_replies">查看更多 %1$d 條回覆&gt;</string>
+    <string name="comment_like">讚好</string>
+    <string name="comment_dislike">倒讚</string>
+    <string name="comment_more_actions">更多操作</string>
+    <string name="comment_expand_replies">展開 %1$d 條回覆</string>
+    <string name="comment_copy_content">複製內容</string>
+    <string name="comment_open_in_bangumi">喺 Bangumi 開啟</string>
+    <string name="comment_block_user">封鎖此用戶</string>
+    <string name="comment_report">舉報</string>
+    <string name="comment_copied">已複製</string>
+    <string name="comment_report_title">舉報評論</string>
+    <string name="comment_report_subtitle">舉報會提交畀 Animeko 審核，唔會通知對方</string>
+    <string name="comment_report_reason_spam">垃圾廣告或引流</string>
+    <string name="comment_report_reason_harassment">人身攻擊、騷擾</string>
+    <string name="comment_report_reason_spoiler">劇透</string>
+    <string name="comment_report_reason_nsfw">色情、血腥或令人不適</string>
+    <string name="comment_report_reason_illegal">違法違規內容</string>
+    <string name="comment_report_reason_other">其他</string>
+    <string name="comment_report_detail_hint">補充說明（選填）</string>
+    <string name="comment_report_submit">提交舉報</string>
+    <string name="comment_report_cancel">取消</string>
+    <string name="comment_report_submitted">已收到舉報</string>
     <string name="comment_add_emoji">添加表情</string>
     <string name="comment_bold">粗體</string>
     <string name="comment_italic">斜體</string>

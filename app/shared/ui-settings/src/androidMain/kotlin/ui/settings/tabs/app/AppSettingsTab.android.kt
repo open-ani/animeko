@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.text.intl.Locale
 import androidx.core.os.LocaleListCompat
+import me.him188.ani.app.data.models.preference.PlayerKernelConfig
 import me.him188.ani.app.data.models.preference.UISettings
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.platform.LocalContext
@@ -62,7 +63,10 @@ internal actual fun SettingsScope.LanguageSettingsPlatform(
 }
 
 @Composable
-actual fun SettingsScope.PlayerGroupPlatform(videoScaffoldConfig: SettingsState<VideoScaffoldConfig>) {
+actual fun SettingsScope.PlayerGroupPlatform(
+    videoScaffoldConfig: SettingsState<VideoScaffoldConfig>,
+    @Suppress("UNUSED_PARAMETER") playerKernelConfig: SettingsState<PlayerKernelConfig>,
+) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         val context = LocalContext.current
         val supportedModes = remember(context) {

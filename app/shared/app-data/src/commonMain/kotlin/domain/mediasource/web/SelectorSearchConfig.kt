@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -34,6 +34,7 @@ import me.him188.ani.datasources.api.topic.SubtitleLanguage
 import org.intellij.lang.annotations.Language
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 @Immutable
@@ -58,6 +59,10 @@ data class SelectorSearchConfig(
      * @since 4.2
      */
     val requestInterval: @Serializable(DurationAsMillisSerializer::class) Duration = 3.seconds,
+    /**
+     * 播放 session 搜索缓存的有效期. 实际生效值为此值与用户设置中定义的值的较小者. 为 0 时禁用缓存.
+     */
+    val searchCacheTtl: @Serializable(DurationAsMillisSerializer::class) Duration = 30.minutes,
     // Phase 2, for search result, select subjects
     val subjectFormatId: SelectorFormatId = SelectorSubjectFormatA.id,
     val selectorSubjectFormatA: SelectorSubjectFormatA.Config = SelectorSubjectFormatA.Config(),
@@ -102,6 +107,10 @@ data class SelectorSearchConfig(
     val onlySupportsPlayers: List<String> = emptyList(),
 
     // Search done. Now we should have Medias.
+    /**
+     * App 播放流程现在会保留线路上的所有剧集 (按线路聚合为一个 media), 不再按当前集过滤.
+     * 此开关目前仅影响编辑数据源界面中的测试结果列表.
+     */
     val filterByEpisodeSort: Boolean = true,
     val filterBySubjectName: Boolean = true,
 

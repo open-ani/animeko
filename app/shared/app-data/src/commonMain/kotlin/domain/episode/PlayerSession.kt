@@ -39,6 +39,7 @@ import me.him188.ani.utils.logging.logger
 import me.him188.ani.utils.logging.warn
 import org.koin.core.Koin
 import org.openani.mediamp.MediampPlayer
+import org.openani.mediamp.PlaybackException
 import org.openani.mediamp.source.MediaData
 import org.openani.mediamp.source.UriMediaData
 import kotlin.coroutines.CoroutineContext
@@ -102,15 +103,12 @@ class PlayerSession(
             }.data
 
             logger.info { "Set media data to player: $preparedData" }
-            player.setMediaData(preparedData)
+            // v2: setMediaData 挂起直到媒体真正打开, 并直接携带播放意图, 无需再单独 resume.
+            player.setMediaData(preparedData, playWhenReady = true)
             hlsPlaybackProxySession = preparedHlsPlaybackProxySession
             preparedHlsPlaybackProxySession = null
 
             _videoLoadingStateFlow.value = VideoLoadingState.Succeed(isBt = source is TorrentBackedMediaDataProvider)
-            withContext(mainDispatcher) {
-                player.resume()
-            }
-            logger.info { "resuming" }
         } catch (e: UnsupportedMediaException) {
             logger.warn { IllegalStateException("Failed to resolve video source, unsupported media", e) }
             _videoLoadingStateFlow.value = VideoLoadingState.UnsupportedMedia
@@ -142,9 +140,13 @@ class PlayerSession(
                 ResolutionFailures.NO_MATCHING_RESOURCE -> VideoLoadingState.NoMatchingFile
             }
             stopPlayback()
-        } catch (e: CancellationException) { // 切换数据源
+        } catch (e: CancellationException) { // 切换数据源 (含 MediaLoadCancellationException)
             _videoLoadingStateFlow.value = VideoLoadingState.Cancelled
             throw e
+        } catch (e: PlaybackException) { // during player.setMediaData, 播放器拒绝了这个媒体
+            logger.warn { IllegalStateException("Player rejected the media data", e) }
+            _videoLoadingStateFlow.value = VideoLoadingState.UnknownError(e)
+            stopPlayback()
         } catch (e: Throwable) {
             logger.error { IllegalStateException("Failed to resolve video source with unknown error", e) }
             _videoLoadingStateFlow.value = VideoLoadingState.UnknownError(e)
