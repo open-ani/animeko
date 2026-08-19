@@ -21,13 +21,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mikepenz.aboutlibraries.entity.Library
+import com.mikepenz.aboutlibraries.ui.compose.LibraryDefaults
 import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
+import com.mikepenz.aboutlibraries.ui.compose.m3.libraryColors
 import com.mikepenz.aboutlibraries.ui.compose.produceLibraries
 import com.mikepenz.aboutlibraries.ui.compose.util.strippedLicenseContent
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
@@ -50,6 +53,8 @@ fun OpenSourceLibrariesTab(
     LibrariesContainer(
         libraries,
         modifier,
+        // 列表容器背景透明, 使用设置页自己的背景色; item 由下面的 libraryRow 全权渲染, 本身无背景.
+        colors = LibraryDefaults.libraryColors(libraryBackgroundColor = Color.Transparent),
         libraryRow = { _, library, expanded, toggle, _ ->
             OpenSourceLibraryRow(library, expanded, onToggleLicense = toggle)
         },
