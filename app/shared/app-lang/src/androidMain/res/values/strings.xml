@@ -208,6 +208,10 @@
     <string name="settings_acknowledgements_bangumi_description">Item data &amp; collection services</string>
     <string name="settings_acknowledgements_dandanplay">DanDanPlay</string>
     <string name="settings_acknowledgements_dandanplay_description">Danmaku aggregation</string>
+    <string name="settings_acknowledgements_mikan">Mikan Project</string>
+    <string name="settings_acknowledgements_mikan_description">Anime torrent index</string>
+    <string name="settings_acknowledgements_dmhy">DMHY</string>
+    <string name="settings_acknowledgements_dmhy_description">Anime torrent community</string>
     <string name="settings_acknowledgements_oss_licenses">Open source licenses</string>
     <string name="settings_acknowledgements_oss_licenses_description">Open source libraries used by this app and their licenses</string>
     <string name="settings_oss_licenses_homepage">Homepage</string>

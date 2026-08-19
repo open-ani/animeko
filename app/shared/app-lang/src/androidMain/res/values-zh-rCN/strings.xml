@@ -213,6 +213,10 @@
     <string name="settings_acknowledgements_bangumi_description">条目数据与收藏服务</string>
     <string name="settings_acknowledgements_dandanplay">弹弹play</string>
     <string name="settings_acknowledgements_dandanplay_description">弹幕聚合</string>
+    <string name="settings_acknowledgements_mikan">蜜柑计划</string>
+    <string name="settings_acknowledgements_mikan_description">新番 BT 资源索引</string>
+    <string name="settings_acknowledgements_dmhy">动漫花园</string>
+    <string name="settings_acknowledgements_dmhy_description">BT 资源分享社区</string>
     <string name="settings_acknowledgements_oss_licenses">开源许可</string>
     <string name="settings_acknowledgements_oss_licenses_description">本应用使用的开源库及其许可证</string>
     <string name="settings_oss_licenses_homepage">主页</string>
