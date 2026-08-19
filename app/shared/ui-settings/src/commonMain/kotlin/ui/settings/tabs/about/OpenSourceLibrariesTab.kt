@@ -94,7 +94,10 @@ private fun OpenSourceLibraryRow(
                 textDecoration = TextDecoration.Underline,
             )
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                // weight 让链接组填满所在行的剩余宽度, 配合 Alignment.End
+                // 在同行和独占一行两种情况下都靠右对齐.
+                Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (library.licenses.isNotEmpty()) {
