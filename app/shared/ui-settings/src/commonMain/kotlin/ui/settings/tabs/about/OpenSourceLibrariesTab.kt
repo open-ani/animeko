@@ -9,11 +9,31 @@
 
 package me.him188.ani.app.ui.settings.tabs.about
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.mikepenz.aboutlibraries.entity.Library
 import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
 import com.mikepenz.aboutlibraries.ui.compose.produceLibraries
+import com.mikepenz.aboutlibraries.ui.compose.util.strippedLicenseContent
+import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
+import me.him188.ani.app.ui.lang.Lang
+import me.him188.ani.app.ui.lang.settings_oss_licenses_homepage
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * 开源许可页, 展示应用使用的开源库列表及许可证.
@@ -27,5 +47,77 @@ fun OpenSourceLibrariesTab(
     modifier: Modifier = Modifier,
 ) {
     val libraries by produceLibraries { loadLibrariesJson().decodeToString() }
-    LibrariesContainer(libraries, modifier)
+    LibrariesContainer(
+        libraries,
+        modifier,
+        libraryRow = { _, library, expanded, toggle, _ ->
+            OpenSourceLibraryRow(library, expanded, onToggleLicense = toggle)
+        },
+    )
+}
+
+/**
+ * 单行库条目: 左侧库名, 右侧许可证与主页链接.
+ * 点击许可证展开许可证原文, 点击主页用浏览器打开.
+ */
+@Composable
+private fun OpenSourceLibraryRow(
+    library: Library,
+    expanded: Boolean,
+    onToggleLicense: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                library.name,
+                Modifier.weight(1f).padding(end = 16.dp),
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            val linkStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = MaterialTheme.colorScheme.primary,
+                textDecoration = TextDecoration.Underline,
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (library.licenses.isNotEmpty()) {
+                    Text(
+                        library.licenses.joinToString(", ") { it.spdxId ?: it.name },
+                        Modifier.clickable(onClick = onToggleLicense),
+                        style = linkStyle,
+                        maxLines = 1,
+                    )
+                }
+                val homepage = library.website?.takeIf { it.isNotBlank() }
+                    ?: library.scm?.url?.takeIf { it.isNotBlank() }
+                if (homepage != null) {
+                    val uriHandler = LocalUriHandler.current
+                    Text(
+                        stringResource(Lang.settings_oss_licenses_homepage),
+                        Modifier.clickable { uriHandler.openUri(homepage) },
+                        style = linkStyle,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+
+        AniAnimatedVisibility(expanded) {
+            Text(
+                library.strippedLicenseContent.takeIf { it.isNotBlank() }
+                    ?: library.licenses.mapNotNull { it.url }.joinToString("\n"),
+                Modifier.fillMaxWidth().padding(top = 8.dp),
+                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+            )
+        }
+    }
 }
