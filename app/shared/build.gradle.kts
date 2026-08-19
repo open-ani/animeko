@@ -27,13 +27,24 @@ plugins {
 compose.resources {
     packageOfResClass = "me.him188.ani.app"
     generateResClass = always
+    // 开源许可页的 aboutlibraries.json 由 exportLibraryDefinitions 在构建时生成,
+    // 通过 customDirectory 注册为 commonMain 的资源目录 (provider 携带任务依赖).
+    // 注意: customDirectory 会替代本模块默认的 src/commonMain/composeResources 目录,
+    // 如需添加其他 common 资源, 也要放进这个生成目录或改为合并方案.
+    // 目录名不要用 generated/aboutlibraries: 那是插件自己的默认输出根,
+    // 它会往里写 androidMain/res/raw 等结构, 混进资源目录会让资源生成任务报错.
+    customDirectory(
+        "commonMain",
+        tasks.named("exportLibraryDefinitions").map {
+            layout.buildDirectory.dir("generated/aboutLibrariesComposeResources").get()
+        },
+    )
 }
 
 aboutLibraries {
     export {
-        // 开源许可页 (设置 - 关于 - 鸣谢 - 开源许可) 的数据.
-        // 依赖变更后运行 ./gradlew :app:shared:exportLibraryDefinitions 更新并提交.
-        outputFile = file("src/commonMain/composeResources/files/aboutlibraries.json")
+        // 开源许可页 (设置 - 关于 - 鸣谢 - 开源许可) 的数据, 构建时自动生成.
+        outputFile = layout.buildDirectory.file("generated/aboutLibrariesComposeResources/files/aboutlibraries.json")
         prettyPrint = true
     }
     library {
