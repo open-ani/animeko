@@ -51,6 +51,7 @@ import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
+import androidx.compose.material3.adaptive.layout.PaneAdaptedValue
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
@@ -91,6 +92,7 @@ import me.him188.ani.app.ui.cache.components.rememberCacheFilterAndSortState
 import me.him188.ani.app.ui.cache.components.rememberCacheSelectionState
 import me.him188.ani.app.ui.cache.subject.SubjectCacheDetailHeader
 import me.him188.ani.app.ui.cache.subject.SubjectCacheDetailPaneContent
+import me.him188.ani.app.ui.cache.subject.SubjectCacheSummaryRow
 import me.him188.ani.app.ui.cache.subject.rememberSubjectCacheViewModel
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
@@ -152,8 +154,9 @@ data class CacheManagementState(
 /**
  * 全局缓存管理页面.
  *
- * 手机布局: 按条目分组的卡片列表, 点击卡片直接打开条目缓存页.
+ * 手机布局: 按条目分组的卡片列表, 点击卡片由 list-detail scaffold 全屏展示详情栏 (顶栏变为返回 + 条目名).
  * 宽屏布局 (≥840dp): 左栏为分组卡片, 右栏为选中条目的完整缓存内容 (含未缓存剧集).
+ * 宽屏显示详情后缩小窗口会自然退化为手机的详情栏形态, 返回键可回到列表.
  *
  * 设计稿: [Figma](https://www.figma.com/design/LET1n9mmDa6npDTIlUuJjU/Animeko?node-id=1655-6587)
  */
@@ -164,7 +167,6 @@ fun CacheManagementScreen(
     onPlay: (CacheEpisodeState) -> Unit,
     onClickLogin: () -> Unit,
     onNavigateCacheDetail: (cacheId: String) -> Unit,
-    onNavigateToSubjectCache: (subjectId: Int) -> Unit,
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
@@ -182,7 +184,6 @@ fun CacheManagementScreen(
         modifier = modifier,
         navigationIcon = navigationIcon,
         windowInsets = windowInsets,
-        onNavigateToSubjectCache = onNavigateToSubjectCache,
         detailPaneContent = { group, selectionState ->
             if (group == null) {
                 EmptyDetailPanePlaceholder(Modifier.fillMaxSize())
@@ -193,6 +194,7 @@ fun CacheManagementScreen(
                     onPlay = onPlay,
                     onViewDetail = { onNavigateCacheDetail(it.cacheId) },
                     modifier = Modifier.fillMaxSize(),
+                    singlePane = isSinglePane,
                 )
             }
         },
@@ -213,7 +215,6 @@ fun CacheManagementScreen(
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     windowInsets: WindowInsets = AniWindowInsets.forPageContent(),
-    onNavigateToSubjectCache: ((subjectId: Int) -> Unit)? = null,
     detailPaneContent: (@Composable PaneScope.(group: CacheGroupState?, selectionState: CacheSelectionState) -> Unit)? = null,
 ) {
     val appBarColors = AniThemeDefaults.topAppBarColors()
@@ -238,10 +239,6 @@ fun CacheManagementScreen(
     }
     // 当前选中的 entries 数量
     val selectionCount = selectionState.selectedIds.size
-    // 是否已经全选
-    val allSelected = remember(selectionEntries, selectionCount) {
-        selectionEntries.isNotEmpty() && selectionCount == selectionEntries.size
-    }
 
     // 当缓存列表或筛选条件变化并且在编辑模式时, 需要确保 selectedIds 只能是当前可见的 entries,
     // 否则顶栏计数会包含被筛选隐藏 (无法反选) 的项, 而批量操作又不会作用于它们.
@@ -253,8 +250,13 @@ fun CacheManagementScreen(
         }
     }
 
-    // 选择模式下导航返回应该退出选择模式
-    BackHandler(selectionState.inSelection) { selectionState.clear() }
+
+    // 单栏布局且正在显示详情栏 (手机点击卡片进入, 或宽屏显示详情后缩小窗口).
+    // 此时顶栏切换为 "返回 + 条目名", 详情内容使用手机样式.
+    val isSinglePaneDetailVisible = navigator.scaffoldValue.let { value ->
+        value[ListDetailPaneScaffoldRole.List] != PaneAdaptedValue.Expanded &&
+                value[ListDetailPaneScaffoldRole.Detail] == PaneAdaptedValue.Expanded
+    }
 
     // 当前正在浏览的 cache group
     var currentViewingGroupKey by rememberSaveable { mutableStateOf<String?>(null) }
@@ -267,6 +269,18 @@ fun CacheManagementScreen(
     }
     val currentViewingGroup = remember(state.groups, currentViewingGroupKey) {
         state.groups.firstOrNull { it.key == currentViewingGroupKey }
+    }
+
+    // 全选的作用范围: 单栏详情下仅为当前条目的缓存, 否则为全部可见缓存.
+    val selectAllScopeEntries = if (isSinglePaneDetailVisible) {
+        currentViewingGroup?.entries.orEmpty()
+    } else {
+        selectionEntries
+    }
+    // 是否已经全选
+    val allSelected = remember(selectAllScopeEntries, selectionState.selectedIds) {
+        selectAllScopeEntries.isNotEmpty() &&
+                selectAllScopeEntries.all { it.cacheId in selectionState.selectedIds }
     }
 
     // 确认删除的对话框
@@ -292,12 +306,17 @@ fun CacheManagementScreen(
                 selectionMode = selectionState.inSelection,
                 selectionCount = selectionCount,
                 allSelected = allSelected,
-                hasEntries = selectionEntries.isNotEmpty(),
+                hasEntries = selectAllScopeEntries.isNotEmpty(),
                 onEnterSelection = { selectionState.enterSelectionWith(emptySet()) },
                 onExitSelection = { selectionState.clear() },
                 onToggleSelectAll = {
+                    val scopeIds = selectAllScopeEntries.map { it.cacheId }
                     selectionState.enterSelectionWith(
-                        if (allSelected) emptySet() else selectionEntries.map { it.cacheId }.toSet(),
+                        if (allSelected) {
+                            selectionState.selectedIds - scopeIds.toSet()
+                        } else {
+                            selectionState.selectedIds + scopeIds
+                        },
                     )
                 },
                 selfInfo = selfInfo,
@@ -306,6 +325,8 @@ fun CacheManagementScreen(
                 appBarColors = appBarColors,
                 windowInsets = AniWindowInsets.forTopAppBarWithoutDesktopTitle(),
                 scrollBehavior = scrollBehavior,
+                detailPaneTitle = if (isSinglePaneDetailVisible) currentViewingGroup?.subjectName else null,
+                onNavigateBackFromDetail = { tasker.launch { navigator.navigateBack() } },
             )
         },
         bottomBar = {
@@ -363,14 +384,10 @@ fun CacheManagementScreen(
                     paneExtraPadding = paneExtraPadding,
                     highlightSelectedGroupKey = if (isSinglePane) null else currentViewingGroupKey,
                     onClickGroup = { group ->
-                        if (isSinglePane && onNavigateToSubjectCache != null) {
-                            // 设计稿: 手机上点击条目卡片直接打开条目缓存页.
-                            onNavigateToSubjectCache(group.subjectId)
-                        } else {
-                            currentViewingGroupKey = group.key
-                            tasker.launch {
-                                navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
-                            }
+                        // 单栏 (手机) 下 scaffold 会以前进导航方式全屏展示详情栏, 并支持返回.
+                        currentViewingGroupKey = group.key
+                        tasker.launch {
+                            navigator.navigateTo(ListDetailPaneScaffoldRole.Detail)
                         }
                     },
                     onToggleGroupSelection = { group ->
@@ -387,6 +404,10 @@ fun CacheManagementScreen(
                         .paneContentPadding(extraStart = (-16).dp, extraEnd = (-16).dp)
                         .paneWindowInsetsPadding()
                         .padding(listBottomPadding)
+                        // 单栏时详情栏全屏展示, 滚动需要驱动共享的顶栏.
+                        .then(
+                            if (isSinglePane) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection) else Modifier,
+                        )
                         .fillMaxSize(),
                 ) {
                     if (detailPaneContent != null) {
@@ -401,6 +422,7 @@ fun CacheManagementScreen(
                             onDelete = onDelete,
                             onViewDetail = onViewDetail,
                             modifier = Modifier.fillMaxSize(),
+                            singlePane = isSinglePane,
                         )
                     }
                 }
@@ -412,6 +434,10 @@ fun CacheManagementScreen(
             // 默认的 min 为 412.dp (≥1200dp 时), 会顶掉 400.dp 的 preferred 宽度.
             minListPaneWidth = preferredListPaneWidth(),
         )
+
+        // 选择模式下导航返回应该退出选择模式.
+        // 注意: 必须在 AniListDetailPaneScaffold 之后注册, 才能优先于 scaffold 的返回 (详情->列表) 处理.
+        BackHandler(selectionState.inSelection) { selectionState.clear() }
     }
 }
 
@@ -533,29 +559,46 @@ private fun DefaultCacheGroupDetailPane(
     onDelete: (CacheEpisodeState) -> Unit,
     onViewDetail: (CacheEpisodeState) -> Unit,
     modifier: Modifier = Modifier,
+    // 单栏 (手机) 时: 头部为汇总行 (条目名显示在顶栏), 行通栏无圆角无间距.
+    singlePane: Boolean = false,
 ) {
     if (group == null) {
         EmptyDetailPanePlaceholder(modifier)
         return
     }
+    val onPauseAll = {
+        group.entries.filter { !it.isFinished && !it.isPaused && !it.isFailed }.forEach(onPause)
+    }
+    val onResumeAll = {
+        group.entries.filter { it.isPaused }.forEach(onResume)
+    }
+    val rowShape = if (singlePane) RectangleShape else MaterialTheme.shapes.medium
     LazyColumn(
         modifier,
-        // 设计稿: 详情栏头部距卡片顶部 16dp, 行间距 8dp.
-        contentPadding = PaddingValues(top = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        // 设计稿: 宽屏详情栏头部距卡片顶部 16dp, 行间距 8dp; 手机上行连续排列.
+        contentPadding = if (singlePane) PaddingValues(0.dp) else PaddingValues(top = 16.dp),
+        verticalArrangement = if (singlePane) Arrangement.Top else Arrangement.spacedBy(8.dp),
     ) {
         item("detail_header") {
-            SubjectCacheDetailHeader(
-                title = group.subjectName,
-                cachedEpisodes = group.entries,
-                totalEpisodeCount = group.totalEpisodeCount,
-                onPauseAll = {
-                    group.entries.filter { !it.isFinished && !it.isPaused && !it.isFailed }.forEach(onPause)
-                },
-                onResumeAll = {
-                    group.entries.filter { it.isPaused }.forEach(onResume)
-                },
-            )
+            if (singlePane) {
+                SubjectCacheSummaryRow(
+                    cachedEpisodes = group.entries,
+                    totalEpisodeCount = group.totalEpisodeCount,
+                    inSelection = selectionState.inSelection,
+                    selectedEntries = group.entries.filter { it.cacheId in selectionState.selectedIds },
+                    onPauseAll = onPauseAll,
+                    onResumeAll = onResumeAll,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                SubjectCacheDetailHeader(
+                    title = group.subjectName,
+                    cachedEpisodes = group.entries,
+                    totalEpisodeCount = group.totalEpisodeCount,
+                    onPauseAll = onPauseAll,
+                    onResumeAll = onResumeAll,
+                )
+            }
         }
         items(group.entries, key = { it.listItemKey }) { entry ->
             CacheEpisodeRow(
@@ -572,6 +615,7 @@ private fun DefaultCacheGroupDetailPane(
                 onPause = { onPause(entry) },
                 onDelete = { onDelete(entry) },
                 onViewDetail = { onViewDetail(entry) },
+                shape = rowShape,
             )
         }
     }
@@ -602,7 +646,21 @@ private fun CacheManagementTopBar(
     appBarColors: TopAppBarColors,
     windowInsets: WindowInsets,
     scrollBehavior: TopAppBarScrollBehavior?,
+    // 单栏布局显示详情栏时, 顶栏变为 "返回 + 条目名" (与条目缓存页一致); 多选模式优先.
+    detailPaneTitle: String? = null,
+    onNavigateBackFromDetail: () -> Unit = {},
 ) {
+    if (!selectionMode && detailPaneTitle != null) {
+        AniTopAppBar(
+            title = { AniTopAppBarDefaults.Title(detailPaneTitle) },
+            navigationIcon = { BackNavigationIconButton(onNavigateBackFromDetail) },
+            avatar = { },
+            colors = appBarColors,
+            windowInsets = windowInsets,
+            scrollBehavior = scrollBehavior,
+        )
+        return
+    }
     if (selectionMode) {
         val selectedCountText = stringResource(Lang.cache_management_selected_count, selectionCount)
         val exitSelectionText = stringResource(Lang.cache_management_exit_selection)

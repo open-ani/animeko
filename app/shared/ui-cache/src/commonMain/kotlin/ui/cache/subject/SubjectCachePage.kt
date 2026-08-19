@@ -644,6 +644,8 @@ fun SubjectCacheDetailPaneContent(
     onViewDetail: ((CacheEpisodeState) -> Unit)?,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(0.dp),
+    // 单栏 (手机) 时: 头部为汇总行 (条目名显示在顶栏), 行通栏无圆角无间距.
+    singlePane: Boolean = false,
 ) {
     val cachedEpisodes by vm.cacheEpisodesFlow.collectAsStateWithLifecycle()
 
@@ -660,24 +662,36 @@ fun SubjectCacheDetailPaneContent(
 
     val uiScope = rememberCoroutineScope()
     val context = LocalContext.current
-    val rowShape = MaterialTheme.shapes.medium
+    val rowShape = if (singlePane) RectangleShape else MaterialTheme.shapes.medium
 
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 480.dp),
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(24.dp),
-        // 设计稿: 详情栏头部距卡片顶部 16dp, 行间距 8dp.
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = contentPadding + PaddingValues(top = 16.dp),
+        // 设计稿: 宽屏详情栏头部距卡片顶部 16dp, 行间距 8dp; 手机上行连续排列.
+        verticalArrangement = if (singlePane) Arrangement.Top else Arrangement.spacedBy(8.dp),
+        contentPadding = if (singlePane) contentPadding else contentPadding + PaddingValues(top = 16.dp),
     ) {
         item(key = "detail_header", span = { GridItemSpan(maxLineSpan) }, contentType = "header") {
-            SubjectCacheDetailHeader(
-                title = vm.subjectTitle,
-                cachedEpisodes = cachedEpisodes,
-                totalEpisodeCount = vm.cacheListState.episodes.size.takeIf { it > 0 },
-                onPauseAll = { vm.pauseAllCaches() },
-                onResumeAll = { vm.resumeAllCaches() },
-            )
+            if (singlePane) {
+                SubjectCacheSummaryRow(
+                    cachedEpisodes = cachedEpisodes,
+                    totalEpisodeCount = vm.cacheListState.episodes.size.takeIf { it > 0 },
+                    inSelection = selectionState.inSelection,
+                    selectedEntries = cachedEpisodes.filter { it.cacheId in selectionState.selectedIds },
+                    onPauseAll = { vm.pauseAllCaches() },
+                    onResumeAll = { vm.resumeAllCaches() },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                SubjectCacheDetailHeader(
+                    title = vm.subjectTitle,
+                    cachedEpisodes = cachedEpisodes,
+                    totalEpisodeCount = vm.cacheListState.episodes.size.takeIf { it > 0 },
+                    onPauseAll = { vm.pauseAllCaches() },
+                    onResumeAll = { vm.resumeAllCaches() },
+                )
+            }
         }
         subjectCacheEpisodeItems(
             episodes = vm.cacheListState.episodes,

@@ -559,7 +559,6 @@ private fun AniAppContentImpl(
                     },
                     onClickLogin = { },
                     onNavigateCacheDetail = { aniNavigator.navigateCacheDetails(it) },
-                    onNavigateToSubjectCache = { aniNavigator.navigateSubjectCaches(it) },
                     modifier = Modifier.fillMaxSize(),
                     navigationIcon = {
                         BackNavigationIconButton(
