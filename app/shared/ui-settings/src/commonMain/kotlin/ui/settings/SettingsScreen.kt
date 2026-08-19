@@ -187,7 +187,7 @@ fun SettingsScreen(
     vm: SettingsViewModel,
     onNavigateToEmailLogin: () -> Unit,
     onNavigateToBangumiOAuth: () -> Unit,
-    loadOpenSourceLibrariesJson: suspend () -> ByteArray,
+    loadOpenSourceLibrariesJsons: suspend () -> List<ByteArray>,
     modifier: Modifier = Modifier,
     initialTab: SettingsTab? = null,
     windowInsets: WindowInsets = AniWindowInsets.forColumnPageContent(),
@@ -427,7 +427,7 @@ fun SettingsScreen(
         contentWindowInsets = windowInsets,
         navigationIcon = navigationIcon,
         layoutParameters = layoutParameters,
-        loadOpenSourceLibrariesJson = loadOpenSourceLibrariesJson,
+        loadOpenSourceLibrariesJsons = loadOpenSourceLibrariesJsons,
     )
 }
 
@@ -447,7 +447,7 @@ internal fun SettingsPageLayout(
     containerColor: Color = AniThemeDefaults.pageContentBackgroundColor,
     layoutParameters: ListDetailLayoutParameters = ListDetailLayoutParameters.calculate(navigator.scaffoldDirective),
     navigationIcon: @Composable () -> Unit = {},
-    loadOpenSourceLibrariesJson: suspend () -> ByteArray,
+    loadOpenSourceLibrariesJsons: suspend () -> List<ByteArray>,
 ) = SettingsPageSurface(containerColor) {
     val layoutParametersState by rememberUpdatedState(layoutParameters)
 
@@ -762,7 +762,7 @@ internal fun SettingsPageLayout(
                             // LibrariesContainer 自带 LazyColumn, 不能套在 verticalScroll 里
                             RouteContent(scrollable = false) {
                                 OpenSourceLibrariesTab(
-                                    loadOpenSourceLibrariesJson,
+                                    loadOpenSourceLibrariesJsons,
                                     Modifier.fillMaxSize(),
                                 )
                             }

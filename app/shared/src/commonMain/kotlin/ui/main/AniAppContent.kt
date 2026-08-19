@@ -399,7 +399,12 @@ private fun AniAppContentImpl(
                     },
                     onNavigateToEmailLogin = { aniNavigator.navigateEmailLoginStart() },
                     onNavigateToBangumiOAuth = { aniNavigator.navigateBangumiAuthorize() },
-                    loadOpenSourceLibrariesJson = { Res.readBytes("files/aboutlibraries.json") },
+                    loadOpenSourceLibrariesJsons = {
+                        listOf(
+                            Res.readBytes("files/aboutlibraries.json"),
+                            Res.readBytes("files/additional_libraries.json"),
+                        )
+                    },
                     Modifier.fillMaxSize(),
                     route.tab,
                     navigationIcon = {

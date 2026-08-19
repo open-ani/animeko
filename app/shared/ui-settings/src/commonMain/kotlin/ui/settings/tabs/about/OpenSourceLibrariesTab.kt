@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,12 +32,14 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import com.mikepenz.aboutlibraries.Libs
 import com.mikepenz.aboutlibraries.entity.Library
 import com.mikepenz.aboutlibraries.ui.compose.LibraryDefaults
 import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
 import com.mikepenz.aboutlibraries.ui.compose.m3.libraryColors
-import com.mikepenz.aboutlibraries.ui.compose.produceLibraries
 import com.mikepenz.aboutlibraries.ui.compose.util.strippedLicenseContent
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_oss_licenses_homepage
@@ -46,15 +49,24 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * 开源许可页, 展示应用使用的开源库列表及许可证.
  *
- * @param loadLibrariesJson 读取 AboutLibraries gradle 插件导出的 `aboutlibraries.json`.
+ * @param loadLibrariesJsons 读取一份或多份 aboutlibraries 格式的 JSON
+ * (gradle 插件导出的 `aboutlibraries.json` + 手工维护的 `additional_libraries.json`).
  * 数据在 `:app:shared` 的 compose resources 里, 由调用方传入以避免依赖上层模块的 Res.
  */
 @Composable
 fun OpenSourceLibrariesTab(
-    loadLibrariesJson: suspend () -> ByteArray,
+    loadLibrariesJsons: suspend () -> List<ByteArray>,
     modifier: Modifier = Modifier,
 ) {
-    val libraries by produceLibraries { loadLibrariesJson().decodeToString() }
+    val libraries by produceState<Libs?>(null, loadLibrariesJsons) {
+        value = withContext(Dispatchers.Default) {
+            mergeLibs(
+                loadLibrariesJsons().map { json ->
+                    Libs.Builder().withJson(json.decodeToString()).build()
+                },
+            )
+        }
+    }
     LibrariesContainer(
         libraries,
         modifier,
@@ -65,6 +77,32 @@ fun OpenSourceLibrariesTab(
             OpenSourceLibraryRow(library, expanded, onToggleLicense = toggle)
         },
     )
+}
+
+/**
+ * 合并多份 aboutlibraries 格式的数据.
+ *
+ * 补充数据里通常只写许可证引用不带原文; 合并时按许可证 hash (JSON 里 licenses map
+ * 的 key) 把无原文的许可证替换为其他文件中带原文的同名许可证, 展开时就能显示原文.
+ */
+private fun mergeLibs(parsed: List<Libs>): Libs {
+    val licensesWithContentByHash = parsed.flatMap { it.licenses }
+        .filter { !it.licenseContent.isNullOrBlank() }
+        .associateBy { it.hash }
+    val libraries = parsed.flatMap { it.libraries }
+        .map { library ->
+            library.copy(
+                licenses = library.licenses
+                    .map { licensesWithContentByHash[it.hash] ?: it }
+                    .toSet(),
+            )
+        }
+        .sortedBy { it.name.lowercase() }
+    val licenses = parsed.flatMap { it.licenses }
+        .groupBy { it.hash }
+        .map { (hash, group) -> licensesWithContentByHash[hash] ?: group.first() }
+        .toSet()
+    return Libs(libraries, licenses)
 }
 
 /**
