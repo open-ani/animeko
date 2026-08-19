@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.Res
 import me.him188.ani.app.ui.foundation.bangumi
+import me.him188.ani.app.ui.foundation.dandanplay
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_acknowledgements_bangumi
 import me.him188.ani.app.ui.lang.settings_acknowledgements_bangumi_description
@@ -71,6 +72,13 @@ fun AcknowledgementsTab(
                 uriHandler.openUri("https://www.dandanplay.com")
             },
             supportingContent = { Text(stringResource(Lang.settings_acknowledgements_dandanplay_description)) },
+            leadingContent = {
+                Image(
+                    painterResource(Res.drawable.dandanplay),
+                    contentDescription = null,
+                    Modifier.clip(CircleShape).size(24.dp),
+                )
+            },
             colors = listItemColors,
         )
 

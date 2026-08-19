@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -89,7 +90,7 @@ private fun OpenSourceLibraryRow(
             Text(
                 library.name,
                 Modifier.padding(end = 16.dp),
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
             )
 
             val linkStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -99,7 +100,7 @@ private fun OpenSourceLibraryRow(
             Row(
                 // weight 让链接组填满所在行的剩余宽度, 配合 Alignment.End
                 // 在同行和独占一行两种情况下都靠右对齐.
-                Modifier.weight(1f),
+                Modifier.widthIn(min = 100.dp).weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
