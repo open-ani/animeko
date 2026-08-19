@@ -199,6 +199,7 @@
     <string name="settings_acknowledgements_oss_licenses">開源許可</string>
     <string name="settings_acknowledgements_oss_licenses_description">本應用使用的開源庫及其許可證</string>
     <string name="settings_oss_licenses_homepage">主頁</string>
+    <string name="settings_oss_licenses_license">許可證</string>
 
     <!-- AppSettingsTab -->
     <string name="settings_app_initial_page">初始頁面</string>

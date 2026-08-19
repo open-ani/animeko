@@ -211,6 +211,7 @@
     <string name="settings_acknowledgements_oss_licenses">Open source licenses</string>
     <string name="settings_acknowledgements_oss_licenses_description">Open source libraries used by this app and their licenses</string>
     <string name="settings_oss_licenses_homepage">Homepage</string>
+    <string name="settings_oss_licenses_license">License</string>
     <string name="settings_app_initial_page">Initial page</string>
     <string name="settings_app_initial_page_description">The page that is shown when the app starts</string>
     <string name="settings_app_search">Search</string>

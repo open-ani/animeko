@@ -216,6 +216,7 @@
     <string name="settings_acknowledgements_oss_licenses">开源许可</string>
     <string name="settings_acknowledgements_oss_licenses_description">本应用使用的开源库及其许可证</string>
     <string name="settings_oss_licenses_homepage">主页</string>
+    <string name="settings_oss_licenses_license">许可证</string>
 
     <!-- AppSettingsTab -->
     <string name="settings_app_initial_page">初始页面</string>

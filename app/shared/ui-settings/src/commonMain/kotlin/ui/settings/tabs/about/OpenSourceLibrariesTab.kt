@@ -12,6 +12,8 @@ package me.him188.ani.app.ui.settings.tabs.about
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -25,7 +27,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mikepenz.aboutlibraries.entity.Library
 import com.mikepenz.aboutlibraries.ui.compose.LibraryDefaults
@@ -36,6 +37,7 @@ import com.mikepenz.aboutlibraries.ui.compose.util.strippedLicenseContent
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.settings_oss_licenses_homepage
+import me.him188.ani.app.ui.lang.settings_oss_licenses_license
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -62,9 +64,11 @@ fun OpenSourceLibrariesTab(
 }
 
 /**
- * 单行库条目: 左侧库名, 右侧许可证与主页链接.
+ * 库条目: 库名完整显示. 一行放得下时库名居左、许可证与主页链接居右;
+ * 放不下时库名折行完整显示, 链接自动换到单独一行.
  * 点击许可证展开许可证原文, 点击主页用浏览器打开.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun OpenSourceLibraryRow(
     library: Library,
@@ -73,17 +77,16 @@ private fun OpenSourceLibraryRow(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-        Row(
+        FlowRow(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            itemVerticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 library.name,
-                Modifier.weight(1f).padding(end = 16.dp),
+                Modifier.padding(end = 16.dp),
                 style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
 
             val linkStyle = MaterialTheme.typography.bodyMedium.copy(
@@ -96,7 +99,7 @@ private fun OpenSourceLibraryRow(
             ) {
                 if (library.licenses.isNotEmpty()) {
                     Text(
-                        library.licenses.joinToString(", ") { it.spdxId ?: it.name },
+                        stringResource(Lang.settings_oss_licenses_license),
                         Modifier.clickable(onClick = onToggleLicense),
                         style = linkStyle,
                         maxLines = 1,
