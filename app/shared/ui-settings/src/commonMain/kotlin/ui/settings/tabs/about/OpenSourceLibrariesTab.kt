@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.settings.tabs.about
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,6 +59,7 @@ fun OpenSourceLibrariesTab(
         modifier,
         // 列表容器背景透明, 使用设置页自己的背景色; item 由下面的 libraryRow 全权渲染, 本身无背景.
         colors = LibraryDefaults.libraryColors(libraryBackgroundColor = Color.Transparent),
+        divider = { HorizontalDivider() },
         libraryRow = { _, library, expanded, toggle, _ ->
             OpenSourceLibraryRow(library, expanded, onToggleLicense = toggle)
         },
@@ -76,7 +79,7 @@ private fun OpenSourceLibraryRow(
     onToggleLicense: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+    Column(modifier.fillMaxWidth().padding(vertical = 12.dp)) {
         FlowRow(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -126,7 +129,11 @@ private fun OpenSourceLibraryRow(
             Text(
                 library.strippedLicenseContent.takeIf { it.isNotBlank() }
                     ?: library.licenses.mapNotNull { it.url }.joinToString("\n"),
-                Modifier.fillMaxWidth().padding(top = 8.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.shapes.medium)
+                    .padding(12.dp),
                 style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
             )
         }
