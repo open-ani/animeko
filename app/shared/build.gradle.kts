@@ -24,46 +24,6 @@ plugins {
     idea
 }
 
-// 开源许可页 (设置 - 关于 - 鸣谢 - 开源许可) 的数据, 构建时从依赖图导出, 不进 VCS.
-// 路径不要放在 build/generated/aboutlibraries 下: 那是 aboutlibraries 插件自己的
-// 默认输出根, 它会往里写 androidMain/res/raw 等结构, 混进资源目录会让资源生成任务报错.
-val aboutLibrariesExportedJson = layout.buildDirectory.file("generated/aboutLibrariesExport/aboutlibraries.json")
-
-// customDirectory 是整体替换语义, 不支持给 source set 追加目录, 所以用 Sync 把
-// 默认的 src/commonMain/composeResources (手写资源, 可以正常继续使用) 和构建时
-// 生成的 aboutlibraries.json 合并进同一个目录, 再注册给 customDirectory.
-val mergeCommonMainComposeResources = tasks.register<Sync>("mergeCommonMainComposeResources") {
-    from(layout.projectDirectory.dir("src/commonMain/composeResources"))
-    from(aboutLibrariesExportedJson) { into("files") }
-    dependsOn("exportLibraryDefinitions")
-    into(layout.buildDirectory.dir("generated/mergedCommonMainComposeResources"))
-}
-
-compose.resources {
-    packageOfResClass = "me.him188.ani.app"
-    generateResClass = always
-    // provider 从 merge task 派生, 自动携带任务依赖.
-    customDirectory(
-        "commonMain",
-        mergeCommonMainComposeResources.map {
-            layout.buildDirectory.dir("generated/mergedCommonMainComposeResources").get()
-        },
-    )
-}
-
-aboutLibraries {
-    export {
-        outputFile = aboutLibrariesExportedJson
-        prettyPrint = true
-    }
-    library {
-        // KMP 库会解析出 -jvm/-android 等多个平台构件, 按名字合并成一个条目.
-        duplicationMode = com.mikepenz.aboutlibraries.plugin.DuplicateMode.MERGE
-        duplicationRule = com.mikepenz.aboutlibraries.plugin.DuplicateRule.SIMPLE
-    }
-}
-
-
 //atomicfu {
 //    transformJvm = false // 这东西很不靠谱, 等 atomicfu 正式版了可能可以考虑下
 //}
@@ -233,6 +193,39 @@ kotlin {
         implementation(libs.log4j.slf4j.impl)
 
         implementation(libs.ktor.serialization.kotlinx.json)
+    }
+}
+
+val aboutLibrariesExportedJson = layout.buildDirectory.file("generated/aboutLibrariesExport/aboutlibraries.json")
+val mergeCommonMainComposeResources = tasks.register<Sync>("mergeCommonMainComposeResources") {
+    description = "Merge "
+    from(layout.projectDirectory.dir("src/commonMain/composeResources"))
+    from(aboutLibrariesExportedJson) { into("files") }
+    dependsOn("exportLibraryDefinitions")
+    into(layout.buildDirectory.dir("generated/mergedCommonMainComposeResources"))
+}
+
+compose.resources {
+    packageOfResClass = "me.him188.ani.app"
+    generateResClass = always
+    // provider 从 merge task 派生, 自动携带任务依赖.
+    customDirectory(
+        "commonMain",
+        mergeCommonMainComposeResources.map {
+            layout.buildDirectory.dir("generated/mergedCommonMainComposeResources").get()
+        },
+    )
+}
+
+aboutLibraries {
+    export {
+        outputFile = aboutLibrariesExportedJson
+        prettyPrint = true
+    }
+    library {
+        // KMP 库会解析出 -jvm/-android 等多个平台构件, 按名字合并成一个条目.
+        duplicationMode = com.mikepenz.aboutlibraries.plugin.DuplicateMode.MERGE
+        duplicationRule = com.mikepenz.aboutlibraries.plugin.DuplicateRule.SIMPLE
     }
 }
 
