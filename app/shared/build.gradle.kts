@@ -20,14 +20,9 @@ plugins {
 
     // alias(libs.plugins.kotlinx.atomicfu)
     alias(libs.plugins.sentry.kotlin.multiplatform)
+    alias(libs.plugins.aboutlibraries)
     idea
 }
-
-compose.resources {
-    packageOfResClass = "me.him188.ani.app"
-    generateResClass = always
-}
-
 
 //atomicfu {
 //    transformJvm = false // 这东西很不靠谱, 等 atomicfu 正式版了可能可以考虑下
@@ -194,6 +189,39 @@ kotlin {
         implementation(libs.log4j.slf4j.impl)
 
         implementation(libs.ktor.serialization.kotlinx.json)
+    }
+}
+
+val aboutLibrariesExportedJson = layout.buildDirectory.file("generated/aboutLibrariesExport/aboutlibraries.json")
+val mergeCommonMainComposeResources = tasks.register<Sync>("mergeCommonMainComposeResources") {
+    description = "Merge "
+    from(layout.projectDirectory.dir("src/commonMain/composeResources"))
+    from(aboutLibrariesExportedJson) { into("files") }
+    dependsOn("exportLibraryDefinitions")
+    into(layout.buildDirectory.dir("generated/mergedCommonMainComposeResources"))
+}
+
+compose.resources {
+    packageOfResClass = "me.him188.ani.app"
+    generateResClass = always
+    // provider 从 merge task 派生, 自动携带任务依赖.
+    customDirectory(
+        "commonMain",
+        mergeCommonMainComposeResources.map {
+            layout.buildDirectory.dir("generated/mergedCommonMainComposeResources").get()
+        },
+    )
+}
+
+aboutLibraries {
+    export {
+        outputFile = aboutLibrariesExportedJson
+        prettyPrint = true
+    }
+    library {
+        // KMP 库会解析出 -jvm/-android 等多个平台构件, 按名字合并成一个条目.
+        duplicationMode = com.mikepenz.aboutlibraries.plugin.DuplicateMode.MERGE
+        duplicationRule = com.mikepenz.aboutlibraries.plugin.DuplicateRule.SIMPLE
     }
 }
 

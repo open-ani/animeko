@@ -41,6 +41,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.window.core.layout.WindowSizeClass
+import me.him188.ani.app.Res
 import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
@@ -398,6 +399,12 @@ private fun AniAppContentImpl(
                     },
                     onNavigateToEmailLogin = { aniNavigator.navigateEmailLoginStart() },
                     onNavigateToBangumiOAuth = { aniNavigator.navigateBangumiAuthorize() },
+                    loadOpenSourceLibrariesJsons = {
+                        listOf(
+                            Res.readBytes("files/aboutlibraries.json"),
+                            Res.readBytes("files/additional_libraries.json"),
+                        )
+                    },
                     Modifier.fillMaxSize(),
                     route.tab,
                     navigationIcon = {

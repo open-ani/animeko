@@ -213,6 +213,14 @@
     <string name="settings_acknowledgements_bangumi_description">条目数据与收藏服务</string>
     <string name="settings_acknowledgements_dandanplay">弹弹play</string>
     <string name="settings_acknowledgements_dandanplay_description">弹幕聚合</string>
+    <string name="settings_acknowledgements_mikan">蜜柑计划</string>
+    <string name="settings_acknowledgements_mikan_description">新番 BT 资源索引</string>
+    <string name="settings_acknowledgements_dmhy">动漫花园</string>
+    <string name="settings_acknowledgements_dmhy_description">BT 资源分享社区</string>
+    <string name="settings_acknowledgements_oss_licenses">开源许可</string>
+    <string name="settings_acknowledgements_oss_licenses_description">本应用使用的开源库及其许可证</string>
+    <string name="settings_oss_licenses_homepage">主页</string>
+    <string name="settings_oss_licenses_license">许可证</string>
 
     <!-- AppSettingsTab -->
     <string name="settings_app_initial_page">初始页面</string>
@@ -642,6 +650,9 @@
     <string name="settings_media_torrent_speed_format">%1$s MB/s</string>
     <string name="settings_media_torrent_limit_upload_on_metered">计费网络限制上传</string>
     <string name="settings_media_torrent_limit_upload_on_metered_description">在计费网络环境下限制上传速度为 1 KB/s</string>
+    <string name="settings_media_torrent_extra_trackers">额外 Tracker</string>
+    <string name="settings_media_torrent_extra_trackers_description">在 BT 下载开始前额外添加的 tracker 服务器，帮助发现更多用户</string>
+    <string name="settings_media_torrent_extra_trackers_dialog_description">每行一个 tracker 地址，例如 udp://tracker.example.com:6969/announce。将在 BT 下载开始前与内置 tracker 一起添加。修改仅对之后开始的下载生效。</string>
     <string name="settings_media_torrent_peer_filter">Peer 过滤和屏蔽设置</string>
     <string name="settings_media_torrent_peer_filter_description">在下载或上传缓存的番剧时不与黑名单或命中过滤规则的客户端连接</string>
 

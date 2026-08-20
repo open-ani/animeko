@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.him188.ani.app.data.models.subject.ContinueWatchingStatus
@@ -49,6 +50,7 @@ import me.him188.ani.app.data.models.subject.TestSubjectInfo
 import me.him188.ani.app.ui.foundation.AniImageLoadSuccess
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
+import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthAtLeastMedium
 import me.him188.ani.app.ui.foundation.layout.paddingIfNotEmpty
@@ -66,6 +68,9 @@ import me.him188.ani.utils.platform.annotations.TestOnly
 
 const val COVER_WIDTH_TO_HEIGHT_RATIO = 849 / 1200f
 
+/** 条目封面图的 test tag, 供 UI 测试定位点击放大入口. */
+const val SUBJECT_COVER_IMAGE_TEST_TAG = "SubjectCoverImage"
+
 // 图片和标题
 @Composable
 internal fun SubjectDetailsHeader(
@@ -78,6 +83,7 @@ internal fun SubjectDetailsHeader(
     rating: @Composable () -> Unit,
     onCoverImageSuccess: (AniImageLoadSuccess) -> Unit = {},
     modifier: Modifier = Modifier,
+    onClickCover: (() -> Unit)? = null,
 ) {
     if (currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
         SubjectDetailsHeaderWide(
@@ -102,6 +108,7 @@ internal fun SubjectDetailsHeader(
             rating = rating,
             onCoverImageSuccess = onCoverImageSuccess,
             modifier = modifier,
+            onClickCover = onClickCover,
         )
     } else {
         SubjectDetailsHeaderCompact(
@@ -115,6 +122,7 @@ internal fun SubjectDetailsHeader(
             rating = rating,
             onSuccess = onCoverImageSuccess,
             modifier = modifier,
+            onClickCover = onClickCover,
         )
     }
 }
@@ -133,12 +141,18 @@ fun SubjectDetailsHeaderCompact(
     rating: @Composable () -> Unit,
     onSuccess: (AniImageLoadSuccess) -> Unit,
     modifier: Modifier = Modifier,
+    onClickCover: (() -> Unit)? = null,
 ) {
     Column(modifier) {
         Row(Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.Top) {
             val imageWidth = 140.dp
 
-            Box(Modifier.clip(MaterialTheme.shapes.medium)) {
+            Box(
+                Modifier
+                    .clip(MaterialTheme.shapes.medium)
+                    .ifThen(onClickCover != null) { clickable(onClick = checkNotNull(onClickCover)) }
+                    .testTag(SUBJECT_COVER_IMAGE_TEST_TAG),
+            ) {
                 AsyncImage(
                     model = coverImageUrl,
                     contentDescription = null,
@@ -216,6 +230,7 @@ fun SubjectDetailsHeaderWide(
     rating: @Composable () -> Unit,
     onCoverImageSuccess: (AniImageLoadSuccess) -> Unit,
     modifier: Modifier = Modifier,
+    onClickCover: (() -> Unit)? = null,
 ) {
     Column(modifier) {
         Row(
@@ -224,7 +239,12 @@ fun SubjectDetailsHeaderWide(
         ) {
             val imageWidth = 220.dp
 
-            Box(Modifier.clip(MaterialTheme.shapes.medium)) {
+            Box(
+                Modifier
+                    .clip(MaterialTheme.shapes.medium)
+                    .ifThen(onClickCover != null) { clickable(onClick = checkNotNull(onClickCover)) }
+                    .testTag(SUBJECT_COVER_IMAGE_TEST_TAG),
+            ) {
                 AsyncImage(
                     model = coverImageUrl,
                     contentDescription = null,
