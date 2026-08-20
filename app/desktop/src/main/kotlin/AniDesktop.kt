@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -45,6 +46,7 @@ import com.sun.jna.platform.win32.WinReg
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -83,6 +85,7 @@ import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.platform.trace.recordAppStart
 import me.him188.ani.app.platform.window.HandleWindowsWindowProc
 import me.him188.ani.app.platform.window.LocalTitleBarThemeController
+import me.him188.ani.app.platform.window.WindowsWindowUtils
 import me.him188.ani.app.platform.window.rememberLayoutHitTestOwner
 import me.him188.ani.app.platform.window.setTitleBar
 import me.him188.ani.app.tools.update.DesktopUpdateInstaller
@@ -525,6 +528,18 @@ object AniDesktop {
                         MainWindowContent(navigator)
                     } else {
                         HandleWindowsWindowProc()
+                        if (platform.isWindows()) {
+                            val platformWindow = LocalPlatformWindow.current
+                            LaunchedEffect(platformWindow, trayState) {
+                                WindowsWindowUtils.instance.windowIsActive(platformWindow)
+                                    .filter { it == true }
+                                    .collect {
+                                        if (trayState.isWindowHiddenToTray) {
+                                            trayState.restoreWindow()
+                                        }
+                                    }
+                            }
+                        }
                         WindowFrame(
                             windowState = windowState,
                             onCloseRequest = {
