@@ -163,7 +163,6 @@ import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.asLevelController
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.rememberRandomDanmakuPlaceholder
-import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSnapshot
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
 import me.him188.ani.danmaku.api.DanmakuContent
@@ -954,16 +953,9 @@ private fun EpisodeVideo(
         vm.onUIReady()
     }
 
-    val jellyfinPlaybackProgressSnapshot by vm.jellyfinPlaybackProgressSnapshot.collectAsStateWithLifecycle()
     val progressSliderState = rememberMediaProgressSliderState(
         vm.player,
         vm.progressChaptersFlow,
-        progressSnapshot = jellyfinPlaybackProgressSnapshot?.let {
-            PlayerProgressSnapshot(
-                positionMillis = it.positionMillis,
-                durationMillis = it.durationMillis,
-            )
-        },
         onPreview = {
             // not yet supported
         },

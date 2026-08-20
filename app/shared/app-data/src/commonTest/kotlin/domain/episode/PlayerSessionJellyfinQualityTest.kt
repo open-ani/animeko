@@ -170,8 +170,22 @@ class PlayerSessionJellyfinQualityTest {
         backingPlayer.injectPosition(42_000L)
         runCurrent()
 
-        assertTrue(session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(8_000_000)).isSuccess)
+        var snapshot: JellyfinPlaybackReplacementSnapshot? = null
+        assertTrue(
+            session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(8_000_000)) {
+                snapshot = it
+            }.isSuccess,
+        )
+        assertEquals(
+            JellyfinPlaybackReplacementSnapshot(
+                positionMillis = 42_000L,
+                durationMillis = 1_000_000L,
+                playWhenReady = true,
+            ),
+            snapshot,
+        )
         assertEquals(42_000L, backingPlayer.currentPositionMillis.value)
+        assertTrue(backingPlayer.state.value.playWhenReady)
         assertEquals(JellyfinPlaybackQuality.fixed(8_000_000), repository.quality)
         assertEquals(emptyList(), stoppedSessions)
 
@@ -180,73 +194,16 @@ class PlayerSessionJellyfinQualityTest {
         assertEquals(42_000L, backingPlayer.currentPositionMillis.value)
         assertFalse(backingPlayer.state.value.playWhenReady)
         assertEquals(listOf("transcode-1"), stoppedSessions)
-
-        player.play()
-        backingPlayer.injectStall(true)
-        runCurrent()
-        assertTrue(backingPlayer.state.value.playWhenReady)
-        assertTrue(backingPlayer.state.value.isBuffering)
-        player.holdNextMediaStart()
-        val switching = async {
-            session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(2_000_000))
-        }
-        player.awaitCurrentMediaStart()
-
-        assertEquals(
-            JellyfinPlaybackProgressSnapshot(
-                positionMillis = 42_000L,
-                durationMillis = 1_000_000L,
-            ),
-            session.jellyfinPlaybackProgressSnapshot.value,
-        )
-        // Mediamp 0.3 keeps the previous timeline visible while the replacement open is pending.
-        assertEquals(42_000L, backingPlayer.currentPositionMillis.value)
-        assertEquals(1_000_000L, backingPlayer.mediaProperties.value?.durationMillis)
-
-        player.releaseCurrentMediaStart()
-        advanceUntilIdle()
-
-        assertTrue(switching.await().isSuccess)
-        assertNull(session.jellyfinPlaybackProgressSnapshot.value)
-        assertEquals(42_000L, backingPlayer.currentPositionMillis.value)
-        assertTrue(backingPlayer.state.value.playWhenReady)
-        assertEquals(listOf("transcode-1", "transcode-2"), stoppedSessions)
-        assertEquals(JellyfinPlaybackQuality.fixed(2_000_000), repository.quality)
-
-        player.holdNextMediaStart()
-        val failedSwitch = async {
-            session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(1_000_000))
-        }
-        player.awaitCurrentMediaStart()
-
-        assertEquals(
-            JellyfinPlaybackProgressSnapshot(
-                positionMillis = 42_000L,
-                durationMillis = 1_000_000L,
-            ),
-            session.jellyfinPlaybackProgressSnapshot.value,
-        )
-        assertEquals(42_000L, backingPlayer.currentPositionMillis.value)
-        assertEquals(1_000_000L, backingPlayer.mediaProperties.value?.durationMillis)
-
-        player.failCurrentMediaStart()
-        advanceUntilIdle()
-
-        assertTrue(failedSwitch.await().isFailure)
-        assertNull(session.jellyfinPlaybackProgressSnapshot.value)
-        assertEquals(42_000L, backingPlayer.currentPositionMillis.value)
-        assertTrue(backingPlayer.state.value.playWhenReady)
-        assertEquals(JellyfinPlaybackQuality.fixed(2_000_000), repository.quality)
-        assertEquals(listOf("transcode-1", "transcode-2", "transcode-4"), stoppedSessions)
-        assertEquals(listOf(0L, 0L, 0L, 0L, 0L), startTimeTicks)
+        assertEquals(JellyfinPlaybackQuality.fixed(4_000_000), repository.quality)
 
         session.stopPlayback()
 
-        assertEquals(listOf("transcode-1", "transcode-2", "transcode-4", "transcode-3"), stoppedSessions)
+        assertEquals(listOf("transcode-1", "transcode-2"), stoppedSessions)
+        assertEquals(listOf(0L, 0L, 0L), startTimeTicks)
     }
 
     @Test
-    fun `stale quality switch cannot replace a newly loaded episode`() = runTest {
+    fun `a selected media reload waits for the current quality switch and wins`() = runTest {
         val oldSwitchStarted = CompletableDeferred<Unit>()
         val releaseOldSwitch = CompletableDeferred<Unit>()
         val stoppedSessions = mutableListOf<String>()
@@ -308,166 +265,26 @@ class PlayerSessionJellyfinQualityTest {
 
         session.loadMedia(oldMedia, episodeMetadata(1))
         val switching = async {
-            try {
-                withContext(NonCancellable) {
-                    session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(8_000_000))
-                }
-                null
-            } catch (e: CancellationException) {
-                e
-            }
+            session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(8_000_000))
         }
         oldSwitchStarted.await()
 
-        session.loadMedia(newMedia, episodeMetadata(2))
+        val loadingNewMedia = async {
+            session.loadMedia(newMedia, episodeMetadata(2))
+        }
+        runCurrent()
+        assertFalse(loadingNewMedia.isCompleted)
+
         releaseOldSwitch.complete(Unit)
         advanceUntilIdle()
 
-        assertTrue(switching.await() is CancellationException)
+        assertTrue(switching.await().isSuccess)
+        loadingNewMedia.await()
         assertEquals(
             "$TEST_BASE_URL/Items/new-episode/Download?ApiKey=test-api-key",
             (player.mediaData.first() as UriMediaData).uri,
         )
         assertEquals(12_000_000, session.jellyfinPlaybackQualityState.value?.sourceBitrate)
-        assertEquals(listOf("old-transcode"), stoppedSessions)
-        assertEquals(
-            listOf(
-                "$TEST_BASE_URL/Items/old-episode/Download?ApiKey=test-api-key",
-                "$TEST_BASE_URL/Items/new-episode/Download?ApiKey=test-api-key",
-            ),
-            player.mediaUris,
-        )
-    }
-
-    @Test
-    fun `cancelling an installed quality switch stops its transcode and rolls back`() = runTest {
-        var playbackInfoCount = 0
-        val stoppedSessions = mutableListOf<String>()
-        val provider = provider(
-            source = source { request ->
-                when (request.url.encodedPath) {
-                    "/Items/episode-1/PlaybackInfo" -> {
-                        playbackInfoCount++
-                        respondJson(
-                            if (playbackInfoCount == 1) {
-                                playbackInfo("original-session", true, null)
-                            } else {
-                                playbackInfo(
-                                    "cancelled-transcode",
-                                    false,
-                                    "/Videos/episode-1/master.m3u8?api_key=test-api-key",
-                                )
-                            },
-                        )
-                    }
-
-                    "/Videos/ActiveEncodings" -> {
-                        stoppedSessions += checkNotNull(request.url.parameters["playSessionId"])
-                        throw CancellationException("simulated cleanup cancellation")
-                    }
-
-                    else -> error("Unexpected request: ${request.url}")
-                }
-            },
-            itemId = "episode-1",
-        )
-        val repository = provider.qualityRepository
-        val backingPlayer = TestMediampPlayer(StandardTestDispatcher(testScheduler))
-        val player = ResumeBeforeSeekPlayer(backingPlayer)
-        val session = PlayerSession(player, koin(provider.mediaDataProvider), EmptyCoroutineContext)
-        session.loadMedia(TestMediaList.first(), episodeMetadata(1))
-        backingPlayer.injectPosition(42_000L)
-        runCurrent()
-
-        player.holdNextMediaStart()
-        val switching = async {
-            session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(8_000_000))
-        }
-        player.awaitCurrentMediaStart()
-        switching.cancelAndJoin()
-
-        assertEquals(listOf("cancelled-transcode"), stoppedSessions)
-        assertEquals(
-            "$TEST_BASE_URL/Items/episode-1/Download?ApiKey=test-api-key",
-            (player.mediaData.first() as UriMediaData).uri,
-        )
-        assertEquals(42_000L, backingPlayer.currentPositionMillis.value)
-        assertEquals(JellyfinPlaybackQuality.Original, repository.quality)
-        assertFalse(session.jellyfinPlaybackQualityState.value?.isSwitching ?: true)
-        assertNull(session.jellyfinPlaybackProgressSnapshot.value)
-    }
-
-    @Test
-    fun `episode replacement does not roll stale quality switch back to old media`() = runTest {
-        var oldPlaybackInfoCount = 0
-        val stoppedSessions = mutableListOf<String>()
-        val oldProvider = provider(
-            source = source { request ->
-                when (request.url.encodedPath) {
-                    "/Items/old-episode/PlaybackInfo" -> {
-                        oldPlaybackInfoCount++
-                        respondJson(
-                            if (oldPlaybackInfoCount == 1) {
-                                playbackInfo("old-original", true, null)
-                            } else {
-                                playbackInfo(
-                                    "old-transcode",
-                                    false,
-                                    "/Videos/old-episode/master.m3u8?api_key=test-api-key",
-                                )
-                            },
-                        )
-                    }
-
-                    "/Videos/ActiveEncodings" -> {
-                        stoppedSessions += checkNotNull(request.url.parameters["playSessionId"])
-                        respond("")
-                    }
-
-                    else -> error("Unexpected request: ${request.url}")
-                }
-            },
-            itemId = "old-episode",
-        )
-        val newProvider = provider(
-            source = source { request ->
-                when (request.url.encodedPath) {
-                    "/Items/new-episode/PlaybackInfo" -> respondJson(playbackInfo("new-original", true, null))
-                    else -> error("Unexpected request: ${request.url}")
-                }
-            },
-            itemId = "new-episode",
-        )
-        val oldMedia = TestMediaList[0]
-        val newMedia = TestMediaList[1]
-        val backingPlayer = TestMediampPlayer(StandardTestDispatcher(testScheduler))
-        val player = ResumeBeforeSeekPlayer(backingPlayer)
-        val session = PlayerSession(
-            player,
-            koin(
-                resolver(
-                    oldMedia.mediaId to oldProvider.mediaDataProvider,
-                    newMedia.mediaId to newProvider.mediaDataProvider,
-                ),
-            ),
-            EmptyCoroutineContext,
-        )
-
-        session.loadMedia(oldMedia, episodeMetadata(1))
-        player.holdNextMediaStart()
-        val switching = async {
-            session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(8_000_000))
-        }
-        player.awaitCurrentMediaStart()
-
-        val loadingNewMedia = async {
-            session.loadMedia(newMedia, episodeMetadata(2))
-        }
-        player.awaitCurrentMediaStartCancelled()
-        loadingNewMedia.await()
-        switching.join()
-
-        assertTrue(switching.isCancelled)
         assertEquals(listOf("old-transcode"), stoppedSessions)
         assertEquals(
             listOf(
@@ -478,6 +295,8 @@ class PlayerSessionJellyfinQualityTest {
             player.mediaUris,
         )
     }
+
+
 
     @Test
     fun `selected player audio track maps to Jellyfin stream index`() = runTest {

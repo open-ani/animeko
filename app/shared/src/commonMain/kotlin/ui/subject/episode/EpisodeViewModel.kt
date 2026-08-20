@@ -361,10 +361,9 @@ class EpisodeViewModel(
 
     val mediaResolver: MediaResolver get() = fetchPlayState.playerSession.mediaResolver
     val jellyfinPlaybackQualityState get() = fetchPlayState.playerSession.jellyfinPlaybackQualityState
-    val jellyfinPlaybackProgressSnapshot get() = fetchPlayState.playerSession.jellyfinPlaybackProgressSnapshot
 
     suspend fun switchJellyfinPlaybackQuality(quality: JellyfinPlaybackQuality): Result<Unit> {
-        return fetchPlayState.playerSession.switchJellyfinPlaybackQuality(quality)
+        return fetchPlayState.switchJellyfinPlaybackQuality(quality)
     }
 
     // region Subject and episode data info flows

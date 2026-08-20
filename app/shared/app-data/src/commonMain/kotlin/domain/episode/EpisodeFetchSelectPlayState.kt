@@ -16,6 +16,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
@@ -34,7 +35,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.models.episode.displayName
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
+import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.resolver.toEpisodeMetadata
@@ -46,6 +49,8 @@ import me.him188.ani.app.domain.player.extension.ExtensionBackgroundTaskScope
 import me.him188.ani.app.domain.player.extension.PlayerExtension
 import me.him188.ani.app.domain.player.extension.PlayerExtensionEvent
 import me.him188.ani.app.domain.usecase.GlobalKoin
+import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
+import me.him188.ani.datasources.jellyfin.JellyfinPlaybackQuality
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeSwitch
 import me.him188.ani.utils.logging.info
@@ -92,6 +97,8 @@ class EpisodeFetchSelectPlayState(
     }
 
     private val selectorCacheRepo by koin.inject<SelectorMediaSourceEpisodeCacheRepository>()
+    private val playProgressRepository by koin.inject<EpisodePlayHistoryRepository>()
+    private val playbackAutomationGate by koin.inject<PlaybackAutomationGate>()
 
     private val _episodeSessionFlow = MutableStateFlow(
         newEpisodeSession(initialEpisodeId),
@@ -108,6 +115,50 @@ class EpisodeFetchSelectPlayState(
         koin,
         mainDispatcher,
     )
+
+    /**
+     * Replaces only the current Jellyfin playback stream. The work is launched in the current
+     * [EpisodeSession], so switching episodes cancels it before the new episode can take over.
+     */
+    suspend fun switchJellyfinPlaybackQuality(quality: JellyfinPlaybackQuality): Result<Unit> {
+        val episodeSession = episodeSessionFlow.value
+        return episodeSession.sessionScope.async(
+            CoroutineName("JellyfinPlaybackQualitySwitch"),
+            start = CoroutineStart.UNDISPATCHED,
+        ) {
+            if (playbackAutomationGate.suppressed.value) {
+                return@async Result.failure(
+                    IllegalStateException("Jellyfin quality cannot be changed while remote playback control is active"),
+                )
+            }
+
+            playerSession.switchJellyfinPlaybackQuality(quality) { snapshot ->
+                saveProgressBeforeJellyfinReplacement(episodeSession, snapshot)
+            }
+        }.await()
+    }
+
+    private suspend fun saveProgressBeforeJellyfinReplacement(
+        episodeSession: EpisodeSession,
+        snapshot: JellyfinPlaybackReplacementSnapshot,
+    ) {
+        if (snapshot.durationMillis - snapshot.positionMillis < 5_000L) {
+            playProgressRepository.remove(episodeSession.episodeId)
+            return
+        }
+
+        val info = episodeSession.infoBundleFlow.filterNotNull().first()
+        playProgressRepository.saveOrUpdate(
+            episodeId = episodeSession.episodeId,
+            positionMillis = snapshot.positionMillis,
+            subjectId = info.subjectId,
+            episodeSort = info.episodeInfo.sort.number,
+            subjectName = info.subjectInfo.displayName,
+            subjectImageUrl = info.subjectInfo.imageLarge,
+            episodeName = info.episodeInfo.displayName,
+            durationMillis = snapshot.durationMillis,
+        )
+    }
 
     private val extensionManager by lazy {
         val intrinsicExtensions = listOf(

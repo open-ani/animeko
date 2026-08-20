@@ -113,44 +113,10 @@ sealed interface PlaybackDirective {
 }
 
 class PlaybackAutomationGate {
-    private val suppressionState = atomic(0)
     private val _suppressed = MutableStateFlow(false)
     val suppressed: StateFlow<Boolean> = _suppressed.asStateFlow()
-    internal val transientlySuppressed: Boolean
-        get() = suppressionState.value >= TRANSIENT_SUPPRESSION
 
     internal fun setSuppressed(value: Boolean) {
-        while (true) {
-            val current = suppressionState.value
-            val updated = if (value) {
-                current or WATCH_TOGETHER_SUPPRESSION
-            } else {
-                current and WATCH_TOGETHER_SUPPRESSION.inv()
-            }
-            if (suppressionState.compareAndSet(current, updated)) {
-                publishSuppressionState()
-                return
-            }
-        }
-    }
-
-    internal suspend fun <T> suppressDuring(block: suspend () -> T): T {
-        suppressionState.addAndGet(TRANSIENT_SUPPRESSION)
-        publishSuppressionState()
-        return try {
-            block()
-        } finally {
-            suppressionState.addAndGet(-TRANSIENT_SUPPRESSION)
-            publishSuppressionState()
-        }
-    }
-
-    private fun publishSuppressionState() {
-        _suppressed.value = suppressionState.value != 0
-    }
-
-    private companion object {
-        const val WATCH_TOGETHER_SUPPRESSION = 1
-        const val TRANSIENT_SUPPRESSION = 2
+        _suppressed.value = value
     }
 }

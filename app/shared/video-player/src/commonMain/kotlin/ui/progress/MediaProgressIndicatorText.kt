@@ -50,7 +50,7 @@ fun MediaProgressIndicatorText(
                 state.currentPositionMillis
             }
             val totalDurationMillis = state.totalDurationMillis
-            val totalSecs = totalDurationMillis.takeIf { it > 0L }?.div(1000)
+            val totalSecs = if (totalDurationMillis == 0L) null else totalDurationMillis / 1000
             val currentSpeed = playbackSpeedState?.currentSpeed ?: 1f
             val remainingSecs = if (kotlin.math.abs(currentSpeed - 1f) > 1e-3f) {
                 totalSecs?.let { total ->
@@ -115,39 +115,36 @@ internal fun renderSecondsReserve(
  */
 @Stable
 internal fun renderSeconds(current: Long, total: Long?, remainingSecs: Long? = null): String {
-    val safeCurrent = current.coerceAtLeast(0L)
-    val safeTotal = total?.takeIf { it > 0L }
-    val safeRemainingSecs = remainingSecs?.coerceAtLeast(0L)
-    if (safeTotal == null) {
-        return "00:${safeCurrent.fixToString(2)} / 00:00"
+    if (total == null) {
+        return "00:${current.fixToString(2)} / 00:00"
     }
-    val base = if (safeCurrent < 60 && safeTotal < 60) {
-        "00:${safeCurrent.fixToString(2)} / 00:${safeTotal.fixToString(2)}"
-    } else if (safeCurrent < 3600 && safeTotal < 3600) {
-        val startM = (safeCurrent / 60).fixToString(2)
-        val startS = (safeCurrent % 60).fixToString(2)
-        val endM = (safeTotal / 60).fixToString(2)
-        val endS = (safeTotal % 60).fixToString(2)
+    val base = if (current < 60 && total < 60) {
+        "00:${current.fixToString(2)} / 00:${total.fixToString(2)}"
+    } else if (current < 3600 && total < 3600) {
+        val startM = (current / 60).fixToString(2)
+        val startS = (current % 60).fixToString(2)
+        val endM = (total / 60).fixToString(2)
+        val endS = (total % 60).fixToString(2)
         """$startM:$startS / $endM:$endS"""
     } else {
-        val startH = (safeCurrent / 3600).fixToString(2)
-        val startM = (safeCurrent % 3600 / 60).fixToString(2)
-        val startS = (safeCurrent % 60).fixToString(2)
-        val endH = (safeTotal / 3600).fixToString(2)
-        val endM = (safeTotal % 3600 / 60).fixToString(2)
-        val endS = (safeTotal % 60).fixToString(2)
+        val startH = (current / 3600).fixToString(2)
+        val startM = (current % 3600 / 60).fixToString(2)
+        val startS = (current % 60).fixToString(2)
+        val endH = (total / 3600).fixToString(2)
+        val endM = (total % 3600 / 60).fixToString(2)
+        val endS = (total % 60).fixToString(2)
         """$startH:$startM:$startS / $endH:$endM:$endS"""
     }
-    if (safeRemainingSecs == null) return base
+    if (remainingSecs == null) return base
     // 与总时长同款格式: 总时长达小时级则剩余也用小时级.
-    val remaining = if (safeTotal >= 3600) {
-        val h = (safeRemainingSecs / 3600).fixToString(2)
-        val m = (safeRemainingSecs % 3600 / 60).fixToString(2)
-        val s = (safeRemainingSecs % 60).fixToString(2)
+    val remaining = if (total >= 3600) {
+        val h = (remainingSecs / 3600).fixToString(2)
+        val m = (remainingSecs % 3600 / 60).fixToString(2)
+        val s = (remainingSecs % 60).fixToString(2)
         "$h:$m:$s"
     } else {
-        val m = (safeRemainingSecs / 60).fixToString(2)
-        val s = (safeRemainingSecs % 60).fixToString(2)
+        val m = (remainingSecs / 60).fixToString(2)
+        val s = (remainingSecs % 60).fixToString(2)
         "$m:$s"
     }
     return "$base (-$remaining)"

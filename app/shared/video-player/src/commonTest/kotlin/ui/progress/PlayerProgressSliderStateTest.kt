@@ -9,36 +9,11 @@
 
 package me.him188.ani.app.videoplayer.ui.progress
 
-import androidx.compose.runtime.mutableLongStateOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
 class PlayerProgressSliderStateTest {
-    @Test
-    fun `normalizes invalid player timeline values`() {
-        val positionMillis = mutableLongStateOf(-1L)
-        val durationMillis = mutableLongStateOf(-1L)
-        val state = PlayerProgressSliderState(
-            currentPositionMillis = { positionMillis.longValue },
-            totalDurationMillis = { durationMillis.longValue },
-            chapters = { emptyList() },
-            onPreview = {},
-            onPreviewFinished = {},
-        )
-
-        assertEquals(0L, state.currentPositionMillis)
-        assertEquals(0L, state.totalDurationMillis)
-        assertEquals(0f, state.displayPositionRatio)
-
-        positionMillis.longValue = 120_000L
-        durationMillis.longValue = 100_000L
-
-        assertEquals(120_000L, state.currentPositionMillis)
-        assertEquals(100_000L, state.totalDurationMillis)
-        assertEquals(1f, state.displayPositionRatio)
-    }
-
     @Test
     fun `cancel preview does not finish seek`() {
         val finishedPositions = mutableListOf<Long>()

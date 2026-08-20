@@ -179,12 +179,6 @@ class RememberPlayProgressExtension(
         episodeSession: EpisodeSession?,
         allowZeroPosition: Boolean = false,
     ) {
-        // A media replacement briefly reports the new stream from zero. Saving that transient
-        // position would overwrite the real episode progress before PlayerSession restores it.
-        if (automationGate.transientlySuppressed) {
-            return
-        }
-
         val player = context.player
         val mediaStatus = player.state.value.mediaStatus
         val videoDurationMillis = player.mediaProperties.value?.durationMillis
