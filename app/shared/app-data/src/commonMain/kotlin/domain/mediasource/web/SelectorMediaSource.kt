@@ -383,6 +383,8 @@ class SelectorMediaSource(
                     )?.episodes
                 } catch (e: BlockedException) {
                     throw e
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     // 单个条目页的网络错误不终止整个搜索
                     logger.warn(e) { "SelectorMediaSource '$mediaSourceId': failed to load subject page ${subjectInfo.fullUrl}" }
