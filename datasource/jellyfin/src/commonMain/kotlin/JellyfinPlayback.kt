@@ -138,6 +138,8 @@ internal data class JellyfinPlaybackInfoRequest(
     val mediaSourceId: String? = null,
     @SerialName("AudioStreamIndex")
     val audioStreamIndex: Int? = null,
+    @SerialName("SubtitleStreamIndex")
+    val subtitleStreamIndex: Int,
     @SerialName("DeviceProfile")
     val deviceProfile: JellyfinDeviceProfile,
     @SerialName("EnableDirectPlay")

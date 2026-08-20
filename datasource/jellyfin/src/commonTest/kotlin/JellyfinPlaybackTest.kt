@@ -62,12 +62,14 @@ class JellyfinPlaybackTest {
             assertEquals("8000000", body.getValue("MaxStreamingBitrate").jsonPrimitive.content)
             assertEquals("12500000", body.getValue("StartTimeTicks").jsonPrimitive.content)
             assertEquals("physical-version-1", body.getValue("MediaSourceId").jsonPrimitive.content)
+            assertEquals("-1", body.getValue("SubtitleStreamIndex").jsonPrimitive.content)
             assertEquals(
                 "8000000",
                 body.getValue("DeviceProfile").jsonObject
                     .getValue("MaxStreamingBitrate").jsonPrimitive.content,
             )
             assertCompleteVideoDeviceProfile(body.getValue("DeviceProfile").jsonObject)
+            // Jellyfin can include SubtitleMethod=Encode without burn-in when no stream is selected.
             respondJson(
                 """
                 {
@@ -78,7 +80,7 @@ class JellyfinPlaybackTest {
                     "SupportsDirectPlay": false,
                     "SupportsDirectStream": false,
                     "SupportsTranscoding": true,
-                    "TranscodingUrl": "/Videos/episode-1/master.m3u8?api_key=test-api-key",
+                    "TranscodingUrl": "/Videos/episode-1/master.m3u8?api_key=test-api-key&SubtitleMethod=Encode&TranscodeReasons=ContainerBitrateExceedsLimit",
                     "MediaStreams": [
                       { "Type": "Video", "Codec": "hevc", "BitRate": 22000000 },
                       { "Type": "Audio", "Codec": "aac", "BitRate": 2000000 }
@@ -98,7 +100,7 @@ class JellyfinPlaybackTest {
 
         assertEquals(1, playbackInfoCount)
         assertEquals(
-            "$TEST_BASE_URL/Videos/episode-1/master.m3u8?api_key=test-api-key",
+            "$TEST_BASE_URL/Videos/episode-1/master.m3u8?api_key=test-api-key&SubtitleMethod=Encode&TranscodeReasons=ContainerBitrateExceedsLimit",
             plan.uri,
         )
         assertEquals(8_000_000, plan.effectiveMaxBitrate)
@@ -107,6 +109,44 @@ class JellyfinPlaybackTest {
         assertEquals("physical-version-1", plan.mediaSourceId)
         assertEquals("play-session-1", plan.playSessionId)
         assertTrue(plan.isTranscoding)
+    }
+
+    @Test
+    fun `bitrate negotiation rejects a server subtitle burn-in response`() = runTest {
+        val source = source { request ->
+            assertEquals("/Items/episode-1/PlaybackInfo", request.url.encodedPath)
+            val body = request.jsonBody()
+            assertEquals("-1", body.getValue("SubtitleStreamIndex").jsonPrimitive.content)
+
+            respondJson(
+                """
+                {
+                  "PlaySessionId": "subtitle-burn-in-session",
+                  "MediaSources": [{
+                    "Id": "episode-1",
+                    "Bitrate": 24000000,
+                    "SupportsDirectPlay": false,
+                    "SupportsDirectStream": false,
+                    "SupportsTranscoding": true,
+                    "DefaultAudioStreamIndex": 1,
+                    "TranscodingUrl": "/Videos/episode-1/master.m3u8?SubtitleStreamIndex=2&SubtitleMethod=Encode&TranscodeReasons=SubtitleCodecNotSupported",
+                    "MediaStreams": [
+                      { "Index": 0, "Type": "Video", "Codec": "hevc", "BitRate": 22000000 },
+                      { "Index": 1, "Type": "Audio", "Codec": "aac", "BitRate": 2000000 },
+                      { "Index": 2, "Type": "Subtitle", "Codec": "pgssub", "DeliveryMethod": "Encode" }
+                    ]
+                  }]
+                }
+                """.trimIndent(),
+            )
+        }
+
+        assertFailsWith<JellyfinPlaybackUnavailableException> {
+            source.createPlaybackPlan(
+                itemId = "episode-1",
+                quality = JellyfinPlaybackQuality.fixed(8_000_000),
+            )
+        }
     }
 
     @Test

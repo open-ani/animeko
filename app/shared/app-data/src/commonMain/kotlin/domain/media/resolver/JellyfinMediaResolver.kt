@@ -189,8 +189,14 @@ class JellyfinMediaDataProvider internal constructor(
         if (plan.isTranscoding || playerAudioTrackCount == null || selectedPlayerAudioTrackIndex == null) {
             return plan.selectedAudioStreamIndex
         }
-        check(playerAudioTrackCount == plan.audioStreamIndices.size) {
-            "Player audio tracks do not match the Jellyfin media streams"
+        if (playerAudioTrackCount != plan.audioStreamIndices.size) {
+            logger.warn {
+                "Cannot map the selected player audio track to Jellyfin by ordinal: " +
+                        "playerTracks=$playerAudioTrackCount, " +
+                        "jellyfinStreams=${plan.audioStreamIndices.size}; " +
+                        "retaining serverSelectedStream=${plan.selectedAudioStreamIndex}"
+            }
+            return plan.selectedAudioStreamIndex
         }
         return plan.audioStreamIndices.getOrNull(selectedPlayerAudioTrackIndex)
             ?: error("The selected player audio track index is out of bounds")

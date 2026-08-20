@@ -49,7 +49,6 @@ import me.him188.ani.app.domain.player.extension.ExtensionBackgroundTaskScope
 import me.him188.ani.app.domain.player.extension.PlayerExtension
 import me.him188.ani.app.domain.player.extension.PlayerExtensionEvent
 import me.him188.ani.app.domain.usecase.GlobalKoin
-import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.datasources.jellyfin.JellyfinPlaybackQuality
 import me.him188.ani.utils.analytics.Analytics
 import me.him188.ani.utils.analytics.AnalyticsEvent.Companion.EpisodeSwitch
@@ -98,7 +97,6 @@ class EpisodeFetchSelectPlayState(
 
     private val selectorCacheRepo by koin.inject<SelectorMediaSourceEpisodeCacheRepository>()
     private val playProgressRepository by koin.inject<EpisodePlayHistoryRepository>()
-    private val playbackAutomationGate by koin.inject<PlaybackAutomationGate>()
 
     private val _episodeSessionFlow = MutableStateFlow(
         newEpisodeSession(initialEpisodeId),
@@ -126,12 +124,6 @@ class EpisodeFetchSelectPlayState(
             CoroutineName("JellyfinPlaybackQualitySwitch"),
             start = CoroutineStart.UNDISPATCHED,
         ) {
-            if (playbackAutomationGate.suppressed.value) {
-                return@async Result.failure(
-                    IllegalStateException("Jellyfin quality cannot be changed while remote playback control is active"),
-                )
-            }
-
             playerSession.switchJellyfinPlaybackQuality(quality) { snapshot ->
                 saveProgressBeforeJellyfinReplacement(episodeSession, snapshot)
             }

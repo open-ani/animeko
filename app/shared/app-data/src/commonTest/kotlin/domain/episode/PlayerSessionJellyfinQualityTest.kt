@@ -443,13 +443,21 @@ class PlayerSessionJellyfinQualityTest {
     }
 
     @Test
-    fun `audio track count mismatch rejects quality switch without replacing media`() = runTest {
+    fun `audio track count mismatch retains server audio stream and does not block quality switch`() = runTest {
         var playbackInfoCount = 0
+        val requestedAudioStreamIndices = mutableListOf<Int?>()
         val provider = provider(
             source = source { request ->
                 when (request.url.encodedPath) {
                     "/Items/episode-1/PlaybackInfo" -> {
                         playbackInfoCount++
+                        val body = Json.parseToJsonElement(
+                            (request.body as OutgoingContent.ByteArrayContent).bytes().decodeToString(),
+                        ).jsonObject
+                        requestedAudioStreamIndices += body["AudioStreamIndex"]
+                            ?.jsonPrimitive
+                            ?.content
+                            ?.toInt()
                         respondJson(audioPlaybackInfo("session-$playbackInfoCount", true, null))
                     }
 
@@ -458,11 +466,15 @@ class PlayerSessionJellyfinQualityTest {
             },
             itemId = "episode-1",
         )
-        val onlyPlayerTrack = AudioTrack("player-audio", "player-audio", "Japanese", emptyList())
+        val playerTracks = listOf(
+            AudioTrack("player-audio-1", "player-audio-1", "Japanese", emptyList()),
+            AudioTrack("player-audio-2", "player-audio-2", "English", emptyList()),
+            AudioTrack("player-audio-3", "player-audio-3", "Commentary", emptyList()),
+        )
         val backingPlayer = TestMediampPlayer(StandardTestDispatcher(testScheduler))
         val player = ResumeBeforeSeekPlayer(
             delegate = backingPlayer,
-            audioTracks = listOf(onlyPlayerTrack),
+            audioTracks = playerTracks,
             selectedAudioTrackIndex = 0,
         )
         val session = PlayerSession(player, koin(provider.mediaDataProvider), EmptyCoroutineContext)
@@ -471,8 +483,9 @@ class PlayerSessionJellyfinQualityTest {
         val originalUri = (player.mediaData.first() as UriMediaData).uri
         val result = session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(8_000_000))
 
-        assertTrue(result.isFailure)
-        assertEquals(1, playbackInfoCount)
+        assertTrue(result.isSuccess)
+        assertEquals(2, playbackInfoCount)
+        assertEquals(listOf(null, 1), requestedAudioStreamIndices)
         assertEquals(originalUri, (player.mediaData.first() as UriMediaData).uri)
     }
 

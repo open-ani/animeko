@@ -133,6 +133,9 @@ abstract class BaseJellyfinMediaSource(
                         startTimeTicks = startPositionMillis.coerceAtLeast(0) * TICKS_PER_MILLISECOND,
                         mediaSourceId = requestedMediaSourceId,
                         audioStreamIndex = audioStreamIndex,
+                        // Subtitle burn-in belongs to the separate Jellyfin subtitle feature.
+                        // Bitrate negotiation must not select a server subtitle implicitly.
+                        subtitleStreamIndex = DISABLED_SUBTITLE_STREAM_INDEX,
                         deviceProfile = deviceProfile,
                     ),
                 )
@@ -225,6 +228,28 @@ abstract class BaseJellyfinMediaSource(
             "Jellyfin selected audio stream $selectedAudioStreamIndex, but it is not present in MediaStreams"
         }
         val transcodingParameters = transcodingUrl?.queryParameters()
+        val transcodingSubtitleStreamIndex = transcodingParameters
+            ?.valueIgnoreCase("SubtitleStreamIndex")
+            ?.toIntOrNull()
+        val subtitleMethod = transcodingParameters?.valueIgnoreCase("SubtitleMethod")
+        val transcodeReasons = transcodingParameters?.valueIgnoreCase("TranscodeReasons")
+        val serverSelectedSubtitle = transcodingSubtitleStreamIndex?.let { it >= 0 } == true
+        // Jellyfin includes SubtitleMethod=Encode on some ordinary video/audio transcodes even
+        // when no subtitle is selected. A non-negative stream index or the subtitle-specific
+        // transcode reason is the evidence that a subtitle would actually be burned in.
+        val serverEncodesSubtitle =
+            transcodeReasons?.contains("SubtitleCodecNotSupported", ignoreCase = true) == true
+        if (serverSelectedSubtitle || serverEncodesSubtitle) {
+            logger.warn {
+                "Jellyfin ignored disabled subtitles during bitrate negotiation: " +
+                        "subtitleStreamIndex=$transcodingSubtitleStreamIndex, " +
+                        "subtitleMethod=$subtitleMethod, transcodeReasons=$transcodeReasons"
+            }
+            throw JellyfinPlaybackUnavailableException(
+                quality = quality,
+                supportsTranscoding = source.supportsTranscoding || source.supportsDirectStream,
+            )
+        }
         logger.debug {
             "Jellyfin playback plan: mode=${quality.mode}, maxBitrate=$negotiatedMaxBitrate, " +
                     "directPlay=${source.supportsDirectPlay}, directStream=${source.supportsDirectStream}, " +
@@ -951,6 +976,7 @@ abstract class BaseJellyfinMediaSource(
 
     private companion object {
         const val TICKS_PER_MILLISECOND = 10_000L
+        const val DISABLED_SUBTITLE_STREAM_INDEX = -1
         const val BITRATE_SAFETY_FACTOR = 0.7
         const val DEFAULT_AUTO_BITRATE = 8_000_000
         const val LAN_AUTO_BITRATE = 140_000_000
@@ -1022,6 +1048,10 @@ private fun String.queryParameters(): Map<String, String> {
             parameter.substring(0, separator) to parameter.substring(separator + 1)
         }
         .toMap()
+}
+
+private fun Map<String, String>.valueIgnoreCase(name: String): String? {
+    return entries.firstOrNull { it.key.equals(name, ignoreCase = true) }?.value
 }
 
 private val Item.isSupportedSearchResult: Boolean

@@ -291,8 +291,13 @@ internal class JellyfinPlaybackController(
         val candidates = withTimeoutOrNull(TRACK_SELECTION_TIMEOUT_MILLIS) {
             group.candidates.first { it.isNotEmpty() }
         } ?: error("Timed out waiting for Jellyfin audio tracks")
-        check(candidates.size == plan.audioStreamIndices.size) {
-            "Player audio tracks do not match the Jellyfin media streams"
+        if (candidates.size != plan.audioStreamIndices.size) {
+            logger.warn {
+                "Cannot restore the selected Jellyfin audio stream by ordinal: " +
+                        "playerTracks=${candidates.size}, jellyfinStreams=${plan.audioStreamIndices.size}; " +
+                        "keeping the player's selected track"
+            }
+            return
         }
         check(group.select(candidates[selectedOrdinal])) {
             "The player rejected the selected Jellyfin audio stream"
