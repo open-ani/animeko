@@ -17,8 +17,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
 import me.him188.ani.app.domain.media.hls.HlsPlaybackProxySession
@@ -54,15 +52,6 @@ class MediaFetchSelectBundle(
     val mediaSelector: MediaSelector,
 )
 
-/**
- * Playback values captured immediately before replacing a Jellyfin stream.
- */
-data class JellyfinPlaybackReplacementSnapshot(
-    val positionMillis: Long,
-    val durationMillis: Long,
-    val playWhenReady: Boolean,
-)
-
 // episodeId 改变, 需要全部清空
 // 如果 episodeId 不变, 但是 EpisodeCollectionInfo 变了, 只需要更新一些信息.
 
@@ -80,7 +69,6 @@ class PlayerSession(
 
     private var hlsPlaybackProxySession: HlsPlaybackProxySession? = null
     private val jellyfinPlaybackController = JellyfinPlaybackController(player, mainDispatcher)
-    private val playbackOperationMutex = Mutex()
 
     private val _videoLoadingStateFlow: MutableStateFlow<VideoLoadingState> =
         MutableStateFlow(VideoLoadingState.Initial)
@@ -95,14 +83,10 @@ class PlayerSession(
     /**
      * 解析 media 并开始播放这个 media.
      */
-    suspend fun loadMedia(media: Media?, episodeInfo: EpisodeMetadata) = playbackOperationMutex.withLock {
-        loadMediaLocked(media, episodeInfo)
-    }
-
-    private suspend fun loadMediaLocked(media: Media?, episodeInfo: EpisodeMetadata) = coroutineScope {
+    suspend fun loadMedia(media: Media?, episodeInfo: EpisodeMetadata) = coroutineScope {
         val backgroundScope = this
         _videoLoadingStateFlow.value = VideoLoadingState.Initial // 避免一直显示已取消 (.Cancelled)
-        stopPlaybackLocked()
+        stopPlayback()
         if (media == null) {
             return@coroutineScope
         }
@@ -132,14 +116,14 @@ class PlayerSession(
             player.setMediaData(preparedData, playWhenReady = true)
             hlsPlaybackProxySession = preparedHlsPlaybackProxySession
             preparedHlsPlaybackProxySession = null
-            jellyfinPlaybackController.install(jellyfinProvider)
+            jellyfinProvider?.let(jellyfinPlaybackController::install)
             openedJellyfinProvider = null
 
             _videoLoadingStateFlow.value = VideoLoadingState.Succeed(isBt = source is TorrentBackedMediaDataProvider)
         } catch (e: UnsupportedMediaException) {
             logger.warn { IllegalStateException("Failed to resolve video source, unsupported media", e) }
             _videoLoadingStateFlow.value = VideoLoadingState.UnsupportedMedia
-            stopPlaybackLocked()
+            stopPlayback()
         } catch (e: MediaSourceOpenException) { // during playerState.setVideoSource
             logger.warn {
                 IllegalStateException(
@@ -152,7 +136,7 @@ class PlayerSession(
                 OpenFailures.UNSUPPORTED_VIDEO_SOURCE -> VideoLoadingState.UnsupportedMedia
                 OpenFailures.ENGINE_DISABLED -> VideoLoadingState.UnsupportedMedia
             }
-            stopPlaybackLocked()
+            stopPlayback()
         } catch (e: MediaResolutionException) { // during MediaResolver.resolve
             logger.warn {
                 IllegalStateException(
@@ -166,23 +150,26 @@ class PlayerSession(
                 ResolutionFailures.NETWORK_ERROR -> VideoLoadingState.NetworkError
                 ResolutionFailures.NO_MATCHING_RESOURCE -> VideoLoadingState.NoMatchingFile
             }
-            stopPlaybackLocked()
+            stopPlayback()
         } catch (e: CancellationException) { // 切换数据源 (含 MediaLoadCancellationException)
             _videoLoadingStateFlow.value = VideoLoadingState.Cancelled
             throw e
         } catch (e: PlaybackException) { // during player.setMediaData, 播放器拒绝了这个媒体
             logger.warn { IllegalStateException("Player rejected the media data", e) }
             _videoLoadingStateFlow.value = VideoLoadingState.UnknownError(e)
-            stopPlaybackLocked()
+            stopPlayback()
         } catch (e: Throwable) {
             logger.error { IllegalStateException("Failed to resolve video source with unknown error", e) }
             _videoLoadingStateFlow.value = VideoLoadingState.UnknownError(e)
-            stopPlaybackLocked()
+            stopPlayback()
         } finally {
-            closeHlsPlaybackProxySession(preparedHlsPlaybackProxySession)
-            withContext(NonCancellable) {
+            try {
+                preparedHlsPlaybackProxySession?.close()
+            } finally {
                 openedJellyfinProvider?.let { provider ->
-                    jellyfinPlaybackController.discard(provider)
+                    withContext(NonCancellable) {
+                        jellyfinPlaybackController.discard(provider)
+                    }
                 }
             }
         }
@@ -195,41 +182,37 @@ class PlayerSession(
         val owner = jellyfinPlaybackController.captureOwner()
             ?: return Result.failure(IllegalStateException("The current media is not from Jellyfin"))
 
-        return playbackOperationMutex.withLock {
-            jellyfinPlaybackController.switch(
-                owner = owner,
-                quality = quality,
-                prepareMediaData = { data ->
-                    prepareHlsPlaybackIfEnabled(data).let {
-                        PreparedJellyfinMediaData(it.data, it.session)
-                    }
-                },
-                replaceProxySession = { next ->
-                    hlsPlaybackProxySession.also {
-                        hlsPlaybackProxySession = next
-                    }
-                },
-                onReplacementFailure = ::stopPlaybackLockedSafely,
-                beforeReplace = beforeReplace,
-            )
-        }
+        return jellyfinPlaybackController.switch(
+            owner = owner,
+            quality = quality,
+            prepareMediaData = { data ->
+                prepareHlsPlaybackIfEnabled(data).let {
+                    PreparedJellyfinMediaData(it.data, it.session)
+                }
+            },
+            replaceProxySession = { next ->
+                hlsPlaybackProxySession.also {
+                    hlsPlaybackProxySession = next
+                }
+            },
+            onReplacementFailure = ::stopAfterJellyfinReplacementFailureSafely,
+            beforeReplace = beforeReplace,
+        )
     }
 
     suspend fun stopPlayback() {
-        playbackOperationMutex.withLock {
-            stopPlaybackLocked()
+        if (!jellyfinPlaybackController.hasPlayback) {
+            stopPlayer()
+            closeHlsPlaybackProxySession()
+            return
         }
-    }
 
-    suspend fun close() {
-        playbackOperationMutex.withLock {
-            stopPlaybackLocked()
-            player.close()
-        }
-    }
-
-    private suspend fun stopPlaybackLocked() {
         val jellyfinPlayback = jellyfinPlaybackController.detach()
+        if (jellyfinPlayback.provider == null) {
+            stopPlayer()
+            closeHlsPlaybackProxySession()
+            return
+        }
 
         var stopFailure: Throwable? = null
         try {
@@ -237,7 +220,7 @@ class PlayerSession(
         } catch (e: Throwable) {
             stopFailure = e
         }
-        closeHlsPlaybackProxySession(hlsPlaybackProxySession)
+        closeHlsPlaybackProxySessionSafely(hlsPlaybackProxySession)
         hlsPlaybackProxySession = null
         withContext(NonCancellable) {
             jellyfinPlaybackController.stopEncoding(jellyfinPlayback)
@@ -245,12 +228,19 @@ class PlayerSession(
         stopFailure?.let { throw it }
     }
 
-    private suspend fun stopPlaybackLockedSafely() {
+    fun close() {
+        closeHlsPlaybackProxySession()
+        player.close()
+    }
+
+    private suspend fun stopAfterJellyfinReplacementFailureSafely() {
         try {
-            stopPlaybackLocked()
+            stopPlayer()
         } catch (e: Throwable) {
-            logger.warn(e) { "Failed to stop playback while cleaning up Jellyfin resources" }
+            logger.warn(e) { "Failed to stop the player after a Jellyfin quality switch error" }
         }
+        closeHlsPlaybackProxySessionSafely(hlsPlaybackProxySession)
+        hlsPlaybackProxySession = null
     }
 
     private suspend fun stopPlayer() {
@@ -274,7 +264,12 @@ class PlayerSession(
         return PreparedMediaData(result.data, result.session)
     }
 
-    private fun closeHlsPlaybackProxySession(session: HlsPlaybackProxySession?) {
+    private fun closeHlsPlaybackProxySession() {
+        hlsPlaybackProxySession?.close()
+        hlsPlaybackProxySession = null
+    }
+
+    private fun closeHlsPlaybackProxySessionSafely(session: HlsPlaybackProxySession?) {
         if (session == null) return
         try {
             session.close()

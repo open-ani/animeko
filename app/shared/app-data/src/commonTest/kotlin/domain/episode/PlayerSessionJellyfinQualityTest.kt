@@ -22,10 +22,11 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.headersOf
 import io.ktor.http.content.OutgoingContent
 import io.ktor.serialization.kotlinx.json.json
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,8 +64,6 @@ import org.koin.dsl.module
 import org.openani.mediamp.InternalForInheritanceMediampApi
 import org.openani.mediamp.InternalMediampApi
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.PlaybackErrorCode
-import org.openani.mediamp.PlaybackException
 import org.openani.mediamp.features.MediaMetadata
 import org.openani.mediamp.features.PlayerFeatures
 import org.openani.mediamp.features.buildPlayerFeatures
@@ -87,6 +86,42 @@ import kotlin.test.assertTrue
 
 @OptIn(InternalMediampApi::class, InternalForInheritanceMediampApi::class)
 class PlayerSessionJellyfinQualityTest {
+    @Test
+    fun `non-Jellyfin stop is not serialized behind media opening`() = runTest {
+        val openingStarted = CompletableDeferred<Unit>()
+        val provider = object : MediaDataProvider<UriMediaData> {
+            override val extraFiles: MediaExtraFiles = MediaExtraFiles.EMPTY
+
+            override suspend fun open(scopeForCleanup: CoroutineScope): UriMediaData {
+                openingStarted.complete(Unit)
+                awaitCancellation()
+            }
+        }
+        val resolver = object : MediaResolver {
+            override fun supports(media: Media): Boolean = true
+
+            override suspend fun resolve(
+                media: Media,
+                episode: EpisodeMetadata,
+            ): MediaDataProvider<*> = provider
+        }
+        val player = ResumeBeforeSeekPlayer(TestMediampPlayer(StandardTestDispatcher(testScheduler)))
+        val session = PlayerSession(player, koin(resolver), EmptyCoroutineContext)
+        val loading = async {
+            session.loadMedia(TestMediaList.first(), episodeMetadata(1))
+        }
+
+        openingStarted.await()
+        val stopping = async { session.stopPlayback() }
+        try {
+            runCurrent()
+            assertTrue(stopping.isCompleted)
+        } finally {
+            loading.cancelAndJoin()
+        }
+        stopping.await()
+    }
+
     @Test
     fun `preserves playback intent while switching bitrate`() = runTest {
         var playbackInfoCount = 0
@@ -203,7 +238,7 @@ class PlayerSessionJellyfinQualityTest {
     }
 
     @Test
-    fun `a selected media reload waits for the current quality switch and wins`() = runTest {
+    fun `a selected media reload waits for the current Jellyfin quality switch and wins`() = runTest {
         val oldSwitchStarted = CompletableDeferred<Unit>()
         val releaseOldSwitch = CompletableDeferred<Unit>()
         val stoppedSessions = mutableListOf<String>()
@@ -442,7 +477,7 @@ class PlayerSessionJellyfinQualityTest {
     }
 
     @Test
-    fun `close stops the active Jellyfin transcode`() = runTest {
+    fun `stopPlayback stops the active Jellyfin transcode`() = runTest {
         val stoppedSessions = mutableListOf<String>()
         val provider = provider(
             source = source { request ->
@@ -470,7 +505,7 @@ class PlayerSessionJellyfinQualityTest {
         val session = PlayerSession(player, koin(provider.mediaDataProvider), EmptyCoroutineContext)
 
         session.loadMedia(TestMediaList.first(), episodeMetadata(1))
-        session.close()
+        session.stopPlayback()
 
         assertEquals(listOf("active-transcode"), stoppedSessions)
     }
@@ -541,10 +576,6 @@ class PlayerSessionJellyfinQualityTest {
         audioTracks: List<AudioTrack>? = null,
         selectedAudioTrackIndex: Int? = null,
     ) : MediampPlayer by delegate {
-        private var holdNextMediaStart = false
-        private var currentMediaStartHold: TestMediampPlayer.OpenBehavior.Hold? = null
-        private var nextMediaStartReached: CompletableDeferred<Unit>? = null
-        private var currentMediaStartCancelled: CompletableDeferred<Unit>? = null
         private val audioTrackGroup = audioTracks?.let { tracks ->
             TestTrackGroup(
                 candidates = tracks,
@@ -574,31 +605,6 @@ class PlayerSessionJellyfinQualityTest {
             }
         }
 
-        fun holdNextMediaStart() {
-            check(nextMediaStartReached == null) { "A held media start is already pending" }
-            holdNextMediaStart = true
-            nextMediaStartReached = CompletableDeferred()
-            currentMediaStartCancelled = CompletableDeferred()
-        }
-
-        suspend fun awaitCurrentMediaStart() {
-            checkNotNull(nextMediaStartReached).await()
-        }
-
-        suspend fun awaitCurrentMediaStartCancelled() {
-            checkNotNull(currentMediaStartCancelled).await()
-        }
-
-        fun releaseCurrentMediaStart() {
-            checkNotNull(currentMediaStartHold).release()
-        }
-
-        fun failCurrentMediaStart() {
-            checkNotNull(currentMediaStartHold).fail(
-                PlaybackException(PlaybackErrorCode.IO, "simulated replacement open failure"),
-            )
-        }
-
         fun replaceAudioTracksOnNextMedia(
             tracks: List<AudioTrack>,
             selectedAudioTrackIndex: Int?,
@@ -619,33 +625,7 @@ class PlayerSessionJellyfinQualityTest {
                 )
                 nextAudioTracks = null
             }
-            val hold = if (holdNextMediaStart) {
-                TestMediampPlayer.OpenBehavior.Hold().also {
-                    currentMediaStartHold = it
-                    delegate.openBehavior = it
-                    checkNotNull(nextMediaStartReached).complete(Unit)
-                }
-            } else {
-                null
-            }
-            holdNextMediaStart = false
-            try {
-                delegate.setMediaData(data, playWhenReady, startPositionMillis)
-            } catch (e: CancellationException) {
-                currentMediaStartCancelled?.complete(Unit)
-                throw e
-            } finally {
-                if (currentMediaStartHold === hold) {
-                    currentMediaStartHold = null
-                }
-                if (hold != null) {
-                    nextMediaStartReached = null
-                    currentMediaStartCancelled = null
-                }
-                if (hold != null && delegate.openBehavior === hold) {
-                    delegate.openBehavior = TestMediampPlayer.OpenBehavior.Immediate
-                }
-            }
+            delegate.setMediaData(data, playWhenReady, startPositionMillis)
         }
     }
 

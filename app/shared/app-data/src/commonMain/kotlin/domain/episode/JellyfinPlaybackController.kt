@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import me.him188.ani.app.domain.media.hls.HlsPlaybackProxySession
@@ -39,6 +41,15 @@ internal data class PreparedJellyfinMediaData(
     val proxySession: HlsPlaybackProxySession?,
 )
 
+/**
+ * Playback values captured immediately before replacing a Jellyfin stream.
+ */
+data class JellyfinPlaybackReplacementSnapshot(
+    val positionMillis: Long,
+    val durationMillis: Long,
+    val playWhenReady: Boolean,
+)
+
 internal class JellyfinPlaybackOwner(
     internal val provider: JellyfinMediaDataProvider,
 )
@@ -51,9 +62,9 @@ internal data class DetachedJellyfinPlayback(
 /**
  * Owns only the Jellyfin-specific part of an episode playback.
  *
- * Episode/source serialization remains in [PlayerSession]. This controller negotiates a new
- * Jellyfin plan, replaces the current stream, maps the selected audio stream, and cleans up
- * Jellyfin transcodes without changing the generic player lifecycle.
+ * This controller serializes Jellyfin stream replacement and detachment, negotiates a new plan,
+ * maps the selected audio stream, and cleans up Jellyfin transcodes without changing the generic
+ * player lifecycle.
  */
 internal class JellyfinPlaybackController(
     private val player: MediampPlayer,
@@ -61,19 +72,25 @@ internal class JellyfinPlaybackController(
 ) {
     private var provider: JellyfinMediaDataProvider? = null
     private val _qualityState = MutableStateFlow<JellyfinPlaybackQualityState?>(null)
+    private val playbackTransitionMutex = Mutex()
 
     val qualityState: StateFlow<JellyfinPlaybackQualityState?> = _qualityState.asStateFlow()
+    val hasPlayback: Boolean get() = provider != null
 
-    fun install(provider: JellyfinMediaDataProvider?) {
+    fun install(provider: JellyfinMediaDataProvider) {
         this.provider = provider
-        _qualityState.value = provider?.qualityState?.value
+        _qualityState.value = provider.qualityState.value
     }
 
     fun captureOwner(): JellyfinPlaybackOwner? {
         return provider?.let(::JellyfinPlaybackOwner)
     }
 
-    fun detach(): DetachedJellyfinPlayback {
+    suspend fun detach(): DetachedJellyfinPlayback = playbackTransitionMutex.withLock {
+        detachLocked()
+    }
+
+    private fun detachLocked(): DetachedJellyfinPlayback {
         val currentProvider = provider
         provider = null
         _qualityState.value = null
@@ -98,20 +115,20 @@ internal class JellyfinPlaybackController(
         replaceProxySession: (HlsPlaybackProxySession?) -> HlsPlaybackProxySession?,
         onReplacementFailure: suspend () -> Unit,
         beforeReplace: suspend (JellyfinPlaybackReplacementSnapshot) -> Unit,
-    ): Result<Unit> {
+    ): Result<Unit> = playbackTransitionMutex.withLock {
         val currentProvider = provider
         if (currentProvider !== owner.provider) {
-            return Result.failure(
+            return@withLock Result.failure(
                 IllegalStateException("The selected media changed before the quality switch started"),
             )
         }
         if (currentProvider.qualityState.value?.selected == quality) {
-            return Result.success(Unit)
+            return@withLock Result.success(Unit)
         }
 
         currentProvider.setSwitching(true)
         _qualityState.value = currentProvider.qualityState.value
-        return try {
+        try {
             replacePlayback(
                 provider = currentProvider,
                 quality = quality,
@@ -190,7 +207,19 @@ internal class JellyfinPlaybackController(
                 closeProxySession(preparedProxySession)
                 stopEncodingSafely(provider, prepared?.plan)
                 if (replacementStarted) {
-                    onReplacementFailure()
+                    val failedPlayback = if (this@JellyfinPlaybackController.provider === provider) {
+                        detachLocked()
+                    } else {
+                        DetachedJellyfinPlayback(provider = null, plan = null)
+                    }
+                    try {
+                        onReplacementFailure()
+                    } catch (cleanupError: Throwable) {
+                        logger.warn(cleanupError) {
+                            "Failed to stop playback after a Jellyfin quality switch error"
+                        }
+                    }
+                    stopEncodingSafely(failedPlayback.provider, failedPlayback.plan)
                 } else if (pausedForReplacement && this@JellyfinPlaybackController.provider === provider) {
                     try {
                         withContext(mainDispatcher) {
