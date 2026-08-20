@@ -617,6 +617,9 @@
     <string name="settings_media_torrent_limit_upload_on_metered_description">在計費網絡環境下限制上傳速度為 1 KB/s</string>
     <string name="settings_media_torrent_peer_filter">Peer 過濾和屏蔽設置</string>
     <string name="settings_media_torrent_peer_filter_description">在下載或上傳緩存的番劇時不與黑名單或命中過濾規則的客戶端連接</string>
+    <string name="settings_media_torrent_extra_trackers">額外 Tracker</string>
+    <string name="settings_media_torrent_extra_trackers_description">在 BT 下載開始前額外添加的 tracker 伺服器，幫助發現更多用戶</string>
+    <string name="settings_media_torrent_extra_trackers_dialog_description">每行一個 tracker 地址，例如 udp://tracker.example.com:6969/announce。將在 BT 下載開始前與內置 tracker 一起添加。修改僅對之後開始的下載生效。</string>
 
     <!-- AutoCacheGroup -->
     <string name="settings_media_auto_cache_title">自動快取</string>
