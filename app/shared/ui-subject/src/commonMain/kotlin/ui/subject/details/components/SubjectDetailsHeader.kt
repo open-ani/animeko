@@ -40,10 +40,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImagePainter
-import coil3.compose.LocalPlatformContext
-import coil3.request.ImageRequest
-import coil3.request.crossfade
 import me.him188.ani.app.data.models.subject.ContinueWatchingStatus
 import me.him188.ani.app.data.models.subject.SubjectAiringInfo
 import me.him188.ani.app.data.models.subject.SubjectAiringKind
@@ -51,6 +47,7 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.SubjectProgressInfo
 import me.him188.ani.app.data.models.subject.TestCoverImage
 import me.him188.ani.app.data.models.subject.TestSubjectInfo
+import me.him188.ani.app.ui.foundation.AniImageLoadSuccess
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.ifThen
@@ -84,13 +81,12 @@ internal fun SubjectDetailsHeader(
     collectionAction: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
-    onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit = {},
+    onCoverImageSuccess: (AniImageLoadSuccess) -> Unit = {},
     modifier: Modifier = Modifier,
     onClickCover: (() -> Unit)? = null,
 ) {
     if (currentWindowAdaptiveInfo1().isWidthAtLeastMedium) {
         SubjectDetailsHeaderWide(
-            info?.subjectId,
             coverImageUrl = coverImageUrl,
             title = {
                 Text(
@@ -116,7 +112,6 @@ internal fun SubjectDetailsHeader(
         )
     } else {
         SubjectDetailsHeaderCompact(
-            info?.subjectId,
             coverImageUrl = coverImageUrl,
             title = { Text(info?.displayName ?: "") },
             subtitle = { Text(info?.name ?: "") },
@@ -136,7 +131,6 @@ internal fun SubjectDetailsHeader(
 // 适合手机, 窄
 @Composable
 fun SubjectDetailsHeaderCompact(
-    subjectId: Int?,
     coverImageUrl: String?,
     title: @Composable () -> Unit,
     subtitle: @Composable () -> Unit,
@@ -145,7 +139,7 @@ fun SubjectDetailsHeaderCompact(
     collectionAction: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
-    onSuccess: (AsyncImagePainter.State.Success) -> Unit,
+    onSuccess: (AniImageLoadSuccess) -> Unit,
     modifier: Modifier = Modifier,
     onClickCover: (() -> Unit)? = null,
 ) {
@@ -160,17 +154,13 @@ fun SubjectDetailsHeaderCompact(
                     .testTag(SUBJECT_COVER_IMAGE_TEST_TAG),
             ) {
                 AsyncImage(
-                    ImageRequest.Builder(LocalPlatformContext.current)
-                        .data(coverImageUrl)
-                        .memoryCacheKey(subjectId?.toString())
-                        .placeholderMemoryCacheKey(subjectId?.toString())
-                        .crossfade(300)
-                        .build(),
-                    null,
-                    Modifier
+                    model = coverImageUrl,
+                    contentDescription = null,
+                    modifier = Modifier
                         .width(imageWidth)
                         .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
                     contentScale = ContentScale.Crop,
+                    crossfadeDurationMillis = 300,
                     onSuccess = onSuccess,
                 )
             }
@@ -231,7 +221,6 @@ fun SubjectDetailsHeaderCompact(
 
 @Composable
 fun SubjectDetailsHeaderWide(
-    subjectId: Int?,
     coverImageUrl: String?,
     title: @Composable () -> Unit,
     seasonTags: @Composable RowScope.() -> Unit,
@@ -239,7 +228,7 @@ fun SubjectDetailsHeaderWide(
     collectionAction: @Composable () -> Unit,
     selectEpisodeButton: @Composable BoxScope.() -> Unit,
     rating: @Composable () -> Unit,
-    onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit,
+    onCoverImageSuccess: (AniImageLoadSuccess) -> Unit,
     modifier: Modifier = Modifier,
     onClickCover: (() -> Unit)? = null,
 ) {
@@ -257,17 +246,13 @@ fun SubjectDetailsHeaderWide(
                     .testTag(SUBJECT_COVER_IMAGE_TEST_TAG),
             ) {
                 AsyncImage(
-                    ImageRequest.Builder(LocalPlatformContext.current)
-                        .data(coverImageUrl)
-                        .memoryCacheKey(subjectId?.toString())
-                        .placeholderMemoryCacheKey(subjectId?.toString())
-                        .crossfade(300)
-                        .build(),
-                    null,
-                    Modifier
+                    model = coverImageUrl,
+                    contentDescription = null,
+                    modifier = Modifier
                         .width(imageWidth)
                         .height(imageWidth / COVER_WIDTH_TO_HEIGHT_RATIO),
                     contentScale = ContentScale.Crop,
+                    crossfadeDurationMillis = 300,
                     onSuccess = onCoverImageSuccess,
                 )
             }

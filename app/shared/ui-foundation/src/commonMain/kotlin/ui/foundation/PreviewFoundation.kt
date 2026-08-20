@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -20,9 +21,6 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import coil3.ImageLoader
-import coil3.compose.LocalPlatformContext
-import coil3.serviceLoaderEnabled
 import me.him188.ani.app.data.models.preference.DarkMode
 import me.him188.ani.app.data.models.preference.ThemeSettings
 import me.him188.ani.app.navigation.AniNavigator
@@ -59,10 +57,6 @@ inline fun ProvideCompositionLocalsForPreview(
 ) {
     val aniNavigator = remember { AniNavigator() }
     val previewImage = imageResource(Res.drawable.a)
-    val coilContext = LocalPlatformContext.current
-    val coilImage by lazy(LazyThreadSafetyMode.NONE) {
-        previewImage.asCoilImage()
-    }
     val viewModelStoreOwner = remember {
         object : ViewModelStoreOwner {
             override val viewModelStore: ViewModelStore = ViewModelStore()
@@ -77,14 +71,7 @@ inline fun ProvideCompositionLocalsForPreview(
         LocalIsPreviewing provides true,
         LocalNavigator providesDefault aniNavigator,
         LocalToaster providesDefault NoOpToaster,
-        LocalImageLoader providesDefault remember {
-            ImageLoader.Builder(coilContext)
-                .placeholder { coilImage }
-                .error { coilImage }
-                .fallback { coilImage }
-                .serviceLoaderEnabled(false)
-                .build()
-        },
+        LocalSketch provides rememberAniPreviewSketch(BitmapPainter(previewImage)),
         LocalImageViewerHandler providesDefault rememberImageViewerHandler(),
         LocalTimeFormatter providesDefault remember { TimeFormatter() },
         LocalOnBackPressedDispatcherOwner provides remember {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -57,9 +57,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.LocalPlatformContext
-import coil3.request.ImageRequest
-import coil3.request.crossfade
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ClickableText
@@ -370,16 +367,10 @@ object RichTextDefaults {
         modifier: Modifier = Modifier,
         onClick: () -> Unit
     ) {
-        val context = LocalPlatformContext.current
         var state by rememberSaveable { mutableIntStateOf(0) } // 0: loading, 1: success, 2: failed
 
         AsyncImage(
-            model = remember(element.imageUrl, context) {
-                ImageRequest.Builder(context)
-                    .data(element.imageUrl)
-                    .crossfade(false)
-                    .build()
-            },
+            model = element.imageUrl,
             contentDescription = null,
             modifier = modifier
                 .padding(4.dp)
@@ -391,6 +382,7 @@ object RichTextDefaults {
                 .clip(RoundedCornerShape(8.dp))
                 .then(Modifier.clickable { onClick() }),
             contentScale = ContentScale.Fit,
+            crossfade = false,
             onSuccess = {
                 if (state != 1) state = 1
             },

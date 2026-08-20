@@ -63,7 +63,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItemsWithLifecycle
-import coil3.compose.AsyncImagePainter
 import com.kmpalette.color
 import com.kmpalette.palette.graphics.Palette
 import kotlinx.collections.immutable.toImmutableList
@@ -72,6 +71,7 @@ import me.him188.ani.app.data.models.subject.SubjectInfo
 import me.him188.ani.app.data.models.subject.Tag
 import me.him188.ani.app.tools.ColorUtils
 import me.him188.ani.app.ui.external.placeholder.placeholder
+import me.him188.ani.app.ui.foundation.AniImageLoadSuccess
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.ifThen
@@ -136,7 +136,7 @@ internal fun SubjectDetailsMultiColumnPage(
     backgroundPalette: Palette? = null,
     navigationIcon: @Composable () -> Unit = {},
     onClickOpenExternal: () -> Unit = {},
-    onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit = {},
+    onCoverImageSuccess: (AniImageLoadSuccess) -> Unit = {},
     onClickCover: (() -> Unit)? = null,
     onClickPersonImage: ((url: String) -> Unit)? = null,
 ) {
@@ -477,7 +477,7 @@ private fun SubjectSidebar(
     onClickTag: (Tag) -> Unit,
     onClickLogin: () -> Unit,
     itemSpacing: Dp,
-    onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit,
+    onCoverImageSuccess: (AniImageLoadSuccess) -> Unit,
     modifier: Modifier = Modifier,
     onClickCover: (() -> Unit)? = null,
 ) {

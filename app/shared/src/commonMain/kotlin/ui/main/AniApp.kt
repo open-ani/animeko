@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -26,8 +25,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil3.ImageLoader
-import coil3.compose.LocalPlatformContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -51,16 +48,16 @@ import me.him188.ani.app.navigation.NavRoutes
 import me.him188.ani.app.tools.LocalTimeFormatter
 import me.him188.ani.app.tools.TimeFormatter
 import me.him188.ani.app.ui.foundation.AbstractViewModel
-import me.him188.ani.app.ui.foundation.LocalImageLoader
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.LocalPlatformFontFamily
-import me.him188.ani.app.ui.foundation.createDefaultImageLoader
+import me.him188.ani.app.ui.foundation.LocalSketch
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.input.ActiveInputSourceState
 import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
 import me.him188.ani.app.ui.foundation.input.trackActiveInputSource
 import me.him188.ani.app.ui.foundation.navigation.LocalBackDispatcher
 import me.him188.ani.app.ui.foundation.navigation.onBackNavigationInput
+import me.him188.ani.app.ui.foundation.rememberAniSketchInstance
 import me.him188.ani.app.ui.foundation.rememberPlatformFontFamily
 import me.him188.ani.app.ui.foundation.theme.AniTheme
 import me.him188.ani.app.ui.foundation.theme.LocalThemeSettings
@@ -145,37 +142,6 @@ class AniAppViewModel : AbstractViewModel(), KoinComponent {
         userRepository.unbindBangumi()
     }
 
-//    /**
-//     * 跟随代理设置等配置变化而变化的 [HttpClient] 实例. 用于 coil ImageLoader.
-//     */
-//    @OptIn(UnsafeWrapperHttpClientApi::class)
-//    val imageLoaderClientFlow: StateFlow<HttpClient> = MutableStateFlow<HttpClient?>(null).let { flow ->
-//        // The flow was initialized with `null`, but we will set it to a non-null value immediately, before exposing it to the field.
-//
-//        val scopedClient = httpClientProvider.get()
-//        var currentTicket = scopedClient.borrow()
-//        flow.value = currentTicket.client
-//        // Now the flow is not null.
-//
-//        launchInBackground {
-//            httpClientProvider.configurationFlow.collect {
-//                // We are not using collectLatest, as this replacement operation must be atomic, i.e. not interruptible.
-//
-//                // Save the previous ticket to return it later
-//                val previousTicket = currentTicket
-//
-//                // Update a new client first
-//                currentTicket = scopedClient.borrow()
-//                flow.value = currentTicket.client
-//
-//                // Now the collector of this flow won't see the old client. We are safe to release it.
-//                scopedClient.returnClient(previousTicket)
-//            }
-//        }
-//
-//        @Suppress("UNCHECKED_CAST")
-//        flow as StateFlow<HttpClient> // wipes out nullability. It's safe because we know it's never null since now.
-//    }
 }
 
 @Composable
@@ -183,25 +149,12 @@ fun AniApp(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-//    val proxy by remember {
-//        KoinPlatform.getKoin().get<SettingsRepository>().proxySettings.flow.map {
-//            it.default.config
-//        }
-//    }.collectAsStateWithLifecycle(null)
-//    val coilContext = LocalPlatformContext.current
-//    val imageLoader by remember(coilContext) {
-//        derivedStateOf {
-//            getDefaultImageLoader(coilContext, proxyConfig = proxy)
-//        }
-//    }
-
     val viewModel = viewModel { AniAppViewModel() }
     // 主题读好再进入 APP, 防止黑白背景闪烁
     val appState = viewModel.appState.collectAsStateWithLifecycle(null).value ?: return
 
     CompositionLocalProvider(
-//        LocalImageLoader provides imageLoader,
-        LocalImageLoader provides rememberImageLoader(appState.imageLoaderClient),
+        LocalSketch provides rememberAniSketchInstance(appState.imageLoaderClient),
         LocalTimeFormatter provides remember { TimeFormatter() },
         LocalThemeSettings provides appState.themeSettings,
         LocalPlatformFontFamily provides rememberPlatformFontFamily(appState.platformFont),
@@ -238,14 +191,4 @@ fun AniApp(
             }
         }
     }
-}
-
-@Composable
-private fun rememberImageLoader(client: ScopedHttpClient): ImageLoader {
-    val coilContext = LocalPlatformContext.current
-    return remember(coilContext, client) {
-        derivedStateOf {
-            createDefaultImageLoader(coilContext, client)
-        }
-    }.value
 }
