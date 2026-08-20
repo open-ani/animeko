@@ -650,6 +650,9 @@
     <string name="settings_media_torrent_speed_format">%1$s MB/s</string>
     <string name="settings_media_torrent_limit_upload_on_metered">计费网络限制上传</string>
     <string name="settings_media_torrent_limit_upload_on_metered_description">在计费网络环境下限制上传速度为 1 KB/s</string>
+    <string name="settings_media_torrent_extra_trackers">额外 Tracker</string>
+    <string name="settings_media_torrent_extra_trackers_description">在 BT 下载开始前额外添加的 tracker 服务器，帮助发现更多用户</string>
+    <string name="settings_media_torrent_extra_trackers_dialog_description">每行一个 tracker 地址，例如 udp://tracker.example.com:6969/announce。将在 BT 下载开始前与内置 tracker 一起添加。修改仅对之后开始的下载生效。</string>
     <string name="settings_media_torrent_peer_filter">Peer 过滤和屏蔽设置</string>
     <string name="settings_media_torrent_peer_filter_description">在下载或上传缓存的番剧时不与黑名单或命中过滤规则的客户端连接</string>
 

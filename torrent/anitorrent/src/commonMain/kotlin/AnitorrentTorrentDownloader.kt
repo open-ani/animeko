@@ -86,9 +86,16 @@ abstract class AnitorrentTorrentDownloader<THandle : TorrentHandle, TAddInfo : T
     private val httpFileDownloader: HttpFileDownloader,
     parentCoroutineContext: CoroutineContext,
 ) : TorrentDownloader, SynchronizedObject() {
-    protected abstract val native: TorrentManagerSession<THandle, TAddInfo> // must hold reference. 
+    protected abstract val native: TorrentManagerSession<THandle, TAddInfo> // must hold reference.
     protected var filter: PeerFilter? = null
         private set
+
+    /**
+     * 用户设置的额外 tracker, 在 [startDownload] 时与内置 tracker 一起添加.
+     * 只影响之后开始的下载, 不影响已经开始的.
+     */
+    @Volatile
+    var extraTrackers: List<String> = emptyList()
 
     companion object {
         private const val FAST_RESUME_FILENAME = "fastresume"
@@ -335,8 +342,8 @@ abstract class AnitorrentTorrentDownloader<THandle : TorrentHandle, TAddInfo : T
             parentCoroutineContext = parentCoroutineContext,
         ).also {
             openSessions.value += data.data.contentHashCode().toString() to it // 放进去之后才能处理 alert
-            val trackers = trackers.split(", ")
-            logger.info { "[${it.handleId}] AnitorrentDownloadSession created, adding ${trackers.size} trackers" }
+            val trackers = (builtinTrackers + extraTrackers).distinct()
+            logger.info { "[${it.handleId}] AnitorrentDownloadSession created, adding ${trackers.size} trackers (${extraTrackers.size} extra)" }
             for (tracker in trackers) {
                 handle.addTracker(tracker, 0, 0)
             }
@@ -363,6 +370,7 @@ abstract class AnitorrentTorrentDownloader<THandle : TorrentHandle, TAddInfo : T
     }
 
     fun applyConfig(config: TorrentDownloaderConfig) {
+        extraTrackers = config.extraTrackers
         native.applyConfig(config)
     }
 
@@ -375,7 +383,7 @@ abstract class AnitorrentTorrentDownloader<THandle : TorrentHandle, TAddInfo : T
 
 typealias HandleId = Long
 
-private val trackers by lazy {
+private val builtinTrackers by lazy {
     """
 udp://tracker1.itzmx.com:8080/announce
 udp://moonburrow.club:6969/announce
@@ -573,5 +581,5 @@ udp://ttk2.nbaonlineservice.com:6969/announce
 udp://z.mercax.com:53/announce
 
 wss://tracker.openwebtorrent.com:443/announce
-                    """.trimIndent().lineSequence().filter { it.isNotBlank() }.joinToString()
+                    """.trimIndent().lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toList()
 }

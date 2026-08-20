@@ -610,6 +610,9 @@
     <string name="settings_media_torrent_speed_format">%1$s MB/s</string>
     <string name="settings_media_torrent_limit_upload_on_metered">Limit Upload on Metered Network</string>
     <string name="settings_media_torrent_limit_upload_on_metered_description">Limit upload speed to 1 KB/s on metered networks</string>
+    <string name="settings_media_torrent_extra_trackers">Extra Trackers</string>
+    <string name="settings_media_torrent_extra_trackers_description">Extra tracker servers added before each BT download starts, helping discover more peers</string>
+    <string name="settings_media_torrent_extra_trackers_dialog_description">One tracker URL per line, e.g. udp://tracker.example.com:6969/announce. They will be added in addition to the built-in trackers before each BT download starts. Changes only affect downloads started afterwards.</string>
     <string name="settings_media_torrent_peer_filter">Peer Filtering and Blocking Settings</string>
     <string name="settings_media_torrent_peer_filter_description">Do not connect with blacklisted clients or those that match filter rules when downloading or uploading cached anime</string>
 
