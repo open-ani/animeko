@@ -340,6 +340,10 @@ private fun SubjectDetailsPage(
         )
     }
     val onClickCommentImage = { url: String -> imageViewer.viewImage(url) }
+    // 封面/角色/制作人员图片点击放大 (与评论图片共用页面级查看器)
+    val onClickPersonImage = { url: String -> imageViewer.viewImage(url) }
+    val coverImageUrl = state.info?.imageLarge?.takeIf { it.isNotBlank() }
+    val onClickCover: (() -> Unit)? = coverImageUrl?.let { url -> { imageViewer.viewImage(url) } }
     // Bangumi 源评价的 "在 Bangumi 打开" 菜单项
     val onOpenCommentOriginal = { _: UIComment ->
         browserNavigator.openUri("https://bgm.tv/subject/${presentation.subjectId}")
@@ -410,6 +414,8 @@ private fun SubjectDetailsPage(
                     navigationIcon = navigationIcon,
                     onClickOpenExternal = onClickOpenExternal,
                     onCoverImageSuccess = onCoverImageSuccess,
+                    onClickCover = onClickCover,
+                    onClickPersonImage = onClickPersonImage,
                 )
             }
             return@MaterialThemeFromPaletteAndImage
@@ -457,6 +463,7 @@ private fun SubjectDetailsPage(
             navigationIcon = navigationIcon,
             onCoverImageSuccess = onCoverImageSuccess,
             onClickOpenExternal = onClickOpenExternal,
+            onClickCover = onClickCover,
             floatingActionButton = {
                 when (SubjectDetailsTab.entries.getOrNull(pagerState.currentPage)) {
                     SubjectDetailsTab.COMMENTS -> {
@@ -500,6 +507,7 @@ private fun SubjectDetailsPage(
                             .nestedScrollWorkaround(state.detailsTabLazyListState),
                         listState = state.detailsTabLazyListState,
                         contentPadding = tabContentPadding,
+                        onClickPersonImage = onClickPersonImage,
                     )
                 },
                 commentsTab = { tabContentPadding ->
@@ -693,6 +701,7 @@ fun SubjectDetailsSingleColumnPage(
     navigationIcon: @Composable () -> Unit = {},
     onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit = {},
     onClickOpenExternal: () -> Unit = {},
+    onClickCover: (() -> Unit)? = null,
     floatingActionButton: @Composable () -> Unit = {},
     tabRow: (@Composable (isOverlay: Boolean, visible: Boolean) -> Unit)? = null,
     nestedScrollableColumnState: NestedScrollableColumnState = rememberNestedScrollableColumnState(),
@@ -794,6 +803,7 @@ fun SubjectDetailsSingleColumnPage(
                                             .ifThen(!showTopBar) { padding(top = windowSizeClass.paneVerticalPadding) }
                                             .padding(horizontal = windowSizeClass.paneHorizontalPadding),
                                         onCoverImageSuccess = onCoverImageSuccess,
+                                        onClickCover = onClickCover,
                                     )
                                 }
                             }

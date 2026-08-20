@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.annotation.ExperimentalCoilApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,6 +49,9 @@ interface ImageViewerHandler {
 val LocalImageViewerHandler: ProvidableCompositionLocal<ImageViewerHandler> = compositionLocalOf {
     error("no ImageViewerHandler provided")
 }
+
+/** [ImageViewer] 缩放层的 test tag, 供 UI 测试断言查看器已打开. */
+const val IMAGE_VIEWER_TEST_TAG = "ImageViewer"
 
 @Composable
 fun rememberImageViewerHandler(): ImageViewerHandler {
@@ -109,7 +113,7 @@ fun ImageViewer(
                 },
             ),
             state = zoomableState,
-            modifier = Modifier.background(Color.Black),
+            modifier = Modifier.testTag(IMAGE_VIEWER_TEST_TAG).background(Color.Black),
             detectGesture = ZoomableGestureScope(
                 onDoubleTap = { offset -> scope.launch { zoomableState.toggleScale(offset) } },
                 onTap = { _ -> onClose() },
