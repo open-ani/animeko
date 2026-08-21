@@ -97,7 +97,6 @@ class EpisodePlayerTestSuite(
                         SelectorMediaSourceEpisodeCacheRepository(
                             NoopWebSearchSessionCacheDao,
                             userTtlFlow = flowOf(Duration.ZERO),
-                            refreshThresholdFlow = flowOf(Duration.ZERO),
                         )
                     }
                 },

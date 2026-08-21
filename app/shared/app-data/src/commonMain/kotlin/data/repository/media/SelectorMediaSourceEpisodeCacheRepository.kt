@@ -12,7 +12,6 @@ package me.him188.ani.app.data.repository.media
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheDao
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheEntity
 import me.him188.ani.app.data.repository.Repository
@@ -46,16 +45,9 @@ class SelectorMediaSourceEpisodeCacheRepository(
      * 用户设置的缓存有效期, 通常来自 `MediaSelectorSettings.webSearchCacheTtl`.
      */
     private val userTtlFlow: Flow<Duration>,
-    /**
-     * 后台刷新缓存的阈值, 通常来自 `MediaSelectorSettings.refreshSearchCacheThreshold`.
-     * @see shouldRefreshCache
-     */
-    private val refreshThresholdFlow: Flow<Duration>,
 ) : Repository() {
 
     private suspend fun userTtl(): Duration = userTtlFlow.first()
-
-    private suspend fun refreshThreshold(): Duration = refreshThresholdFlow.first()
 
     suspend fun addCache(
         requesterSubjectId: Int?,
@@ -117,8 +109,7 @@ class SelectorMediaSourceEpisodeCacheRepository(
         subjectName: String,
     ): List<WebSearchCache> =
         withContext(defaultDispatcher) {
-            val now = currentTimeMillis()
-            dao.filterBySubjectName(requesterSubjectId, mediaSourceId, subjectName, now)
+            dao.filterBySubjectName(requesterSubjectId, mediaSourceId, subjectName, currentTimeMillis())
                 .groupBy { it.subjectUrl } // preserves encounter (insertion) order
                 .map { (_, rows) ->
                     val first = rows.first()
@@ -131,36 +122,14 @@ class SelectorMediaSourceEpisodeCacheRepository(
                             origin = null,
                         ),
                         webEpisodeInfos = rows.map { it.toWebSearchEpisodeInfo() },
-                        minDurationMillisToExpired = rows.minOf { it.expiresAt - now },
                     )
                 }
         }
-
-    /**
-     * 缓存命中但还剩 [durationToExpired] 就要过期时, 是否应当在后台重新搜索以刷新缓存.
-     *
-     * 阈值不小于实际生效的 TTL (数据源配置与用户设置的较小者) 时视为关闭,
-     * 否则每次命中都会触发刷新. 阈值为 0 时同样关闭.
-     *
-     * @see MediaSelectorSettings.refreshSearchCacheThreshold
-     */
-    suspend fun shouldRefreshCache(
-        durationToExpired: Duration,
-        sourceCacheTtl: Duration,
-    ): Boolean {
-        val refreshThreshold = refreshThreshold()
-        if (refreshThreshold <= Duration.ZERO) return false
-
-        val effectiveTtl = minOf(sourceCacheTtl, userTtl())
-        if (effectiveTtl <= refreshThreshold) return false
-        return durationToExpired < refreshThreshold
-    }
 }
 
 data class WebSearchCache(
     val webSubjectInfo: WebSearchSubjectInfo,
     val webEpisodeInfos: List<WebSearchEpisodeInfo>,
-    val minDurationMillisToExpired: Long,
 )
 
 private fun WebSearchEpisodeInfo.toEntity(

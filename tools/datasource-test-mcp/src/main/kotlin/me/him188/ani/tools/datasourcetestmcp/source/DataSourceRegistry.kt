@@ -9,15 +9,13 @@
 
 package me.him188.ani.tools.datasourcetestmcp.source
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheDao
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheEntity
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
 import me.him188.ani.app.domain.mediasource.rss.RssMediaSource
 import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
 import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
+import me.him188.ani.datasources.api.source.FactoryId
 import me.him188.ani.datasources.api.source.MediaSource
 import me.him188.ani.datasources.api.source.MediaSourceConfig
 import me.him188.ani.datasources.api.source.MediaSourceFactory
@@ -27,6 +25,7 @@ import me.him188.ani.datasources.jellyfin.EmbyMediaSource
 import me.him188.ani.datasources.jellyfin.JellyfinMediaSource
 import me.him188.ani.datasources.mikan.MikanCNMediaSource
 import me.him188.ani.datasources.mikan.MikanMediaSource
+import kotlinx.coroutines.flow.flowOf
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import java.util.ServiceLoader
 import kotlin.time.Duration
@@ -42,7 +41,6 @@ class DataSourceRegistry(
     private val selectorRepository = SelectorMediaSourceEpisodeCacheRepository(
         NoopWebSearchSessionCacheDao(),
         userTtlFlow = flowOf(Duration.INFINITE),
-        refreshThresholdFlow = flowOf(Duration.ZERO),
     )
 
     private val factories: Map<String, MediaSourceFactory> = buildMap {
@@ -54,13 +52,7 @@ class DataSourceRegistry(
         put(EmbyMediaSource.ID, EmbyMediaSource.Factory())
         put(IkarosMediaSource.ID, IkarosMediaSource.Factory())
         put(RssMediaSource.FactoryId.value, RssMediaSource.Factory())
-        put(
-            SelectorMediaSource.FactoryId.value,
-            SelectorMediaSource.Factory(
-                selectorRepository, webSessionManager,
-                CoroutineScope(SupervisorJob()),
-            ),
-        )
+        put(SelectorMediaSource.FactoryId.value, SelectorMediaSource.Factory(selectorRepository, webSessionManager))
     }
 
     fun listToolsDefaultFactories(): List<String> {

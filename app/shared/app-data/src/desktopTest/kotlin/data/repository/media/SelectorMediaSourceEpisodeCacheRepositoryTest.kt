@@ -20,7 +20,6 @@ import me.him188.ani.datasources.api.EpisodeSort
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
@@ -29,7 +28,7 @@ import kotlin.time.Duration.Companion.minutes
 /**
  * [SelectorMediaSourceEpisodeCacheRepository] 的行为测试, 使用真实的内存 Room 库.
  *
- * 覆盖: TTL 取小值与禁用、过期不可读与清理、按条目/数据源隔离与清除、同查询多页面共存、页面整体替换、后台刷新阈值判定.
+ * 覆盖: TTL 取小值与禁用、过期不可读与清理、按条目/数据源隔离与清除、同查询多页面共存、页面整体替换.
  */
 class SelectorMediaSourceEpisodeCacheRepositoryTest {
     private val mediaSourceId = "test-source"
@@ -37,7 +36,6 @@ class SelectorMediaSourceEpisodeCacheRepositoryTest {
 
     private fun runRepositoryTest(
         userTtl: Duration = 1.hours,
-        refreshThreshold: Duration = Duration.ZERO,
         block: suspend (AniDatabase, SelectorMediaSourceEpisodeCacheRepository) -> Unit,
     ) = runBlocking {
         val database = createTestAniDatabase()
@@ -47,7 +45,6 @@ class SelectorMediaSourceEpisodeCacheRepositoryTest {
                 SelectorMediaSourceEpisodeCacheRepository(
                     database.webSearchSessionCacheDao(),
                     userTtlFlow = flowOf(userTtl),
-                    refreshThresholdFlow = flowOf(refreshThreshold),
                 ),
             )
         } finally {
@@ -148,16 +145,10 @@ class SelectorMediaSourceEpisodeCacheRepositoryTest {
         val database = createTestAniDatabase()
         try {
             val dao = database.webSearchSessionCacheDao()
-            SelectorMediaSourceEpisodeCacheRepository(
-                dao, flowOf(1.hours),
-                refreshThresholdFlow = flowOf(Duration.ZERO),
-            )
+            SelectorMediaSourceEpisodeCacheRepository(dao, flowOf(1.hours))
                 .addCache(1, mediaSourceId, subjectName, subjectInfo(), listOf(episode(1)), 1.hours)
 
-            val disabled = SelectorMediaSourceEpisodeCacheRepository(
-                dao, flowOf(Duration.ZERO),
-                refreshThresholdFlow = flowOf(Duration.ZERO),
-            )
+            val disabled = SelectorMediaSourceEpisodeCacheRepository(dao, flowOf(Duration.ZERO))
             disabled.addCache(1, mediaSourceId, subjectName, subjectInfo(), listOf(episode(1)), 1.hours)
 
             assertTrue(disabled.getCache(1, mediaSourceId, subjectName).isEmpty())
@@ -296,52 +287,4 @@ class SelectorMediaSourceEpisodeCacheRepositoryTest {
             repository.getCache(1, mediaSourceId, subjectName).single().webEpisodeInfos.single().channel,
         )
     }
-
-    @Test
-    fun `getCache 返回的剩余有效期与写入 TTL 一致`() = runRepositoryTest { _, repository ->
-        repository.addCache(
-            1, mediaSourceId, subjectName, subjectInfo(), listOf(episode(1)),
-            sourceCacheTtl = 30.minutes,
-        )
-
-        val remaining = repository.getCache(1, mediaSourceId, subjectName).single().minDurationMillisToExpired
-        assertTrue(remaining <= 30.minutes.inWholeMilliseconds)
-        assertTrue(remaining > 29.minutes.inWholeMilliseconds)
-    }
-
-    @Test
-    fun `shouldRefreshCache - 剩余有效期低于阈值时刷新`() =
-        runRepositoryTest(userTtl = 1.hours, refreshThreshold = 30.minutes) { _, repository ->
-            assertTrue(repository.shouldRefreshCache(10.minutes, sourceCacheTtl = 2.hours))
-        }
-
-    @Test
-    fun `shouldRefreshCache - 剩余有效期高于阈值时不刷新`() =
-        runRepositoryTest(userTtl = 1.hours, refreshThreshold = 30.minutes) { _, repository ->
-            assertFalse(repository.shouldRefreshCache(50.minutes, sourceCacheTtl = 2.hours))
-        }
-
-    @Test
-    fun `shouldRefreshCache - 阈值为 0 时关闭, 即使缓存已经过期`() =
-        runRepositoryTest(userTtl = 1.hours, refreshThreshold = Duration.ZERO) { _, repository ->
-            assertFalse(repository.shouldRefreshCache(10.minutes, sourceCacheTtl = 2.hours))
-            // 行在读取与判断之间恰好过期时剩余时间为负, 也不能触发刷新
-            assertFalse(repository.shouldRefreshCache((-1).minutes, sourceCacheTtl = 2.hours))
-        }
-
-    @Test
-    fun `shouldRefreshCache - 生效 TTL 不大于阈值时关闭`() =
-        runRepositoryTest(userTtl = 1.hours, refreshThreshold = 30.minutes) { _, repository ->
-            // 生效 TTL = min(10min, 1h) = 10min <= 30min, 每次命中都会低于阈值, 视为关闭
-            assertFalse(repository.shouldRefreshCache(5.minutes, sourceCacheTtl = 10.minutes))
-            // 相等时同样关闭
-            assertFalse(repository.shouldRefreshCache(5.minutes, sourceCacheTtl = 30.minutes))
-        }
-
-    @Test
-    fun `shouldRefreshCache - 生效 TTL 取用户设置与数据源配置的较小者`() =
-        runRepositoryTest(userTtl = 20.minutes, refreshThreshold = 30.minutes) { _, repository ->
-            // 数据源配置 2h 很大, 但用户设置 20min <= 30min, 视为关闭
-            assertFalse(repository.shouldRefreshCache(5.minutes, sourceCacheTtl = 2.hours))
-        }
 }

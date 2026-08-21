@@ -59,7 +59,6 @@ import me.him188.ani.app.data.repository.media.MediaSourceSubscriptionRepository
 import me.him188.ani.app.data.repository.media.MikanIndexCacheRepository
 import me.him188.ani.app.data.repository.media.MikanIndexCacheRepositoryImpl
 import me.him188.ani.app.data.repository.media.SelectorMediaSourceEpisodeCacheRepository
-import me.him188.ani.app.data.repository.person.PersonDetailsRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepository
 import me.him188.ani.app.data.repository.player.DanmakuRegexFilterRepositoryImpl
 import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepository
@@ -67,13 +66,14 @@ import me.him188.ani.app.data.repository.player.EpisodePlayHistoryRepositoryImpl
 import me.him188.ani.app.data.repository.player.EpisodeScreenshotRepository
 import me.him188.ani.app.data.repository.player.PlaybackHistorySyncer
 import me.him188.ani.app.data.repository.player.WhatslinkEpisodeScreenshotRepository
+import me.him188.ani.app.data.repository.person.PersonDetailsRepository
 import me.him188.ani.app.data.repository.repositoryModules
 import me.him188.ani.app.data.repository.subject.DefaultSubjectRelationsRepository
 import me.him188.ani.app.data.repository.subject.FollowedSubjectsRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepository
 import me.him188.ani.app.data.repository.subject.SubjectCollectionRepositoryImpl
-import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchCompletionRepository
+import me.him188.ani.app.data.repository.subject.SubjectRelationsRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchHistoryRepository
 import me.him188.ani.app.data.repository.subject.SubjectSearchRepository
 import me.him188.ani.app.data.repository.torrent.peer.PeerFilterSubscriptionRepository
@@ -85,6 +85,7 @@ import me.him188.ani.app.domain.danmaku.DanmakuRepository
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeature
 import me.him188.ani.app.domain.foundation.ConvertSendCountExceedExceptionFeatureHandler
 import me.him188.ani.app.domain.foundation.CookieJarFeatureHandler
+import me.him188.ani.app.domain.foundation.WebSourceIdentityFeatureHandler
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider
 import me.him188.ani.app.domain.foundation.DefaultHttpClientProvider.HoldingInstanceMatrix
 import me.him188.ani.app.domain.foundation.DefaultVersionExpiryService
@@ -102,9 +103,17 @@ import me.him188.ani.app.domain.foundation.UserAgentFeature
 import me.him188.ani.app.domain.foundation.UserAgentFeatureHandler
 import me.him188.ani.app.domain.foundation.VersionExpiryFeatureHandler
 import me.him188.ani.app.domain.foundation.VersionExpiryService
-import me.him188.ani.app.domain.foundation.WebSourceIdentityFeatureHandler
 import me.him188.ani.app.domain.foundation.get
 import me.him188.ani.app.domain.foundation.withValue
+import me.him188.ani.app.domain.mediasource.web.PageEvaluator
+import me.him188.ani.app.domain.mediasource.web.captcha.BrowserImageCaptchaSolver
+import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
+import me.him188.ani.app.domain.mediasource.web.captcha.GirigiriSearchRoute
+import me.him188.ani.app.domain.mediasource.web.captcha.ImageCaptchaRecognizer
+import me.him188.ani.app.domain.mediasource.web.captcha.MacCmsImageCaptchaSolver
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceCookieJar
+import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceIdentityRegistry
 import me.him188.ani.app.domain.media.cache.MediaCacheManager
 import me.him188.ani.app.domain.media.cache.MediaCacheManagerImpl
 import me.him188.ani.app.domain.media.cache.engine.HttpMediaCacheEngine
@@ -119,15 +128,6 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceManagerImpl
 import me.him188.ani.app.domain.mediasource.codec.MediaSourceCodecManager
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionRequesterImpl
 import me.him188.ani.app.domain.mediasource.subscription.MediaSourceSubscriptionUpdater
-import me.him188.ani.app.domain.mediasource.web.PageEvaluator
-import me.him188.ani.app.domain.mediasource.web.captcha.BrowserImageCaptchaSolver
-import me.him188.ani.app.domain.mediasource.web.captcha.CaptchaBrowserFactory
-import me.him188.ani.app.domain.mediasource.web.captcha.GirigiriSearchRoute
-import me.him188.ani.app.domain.mediasource.web.captcha.ImageCaptchaRecognizer
-import me.him188.ani.app.domain.mediasource.web.captcha.MacCmsImageCaptchaSolver
-import me.him188.ani.app.domain.mediasource.web.captcha.WebSessionManager
-import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceCookieJar
-import me.him188.ani.app.domain.mediasource.web.captcha.WebSourceIdentityRegistry
 import me.him188.ani.app.domain.session.AniSessionRefresher
 import me.him188.ani.app.domain.session.SessionManager
 import me.him188.ani.app.domain.session.SessionStateProvider
@@ -135,10 +135,10 @@ import me.him188.ani.app.domain.settings.ProxyProvider
 import me.him188.ani.app.domain.settings.SettingsBasedProxyProvider
 import me.him188.ani.app.domain.torrent.TorrentManager
 import me.him188.ani.app.domain.update.UpdateManager
-import me.him188.ani.app.domain.usecase.useCaseModules
 import me.him188.ani.app.domain.watchtogether.LocalPlaybackBridge
 import me.him188.ani.app.domain.watchtogether.PlaybackAutomationGate
 import me.him188.ani.app.domain.watchtogether.WatchTogetherManager
+import me.him188.ani.app.domain.usecase.useCaseModules
 import me.him188.ani.app.ui.subject.details.state.DefaultSubjectDetailsStateFactory
 import me.him188.ani.app.ui.subject.details.state.SubjectDetailsStateFactory
 import me.him188.ani.datasources.bangumi.BangumiClient
@@ -536,7 +536,6 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
             additionalSources = {
                 get<MediaCacheManager>().storagesIncludingDisabled.map { it.cacheMediaSource }
             },
-            coroutineScope,
         )
     }
     single<MediaSourceSubscriptionUpdater> {
@@ -553,7 +552,6 @@ private fun KoinApplication.otherModules(getContext: () -> Context, coroutineSco
         SelectorMediaSourceEpisodeCacheRepository(
             dao = database.webSearchSessionCacheDao(),
             userTtlFlow = get<SettingsRepository>().mediaSelectorSettings.flow.map { it.webSearchCacheTtl },
-            refreshThresholdFlow = get<SettingsRepository>().mediaSelectorSettings.flow.map { it.refreshSearchCacheThreshold },
         )
     }
 

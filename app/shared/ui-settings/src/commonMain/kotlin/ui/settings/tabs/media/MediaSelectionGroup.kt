@@ -44,7 +44,6 @@ import me.him188.ani.app.ui.lang.settings_media_cache_ttl_15min
 import me.him188.ani.app.ui.lang.settings_media_cache_ttl_1d
 import me.him188.ani.app.ui.lang.settings_media_cache_ttl_1h
 import me.him188.ani.app.ui.lang.settings_media_cache_ttl_30min
-import me.him188.ani.app.ui.lang.settings_media_cache_ttl_45min
 import me.him188.ani.app.ui.lang.settings_media_cache_ttl_5min
 import me.him188.ani.app.ui.lang.settings_media_cache_ttl_6h
 import me.him188.ani.app.ui.lang.settings_media_cache_ttl_none
@@ -66,9 +65,6 @@ import me.him188.ani.app.ui.lang.settings_media_prefer_source_type_description
 import me.him188.ani.app.ui.lang.settings_media_preference_description
 import me.him188.ani.app.ui.lang.settings_media_preference_override_notice
 import me.him188.ani.app.ui.lang.settings_media_preference_title
-import me.him188.ani.app.ui.lang.settings_media_refresh_search_cache_threshold
-import me.him188.ani.app.ui.lang.settings_media_refresh_search_cache_threshold_description
-import me.him188.ani.app.ui.lang.settings_media_refresh_search_cache_threshold_off
 import me.him188.ani.app.ui.lang.settings_media_resolution
 import me.him188.ani.app.ui.lang.settings_media_resolution_description
 import me.him188.ani.app.ui.lang.settings_media_show_disabled
@@ -422,41 +418,6 @@ internal fun SettingsScope.MediaSelectionGroup(
                         },
                         title = { Text(stringResource(Lang.settings_media_web_search_cache_ttl)) },
                         description = { Text(stringResource(Lang.settings_media_web_search_cache_ttl_description)) },
-                    )
-
-                    HorizontalDividerItem()
-
-                    DropdownItem(
-                        selected = { mediaSelectorSettings.refreshSearchCacheThreshold },
-                        values = {
-                            listOf(
-                                Duration.ZERO,
-                                15.minutes,
-                                30.minutes,
-                                45.minutes,
-                                1.hours,
-                            )
-                        },
-                        itemText = { duration ->
-                            Text(
-                                when (duration) {
-                                    Duration.ZERO -> stringResource(Lang.settings_media_refresh_search_cache_threshold_off)
-                                    15.minutes -> stringResource(Lang.settings_media_cache_ttl_15min)
-                                    30.minutes -> stringResource(Lang.settings_media_cache_ttl_30min)
-                                    45.minutes -> stringResource(Lang.settings_media_cache_ttl_45min)
-                                    1.hours -> stringResource(Lang.settings_media_cache_ttl_1h)
-                                    else -> duration.toString() // non-reachable
-                                },
-                            )
-                        },
-                        onSelect = {
-                            state.mediaSelectorSettingsState.update(
-                                mediaSelectorSettings.copy(refreshSearchCacheThreshold = it),
-                            )
-                        },
-                        title = { Text(stringResource(Lang.settings_media_refresh_search_cache_threshold)) },
-                        description = { Text(stringResource(Lang.settings_media_refresh_search_cache_threshold_description)) },
-                        enabled = mediaSelectorSettings.webSearchCacheTtl > Duration.ZERO,
                     )
 
                     HorizontalDividerItem()
