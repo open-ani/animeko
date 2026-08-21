@@ -48,8 +48,12 @@
     <string name="settings_media_cache_ttl_5min">5 minutes</string>
     <string name="settings_media_cache_ttl_15min">15 minutes</string>
     <string name="settings_media_cache_ttl_30min">30 minutes</string>
+    <string name="settings_media_cache_ttl_45min">45 minutes</string>
     <string name="settings_media_cache_ttl_1h">1 hour</string>
     <string name="settings_media_cache_ttl_1d">1 day</string>
+    <string name="settings_media_refresh_search_cache_threshold">Refresh Search Cache in Background</string>
+    <string name="settings_media_refresh_search_cache_threshold_description">When a cached web search result has less than this duration left before expiring, it is still used for instant playback while a background search refreshes the cache. Set this to roughly the length of one episode so continuous watching always hits the cache. Only effective when shorter than the cache duration</string>
+    <string name="settings_media_refresh_search_cache_threshold_off">Off</string>
     <string name="settings_media_show_disabled">Show Disabled Data Sources</string>
     <string name="settings_media_show_disabled_description">During playback, display disabled data sources from the "Data Source Management" settings in gray, rather than hiding them. This allows temporarily enabling disabled sources when preferred sources don\'t have resources</string>
     <string name="settings_media_image_captcha_auto_solve">Auto-solve image captchas</string>
