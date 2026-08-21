@@ -33,8 +33,8 @@ import me.him188.ani.datasources.api.topic.Resolution
 import me.him188.ani.datasources.api.topic.SubtitleLanguage
 import org.intellij.lang.annotations.Language
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 @Immutable
@@ -62,7 +62,7 @@ data class SelectorSearchConfig(
     /**
      * 播放 session 搜索缓存的有效期. 实际生效值为此值与用户设置中定义的值的较小者. 为 0 时禁用缓存.
      */
-    val searchCacheTtl: @Serializable(DurationAsMillisSerializer::class) Duration = 30.minutes,
+    val searchCacheTtl: @Serializable(DurationAsMillisSerializer::class) Duration = 2.hours,
     // Phase 2, for search result, select subjects
     val subjectFormatId: SelectorFormatId = SelectorSubjectFormatA.id,
     val selectorSubjectFormatA: SelectorSubjectFormatA.Config = SelectorSubjectFormatA.Config(),

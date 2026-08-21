@@ -12,6 +12,7 @@ package me.him188.ani.app.data.repository.media
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import me.him188.ani.app.data.models.preference.MediaSelectorSettings
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheDao
 import me.him188.ani.app.data.persistent.database.dao.WebSearchSessionCacheEntity
 import me.him188.ani.app.data.repository.Repository
@@ -45,9 +46,15 @@ class SelectorMediaSourceEpisodeCacheRepository(
      * 用户设置的缓存有效期, 通常来自 `MediaSelectorSettings.webSearchCacheTtl`.
      */
     private val userTtlFlow: Flow<Duration>,
+    /**
+     * refreshThreshold
+     */
+    private val refreshThresholdFlow: Flow<Duration>
 ) : Repository() {
 
     private suspend fun userTtl(): Duration = userTtlFlow.first()
+
+    private suspend fun refreshThreshold(): Duration = refreshThresholdFlow.first()
 
     suspend fun addCache(
         requesterSubjectId: Int?,
@@ -109,6 +116,7 @@ class SelectorMediaSourceEpisodeCacheRepository(
         subjectName: String,
     ): List<WebSearchCache> =
         withContext(defaultDispatcher) {
+            val now = currentTimeMillis()
             dao.filterBySubjectName(requesterSubjectId, mediaSourceId, subjectName, currentTimeMillis())
                 .groupBy { it.subjectUrl } // preserves encounter (insertion) order
                 .map { (_, rows) ->
@@ -122,14 +130,30 @@ class SelectorMediaSourceEpisodeCacheRepository(
                             origin = null,
                         ),
                         webEpisodeInfos = rows.map { it.toWebSearchEpisodeInfo() },
+                        minDurationMillisToExpired = rows.minOf { it.expiresAt - now },
                     )
                 }
         }
+
+    /**
+     * see [MediaSelectorSettings.refreshSearchCacheThreshold]
+     */
+    suspend fun shouldRefreshCache(
+        durationToExpired: Duration,
+        sourceCacheTtl: Duration
+    ): Boolean {
+        val refreshTtl = minOf(sourceCacheTtl, userTtl())
+        val refreshThreshold = refreshThreshold()
+
+        if (refreshTtl <= refreshThreshold) return false
+        return durationToExpired < refreshThreshold
+    }
 }
 
 data class WebSearchCache(
     val webSubjectInfo: WebSearchSubjectInfo,
     val webEpisodeInfos: List<WebSearchEpisodeInfo>,
+    val minDurationMillisToExpired: Long,
 )
 
 private fun WebSearchEpisodeInfo.toEntity(

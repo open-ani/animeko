@@ -68,9 +68,9 @@ import me.him188.ani.utils.platform.Platform
 import me.him188.ani.utils.platform.currentPlatform
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import kotlin.coroutines.CoroutineContext
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
-import kotlin.coroutines.CoroutineContext
 
 interface MediaSourceManager { // available by inject
     /**
@@ -218,6 +218,7 @@ class MediaSourceManagerImpl(
      * @see LOCAL_FS_MEDIA_SOURCE_ID
      */
     additionalSources: () -> List<MediaSource>, // local sources, calculated only once
+    parentCoroutineScope: CoroutineScope,
     private val flowCoroutineContext: CoroutineContext = Dispatchers.Default,
 ) : MediaSourceManager, KoinComponent {
     private val proxyProvider: ProxyProvider by inject()
@@ -244,7 +245,13 @@ class MediaSourceManagerImpl(
         add(JellyfinMediaSource.Factory())
         add(EmbyMediaSource.Factory())
         add(IkarosMediaSource.Factory())
-        add(SelectorMediaSource.Factory(selectorMediaSourceEpisodeCacheRepository, webSessionManager))
+        add(
+            SelectorMediaSource.Factory(
+                selectorMediaSourceEpisodeCacheRepository,
+                webSessionManager,
+                parentCoroutineScope,
+            ),
+        )
     }.toList()
 
     private val additionalSources by lazy {

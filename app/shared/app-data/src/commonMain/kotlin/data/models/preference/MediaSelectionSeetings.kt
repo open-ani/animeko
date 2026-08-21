@@ -13,8 +13,11 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import me.him188.ani.app.domain.mediasource.web.SelectorMediaSource
+import me.him188.ani.app.domain.mediasource.web.SelectorSearchConfig
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -75,7 +78,18 @@ constructor(
      * Web 源播放 session 搜索缓存的有效期, 用于切换剧集或短暂退出后重新进入播放页时复用搜索结果.
      * 实际生效值为此值与数据源配置中定义的值的较小者. 为 0 时禁用缓存.
      */
-    val webSearchCacheTtl: Duration = 30.minutes, // 注意, 这是 'enum'. 查看 UI 代码以确定有哪些值可以选.
+    val webSearchCacheTtl: Duration = 6.hours, // 注意, 这是 'enum'. 查看 UI 代码以确定有哪些值可以选.
+
+    /**
+     * 预刷新搜索缓存的阈值, 当 Web 搜索结果缓存还剩 [refreshSearchCacheThreshold] 时间内过期时,
+     * [SelectorMediaSource] 仍返回缓存结果, 但会在后台重新搜索以刷新缓存.
+     * 
+     * 推荐设置为一部番剧剧集的长度.
+     * 
+     * `min([webSearchCacheTtl], [SelectorSearchConfig.searchCacheTtl]] > [refreshSearchCacheThreshold]` 时生效.
+     * 否则则始终不后台刷新, 完全交给 ttl 机制.
+     */
+    val refreshSearchCacheThreshold: Duration = 30.minutes, // 注意, 这是 'enum'. 查看 UI 代码以确定有哪些值可以选.
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,
 ) {
     companion object {

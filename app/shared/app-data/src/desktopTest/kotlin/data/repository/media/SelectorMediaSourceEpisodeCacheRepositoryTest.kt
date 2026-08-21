@@ -45,6 +45,7 @@ class SelectorMediaSourceEpisodeCacheRepositoryTest {
                 SelectorMediaSourceEpisodeCacheRepository(
                     database.webSearchSessionCacheDao(),
                     userTtlFlow = flowOf(userTtl),
+                    refreshThresholdFlow = flowOf(Duration.ZERO),
                 ),
             )
         } finally {
@@ -120,16 +121,17 @@ class SelectorMediaSourceEpisodeCacheRepositoryTest {
     }
 
     @Test
-    fun `TTL 取数据源配置与用户设置的较小者 - 数据源更小`() = runRepositoryTest(userTtl = 1.hours) { database, repository ->
-        repository.addCache(
-            1, mediaSourceId, subjectName, subjectInfo(), listOf(episode(1)),
-            sourceCacheTtl = 5.minutes,
-        )
-        val row = database.webSearchSessionCacheDao()
-            .filterBySubjectName(1, mediaSourceId, subjectName, currentTimeMillis())
-            .single()
-        assertEquals(5.minutes.inWholeMilliseconds, row.expiresAt - row.cachedAt)
-    }
+    fun `TTL 取数据源配置与用户设置的较小者 - 数据源更小`() =
+        runRepositoryTest(userTtl = 1.hours) { database, repository ->
+            repository.addCache(
+                1, mediaSourceId, subjectName, subjectInfo(), listOf(episode(1)),
+                sourceCacheTtl = 5.minutes,
+            )
+            val row = database.webSearchSessionCacheDao()
+                .filterBySubjectName(1, mediaSourceId, subjectName, currentTimeMillis())
+                .single()
+            assertEquals(5.minutes.inWholeMilliseconds, row.expiresAt - row.cachedAt)
+        }
 
     @Test
     fun `TTL 为 0 时不写入缓存`() = runRepositoryTest(userTtl = Duration.ZERO) { _, repository ->
@@ -145,10 +147,16 @@ class SelectorMediaSourceEpisodeCacheRepositoryTest {
         val database = createTestAniDatabase()
         try {
             val dao = database.webSearchSessionCacheDao()
-            SelectorMediaSourceEpisodeCacheRepository(dao, flowOf(1.hours))
+            SelectorMediaSourceEpisodeCacheRepository(
+                dao, flowOf(1.hours),
+                refreshThresholdFlow = flowOf(Duration.ZERO),
+            )
                 .addCache(1, mediaSourceId, subjectName, subjectInfo(), listOf(episode(1)), 1.hours)
 
-            val disabled = SelectorMediaSourceEpisodeCacheRepository(dao, flowOf(Duration.ZERO))
+            val disabled = SelectorMediaSourceEpisodeCacheRepository(
+                dao, flowOf(Duration.ZERO),
+                refreshThresholdFlow = flowOf(Duration.ZERO),
+            )
             disabled.addCache(1, mediaSourceId, subjectName, subjectInfo(), listOf(episode(1)), 1.hours)
 
             assertTrue(disabled.getCache(1, mediaSourceId, subjectName).isEmpty())

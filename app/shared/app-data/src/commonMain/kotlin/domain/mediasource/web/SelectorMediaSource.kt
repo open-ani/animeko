@@ -11,7 +11,10 @@
 package me.him188.ani.app.domain.mediasource.web
 
 import io.ktor.client.request.get
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
@@ -19,6 +22,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flattenConcat
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.models.ApiFailure
@@ -54,6 +58,7 @@ import me.him188.ani.datasources.api.source.MediaSourceInfo
 import me.him188.ani.datasources.api.source.MediaSourceKind
 import me.him188.ani.datasources.api.source.MediaSourceLocation
 import me.him188.ani.datasources.api.source.deserializeArgumentsOrNull
+import me.him188.ani.utils.coroutines.childScope
 import me.him188.ani.utils.ktor.ScopedHttpClient
 import me.him188.ani.utils.logging.warn
 import me.him188.ani.utils.platform.Platform
@@ -62,7 +67,9 @@ import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.math.min
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 @Suppress("unused") // bug
 private typealias ArgumentType = SelectorMediaSourceArguments
@@ -115,6 +122,7 @@ class SelectorMediaSource(
     override val kind: MediaSourceKind = MediaSourceKind.WEB,
     private val client: ScopedHttpClient,
     private val sessionManager: WebSessionManager,
+    coroutineScope: CoroutineScope,
 ) : HttpMediaSource(), WebVideoMatcherProvider {
     companion object {
         val FactoryId = FactoryId("web-selector")
@@ -140,6 +148,11 @@ class SelectorMediaSource(
         }
     }
 
+    private val backgroundSearchScope = coroutineScope.childScope()
+
+    // 同一个 subject 只能启用一个 background search job
+    private val backgroundSearchJobs = mutableMapOf<Int, Deferred<List<DefaultMedia>>>()
+
     private val arguments =
         config.deserializeArgumentsOrNull(ArgumentType.serializer())
             ?: SelectorMediaSourceArguments.Default
@@ -152,6 +165,7 @@ class SelectorMediaSource(
     class Factory(
         val repository: SelectorMediaSourceEpisodeCacheRepository,
         val sessionManager: WebSessionManager,
+        private val coroutineScope: CoroutineScope,
     ) : MediaSourceFactory {
         override val factoryId: FactoryId get() = FactoryId
 
@@ -167,7 +181,14 @@ class SelectorMediaSource(
             config: MediaSourceConfig,
             client: ScopedHttpClient
         ): MediaSource =
-            SelectorMediaSource(mediaSourceId, config, repository, client = client, sessionManager = sessionManager)
+            SelectorMediaSource(
+                mediaSourceId,
+                config,
+                repository,
+                client = client,
+                sessionManager = sessionManager,
+                coroutineScope = coroutineScope,
+            )
     }
 
     override suspend fun checkConnection(): ConnectionStatus {
@@ -286,7 +307,7 @@ class SelectorMediaSource(
         query: SelectorSearchQuery,
         mediaSourceId: String,
         subjectId: Int?,
-    ): List<DefaultMedia>? {
+    ): SearchCacheResult? {
         val caches = try {
             repository.getCache(subjectId, mediaSourceId, query.subjectName)
         } catch (e: CancellationException) {
@@ -297,7 +318,8 @@ class SelectorMediaSource(
             return null
         }
 
-        return buildList {
+        var minDurationToExpired = Long.MAX_VALUE
+        val resultList = buildList {
             for (cache in caches) {
                 val episodes = cache.webEpisodeInfos
                 if (episodes.findMatchingEpisodeOrNull(query.episodeSort, query.episodeEp, query.episodeName) == null) {
@@ -312,8 +334,94 @@ class SelectorMediaSource(
                         subjectName = cache.webSubjectInfo.name,
                     ).filteredList,
                 )
+                minDurationToExpired = min(minDurationToExpired, cache.minDurationMillisToExpired)
             }
-        }.takeIf(List<DefaultMedia>::isNotEmpty)
+        }.takeIf(List<DefaultMedia>::isNotEmpty) ?: return null
+
+        return SearchCacheResult(resultList, minDurationToExpired.milliseconds)
+    }
+
+    private suspend fun EngineType.searchFromSourcesLocked(
+        searchConfig: SelectorSearchConfig,
+        query: SelectorSearchQuery,
+        mediaSourceId: String,
+        subjectId: Int?
+    ): List<DefaultMedia> {
+        val key = listOf(subjectId).hashCode()
+        return backgroundSearchJobs.getOrPut(key) {
+            backgroundSearchScope
+                .async {
+                    delayUntilNextAllowedSearch()
+                    searchFromSources(searchConfig, query, mediaSourceId, subjectId)
+                }
+                .apply {
+                    invokeOnCompletion {
+                        backgroundSearchJobs.remove(key)
+                    }
+                }
+        }.await()
+    }
+
+    private suspend fun EngineType.searchFromSources(
+        searchConfig: SelectorSearchConfig,
+        query: SelectorSearchQuery,
+        mediaSourceId: String,
+        subjectId: Int?,
+    ): List<DefaultMedia> {
+        val searchUrl = searchConfig.searchUrl.replace(
+            "{keyword}",
+            MediaSourceEngineHelpers.encodeUrlSegment(
+                MediaSourceEngineHelpers.getSearchKeyword(
+                    query.subjectName,
+                    searchConfig.searchRemoveSpecial,
+                    searchConfig.searchUseOnlyFirstWord,
+                ),
+            ),
+        )
+
+        val originalSubjects = fetchPageOrThrow(searchUrl, PageExpectation.SearchResults(searchConfig))
+            ?: return emptyList()
+
+        val subjects = originalSubjects.let { originalList ->
+            val filters = searchConfig.createFiltersForSubject()
+            with(query.toFilterContext()) {
+                originalList.filter {
+                    filters.applyOn(it.asCandidate())
+                }
+            }
+        }
+
+        return buildList {
+            for (subjectInfo in subjects) {
+                val episodes = try {
+                    fetchPageOrThrow(
+                        subjectInfo.fullUrl,
+                        PageExpectation.SubjectDetails(searchConfig, subjectInfo.fullUrl),
+                    )?.episodes
+                } catch (e: BlockedException) {
+                    throw e
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // 单个条目页的网络错误不终止整个搜索
+                    logger.warn(e) { "SelectorMediaSource '$mediaSourceId': failed to load subject page ${subjectInfo.fullUrl}" }
+                    null
+                } ?: continue
+                repository.addCache(
+                    subjectId, mediaSourceId, query.subjectName, subjectInfo, episodes,
+                    sourceCacheTtl = searchConfig.searchCacheTtl,
+                )
+                addAll(
+                    selectMedia(
+                        episodes.asSequence(),
+                        searchConfig,
+                        query,
+                        mediaSourceId,
+                        subjectName = subjectInfo.name,
+                    ).filteredList,
+                )
+            }
+        }
     }
 
     // all-in-one search
@@ -347,64 +455,22 @@ class SelectorMediaSource(
         // 搜索缓存: 上一次真实搜索已把条目页面的全部剧集写入缓存 (addCache).
         // 若缓存的剧集列表包含当前请求的剧集 (典型场景: 切集), 直接从缓存构建结果, 不发起任何网络请求.
         // 缓存按 TTL 过期, 也会在该条目手动重新查询时被清除.
-        searchFromCacheOrNull(searchConfig, query, mediaSourceId, subjectId)?.let { return@withContext it }
+        val caches = searchFromCacheOrNull(searchConfig, query, mediaSourceId, subjectId)
 
-        delayUntilNextAllowedSearch()
-
-        val searchUrl = searchConfig.searchUrl.replace(
-            "{keyword}",
-            MediaSourceEngineHelpers.encodeUrlSegment(
-                MediaSourceEngineHelpers.getSearchKeyword(
-                    query.subjectName,
-                    searchConfig.searchRemoveSpecial,
-                    searchConfig.searchUseOnlyFirstWord,
-                ),
-            ),
-        )
-
-        val originalSubjects = fetchPageOrThrow(searchUrl, PageExpectation.SearchResults(searchConfig))
-            ?: return@withContext emptyList()
-
-        val subjects = originalSubjects.let { originalList ->
-            val filters = searchConfig.createFiltersForSubject()
-            with(query.toFilterContext()) {
-                originalList.filter {
-                    filters.applyOn(it.asCandidate())
+        if (caches != null) {
+            assert(caches.mediaList.isNotEmpty()) {
+                "SelectorMediaSource.searchFromCacheOrNull should return a non-empty list if not null."
+            }
+            if (repository.shouldRefreshCache(caches.durationToExpired, searchConfig.searchCacheTtl)) {
+                backgroundSearchScope.launch {
+                    searchFromSourcesLocked(searchConfig, query, mediaSourceId, subjectId)
                 }
             }
+            caches.mediaList
+        } else {
+            searchFromSourcesLocked(searchConfig, query, mediaSourceId, subjectId)
         }
 
-        buildList {
-            for (subjectInfo in subjects) {
-                val episodes = try {
-                    fetchPageOrThrow(
-                        subjectInfo.fullUrl,
-                        PageExpectation.SubjectDetails(searchConfig, subjectInfo.fullUrl),
-                    )?.episodes
-                } catch (e: BlockedException) {
-                    throw e
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    // 单个条目页的网络错误不终止整个搜索
-                    logger.warn(e) { "SelectorMediaSource '$mediaSourceId': failed to load subject page ${subjectInfo.fullUrl}" }
-                    null
-                } ?: continue
-                repository.addCache(
-                    subjectId, mediaSourceId, query.subjectName, subjectInfo, episodes,
-                    sourceCacheTtl = searchConfig.searchCacheTtl,
-                )
-                addAll(
-                    selectMedia(
-                        episodes.asSequence(),
-                        searchConfig,
-                        query,
-                        mediaSourceId,
-                        subjectName = subjectInfo.name,
-                    ).filteredList,
-                )
-            }
-        }
     }
 
     override suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch> {
@@ -458,6 +524,10 @@ class SelectorMediaSource(
         }
     }
 
+    private class SearchCacheResult(
+        val mediaList: List<DefaultMedia>,
+        val durationToExpired: Duration,
+    )
 }
 
 /**
