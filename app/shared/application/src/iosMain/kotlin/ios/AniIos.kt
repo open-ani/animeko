@@ -209,11 +209,11 @@ fun MainViewController(app: AniIosApplication): UIViewController {
         ProvideIosResourceEnvironment {
             CompositionLocalProvider(
                 LocalOnBackPressedDispatcherOwner provides app.onBackPressedDispatcherOwner,
+                LocalContext provides app.context,
             ) {
                 AniApp {
                     val platformWindow = rememberPlatformWindow()
                     CompositionLocalProvider(
-                        LocalContext provides app.context,
                         LocalPlatformWindow provides platformWindow,
                     ) {
                         Box(
