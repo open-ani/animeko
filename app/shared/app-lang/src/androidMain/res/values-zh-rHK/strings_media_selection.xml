@@ -50,6 +50,7 @@
     <string name="settings_media_cache_ttl_30min">30 分鐘</string>
     <string name="settings_media_cache_ttl_45min">45 分鐘</string>
     <string name="settings_media_cache_ttl_1h">1 小時</string>
+    <string name="settings_media_cache_ttl_6h">6 小時</string>
     <string name="settings_media_cache_ttl_1d">1 天</string>
     <string name="settings_media_refresh_search_cache_threshold">後台刷新搜尋快取</string>
     <string name="settings_media_refresh_search_cache_threshold_description">當 Web 搜尋快取的剩餘有效期少於此時長時，仍直接使用快取快速起播，同時在後台重新搜尋以刷新快取。建議設置為一集的時長，連續觀看時即可始終命中快取。僅在小於快取有效期時生效</string>

@@ -54,6 +54,7 @@ import me.him188.ani.app.ui.lang.settings_media_cache_ttl_1h
 import me.him188.ani.app.ui.lang.settings_media_cache_ttl_30min
 import me.him188.ani.app.ui.lang.settings_media_cache_ttl_45min
 import me.him188.ani.app.ui.lang.settings_media_cache_ttl_5min
+import me.him188.ani.app.ui.lang.settings_media_cache_ttl_6h
 import me.him188.ani.app.ui.lang.settings_media_cache_ttl_none
 import me.him188.ani.app.ui.lang.settings_media_max_wait_time
 import me.him188.ani.app.ui.lang.settings_media_max_wait_time_description
@@ -397,6 +398,7 @@ internal fun SettingsScope.MediaSelectionGroup(
                         15.minutes,
                         30.minutes,
                         1.hours,
+                        6.hours,
                         1.days,
                     )
                 },
@@ -408,6 +410,7 @@ internal fun SettingsScope.MediaSelectionGroup(
                             15.minutes -> stringResource(Lang.settings_media_cache_ttl_15min)
                             30.minutes -> stringResource(Lang.settings_media_cache_ttl_30min)
                             1.hours -> stringResource(Lang.settings_media_cache_ttl_1h)
+                            6.hours -> stringResource(Lang.settings_media_cache_ttl_6h)
                             1.days -> stringResource(Lang.settings_media_cache_ttl_1d)
                             else -> duration.toString() // non-reachable
                         },
