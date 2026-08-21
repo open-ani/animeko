@@ -70,10 +70,6 @@ import org.jetbrains.compose.resources.stringResource
 data class WebSourceChannel(
     val name: String,
     val original: Media? = null,
-    /**
-     * 该线路是否包含当前正在播放的剧集. 为 `false` 时该线路不可选择, UI 会标记缺少当前集.
-     */
-    val hasCurrentEpisode: Boolean = true,
 )
 
 data class WebSource(
@@ -253,7 +249,6 @@ private fun WebSourceCard(
                 InputChip(
                     selected = channel == selectedChannel(),
                     onClick = { onSelect(channel) },
-                    enabled = channel.hasCurrentEpisode,
                     label = { Text(channel.name) },
                 )
             }

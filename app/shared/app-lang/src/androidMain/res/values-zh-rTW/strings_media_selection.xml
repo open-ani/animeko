@@ -49,6 +49,7 @@
     <string name="settings_media_cache_ttl_15min">15 分鐘</string>
     <string name="settings_media_cache_ttl_30min">30 分鐘</string>
     <string name="settings_media_cache_ttl_1h">1 小時</string>
+    <string name="settings_media_cache_ttl_6h">6 小時</string>
     <string name="settings_media_cache_ttl_1d">1 天</string>
     <string name="settings_media_show_disabled">顯示禁用的數據源</string>
     <string name="settings_media_show_disabled_description">播放時，以灰色顯示在"數據源管理"設置中禁用的數據源，而不是隱藏。以便在偏好數據源中未找到資源時，可臨時啟用禁用的數據源</string>
