@@ -11,10 +11,13 @@
 package me.him188.ani.app.domain.mediasource.web
 
 import io.ktor.client.request.get
+import kotlinx.atomicfu.locks.ReentrantLock
+import kotlinx.atomicfu.locks.withLock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
@@ -22,7 +25,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flattenConcat
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.data.models.ApiFailure
@@ -148,10 +150,29 @@ class SelectorMediaSource(
         }
     }
 
+    /**
+     * 真实搜索任务运行的作用域. 生命周期为整个 media source 实例, 而不是单次 fetch:
+     * 后台刷新缓存的搜索不随播放页退出而取消, 结果会写入缓存供下次使用.
+     * 实例被替换 (配置变更) 或关闭时随 [close] 取消.
+     *
+     * 使用 SupervisorJob (见 [childScope]), 单个搜索失败不会影响其他搜索.
+     */
     private val backgroundSearchScope = coroutineScope.childScope()
 
-    // 同一个 subject 只能启用一个 background search job
-    private val backgroundSearchJobs = mutableMapOf<Int, Deferred<List<DefaultMedia>>>()
+    /**
+     * 进行中的真实搜索任务, 按查询参数去重: 相同查询的并发调用 (前台缓存未命中与后台刷新) 共享同一个任务.
+     *
+     * 搜索结果与 [SelectorSearchQuery] 相关 (查询名决定搜索 URL, 剧集信息决定过滤结果),
+     * 因此不能只按 subjectId 去重, 否则一个查询会错误地拿到另一个查询的结果.
+     */
+    private val searchJobsLock = ReentrantLock()
+    private val searchJobs = mutableMapOf<SearchJobKey, Deferred<List<DefaultMedia>>>()
+
+    private data class SearchJobKey(val subjectId: Int?, val query: SelectorSearchQuery)
+
+    init {
+        addCloseable(AutoCloseable { backgroundSearchScope.cancel() })
+    }
 
     private val arguments =
         config.deserializeArgumentsOrNull(ArgumentType.serializer())
@@ -341,25 +362,35 @@ class SelectorMediaSource(
         return SearchCacheResult(resultList, minDurationToExpired.milliseconds)
     }
 
-    private suspend fun EngineType.searchFromSourcesLocked(
+    /**
+     * 启动 (或加入进行中的) 真实搜索任务.
+     *
+     * 任务在 [backgroundSearchScope] 中运行, 因此调用方被取消 (例如离开播放页) 不会中断搜索,
+     * 结果仍会写入缓存. 任务失败的异常只会在 [Deferred.await] 时抛出.
+     */
+    private fun EngineType.startSearchFromSources(
         searchConfig: SelectorSearchConfig,
         query: SelectorSearchQuery,
         mediaSourceId: String,
-        subjectId: Int?
-    ): List<DefaultMedia> {
-        val key = listOf(subjectId).hashCode()
-        return backgroundSearchJobs.getOrPut(key) {
-            backgroundSearchScope
-                .async {
+        subjectId: Int?,
+    ): Deferred<List<DefaultMedia>> {
+        val key = SearchJobKey(subjectId, query)
+        return searchJobsLock.withLock {
+            searchJobs[key]?.takeIf { it.isActive }
+                ?: backgroundSearchScope.async {
                     delayUntilNextAllowedSearch()
                     searchFromSources(searchConfig, query, mediaSourceId, subjectId)
-                }
-                .apply {
-                    invokeOnCompletion {
-                        backgroundSearchJobs.remove(key)
+                }.also { job ->
+                    // 先放进 map 再注册回调: 回调可能在注册时同步触发 (任务已完成),
+                    // ReentrantLock 保证此时在锁内重入删除也是安全的.
+                    searchJobs[key] = job
+                    job.invokeOnCompletion {
+                        searchJobsLock.withLock {
+                            if (searchJobs[key] === job) searchJobs.remove(key)
+                        }
                     }
                 }
-        }.await()
+        }
     }
 
     private suspend fun EngineType.searchFromSources(
@@ -458,19 +489,23 @@ class SelectorMediaSource(
         val caches = searchFromCacheOrNull(searchConfig, query, mediaSourceId, subjectId)
 
         if (caches != null) {
-            assert(caches.mediaList.isNotEmpty()) {
-                "SelectorMediaSource.searchFromCacheOrNull should return a non-empty list if not null."
-            }
             if (repository.shouldRefreshCache(caches.durationToExpired, searchConfig.searchCacheTtl)) {
-                backgroundSearchScope.launch {
-                    searchFromSourcesLocked(searchConfig, query, mediaSourceId, subjectId)
-                }
+                // 缓存即将过期: 本次仍然返回缓存结果, 同时在后台重新搜索以刷新缓存,
+                // 使连续观看时的每次切集都能命中缓存. 不 await, 失败只记录日志,
+                // 下次命中缓存时会再次尝试; 真正过期后由前台完整搜索兜底.
+                startSearchFromSources(searchConfig, query, mediaSourceId, subjectId)
+                    .invokeOnCompletion { e ->
+                        if (e != null && e !is CancellationException) {
+                            logger.warn(e) {
+                                "SelectorMediaSource '$mediaSourceId': background cache refresh failed for '${query.subjectName}'"
+                            }
+                        }
+                    }
             }
             caches.mediaList
         } else {
-            searchFromSourcesLocked(searchConfig, query, mediaSourceId, subjectId)
+            startSearchFromSources(searchConfig, query, mediaSourceId, subjectId).await()
         }
-
     }
 
     override suspend fun fetch(query: MediaFetchRequest): SizedSource<MediaMatch> {

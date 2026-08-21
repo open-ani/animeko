@@ -81,13 +81,14 @@ constructor(
     val webSearchCacheTtl: Duration = 6.hours, // 注意, 这是 'enum'. 查看 UI 代码以确定有哪些值可以选.
 
     /**
-     * 预刷新搜索缓存的阈值, 当 Web 搜索结果缓存还剩 [refreshSearchCacheThreshold] 时间内过期时,
-     * [SelectorMediaSource] 仍返回缓存结果, 但会在后台重新搜索以刷新缓存.
-     * 
-     * 推荐设置为一部番剧剧集的长度.
-     * 
-     * `min([webSearchCacheTtl], [SelectorSearchConfig.searchCacheTtl]] > [refreshSearchCacheThreshold]` 时生效.
-     * 否则则始终不后台刷新, 完全交给 ttl 机制.
+     * 后台刷新搜索缓存的阈值: 当 Web 搜索结果缓存还剩不足 [refreshSearchCacheThreshold] 时间过期时,
+     * [SelectorMediaSource] 仍返回缓存结果, 但会在后台重新搜索以刷新缓存,
+     * 使连续观看时的每次切集都能命中缓存快速起播.
+     *
+     * 推荐设置为一集番剧的时长.
+     *
+     * 仅当 `min([webSearchCacheTtl], [SelectorSearchConfig.searchCacheTtl]) > [refreshSearchCacheThreshold]` 时生效,
+     * 否则始终不后台刷新, 完全交给 TTL 机制. 为 0 时禁用后台刷新.
      */
     val refreshSearchCacheThreshold: Duration = 30.minutes, // 注意, 这是 'enum'. 查看 UI 代码以确定有哪些值可以选.
     @Suppress("PropertyName") @Transient val _placeholder: Int = 0,

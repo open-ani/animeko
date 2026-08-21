@@ -47,9 +47,10 @@ class SelectorMediaSourceEpisodeCacheRepository(
      */
     private val userTtlFlow: Flow<Duration>,
     /**
-     * refreshThreshold
+     * 后台刷新缓存的阈值, 通常来自 `MediaSelectorSettings.refreshSearchCacheThreshold`.
+     * @see shouldRefreshCache
      */
-    private val refreshThresholdFlow: Flow<Duration>
+    private val refreshThresholdFlow: Flow<Duration>,
 ) : Repository() {
 
     private suspend fun userTtl(): Duration = userTtlFlow.first()
@@ -117,7 +118,7 @@ class SelectorMediaSourceEpisodeCacheRepository(
     ): List<WebSearchCache> =
         withContext(defaultDispatcher) {
             val now = currentTimeMillis()
-            dao.filterBySubjectName(requesterSubjectId, mediaSourceId, subjectName, currentTimeMillis())
+            dao.filterBySubjectName(requesterSubjectId, mediaSourceId, subjectName, now)
                 .groupBy { it.subjectUrl } // preserves encounter (insertion) order
                 .map { (_, rows) ->
                     val first = rows.first()
@@ -136,16 +137,22 @@ class SelectorMediaSourceEpisodeCacheRepository(
         }
 
     /**
-     * see [MediaSelectorSettings.refreshSearchCacheThreshold]
+     * 缓存命中但还剩 [durationToExpired] 就要过期时, 是否应当在后台重新搜索以刷新缓存.
+     *
+     * 阈值不小于实际生效的 TTL (数据源配置与用户设置的较小者) 时视为关闭,
+     * 否则每次命中都会触发刷新. 阈值为 0 时同样关闭.
+     *
+     * @see MediaSelectorSettings.refreshSearchCacheThreshold
      */
     suspend fun shouldRefreshCache(
         durationToExpired: Duration,
-        sourceCacheTtl: Duration
+        sourceCacheTtl: Duration,
     ): Boolean {
-        val refreshTtl = minOf(sourceCacheTtl, userTtl())
         val refreshThreshold = refreshThreshold()
+        if (refreshThreshold <= Duration.ZERO) return false
 
-        if (refreshTtl <= refreshThreshold) return false
+        val effectiveTtl = minOf(sourceCacheTtl, userTtl())
+        if (effectiveTtl <= refreshThreshold) return false
         return durationToExpired < refreshThreshold
     }
 }
