@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.videoplayer.videoenhancement
 
+import kotlinx.coroutines.flow.Flow
+import me.him188.ani.app.data.models.preference.PlayerKernelConfig
 import me.him188.ani.utils.platform.currentPlatformDesktop
 import me.him188.ani.utils.platform.isLinux
 import me.him188.ani.utils.platform.isWindows
@@ -21,6 +23,7 @@ import kotlin.coroutines.CoroutineContext
 /** macOS and Windows share the shader and scaler; Windows omits deband for its lighter profile. */
 actual fun createVideoEnhancementController(
     player: MediampPlayer,
+    playerKernelConfig: Flow<PlayerKernelConfig>,
     parentCoroutineContext: CoroutineContext,
 ): VideoEnhancementController? {
     if (currentPlatformDesktop().isLinux()) {

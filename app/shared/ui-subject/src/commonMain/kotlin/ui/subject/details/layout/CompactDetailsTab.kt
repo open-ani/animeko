@@ -78,6 +78,7 @@ internal fun CompactDetailsTabContent(
     listState: LazyListState = rememberLazyListState(),
     contentPadding: PaddingValues = PaddingValues(0.dp),
     horizontalPadding: Dp = 16.dp,
+    onClickPersonImage: ((url: String) -> Unit)? = null,
 ) {
     val presentation by state.presentation.collectAsStateWithLifecycle()
     val episodes = presentation.episodeListUiState.mainEpisodes
@@ -168,6 +169,7 @@ internal fun CompactDetailsTabContent(
                 contentPadding = horizontalPaddingValues,
                 avatarSize = 56.dp,
                 itemSpacing = 0.dp,
+                onClickImage = onClickPersonImage,
             )
         }
 
@@ -179,6 +181,7 @@ internal fun CompactDetailsTabContent(
                 totalStaffCount,
                 horizontalPaddingModifier,
                 gridColumns = 3,
+                onClickImage = onClickPersonImage,
             )
         }
 

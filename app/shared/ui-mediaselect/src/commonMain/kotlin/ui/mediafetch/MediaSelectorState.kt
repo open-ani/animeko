@@ -38,7 +38,6 @@ import me.him188.ani.app.domain.media.fetch.MediaSourceFetchState
 import me.him188.ani.app.domain.media.fetch.isFailedOrAbandoned
 import me.him188.ani.app.domain.media.fetch.isWorking
 import me.him188.ani.app.domain.media.selector.DefaultMediaSelector
-import me.him188.ani.app.domain.media.selector.MatchMetadata
 import me.him188.ani.app.domain.media.selector.MaybeExcludedMedia
 import me.him188.ani.app.domain.media.selector.MediaPreferenceItem
 import me.him188.ani.app.domain.media.selector.MediaSelector
@@ -54,7 +53,6 @@ import me.him188.ani.app.ui.mediaselect.selector.WebSource
 import me.him188.ani.app.ui.mediaselect.selector.WebSourceChannel
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
-import me.him188.ani.datasources.api.topic.isSingleEpisode
 import me.him188.ani.utils.coroutines.flows.flowOfEmptyList
 import me.him188.ani.utils.platform.annotations.TestOnly
 
@@ -260,17 +258,15 @@ class MediaSelectorState(
                 // 属于这个数据源的 medias
                 val myMediaList = allMediaList
                     .asSequence()
-                    .filterIsInstance<MaybeExcludedMedia.Included>()
                     .filter {
                         // Filter medias that are from this source
-                        it.result.mediaSourceId == source.mediaSourceId
+                        it.result?.mediaSourceId == source.mediaSourceId // null result gives `false` and is hence excluded
                     }
                     .filter {
-                        // 只要精确匹配条目的资源.
-                        // 按线路聚合的资源即使缺少当前集也显示 (UI 会标记), 但排除单集且不匹配当前集的资源.
-                        it.metadata.subjectMatchKind == MatchMetadata.SubjectMatchKind.EXACT &&
-                                (it.isPerfectMatch() || it.result.episodeRange?.isSingleEpisode() == false)
+                        // Take only exact matches
+                        it.isPerfectMatch()
                     }
+                    .mapNotNull { it.result }
 
                 createWebSourceFlow(
                     source,
@@ -295,16 +291,12 @@ class MediaSelectorState(
 
     private fun createWebSourceFlow(
         source: MediaSourceFetchResult,
-        myMediaList: Sequence<MaybeExcludedMedia.Included>,
+        myMediaList: Sequence<Media>,
         delayToOvercomeCacheIssue: Boolean,
         resolvingCaptchaInstanceIds: Set<String>,
     ) = source.state.combine(preferredWebMediaSource) { a, b -> a to b }.map { (state, preferred) ->
-        val channels = myMediaList.map { included ->
-            WebSourceChannel(
-                included.result.properties.alliance,
-                original = included.result,
-                hasCurrentEpisode = included.metadata.episodeMatchKind >= MatchMetadata.EpisodeMatchKind.EP,
-            )
+        val channels = myMediaList.map { media ->
+            WebSourceChannel(media.properties.alliance, original = media)
         }.toList()
         val captchaRequest = (state as? MediaSourceFetchState.CaptchaRequired)?.request
         val rateLimitedUntil = (state as? MediaSourceFetchState.RateLimited)?.retryAt

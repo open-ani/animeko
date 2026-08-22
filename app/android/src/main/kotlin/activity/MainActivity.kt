@@ -24,11 +24,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.view.WindowCompat
-import me.him188.ani.android.BuildConfig
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import me.him188.ani.android.BuildConfig
 import me.him188.ani.app.navigation.AniNavigator
+import me.him188.ani.app.platform.AniComponentActivity
 import me.him188.ani.app.platform.rememberPlatformWindow
 import me.him188.ani.app.ui.exprovider.ExternalContentProviderFactory
 import me.him188.ani.app.ui.exprovider.LocalExternalContentProvider
@@ -61,8 +62,8 @@ class MainActivity : AniComponentActivity() {
             val id = data.pathSegments.getOrNull(0)?.toIntOrNull() ?: return
             lifecycleScope.launch {
                 try {
-                    if (!aniNavigator.isNavControllerReady()) {
-                        aniNavigator.awaitNavController()
+                    if (!aniNavigator.isBackStackReady()) {
+                        aniNavigator.awaitBackStack()
                         delay(1000) // 等待初始化好, 否则跳转可能无效
                     }
                     aniNavigator.navigateSubjectDetails(id, placeholder = null)

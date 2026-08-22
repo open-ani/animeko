@@ -70,4 +70,27 @@ class PlaybackSpeedExtensionTest : AbstractPlayerExtensionTest() {
             testScope.cancel()
         }
     }
+
+    /**
+     * 播放器在媒体加载完成后可能把速度重置回 1x, 扩展需要在媒体就绪时重新应用.
+     */
+    @Test
+    fun `reapplies the speed when media becomes loaded`() = runTest {
+        val speed = MutableStateFlow(1.75f)
+        val (testScope, suite, _) = createCase(speed)
+        try {
+            advanceUntilIdle()
+            assertEquals(1.75f, suite.playerSpeed)
+
+            // 模拟新媒体加载过程中底层重置倍速为 1x
+            suite.player.loadMedia(100_000L)
+            suite.player.features[PlaybackSpeed]?.set(1f)
+            suite.setMediaDuration(100_000L)
+            advanceUntilIdle()
+
+            assertEquals(1.75f, suite.playerSpeed)
+        } finally {
+            testScope.cancel()
+        }
+    }
 }

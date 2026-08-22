@@ -156,6 +156,7 @@ import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerFocusState
+import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
@@ -164,6 +165,7 @@ import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.rememberRandomDanmakuPlaceholder
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
+import me.him188.ani.app.videoplayer.ui.rememberPlayerFullscreenState
 import me.him188.ani.danmaku.api.DanmakuContent
 import me.him188.ani.danmaku.api.DanmakuLocation
 import me.him188.ani.danmaku.ui.DanmakuHostState
@@ -229,12 +231,8 @@ private fun EpisodeScreenContent(
         }
     }
 
-    BackHandler(enabled = vm.isFullscreen) {
-        scope.launch {
-            context.setRequestFullScreen(window, false)
-            vm.isFullscreen = false
-        }
-    }
+    val fullscreenState = rememberEpisodeFullscreenState(vm)
+    BackHandler(enabled = fullscreenState.isFullscreen) { fullscreenState.request(false) }
 
     // image viewer
     val imageViewer = rememberImageViewerHandler()
@@ -279,9 +277,13 @@ private fun EpisodeScreenContent(
         }
     }
 
-    //Enable window fullscreen mode detection
+    // 桌面端窗口可能被系统或用户直接切换全屏 (macOS 绿灯、Win 快捷键), 这是外部状态同步而不是用户意图,
+    // 因此只回写状态, 不走 fullscreenState.request (那会再请求一次窗口全屏).
+    // 必须在 effect 里写而不是在组合期写: 组合期写 snapshot state 会和 request 的写入互相覆盖.
     if (LocalPlatform.current.isDesktop()) {
-        vm.isFullscreen = LocalPlatformWindow.current.isUndecoratedFullscreen
+        LaunchedEffect(window, vm) {
+            snapshotFlow { window.isUndecoratedFullscreen }.collect { vm.isFullscreen = it }
+        }
     }
 
     LaunchedEffect(vm.isFullscreen) {
@@ -923,6 +925,34 @@ fun EpisodeScreenContentPhoneScaffold(
     }
 }
 
+/**
+ * 播放页全屏的唯一实现: 进入/退出全屏的平台副作用 (窗口、屏幕方向、系统栏) 只在这里做一次.
+ *
+ * 返回的对象本身不持有状态 (状态在 [EpisodeViewModel.isFullscreen] 上), 因此可以在需要的地方各建一个,
+ * 不必把它层层传参穿过布局组件.
+ */
+@Composable
+private fun rememberEpisodeFullscreenState(vm: EpisodeViewModel): PlayerFullscreenState {
+    val context by rememberUpdatedState(LocalContext.current)
+    val window = LocalPlatformWindow.current
+    val scope = rememberCoroutineScope()
+    return rememberPlayerFullscreenState(
+        isFullscreen = { vm.isFullscreen },
+        onRequest = { fullscreen ->
+            scope.launch {
+                // 进入是「先改状态再改窗口」, 退出是「先改窗口再改状态」, 与规范化之前的行为保持一致
+                if (fullscreen) {
+                    vm.isFullscreen = true
+                    context.setRequestFullScreen(window, true)
+                } else {
+                    context.setRequestFullScreen(window, false)
+                    vm.isFullscreen = false
+                }
+            }
+        },
+    )
+}
+
 @Composable
 private fun EpisodeVideo(
     vm: EpisodeViewModel,
@@ -975,19 +1005,7 @@ private fun EpisodeVideo(
             context.getComponentAccessors()
         }
     }
-    val onClickFullScreen: () -> Unit = {
-        if (vm.isFullscreen) {
-            scope.launch {
-                context.setRequestFullScreen(window, false)
-                vm.isFullscreen = false
-            }
-        } else {
-            scope.launch {
-                vm.isFullscreen = true
-                context.setRequestFullScreen(window, true)
-            }
-        }
-    }
+    val fullscreenState = rememberEpisodeFullscreenState(vm)
 
     EpisodeVideoImpl(
         vm.player,
@@ -1013,13 +1031,7 @@ private fun EpisodeVideo(
         danmakuEnabled = page.danmakuEnabled,
         onToggleDanmaku = { vm.setDanmakuEnabled(!page.danmakuEnabled) },
         videoLoadingStateFlow = vm.videoStatisticsFlow.map { it.videoLoadingState },
-        onClickFullScreen = onClickFullScreen,
-        onExitFullscreen = {
-            scope.launch {
-                context.setRequestFullScreen(window, false)
-                vm.isFullscreen = false
-            }
-        },
+        fullscreenState = fullscreenState,
         alwaysOnTop = window.isAlwaysOnTop,
         onToggleAlwaysOnTop = {
             val newValue = !window.isAlwaysOnTop
@@ -1108,12 +1120,10 @@ private fun EpisodeVideo(
                 )
             }
         },
-        isFullscreen = vm.isFullscreen,
         fullscreenSwitchButton = {
             EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
                 vm.videoScaffoldConfig.fullscreenSwitchMode,
-                isFullscreen = vm.isFullscreen,
-                onClickFullScreen,
+                fullscreenState,
             )
         },
         sideSheets = { sheetsController ->

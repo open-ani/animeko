@@ -84,7 +84,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImagePainter
 import com.kmpalette.rememberPaletteState
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
@@ -102,11 +101,13 @@ import me.him188.ani.app.navigation.LocalNavigator
 import me.him188.ani.app.ui.comment.CommentReportHost
 import me.him188.ani.app.ui.comment.UIComment
 import me.him188.ani.app.ui.external.placeholder.placeholder
+import me.him188.ani.app.ui.foundation.AniImageLoadSuccess
 import me.him188.ani.app.ui.foundation.ImageViewer
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.Tag
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.input.touchHorizontalScrollOnly
 import me.him188.ani.app.ui.foundation.interaction.WindowDragArea
 import me.him188.ani.app.ui.foundation.layout.NestedScrollableColumn
 import me.him188.ani.app.ui.foundation.layout.NestedScrollableColumnState
@@ -130,11 +131,9 @@ import me.him188.ani.app.ui.foundation.theme.MaterialThemeFromPaletteAndImage
 import me.him188.ani.app.ui.foundation.theme.appChromeFrostedGlass
 import me.him188.ani.app.ui.foundation.theme.appChromeHazeSource
 import me.him188.ani.app.ui.foundation.theme.isAppChromeFrostedGlassActive
-import me.him188.ani.app.ui.foundation.toComposeImageBitmap
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
 import me.him188.ani.app.ui.foundation.widgets.LocalToaster
 import me.him188.ani.app.ui.foundation.widgets.showLoadError
-import me.him188.ani.app.ui.foundation.input.touchHorizontalScrollOnly
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.foundation_richtext_external_app_link_warning_prefix
 import me.him188.ani.app.ui.lang.foundation_richtext_open_failed_prefix
@@ -340,6 +339,10 @@ private fun SubjectDetailsPage(
         )
     }
     val onClickCommentImage = { url: String -> imageViewer.viewImage(url) }
+    // 封面/角色/制作人员图片点击放大 (与评论图片共用页面级查看器)
+    val onClickPersonImage = { url: String -> imageViewer.viewImage(url) }
+    val coverImageUrl = state.info?.imageLarge?.takeIf { it.isNotBlank() }
+    val onClickCover: (() -> Unit)? = coverImageUrl?.let { url -> { imageViewer.viewImage(url) } }
     // Bangumi 源评价的 "在 Bangumi 打开" 菜单项
     val onOpenCommentOriginal = { _: UIComment ->
         browserNavigator.openUri("https://bgm.tv/subject/${presentation.subjectId}")
@@ -347,8 +350,9 @@ private fun SubjectDetailsPage(
 
     val themeSettings = LocalThemeSettings.current
     var bitmap by remember { mutableStateOf<ImageBitmap?>(null) }
-    val onCoverImageSuccess = { success: AsyncImagePainter.State.Success ->
-        bitmap = success.result.image.toComposeImageBitmap()
+    val onCoverImageSuccess = { success: AniImageLoadSuccess ->
+        success.bitmap?.let { bitmap = it }
+        Unit
     }
     val paletteState = rememberPaletteState()
     LaunchedEffect(themeSettings, bitmap) {
@@ -410,6 +414,8 @@ private fun SubjectDetailsPage(
                     navigationIcon = navigationIcon,
                     onClickOpenExternal = onClickOpenExternal,
                     onCoverImageSuccess = onCoverImageSuccess,
+                    onClickCover = onClickCover,
+                    onClickPersonImage = onClickPersonImage,
                 )
             }
             return@MaterialThemeFromPaletteAndImage
@@ -457,6 +463,7 @@ private fun SubjectDetailsPage(
             navigationIcon = navigationIcon,
             onCoverImageSuccess = onCoverImageSuccess,
             onClickOpenExternal = onClickOpenExternal,
+            onClickCover = onClickCover,
             floatingActionButton = {
                 when (SubjectDetailsTab.entries.getOrNull(pagerState.currentPage)) {
                     SubjectDetailsTab.COMMENTS -> {
@@ -500,6 +507,7 @@ private fun SubjectDetailsPage(
                             .nestedScrollWorkaround(state.detailsTabLazyListState),
                         listState = state.detailsTabLazyListState,
                         contentPadding = tabContentPadding,
+                        onClickPersonImage = onClickPersonImage,
                     )
                 },
                 commentsTab = { tabContentPadding ->
@@ -691,8 +699,9 @@ fun SubjectDetailsSingleColumnPage(
     showBlurredBackground: Boolean = true,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     navigationIcon: @Composable () -> Unit = {},
-    onCoverImageSuccess: (AsyncImagePainter.State.Success) -> Unit = {},
+    onCoverImageSuccess: (AniImageLoadSuccess) -> Unit = {},
     onClickOpenExternal: () -> Unit = {},
+    onClickCover: (() -> Unit)? = null,
     floatingActionButton: @Composable () -> Unit = {},
     tabRow: (@Composable (isOverlay: Boolean, visible: Boolean) -> Unit)? = null,
     nestedScrollableColumnState: NestedScrollableColumnState = rememberNestedScrollableColumnState(),
@@ -794,6 +803,7 @@ fun SubjectDetailsSingleColumnPage(
                                             .ifThen(!showTopBar) { padding(top = windowSizeClass.paneVerticalPadding) }
                                             .padding(horizontal = windowSizeClass.paneHorizontalPadding),
                                         onCoverImageSuccess = onCoverImageSuccess,
+                                        onClickCover = onClickCover,
                                     )
                                 }
                             }

@@ -85,6 +85,7 @@ includeProject(":utils:analytics")
 includeProject(":utils:http-downloader")
 includeProject(":utils:build-config")
 includeProject(":utils:video-enhancement-shader-provider")
+includeProject(":utils:selector-workflow") // 数据源选择流程示意动画的数据层
 
 
 includeProject(":torrent:torrent-api", "torrent/api") // Torrent 系统 API

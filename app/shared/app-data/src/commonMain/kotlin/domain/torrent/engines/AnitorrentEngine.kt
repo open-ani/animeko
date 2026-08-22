@@ -100,6 +100,10 @@ class AnitorrentEngine(
             downloadRateLimitBytes = downloadRateLimit.toLibtorrentRate(),
             uploadRateLimitBytes = uploadRateLimit.toLibtorrentRate(),
             shareRatioLimit = shareRatioLimit.toLibtorrentShareRatio(),
+            extraTrackers = extraTrackers.lineSequence()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .toList(),
         )
 }
 

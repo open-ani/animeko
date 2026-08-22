@@ -208,6 +208,14 @@
     <string name="settings_acknowledgements_bangumi_description">Item data &amp; collection services</string>
     <string name="settings_acknowledgements_dandanplay">DanDanPlay</string>
     <string name="settings_acknowledgements_dandanplay_description">Danmaku aggregation</string>
+    <string name="settings_acknowledgements_mikan">Mikan Project</string>
+    <string name="settings_acknowledgements_mikan_description">Anime torrent index</string>
+    <string name="settings_acknowledgements_dmhy">DMHY</string>
+    <string name="settings_acknowledgements_dmhy_description">Anime torrent community</string>
+    <string name="settings_acknowledgements_oss_licenses">Open source licenses</string>
+    <string name="settings_acknowledgements_oss_licenses_description">Open source libraries used by this app and their licenses</string>
+    <string name="settings_oss_licenses_homepage">Homepage</string>
+    <string name="settings_oss_licenses_license">License</string>
     <string name="settings_app_initial_page">Initial page</string>
     <string name="settings_app_initial_page_description">The page that is shown when the app starts</string>
     <string name="settings_app_search">Search</string>
@@ -602,6 +610,9 @@
     <string name="settings_media_torrent_speed_format">%1$s MB/s</string>
     <string name="settings_media_torrent_limit_upload_on_metered">Limit Upload on Metered Network</string>
     <string name="settings_media_torrent_limit_upload_on_metered_description">Limit upload speed to 1 KB/s on metered networks</string>
+    <string name="settings_media_torrent_extra_trackers">Extra Trackers</string>
+    <string name="settings_media_torrent_extra_trackers_description">Extra tracker servers added before each BT download starts, helping discover more peers</string>
+    <string name="settings_media_torrent_extra_trackers_dialog_description">One tracker URL per line, e.g. udp://tracker.example.com:6969/announce. They will be added in addition to the built-in trackers before each BT download starts. Changes only affect downloads started afterwards.</string>
     <string name="settings_media_torrent_peer_filter">Peer Filtering and Blocking Settings</string>
     <string name="settings_media_torrent_peer_filter_description">Do not connect with blacklisted clients or those that match filter rules when downloading or uploading cached anime</string>
 
@@ -1148,6 +1159,8 @@
     <string name="settings_app_notification_settings">Notification settings</string>
     <string name="settings_app_open_settings">Open settings</string>
     <string name="settings_app_danmaku_refresh_rate">Danmaku refresh rate</string>
+    <string name="settings_player_exoplayer_preinit_effect_graph">Preload video enhancement shaders</string>
+    <string name="settings_player_exoplayer_preinit_effect_graph_desc">When enabled, video enhancement shaders are loaded even if video enhancement is disabled by default, allowing changes to video enhancement options to take effect immediately. Otherwise, you may need to restart playback for them to take effect.\nDisable this option if the screen turns black or system features (such as motion compensation) stop working.</string>
     <string name="settings_log_share_today_log_file">Share today\'s log file</string>
     <string name="settings_log_share_file">Share log file</string>
     <string name="settings_log_copy_today_log_content">Copy today\'s log content (large)</string>
