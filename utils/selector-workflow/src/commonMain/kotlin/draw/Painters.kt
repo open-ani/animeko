@@ -32,7 +32,6 @@ import me.him188.ani.utils.selectorworkflow.CursorState
 import me.him188.ani.utils.selectorworkflow.LineState
 import me.him188.ani.utils.selectorworkflow.RequestIcon
 import me.him188.ani.utils.selectorworkflow.RequestRowState
-import me.him188.ani.utils.selectorworkflow.RequestTone
 import me.him188.ani.utils.selectorworkflow.ResultChipState
 import me.him188.ani.utils.selectorworkflow.RippleState
 import me.him188.ani.utils.selectorworkflow.ScrollState
@@ -120,7 +119,7 @@ internal fun DrawScope.drawResultChip(
     if (chip.alpha <= 0.001f) return
     val m = layout.metrics
     val rect = layout.cells[chip.cell]
-    val color = palette.chip(chip.tone, chip.key.source)
+    val color = blendTone(chip.previousTone, chip.tone, chip.toneBlend) { palette.chip(it, chip.key.source) }
 
     scaleAbout(chip.scale, rect.center) {
         drawRoundRect(
@@ -255,7 +254,8 @@ internal fun DrawScope.drawClock(
     if (clock.alpha <= 0.001f) return
     val m = layout.metrics
     val r = m.clockRadius
-    val ring = palette.clock(clock.tone)
+    val ring = blendTone(clock.previousTone, clock.tone, clock.toneBlend, palette::clock)
+    val hand = blendTone(clock.previousTone, clock.tone, clock.toneBlend, palette::clockHand)
 
     drawCircle(palette.surfaceLow, radius = r, center = center, alpha = clock.alpha)
     if (clock.overlayAlpha > 0.001f) {
@@ -271,7 +271,7 @@ internal fun DrawScope.drawClock(
     val angle = (clock.handDegrees - 90f) * PI.toFloat() / 180f
     val length = r - TICK_INSET
     drawLine(
-        color = palette.clockHand(clock.tone),
+        color = hand,
         start = center,
         end = Offset(center.x + cos(angle) * length, center.y + sin(angle) * length),
         strokeWidth = m.strokeMedium,
@@ -285,7 +285,7 @@ internal fun DrawScope.drawClock(
             text = formatSeconds(clock.elapsedSeconds),
             anchor = readoutAnchor,
             targetHeight = m.readoutHeight,
-            color = palette.clockHand(clock.tone),
+            color = hand,
             alpha = clock.alpha,
             style = readoutStyle,
         )
@@ -376,7 +376,8 @@ internal fun DrawScope.drawBrowserWindow(
 
     drawRoundRect(palette.surfaceHigh, rect.topLeft, rect.size, radius)
     drawRoundRect(
-        palette.windowStroke(window.tone), rect.topLeft, rect.size, radius,
+        blendTone(window.previousTone, window.tone, window.toneBlend, palette::windowStroke),
+        rect.topLeft, rect.size, radius,
         style = Stroke(m.strokeMedium),
     )
     layout.chromeDots.forEach {
@@ -425,8 +426,9 @@ private fun DrawScope.drawRequestRow(
     val m = layout.metrics
     val cy = layout.rowCenterY(row.index)
     val iconCenter = Offset(layout.rowIconCenterX, cy)
-    val hit = row.tone == RequestTone.Hit
-    val iconColor = if (hit) palette.success else palette.requestIcon
+    // 图标与横条读同一路 tone, 同时起变
+    val iconColor = blendTone(row.previousTone, row.tone, row.toneBlend, palette::rowIcon)
+    val barColor = blendTone(row.previousTone, row.tone, row.toneBlend, palette::requestBar)
 
     scaleAbout(row.iconScale, iconCenter) {
         when (row.icon) {
@@ -442,7 +444,7 @@ private fun DrawScope.drawRequestRow(
     }
     val barWidth = layout.rowBarWidths.getOrElse(row.index) { m.chipWidth }
     drawRoundRect(
-        color = palette.requestBar(row.tone),
+        color = barColor,
         topLeft = Offset(layout.rowBarLeft, cy - m.rowBarHeight / 2f),
         size = Size(barWidth, m.rowBarHeight),
         cornerRadius = CornerRadius(m.rowBarHeight / 2f),

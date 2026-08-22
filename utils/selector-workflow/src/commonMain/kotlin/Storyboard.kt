@@ -10,6 +10,7 @@
 package me.him188.ani.utils.selectorworkflow
 
 import me.him188.ani.utils.selectorworkflow.anim.Easings
+import me.him188.ani.utils.selectorworkflow.anim.ToneChannel
 import me.him188.ani.utils.selectorworkflow.anim.floatTrack
 import me.him188.ani.utils.selectorworkflow.anim.stepTrack
 import kotlin.time.Duration
@@ -178,7 +179,7 @@ class Storyboard internal constructor(
     /** 一条搜索结果. */
     inner class ChipHandle internal constructor(val key: ResultKey, val cell: Int) {
         internal val alpha = floatTrack(0f)
-        internal val tone = stepTrack(ChipTone.Source)
+        internal val tone = ToneChannel(ChipTone.Source)
         internal val scale = floatTrack(1f)
 
         val candidate: Boolean get() = key.isCandidate(config)
@@ -192,9 +193,9 @@ class Storyboard internal constructor(
             touch(now + over)
         }
 
-        /** 被选中: 转绿 + 弹一下. */
+        /** 被选中: 转绿 + 弹一下. 转绿与弹跳、涟漪同时起步, 三个动作看起来才是一下. */
         fun select() {
-            tone.key(now, ChipTone.Selected)
+            tone.shift(ChipTone.Selected, now, pacing.fade * 0.7)
             alpha.ramp(now, pacing.fade, 1f)
             scale.key(now, 1f, Easings.EmphasizedDecelerate)
             scale.key(now + pacing.pop * 0.4, SELECT_POP, Easings.EmphasizedDecelerate)
@@ -204,7 +205,7 @@ class Storyboard internal constructor(
 
         /** 这一条解析失败了: 转红. */
         fun fail(over: Duration = pacing.fade * 0.8) {
-            tone.key(now + over, ChipTone.Failed)
+            tone.shift(ChipTone.Failed, now, over)
             touch(now + over)
         }
 
@@ -217,7 +218,7 @@ class Storyboard internal constructor(
         /** 复位. */
         fun reset(over: Duration = pacing.reset) {
             alpha.ramp(now, over, 0f)
-            tone.key(now + over, ChipTone.Source)
+            tone.snap(ChipTone.Source, now + over)
             scale.ramp(now, over, 1f)
             touch(now + over)
         }
@@ -280,7 +281,7 @@ class Storyboard internal constructor(
     inner class ClockHandle internal constructor(val id: ClockId) {
         internal val alpha = floatTrack(0f)
         internal val sweep = floatTrack(0f)
-        internal val tone = stepTrack(ClockTone.Running)
+        internal val tone = ToneChannel(ClockTone.Running)
         internal val overlay = floatTrack(0f)
 
         private var startedAt: Duration = Duration.ZERO
@@ -294,7 +295,7 @@ class Storyboard internal constructor(
         fun start() {
             startedAt = now
             window = pacing.clockSweep
-            tone.key(now, ClockTone.Running)
+            tone.snap(ClockTone.Running, now)
             overlay.key(now, 0f)
             alpha.key(now, 0f)
             alpha.ramp(now, SNAP, 1f)
@@ -319,7 +320,7 @@ class Storyboard internal constructor(
             val used = (now - startedAt).coerceAtLeast(Duration.ZERO)
             val fraction = (used.inWholeMicroseconds.toFloat() / window.inWholeMicroseconds).coerceIn(0f, 1f)
             sweep.key(now, fraction)
-            tone.key(now + pacing.fade * 0.5, ClockTone.Stopped)
+            tone.shift(ClockTone.Stopped, now, pacing.fade)
             touch(now + pacing.fade)
             return fraction
         }
@@ -327,7 +328,7 @@ class Storyboard internal constructor(
         /** 走满一圈, 判定超时. */
         fun expire() {
             sweep.key(now, 1f)
-            tone.key(now + pacing.fade * 0.5, ClockTone.Expired)
+            tone.shift(ClockTone.Expired, now, pacing.fade)
             overlay.ramp(now, pacing.fade, TIMEOUT_OVERLAY)
             touch(now + pacing.fade)
         }
@@ -335,7 +336,7 @@ class Storyboard internal constructor(
         /** 收起来并复位. 指针在收起来之前保持停下的位置, 不会一边淡出一边往回走. */
         fun hide(over: Duration = pacing.fade) {
             alpha.ramp(now, over, 0f)
-            tone.key(now + over, ClockTone.Running)
+            tone.snap(ClockTone.Running, now + over)
             overlay.ramp(now, over, 0f)
             sweep.ramp(now, over, 0f)
             window = Duration.ZERO
@@ -347,21 +348,22 @@ class Storyboard internal constructor(
 
     /** WebView 窗口边框. */
     inner class WindowHandle internal constructor() {
-        internal val tone = stepTrack(WindowTone.Closed)
+        internal val tone = ToneChannel(WindowTone.Closed)
 
         fun open(after: Duration = pacing.windowOpen) {
-            tone.key(now + after, WindowTone.Open)
-            touch(now + after)
+            tone.shift(WindowTone.Open, now + after, pacing.fade)
+            touch(now + after + pacing.fade)
         }
 
         fun markFailed(after: Duration = pacing.fade * 0.7) {
-            tone.key(now + after, WindowTone.Failed)
-            touch(now + after)
+            tone.shift(WindowTone.Failed, now + after, pacing.fade)
+            touch(now + after + pacing.fade)
         }
 
-        fun close() {
-            tone.key(now, WindowTone.Closed)
-            touch(now)
+        /** 窗口边框自始至终都看得见, 所以复位也得褪回去, 不能直接切. */
+        fun close(over: Duration = pacing.fade) {
+            tone.shift(WindowTone.Closed, now, over)
+            touch(now + over)
         }
     }
 
@@ -373,7 +375,7 @@ class Storyboard internal constructor(
         internal val rowIcon = List(config.resolve.requestCount) { index ->
             stepTrack(if (index == config.resolve.hitRow) RequestIcon.Media else RequestIcon.Request)
         }
-        internal val rowTone = List(config.resolve.requestCount) { stepTrack(RequestTone.Idle) }
+        internal val rowTone = List(config.resolve.requestCount) { ToneChannel(RequestTone.Idle) }
         internal val rowIconScale = List(config.resolve.requestCount) { floatTrack(1f) }
         internal val scroll = floatTrack(0f)
 
@@ -409,10 +411,15 @@ class Storyboard internal constructor(
             touch(now + over)
         }
 
-        /** 命中: 那一行转绿, 图标弹一下, 再扩一圈涟漪 —— 与第二步选中结果块是同一套动作. */
+        /**
+         * 命中: 那一行转绿, 图标弹一下, 同时扩一圈涟漪 —— 与第二步选中结果块是同一套动作.
+         *
+         * 三个动作都从 [now] 起步. 涟漪那圈绿环正好套在图标上, 要是转绿晚一步, 看起来就成了
+         * "图标先绿、横条后绿".
+         */
         fun hit(over: Duration = pacing.fade * 0.7) {
             val row = config.resolve.hitRow
-            rowTone[row].key(now + over, RequestTone.Hit)
+            rowTone[row].shift(RequestTone.Hit, now, over)
             val scale = rowIconScale[row]
             scale.key(now, 1f, Easings.EmphasizedDecelerate)
             scale.key(now + pacing.pop * 0.4, HIT_POP, Easings.EmphasizedDecelerate)
@@ -424,7 +431,7 @@ class Storyboard internal constructor(
         /** 清空列表, 滚动位置归零. */
         fun clear(over: Duration = pacing.fade) {
             rowAlpha.forEach { it.ramp(now, over, 0f) }
-            rowTone.forEach { it.key(now + over, RequestTone.Idle) }
+            rowTone.forEach { it.snap(RequestTone.Idle, now + over) }
             rowIconScale.forEach { it.key(now + over, 1f) }
             scroll.ramp(now, over, 0f)
             touch(now + over)

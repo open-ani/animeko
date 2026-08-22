@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import me.him188.ani.utils.selectorworkflow.ChipTone
 import me.him188.ani.utils.selectorworkflow.ClockTone
 import me.him188.ani.utils.selectorworkflow.RequestTone
@@ -77,6 +78,12 @@ data class WorkflowPalette(
 
     fun requestBar(tone: RequestTone): Color = when (tone) {
         RequestTone.Idle -> outlineVariant
+        RequestTone.Hit -> success
+    }
+
+    /** 请求行左侧的图标. 与 [requestBar] 读同一个 tone, 两者永远同时变色. */
+    fun rowIcon(tone: RequestTone): Color = when (tone) {
+        RequestTone.Idle -> requestIcon
         RequestTone.Hit -> success
     }
 
@@ -146,5 +153,13 @@ fun workflowPaletteOf(
     success = success,
     error = error,
 )
+
+/**
+ * 语义色是离散的, 颜色该连续地过渡: 把 [from] 和 [to] 各映射成颜色, 再按 [blend] 插值.
+ *
+ * 绝大多数帧上两端是同一个语义色 (没有正在进行的过渡), 这时直接取色, 不做插值.
+ */
+internal inline fun <T> blendTone(from: T, to: T, blend: Float, color: (T) -> Color): Color =
+    if (from == to || blend >= 1f) color(to) else lerp(color(from), color(to), blend.coerceIn(0f, 1f))
 
 private fun Color.luminanceIsDark(): Boolean = red * 0.299f + green * 0.587f + blue * 0.114f < 0.5f

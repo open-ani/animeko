@@ -10,6 +10,7 @@
 package me.him188.ani.utils.selectorworkflow
 
 import androidx.compose.runtime.Immutable
+import me.him188.ani.utils.selectorworkflow.anim.ToneTracks
 import me.him188.ani.utils.selectorworkflow.anim.Track
 import kotlin.time.Duration
 
@@ -30,7 +31,7 @@ class SelectorWorkflowTimeline internal constructor(
     internal val ripples: List<RippleTracks>,
     internal val cursors: List<CursorTracks>,
     internal val handoff: LineTracks,
-    internal val window: Track<WindowTone>,
+    internal val window: ToneTracks<WindowTone>,
     internal val rows: List<RowTracks>,
     internal val scroll: Track<Float>,
     internal val clocks: Map<ClockId, ClockTracks>,
@@ -47,7 +48,7 @@ class SelectorWorkflowTimeline internal constructor(
             ripples = ripples.map { it.sample(t) },
             cursors = cursors.map { it.sample(t) },
             handoff = handoff.sample(t),
-            window = WindowState(window.valueAt(t)),
+            window = WindowState(window.current(t), window.previous(t), window.blend(t)),
             requestRows = rows.map { it.sample(t) },
             scroll = ScrollState(scroll.valueAt(t)),
             clocks = clocks.mapValues { (_, tracks) -> tracks.sample(t) },
@@ -77,17 +78,19 @@ internal class ChipTracks(
     private val candidate: Boolean,
     private val priority: Boolean,
     private val alpha: Track<Float>,
-    private val tone: Track<ChipTone>,
+    private val tone: ToneTracks<ChipTone>,
     private val scale: Track<Float>,
 ) {
     fun sample(t: Duration) = ResultChipState(
         key = key,
         cell = cell,
         alpha = alpha.valueAt(t),
-        tone = tone.valueAt(t),
+        tone = tone.current(t),
         scale = scale.valueAt(t),
         candidate = candidate,
         priority = priority,
+        previousTone = tone.previous(t),
+        toneBlend = tone.blend(t),
     )
 }
 
@@ -113,11 +116,12 @@ internal class RowTracks(
     private val index: Int,
     private val alpha: Track<Float>,
     private val icon: Track<RequestIcon>,
-    private val tone: Track<RequestTone>,
+    private val tone: ToneTracks<RequestTone>,
     private val iconScale: Track<Float>,
 ) {
     fun sample(t: Duration) = RequestRowState(
-        index, alpha.valueAt(t), icon.valueAt(t), tone.valueAt(t), iconScale.valueAt(t),
+        index, alpha.valueAt(t), icon.valueAt(t), tone.current(t), iconScale.valueAt(t),
+        previousTone = tone.previous(t), toneBlend = tone.blend(t),
     )
 }
 
@@ -125,7 +129,7 @@ internal class ClockTracks(
     private val id: ClockId,
     private val alpha: Track<Float>,
     private val sweep: Track<Float>,
-    private val tone: Track<ClockTone>,
+    private val tone: ToneTracks<ClockTone>,
     private val overlay: Track<Float>,
     /** 这个表数的是设置里配的多少秒. 整条时间线上是个常量, 不需要轨道. */
     private val budgetSeconds: Float,
@@ -134,8 +138,10 @@ internal class ClockTracks(
         id = id,
         alpha = alpha.valueAt(t),
         sweep = sweep.valueAt(t),
-        tone = tone.valueAt(t),
+        tone = tone.current(t),
         overlayAlpha = overlay.valueAt(t),
         budgetSeconds = budgetSeconds,
+        previousTone = tone.previous(t),
+        toneBlend = tone.blend(t),
     )
 }

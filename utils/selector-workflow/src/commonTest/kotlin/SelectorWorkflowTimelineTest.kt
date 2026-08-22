@@ -641,6 +641,90 @@ class SelectorWorkflowTimelineTest {
         assertTrue(slow.buildTimeline().duration > fast.buildTimeline().duration)
     }
 
+    // ------------------------------------------------------------------ 语义色的过渡
+
+    @Test
+    fun a_visible_tone_never_snaps_it_always_eases_in() {
+        // 语义色一变, 过渡进度就得是从头起步的; 要是变的那一帧 blend 已经满了, 颜色就"啪"地跳了一下
+        val timeline = config(
+            mode = SelectMode.Eager, priorityWait = 6.seconds,
+            demoBothPaths = true, outcomes = ALL_OUTCOMES,
+        ).buildTimeline()
+        val step = 16.milliseconds
+        var t = step
+        var previous = timeline.sampleAt(Duration.ZERO)
+        while (t <= timeline.duration) {
+            val now = timeline.sampleAt(t)
+            fun check(name: String, changed: Boolean, visible: Boolean, blend: Float) {
+                if (changed && visible) {
+                    assertTrue(blend < 0.5f, "$name 在 $t 直接跳色了, blend=$blend")
+                }
+            }
+            now.results.forEachIndexed { i, chip ->
+                check(
+                    "结果块 $i", chip.tone != previous.results[i].tone,
+                    chip.alpha > 0.01f, chip.toneBlend,
+                )
+            }
+            now.requestRows.forEachIndexed { i, row ->
+                check("请求行 $i", row.tone != previous.requestRows[i].tone, row.alpha > 0.01f, row.toneBlend)
+            }
+            now.clocks.forEach { (id, clock) ->
+                check("计时器 $id", clock.tone != previous.clocks.getValue(id).tone, clock.alpha > 0.01f, clock.toneBlend)
+            }
+            // 窗口边框自始至终都看得见
+            check("窗口", now.window.tone != previous.window.tone, true, now.window.toneBlend)
+            previous = now
+            t += step
+        }
+    }
+
+    @Test
+    fun the_hit_row_starts_turning_green_the_moment_its_ripple_appears() {
+        // 涟漪那圈绿环正好套在图标上, 转绿要是晚一步, 看起来就成了"图标先绿、横条后绿"
+        val timeline = config(outcomes = ALL_OUTCOMES).buildTimeline()
+        val hitRow = timeline.config.resolve.hitRow
+
+        val rippleAt = firstTimeWhen(timeline) { state ->
+            state.ripples.any { it.target == RippleTarget.RequestRow && it.alpha > 0.01f }
+        }
+        val greenAt = firstTimeWhen(timeline) { state ->
+            state.requestRows[hitRow].let { it.tone == RequestTone.Hit && it.toneBlend > 0f }
+        }
+        assertNotNull(rippleAt)
+        assertNotNull(greenAt)
+        val gap = (greenAt - rippleAt).absoluteValue
+        assertTrue(gap < 40.milliseconds, "转绿与涟漪差了 $gap, 该是同时起步")
+    }
+
+    @Test
+    fun the_icon_and_the_bar_of_a_row_always_read_the_same_tone() {
+        // 两者共用一路 tone —— 这条一破, 就会出现一半绿一半灰
+        val timeline = config(outcomes = ALL_OUTCOMES).buildTimeline()
+        val hit = firstStateWhen(timeline) { it.requestRows.any { row -> row.tone == RequestTone.Hit } }
+        assertNotNull(hit)
+        val row = hit.requestRows[timeline.config.resolve.hitRow]
+        assertEquals(RequestTone.Hit, row.tone)
+        assertEquals(RequestIcon.Media, row.icon, "命中的那条画的是播放三角")
+    }
+
+    @Test
+    fun a_clock_fades_into_its_verdict_colour() {
+        val timeline = config(outcomes = ALL_OUTCOMES).buildTimeline()
+        val blends = mutableListOf<Float>()
+        var t = Duration.ZERO
+        val step = 16.milliseconds
+        while (t <= timeline.duration) {
+            val clock = timeline.sampleAt(t).clocks.getValue(ClockId.InterceptBudget)
+            if (clock.previousTone == ClockTone.Running && clock.tone == ClockTone.Expired) {
+                blends += clock.toneBlend
+            }
+            t += step
+        }
+        assertTrue(blends.isNotEmpty(), "该有一段 Running -> Expired 的过渡")
+        assertTrue(blends.any { it in 0.2f..0.8f }, "过渡必须经过中间值, 拿到的是 $blends")
+    }
+
     /** 剧本里 cursor 用的是折算过的动画时间, 测试也得按同一把尺子. */
     private fun SelectorWorkflowConfig.readyTimes(): List<Duration> =
         sources.map { pacing.scaled(it.latency) }

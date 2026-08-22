@@ -31,6 +31,15 @@ import kotlin.time.Duration
  * | 9 | [ScrollState] | 第三步 | `rowOffset` |
  *
  * 其余元素 (结果容器边框、mac 三圆点、地址栏) 是静态的, 不属于可控制单元.
+ *
+ * ## 语义色怎么过渡
+ *
+ * 语义色 ([ChipTone] / [RequestTone] / [ClockTone] / [WindowTone]) 本身是离散的, 颜色却该连续地
+ * 过渡过去 —— 结果块转绿、表盘转红都不该"啪"地跳一下. 所以带语义色的单元一律给三样东西:
+ * `tone` (要去的那个色)、`previousTone` (从哪个色来的)、`toneBlend` (0..1 的过渡进度).
+ * Canvas 把前两个各映射成颜色再按进度插值, 状态层因此仍旧只谈语义, 不碰颜色.
+ *
+ * 过渡之外的时段 `previousTone == tone`, 这时 `toneBlend` 取什么值都是同一个颜色.
  */
 @Immutable
 data class SelectorWorkflowState(
@@ -111,6 +120,8 @@ data class ResultChipState(
     val scale: Float,
     val candidate: Boolean,
     val priority: Boolean,
+    val previousTone: ChipTone = tone,
+    val toneBlend: Float = 1f,
 )
 
 /** 涟漪锚在什么上. */
@@ -181,6 +192,8 @@ data class ClockState(
     val tone: ClockTone,
     val overlayAlpha: Float,
     val budgetSeconds: Float,
+    val previousTone: ClockTone = tone,
+    val toneBlend: Float = 1f,
 ) {
     /** 指针角度, 12 点为 0°, 顺时针. */
     val handDegrees: Float get() = sweep * 360f
@@ -211,7 +224,11 @@ enum class WindowTone {
 }
 
 @Immutable
-data class WindowState(val tone: WindowTone)
+data class WindowState(
+    val tone: WindowTone,
+    val previousTone: WindowTone = tone,
+    val toneBlend: Float = 1f,
+)
 
 /** 请求行左侧的图标. */
 enum class RequestIcon {
@@ -232,6 +249,8 @@ data class RequestRowState(
     val tone: RequestTone,
     /** 命中那一下图标弹一弹, 与第二步选中结果块时是同一个动作. */
     val iconScale: Float,
+    val previousTone: RequestTone = tone,
+    val toneBlend: Float = 1f,
 )
 
 /**
