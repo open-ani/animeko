@@ -12,10 +12,12 @@ package me.him188.ani.utils.selectorworkflow
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.Modifier
 import me.him188.ani.utils.selectorworkflow.draw.WorkflowLayout
@@ -35,6 +37,7 @@ fun SelectorWorkflowAnimation(
     modifier: Modifier = Modifier,
     palette: WorkflowPalette = rememberWorkflowPalette(),
     metrics: WorkflowMetrics = WorkflowMetrics.Default,
+    readoutStyle: TextStyle = MaterialTheme.typography.labelMedium,
 ) {
     LaunchedEffect(viewModel) {
         while (true) {
@@ -47,6 +50,7 @@ fun SelectorWorkflowAnimation(
         modifier = modifier,
         palette = palette,
         metrics = metrics,
+        readoutStyle = readoutStyle,
     )
 }
 
@@ -63,6 +67,7 @@ fun SelectorWorkflowAnimation(
     modifier: Modifier = Modifier,
     palette: WorkflowPalette = rememberWorkflowPalette(),
     metrics: WorkflowMetrics = WorkflowMetrics.Default,
+    readoutStyle: TextStyle = MaterialTheme.typography.labelMedium,
 ) {
     val layout = remember(config, metrics) { WorkflowLayout.of(config, metrics) }
     val textMeasurer = rememberTextMeasurer()
@@ -71,6 +76,6 @@ fun SelectorWorkflowAnimation(
             .fillMaxWidth()
             .aspectRatio(layout.canvasSize.width / layout.canvasSize.height),
     ) {
-        drawSelectorWorkflow(state, layout, palette, textMeasurer)
+        drawSelectorWorkflow(state, layout, palette, textMeasurer, readoutStyle)
     }
 }

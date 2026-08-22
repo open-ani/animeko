@@ -225,6 +225,7 @@ internal fun DrawScope.drawClock(
     layout: WorkflowLayout,
     palette: WorkflowPalette,
     textMeasurer: TextMeasurer?,
+    readoutStyle: TextStyle,
 ) {
     if (clock.alpha <= 0.001f) return
     val m = layout.metrics
@@ -261,6 +262,7 @@ internal fun DrawScope.drawClock(
             targetHeight = m.readoutHeight,
             color = palette.clockHand(clock.tone),
             alpha = clock.alpha,
+            style = readoutStyle,
         )
     }
 }
@@ -285,8 +287,9 @@ private fun DrawScope.drawScaledText(
     targetHeight: Float,
     color: Color,
     alpha: Float,
+    style: TextStyle,
 ) {
-    val measured = textMeasurer.measure(text, ReadoutStyle)
+    val measured = textMeasurer.measure(text, style)
     val height = measured.size.height.toFloat()
     if (height <= 0f) return
     val k = targetHeight / height
@@ -297,7 +300,17 @@ private fun DrawScope.drawScaledText(
     }
 }
 
-private val ReadoutStyle = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Medium)
+/**
+ * 读数的默认排版, 形状对齐 M3 labelMedium (Medium 字重 + 0.5/12 的字距).
+ *
+ * 字号在这里只用来排版, 最终高度由 [WorkflowMetrics.readoutHeight] 决定 —— 画的时候会缩放到那个高度,
+ * 所以这里填多少都不影响成图, 填大一点只是让排版更精确.
+ */
+val DefaultReadoutStyle = TextStyle(
+    fontSize = 24.sp,
+    fontWeight = FontWeight.Medium,
+    letterSpacing = 1.sp,
+)
 
 private const val TICK_RADIUS = 0.8f
 private const val TICK_INSET = 1.4f

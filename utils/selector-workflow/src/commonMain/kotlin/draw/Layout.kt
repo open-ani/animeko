@@ -54,14 +54,14 @@ data class WorkflowMetrics(
     val rowBarHeight: Float = 4f,
     /** 计时器. */
     val clockRadius: Float = 6f,
-    /** 计时器旁边那个读数的字高与它跟表之间的留白. */
-    val readoutHeight: Float = 6f,
+    /** 计时器旁边那个读数的字高与它跟表之间的留白. 字高按 M3 labelMedium 的观感定. */
+    val readoutHeight: Float = 8f,
     val readoutGap: Float = 3f,
     /**
      * 单个字符占多宽, 按字高的比例给. 读数只有数字、小数点和 s, 宽度基本固定,
      * 所以不用真去量文字就能把浮层的宽度算准.
      */
-    val readoutCharWidth: Float = 0.52f,
+    val readoutCharWidth: Float = 0.58f,
     /** 第三步的计时器浮在内容区上: 离内容区边缘多远、自身内边距、圆角. */
     val overlayInset: Float = 3f,
     val overlayPadding: Float = 2.5f,
