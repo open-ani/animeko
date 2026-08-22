@@ -17,10 +17,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import org.openani.mediamp.metadata.Chapter
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 
 internal val DEFAULT_OP_ED_SKIP_DURATION = VideoScaffoldConfig.Default.opEdSkipDuration
 
@@ -28,14 +24,10 @@ internal val DEFAULT_OP_ED_SKIP_DURATION = VideoScaffoldConfig.Default.opEdSkipD
 class PlayerSkipOpEdState(
     chapters: State<List<Chapter>>,
     private val onSkip: (targetMillis: Long) -> Unit,
-    videoLength: State<Duration>,
 ) {
     private var currentChapter: CurrentChapter? by mutableStateOf(null)
     private val opEdChapters by derivedStateOf {
-        chapters.value.filter {
-            OpEdLength.fromVideoLengthOrNull(videoLength.value)
-                ?.isOpEdChapter(it.durationMillis.milliseconds) == true
-        }.map { CurrentChapter(chapter = it, false) }
+        chapters.value.map { CurrentChapter(chapter = it, false) }
     }
 
     val skipped: Boolean by derivedStateOf {
@@ -81,21 +73,4 @@ class PlayerSkipOpEdState(
 @Stable
 class CurrentChapter(val chapter: Chapter, skipped: Boolean) {
     var skipped by mutableStateOf(skipped)
-}
-
-fun interface OpEdLength {
-    fun isOpEdChapter(chapterLength: Duration): Boolean
-
-    companion object {
-        private val Normal = OpEdLength { it in 80.seconds..95.seconds }
-        private val Short = OpEdLength { it in 55.seconds..65.seconds }
-
-        fun fromVideoLengthOrNull(length: Duration): OpEdLength? {
-            return when {
-                length > 20.minutes -> Normal
-                length > 10.minutes -> Short
-                else -> null
-            }
-        }
-    }
 }
