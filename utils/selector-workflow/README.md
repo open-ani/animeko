@@ -1,7 +1,6 @@
 # :utils:selector-workflow
 
-「数据源选择流程」示意动画的**数据逻辑层**。不含任何绘制代码——它产出一份可采样的
-[`SelectorWorkflowState`](src/commonMain/kotlin/State.kt)，由 Compose Canvas 读取后画成图。
+「数据源选择流程」示意动画：数据逻辑层 + Compose Canvas 绘制层。
 
 ## 分层
 
@@ -16,9 +15,21 @@ SelectorWorkflowTimeline        ← 每个单元一组关键帧轨道；纯数�
         │  sampleAt(t)
         ▼
  SelectorWorkflowState          ← 某一帧要画的全部东西
-        ▲
-TimelinePlayer / ViewModel      ← 把帧时刻变成播放位置
+        ▲                    ╲
+TimelinePlayer / ViewModel      ╲  drawSelectorWorkflow(state, layout, palette)
+   ← 把帧时刻变成播放位置          ▼
+                          Compose Canvas
 ```
+
+绘制层同样是三块正交的东西，都不知道彼此的细节：
+
+| | 职责 | 不知道 |
+|---|---|---|
+| `draw/Layout.kt` | 几何：由 config + metrics 排出所有矩形与圆心 | 颜色、状态、时间 |
+| `draw/Palette.kt` | 语义色 → M3 token | 几何、状态 |
+| `draw/Painters.kt` | 每个单元一支画笔 | 别的单元、播放进度 |
+
+`draw/DrawWorkflow.kt` 只做两件事：把虚拟画布缩放居中到实际尺寸，然后按 z 序把画笔叫一遍。
 
 关键性质：**时间线是纯函数**。同一个 `Duration` 采出来永远是同一份状态，所以拖进度条、
 定格截图、单元测试都能直接用，也不需要在 Canvas 里保存任何动画状态。
@@ -91,12 +102,53 @@ config.budgetForInterceptStopFraction(7.5f / 12f)    // 想停在钟面 7 点半
 
 三个开关组合出的八条路径不是八份脚本——它们是同一份剧本在不同配置下编译出的八条时间线。
 
+## 绘制层
+
+### 几何是算出来的
+
+`WorkflowLayout.of(config, metrics)` 是纯函数：结果块尺寸、容器大小、节点位置、窗口、
+标题栏三件套、请求行、两个表盘，全部由 `WorkflowMetrics`（一组虚拟单位的比例常量）和
+config 推出来。加一个源、多两条结果、换成三列网格，画面自动重排，绘制代码一行不用动。
+
+几个自己会照顾自己的约束：
+
+- 数据源节点以结果容器的竖直中心为轴等距排开；
+- 连线终点夹到容器左边的**直边**上，源多到探出容器时也不会落在圆角里；
+- 标题栏里 caption button / 地址栏 / 计时器互不重叠，地址栏自动占满中间剩下的宽度；
+- 计时器右缘与内容区右缘对齐。
+
+这些都有单测（`WorkflowLayoutTest`）盯着。
+
+### 坐标系
+
+布局算在一个虚拟画布里（默认约 254×86），`drawSelectorWorkflow` 用一次 `scale` + `translate`
+把它居中铺到实际尺寸。线宽、圆角跟着一起缩放，所以放到任何尺寸都是同一张矢量图，不会糊。
+
+### 颜色
+
+状态层只给 `ChipTone` / `WindowTone` / `ClockTone` 这类语义枚举，到 `WorkflowPalette` 才落到
+`MaterialTheme.colorScheme` 上，深浅色主题自动跟随。M3 基线里没有 success 角，按自定义色角补一个；
+数据源颜色按下标在 primary / secondary / tertiary 里循环，源再多也不会没色可用。
+
+不在 Composition 里（预览、截图、测试）用 `workflowPaletteOf(...)` 手搭一份。
+
+### 光环脉冲
+
+数据源搜索中的光环是个 1.1s 的独立循环，和时间线无关，所以没有为它建轨道——
+画笔直接从 `state.time` 取相位。仍然是"同一个时刻画出同一帧"。
+
 ## UI 侧接法
 
 ```kotlin
 val vm = viewModel { SelectorWorkflowViewModel() }
-LaunchedEffect(Unit) { while (true) withFrameNanos { vm.onFrame(it) } }
-Canvas(Modifier.fillMaxWidth().aspectRatio(254f / 86f)) {
-    drawWorkflow(vm.state)   // 待实现
-}
+SelectorWorkflowAnimation(vm, Modifier.fillMaxWidth())
+```
+
+想自己控制播放（暂停、拖进度、截某一帧）就用另一个重载：
+
+```kotlin
+SelectorWorkflowAnimation(
+    state = timeline.sampleAt(2.seconds),
+    config = config,
+)
 ```
