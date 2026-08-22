@@ -52,14 +52,12 @@ kotlin {
         api(libs.kotlinx.collections.immutable)
         api(projects.app.shared.imageViewer)
 
-        api(libs.coil.compose.core)
-        api(libs.coil.svg)
-        api(libs.coil.network.ktor3)
-
         api(libs.compose.lifecycle.viewmodel.compose)
         api(libs.compose.lifecycle.runtime.compose)
         api(libs.compose.navigation.compose)
         api(libs.compose.navigation.runtime)
+        api(libs.compose.navigation3.runtime)
+        api(libs.kotlinx.serialization.json)
         api(libs.compose.material3.adaptive.core)
         api(libs.compose.material3.adaptive.layout)
         api(libs.compose.material3.adaptive.navigation0)

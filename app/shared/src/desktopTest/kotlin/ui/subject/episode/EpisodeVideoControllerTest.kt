@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.ui.subject.episode
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -44,8 +46,6 @@ import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.swipe
-import androidx.compose.ui.window.WindowPlacement
-import androidx.compose.ui.window.WindowState
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.MutableStateFlow
 import me.him188.ani.app.data.models.preference.DarkMode
@@ -54,12 +54,13 @@ import me.him188.ani.app.data.models.preference.VideoScaffoldConfig
 import me.him188.ani.app.domain.media.player.ChunkState
 import me.him188.ani.app.domain.media.player.staticMediaCacheProgressState
 import me.him188.ani.app.domain.player.VideoLoadingState
-import me.him188.ani.app.platform.PlatformWindow
 import me.him188.ani.app.ui.danmaku.PlayerDanmakuEditor
 import me.him188.ani.app.ui.episode.share.MediaShareData
 import me.him188.ani.app.ui.foundation.LocalPlatform
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
-import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
+import me.him188.ani.app.ui.foundation.input.LocalActiveInputSource
+import me.him188.ani.app.ui.foundation.navigation.BackHandler
+import me.him188.ani.app.ui.foundation.navigation.onBackNavigationInput
 import me.him188.ani.app.ui.framework.AniComposeUiTest
 import me.him188.ani.app.ui.framework.doesNotExist
 import me.him188.ani.app.ui.framework.exists
@@ -85,16 +86,20 @@ import me.him188.ani.app.videoplayer.ui.NoOpPlaybackSpeedController
 import me.him188.ani.app.videoplayer.ui.NoOpVideoAspectRatio
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
+import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.gesture.GestureFamily
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
 import me.him188.ani.app.videoplayer.ui.gesture.VIDEO_GESTURE_MOUSE_MOVE_SHOW_CONTROLLER_DURATION
 import me.him188.ani.app.videoplayer.ui.gesture.VIDEO_GESTURE_TOUCH_SHOW_CONTROLLER_DURATION
+import me.him188.ani.app.videoplayer.ui.gesture.gestureFamilyOf
+import me.him188.ani.app.videoplayer.ui.gesture.mouseFamily
 import me.him188.ani.app.videoplayer.ui.progress.MediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerProgressSliderState
 import me.him188.ani.app.videoplayer.ui.progress.TAG_DANMAKU_ICON_BUTTON
+import me.him188.ani.app.videoplayer.ui.progress.TAG_FULL_SCREEN_BUTTON
 import me.him188.ani.app.videoplayer.ui.progress.TAG_MEDIA_PROGRESS_INDICATOR_TEXT
 import me.him188.ani.app.videoplayer.ui.progress.TAG_PROGRESS_SLIDER
 import me.him188.ani.app.videoplayer.ui.progress.TAG_PROGRESS_SLIDER_CENTERED_PREVIEW_FRAME
@@ -202,6 +207,9 @@ class EpisodeVideoControllerTest {
         get() = onNodeWithTag(TAG_DANMAKU_ICON_BUTTON, useUnmergedTree = true)
     private val SemanticsNodeInteractionsProvider.player
         get() = onNodeWithTag("PLAYER", useUnmergedTree = true)
+
+    private val SemanticsNodeInteractionsProvider.fullScreenButton
+        get() = onNodeWithTag(TAG_FULL_SCREEN_BUTTON, useUnmergedTree = true)
     private val SemanticsNodeInteractionsProvider.videoGestureHost
         get() = onNodeWithTag("VideoGestureHost", useUnmergedTree = true)
     private val SemanticsNodeInteractionsProvider.mediaProgressIndicatorText: SemanticsNodeInteraction
@@ -209,10 +217,9 @@ class EpisodeVideoControllerTest {
 
     @Composable
     private fun Player(
-        gestureFamily: GestureFamily,
+        /** null 表示不写死, 由 [EpisodeVideoImpl] 按当前输入设备推导 —— 混合设备的行为只能这样测. */
+        gestureFamily: GestureFamily?,
         playerControllerState: PlayerControllerState = controllerState,
-        onClickFullScreen: () -> Unit = {},
-        onExitFullscreen: () -> Unit = {},
         onToggleDanmaku: () -> Unit = {},
         audioController: LevelController = NoOpLevelController,
         playbackSpeed: PlaybackSpeed = NoOpPlaybackSpeedController,
@@ -220,24 +227,19 @@ class EpisodeVideoControllerTest {
         opEdSkipDuration: Duration = 85.seconds,
         watchTogetherPlayerController: WatchTogetherPlayerController? = null,
         onPlayerStateCreated: (TestMediampPlayer) -> Unit = {},
-        onPlatformWindow: (PlatformWindow) -> Unit = {},
-        platformWindowOverride: PlatformWindow? = null,
         showDanmakuEditor: () -> Boolean = { true },
         onEditorEscape: (() -> Unit)? = null,
         expanded: Boolean = true,
-        isFullscreen: Boolean = expanded,
+        fullscreenState: PlayerFullscreenState = remember(expanded) { TestFullscreenState(expanded) },
         framePreview: MediaProgressFramePreviewState? = null,
         cacheChunkState: ChunkState = ChunkState.NONE,
     ) {
         ProvideCompositionLocalsForPreview(darkMode = DarkMode.DARK) {
-            val platformWindow = platformWindowOverride ?: LocalPlatformWindow.current
             val actualWatchTogetherPlayerController = watchTogetherPlayerController
                 ?: remember { WatchTogetherPlayerController() }
             CompositionLocalProvider(
-                LocalPlatformWindow provides platformWindow,
                 LocalWatchTogetherPlayerController provides actualWatchTogetherPlayerController,
             ) {
-                onPlatformWindow(platformWindow)
                 val scope = rememberCoroutineScope()
                 val playerState = remember {
                     TestMediampPlayer(scope.coroutineContext).also(onPlayerStateCreated)
@@ -250,139 +252,152 @@ class EpisodeVideoControllerTest {
                 LaunchedEffect(playerState) {
                     playerState.setMediaData(UriMediaData("file:///test.mp4"))
                 }
+                BackHandler(enabled = fullscreenState.isFullscreen) { fullscreenState.request(false) }
                 val cacheProgressInfoFlow = staticMediaCacheProgressState(cacheChunkState).flow
                 EpisodeVideoImpl(
-                playerState = playerState,
-                expanded = expanded,
-                hasNextEpisode = true,
-                onClickNextEpisode = {},
-                playerControllerState = playerControllerState,
-                opEdSkipDuration = opEdSkipDuration,
-                title = { PlayerTopBar() },
-                danmakuHost = {},
-                danmakuEnabled = false,
-                onToggleDanmaku = onToggleDanmaku,
-                videoLoadingStateFlow = remember { MutableStateFlow(VideoLoadingState.Succeed(isBt = true)) },
-                onClickFullScreen = onClickFullScreen,
-                onExitFullscreen = onExitFullscreen,
-                danmakuEditor = {
-                    if (showDanmakuEditor()) {
-                        PlayerDanmakuEditor(
-                            text = "",
-                            onTextChange = {},
-                            isSending = { false },
-                            onSend = {},
-                            danmakuTextPlaceholder = "",
-                            playerState = playerState,
-                            videoScaffoldConfig = VideoScaffoldConfig.Default,
-                            playerControllerState = playerControllerState,
-                            modifier = Modifier.testTag(TAG_DANMAKU_EDITOR),
-                            onEscape = onEditorEscape,
+                    playerState = playerState,
+                    expanded = expanded,
+                    hasNextEpisode = true,
+                    onClickNextEpisode = {},
+                    playerControllerState = playerControllerState,
+                    opEdSkipDuration = opEdSkipDuration,
+                    title = { PlayerTopBar() },
+                    danmakuHost = {},
+                    danmakuEnabled = false,
+                    onToggleDanmaku = onToggleDanmaku,
+                    videoLoadingStateFlow = remember { MutableStateFlow(VideoLoadingState.Succeed(isBt = true)) },
+                    fullscreenState = fullscreenState,
+                    danmakuEditor = {
+                        if (showDanmakuEditor()) {
+                            PlayerDanmakuEditor(
+                                text = "",
+                                onTextChange = {},
+                                isSending = { false },
+                                onSend = {},
+                                danmakuTextPlaceholder = "",
+                                playerState = playerState,
+                                videoScaffoldConfig = VideoScaffoldConfig.Default,
+                                playerControllerState = playerControllerState,
+                                modifier = Modifier.testTag(TAG_DANMAKU_EDITOR),
+                                onEscape = onEditorEscape,
+                            )
+                        }
+                    },
+                    onClickScreenshot = {},
+                    detachedProgressSlider = {
+                        PlayerControllerDefaults.MediaProgressSlider(
+                            progressSliderState,
+                            cacheProgressInfoFlow = cacheProgressInfoFlow,
+                            Modifier.testTag(TAG_DETACHED_PROGRESS_SLIDER),
+                            enabled = false,
+                            framePreview = framePreview,
+                            showFramePreviewInPopup = expanded,
                         )
-                    }
-                },
-                onClickScreenshot = {},
-                detachedProgressSlider = {
-                    PlayerControllerDefaults.MediaProgressSlider(
-                        progressSliderState,
-                        cacheProgressInfoFlow = cacheProgressInfoFlow,
-                        Modifier.testTag(TAG_DETACHED_PROGRESS_SLIDER),
-                        enabled = false,
-                        framePreview = framePreview,
-                        showFramePreviewInPopup = expanded,
-                    )
-                },
-                sidebarVisible = true,
-                onToggleSidebar = {},
-                progressSliderState = progressSliderState,
-                cacheProgressInfoFlow = cacheProgressInfoFlow,
-                framePreview = framePreview,
-                audioController = audioController,
-                brightnessController = NoOpLevelController,
-                playbackSpeedControllerState = remember(playbackSpeed) {
-                    PlaybackSpeedControllerState(
-                        playbackSpeed = playbackSpeed,
-                        onCommitSpeed = onCommitPlaybackSpeed,
-                        scope = scope,
-                    )
-                },
-                videoAspectRatioControllerState = remember {
-                    VideoAspectRatioControllerState(NoOpVideoAspectRatio, scope)
-                },
-                leftBottomTips = {},
-                fullscreenSwitchButton = {
-                    EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
-                        FullscreenSwitchMode.ONLY_IN_CONTROLLER,
-                        isFullscreen = expanded,
-                        onClickFullScreen = {},
-                    )
-                },
-                sideSheets = { sheetsController ->
-                    EpisodeVideoDefaults.SideSheets(
-                        sheetsController,
-                        playerControllerState,
-                        playerSettingsPage = {
-                            EpisodeVideoSideSheets.DanmakuSettingsSheet(
-                                danmakuConfig = DanmakuConfig.Default,
-                                setDanmakuConfig = {},
-                                enableRegexFilter = true,
-                                onNavigateToFilterSettings = {
-                                    sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
-                                },
-                                switchDanmakuRegexFilterCompletely = {},
-                                onDismissRequest = { goBack() },
-                                Modifier.testTag(TAG_DANMAKU_SETTINGS_SHEET),
-                            )
-                        },
-                        editDanmakuRegexFilterPage = {
-                            DanmakuRegexFilterSettings(
-                                state = createTestDanmakuRegexFilterState(),
-                                onDismissRequest = { goBack() },
-                                expanded = expanded,
-                            )
-                        },
-                        mediaSelectorPage = {
-                            val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(ViewKind.WEB) }
-                            val (fetchRequest, onFetchRequestChange) = rememberSaveable {
-                                mutableStateOf(
-                                    TestMediaFetchRequest,
+                    },
+                    sidebarVisible = true,
+                    onToggleSidebar = {},
+                    progressSliderState = progressSliderState,
+                    cacheProgressInfoFlow = cacheProgressInfoFlow,
+                    framePreview = framePreview,
+                    audioController = audioController,
+                    brightnessController = NoOpLevelController,
+                    playbackSpeedControllerState = remember(playbackSpeed) {
+                        PlaybackSpeedControllerState(
+                            playbackSpeed = playbackSpeed,
+                            onCommitSpeed = onCommitPlaybackSpeed,
+                            scope = scope,
+                        )
+                    },
+                    videoAspectRatioControllerState = remember {
+                        VideoAspectRatioControllerState(NoOpVideoAspectRatio, scope)
+                    },
+                    leftBottomTips = {},
+                    fullscreenSwitchButton = {
+                        EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
+                            FullscreenSwitchMode.ONLY_IN_CONTROLLER,
+                            fullscreenState,
+                        )
+                    },
+                    sideSheets = { sheetsController ->
+                        EpisodeVideoDefaults.SideSheets(
+                            sheetsController,
+                            playerControllerState,
+                            playerSettingsPage = {
+                                EpisodeVideoSideSheets.DanmakuSettingsSheet(
+                                    danmakuConfig = DanmakuConfig.Default,
+                                    setDanmakuConfig = {},
+                                    enableRegexFilter = true,
+                                    onNavigateToFilterSettings = {
+                                        sheetsController.navigateTo(EpisodeVideoSideSheetPage.EDIT_DANMAKU_REGEX_FILTER)
+                                    },
+                                    switchDanmakuRegexFilterCompletely = {},
+                                    onDismissRequest = { goBack() },
+                                    Modifier.testTag(TAG_DANMAKU_SETTINGS_SHEET),
                                 )
-                            }
-                            EpisodeVideoSideSheets.MediaSelectorSheet(
-                                mediaSelectorState = rememberTestMediaSelectorState(),
-                                mediaSourceResultListPresentation = TestMediaSourceResultListPresentation,
-                                viewKind = viewKind,
-                                onViewKindChange = onViewKindChange,
-                                fetchRequest = fetchRequest,
-                                onFetchRequestChange = onFetchRequestChange,
-                                onDismissRequest = { goBack() },
-                                onRefresh = {},
-                                onRestartSource = {},
-                            )
-                        },
-                        episodeSelectorPage = {
-                            EpisodeVideoSideSheets.EpisodeSelectorSheet(
-                                state = rememberTestEpisodeSelectorState(),
-                                onDismissRequest = { goBack() },
-                            )
-                        },
-                    )
-                },
-                gestureFamily = gestureFamily,
-                shareData = MediaShareData(null, null),
-                onClickCache = {},
-                isFullscreen = isFullscreen,
-                modifier = Modifier.testTag("PLAYER"),
+                            },
+                            editDanmakuRegexFilterPage = {
+                                DanmakuRegexFilterSettings(
+                                    state = createTestDanmakuRegexFilterState(),
+                                    onDismissRequest = { goBack() },
+                                    expanded = expanded,
+                                )
+                            },
+                            mediaSelectorPage = {
+                                val (viewKind, onViewKindChange) = rememberSaveable { mutableStateOf(ViewKind.WEB) }
+                                val (fetchRequest, onFetchRequestChange) = rememberSaveable {
+                                    mutableStateOf(
+                                        TestMediaFetchRequest,
+                                    )
+                                }
+                                EpisodeVideoSideSheets.MediaSelectorSheet(
+                                    mediaSelectorState = rememberTestMediaSelectorState(),
+                                    mediaSourceResultListPresentation = TestMediaSourceResultListPresentation,
+                                    viewKind = viewKind,
+                                    onViewKindChange = onViewKindChange,
+                                    fetchRequest = fetchRequest,
+                                    onFetchRequestChange = onFetchRequestChange,
+                                    onDismissRequest = { goBack() },
+                                    onRefresh = {},
+                                    onRestartSource = {},
+                                )
+                            },
+                            episodeSelectorPage = {
+                                EpisodeVideoSideSheets.EpisodeSelectorSheet(
+                                    state = rememberTestEpisodeSelectorState(),
+                                    onDismissRequest = { goBack() },
+                                )
+                            },
+                        )
+                    },
+                    gestureFamily = gestureFamily ?: gestureFamilyOf(
+                        LocalActiveInputSource.current.current,
+                        LocalPlatform.current.mouseFamily,
+                    ),
+                    shareData = MediaShareData(null, null),
+                    onClickCache = {},
+                    modifier = Modifier.testTag("PLAYER"),
                 )
             }
         }
     }
 
-    private fun placementBackedPlatformWindow(): PlatformWindow = PlatformWindow(
-        windowHandle = 0L,
-        windowState = WindowState(),
-        platform = Platform.Linux(Arch.X86_64),
-    )
+    /**
+     * 记录每一次真正生效的全屏请求. 幂等地被忽略掉的请求 (已在目标状态) 不记录.
+     */
+    private class TestFullscreenState(
+        initialIsFullscreen: Boolean,
+    ) : PlayerFullscreenState {
+        override var isFullscreen: Boolean by mutableStateOf(initialIsFullscreen)
+            private set
+
+        val requests = mutableListOf<Boolean>()
+
+        override fun request(fullscreen: Boolean) {
+            if (isFullscreen == fullscreen) return
+            requests.add(fullscreen)
+            isFullscreen = fullscreen
+        }
+    }
 
     private class TestLevelController(
         initialLevel: Float,
@@ -481,18 +496,22 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
-    fun `watch together popup follows controller only in fullscreen`() = runAniComposeUiTest {
+    fun `watch together popup follows controller while video fills page`() = runAniComposeUiTest {
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         val watchTogetherPlayerController = WatchTogetherPlayerController()
         var isFullscreen by mutableStateOf(true)
+        var isExpandedLayout by mutableStateOf(false)
+        var sidebarVisible by mutableStateOf(true)
         mainClock.autoAdvance = false
         setContent {
-            Player(
-                GestureFamily.MOUSE,
-                playerControllerState = visibleControllerState,
-                watchTogetherPlayerController = watchTogetherPlayerController,
-                isFullscreen = isFullscreen,
-            )
+            CompositionLocalProvider(LocalWatchTogetherPlayerController provides watchTogetherPlayerController) {
+                WatchTogetherPopupVisibilityEffect(
+                    playerControllerState = visibleControllerState,
+                    isFullscreen = isFullscreen,
+                    isExpandedLayout = isExpandedLayout,
+                    sidebarVisible = sidebarVisible,
+                )
+            }
         }
 
         runOnIdle {
@@ -523,6 +542,21 @@ class EpisodeVideoControllerTest {
         waitUntil(timeoutMillis = WAIT_TIMEOUT) {
             watchTogetherPlayerController.isDraggablePopupVisible
         }
+
+        runOnIdle {
+            isExpandedLayout = true
+            sidebarVisible = false
+        }
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            !watchTogetherPlayerController.isDraggablePopupVisible
+        }
+
+        runOnIdle {
+            sidebarVisible = true
+        }
+        waitUntil(timeoutMillis = WAIT_TIMEOUT) {
+            watchTogetherPlayerController.isDraggablePopupVisible
+        }
     }
 
     /**
@@ -541,7 +575,7 @@ class EpisodeVideoControllerTest {
         }
 
         mainClock.autoAdvance = false
-        onRoot().performClick()
+        onRoot().performTouchInput { click() }
         runOnIdle {
             mainClock.advanceTimeBy(1000L)
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
@@ -566,14 +600,14 @@ class EpisodeVideoControllerTest {
 
         val root = onAllNodes(isRoot()).onFirst()
         mainClock.autoAdvance = false
-        root.performClick()
+        root.performTouchInput { click() }
         runOnIdle {
             mainClock.advanceTimeBy(1000L)
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
             assertEquals(NORMAL_VISIBLE, controllerState.visibility)
         }
 
-        root.performClick()
+        root.performTouchInput { click() }
         runOnIdle {
             mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
@@ -582,62 +616,215 @@ class EpisodeVideoControllerTest {
     }
 
     /**
-     * @see GestureFamily.swipeMidForFullscreen
+     * 混合输入设备 (带触屏的 Windows 二合一、接了鼠标的 Android 平板) 上, 点击语义必须按本次事件的
+     * 指针类型解析, 而不是按当前的 [GestureFamily].
+     *
+     * 这里刻意把 family 固定成 [GestureFamily.MOUSE], 相当于用户一路用鼠标走到播放页;
+     * 随后的第一次触摸就必须立刻是触摸语义 (显隐控制器), 而不是鼠标语义 (暂停/恢复) ——
+     * 不允许出现「先点一次预热、第二次才生效」.
+     *
+     * @see tapGestureFamilyOf
+     */
+    @Test
+    fun `hybrid - first touch after mouse uses touch semantics immediately`() = runAniComposeUiTest {
+        lateinit var playerState: TestMediampPlayer
+        setContent {
+            Player(GestureFamily.MOUSE, onPlayerStateCreated = { playerState = it })
+        }
+        runOnIdle {
+            // Media is loaded paused by Player (the v1 test's PAUSED baseline).
+            assertEquals(MediaStatus.Ready, playerState.state.value.mediaStatus)
+            assertFalse(playerState.state.value.playWhenReady)
+            assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
+        }
+
+        val root = onAllNodes(isRoot()).onFirst()
+        mainClock.autoAdvance = false
+
+        // 鼠标点击: 鼠标语义 = 播放/暂停, 控制器不显示
+        // (点击会触发播放器命令, 必须在机器线程 (UI 线程) 上派发)
+        runOnUiThread {
+            root.performMouseInput { click() }
+        }
+        mainClock.advanceTimeBy(1000L)
+        runOnIdle {
+            assertTrue(playerState.state.value.playWhenReady)
+            assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
+        }
+
+        // 紧接着的第一次触摸: 必须立刻显示控制器, 且不能再切换播放状态
+        runOnUiThread {
+            root.performTouchInput { click() }
+        }
+        mainClock.advanceTimeBy(1000L)
+        runOnIdle {
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
+            assertEquals(NORMAL_VISIBLE, controllerState.visibility)
+            assertTrue(playerState.state.value.playWhenReady)
+        }
+    }
+
+    /**
+     * 鼠标按下到抬起之间必然会有位移 (手抖、触控板按压), 这一下必须仍然是一次点击.
+     *
+     * 滑动手势不能靠消费位移来做指针类型过滤: 消费会让 combinedClickable 的点击判定被取消,
+     * 桌面上就成了「按下动一像素就点不动播放器」. 过滤只能由 family 在组合期门控挂载.
+     */
+    @Test
+    fun `mouse - click with pointer drift still toggles playback`() = runAniComposeUiTest {
+        lateinit var playerState: TestMediampPlayer
+        setContent {
+            Player(GestureFamily.MOUSE, onPlayerStateCreated = { playerState = it })
+        }
+        runOnIdle {
+            assertEquals(MediaStatus.Ready, playerState.state.value.mediaStatus)
+            assertFalse(playerState.state.value.playWhenReady)
+        }
+
+        val root = onAllNodes(isRoot()).onFirst()
+        runOnUiThread {
+            root.performMouseInput {
+                moveTo(center)
+                press()
+                moveTo(center + Offset(1f, 0f))
+                release()
+            }
+        }
+        waitForIdle()
+        runOnIdle {
+            assertTrue(playerState.state.value.playWhenReady)
+        }
+    }
+
+    /**
+     * 混合设备从鼠标切到手指后, 滑动 seek 从第二次手势起生效.
+     *
+     * 第一次触摸只能把 family 切过来: 触摸没有 hover, 类型要到 down 才知道, 而 Compose 在 down
+     * 时就为这个 pointer 固定了命中路径, 随后才挂载的 draggable 不在路径里, 收不到后续 Move.
+     * 这是门控方案的既定代价 —— 换成在事件里消费位移来过滤, 代价会变成鼠标按下漂移就点不动播放器.
+     */
+    @Test
+    fun `hybrid - touch drag after mouse takes effect from the second gesture`() = runAniComposeUiTest {
+        setContent {
+            Player(gestureFamily = null)
+        }
+        waitForIdle()
+
+        val root = onAllNodes(isRoot()).onFirst()
+
+        // 鼠标走一遍, family 落到 MOUSE (MOUSE 语义下点击会切换播放, 命令必须在 UI 线程派发)
+        runOnUiThread {
+            root.performMouseInput {
+                moveTo(center)
+                click()
+                exit()
+            }
+        }
+        runOnIdle {
+            detachedProgressSlider.assertDoesNotExist()
+        }
+
+        // 第一次触摸: 只把 family 切到 TOUCH, 拖不出 seek.
+        // 位移没有拖动手势接管, 于是被判成一次点击 —— 会切换播放状态, 命令必须在 UI 线程派发.
+        runOnUiThread {
+            root.performTouchInput {
+                down(centerLeft)
+                moveBy(Offset(width / 2f, 0f))
+                up()
+            }
+        }
+        runOnIdle {
+            assertEquals(false, progressSliderState.isPreviewing)
+        }
+
+        // 第二次触摸: draggable 已挂载, 正常进入 seek
+        root.performTouchInput {
+            down(centerLeft)
+            moveBy(Offset(width / 2f, 0f))
+        }
+        runOnIdle {
+            assertEquals(true, progressSliderState.isPreviewing)
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { detachedProgressSlider.exists() }
+            assertEquals(PREVIEW_DETACHED_SLIDER, controllerState.visibility)
+        }
+
+        // 松开手指 (释放会触发 playerState.skip, 播放器命令必须在机器线程 (UI 线程) 上调用)
+        runOnUiThread {
+            root.performTouchInput { up() }
+        }
+    }
+
+    @Test
+    fun `hybrid - first mouse move after touch shows controller immediately`() = runAniComposeUiTest {
+        setContent {
+            Player(GestureFamily.TOUCH)
+        }
+        waitForIdle()
+
+        val root = onAllNodes(isRoot()).onFirst()
+        root.performTouchInput { click() }
+        root.performTouchInput { click() }
+        runOnIdle {
+            assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
+        }
+
+        root.slightlyMoveFromCenterToRight()
+        runOnIdle {
+            waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
+            assertEquals(NORMAL_VISIBLE, controllerState.visibility)
+        }
+    }
+
+    /**
+     * @see swipeToFullscreen
      */
     @Test
     fun `touch - swipeMidForFullscreen - swipe up enters and swipe down exits`() = runAniComposeUiTest {
-        val platformWindow = placementBackedPlatformWindow()
-        var fullscreenCount = 0
-        var exitFullscreenCount = 0
+        val fullscreenState = TestFullscreenState(initialIsFullscreen = false)
         setContent {
-            Player(
-                GestureFamily.TOUCH,
-                onClickFullScreen = { fullscreenCount++ },
-                onExitFullscreen = { exitFullscreenCount++ },
-                platformWindowOverride = platformWindow,
-            )
+            Player(GestureFamily.TOUCH, fullscreenState = fullscreenState)
         }
         waitForIdle()
+
+        // 未在全屏时, 在中间区域向下滑动：无效果
+        videoGestureHost.performTouchInput {
+            swipe(start = Offset(centerX, centerY - 200f), end = Offset(centerX, centerY + 200f))
+        }
+
+        runOnIdle {
+            assertEquals(emptyList<Boolean>(), fullscreenState.requests)
+        }
 
         // 未在全屏时, 在中间区域向上滑动: 进入全屏
         videoGestureHost.performTouchInput {
             swipe(start = Offset(centerX, centerY + 200f), end = Offset(centerX, centerY - 200f))
         }
         runOnIdle {
-            assertEquals(1, fullscreenCount)
-            assertEquals(0, exitFullscreenCount)
+            assertEquals(listOf(true), fullscreenState.requests)
         }
 
-        // 未在全屏时向下滑动: 无效果
-        videoGestureHost.performTouchInput {
-            swipe(start = Offset(centerX, centerY - 200f), end = Offset(centerX, centerY + 200f))
-        }
-        runOnIdle {
-            assertEquals(1, fullscreenCount)
-            assertEquals(0, exitFullscreenCount)
-        }
-
-        runOnIdle {
-            platformWindow.windowState.placement = WindowPlacement.Fullscreen
-        }
-        waitForIdle()
-
-        // 全屏时向下滑动: 退出全屏
-        videoGestureHost.performTouchInput {
-            swipe(start = Offset(centerX, centerY - 200f), end = Offset(centerX, centerY + 200f))
-        }
-        runOnIdle {
-            assertEquals(1, fullscreenCount)
-            assertEquals(1, exitFullscreenCount)
-        }
-
-        // 全屏时向上滑动: 无效果
+        // 全屏时, 在中间区域向上滑动: 无效果 (request 幂等)
         videoGestureHost.performTouchInput {
             swipe(start = Offset(centerX, centerY + 200f), end = Offset(centerX, centerY - 200f))
         }
         runOnIdle {
-            assertEquals(1, fullscreenCount)
-            assertEquals(1, exitFullscreenCount)
+            assertEquals(listOf(true), fullscreenState.requests)
+        }
+
+        // 全屏时，向下滑动，退出全屏
+        videoGestureHost.performTouchInput {
+            swipe(start = Offset(centerX, centerY - 200f), end = Offset(centerX, centerY + 200f))
+        }
+        runOnIdle {
+            assertEquals(listOf(true, false), fullscreenState.requests)
+        }
+
+        // 退出全屏后向下滑动，无效果
+        videoGestureHost.performTouchInput {
+            swipe(start = Offset(centerX, centerY - 200f), end = Offset(centerX, centerY + 200f))
+        }
+        runOnIdle {
+            assertEquals(listOf(true, false), fullscreenState.requests)
         }
     }
 
@@ -647,22 +834,19 @@ class EpisodeVideoControllerTest {
         lateinit var playbackSpeed: TestPlaybackSpeed
         val committedPlaybackSpeeds = mutableListOf<Float>()
         val audioController = TestLevelController(0.5f, levelStep = 0.04f)
-        var fullscreenCount = 0
-        var exitFullscreenCount = 0
+        val fullscreenState = TestFullscreenState(initialIsFullscreen = false)
         var toggleDanmakuCount = 0
         setContent {
             CompositionLocalProvider(LocalPlatform provides Platform.Android(Arch.ARMV8A)) {
-                val scope = rememberCoroutineScope()
                 playbackSpeed = remember { TestPlaybackSpeed(1f) }
                 Player(
                     GestureFamily.TOUCH,
-                    onClickFullScreen = { fullscreenCount++ },
-                    onExitFullscreen = { exitFullscreenCount++ },
                     onToggleDanmaku = { toggleDanmakuCount++ },
                     audioController = audioController,
                     playbackSpeed = playbackSpeed,
                     onCommitPlaybackSpeed = { committedPlaybackSpeeds.add(it) },
                     onPlayerStateCreated = { playerState = it },
+                    fullscreenState = fullscreenState,
                 )
             }
         }
@@ -674,15 +858,16 @@ class EpisodeVideoControllerTest {
         }
         waitForIdle() // let the state machine process the injected position
 
+        // F 是 toggle: 第一次进入, 第二次退出. Escape 不是播放器快捷键, 在这里没有 back dispatcher 接管
         videoGestureHost.performKeyInput {
             pressKey(Key.F)
             pressKey(Key.Escape)
+            pressKey(Key.F)
             pressKey(Key.B)
         }
         waitForIdle()
         runOnIdle {
-            assertEquals(1, fullscreenCount)
-            assertEquals(1, exitFullscreenCount)
+            assertEquals(listOf(true, false), fullscreenState.requests)
             assertEquals(1, toggleDanmakuCount)
         }
 
@@ -858,7 +1043,9 @@ class EpisodeVideoControllerTest {
             assertFalse(playerState.state.value.playWhenReady)
         }
 
-        videoGestureHost.performClick()
+        // 必须是触摸点击: 这里只是把焦点从编辑器夺回来, 而 desktop 的 performClick() 是鼠标点击,
+        // 鼠标语义下会顺带切换播放状态, 后面对 Spacebar 的断言就反了.
+        videoGestureHost.performTouchInput { click() }
         // combinedClickable 带 onDoubleClick, onClick 要等双击判定窗口过后才发;
         // CMP 1.11 起桌面端触摸输入会进入 Touch input mode, 不再有按下即抢焦点的捷径.
         mainClock.advanceTimeBy(1000L)
@@ -919,49 +1106,55 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
-    fun `touch - keyboard shortcuts - escape dismisses detached editor before exiting fullscreen`() = runAniComposeUiTest {
-        var exitFullscreenCount = 0
-        var editorEscapeCount = 0
-        var showDanmakuEditor by mutableStateOf(true)
-        val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
-        setContent {
-            CompositionLocalProvider(LocalPlatform provides Platform.Android(Arch.ARMV8A)) {
-                Player(
-                    GestureFamily.TOUCH,
-                    playerControllerState = visibleControllerState,
-                    onExitFullscreen = { exitFullscreenCount++ },
-                    showDanmakuEditor = { showDanmakuEditor },
-                    onEditorEscape = {
-                        editorEscapeCount++
-                        showDanmakuEditor = false
-                    },
-                )
+    fun `touch - back navigation input - escape dismisses detached editor before exiting fullscreen`() =
+        runAniComposeUiTest {
+            var exitFullscreenCount = 0
+            var editorEscapeCount = 0
+            var showDanmakuEditor by mutableStateOf(true)
+            val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+            setContent {
+                CompositionLocalProvider(LocalPlatform provides Platform.Android(Arch.ARMV8A)) {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .onBackNavigationInput { exitFullscreenCount++ },
+                    ) {
+                        Player(
+                            GestureFamily.TOUCH,
+                            playerControllerState = visibleControllerState,
+                            showDanmakuEditor = { showDanmakuEditor },
+                            onEditorEscape = {
+                                editorEscapeCount++
+                                showDanmakuEditor = false
+                            },
+                        )
+                    }
+                }
+            }
+            waitForIdle()
+
+            danmakuEditor.performClick()
+            danmakuEditor.onChild().assertIsFocused()
+            danmakuEditor.performKeyInput {
+                pressKey(Key.Escape)
+            }
+            waitForIdle()
+
+            videoGestureHost.assertIsFocused()
+            danmakuEditor.doesNotExist()
+            runOnIdle {
+                assertEquals(1, editorEscapeCount)
+                assertEquals(0, exitFullscreenCount)
+            }
+
+            videoGestureHost.performKeyInput {
+                pressKey(Key.Escape)
+            }
+            waitForIdle()
+            runOnIdle {
+                assertEquals(1, exitFullscreenCount)
             }
         }
-        waitForIdle()
-
-        danmakuEditor.performClick()
-        danmakuEditor.onChild().assertIsFocused()
-        danmakuEditor.performKeyInput {
-            pressKey(Key.Escape)
-        }
-        waitForIdle()
-
-        videoGestureHost.assertIsFocused()
-        danmakuEditor.doesNotExist()
-        runOnIdle {
-            assertEquals(1, editorEscapeCount)
-            assertEquals(0, exitFullscreenCount)
-        }
-
-        videoGestureHost.performKeyInput {
-            pressKey(Key.Escape)
-        }
-        waitForIdle()
-        runOnIdle {
-            assertEquals(1, exitFullscreenCount)
-        }
-    }
 
     @Test
     fun `mouse - keyboard shortcuts - reclaim focus from editor on mouse move`() = runAniComposeUiTest {
@@ -1024,29 +1217,31 @@ class EpisodeVideoControllerTest {
     }
 
     @Test
-    fun `mouse - keyboard shortcuts - reclaim focus after fullscreen button click on mouse move`() = runAniComposeUiTest {
-        var fullscreenCount = 0
-        val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
-        setContent {
-            Player(
-                GestureFamily.MOUSE,
-                playerControllerState = visibleControllerState,
-                onClickFullScreen = { fullscreenCount++ },
-            )
-        }
-        waitForIdle()
+    fun `mouse - keyboard shortcuts - reclaim focus after fullscreen button click on mouse move`() =
+        runAniComposeUiTest {
+            val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+            val fullscreenState = TestFullscreenState(initialIsFullscreen = true)
+            setContent {
+                Player(
+                    GestureFamily.MOUSE,
+                    playerControllerState = visibleControllerState,
+                    fullscreenState = fullscreenState,
+                )
+            }
+            waitForIdle()
 
-        videoGestureHost.assertIsFocused()
-        onNodeWithContentDescription("Exit Fullscreen").performClick()
-        waitForIdle()
-        runOnIdle {
-            assertEquals(1, fullscreenCount)
-        }
+            videoGestureHost.assertIsFocused()
+            // 已在全屏, 控制栏上的这个按钮此时是「退出全屏」
+            fullScreenButton.performClick()
+            waitForIdle()
+            runOnIdle {
+                assertEquals(listOf(false), fullscreenState.requests)
+            }
 
-        videoGestureHost.slightlyMoveFromCenterToRight()
-        waitForIdle()
-        videoGestureHost.assertIsFocused()
-    }
+            videoGestureHost.slightlyMoveFromCenterToRight()
+            waitForIdle()
+            videoGestureHost.assertIsFocused()
+        }
 
     @Test
     fun `mouse - keyboard shortcuts - enter does not activate click gesture`() = runAniComposeUiTest {
@@ -1096,7 +1291,7 @@ class EpisodeVideoControllerTest {
         waitForIdle()
         onNodeWithText("Playback Info", substring = true).doesNotExist()
 
-        videoGestureHost.performClick()
+        videoGestureHost.performMouseInput { click() }
         videoGestureHost.performKeyInput {
             pressKey(Key.I)
         }
@@ -1136,65 +1331,57 @@ class EpisodeVideoControllerTest {
 
     @Test
     fun `mouse - keyboard shortcuts - reclaim focus when fullscreen changes`() = runAniComposeUiTest {
-        val platformWindow = placementBackedPlatformWindow()
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
+        val fullscreenState = TestFullscreenState(initialIsFullscreen = false)
         setContent {
             Player(
                 GestureFamily.MOUSE,
                 playerControllerState = visibleControllerState,
-                platformWindowOverride = platformWindow,
+                fullscreenState = fullscreenState,
             )
         }
         waitForIdle()
 
-        onNodeWithContentDescription("Exit Fullscreen").performClick()
-        runOnIdle {
-            platformWindow.windowState.placement = WindowPlacement.Fullscreen
-        }
+        fullScreenButton.performClick()
         waitForIdle()
+        assertTrue(fullscreenState.isFullscreen)
         videoGestureHost.assertIsFocused()
 
-        onNodeWithContentDescription("Exit Fullscreen").performClick()
-        runOnIdle {
-            platformWindow.windowState.placement = WindowPlacement.Floating
-        }
+        fullScreenButton.performClick()
         waitForIdle()
+        assertFalse(fullscreenState.isFullscreen)
         videoGestureHost.assertIsFocused()
     }
 
     @Test
-    fun `mouse - keyboard shortcuts - preserve editor focus when fullscreen changes`() = runAniComposeUiTest {
-        val platformWindow = placementBackedPlatformWindow()
+    fun `mouse - keyboard shortcuts - lost editor focus when fullscreen changes`() = runAniComposeUiTest {
         val visibleControllerState = PlayerControllerState(NORMAL_VISIBLE)
         setContent {
             Player(
                 GestureFamily.MOUSE,
                 playerControllerState = visibleControllerState,
-                platformWindowOverride = platformWindow,
+                fullscreenState = TestFullscreenState(initialIsFullscreen = false),
             )
         }
         waitForIdle()
 
         danmakuEditor.performClick()
         danmakuEditor.onChild().assertIsFocused()
-        runOnIdle {
-            platformWindow.windowState.placement = WindowPlacement.Fullscreen
-        }
-        waitForIdle()
-        danmakuEditor.onChild().assertIsFocused()
 
-        runOnIdle {
-            platformWindow.windowState.placement = WindowPlacement.Floating
-        }
+        fullScreenButton.performClick()
         waitForIdle()
-        danmakuEditor.onChild().assertIsFocused()
+        danmakuEditor.onChild().assertIsNotFocused()
+
+        fullScreenButton.performClick()
+        waitForIdle()
+        danmakuEditor.onChild().assertIsNotFocused()
     }
 
     private fun AniComposeUiTest.testClickAndWaitForHide() {
         // 点击来显示控制器
         runOnIdle {
             mainClock.autoAdvance = false // 三秒后会自动隐藏, 这里不能让他自动前进时间
-            onRoot().performClick()
+            onRoot().performTouchInput { click() }
         }
         runOnIdle {
             mainClock.advanceTimeBy(1000L)
@@ -1278,7 +1465,7 @@ class EpisodeVideoControllerTest {
         val root = onAllNodes(isRoot()).onFirst()
 
         mainClock.autoAdvance = false // 三秒后会自动隐藏, 这里不能让他自动前进时间
-        root.performClick()
+        root.performTouchInput { click() }
         mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
         runOnIdle {
             assertEquals(
@@ -1287,7 +1474,7 @@ class EpisodeVideoControllerTest {
             )
         }
 
-        root.performClick()
+        root.performTouchInput { click() }
         mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
         runOnIdle {
             assertEquals(
@@ -1297,7 +1484,7 @@ class EpisodeVideoControllerTest {
         }
         // 过了 1 秒用户又点击显示
         mainClock.advanceTimeBy(1000L)
-        root.performClick()
+        root.performTouchInput { click() }
         mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
         runOnIdle {
             assertEquals(
@@ -1340,7 +1527,7 @@ class EpisodeVideoControllerTest {
         val root = onAllNodes(isRoot()).onFirst()
 
         mainClock.autoAdvance = false
-        root.performClick()
+        root.performTouchInput { click() }
         mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { danmakuEditor.exists() }
         runOnIdle {
             assertEquals(NORMAL_VISIBLE, controllerState.visibility)
@@ -1368,13 +1555,14 @@ class EpisodeVideoControllerTest {
             val root = onAllNodes(isRoot()).onFirst()
 
             mainClock.autoAdvance = false
-            root.performClick()
+            root.performTouchInput { click() }
             mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
             runOnIdle {
                 assertEquals(NORMAL_VISIBLE, controllerState.visibility)
             }
-            danmakuIconButton.performClick()
-            root.performClick()
+            // 必须也用触摸: 鼠标点击会让指针停在按钮上持续 hover, alwaysOn 不释放, 控制器就不会隐藏
+            danmakuIconButton.performTouchInput { click() }
+            root.performTouchInput { click() }
             mainClock.advanceTimeUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.doesNotExist() }
             runOnIdle {
                 assertEquals(NORMAL_INVISIBLE, controllerState.visibility)
@@ -1382,7 +1570,7 @@ class EpisodeVideoControllerTest {
         }
 
     /**
-     * @see GestureFamily.swipeToSeek
+     * @see SwipeSeekerState.Companion.swipeToSeek
      */
     @Test
     fun `touch - swipeToSeek shows detached slider when controller is hidden`() = runAniComposeUiTest {
@@ -1485,7 +1673,7 @@ class EpisodeVideoControllerTest {
     }
 
     /**
-     * @see GestureFamily.swipeToSeek
+     * @see SwipeSeekerState.Companion.swipeToSeek
      */
     @Test
     fun `touch - swipe hides visible controls without moving slider`() = runAniComposeUiTest {
@@ -1497,7 +1685,7 @@ class EpisodeVideoControllerTest {
 
         runOnUiThread {
             mainClock.autoAdvance = false
-            root.performClick() // 显示全部控制器 
+            root.performTouchInput { click() } // 显示全部控制器
         }
         runOnIdle {
             mainClock.advanceTimeBy(1000L)
@@ -1563,7 +1751,7 @@ class EpisodeVideoControllerTest {
         }
         waitUntil(timeoutMillis = WAIT_TIMEOUT) {
             previewPopup.exists() &&
-                onNodeWithTag(TAG_PROGRESS_SLIDER_CENTERED_PREVIEW_FRAME, useUnmergedTree = true).exists()
+                    onNodeWithTag(TAG_PROGRESS_SLIDER_CENTERED_PREVIEW_FRAME, useUnmergedTree = true).exists()
         }
 
         onNodeWithTag(TAG_PROGRESS_SLIDER_PREVIEW_FRAME, useUnmergedTree = true).assertDoesNotExist()
@@ -1584,7 +1772,7 @@ class EpisodeVideoControllerTest {
         val root = onAllNodes(isRoot()).onFirst()
 
         mainClock.autoAdvance = false
-        root.performClick() // 显示全部控制器
+        root.performTouchInput { click() } // 显示全部控制器
         mainClock.advanceTimeBy(1000L)
         waitForIdle()
 
@@ -1628,7 +1816,7 @@ class EpisodeVideoControllerTest {
             val root = onAllNodes(isRoot()).onFirst()
 
             mainClock.autoAdvance = false
-            root.performClick() // 显示全部控制器
+            root.performTouchInput { click() } // 显示全部控制器
             runOnIdle {
                 mainClock.advanceTimeBy(1000L)
                 waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
@@ -1680,15 +1868,14 @@ class EpisodeVideoControllerTest {
         }
 
     @Test
-    fun `touch - progress slider drag can be cancelled`() = runAniComposeUiTest {
+    fun `hybrid - first touch progress slider drag after mouse can be cancelled`() = runAniComposeUiTest {
         setContent {
-            Player(GestureFamily.TOUCH)
+            Player(GestureFamily.MOUSE)
         }
         waitForIdle()
-        val root = onAllNodes(isRoot()).onFirst()
 
         mainClock.autoAdvance = false
-        root.performClick()
+        player.slightlyMoveFromCenterToRight()
         mainClock.advanceTimeBy(1000L)
         waitForIdle()
 
@@ -1770,7 +1957,7 @@ class EpisodeVideoControllerTest {
     }
 
     /**
-     * @see GestureFamily.swipeToSeek
+     * @see SwipeSeekerState.Companion.swipeToSeek
      */
     @Test // https://github.com/open-ani/ani/issues/720
     fun `touch - swipeToSeek shows detached slider and can still play`() = runAniComposeUiTest {
@@ -1818,22 +2005,12 @@ class EpisodeVideoControllerTest {
         currentPositionMillis += 5000L // 播放 5 秒
 
         mainClock.autoAdvance = false
-        root.performClick()
+        root.performTouchInput { click() }
         runOnIdle {
             mainClock.advanceTimeBy(1000L)
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
             assertEquals(0.52f, progressSliderState.displayPositionRatio)
         }
-    }
-
-    @Test
-    fun `touch - hover to always on - danmaku settings sheet`() = runAniComposeUiTest {
-        testSideSheetRequestAlwaysOn(
-            gestureFamily = GestureFamily.TOUCH,
-            openSideSheet = { onNodeWithTag(TAG_SHOW_SETTINGS).performClick() },
-            waitForSideSheetOpen = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_DANMAKU_SETTINGS_SHEET).exists() } },
-            waitForSideSheetClose = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_DANMAKU_SETTINGS_SHEET).doesNotExist() } },
-        )
     }
 
     @Test
@@ -1870,7 +2047,7 @@ class EpisodeVideoControllerTest {
                 onCommitPlaybackSpeed = { committed.add(it) },
             )
         }
-        onRoot().performClick()
+        onRoot().performTouchInput { click() }
         runOnIdle {
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_SPEED_SWITCHER_TEXT_BUTTON).exists() }
         }
@@ -1929,7 +2106,7 @@ class EpisodeVideoControllerTest {
     /**
      * [GestureFamily.MOUSE] 在屏幕中间滑动鼠标, 会临时显示几秒控制器. 几秒后自动隐藏.
      *
-     * @see GestureFamily.mouseHoverForController
+     * @see hasPointerDevice
      */
     @Test
     fun `mouse - mouseHoverForController - center screen`() = runAniComposeUiTest {
@@ -1949,9 +2126,7 @@ class EpisodeVideoControllerTest {
         // 移动鼠标来显示控制器
         runOnIdle {
             mainClock.autoAdvance = false // 三秒后会自动隐藏, 这里不能让他自动前进时间
-            onRoot().performTouchInput { // Move 事件才能触发 
-                swipe(centerLeft, center)
-            }
+            player.slightlyMoveFromCenterToRight()
         }
         runOnIdle {
             waitUntil(timeoutMillis = WAIT_TIMEOUT) { topBar.exists() }
@@ -1980,7 +2155,7 @@ class EpisodeVideoControllerTest {
      * [GestureFamily.MOUSE] 在屏幕中间滑动鼠标, 会临时显示几秒控制器. 几秒后自动隐藏.
      * 隐藏后再次移动鼠标, 应当能重新显示几秒然后隐藏.
      *
-     * @see GestureFamily.mouseHoverForController
+     * @see hasPointerDevice
      */
     @Test
     fun `mouse - mouseHoverForController - center screen twice`() = runAniComposeUiTest {
@@ -2074,11 +2249,8 @@ class EpisodeVideoControllerTest {
             root.performTouchInput {
                 click(center)
             }
-            // 目前的 controller mouseHoverForController 依赖 Move 事件, 但 compose 似乎有点问题
-            // 所以额外广播一个事件
-            root.performTouchInput {
-                swipe(center, center - Offset(1f, 1f))
-            }
+            // 关闭面板后移动鼠标, 触发控制器的自动隐藏计时.
+            root.slightlyMoveFromCenterToRight()
         }
         runOnIdle {
             waitForSideSheetClose()
@@ -2093,16 +2265,6 @@ class EpisodeVideoControllerTest {
         }
         waitForIdle()
         assertControllerVisible(false)
-    }
-
-    @Test
-    fun `mouse - hover to always on - danmaku settings sheet`() = runAniComposeUiTest {
-        testSideSheetRequestAlwaysOn(
-            gestureFamily = GestureFamily.MOUSE,
-            openSideSheet = { onNodeWithTag(TAG_SHOW_SETTINGS).performClick() },
-            waitForSideSheetOpen = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_DANMAKU_SETTINGS_SHEET).exists() } },
-            waitForSideSheetClose = { waitUntil(timeoutMillis = WAIT_TIMEOUT) { onNodeWithTag(TAG_DANMAKU_SETTINGS_SHEET).doesNotExist() } },
-        )
     }
 
     @Test
@@ -2215,7 +2377,8 @@ class EpisodeVideoControllerTest {
         if (gestureFamily == GestureFamily.MOUSE) {
             player.slightlyMoveFromCenterToRight()
         } else {
-            player.performMouseInput {
+            // 必须是触摸点击: 点击语义按事件自身的指针类型解析, 鼠标点击在这里是「暂停」而不是「显隐控制器」
+            player.performTouchInput {
                 click()
             }
         }

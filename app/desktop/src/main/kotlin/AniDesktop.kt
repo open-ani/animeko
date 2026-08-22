@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -45,6 +46,7 @@ import com.sun.jna.platform.win32.WinReg
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -84,6 +86,7 @@ import me.him188.ani.app.platform.startCommonKoinModule
 import me.him188.ani.app.platform.trace.recordAppStart
 import me.him188.ani.app.platform.window.HandleWindowsWindowProc
 import me.him188.ani.app.platform.window.LocalTitleBarThemeController
+import me.him188.ani.app.platform.window.WindowsWindowUtils
 import me.him188.ani.app.platform.window.rememberLayoutHitTestOwner
 import me.him188.ani.app.platform.window.setTitleBar
 import me.him188.ani.app.tools.update.DesktopUpdateInstaller
@@ -121,6 +124,7 @@ import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.currentPlatformDesktop
 import me.him188.ani.utils.platform.isMacOS
 import me.him188.ani.utils.platform.isWindows
+import me.him188.ani.utils.video.enhancement.shader.provider.VideoEnhancementShaderProvider
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.openani.mediamp.ffmpeg.FFmpegKit
@@ -128,6 +132,7 @@ import org.openani.mediamp.mpv.MPVHandle
 import java.awt.Desktop
 import java.awt.Frame
 import java.io.File
+import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.Locale
 import kotlin.io.path.absolutePathString
@@ -369,23 +374,7 @@ object AniDesktop {
             .parentFile.absolutePath
 
         val loadLibraryJob = coroutineScope.launch(Dispatchers.IO) {
-            try {
-                AnitorrentLibraryLoader.loadLibraries()
-                logger.info { "Anitorrent is loaded." }
-            } catch (e: Throwable) {
-                logger.error(e) { "Failed to load anitorrent libraries" }
-            }
-
-            try {
-                if (currentProcessName()?.contains("java") == true) {
-                    FFmpegKit.useDefaultRuntimeLibraryDirectory()
-                } else {
-                    FFmpegKit.setRuntimeLibraryDirectory(composeResDir, false)
-                }
-                logger.info { "FFmpegKit is loaded." }
-            } catch (e: Throwable) {
-                logger.error(e) { "Failed to load FFmpeg component of mediamp." }
-            }
+            configureLibrariesAndResources(composeResDir)
         }
 
         // Initialize CEF application.
@@ -589,6 +578,18 @@ object AniDesktop {
                         MainWindowContent(navigator)
                     } else {
                         HandleWindowsWindowProc()
+                        if (platform.isWindows()) {
+                            val platformWindow = LocalPlatformWindow.current
+                            LaunchedEffect(platformWindow, trayState) {
+                                WindowsWindowUtils.instance.windowIsActive(platformWindow)
+                                    .filter { it == true }
+                                    .collect {
+                                        if (trayState.isWindowHiddenToTray) {
+                                            trayState.restoreWindow()
+                                        }
+                                    }
+                            }
+                        }
                         WindowFrame(
                             windowState = windowState,
                             onCloseRequest = {
@@ -606,6 +607,32 @@ object AniDesktop {
 
         }
         // unreachable here
+    }
+
+    private fun configureLibrariesAndResources(composeResDir: String) {
+        try {
+            AnitorrentLibraryLoader.loadLibraries()
+            logger.info { "Anitorrent is loaded." }
+        } catch (e: Throwable) {
+            logger.error(e) { "Failed to load anitorrent libraries" }
+        }
+
+        try {
+            if (currentProcessName()?.contains("java") == true) {
+                FFmpegKit.useDefaultRuntimeLibraryDirectory()
+            } else {
+                FFmpegKit.setRuntimeLibraryDirectory(composeResDir, false)
+            }
+            logger.info { "FFmpegKit is loaded." }
+        } catch (e: Throwable) {
+            logger.error(e) { "Failed to load FFmpeg component of mediamp." }
+        }
+
+        if (currentProcessName()?.contains("java") != true) {
+            val shaderPath = Path.of(composeResDir, "resources", "anime4k")
+            VideoEnhancementShaderProvider.setShaderBasePath(Path.of(composeResDir, "resources", "anime4k"))
+            logger.info { "Using bundled video enhancement shaders from $${shaderPath.toAbsolutePath()}" }
+        }
     }
 
     fun currentProcessName(): String? {

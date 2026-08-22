@@ -121,7 +121,7 @@ fun BoxScope.WatchTogetherOverlayHost(
                         )
 
                         is SyncAction.PopThenPushEpisode -> {
-                            aniNavigator.currentNavigator.findLast<NavRoutes.EpisodeDetail>()
+                            aniNavigator.findLast<NavRoutes.EpisodeDetail>()
                                 ?.let { aniNavigator.popBackStack(it, inclusive = true) }
                             aniNavigator.navigateEpisodeDetails(
                                 action.subjectId,

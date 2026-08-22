@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 OpenAni and contributors.
+ * Copyright (C) 2024-2026 OpenAni and contributors.
  *
  * 此源代码的使用受 GNU AFFERO GENERAL PUBLIC LICENSE version 3 许可证的约束, 可以在以下链接找到该许可证.
  * Use of this source code is governed by the GNU AGPLv3 license, which can be found at the following link.
@@ -86,9 +86,16 @@ abstract class AnitorrentTorrentDownloader<THandle : TorrentHandle, TAddInfo : T
     private val httpFileDownloader: HttpFileDownloader,
     parentCoroutineContext: CoroutineContext,
 ) : TorrentDownloader, SynchronizedObject() {
-    protected abstract val native: TorrentManagerSession<THandle, TAddInfo> // must hold reference. 
+    protected abstract val native: TorrentManagerSession<THandle, TAddInfo> // must hold reference.
     protected var filter: PeerFilter? = null
         private set
+
+    /**
+     * 用户设置的额外 tracker, 在 [startDownload] 时与内置 tracker 一起添加.
+     * 只影响之后开始的下载, 不影响已经开始的.
+     */
+    @Volatile
+    var extraTrackers: List<String> = emptyList()
 
     companion object {
         private const val FAST_RESUME_FILENAME = "fastresume"
@@ -335,8 +342,8 @@ abstract class AnitorrentTorrentDownloader<THandle : TorrentHandle, TAddInfo : T
             parentCoroutineContext = parentCoroutineContext,
         ).also {
             openSessions.value += data.data.contentHashCode().toString() to it // 放进去之后才能处理 alert
-            val trackers = trackers.split(", ")
-            logger.info { "[${it.handleId}] AnitorrentDownloadSession created, adding ${trackers.size} trackers" }
+            val trackers = (builtinTrackers + extraTrackers).distinct()
+            logger.info { "[${it.handleId}] AnitorrentDownloadSession created, adding ${trackers.size} trackers (${extraTrackers.size} extra)" }
             for (tracker in trackers) {
                 handle.addTracker(tracker, 0, 0)
             }
@@ -363,6 +370,7 @@ abstract class AnitorrentTorrentDownloader<THandle : TorrentHandle, TAddInfo : T
     }
 
     fun applyConfig(config: TorrentDownloaderConfig) {
+        extraTrackers = config.extraTrackers
         native.applyConfig(config)
     }
 
@@ -375,203 +383,87 @@ abstract class AnitorrentTorrentDownloader<THandle : TorrentHandle, TAddInfo : T
 
 typealias HandleId = Long
 
-private val trackers by lazy {
+private val builtinTrackers by lazy {
     """
-udp://tracker1.itzmx.com:8080/announce
-udp://moonburrow.club:6969/announce
-udp://new-line.net:6969/announce
-udp://opentracker.io:6969/announce
-udp://tamas3.ynh.fr:6969/announce
-udp://tracker.bittor.pw:1337/announce
-udp://tracker.dump.cl:6969/announce
-udp://tracker1.myporn.club:9337/announce
-udp://tracker2.dler.org:80/announce
-https://tracker.tamersunion.org:443/announce
-udp://open.demonii.com:1337/announce
-udp://open.stealth.si:80/announce
-udp://tracker.torrent.eu.org:451/announce
-udp://exodus.desync.com:6969/announce
-udp://tracker.moeking.me:6969/announce
-udp://explodie.org:6969/announce
-udp://tracker1.bt.moack.co.kr:80/announce
-udp://tracker.tiny-vps.com:6969/announce
-udp://retracker01-msk-virt.corbina.net:80/announce
-udp://bt1.archive.org:6969/announce
-
-udp://tracker2.itzmx.com:6961/announce
-
-udp://tracker3.itzmx.com:6961/announce
-
-udp://tracker4.itzmx.com:2710/announce
-
-http://tracker1.itzmx.com:8080/announce
-
-http://tracker2.itzmx.com:6961/announce
-
-http://tracker3.itzmx.com:6961/announce
-
-http://tracker4.itzmx.com:2710/announce
-
-udp://tracker.opentrackr.org:1337/announce
-
-http://tracker.opentrackr.org:1337/announce
-
 http://1337.abcvg.info:80/announce
-
-http://bt.okmp3.ru:2710/announce
-
+http://bt1.archive.org:6969/announce
+http://bt2.archive.org:6969/announce
 http://ipv4announce.sktorrent.eu:6969/announce
-
-http://ipv6.rer.lol:6969/announce
-
 http://nyaa.tracker.wf:7777/announce
-
-http://public.tracker.vraphim.com:6969/announce
-
-http://saltwood.top:6969/announce
-
-http://t.nyaatracker.com:80/announce
-
-http://taciturn-shadow.spb.ru:6969/announce
-
-http://tk.greedland.net:80/announce
-
 http://torrentsmd.com:8080/announce
-
-http://tracker-zhuqiy.dgj055.icu:80/announce
-
 http://tracker.bt4g.com:2095/announce
-
-http://tracker.electro-torrent.pl:80/announce
-
-http://tracker.tfile.co:80/announce
-
-http://www.all4nothin.net:80/announce.php
-
+http://tracker.dhitechnical.com:6969/announce
+http://tracker.mywaifu.best:6969/announce
+http://tracker.renfei.net:8080/announce
+http://tracker.waaa.moe:6969/announce
+http://tracker810.xyz:11450/announce
 http://www.wareztorrent.com:80/announce
-
+https://004430.xyz:443/announce
 https://1337.abcvg.info:443/announce
-
-https://p2p.azu.red:443/announce
-
+https://ht.therarbg.to:443/announce
+https://t.213891.xyz:443/announce
+https://tr.abiir.top:443/announce
 https://tr.abir.ga:443/announce
-
-https://tr.burnabyhighstar.com:443/announce
-
+https://tr.zukizuki.org:443/announce
+https://tracker.7471.top:443/announce
+https://tracker.bt4g.com:443/announce
+https://tracker.foreverpirates.co:443/announce
 https://tracker.gcrenwp.top:443/announce
-
 https://tracker.kuroy.me:443/announce
-
 https://tracker.leechshield.link:443/announce
-
-https://tracker.lilithraws.org:443/announce
-
-https://tracker.tamersunion.org:443/announce
-
+https://tracker.linvk.com:443/announce
+https://tracker.nekomi.cn:443/announce
+https://tracker.pmman.tech:443/announce
 https://tracker.yemekyedim.com:443/announce
-
+https://tracker.zhuqiy.com:443/announce
 https://tracker1.520.jp:443/announce
-
-https://trackers.mlsub.net:443/announce
-
-https://www.peckservers.com:9443/announce
-
-udp://bandito.byterunner.io:6969/announce
-
-udp://d40969.acod.regrucolo.ru:6969/announce
-
-udp://ec2-18-191-163-220.us-east-2.compute.amazonaws.com:6969/announce
-
+udp://bittorrent-tracker.e-n-c-r-y-p-t.net:1337/announce
 udp://evan.im:6969/announce
-
-udp://exodus.desync.com:6969/announce
-
-udp://ismaarino.com:1234/announce
-
-udp://leet-tracker.moe:1337/announce
-
+udp://explodie.org:6969/announce
+udp://ipv6.govt.hu:6969/announce
+udp://mail.segso.net:6969/announce
 udp://martin-gebhardt.eu:25/announce
-
-udp://moonburrow.club:6969/announce
-
-udp://ns-1.x-fins.com:6969/announce
-
-udp://ns1.monolithindustries.com:6969/announce
-
-udp://odd-hd.fr:6969/announce
-
+udp://ns575949.ip-51-222-82.net:6969/announce
+udp://obey.torrentonline.cc:42069/announce
 udp://open.demonii.com:1337/announce
-
-udp://open.free-tracker.ga:6969/announce
-
+udp://open.ftorrent.com:443/announce
 udp://open.stealth.si:80/announce
-
-udp://open.tracker.cl:1337/announce
-
 udp://open.tracker.ink:6969/announce
-
 udp://opentor.org:2710/announce
-
-udp://opentracker.io:6969/announce
-
-udp://p2p.publictracker.xyz:6969/announce
-
 udp://p4p.arenabg.com:1337/announce
-
 udp://retracker.hotplug.ru:2710/announce
-
-udp://retracker01-msk-virt.corbina.net:80/announce
-
-udp://seedpeer.net:6969/announce
-
-udp://serpb.vpsburti.com:6969/announce
-
-udp://thetracker.org:80/announce
-
-udp://tr4ck3r.duckdns.org:6969/announce
-
-udp://trackarr.org:6969/announce
-
+udp://t.overflow.biz:6969/announce
+udp://torrent.tracker.durukanbal.com:6969/announce
+udp://torrentclub.online:1984/announce
+udp://torrentclub.online:54123/announce
+udp://tr.btube3.com:2010/announce
+udp://tr3.ysagin.top:2715/announce
+udp://tracker-udp.gbitt.info:80/announce
 udp://tracker.0x7c0.com:6969/announce
-
-udp://tracker.bittor.pw:1337/announce
-
+udp://tracker.aruku.ovh:8081/announce
+udp://tracker.auctor.tv:6969/announce
 udp://tracker.breizh.pm:6969/announce
-
-udp://tracker.deadorbit.nl:6969/announce
-
+udp://tracker.cn.nyaa.net:6969/announce
+udp://tracker.corpscorp.online:80/announce
+udp://tracker.cynma.tv:6969/announce
 udp://tracker.dler.com:6969/announce
-
-udp://tracker.doko.moe:6969/announce
-
-udp://tracker.dump.cl:6969/announce
-
-udp://tracker.filemail.com:6969/announce
-
-udp://tracker.fnix.net:6969/announce
-
+udp://tracker.dler.org:6969/announce
+udp://tracker.farted.net:6969/announce
 udp://tracker.gmi.gd:6969/announce
-
-udp://tracker.ololosh.space:6969/announce
-
+udp://tracker.ilibr.org:6969/announce
+udp://tracker.k.vu:6969/announce
+udp://tracker.nexusstream.eu:6969/announce
+udp://tracker.nyaa.net:6969/announce
+udp://tracker.opentrackr.com:6969/announce
 udp://tracker.opentrackr.org:1337/announce
-
+udp://tracker.peerfect.org:6969/announce
+udp://tracker.publictracker.xyz:6969/announce
+udp://tracker.qu.ax:6969/announce
 udp://tracker.skyts.net:6969/announce
-
-udp://tracker.srv00.com:6969/announce
-
-udp://tracker.theoks.net:6969/announce
-
+udp://tracker.teambelgium.net:6969/announce
 udp://tracker.torrent.eu.org:451/announce
-
-udp://tracker.tryhackx.org:6969/announce
-
-udp://tracker1.bt.moack.co.kr:80/announce
-
-udp://ttk2.nbaonlineservice.com:6969/announce
-
-udp://z.mercax.com:53/announce
-
+udp://whybother.torrentonline.cc:42069/announce
+udp://zer0day.ch:1337/announce
 wss://tracker.openwebtorrent.com:443/announce
-                    """.trimIndent().lineSequence().filter { it.isNotBlank() }.joinToString()
+""".trimIndent().lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toList()
 }

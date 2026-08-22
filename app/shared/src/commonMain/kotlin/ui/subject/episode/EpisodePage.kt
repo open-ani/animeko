@@ -62,6 +62,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -90,6 +91,8 @@ import me.him188.ani.app.platform.features.StreamType
 import me.him188.ani.app.platform.features.getComponentAccessors
 import me.him188.ani.app.tools.rememberUiMonoTasker
 import me.him188.ani.app.ui.comment.CommentEditorState
+import me.him188.ani.app.ui.comment.CommentReportHost
+import me.him188.ani.app.ui.comment.CommentReportState
 import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.danmaku.DanmakuEditorState
 import me.him188.ani.app.ui.danmaku.DummyDanmakuEditor
@@ -109,6 +112,7 @@ import me.him188.ani.app.ui.foundation.effects.OverrideCaptionButtonAppearance
 import me.him188.ani.app.ui.foundation.effects.ScreenOnEffect
 import me.him188.ani.app.ui.foundation.effects.ScreenRotationEffect
 import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.input.touchHorizontalScrollOnly
 import me.him188.ani.app.ui.foundation.layout.LocalPlatformWindow
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
@@ -148,9 +152,11 @@ import me.him188.ani.app.ui.subject.episode.video.sidesheet.DanmakuRegexFilterSe
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.EpisodeSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.sidesheet.MediaSelectorSheet
 import me.him188.ani.app.ui.subject.episode.video.topbar.EpisodePlayerTitle
+import me.him188.ani.app.ui.watchtogether.LocalWatchTogetherPlayerController
 import me.him188.ani.app.videoplayer.ui.PlaybackSpeedControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerControllerState
 import me.him188.ani.app.videoplayer.ui.PlayerFocusState
+import me.him188.ani.app.videoplayer.ui.PlayerFullscreenState
 import me.him188.ani.app.videoplayer.ui.VideoAspectRatioControllerState
 import me.him188.ani.app.videoplayer.ui.gesture.LevelController
 import me.him188.ani.app.videoplayer.ui.gesture.NoOpLevelController
@@ -159,6 +165,7 @@ import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults
 import me.him188.ani.app.videoplayer.ui.progress.PlayerControllerDefaults.rememberRandomDanmakuPlaceholder
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressFramePreviewState
 import me.him188.ani.app.videoplayer.ui.progress.rememberMediaProgressSliderState
+import me.him188.ani.app.videoplayer.ui.rememberPlayerFullscreenState
 import me.him188.ani.danmaku.api.DanmakuContent
 import me.him188.ani.danmaku.api.DanmakuLocation
 import me.him188.ani.danmaku.ui.DanmakuHostState
@@ -167,7 +174,6 @@ import me.him188.ani.datasources.api.source.MediaFetchRequest
 import me.him188.ani.utils.platform.isAndroid
 import me.him188.ani.utils.platform.isDesktop
 import me.him188.ani.utils.platform.isIos
-import me.him188.ani.utils.platform.isMobile
 import org.jetbrains.compose.resources.stringResource
 import org.openani.mediamp.features.AudioLevelController
 import org.openani.mediamp.features.PlaybackSpeed
@@ -225,12 +231,8 @@ private fun EpisodeScreenContent(
         }
     }
 
-    BackHandler(enabled = vm.isFullscreen) {
-        scope.launch {
-            context.setRequestFullScreen(window, false)
-            vm.isFullscreen = false
-        }
-    }
+    val fullscreenState = rememberEpisodeFullscreenState(vm)
+    BackHandler(enabled = fullscreenState.isFullscreen) { fullscreenState.request(false) }
 
     // image viewer
     val imageViewer = rememberImageViewerHandler()
@@ -275,9 +277,13 @@ private fun EpisodeScreenContent(
         }
     }
 
-    //Enable window fullscreen mode detection
+    // 桌面端窗口可能被系统或用户直接切换全屏 (macOS 绿灯、Win 快捷键), 这是外部状态同步而不是用户意图,
+    // 因此只回写状态, 不走 fullscreenState.request (那会再请求一次窗口全屏).
+    // 必须在 effect 里写而不是在组合期写: 组合期写 snapshot state 会和 request 的写入互相覆盖.
     if (LocalPlatform.current.isDesktop()) {
-        vm.isFullscreen = LocalPlatformWindow.current.isUndecoratedFullscreen
+        LaunchedEffect(window, vm) {
+            snapshotFlow { window.isUndecoratedFullscreen }.collect { vm.isFullscreen = it }
+        }
     }
 
     LaunchedEffect(vm.isFullscreen) {
@@ -337,6 +343,13 @@ private fun EpisodeScreenContent(
                     )
                 }
 
+                WatchTogetherPopupVisibilityEffect(
+                    playerControllerState = vm.playerControllerState,
+                    isFullscreen = vm.isFullscreen,
+                    isExpandedLayout = showExpandedUI,
+                    sidebarVisible = vm.sidebarVisible,
+                )
+
                 page.matchingDanmakuUiState?.let { uiState ->
                     MatchingDanmakuDialog(
                         onDismissRequest = { vm.cancelMatchingDanmaku() },
@@ -394,6 +407,9 @@ private fun EpisodeScreenContent(
         ImageViewer(imageViewer) { imageViewer.clear() }
     }
 
+    // 页面级唯一 Host: 评论列表所在 tab 切走时也能收到举报结果提示
+    CommentReportHost(vm.commentReportState)
+
     if (showEditCommentSheet) {
         EpisodeEditCommentSheet(
             state = vm.commentEditorState,
@@ -411,6 +427,32 @@ private fun EpisodeScreenContent(
     }
 
     vm.mediaResolver.ComposeContent()
+}
+
+@Composable
+internal fun WatchTogetherPopupVisibilityEffect(
+    playerControllerState: PlayerControllerState,
+    isFullscreen: Boolean,
+    isExpandedLayout: Boolean,
+    sidebarVisible: Boolean,
+) {
+    val watchTogetherPlayerController = LocalWatchTogetherPlayerController.current
+    val followControllerVisibility = isFullscreen || (isExpandedLayout && !sidebarVisible)
+
+    LaunchedEffect(followControllerVisibility, playerControllerState, watchTogetherPlayerController) {
+        if (followControllerVisibility) {
+            snapshotFlow { playerControllerState.visibility.topBar }.collect {
+                watchTogetherPlayerController.setDraggablePopupVisibility(it)
+            }
+        } else {
+            watchTogetherPlayerController.setDraggablePopupVisibility(true)
+        }
+    }
+    DisposableEffect(watchTogetherPlayerController) {
+        onDispose {
+            watchTogetherPlayerController.setDraggablePopupVisibility(true)
+        }
+    }
 }
 
 @Composable
@@ -513,8 +555,7 @@ private fun EpisodeScreenTabletVeryWide(
 
                 HorizontalPager(
                     state = pagerState,
-                    Modifier.fillMaxSize(),
-                    userScrollEnabled = LocalPlatform.current.isMobile(),
+                    Modifier.fillMaxSize().touchHorizontalScrollOnly(),
                 ) { index ->
                     when (index) {
                         0 -> Box(Modifier.fillMaxSize()) {
@@ -573,6 +614,7 @@ private fun EpisodeScreenTabletVeryWide(
                         1 -> {
                             EpisodeCommentColumn(
                                 commentState = vm.episodeCommentState,
+                                commentReportState = vm.commentReportState,
                                 commentEditorState = vm.commentEditorState,
                                 subjectId = vm.subjectId,
                                 episodeId = page.episodePresentation.episodeId,
@@ -741,6 +783,7 @@ private fun EpisodeScreenContentPhone(
         commentColumn = {
             EpisodeCommentColumn(
                 commentState = vm.episodeCommentState,
+                commentReportState = vm.commentReportState,
                 commentEditorState = vm.commentEditorState,
                 subjectId = vm.subjectId,
                 episodeId = page.episodePresentation.episodeId,
@@ -882,6 +925,34 @@ fun EpisodeScreenContentPhoneScaffold(
     }
 }
 
+/**
+ * 播放页全屏的唯一实现: 进入/退出全屏的平台副作用 (窗口、屏幕方向、系统栏) 只在这里做一次.
+ *
+ * 返回的对象本身不持有状态 (状态在 [EpisodeViewModel.isFullscreen] 上), 因此可以在需要的地方各建一个,
+ * 不必把它层层传参穿过布局组件.
+ */
+@Composable
+private fun rememberEpisodeFullscreenState(vm: EpisodeViewModel): PlayerFullscreenState {
+    val context by rememberUpdatedState(LocalContext.current)
+    val window = LocalPlatformWindow.current
+    val scope = rememberCoroutineScope()
+    return rememberPlayerFullscreenState(
+        isFullscreen = { vm.isFullscreen },
+        onRequest = { fullscreen ->
+            scope.launch {
+                // 进入是「先改状态再改窗口」, 退出是「先改窗口再改状态」, 与规范化之前的行为保持一致
+                if (fullscreen) {
+                    vm.isFullscreen = true
+                    context.setRequestFullScreen(window, true)
+                } else {
+                    context.setRequestFullScreen(window, false)
+                    vm.isFullscreen = false
+                }
+            }
+        },
+    )
+}
+
 @Composable
 private fun EpisodeVideo(
     vm: EpisodeViewModel,
@@ -934,19 +1005,7 @@ private fun EpisodeVideo(
             context.getComponentAccessors()
         }
     }
-    val onClickFullScreen: () -> Unit = {
-        if (vm.isFullscreen) {
-            scope.launch {
-                context.setRequestFullScreen(window, false)
-                vm.isFullscreen = false
-            }
-        } else {
-            scope.launch {
-                vm.isFullscreen = true
-                context.setRequestFullScreen(window, true)
-            }
-        }
-    }
+    val fullscreenState = rememberEpisodeFullscreenState(vm)
 
     EpisodeVideoImpl(
         vm.player,
@@ -972,13 +1031,7 @@ private fun EpisodeVideo(
         danmakuEnabled = page.danmakuEnabled,
         onToggleDanmaku = { vm.setDanmakuEnabled(!page.danmakuEnabled) },
         videoLoadingStateFlow = vm.videoStatisticsFlow.map { it.videoLoadingState },
-        onClickFullScreen = onClickFullScreen,
-        onExitFullscreen = {
-            scope.launch {
-                context.setRequestFullScreen(window, false)
-                vm.isFullscreen = false
-            }
-        },
+        fullscreenState = fullscreenState,
         alwaysOnTop = window.isAlwaysOnTop,
         onToggleAlwaysOnTop = {
             val newValue = !window.isAlwaysOnTop
@@ -1055,6 +1108,7 @@ private fun EpisodeVideo(
         videoAspectRatioControllerState = remember {
             vm.player.features[VideoAspectRatio]?.let { VideoAspectRatioControllerState(it, scope = scope) }
         },
+        videoEnhancement = vm.videoEnhancement,
         leftBottomTips = {
             AniAnimatedVisibility(
                 visible = vm.playerSkipOpEdState.showSkipTips,
@@ -1066,12 +1120,10 @@ private fun EpisodeVideo(
                 )
             }
         },
-        isFullscreen = vm.isFullscreen,
         fullscreenSwitchButton = {
             EpisodeVideoDefaults.FloatingFullscreenSwitchButton(
                 vm.videoScaffoldConfig.fullscreenSwitchMode,
-                isFullscreen = vm.isFullscreen,
-                onClickFullScreen,
+                fullscreenState,
             )
         },
         sideSheets = { sheetsController ->
@@ -1134,6 +1186,7 @@ private fun EpisodeVideo(
 @Composable
 private fun EpisodeCommentColumn(
     commentState: CommentState,
+    commentReportState: CommentReportState,
     commentEditorState: CommentEditorState,
     subjectId: Int,
     episodeId: Int,
@@ -1149,6 +1202,8 @@ private fun EpisodeCommentColumn(
 
     EpisodeCommentColumn(
         state = commentState,
+        reportState = commentReportState,
+        episodeId = episodeId,
         onClickReply = {
             setShowEditCommentSheet(true)
             commentEditorState.startEdit(CommentContext.EpisodeReply(subjectId, episodeId.toLong(), it))

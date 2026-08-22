@@ -16,7 +16,7 @@ import androidx.compose.material.icons.rounded.TravelExplore
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import androidx.navigation.NavOptionsBuilder
+import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 import me.him188.ani.app.ui.lang.Lang
 import me.him188.ani.app.ui.lang.main_screen_page_cache_management
@@ -25,7 +25,7 @@ import me.him188.ani.app.ui.lang.main_screen_page_exploration
 import org.jetbrains.compose.resources.stringResource
 
 @Serializable
-sealed class NavRoutes {
+sealed class NavRoutes : NavKey {
     @Serializable
     data object Welcome : NavRoutes()
 
@@ -42,9 +42,9 @@ sealed class NavRoutes {
          * 并且不能再回到 [Onboarding] 和 [OnboardingComplete].
          *
          * 但是由于用户可能从不同的界面进入 [Onboarding] (如首次进入 APP 从 [Welcome] 进入, 重新运行向导从 [Settings] 进入),
-         * 所以最后 [OnboardingComplete] 导航到 [Main] 的 [NavOptionsBuilder.popUpTo] 的参数也不一样.
+         * 所以最后 [OnboardingComplete] 导航到 [Main] 时要弹出的目标也不一样.
          *
-         * 如果为 `null`, 则不使用 `[NavOptionsBuilder.popUpTo]` 选项.
+         * 如果为 `null`, 则不弹出任何已有页面.
          */
         val popUpTargetInclusive: NavRoutes? = null,
     ) : NavRoutes()
@@ -134,10 +134,6 @@ sealed class NavRoutes {
 
     @Serializable
     data object PlaybackHistorySyncStatus : NavRoutes()
-
-    companion object {
-        val NavType by lazy { SerializableNavType(serializer()) }
-    }
 }
 
 @Serializable
@@ -146,11 +142,7 @@ data class SubjectDetailPlaceholder(
     val name: String = "",
     val nameCN: String = "",
     val coverUrl: String = "",
-) {
-    companion object {
-        val NavType = SerializableNavType(serializer())
-    }
-}
+)
 
 @Serializable
 enum class MainScreenPage {
@@ -162,11 +154,6 @@ enum class MainScreenPage {
     companion object {
         @Stable
         val visibleEntries get() = entries
-
-        @Stable
-        val NavType by lazy(LazyThreadSafetyMode.PUBLICATION) {
-            EnumNavType(kotlin.enums.enumEntries<MainScreenPage>())
-        }
     }
 }
 
@@ -202,11 +189,6 @@ enum class SettingsTab {
          * 在 PC 上右侧默认显示的 tab.
          */
         val Default = APPEARANCE
-
-        @Stable
-        val NavType by lazy(LazyThreadSafetyMode.PUBLICATION) {
-            EnumNavType(kotlin.enums.enumEntries<SettingsTab>())
-        }
     }
 }
 

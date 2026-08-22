@@ -27,7 +27,7 @@ import kotlin.test.assertTrue
  * AniDatabase 迁移测试 (infra#10, P0#18).
  *
  * 生产迁移链 (CommonKoinModule): 1..15 destructive, 16 起走
- * AutoMigration 16→17→18→19, 手动 [MIGRATION_19_20], AutoMigration 20→21.
+ * AutoMigration 16→17→18→19, 手动 [MIGRATION_19_20], AutoMigration 20→21→22.
  *
  * [MigrationTestHelper] 从 `schemas/<db fqn>/<version>.json` 建旧版本库,
  * runMigrationsAndValidate 会把迁移后的实际 schema 与目标版本 json 逐表逐列校验.
@@ -104,6 +104,23 @@ class AniDatabaseMigrationTest {
             val tables = connection.tableNames()
             assertContains(tables, "playback_history_record")
             assertContains(tables, "playback_history_pending_op")
+        }
+    }
+
+    @Test
+    fun `MIG-05 v21到v22的AutoMigration删除旧web搜索缓存表并新建session缓存表`() {
+        val helper = createHelper()
+        helper.createDatabase(21).use { connection ->
+            val tables = connection.tableNames()
+            assertContains(tables, "web_search_subject")
+            assertContains(tables, "web_search_episode")
+        }
+        helper.runMigrationsAndValidate(22, emptyList()).use { connection ->
+            val tables = connection.tableNames()
+            // PINNED: MIG-05 旧的两张表被 @DeleteTable 删除, 其中的数据 (会话级缓存) 全部丢弃
+            assertFalse(tables.contains("web_search_subject"))
+            assertFalse(tables.contains("web_search_episode"))
+            assertContains(tables, "web_search_session_cache")
         }
     }
 

@@ -7,6 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
+import org.jetbrains.kotlin.compose.compiler.gradle.ComposeCompilerGradlePluginExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
 
@@ -42,6 +43,14 @@ configure<KotlinMultiplatformExtension> {
 
 dependencies {
     "androidRuntimeClasspath"(libs.getLibrary("androidx-compose-ui-test-manifest"))
+}
+
+// Sketch exposes stable request/result types to Compose. Keep this file pinned to the Sketch version
+// in libs.versions.toml and update both together.
+extensions.configure<ComposeCompilerGradlePluginExtension> {
+    stabilityConfigurationFiles.add {
+        rootProject.layout.projectDirectory.file("gradle/sketch-compose-stability.conf").asFile
+    }
 }
 
 // Compose 资源生成的任务顺序 workaround. 不要"顺手清理" —— 去掉会导致

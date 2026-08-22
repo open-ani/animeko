@@ -30,15 +30,18 @@ kotlin {
         implementation(libs.kotlinx.serialization.protobuf)
         implementation(projects.app.shared.placeholder)
 
-        api(libs.coil.compose.core)
-        api(libs.coil.svg)
-        api(libs.coil.network.ktor3)
+        api(libs.sketch.compose.core)
+        implementation(libs.sketch.http.core)
+        implementation(libs.sketch.svg)
 
         implementation(libs.compose.components.resources)
         api(libs.compose.lifecycle.viewmodel.compose)
         api(libs.compose.lifecycle.runtime.compose)
         api(libs.compose.navigation.compose)
         api(libs.compose.navigation.runtime)
+        api(libs.compose.navigation3.runtime)
+        api(libs.compose.navigation3.ui)
+        api(libs.compose.lifecycle.viewmodel.navigation3)
         api(libs.compose.material3.adaptive.core.get().toString())
         api(libs.compose.material3.adaptive.layout.get().toString())
         api(libs.compose.material3.adaptive.navigation0.get().toString())
@@ -57,6 +60,7 @@ kotlin {
     sourceSets.commonTest.dependencies {
         implementation(projects.utils.uiTesting)
         implementation(projects.utils.androidxLifecycleRuntimeTesting)
+        implementation(libs.ktor.client.mock)
     }
     sourceSets.androidMain.dependencies {
         api(libs.compose.material3.adaptive.core)

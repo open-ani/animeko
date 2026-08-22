@@ -10,10 +10,14 @@
 package me.him188.ani.app.domain.player.extension
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import me.him188.ani.app.domain.episode.EpisodeSession
 import org.koin.core.Koin
 import org.openani.mediamp.features.PlaybackSpeed
+import org.openani.mediamp.isMediaLoaded
 
 /**
  * 将当前生效的倍速同步到播放器, 并持续跟随其变更.
@@ -31,9 +35,16 @@ class PlaybackSpeedExtension(
         backgroundTaskScope: ExtensionBackgroundTaskScope
     ) {
         backgroundTaskScope.launch("PlaybackSpeed") {
-            playbackSpeedFlow
-                .distinctUntilChanged()
-                .collect { context.player.features[PlaybackSpeed]?.set(it) }
+            combine(
+                playbackSpeedFlow,
+                context.player.state.map { it.isMediaLoaded }.distinctUntilChanged(),
+            ) { speed, _ ->
+                speed
+            }.collect { speed ->
+                withContext(context.player.mainDispatcher) {
+                    context.player.features[PlaybackSpeed]?.set(speed)
+                }
+            }
         }
     }
 

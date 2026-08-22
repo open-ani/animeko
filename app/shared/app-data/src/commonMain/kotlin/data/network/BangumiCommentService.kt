@@ -12,9 +12,13 @@ package me.him188.ani.app.data.network
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.app.data.models.comment.CommentVoteValue
 import me.him188.ani.app.data.models.subject.SubjectReview
+import me.him188.ani.app.data.models.subject.SubjectReviewSource
+import me.him188.ani.app.data.repository.RepositoryException
 import me.him188.ani.client.apis.SubjectsAniApi
 import me.him188.ani.client.models.AniSubjectReview
+import me.him188.ani.client.models.AniSubjectReviewSource
 import me.him188.ani.datasources.api.paging.Paged
 import me.him188.ani.utils.ktor.ApiInvoker
 import me.him188.ani.utils.coroutines.IO_
@@ -26,6 +30,12 @@ interface BangumiCommentService {
      * @return `null` if [subjectId] is invalid
      */
     suspend fun getSubjectComments(subjectId: Int, offset: Int, limit: Int): Paged<SubjectReview>?
+
+    /**
+     * 对条目评价投票. [vote] 为 `null` 表示取消投票.
+     * 只有 [SubjectReviewSource.ANI] 来源的评价可投票.
+     */
+    suspend fun voteSubjectReview(subjectId: Int, reviewId: String, vote: CommentVoteValue?)
 }
 
 class BangumiBangumiCommentServiceImpl(
@@ -46,11 +56,30 @@ class BangumiBangumiCommentServiceImpl(
         }
     }
 
-
+    override suspend fun voteSubjectReview(subjectId: Int, reviewId: String, vote: CommentVoteValue?) {
+        withContext(ioDispatcher) {
+            try {
+                subjectsApi {
+                    if (vote == null) {
+                        removeSubjectReviewVote(subjectId.toLong(), reviewId).body()
+                    } else {
+                        voteSubjectReview(subjectId.toLong(), reviewId, vote.toAniCommentVoteValue()).body()
+                    }
+                }
+            } catch (e: Exception) {
+                throw RepositoryException.wrapOrThrowCancellation(e)
+            }
+        }
+    }
 }
 
 private fun AniSubjectReview.toSubjectReview() = SubjectReview(
     id = id.hashCode().toLong(),
+    reviewId = id,
+    source = when (source) {
+        AniSubjectReviewSource.ANIMEKO -> SubjectReviewSource.ANI
+        AniSubjectReviewSource.BANGUMI -> SubjectReviewSource.BANGUMI
+    },
     content = contentBbcode,
     updatedAt = Instant.parse(updatedAt).toEpochMilliseconds(),
     rating = rating,
@@ -62,4 +91,6 @@ private fun AniSubjectReview.toSubjectReview() = SubjectReview(
             avatarUrl = it.avatarUrl,
         )
     },
+    likeCount = likeCount,
+    selfVote = selfVote?.toCommentVoteValue(),
 )

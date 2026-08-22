@@ -61,6 +61,7 @@ import me.him188.ani.utils.platform.currentPlatform
 import me.him188.ani.utils.platform.currentTimeMillis
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration
 
 @Suppress("unused") // bug
@@ -274,14 +275,54 @@ class SelectorMediaSource(
         }
     }
 
+    /**
+     * 尝试从 [repository] 缓存中构建搜索结果.
+     *
+     * 仅当缓存的条目页面剧集列表中能找到 [query] 请求的剧集时才命中, 否则返回 `null` 走完整搜索
+     * (页面可能已更新, 例如刚开播的新集在缓存里还没有).
+     */
+    private suspend fun EngineType.searchFromCacheOrNull(
+        searchConfig: SelectorSearchConfig,
+        query: SelectorSearchQuery,
+        mediaSourceId: String,
+        subjectId: Int?,
+    ): List<DefaultMedia>? {
+        val caches = try {
+            repository.getCache(subjectId, mediaSourceId, query.subjectName)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // 读缓存失败不影响功能, 退化为真实搜索. 但要记录, 否则缓存彻底失效时没有任何线索.
+            logger.warn(e) { "SelectorMediaSource '$mediaSourceId': failed to read search cache, falling back to search" }
+            return null
+        }
+
+        return buildList {
+            for (cache in caches) {
+                val episodes = cache.webEpisodeInfos
+                if (episodes.findMatchingEpisodeOrNull(query.episodeSort, query.episodeEp, query.episodeName) == null) {
+                    continue
+                }
+                addAll(
+                    selectMedia(
+                        episodes.asSequence(),
+                        searchConfig,
+                        query,
+                        mediaSourceId,
+                        subjectName = cache.webSubjectInfo.name,
+                    ).filteredList,
+                )
+            }
+        }.takeIf(List<DefaultMedia>::isNotEmpty)
+    }
+
     // all-in-one search
     private suspend fun EngineType.search(
         searchConfig: SelectorSearchConfig,
         query: SelectorSearchQuery,
         mediaSourceId: String,
+        subjectId: Int?,
     ): List<DefaultMedia> = withContext(Dispatchers.Default) {
-        delayUntilNextAllowedSearch()
-
         val currentPlayerNames = when (currentPlatform()) {
             // 桌面端已迁移至 mpv, 但许多现有订阅仍声明 "vlc", 暂时保持兼容
             is Platform.Desktop -> listOf("mpv", "vlc")
@@ -302,6 +343,13 @@ class SelectorMediaSource(
             }
             return@withContext emptyList()
         }
+
+        // 搜索缓存: 上一次真实搜索已把条目页面的全部剧集写入缓存 (addCache).
+        // 若缓存的剧集列表包含当前请求的剧集 (典型场景: 切集), 直接从缓存构建结果, 不发起任何网络请求.
+        // 缓存按 TTL 过期, 也会在该条目手动重新查询时被清除.
+        searchFromCacheOrNull(searchConfig, query, mediaSourceId, subjectId)?.let { return@withContext it }
+
+        delayUntilNextAllowedSearch()
 
         val searchUrl = searchConfig.searchUrl.replace(
             "{keyword}",
@@ -335,12 +383,17 @@ class SelectorMediaSource(
                     )?.episodes
                 } catch (e: BlockedException) {
                     throw e
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     // 单个条目页的网络错误不终止整个搜索
                     logger.warn(e) { "SelectorMediaSource '$mediaSourceId': failed to load subject page ${subjectInfo.fullUrl}" }
                     null
                 } ?: continue
-                repository.addCache(mediaSourceId, query.subjectName, subjectInfo, episodes)
+                repository.addCache(
+                    subjectId, mediaSourceId, query.subjectName, subjectInfo, episodes,
+                    sourceCacheTtl = searchConfig.searchCacheTtl,
+                )
                 addAll(
                     selectMedia(
                         episodes.asSequence(),
@@ -373,6 +426,7 @@ class SelectorMediaSource(
                             episodeName = query.episodeName,
                         ),
                         mediaSourceId,
+                        query.subjectId.toIntOrNull(),
                     ).asFlow()
                 }.map {
                     MediaMatch(it, MatchKind.FUZZY)

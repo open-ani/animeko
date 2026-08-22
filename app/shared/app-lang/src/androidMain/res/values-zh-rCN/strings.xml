@@ -153,6 +153,8 @@
     <string name="settings_mediasource_selector_config_search_subject_names_count_description">每次播放使用多少个条目名称进行查询。\n为 1 则只使用主名称，为 2 额外使用日文原名，大于 2 将额外使用其他别名，别名的数量不固定。\n一般用 1 就够了，使用多个名称将会显著增加播放时的等待时间。</string>
     <string name="settings_mediasource_selector_config_request_interval">搜索请求间隔时间 (毫秒)</string>
     <string name="settings_mediasource_selector_config_request_interval_description">控制每发送一个请求后等待多久后再发送下一个请求</string>
+    <string name="settings_mediasource_selector_config_search_cache_ttl">搜索缓存有效期 (分钟)</string>
+    <string name="settings_mediasource_selector_config_search_cache_ttl_description">在此时间内切换剧集时复用搜索结果。实际生效值为此值与用户设置中的较小者，0 表示不缓存</string>
     <string name="settings_mediasource_selector_config_filter_settings">过滤设置</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name">使用条目名称过滤</string>
     <string name="settings_mediasource_selector_config_filter_by_subject_name_description">要求资源标题包含条目名称。适用于数据源可能搜到无关内容的情况。此功能只对 4.4.0 以前版本有效，对其他版本无效</string>
@@ -211,6 +213,14 @@
     <string name="settings_acknowledgements_bangumi_description">条目数据与收藏服务</string>
     <string name="settings_acknowledgements_dandanplay">弹弹play</string>
     <string name="settings_acknowledgements_dandanplay_description">弹幕聚合</string>
+    <string name="settings_acknowledgements_mikan">蜜柑计划</string>
+    <string name="settings_acknowledgements_mikan_description">新番 BT 资源索引</string>
+    <string name="settings_acknowledgements_dmhy">动漫花园</string>
+    <string name="settings_acknowledgements_dmhy_description">BT 资源分享社区</string>
+    <string name="settings_acknowledgements_oss_licenses">开源许可</string>
+    <string name="settings_acknowledgements_oss_licenses_description">本应用使用的开源库及其许可证</string>
+    <string name="settings_oss_licenses_homepage">主页</string>
+    <string name="settings_oss_licenses_license">许可证</string>
 
     <!-- AppSettingsTab -->
     <string name="settings_app_initial_page">初始页面</string>
@@ -275,6 +285,8 @@
     <string name="settings_player_fullscreen_only_in_controller">不显示</string>
     <string name="settings_player_fullscreen_button">竖屏模式下显示全屏按钮</string>
     <string name="settings_player_fullscreen_button_description">总是显示播放器右下角的切换全屏按钮，方便切换</string>
+    <string name="settings_player_video_enhancement_default">默认画质增强模式</string>
+    <string name="settings_player_video_enhancement_default_description">设置每次进入播放器时使用的画质增强档位</string>
     <string name="settings_player_frame_preview">显示进度条画面预览</string>
     <string name="settings_player_frame_preview_description">悬停或拖动进度条时，显示目标位置的视频画面</string>
     <string name="settings_player_enable_regex_filter">启用正则弹幕过滤器</string>
@@ -300,6 +312,11 @@
     <string name="settings_player_remember_playback_speed_description">在播放器内调整的倍速跨剧集和重启保持。关闭后仅对本次播放生效，退出播放器即回到默认倍速。</string>
     <string name="settings_player_default_playback_speed">默认倍速</string>
     <string name="settings_player_default_playback_speed_description">每次进入播放器时的起始倍速</string>
+    <string name="settings_player_mpv_options">自定义 mpv 选项</string>
+    <string name="settings_player_mpv_options_description">每行一个选项，格式为 key=value，以 # 开头的行为注释。保存后立即生效</string>
+    <string name="settings_player_mpv_options_empty">未设置</string>
+    <string name="settings_player_mpv_options_count">已设置 %1$d 个选项</string>
+    <string name="settings_player_mpv_options_placeholder">hwdec=auto\nprofile=fast</string>
 
     <!-- Version Expired Overlay -->
     <string name="settings_update_version_expired_title">版本过期</string>
@@ -633,6 +650,9 @@
     <string name="settings_media_torrent_speed_format">%1$s MB/s</string>
     <string name="settings_media_torrent_limit_upload_on_metered">计费网络限制上传</string>
     <string name="settings_media_torrent_limit_upload_on_metered_description">在计费网络环境下限制上传速度为 1 KB/s</string>
+    <string name="settings_media_torrent_extra_trackers">额外 Tracker</string>
+    <string name="settings_media_torrent_extra_trackers_description">在 BT 下载开始前额外添加的 tracker 服务器，帮助发现更多用户</string>
+    <string name="settings_media_torrent_extra_trackers_dialog_description">每行一个 tracker 地址，例如 udp://tracker.example.com:6969/announce。将在 BT 下载开始前与内置 tracker 一起添加。修改仅对之后开始的下载生效。</string>
     <string name="settings_media_torrent_peer_filter">Peer 过滤和屏蔽设置</string>
     <string name="settings_media_torrent_peer_filter_description">在下载或上传缓存的番剧时不与黑名单或命中过滤规则的客户端连接</string>
 
@@ -734,6 +754,10 @@
     <string name="video_player_auto">自动</string>
     <string name="video_player_audio_track">音轨</string>
     <string name="video_player_off">关闭</string>
+    <string name="video_player_on">开启</string>
+    <string name="video_player_performance">性能优先</string>
+    <string name="video_player_quality">最高质量</string>
+    <string name="video_player_video_enhancement">画质增强</string>
     <string name="video_player_subtitle">字幕</string>
     <string name="video_player_disable_danmaku">禁用弹幕</string>
     <string name="video_player_enable_danmaku">启用弹幕</string>
@@ -1201,6 +1225,27 @@
     <string name="comment_rendering">渲染中...</string>
     <string name="comment_reply">回复评论</string>
     <string name="comment_view_more_replies">查看更多 %1$d 条回复&gt;</string>
+    <string name="comment_like">点赞</string>
+    <string name="comment_dislike">点踩</string>
+    <string name="comment_more_actions">更多操作</string>
+    <string name="comment_expand_replies">展开 %1$d 条回复</string>
+    <string name="comment_copy_content">复制内容</string>
+    <string name="comment_open_in_bangumi">在 Bangumi 打开</string>
+    <string name="comment_block_user">拉黑此用户</string>
+    <string name="comment_report">举报</string>
+    <string name="comment_copied">已复制</string>
+    <string name="comment_report_title">举报评论</string>
+    <string name="comment_report_subtitle">举报会提交给 Animeko 审核，不会通知对方</string>
+    <string name="comment_report_reason_spam">垃圾广告或引流</string>
+    <string name="comment_report_reason_harassment">人身攻击、骚扰</string>
+    <string name="comment_report_reason_spoiler">剧透</string>
+    <string name="comment_report_reason_nsfw">色情、血腥或令人不适</string>
+    <string name="comment_report_reason_illegal">违法违规内容</string>
+    <string name="comment_report_reason_other">其他</string>
+    <string name="comment_report_detail_hint">补充说明（选填）</string>
+    <string name="comment_report_submit">提交举报</string>
+    <string name="comment_report_cancel">取消</string>
+    <string name="comment_report_submitted">已收到举报</string>
     <string name="comment_add_emoji">添加表情</string>
     <string name="comment_bold">加粗</string>
     <string name="comment_italic">斜体</string>

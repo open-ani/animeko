@@ -65,7 +65,6 @@ import me.him188.ani.app.ui.comment.CommentState
 import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
-import me.him188.ani.app.ui.foundation.avatar.AvatarImage
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
 import me.him188.ani.app.ui.foundation.theme.LocalAppChromeHazeState
 import me.him188.ani.app.ui.foundation.theme.appChromeFrostedGlass
@@ -117,8 +116,12 @@ fun PersonDetailsScreen(
         summary = details?.person?.summary.orEmpty(),
         centerStrips = { PersonStrips(casts, works) },
         commentState = vm.commentState,
+        originalCommentsUrl = vm.originalCommentsUrl,
         compactContent = {
-            PersonDetailsContentColumn(details, casts, works, vm.commentState)
+            PersonDetailsContentColumn(
+                details, casts, works, vm.commentState,
+                originalCommentsUrl = vm.originalCommentsUrl,
+            )
         },
         modifier = modifier,
     )
@@ -155,8 +158,12 @@ fun CharacterDetailsScreen(
         summary = details?.summary.orEmpty(),
         centerStrips = { CharacterStrips(details, subjects) },
         commentState = vm.commentState,
+        originalCommentsUrl = vm.originalCommentsUrl,
         compactContent = {
-            CharacterDetailsContentColumn(details, subjects, vm.commentState)
+            CharacterDetailsContentColumn(
+                details, subjects, vm.commentState,
+                originalCommentsUrl = vm.originalCommentsUrl,
+            )
         },
         modifier = modifier,
     )
@@ -184,6 +191,7 @@ private fun PeopleDetailsScaffold(
     commentState: CommentState,
     compactContent: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    originalCommentsUrl: String? = null,
 ) {
     var showAllComments by rememberSaveable { mutableStateOf(false) }
 
@@ -209,158 +217,161 @@ private fun PeopleDetailsScaffold(
 
         // 本页自带一个独立的毛玻璃作用域: 粘性顶栏模糊其下方滚过的内容.
         CompositionLocalProvider(LocalAppChromeHazeState provides rememberHazeState()) {
-        val frostedGlassActive = isAppChromeFrostedGlassActive()
-        Scaffold(
-            topBar = {
-                Box {
-                    // 透明背景的, 总是显示
-                    TopAppBar(
-                        title = {},
-                        navigationIcon = navigationIcon,
-                        colors = AniThemeDefaults.topAppBarColors().copy(containerColor = Color.Transparent),
-                        windowInsets = topAppBarWindowInsets,
-                    )
-                    // 有背景和标题的, 仅在页内标题滚出后显示
-                    AniAnimatedVisibility(stickyTopBarVisible && topBarTitle.isNotBlank()) {
+            val frostedGlassActive = isAppChromeFrostedGlassActive()
+            Scaffold(
+                topBar = {
+                    Box {
+                        // 透明背景的, 总是显示
                         TopAppBar(
-                            title = {
-                                Text(topBarTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            },
-                            modifier = Modifier.appChromeFrostedGlass(
-                                enabled = frostedGlassActive,
-                                containerColor = stickyTopBarColor,
-                            ),
+                            title = {},
                             navigationIcon = navigationIcon,
-                            colors = if (frostedGlassActive) {
-                                AniThemeDefaults.topAppBarColors().copy(containerColor = Color.Transparent)
-                            } else {
-                                AniThemeDefaults.topAppBarColors(containerColor = stickyTopBarColor)
-                            },
+                            colors = AniThemeDefaults.topAppBarColors().copy(containerColor = Color.Transparent),
                             windowInsets = topAppBarWindowInsets,
                         )
-                    }
-                }
-            },
-            containerColor = backgroundColor,
-            contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
-        ) { padding ->
-            if (!layoutParams.isMultiColumn) {
-                val layoutDirection = LocalLayoutDirection.current
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        // 毛玻璃粘性顶栏的模糊来源.
-                        .appChromeHazeSource(backgroundColor = backgroundColor)
-                        // top padding 放在滚动内容内, 让内容可以滚动到顶栏下方 (与条目详情单栏一致).
-                        .padding(
-                            start = padding.calculateStartPadding(layoutDirection),
-                            end = padding.calculateEndPadding(layoutDirection),
-                            bottom = padding.calculateBottomPadding(),
-                        )
-                        .verticalScroll(scrollState)
-                        .padding(top = padding.calculateTopPadding())
-                        .padding(horizontal = layoutParams.contentHorizontalPadding)
-                        .padding(
-                            top = contentTopPadding,
-                            bottom = layoutParams.contentBottomPadding,
-                        ),
-                ) {
-                    compactContent()
-                }
-            } else {
-                Row(
-                    Modifier
-                        .fillMaxSize()
-                        // 毛玻璃粘性顶栏的模糊来源 (多栏内容不延伸到顶栏下方, 采样到页面背景).
-                        .appChromeHazeSource(backgroundColor = backgroundColor)
-                        .padding(padding)
-                        .verticalScroll(scrollState)
-                        .padding(
-                            start = layoutParams.contentHorizontalPadding,
-                            end = layoutParams.contentHorizontalPadding,
-                            top = contentTopPadding,
-                            bottom = layoutParams.contentBottomPadding,
-                        ),
-                    horizontalArrangement = Arrangement.spacedBy(layoutParams.columnSpacing),
-                ) {
-                    // 左栏: 图片 + 基本信息
-                    Column(
-                        Modifier.width(layoutParams.sidebarWidth),
-                        verticalArrangement = Arrangement.spacedBy(layoutParams.sidebarItemSpacing),
-                    ) {
-                        // 定稿: 固定宽度, 高按原图比例自适应 (加载前用 340:482 占位)
-                        var coverAspect by remember(sidebarImageUrl) { mutableStateOf(340f / 482f) }
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(coverAspect.coerceIn(0.4f, 1.6f))
-                                .clip(MaterialTheme.shapes.medium)
-                                .placeholder(isPlaceholder),
-                        ) {
-                            AsyncImage(
-                                model = sidebarImageUrl,
-                                contentDescription = null,
-                                modifier = Modifier.matchParentSize(),
-                                contentScale = ContentScale.Fit,
-                                onSuccess = { state ->
-                                    val size = state.painter.intrinsicSize
-                                    if (size.width > 0f && size.height > 0f) {
-                                        coverAspect = size.width / size.height
-                                    }
+                        // 有背景和标题的, 仅在页内标题滚出后显示
+                        AniAnimatedVisibility(stickyTopBarVisible && topBarTitle.isNotBlank()) {
+                            TopAppBar(
+                                title = {
+                                    Text(topBarTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 },
+                                modifier = Modifier.appChromeFrostedGlass(
+                                    enabled = frostedGlassActive,
+                                    containerColor = stickyTopBarColor,
+                                ),
+                                navigationIcon = navigationIcon,
+                                colors = if (frostedGlassActive) {
+                                    AniThemeDefaults.topAppBarColors().copy(containerColor = Color.Transparent)
+                                } else {
+                                    AniThemeDefaults.topAppBarColors(containerColor = stickyTopBarColor)
+                                },
+                                windowInsets = topAppBarWindowInsets,
                             )
                         }
-                        if (sidebarInfo.isNotEmpty()) {
-                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text(
-                                    stringResource(Lang.person_details_basic_info),
-                                    style = MaterialTheme.typography.titleSmall,
+                    }
+                },
+                containerColor = backgroundColor,
+                contentWindowInsets = windowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+            ) { padding ->
+                if (!layoutParams.isMultiColumn) {
+                    val layoutDirection = LocalLayoutDirection.current
+                    Column(
+                        Modifier
+                            .fillMaxSize()
+                            // 毛玻璃粘性顶栏的模糊来源.
+                            .appChromeHazeSource(backgroundColor = backgroundColor)
+                            // top padding 放在滚动内容内, 让内容可以滚动到顶栏下方 (与条目详情单栏一致).
+                            .padding(
+                                start = padding.calculateStartPadding(layoutDirection),
+                                end = padding.calculateEndPadding(layoutDirection),
+                                bottom = padding.calculateBottomPadding(),
+                            )
+                            .verticalScroll(scrollState)
+                            .padding(top = padding.calculateTopPadding())
+                            .padding(horizontal = layoutParams.contentHorizontalPadding)
+                            .padding(
+                                top = contentTopPadding,
+                                bottom = layoutParams.contentBottomPadding,
+                            ),
+                    ) {
+                        compactContent()
+                    }
+                } else {
+                    Row(
+                        Modifier
+                            .fillMaxSize()
+                            // 毛玻璃粘性顶栏的模糊来源 (多栏内容不延伸到顶栏下方, 采样到页面背景).
+                            .appChromeHazeSource(backgroundColor = backgroundColor)
+                            .padding(padding)
+                            .verticalScroll(scrollState)
+                            .padding(
+                                start = layoutParams.contentHorizontalPadding,
+                                end = layoutParams.contentHorizontalPadding,
+                                top = contentTopPadding,
+                                bottom = layoutParams.contentBottomPadding,
+                            ),
+                        horizontalArrangement = Arrangement.spacedBy(layoutParams.columnSpacing),
+                    ) {
+                        // 左栏: 图片 + 基本信息
+                        Column(
+                            Modifier.width(layoutParams.sidebarWidth),
+                            verticalArrangement = Arrangement.spacedBy(layoutParams.sidebarItemSpacing),
+                        ) {
+                            // 定稿: 固定宽度, 高按原图比例自适应 (加载前用 340:482 占位)
+                            var coverAspect by remember(sidebarImageUrl) { mutableStateOf(340f / 482f) }
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(coverAspect.coerceIn(0.4f, 1.6f))
+                                    .clip(MaterialTheme.shapes.medium)
+                                    .placeholder(isPlaceholder),
+                            ) {
+                                AsyncImage(
+                                    model = sidebarImageUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.matchParentSize(),
+                                    contentScale = ContentScale.Fit,
+                                    onSuccess = { result ->
+                                        if (result.width > 0 && result.height > 0) {
+                                            coverAspect = result.width.toFloat() / result.height
+                                        }
+                                    },
                                 )
-                                PeopleInfoTable(sidebarInfo)
+                            }
+                            if (sidebarInfo.isNotEmpty()) {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Text(
+                                        stringResource(Lang.person_details_basic_info),
+                                        style = MaterialTheme.typography.titleSmall,
+                                    )
+                                    PeopleInfoTable(sidebarInfo)
+                                }
                             }
                         }
-                    }
 
-                    // 中栏
-                    Column(
-                        Modifier.weight(1f).widthIn(max = 840.dp),
-                        verticalArrangement = Arrangement.spacedBy(layoutParams.sectionSpacing),
-                    ) {
-                        titleBlock(isPlaceholder)
-                        if (summary.isNotBlank()) {
-                            SubjectSummarySection(summary)
-                        }
-                        centerStrips()
-                        if (!layoutParams.showRail) {
-                            PersonCommentsSection(commentState, onShowAll = { showAllComments = true })
-                        }
-                    }
-
-                    // 右栏 (仅三栏): 评论卡
-                    if (layoutParams.showRail) {
-                        Surface(
-                            Modifier.width(layoutParams.railWidth),
-                            shape = MaterialTheme.shapes.medium,
-                            color = MaterialTheme.colorScheme.surfaceContainerLow,
+                        // 中栏
+                        Column(
+                            Modifier.weight(1f).widthIn(max = 840.dp),
+                            verticalArrangement = Arrangement.spacedBy(layoutParams.sectionSpacing),
                         ) {
-                            PersonCommentsSection(
-                                commentState,
-                                onShowAll = { showAllComments = true },
-                                // 对齐修正后的设计稿 rail 卡 (视觉: 标题字形距顶 ~21, 距侧 20):
-                                // 标题行自带 ~17dp 顶空 (TextButton min 40dp 居中 + 行框留白, 截图实测),
-                                // 故 top=4; 左右 20 / 下 18 与设计稿一致.
-                                Modifier.padding(start = 20.dp, top = 4.dp, end = 20.dp, bottom = 18.dp),
-                            )
+                            titleBlock(isPlaceholder)
+                            if (summary.isNotBlank()) {
+                                SubjectSummarySection(summary)
+                            }
+                            centerStrips()
+                            if (!layoutParams.showRail) {
+                                PersonCommentsSection(commentState, onShowAll = { showAllComments = true })
+                            }
+                        }
+
+                        // 右栏 (仅三栏): 评论卡
+                        if (layoutParams.showRail) {
+                            Surface(
+                                Modifier.width(layoutParams.railWidth),
+                                shape = MaterialTheme.shapes.medium,
+                                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                            ) {
+                                PersonCommentsSection(
+                                    commentState,
+                                    onShowAll = { showAllComments = true },
+                                    // 对齐修正后的设计稿 rail 卡 (视觉: 标题字形距顶 ~21, 距侧 20):
+                                    // 标题行自带 ~17dp 顶空 (TextButton min 40dp 居中 + 行框留白, 截图实测),
+                                    // 故 top=4; 左右 20 / 下 18 与设计稿一致.
+                                    Modifier.padding(start = 20.dp, top = 4.dp, end = 20.dp, bottom = 18.dp),
+                                )
+                            }
                         }
                     }
                 }
             }
         }
-        }
     }
 
     if (showAllComments) {
-        PersonCommentsSheet(commentState, onDismissRequest = { showAllComments = false })
+        PersonCommentsSheet(
+            commentState,
+            onDismissRequest = { showAllComments = false },
+            originalCommentsUrl = originalCommentsUrl,
+        )
     }
 }
 
@@ -379,6 +390,7 @@ internal fun PersonDetailsContentColumn(
     casts: LazyPagingItems<PersonCastInfo>,
     works: LazyPagingItems<PersonWorkInfo>,
     commentState: CommentState,
+    originalCommentsUrl: String? = null,
     modifier: Modifier = Modifier,
     navigation: PeopleDetailsNavigation = rememberPeopleDetailsNavigation(),
 ) {
@@ -407,7 +419,11 @@ internal fun PersonDetailsContentColumn(
         PersonCommentsSection(commentState, onShowAll = { showAllComments = true })
     }
     if (showAllComments) {
-        PersonCommentsSheet(commentState, onDismissRequest = { showAllComments = false })
+        PersonCommentsSheet(
+            commentState,
+            onDismissRequest = { showAllComments = false },
+            originalCommentsUrl = originalCommentsUrl,
+        )
     }
 }
 
@@ -487,6 +503,7 @@ internal fun CharacterDetailsContentColumn(
     details: CharacterDetailsInfo?,
     subjects: LazyPagingItems<CharacterSubjectInfo>,
     commentState: CommentState,
+    originalCommentsUrl: String? = null,
     modifier: Modifier = Modifier,
     navigation: PeopleDetailsNavigation = rememberPeopleDetailsNavigation(),
 ) {
@@ -515,7 +532,11 @@ internal fun CharacterDetailsContentColumn(
         PersonCommentsSection(commentState, onShowAll = { showAllComments = true })
     }
     if (showAllComments) {
-        PersonCommentsSheet(commentState, onDismissRequest = { showAllComments = false })
+        PersonCommentsSheet(
+            commentState,
+            onDismissRequest = { showAllComments = false },
+            originalCommentsUrl = originalCommentsUrl,
+        )
     }
 }
 

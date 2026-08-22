@@ -39,6 +39,9 @@ compose-hot-reload = "1.2.0" # https://github.com/JetBrains/compose-hot-reload/r
 # JetBrains compose libraries. Follow the release notes for main Compose Multiplatform for versoins.
 compose-lifecycle = "2.11.0-beta01"
 compose-navigation = "2.9.2"
+# Navigation 3. navigation3-runtime 由 Google 直接发布 KMP 构件, 只有 UI 部分是 JetBrains 移植的.
+compose-navigation3-ui = "1.1.1"
+androidx-navigation3-runtime = "1.1.1"
 compose-material = "1.7.3"
 compose-material3 = "1.11.0-alpha07"
 compose-material3-adaptive = "1.3.0-alpha07"
@@ -65,7 +68,7 @@ koin = "3.5.6" # https://github.com/InsertKoinIO/koin/releases
 slf4j = "2.0.16"
 jsoup = "1.18.1" # https://github.com/jhy/jsoup/releases
 snakeyaml = "2.2"
-coil = "3.1.0" # https://github.com/coil-kt/coil/releases
+sketch = "4.6.0" # https://github.com/panpf/sketch/releases
 constraintlayout-compose = "0.6.1"
 antlr-kotlin = "1.0.2"
 diamondedge-logging = "2.0.3" # Only for native. On JVM we use slf4j directly.
@@ -87,11 +90,12 @@ posthog-android = "3.11.3"
 posthog-java = "1.2.0"
 onnxruntime = "1.22.0"
 openapi-generator = "7.13.0"
-mediamp = "0.3.0"
+mediamp = "0.3.2"
 libass-android = "0.5.0-beta01"
 compose-native-tray = "1.3.0"
 kmpalette = "4.0.0-beta02"
 haze = "1.7.2"
+aboutlibraries = "15.0.4" # https://github.com/mikepenz/AboutLibraries/releases
 
 [plugins]
 # Plugins for projects.
@@ -118,6 +122,7 @@ sentry-kotlin-multiplatform = { id = "io.sentry.kotlin.multiplatform.gradle", ve
 undercouch-download = { id = "de.undercouch.download", version.ref = "undercouch-download" }
 openapi-generator = { id = "org.openapi.generator", version.ref = "openapi-generator" }
 compose-stability-analyzer = { id = "com.github.skydoves.compose.stability.analyzer", version.ref = "stability-analyzer" }
+aboutlibraries = { id = "com.mikepenz.aboutlibraries.plugin", version.ref = "aboutlibraries" }
 
 [libraries]
 # Plugin libraries for build-logic.
@@ -188,15 +193,11 @@ slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
 logback-android = { module = "com.github.tony19:logback-android", version = "3.0.0" }
 
-# Coil 
-# https://github.com/coil-kt/coil
-coil = { module = "io.coil-kt.coil3:coil", version.ref = "coil" }
-coil-core = { module = "io.coil-kt.coil3:coil-core", version.ref = "coil" }
-coil-compose-core = { module = "io.coil-kt.coil3:coil-compose-core", version.ref = "coil" }
-coil-svg = { module = "io.coil-kt.coil3:coil-svg", version.ref = "coil" }
-#coil-gif = { module = "io.coil-kt.coil3:coil-gif", version.ref = "coil" }
-coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
-coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
+# Sketch
+# https://github.com/panpf/sketch
+sketch-compose-core = { module = "io.github.panpf.sketch4:sketch-compose-core", version.ref = "sketch" }
+sketch-http-core = { module = "io.github.panpf.sketch4:sketch-http-core", version.ref = "sketch" }
+sketch-svg = { module = "io.github.panpf.sketch4:sketch-svg", version.ref = "sketch" }
 
 # Android Datastore
 datastore = { module = "androidx.datastore:datastore", version.ref = "datastore" }
@@ -234,6 +235,9 @@ compose-lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifec
 compose-lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "compose-lifecycle" }
 compose-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "compose-navigation" }
 compose-navigation-runtime = { module = "org.jetbrains.androidx.navigation:navigation-runtime", version.ref = "compose-navigation" }
+compose-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "androidx-navigation3-runtime" }
+compose-navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "compose-navigation3-ui" }
+compose-lifecycle-viewmodel-navigation3 = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "compose-lifecycle" }
 compose-window-core = { module = "org.jetbrains.androidx.window:window-core", version.ref = "compose-window-core" }
 compose-material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "compose-material" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "compose-material3" }
@@ -277,6 +281,7 @@ mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "
 # Media3 (ExoPlayer)
 androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "androidx-media3" }
 androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "androidx-media3" }
+androidx-media3-effect = { module = "androidx.media3:media3-effect", version.ref = "androidx-media3" }
 androidx-media3-exoplayer-dash = { module = "androidx.media3:media3-exoplayer-dash", version.ref = "androidx-media3" }
 androidx-media3-exoplayer-hls = { module = "androidx.media3:media3-exoplayer-hls", version.ref = "androidx-media3" }
 
@@ -337,6 +342,7 @@ sentry-compose-android = { module = "io.sentry:sentry-compose-android", version.
 awssdk-s3 = { module = "software.amazon.awssdk:s3", version.ref = "s3" }
 kmpalette-core = { module = "com.materialkolor.palette:core", version.ref = "kmpalette" }
 haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
+aboutlibraries-compose-m3 = { module = "com.mikepenz:aboutlibraries-compose-m3", version.ref = "aboutlibraries" }
 
 firebase-analytics = { module = "dev.gitlive:firebase-analytics", version.ref = "gitlive-firebase" }
 google-firebase-common = { module = "com.google.firebase:firebase-common", version.ref = "google-firebase" }

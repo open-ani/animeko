@@ -20,14 +20,9 @@ plugins {
 
     // alias(libs.plugins.kotlinx.atomicfu)
     alias(libs.plugins.sentry.kotlin.multiplatform)
+    alias(libs.plugins.aboutlibraries)
     idea
 }
-
-compose.resources {
-    packageOfResClass = "me.him188.ani.app"
-    generateResClass = always
-}
-
 
 //atomicfu {
 //    transformJvm = false // 这东西很不靠谱, 等 atomicfu 正式版了可能可以考虑下
@@ -89,6 +84,9 @@ kotlin {
         api(libs.compose.lifecycle.runtime.compose)
         api(libs.compose.navigation.compose)
         api(libs.compose.navigation.runtime)
+        api(libs.compose.navigation3.runtime)
+        api(libs.compose.navigation3.ui)
+        api(libs.compose.lifecycle.viewmodel.navigation3)
         api(libs.compose.material3.adaptive.navigation.suite)
         implementation(libs.compose.components.resources)
         implementation(projects.app.shared.reorderable)
@@ -121,9 +119,6 @@ kotlin {
 
         // Others
         api(libs.koin.core)
-        api(libs.coil.core)
-        api(libs.coil.svg)
-        api(libs.coil.compose.core)
         implementation(libs.constraintlayout.compose)
     }
 
@@ -157,7 +152,6 @@ kotlin {
         api(libs.androidx.activity.ktx)
         api(libs.koin.android)
         implementation(libs.androidx.browser)
-        api(libs.coil)
         api(libs.logback.android)
         api(projects.utils.buildConfig)
     }
@@ -195,6 +189,42 @@ kotlin {
         implementation(libs.log4j.slf4j.impl)
 
         implementation(libs.ktor.serialization.kotlinx.json)
+    }
+}
+
+val aboutLibrariesExportedJson = layout.buildDirectory.file("generated/aboutLibrariesExport/aboutlibraries.json")
+val mergeCommonMainComposeResources = tasks.register<Sync>("mergeCommonMainComposeResources") {
+    description = "Merge "
+    from(layout.projectDirectory.dir("src/commonMain/composeResources"))
+    from(aboutLibrariesExportedJson) { into("files") }
+    dependsOn("exportLibraryDefinitions")
+    into(layout.buildDirectory.dir("generated/mergedCommonMainComposeResources"))
+}
+
+compose.resources {
+    // 不能用 "me.him188.ani.app": 资源会打进以包名命名的目录, 目录名以 ".app" 结尾时
+    // App Store 校验会把它当成嵌套 app bundle, 因缺少可执行文件和 Info.plist 拒绝上传
+    // (ITMS-90207 / ITMS-90036).
+    packageOfResClass = "me.him188.ani.app.shared"
+    generateResClass = always
+    // provider 从 merge task 派生, 自动携带任务依赖.
+    customDirectory(
+        "commonMain",
+        mergeCommonMainComposeResources.map {
+            layout.buildDirectory.dir("generated/mergedCommonMainComposeResources").get()
+        },
+    )
+}
+
+aboutLibraries {
+    export {
+        outputFile = aboutLibrariesExportedJson
+        prettyPrint = true
+    }
+    library {
+        // KMP 库会解析出 -jvm/-android 等多个平台构件, 按名字合并成一个条目.
+        duplicationMode = com.mikepenz.aboutlibraries.plugin.DuplicateMode.MERGE
+        duplicationRule = com.mikepenz.aboutlibraries.plugin.DuplicateRule.SIMPLE
     }
 }
 

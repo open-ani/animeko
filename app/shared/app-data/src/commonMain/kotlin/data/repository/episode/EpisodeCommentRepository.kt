@@ -14,6 +14,7 @@ import androidx.paging.PagingData
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import kotlinx.coroutines.flow.Flow
+import me.him188.ani.app.data.models.comment.CommentVoteValue
 import me.him188.ani.app.data.models.episode.EpisodeComment
 import me.him188.ani.app.data.network.AniEpisodeCommentService
 import me.him188.ani.app.data.network.toEpisodeComment
@@ -50,6 +51,17 @@ class EpisodeCommentRepository(
         } else {
             aniCommentService.removeEpisodeCommentReaction(episodeId, commentId, value)
         }
+    }
+
+    /**
+     * 对评论投票 (点赞/点踩). [vote] 为 `null` 表示取消投票.
+     */
+    suspend fun submitVote(
+        episodeId: Long,
+        commentId: String,
+        vote: CommentVoteValue?,
+    ) {
+        aniCommentService.voteEpisodeComment(episodeId, commentId, vote)
     }
 }
 

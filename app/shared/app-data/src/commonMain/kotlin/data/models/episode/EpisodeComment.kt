@@ -10,6 +10,7 @@
 package me.him188.ani.app.data.models.episode
 
 import me.him188.ani.app.data.models.UserInfo
+import me.him188.ani.app.data.models.comment.CommentVoteValue
 
 enum class EpisodeCommentSource {
     ANI,
@@ -32,6 +33,18 @@ data class EpisodeComment(
     val reactions: List<EpisodeCommentReaction> = emptyList(),
     val replies: List<EpisodeComment> = listOf(),
     val canReply: Boolean = false,
+    /**
+     * 总回复数. [replies] 只是简要回复, 可能少于此数.
+     */
+    val replyCount: Int = replies.size,
+    /**
+     * 点赞总数. [EpisodeCommentSource.BANGUMI] 来源的评论恒为 `0`.
+     */
+    val likeCount: Int = 0,
+    /**
+     * 当前登录用户对这条评论的投票, 未投票或未登录时为 `null`.
+     */
+    val selfVote: CommentVoteValue? = null,
 )
 
 data class EpisodeCommentReaction(

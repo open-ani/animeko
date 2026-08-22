@@ -28,14 +28,17 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
+import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
-import me.him188.ani.app.ui.foundation.LocalPlatform
+import kotlinx.coroutines.flow.distinctUntilChanged
 import me.him188.ani.app.ui.foundation.interaction.nestedScrollWorkaround
 import me.him188.ani.app.ui.foundation.layout.ConnectedScrollState
 import me.him188.ani.app.ui.foundation.theme.stronglyWeaken
@@ -46,7 +49,22 @@ import me.him188.ani.app.ui.search.SearchResultLazyVerticalGrid
 import me.him188.ani.app.ui.search.isFinishedAndEmpty
 import me.him188.ani.app.ui.search.isLoadingFirstPageOrRefreshing
 import me.him188.ani.app.ui.search.isLoadingNextPage
-import me.him188.ani.utils.platform.isMobile
+
+/**
+ * 在 Paging 刷新完成时调用 [CommentState.clearStaleOverlays], 使乐观覆盖不会永久遮住服务端刷新后的数据.
+ */
+@Composable
+fun CommentOverlayCleanupEffect(state: CommentState, items: LazyPagingItems<UIComment>) {
+    LaunchedEffect(state, items) {
+        snapshotFlow { items.loadState.refresh }
+            .distinctUntilChanged()
+            .collect { refresh ->
+                if (refresh is LoadState.NotLoading) {
+                    state.clearStaleOverlays()
+                }
+            }
+    }
+}
 
 /**
  * @param pullToRefreshEnabled 是否启用下拉刷新. 当此列表位于会优先消费向下滚动的容器中时
@@ -83,7 +101,8 @@ fun CommentColumn(
         isRefreshing = items.isLoadingFirstPageOrRefreshing,
         onRefresh = { items.refresh() },
         modifier = modifier,
-        enabled = pullToRefreshEnabled && LocalPlatform.current.isMobile(),
+        enabled = pullToRefreshEnabled,
+        touchOnly = true,
         contentAlignment = Alignment.TopCenter,
     ) {
         if (items.isFinishedAndEmpty) {
