@@ -38,7 +38,7 @@ kotlin {
         implementation(libs.filekit.dialogs.compose)
         implementation(libs.atomicfu)
         implementation(libs.aboutlibraries.compose.m3)
-        implementation(projects.utils.selectorWorkflow) // 观看偏好里那块「搜源 · 选源 · 解析」示意动画
+        implementation(projects.utils.selectorWorkflow)
     }
     sourceSets.commonTest.dependencies {
         implementation(libs.kotlinx.coroutines.test)
