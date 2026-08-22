@@ -90,6 +90,13 @@ data class WorkflowMetrics(
      * 左边最多只能放到 [outerPadding] 那么多, 再多就出画布了.
      */
     val sourcesHighlightInset: Float = 6f,
+    /**
+     * 第一步那圈高亮框的圆角.
+     *
+     * 另外两块罩着现成的容器, 圆角得跟着被罩者一起长才同心; 这一块没有被罩者, 圆角是自由的,
+     * 照那个公式算出来会圆得不成样子.
+     */
+    val sourcesHighlightRadius: Float = 6f,
     /** 画面四周留白. */
     val outerPadding: Float = 8f,
     /** 线宽. */
@@ -175,7 +182,7 @@ class WorkflowLayout internal constructor(
                     right = container.left + containerPadding,
                     bottom = nodeCenters.maxOf { it.y } + nodeRadius + sourcesHighlightInset,
                 ),
-                cornerRadius = containerRadius + sourcesHighlightInset,
+                cornerRadius = sourcesHighlightRadius,
             )
 
             HighlightRegion.Results -> Highlight(

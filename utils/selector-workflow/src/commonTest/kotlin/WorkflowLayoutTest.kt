@@ -86,6 +86,11 @@ class WorkflowLayoutTest {
             layout.highlight(HighlightRegion.Resolve).cornerRadius,
             1e-3f,
         )
+        // 第一步没有被罩者, 圆角是自由的 —— 照同一个公式算会圆得不成样子
+        assertTrue(
+            layout.highlight(HighlightRegion.Sources).cornerRadius <
+                    layout.highlight(HighlightRegion.Results).cornerRadius,
+        )
     }
 
     @Test
