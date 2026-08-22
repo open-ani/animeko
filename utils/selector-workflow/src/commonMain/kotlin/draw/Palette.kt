@@ -101,9 +101,12 @@ data class WorkflowPalette(
         val DefaultSuccess = Color(0xFF5FD48F)
         val DefaultSuccessLight = Color(0xFF1E6F42)
 
-        /** 高亮框的金色. 浅色主题下要压暗, 不然满不透明时也看不清. */
-        val DefaultHighlight = Color(0xFFFFC24B)
-        val DefaultHighlightLight = Color(0xFF8A5A00)
+        /**
+         * 高亮框的金色. 饱和度压得比较低 —— 它是"看这里"的提示, 不是警告色,
+         * 太艳会盖过画面本身在讲的事. 浅色主题下换成压暗的一档, 不然满不透明时也看不清.
+         */
+        val DefaultHighlight = Color(0xFFEBD08F)
+        val DefaultHighlightLight = Color(0xFF8A7439)
     }
 }
 

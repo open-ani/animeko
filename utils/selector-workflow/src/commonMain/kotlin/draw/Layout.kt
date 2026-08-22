@@ -83,6 +83,13 @@ data class WorkflowMetrics(
      * 得比 [outerPadding] 小 —— 框画在内容 **外面**, 留白不够就会被画布裁掉.
      */
     val highlightInset: Float = 3f,
+    /**
+     * 第一步那圈高亮框往外放多少. 比 [highlightInset] 大 —— 它没有现成的容器可罩, 只圈着节点和几条线,
+     * 贴着圈就显得小家子气.
+     *
+     * 左边最多只能放到 [outerPadding] 那么多, 再多就出画布了.
+     */
+    val sourcesHighlightInset: Float = 6f,
     /** 画面四周留白. */
     val outerPadding: Float = 8f,
     /** 线宽. */
@@ -161,13 +168,14 @@ class WorkflowLayout internal constructor(
         when (region) {
             HighlightRegion.Sources -> Highlight(
                 bounds = Rect(
-                    left = nodeCenters.minOf { it.x } - haloRadius - highlightInset,
-                    top = nodeCenters.minOf { it.y } - nodeRadius - highlightInset,
-                    // 连线一直画到容器边上, 所以右边也得顶到那儿, 不然线会从框里探出去一截
-                    right = container.left,
-                    bottom = nodeCenters.maxOf { it.y } + nodeRadius + highlightInset,
+                    left = nodeCenters.minOf { it.x } - haloRadius - sourcesHighlightInset,
+                    top = nodeCenters.minOf { it.y } - nodeRadius - sourcesHighlightInset,
+                    // 右边越过结果容器的边线, 一路探到结果块跟前 —— 框是 overlay, 压着谁都无所谓,
+                    // 交叉过去反而更像"从这边连到那边"
+                    right = container.left + containerPadding,
+                    bottom = nodeCenters.maxOf { it.y } + nodeRadius + sourcesHighlightInset,
                 ),
-                cornerRadius = containerRadius + highlightInset,
+                cornerRadius = containerRadius + sourcesHighlightInset,
             )
 
             HighlightRegion.Results -> Highlight(

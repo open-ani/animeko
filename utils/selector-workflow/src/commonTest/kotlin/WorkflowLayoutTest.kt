@@ -46,11 +46,12 @@ class WorkflowLayoutTest {
             assertTrue(sources.contains(c), "第 $i 个源节点没被罩住")
             assertTrue(c.x - metrics.haloRadius > sources.left, "第 $i 个源的光环探出框外了")
         }
-        // 连线一路画到容器边上, 框也得顶到那儿
-        assertEquals(layout.container.left, sources.right, 1e-3f, "连线会从框里探出去一截")
+        // 连线一路画到容器边上, 框还得再越过去一截 —— 它是 overlay, 交叉过去无所谓
+        assertTrue(sources.right > layout.container.left, "框该越过结果容器的边线")
         layout.linkSegments.forEach { (from, to) ->
             assertTrue(from.x >= sources.left && to.x <= sources.right, "连线没被完全罩住")
         }
+        assertTrue(sources.overlaps(results), "两块一起亮时该是交叉的, 不是并排")
     }
 
     @Test
