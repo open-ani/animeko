@@ -202,6 +202,9 @@ class WindowsWindowUtils : AwtWindowUtils() {
                 maximized = maximised,
             )
 
+            (window.windowsWindowProc.value as? ExtendedTitleBarWindowProc)
+                ?.applyWindowCompositionMode(fullscreen = true)
+
             User32.INSTANCE.SetWindowLong(
                 hwnd, WinUser.GWL_STYLE,
                 currentStyle and (WinUser.WS_CAPTION or WinUser.WS_THICKFRAME).inv(),
@@ -255,6 +258,8 @@ class WindowsWindowUtils : AwtWindowUtils() {
                 )
             }
             window.savedWindowsWindowState = null
+            (window.windowsWindowProc.value as? ExtendedTitleBarWindowProc)
+                ?.applyWindowCompositionMode(fullscreen = false)
             window.onWindowsUndecoratedFullscreenStateChange(false)
         }
     }
