@@ -248,6 +248,14 @@ data class SelectorWorkflowConfig(
     val priorityIndex: Int? = sources.indexOfFirst { it.priority }.takeIf { it >= 0 }
 
     /**
+     * 要不要显示第三步的计时器.
+     *
+     * 只演"拦到了"那一种结局时不显示 —— 没有超时这回事, 摆个表在那里只会让人以为有个时限在跑.
+     * 一旦要演超时, 表才有意义: 它是"预算用完了"的唯一表达.
+     */
+    val showInterceptClock: Boolean = resolve.outcomes.any { it == ResolveOutcome.Timeout }
+
+    /**
      * 要不要画高优先级标记 (源节点上和它结果上的那个菱形).
      *
      * 没开 [SelectionSpec.priorityWait] 时, 源身上的 [SourceSpec.priority] 只是一个没生效的配置 ——

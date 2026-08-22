@@ -389,11 +389,16 @@ class SelectorWorkflowTimelineTest {
 
     @Test
     fun too_short_a_sweep_is_rejected_with_an_actionable_message() {
-        val base = config()
+        // 只在真有计时器时才管 —— 不演超时的话一圈多长根本无所谓
+        val base = config(outcomes = ALL_OUTCOMES)
         val broken = base.copy(pacing = base.pacing.copy(clockSweep = 100.milliseconds))
         val error = runCatching { broken.buildTimeline() }.exceptionOrNull()
         assertNotNull(error)
         assertTrue(error.message.orEmpty().contains("clockSweepForInterceptStop"))
+
+        val withoutClock = config().copy(pacing = base.pacing.copy(clockSweep = 100.milliseconds))
+        assertTrue(!withoutClock.showInterceptClock)
+        withoutClock.buildTimeline()   // 没有表就不该拦着
     }
 
     // ------------------------------------------------------------------ 高优先级门
@@ -494,11 +499,48 @@ class SelectorWorkflowTimelineTest {
 
     @Test
     fun single_outcome_keeps_the_intercept_clock_hidden() {
-        val timeline = config(outcomes = listOf(ResolveOutcome.Hit)).buildTimeline()
-        // 关掉特殊动画时第三步计时器仍然会走 —— 它是解析阶段的一部分, 只是不再演超时那一遍
-        assertNull(
+        val c = config(outcomes = listOf(ResolveOutcome.Hit))
+        assertTrue(!c.showInterceptClock, "只演成功那一种时不该有计时器")
+        val timeline = c.buildTimeline()
+        var t = Duration.ZERO
+        val step = timeline.duration / 400.0
+        while (t <= timeline.duration) {
+            val clock = timeline.sampleAt(t).clocks.getValue(ClockId.InterceptBudget)
+            assertTrue(clock.alpha <= 0.001f, "$t 处第三步计时器不该露面: alpha=${clock.alpha}")
+            t += step
+        }
+    }
+
+    @Test
+    fun the_intercept_clock_shows_up_once_the_demo_is_switched_on() {
+        val c = config(outcomes = ALL_OUTCOMES)
+        assertTrue(c.showInterceptClock)
+        val timeline = c.buildTimeline()
+        assertNotNull(
+            firstTimeWhen(timeline) { it.clocks.getValue(ClockId.InterceptBudget).alpha > 0.9f },
+            "连演三种结局时计时器该出现",
+        )
+        assertNotNull(
             firstTimeWhen(timeline) { it.clocks.getValue(ClockId.InterceptBudget).tone == ClockTone.Expired },
-            "只演成功时不该出现超时",
+            "而且该走到超时",
+        )
+    }
+
+    @Test
+    fun a_hit_only_run_still_plays_the_whole_third_step() {
+        // 没有表不代表第三步缩水: 请求照样进场、照样滚动、照样命中
+        val timeline = config(outcomes = listOf(ResolveOutcome.Hit)).buildTimeline()
+        assertNotNull(
+            firstTimeWhen(timeline) { it.requestRows.any { r -> r.tone == RequestTone.Hit } },
+            "该演到拦截成功",
+        )
+        assertNotNull(
+            firstTimeWhen(timeline) { it.requestRows.count { r -> r.alpha > 0.9f } == it.requestRows.size },
+            "所有请求都该进场",
+        )
+        assertNull(
+            firstTimeWhen(timeline) { it.window.tone == WindowTone.Failed },
+            "只演成功时窗口不该变红",
         )
     }
 

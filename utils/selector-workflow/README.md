@@ -108,9 +108,13 @@ config.clockSweepForInterceptStop(7.5f / 12f)     // 想停在钟面 7 点半, �
 |------|-----------|------|
 | 抢先选源 | `setEagerSelect()` | 第二步：一个全局 cursor ↔ 每个源各起一个 |
 | 最大等待高优先级源的时长 | `setPriorityWait()` / `setPriorityWaitSeconds()` | 第一/二步：加一道闸 + 连演「等到了」「等超时」两条路径 |
-| 拦截播放链接的特殊动画 | `setResolveDemo()` / `setInterceptBudgetSeconds()` | 第三步：只演成功 ↔ 连演成功 / 超时 / 换下一个候选再成功 |
+| 拦截播放链接的特殊动画 | `setResolveDemo()` / `setInterceptBudgetSeconds()` | 第三步：只演成功、**不显示计时器** ↔ 显示计时器并连演成功 / 超时 / 换下一个候选再成功 |
 
 两个 `setXxxSeconds` 只改读数，不改动画长度。
+
+两个计时器都只在自己那个开关打开时才出现（`showInterceptClock` / `pass.gate != null`）——
+不演超时就没有"时限在跑"这回事，摆个表反而误导。关掉计时器不会让那一步缩水：
+第三步照样请求进场、滚动、命中，只是少了表。
 
 三个开关组合出的八条路径不是八份脚本——它们是同一份剧本在不同配置下编译出的八条时间线。
 

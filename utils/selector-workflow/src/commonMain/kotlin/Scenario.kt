@@ -18,7 +18,7 @@ import kotlin.time.Duration
  * 不需要碰任何时间常量.
  */
 fun SelectorWorkflowConfig.buildTimeline(): SelectorWorkflowTimeline {
-    require(interceptStopFraction() < 1f) {
+    require(!showInterceptClock || interceptStopFraction() < 1f) {
         "pacing.clockSweep (${pacing.clockSweep}) is too short: the intercept would time out before " +
                 "the request list finishes streaming (needs > ${interceptElapsed()}). " +
                 "Use clockSweepForInterceptStop() to size it."
@@ -248,6 +248,7 @@ private fun Storyboard.playResolve(
 ) {
     val p = config.pacing
     val clock = clocks.getValue(ClockId.InterceptBudget)
+    val showClock = config.showInterceptClock
 
     if (handoffNeeded) {
         phase("handoff")
@@ -256,11 +257,11 @@ private fun Storyboard.playResolve(
         window.open()
     }
     val clockStart = now
-    clock.start()
+    if (showClock) clock.start()
     advance(p.windowOpen)
 
     phase(if (outcome == ResolveOutcome.Timeout) "resolve-timeout" else "resolve-hit")
-    val timeoutAt = clockStart + clock.fullSweepDuration
+    val timeoutAt = if (showClock) clockStart + clock.fullSweepDuration else now
     requestList.stream(
         mediaRowIcon = if (outcome == ResolveOutcome.Timeout) RequestIcon.Request else RequestIcon.Media,
     )
@@ -280,10 +281,12 @@ private fun Storyboard.playResolve(
         ResolveOutcome.Hit, ResolveOutcome.HitAfterFallback -> {
             advance(p.fade)
             requestList.hit()
-            val stopped = clock.stop()
-            check(stopped < 1f) {
-                "pacing.clockSweep ${p.clockSweep} is too short for the choreography; " +
-                        "use clockSweepForInterceptStop() to size it"
+            if (showClock) {
+                val stopped = clock.stop()
+                check(stopped < 1f) {
+                    "pacing.clockSweep ${p.clockSweep} is too short for the choreography; " +
+                            "use clockSweepForInterceptStop() to size it"
+                }
             }
             advance(p.fade)
         }
@@ -293,7 +296,7 @@ private fun Storyboard.playResolve(
     if (!isLastOfPass) {
         // 清场, 准备下一次解析
         requestList.clear()
-        clock.hide()
+        if (showClock) clock.hide()
         if (outcome == ResolveOutcome.Timeout) window.close()
         advance(p.fade + p.reset * 0.5)
     }
@@ -308,7 +311,7 @@ private fun Storyboard.resetPass(over: Duration) {
     handoff.retract(over)
     requestList.clear(over)
     window.close()
-    clocks.values.forEach { it.hide(over) }
+    clocks.values.forEach { it.hide(over) }   // hide 对没起过的表是空操作
     advance(over + config.pacing.loopGap)
 }
 
