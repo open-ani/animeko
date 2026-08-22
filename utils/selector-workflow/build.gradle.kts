@@ -18,6 +18,7 @@ kotlin {
     sourceSets.commonMain.dependencies {
         api(libs.compose.lifecycle.viewmodel)
         implementation(libs.kotlinx.collections.immutable)
+        implementation(projects.utils.uiPreview)
     }
     // 渲染冒烟测试要真的落到 Skia 上, 需要当前平台的 skiko native
     sourceSets.getByName("desktopTest").dependencies {

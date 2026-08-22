@@ -152,3 +152,15 @@ SelectorWorkflowAnimation(
     config = config,
 )
 ```
+
+## Playground
+
+`SelectorWorkflowPlayground` 把动画、设计稿上的三个开关、一条播放控制拼在一起，
+带两个 `@Preview`：
+
+- `PreviewSelectorWorkflowPlayground` — 整个 playground，预览时会先把播放位置拨到有内容的一帧
+  （静态预览不跑 `LaunchedEffect`，停在 0 会是一张空画）；
+- `PreviewSelectorWorkflowFrames` — 定格五个关键时刻并排，不用等动画跑到那里。
+
+三个开关和最终要放进设置页的是同一套语义，但这里是只影响这个动画的演示开关；
+真接进设置页时会换成读写用户设置的版本。播放控制那一条是 playground 专用，不会带进设置页。
