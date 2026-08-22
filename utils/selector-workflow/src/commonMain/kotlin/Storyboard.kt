@@ -60,6 +60,11 @@ class Storyboard internal constructor(
 
     /** 第三步命中那一行的涟漪. 与第二步选中时是同一个单元. */
     val requestRipple = RippleHandle(RippleTarget.RequestRow, config.resolve.hitRow)
+
+    /** 第一步走缓存时每个源节点上那一圈涟漪. 同样是那个单元, 只是锚在节点上. */
+    val sourceRipples: List<RippleHandle> = config.sources.indices.map {
+        RippleHandle(RippleTarget.SourceNode, it)
+    }
     val handoff = LineHandle()
     val window = WindowHandle()
     val requestList = RequestListHandle()
@@ -83,6 +88,9 @@ class Storyboard internal constructor(
     fun chipOf(key: ResultKey): ChipHandle = chips.first { it.key == key }
 
     fun rippleAt(cell: Int): RippleHandle = ripples.first { it.index == cell }
+
+    /** 第 [index] 个源节点上的缓存涟漪. */
+    fun sourceRipple(index: Int): RippleHandle = sourceRipples[index]
 
     // ------------------------------------------------------------------ 时间控制
 
@@ -149,6 +157,18 @@ class Storyboard internal constructor(
     inner class LineHandle internal constructor() {
         internal val progress = floatTrack(0f)
         internal val alpha = floatTrack(0f)
+        internal val tone = ToneChannel(LineTone.Source)
+
+        /**
+         * 这一条是缓存直出的: 转成 success 色.
+         *
+         * 只改颜色, 画多久由 [draw] 决定 —— "走缓存"这件事表现为两样东西, 线瞬间画满,
+         * 以及线是绿的; 两者各归各管, 别的剧本也能只要其中一样.
+         */
+        fun markCached(over: Duration = pacing.fade * 0.5) {
+            tone.shift(LineTone.Cached, now, over)
+            touch(now + over)
+        }
 
         /** 用 [over] 把线画满. 上一次画的还留着的话先瞬间抹掉, 不会从上一帧一路插值回 0. */
         fun draw(over: Duration) {
@@ -170,6 +190,8 @@ class Storyboard internal constructor(
         fun retract(over: Duration = pacing.reset) {
             alpha.ramp(now, over, 0f)
             progress.ramp(now, over, 0f)
+            // 收完了才换回本色: 这会儿它已经看不见了
+            tone.snap(LineTone.Source, now + over)
             touch(now + over)
         }
     }
@@ -450,20 +472,20 @@ class Storyboard internal constructor(
                 priority = config.showPriorityMarks && config.sources[it.index].priority,
             )
         },
-        links = sourceLinks.map { LineTracks(it.progress.build(), it.alpha.build()) },
+        links = sourceLinks.map { LineTracks(it.progress.build(), it.alpha.build(), it.tone.build()) },
         chips = chips.map {
             ChipTracks(
                 it.key, it.cell, it.candidate, it.priority,
                 it.alpha.build(), it.tone.build(), it.scale.build(),
             )
         },
-        ripples = (ripples + requestRipple).map {
+        ripples = (ripples + requestRipple + sourceRipples).map {
             RippleTracks(it.target, it.index, it.scale.build(), it.alpha.build())
         },
         cursors = cursorHandles.values.map {
             CursorTracks(it.id, it.owner, it.cell.build(), it.alpha.build())
         },
-        handoff = LineTracks(handoff.progress.build(), handoff.alpha.build()),
+        handoff = LineTracks(handoff.progress.build(), handoff.alpha.build(), handoff.tone.build()),
         window = window.tone.build(),
         rows = List(config.resolve.requestCount) { i ->
             RowTracks(

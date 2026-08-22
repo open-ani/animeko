@@ -47,9 +47,9 @@ import androidx.compose.ui.unit.dp
 import kotlin.time.Duration
 
 /**
- * 调试用的 playground: 动画 + 设计稿上的三个开关 + 一条播放控制.
+ * 调试用的 playground: 动画 + 四个开关 + 一条播放控制.
  *
- * 三个开关和最终要放进「设置 → 观看偏好 → 高级设置」的是同一套语义, 但这里是独立的、只影响这个动画的
+ * 这些开关和最终要放进「设置 → 观看偏好 → 高级设置」的是同一套语义, 但这里是独立的、只影响这个动画的
  * 演示开关 —— 真接进设置页时它们会换成读写用户设置的版本.
  */
 @Composable
@@ -62,6 +62,7 @@ fun SelectorWorkflowPlayground(
     var prioritySeconds by remember { mutableStateOf(DEFAULT_PRIORITY_SECONDS) }
     var resolveDemo by remember { mutableStateOf(false) }
     var budgetSeconds by remember { mutableStateOf(DEFAULT_BUDGET_SECONDS) }
+    var cacheQuery by remember { mutableStateOf(false) }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Card(
@@ -73,7 +74,16 @@ fun SelectorWorkflowPlayground(
 
         TransportBar(viewModel)
 
-        // ---- 设计稿上的三个开关 ----
+        // ---- 四种动画路径的开关 ----
+
+        WorkflowSwitchRow(
+            title = "数据源查询缓存",
+            description = "这次搜索命中了缓存，不必再等数据源返回。三条连线瞬间画满、转成绿色并各泛一圈涟漪",
+            checked = cacheQuery,
+            onCheckedChange = {
+                if (viewModel.setCacheQuery(it)) cacheQuery = it
+            },
+        )
 
         WorkflowSwitchRow(
             title = "抢先选源",

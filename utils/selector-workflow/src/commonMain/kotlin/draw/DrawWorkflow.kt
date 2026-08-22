@@ -99,9 +99,12 @@ private fun DrawScope.drawContent(
     // 第一步: 连线与数据源节点
     state.sourceLinks.forEachIndexed { index, line ->
         val (from, to) = layout.linkSegments[index]
-        drawProgressLine(line, from, to, palette.source(index), layout, palette)
+        val color = blendTone(line.previousTone, line.tone, line.toneBlend) { palette.link(it, index) }
+        drawProgressLine(line, from, to, color, layout, palette)
     }
     state.sourceNodes.forEach { drawSourceNode(it, layout, palette, state.time) }
+    state.ripples.filter { it.target == RippleTarget.SourceNode }
+        .forEach { drawSourceRipple(it, layout, palette) }
     drawClock(
         state.clocks.getValue(ClockId.PriorityWait),
         layout.priorityClockCenter, layout.priorityReadoutAnchor, layout, palette,

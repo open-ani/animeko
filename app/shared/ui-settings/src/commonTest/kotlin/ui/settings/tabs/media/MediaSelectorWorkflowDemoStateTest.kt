@@ -17,6 +17,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -29,6 +31,8 @@ class MediaSelectorWorkflowDemoStateTest {
     private val MediaSelectorWorkflowDemoState.config get() = viewModel.config
     private val MediaSelectorWorkflowDemoState.playsResolveDemo
         get() = viewModel.config.resolve.outcomes.contains(ResolveOutcome.Timeout)
+    private val MediaSelectorWorkflowDemoState.playsCacheQuery
+        get() = viewModel.config.cachedQuery
 
     @Test
     fun `starts with the current fast select state and nothing else`() {
@@ -36,6 +40,7 @@ class MediaSelectorWorkflowDemoStateTest {
         assertEquals(SelectMode.Eager, on.config.selection.mode)
         assertNull(on.config.selection.priorityWait, "刚进来不该演高优先级那一段")
         assertTrue(!on.playsResolveDemo, "刚进来不该演第三步超时那一段")
+        assertTrue(!on.playsCacheQuery, "刚进来不该演走缓存那一段")
 
         assertEquals(SelectMode.WaitAll, state(eager = false).config.selection.mode)
     }
@@ -61,15 +66,42 @@ class MediaSelectorWorkflowDemoStateTest {
     }
 
     @Test
-    fun `toggling fast select puts both segments away`() {
+    fun `picking a cache ttl plays only the cache segment`() {
+        val s = state()
+        s.onResolveTimeoutChanged(15)               // 先演第三步
+        s.onWebSearchCacheTtlChanged(30.minutes)    // 再动缓存时长
+
+        assertTrue(s.playsCacheQuery)
+        assertTrue(!s.playsResolveDemo, "动缓存时长就该把第三步那一段收起来")
+        assertNull(s.config.selection.priorityWait)
+    }
+
+    @Test
+    fun `the cache segment only cares whether there is a cache at all`() {
+        // 动画讲的是"这次搜索没花时间", 缓 15 分钟还是 1 天在画面上没区别
+        val s = state()
+        s.onWebSearchCacheTtlChanged(15.minutes)
+        val short = s.viewModel.state.duration
+        s.onWebSearchCacheTtlChanged(1.days)
+        assertEquals(short, s.viewModel.state.duration, "缓多久不该改变动画")
+
+        s.onWebSearchCacheTtlChanged(Duration.ZERO)
+        assertTrue(!s.playsCacheQuery, "「不缓存」该收回到朴素流程")
+    }
+
+    @Test
+    fun `toggling fast select puts every segment away`() {
         val s = state(eager = true)
         s.onResolveTimeoutChanged(15)
         assertTrue(s.playsResolveDemo)
+        s.onWebSearchCacheTtlChanged(30.minutes)
+        assertTrue(s.playsCacheQuery)
 
         s.onFastSelectWebKindChanged(false)
         assertEquals(SelectMode.WaitAll, s.config.selection.mode)
         assertNull(s.config.selection.priorityWait)
-        assertTrue(!s.playsResolveDemo, "切换快速选择时两段都该收起来")
+        assertTrue(!s.playsResolveDemo, "切换快速选择时每一段都该收起来")
+        assertTrue(!s.playsCacheQuery, "切换快速选择时每一段都该收起来")
 
         s.onFastSelectWebKindChanged(true)
         assertEquals(SelectMode.Eager, s.config.selection.mode)
@@ -132,6 +164,10 @@ class MediaSelectorWorkflowDemoStateTest {
 
         advanceABit()
         s.onResolveTimeoutChanged(15)
+        assertEquals(Duration.ZERO, s.viewModel.player.playhead)
+
+        advanceABit()
+        s.onWebSearchCacheTtlChanged(30.minutes)
         assertEquals(Duration.ZERO, s.viewModel.player.playhead)
 
         advanceABit()

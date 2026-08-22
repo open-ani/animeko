@@ -68,8 +68,12 @@ internal class NodeTracks(
 internal class LineTracks(
     private val progress: Track<Float>,
     private val alpha: Track<Float>,
+    private val tone: ToneTracks<LineTone>,
 ) {
-    fun sample(t: Duration) = LineState(progress.valueAt(t), alpha.valueAt(t))
+    fun sample(t: Duration) = LineState(
+        progress.valueAt(t), alpha.valueAt(t),
+        tone = tone.current(t), previousTone = tone.previous(t), toneBlend = tone.blend(t),
+    )
 }
 
 internal class ChipTracks(

@@ -539,8 +539,8 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun `the two ripples are the same unit anchored differently`() {
-        val timeline = config().buildTimeline()
+    fun `the three ripples are the same unit anchored differently`() {
+        val timeline = config().copy(cachedQuery = true).buildTimeline()
         val targets = buildSet {
             var t = Duration.ZERO
             val step = timeline.duration / 400.0
@@ -549,7 +549,10 @@ class SelectorWorkflowTimelineTest {
                 t += step
             }
         }
-        assertEquals(setOf(RippleTarget.Result, RippleTarget.RequestRow), targets)
+        assertEquals(
+            setOf(RippleTarget.Result, RippleTarget.RequestRow, RippleTarget.SourceNode),
+            targets,
+        )
     }
 
     @Test
@@ -639,6 +642,88 @@ class SelectorWorkflowTimelineTest {
         val fast = config()
         val slow = fast.copy(sources = fast.sources.map { it.copy(latency = it.latency * 2) })
         assertTrue(slow.buildTimeline().duration > fast.buildTimeline().duration)
+    }
+
+    // ------------------------------------------------------------------ 第一步走缓存
+
+    @Test
+    fun `cache query lets every source return at the same instant`() {
+        val plain = config(mode = SelectMode.Eager)
+        val cached = plain.copy(cachedQuery = true)
+
+        // 三个源的耗时本来差着好几秒, 走缓存后一起就位
+        assertEquals(1, cached.effectiveLatencies.toSet().size, "走缓存时每个源的耗时该是同一个值")
+        assertTrue(plain.effectiveLatencies.toSet().size > 1)
+
+        val timeline = cached.buildTimeline()
+        val appeared = timeline.config.sources.indices.map { source ->
+            firstTimeWhen(timeline) { state ->
+                state.results.filter { it.key.source == source }.all { it.alpha > 0.5f }
+            }
+        }
+        appeared.forEach { assertNotNull(it) }
+        val spread = appeared.filterNotNull().let { it.max() - it.min() }
+        assertTrue(spread < cached.pacing.fade, "结果该同时冒出来, 实际差了 $spread")
+    }
+
+    @Test
+    fun `cache query shortens the whole run`() {
+        val plain = config(mode = SelectMode.Eager)
+        assertTrue(plain.copy(cachedQuery = true).buildTimeline().duration < plain.buildTimeline().duration)
+    }
+
+    @Test
+    fun `cache query paints the links green and pulses one ripple per source`() {
+        val cached = config().copy(cachedQuery = true)
+        val timeline = cached.buildTimeline()
+
+        val drawn = firstStateWhen(timeline) { it.sourceLinks.all { line -> line.progress > 0.9f } }
+        assertNotNull(drawn, "线该被画满")
+        drawn.sourceLinks.forEachIndexed { i, line ->
+            assertEquals(LineTone.Cached, line.tone, "第 $i 条线该是缓存色")
+        }
+
+        val pulsed = mutableSetOf<Int>()
+        var t = Duration.ZERO
+        val step = timeline.duration / 600.0
+        while (t <= timeline.duration) {
+            timeline.sampleAt(t).ripples
+                .filter { it.target == RippleTarget.SourceNode && it.alpha > 0.5f }
+                .forEach { pulsed += it.index }
+            t += step
+        }
+        assertEquals(cached.sources.indices.toSet(), pulsed, "每个源都该泛一圈涟漪")
+    }
+
+    @Test
+    fun `without cache query the links keep their source colour and no node ripples fire`() {
+        val timeline = config().buildTimeline()
+        var t = Duration.ZERO
+        val step = timeline.duration / 600.0
+        while (t <= timeline.duration) {
+            val state = timeline.sampleAt(t)
+            state.sourceLinks.forEachIndexed { i, line ->
+                assertEquals(LineTone.Source, line.tone, "第 $i 条线在 $t 不该变色")
+            }
+            state.ripples.filter { it.target == RippleTarget.SourceNode }.forEach {
+                assertEquals(0f, it.alpha, 1e-3f, "没走缓存不该有节点涟漪")
+            }
+            t += step
+        }
+    }
+
+    @Test
+    fun `cache query does not pulse the searching halo`() {
+        // 走缓存压根没有"搜索中"这回事, 光环转起来只会让人以为它真的搜了
+        val timeline = config().copy(cachedQuery = true).buildTimeline()
+        var t = Duration.ZERO
+        val step = timeline.duration / 600.0
+        while (t <= timeline.duration) {
+            timeline.sampleAt(t).sourceNodes.forEach {
+                assertTrue(!it.pulsing, "第 ${it.index} 个源在 $t 不该显示搜索中")
+            }
+            t += step
+        }
     }
 
     // ------------------------------------------------------------------ 语义色的过渡

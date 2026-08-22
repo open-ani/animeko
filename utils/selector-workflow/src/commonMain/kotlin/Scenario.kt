@@ -77,7 +77,7 @@ internal data class Pass(
 }
 
 internal fun SelectorWorkflowConfig.buildPasses(): List<Pass> {
-    val base = sources.map { it.latency }
+    val base = effectiveLatencies
     if (selection.priorityWait == null) return listOf(Pass(base, gate = null))
     val prio = checkNotNull(priorityIndex) { "priorityWait requires a priority source" }
     // 闸开多久 = 指针转一圈的时长 (动画时间), 与 priorityWait 配的秒数无关
@@ -159,16 +159,19 @@ private fun Storyboard.playPass(pass: Pass, isLast: Boolean) {
     // ---------------- 第一步: 搜源 ----------------
     // 选定之后才返回的源, 它的结果直接淡入到暗色 —— 各按各的节奏出现, 不受选定影响
     val decidedAt = plan.winner?.let { plan.winnerAt }
-    at(passStart) { phase("search") }
+    at(passStart) { phase(if (config.cachedQuery) "search-cached" else "search") }
     config.sources.indices.forEach { i ->
         at(passStart) {
-            sources[i].beginSearch()
+            // 走缓存就没有"搜索中"这回事, 光环不该转; 线照画, 只是画得飞快, 而且是绿的
+            if (config.cachedQuery) linkOf(i).markCached() else sources[i].beginSearch()
             linkOf(i).draw(over = p.scaled(pass.latencies[i]))
         }
         val late = decidedAt != null && finish[i] >= decidedAt
         at(finish[i]) {
             sources[i].settle()
             linkOf(i).mute()
+            // 涟漪扩在"线画满"的那一刻, 与结果一起冒出来 —— 和第二步选中、第三步命中同一个节拍
+            if (config.cachedQuery) sourceRipple(i).pulse()
             chipsOf(i).forEach { it.appear(target = if (late) Storyboard.MUTED_ALPHA else 1f) }
         }
     }

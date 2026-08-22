@@ -5,7 +5,7 @@
 ## 分层
 
 ```
-SelectorWorkflowConfig          ← 唯一输入：几个源、各搜多久、几条结果/候选、两个超时预算、三个开关
+SelectorWorkflowConfig          ← 唯一输入：几个源、各搜多久、几条结果/候选、两个超时预算、四个开关
         │  buildTimeline()
         ▼
    Storyboard (DSL)             ← 剧本按拍子对「单元句柄」下指令
@@ -102,10 +102,11 @@ config.clockSweepForInterceptStop(7.5f / 12f)     // 想停在钟面 7 点半, �
 
 读数 = `sweep × budgetSeconds`，所以指针和读数永远是同一个比例的两种说法。
 
-## 三个开关
+## 四个开关
 
 | 开关 | ViewModel | 影响 |
 |------|-----------|------|
+| 数据源查询缓存 | `setCacheQuery()` | 第一步：各等各的 ↔ 全部瞬间返回，连线转绿并各泛一圈涟漪 |
 | 抢先选源 | `setEagerSelect()` | 第二步：一个全局 cursor ↔ 每个源各起一个 |
 | 最大等待高优先级源的时长 | `setPriorityWait()` / `setPriorityWaitSeconds()` | 第一/二步：加一道闸 + 连演「等到了」「等超时」两条路径 |
 | 拦截播放链接的特殊动画 | `setResolveDemo()` / `setInterceptBudgetSeconds()` | 第三步：只演成功、**不显示计时器** ↔ 显示计时器并连演成功 / 超时 / 换下一个候选再成功 |
@@ -116,7 +117,12 @@ config.clockSweepForInterceptStop(7.5f / 12f)     // 想停在钟面 7 点半, �
 不演超时就没有"时限在跑"这回事，摆个表反而误导。关掉计时器不会让那一步缩水：
 第三步照样请求进场、滚动、命中，只是少了表。
 
-三个开关组合出的八条路径不是八份脚本——它们是同一份剧本在不同配置下编译出的八条时间线。
+走缓存不是"把第一步跳过去"，而是把每个源的耗时统一换成"画满一条线"那么久
+（`SelectorWorkflowConfig.effectiveLatencies`）。从这一处换掉，下游的选源计划、结果何时淡入、
+连线画多久就都一致地看到「大家同时就位」，不必各自再判断一遍。线仍旧是画出来的——
+凭空出现的线看不出是从哪连到哪的。
+
+这些开关组合出的路径不是一份份脚本——它们是同一份剧本在不同配置下编译出的时间线。
 
 ## 绘制层
 
@@ -190,12 +196,12 @@ SelectorWorkflowAnimation(
 
 ## Playground
 
-`SelectorWorkflowPlayground` 把动画、设计稿上的三个开关、一条播放控制拼在一起，
+`SelectorWorkflowPlayground` 把动画、四个开关、一条播放控制拼在一起，
 带两个 `@Preview`：
 
 - `PreviewSelectorWorkflowPlayground` — 整个 playground，预览时会先把播放位置拨到有内容的一帧
   （静态预览不跑 `LaunchedEffect`，停在 0 会是一张空画）；
 - `PreviewSelectorWorkflowFrames` — 定格五个关键时刻并排，不用等动画跑到那里。
 
-三个开关和最终要放进设置页的是同一套语义，但这里是只影响这个动画的演示开关；
+这些开关和设置页里的是同一套语义，但这里是只影响这个动画的演示开关；
 真接进设置页时会换成读写用户设置的版本。播放控制那一条是 playground 专用，不会带进设置页。

@@ -424,6 +424,7 @@ internal fun SettingsScope.MediaSelectionGroup(
                             state.mediaSelectorSettingsState.update(
                                 mediaSelectorSettings.copy(webSearchCacheTtl = it),
                             )
+                            workflowDemo.onWebSearchCacheTtlChanged(it)
                         },
                         title = { Text(stringResource(Lang.settings_media_web_search_cache_ttl)) },
                         description = { Text(stringResource(Lang.settings_media_web_search_cache_ttl_description)) },

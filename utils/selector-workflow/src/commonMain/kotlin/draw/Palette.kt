@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import me.him188.ani.utils.selectorworkflow.ChipTone
 import me.him188.ani.utils.selectorworkflow.ClockTone
+import me.him188.ani.utils.selectorworkflow.LineTone
 import me.him188.ani.utils.selectorworkflow.RequestTone
 import me.him188.ani.utils.selectorworkflow.WindowTone
 
@@ -56,6 +57,12 @@ data class WorkflowPalette(
         ChipTone.Source -> source(sourceIndex)
         ChipTone.Selected -> success
         ChipTone.Failed -> error
+    }
+
+    /** 第 [sourceIndex] 个源的连线. 走缓存的那一条转成 success 色. */
+    fun link(tone: LineTone, sourceIndex: Int): Color = when (tone) {
+        LineTone.Source -> source(sourceIndex)
+        LineTone.Cached -> success
     }
 
     fun windowStroke(tone: WindowTone): Color = when (tone) {

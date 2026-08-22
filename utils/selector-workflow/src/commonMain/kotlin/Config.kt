@@ -169,6 +169,13 @@ data class Pacing(
     val pop: Duration = 400.milliseconds,
     /** 选中涟漪扩散的时长. */
     val ripple: Duration = 560.milliseconds,
+    /**
+     * 走缓存时数据源连线画满的时长.
+     *
+     * 这是演出参数, 不是"被演示的查询耗时" —— 缓存直出本来就不花时间, 这一小段只是让人看见
+     * 线是被画出来的, 而不是凭空出现的.
+     */
+    val cacheDraw: Duration = 140.milliseconds,
     /** 交棒连线画完的时长. */
     val handoff: Duration = 480.milliseconds,
     /** 交棒结束到窗口打开之间的空档. */
@@ -223,6 +230,17 @@ data class SelectorWorkflowConfig(
      * 结果容器的列数. 结果按 **源的顺序** 依次填进网格.
      */
     val gridColumns: Int = 2,
+    /**
+     * 第一步走缓存: 数据源的查询结果早就缓存下来了, 不必再等 [SourceSpec.latency].
+     *
+     * 打开后全部源同时"瞬间"返回, 连线转成 success 色并泛起一圈涟漪 (与选中候选、拦到播放链接
+     * 是同一个动作), 表示这一步是白拿的. 线仍旧是画出来的, 只是画满只花 [Pacing.cacheDraw] ——
+     * 凭空出现的线看不出是从哪连到哪的.
+     *
+     * 与 [SelectionSpec.demoBothPriorityPaths] 同时打开没有意义: 后者会为高优先级源编一个耗时,
+     * 那条线于是不再是"瞬间"的. 上层保证一次只演一件事.
+     */
+    val cachedQuery: Boolean = false,
 ) {
     init {
         require(sources.isNotEmpty()) { "at least one source is required" }
@@ -262,6 +280,15 @@ data class SelectorWorkflowConfig(
      * 这一轮里它和别的源没有任何区别, 标出来只会让人以为它有特殊待遇.
      */
     val showPriorityMarks: Boolean = selection.priorityWait != null && priorityIndex != null
+
+    /**
+     * 每个源这一轮实际要花多久返回 (被演示的时间).
+     *
+     * 走缓存时全都换成"画满一条线"那么久 —— 从这里统一换掉, 下游 (选源计划、结果何时淡入、
+     * 连线画多久) 才会一致地看到"大家同时就位".
+     */
+    val effectiveLatencies: List<Duration> =
+        if (cachedQuery) sources.map { pacing.unscaled(pacing.cacheDraw) } else sources.map { it.latency }
 
     /** [key] 在网格里的位置, 见 [results]. */
     fun cellOf(key: ResultKey): Int = results.indexOf(key)

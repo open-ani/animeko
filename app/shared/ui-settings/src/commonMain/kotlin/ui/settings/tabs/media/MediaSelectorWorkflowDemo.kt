@@ -42,9 +42,10 @@ import kotlin.time.Duration
  *
  * 对应关系:
  * - 「快速选择在线数据源」开关 -> 抢先选源. 它是常驻状态, 不是"某一段", 所以切换它只是同步状态,
- *   并把另外两段都关掉 (回到最朴素的三步流程);
+ *   并把其余几段都关掉 (回到最朴素的三步流程);
  * - 「最长等待时间」-> 高优先级等待那一段;
- * - 「视频链接解析超时」-> 第三步的拦截超时那一段.
+ * - 「视频链接解析超时」-> 第三步的拦截超时那一段;
+ * - 「在线数据源搜索结果缓存时长」-> 第一步走缓存那一段.
  */
 @Stable
 class MediaSelectorWorkflowDemoState(
@@ -59,7 +60,7 @@ class MediaSelectorWorkflowDemoState(
         viewModel.configure(eager = initialEagerSelect)
     }
 
-    /** 切换「快速选择在线数据源」: 同步抢先选源, 另外两段都收起来. */
+    /** 切换「快速选择在线数据源」: 同步抢先选源, 其余几段都收起来. */
     fun onFastSelectWebKindChanged(enabled: Boolean) {
         eagerSelect = enabled
         viewModel.configure(eager = enabled)
@@ -79,6 +80,7 @@ class MediaSelectorWorkflowDemoState(
             priorityWaitSeconds = viewModel.config.selection.priorityWait?.inWholeSeconds?.toInt(),
             resolveBudgetSeconds = viewModel.config.resolve.budget.inWholeSeconds.toInt()
                 .takeIf { viewModel.config.showInterceptClock },
+            cacheQuery = viewModel.config.cachedQuery,
             restart = false,
         )
     }
@@ -97,6 +99,16 @@ class MediaSelectorWorkflowDemoState(
     /** 选了「视频链接解析超时」: 演第三步的拦截超时. */
     fun onResolveTimeoutChanged(seconds: Int) {
         viewModel.configure(eager = eagerSelect, resolveBudgetSeconds = seconds.coerceAtLeast(1))
+    }
+
+    /**
+     * 选了「在线数据源搜索结果缓存时长」: 演第一步走缓存.
+     *
+     * 只看"缓不缓存", 不看缓多久 —— 动画讲的是"这次搜索没花时间", 15 分钟和 1 天在画面上
+     * 没有任何区别. 选「不缓存」就收回到朴素流程.
+     */
+    fun onWebSearchCacheTtlChanged(ttl: Duration) {
+        viewModel.configure(eager = eagerSelect, cacheQuery = ttl > Duration.ZERO)
     }
 }
 

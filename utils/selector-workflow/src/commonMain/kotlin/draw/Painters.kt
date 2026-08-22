@@ -211,6 +211,26 @@ private fun DrawScope.drawRequestRipple(
     )
 }
 
+/**
+ * 走缓存时数据源节点上那一圈涟漪. 与结果块、请求行那两圈仍是同一个动作, 只是锚在节点上.
+ */
+internal fun DrawScope.drawSourceRipple(
+    ripple: RippleState,
+    layout: WorkflowLayout,
+    palette: WorkflowPalette,
+) {
+    if (ripple.alpha <= 0.001f) return
+    val m = layout.metrics
+    val center = layout.nodeCenters.getOrNull(ripple.index) ?: return
+    drawCircle(
+        color = palette.success,
+        radius = m.nodeRadius * ripple.scale,
+        center = center,
+        alpha = ripple.alpha,
+        style = Stroke(width = m.strokeMedium),
+    )
+}
+
 // ------------------------------------------------------------------ 单元 5: 遍历 cursor
 
 internal fun DrawScope.drawCursor(

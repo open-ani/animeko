@@ -150,7 +150,7 @@ class SelectorWorkflowViewModel(
     // ---------------------------------------------------------------- 界面上的开关
 
     /**
-     * 一次把三个开关都定下来, 只重编一次时间线.
+     * 一次把几个开关都定下来, 只重编一次时间线.
      *
      * 接进设置页时很有用: 那里的规则是"动一个设置项就只演它对应的那段", 所以每次都要同时
      * 打开一个、关掉另一个.
@@ -158,16 +158,19 @@ class SelectorWorkflowViewModel(
      * @param eager 抢先选源.
      * @param priorityWaitSeconds 高优先级等待要演多少秒; `null` 表示不演这一段.
      * @param resolveBudgetSeconds 拦截超时要演多少秒; `null` 表示第三步只演成功、不出计时器.
+     * @param cacheQuery 第一步走缓存, 瞬间出结果.
      * @param restart 是否从头播放.
      */
     fun configure(
         eager: Boolean,
         priorityWaitSeconds: Int? = null,
         resolveBudgetSeconds: Int? = null,
+        cacheQuery: Boolean = false,
         restart: Boolean = true,
     ): Boolean {
         val ok = updateConfig { current ->
             current.copy(
+                cachedQuery = cacheQuery,
                 selection = current.selection.copy(
                     mode = if (eager) SelectMode.Eager else SelectMode.WaitAll,
                     priorityWait = priorityWaitSeconds?.seconds,
@@ -218,6 +221,9 @@ class SelectorWorkflowViewModel(
         if (it.selection.priorityWait == null) it
         else it.copy(selection = it.selection.copy(priorityWait = seconds.seconds))
     }
+
+    /** 第一步走缓存: 数据源查询结果已缓存, 三条线瞬间画满并泛起涟漪. */
+    fun setCacheQuery(enabled: Boolean) = updateConfig { it.copy(cachedQuery = enabled) }
 
     /** 第三步: 连演成功 / 超时 / 换下一个候选再成功. */
     fun setResolveDemo(enabled: Boolean) = updateConfig {

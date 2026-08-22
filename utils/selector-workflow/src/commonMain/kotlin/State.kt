@@ -21,7 +21,7 @@ import kotlin.time.Duration
  * | # | 单元 | 出现在 | 可动属性 |
  * |---|------|--------|----------|
  * | 1 | [SourceNodeState] | 第一步 | `alpha`, `pulsing` |
- * | 2 | [LineState] | 第一步的连线 / 第二步的交棒线 | `progress`, `alpha` |
+ * | 2 | [LineState] | 第一步的连线 / 第二步的交棒线 | `progress`, `alpha`, `tone` |
  * | 3 | [ResultChipState] | 第二步 | `alpha`, `tone`, `scale` |
  * | 4 | [RippleState] | 第二步 | `scale`, `alpha` |
  * | 5 | [CursorState] | 第二步 | `cell`(可插值), `alpha` |
@@ -34,7 +34,7 @@ import kotlin.time.Duration
  *
  * ## 语义色怎么过渡
  *
- * 语义色 ([ChipTone] / [RequestTone] / [ClockTone] / [WindowTone]) 本身是离散的, 颜色却该连续地
+ * 语义色 ([ChipTone] / [LineTone] / [RequestTone] / [ClockTone] / [WindowTone]) 本身是离散的, 颜色却该连续地
  * 过渡过去 —— 结果块转绿、表盘转红都不该"啪"地跳一下. 所以带语义色的单元一律给三样东西:
  * `tone` (要去的那个色)、`previousTone` (从哪个色来的)、`toneBlend` (0..1 的过渡进度).
  * Canvas 把前两个各映射成颜色再按进度插值, 状态层因此仍旧只谈语义, 不碰颜色.
@@ -76,6 +76,15 @@ data class SourceNodeState(
     val priority: Boolean,
 )
 
+/** 连线的语义色. */
+enum class LineTone {
+    /** 用所属数据源的颜色. */
+    Source,
+
+    /** 这一条是缓存直出的. */
+    Cached,
+}
+
 /**
  * 一条被"画出来"的线. 第一步的数据源连线和第二步末尾的交棒线是同一个单元.
  *
@@ -85,6 +94,9 @@ data class SourceNodeState(
 data class LineState(
     val progress: Float,
     val alpha: Float,
+    val tone: LineTone = LineTone.Source,
+    val previousTone: LineTone = tone,
+    val toneBlend: Float = 1f,
 ) {
     companion object {
         val Hidden = LineState(progress = 0f, alpha = 0f)
@@ -131,6 +143,9 @@ enum class RippleTarget {
 
     /** 第三步命中的那条请求, [RippleState.index] 是行号. */
     RequestRow,
+
+    /** 第一步走缓存时数据源节点上那一圈, [RippleState.index] 是数据源下标. */
+    SourceNode,
 }
 
 /**

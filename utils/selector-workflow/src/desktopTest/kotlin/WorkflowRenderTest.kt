@@ -87,20 +87,23 @@ class WorkflowRenderTest {
         )
         for ((mode, prio) in combinations) {
             for (outcomes in outcomeSets) {
-                val base = SelectorWorkflowPresets.threeSources(
-                    mode = mode,
-                    priorityWait = if (prio) kotlin.time.Duration.parse("5s") else null,
-                    resolveOutcomes = outcomes,
-                )
-                val config = base.copy(
-                    selection = base.selection.copy(demoBothPriorityPaths = prio),
-                )
-                val timeline = config.buildTimeline()
-                var t = Duration.ZERO
-                val step = timeline.duration / 60.0
-                while (t <= timeline.duration) {
-                    render(timeline, t, width = 254, height = 86)
-                    t += step
+                for (cached in listOf(false, true)) {
+                    val base = SelectorWorkflowPresets.threeSources(
+                        mode = mode,
+                        priorityWait = if (prio) kotlin.time.Duration.parse("5s") else null,
+                        resolveOutcomes = outcomes,
+                    )
+                    val config = base.copy(
+                        selection = base.selection.copy(demoBothPriorityPaths = prio),
+                        cachedQuery = cached,
+                    )
+                    val timeline = config.buildTimeline()
+                    var t = Duration.ZERO
+                    val step = timeline.duration / 60.0
+                    while (t <= timeline.duration) {
+                        render(timeline, t, width = 254, height = 86)
+                        t += step
+                    }
                 }
             }
         }
