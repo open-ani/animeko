@@ -295,47 +295,16 @@ internal fun SettingsScope.MediaSelectionGroup(
                 )
             }
 
-            HorizontalDividerItem()
+            if (mediaSelectorSettings.preferKind != MediaSourceKind.WEB) {
+                HorizontalDividerItem()
+            }
 
             // 只在偏好在线源时才有意义 —— 整段动画讲的就是 web 源的搜/选/解析
             val workflowDemo = rememberMediaSelectorWorkflowDemoState(mediaSelectorSettings.fastSelectWebKind)
-            AniAnimatedVisibility(mediaSelectorSettings.preferKind == MediaSourceKind.WEB) {
-                MediaSelectorWorkflowItem(workflowDemo)
-            }
 
             AniAnimatedVisibility(mediaSelectorSettings.preferKind == MediaSourceKind.WEB) {
-                SubGroup {
-
-                    DropdownItem(
-                        selected = { videoResolverSettings.effectiveResourceExtractionTimeoutSeconds },
-                        values = { VideoResolverSettings.ResourceExtractionTimeoutSecondsOptions },
-                        itemText = { timeoutSeconds ->
-                            Text(
-                                when (timeoutSeconds) {
-                                    3 -> stringResource(Lang.settings_media_wait_time_3s)
-                                    5 -> stringResource(Lang.settings_media_wait_time_5s)
-                                    8 -> stringResource(Lang.settings_media_wait_time_8s)
-                                    10 -> stringResource(Lang.settings_media_wait_time_10s)
-                                    15 -> stringResource(Lang.settings_media_wait_time_15s)
-                                    20 -> stringResource(Lang.settings_media_wait_time_20s)
-                                    30 -> stringResource(Lang.settings_media_wait_time_30s)
-                                    else -> "${timeoutSeconds}s"
-                                },
-                            )
-                        },
-                        onSelect = {
-                            state.videoResolverSettingsState.update(
-                                videoResolverSettings.copy(
-                                    resourceExtractionTimeoutSeconds = it,
-                                ),
-                            )
-                            workflowDemo.onResolveTimeoutChanged(it)
-                        },
-                        title = { Text(stringResource(Lang.settings_media_video_link_resolve_timeout)) },
-                        description = { Text(stringResource(Lang.settings_media_video_link_resolve_timeout_description)) },
-                    )
-
-                    HorizontalDividerItem()
+                Column {
+                    MediaSelectorWorkflowItem(workflowDemo)
 
                     SwitchItem(
                         checked = mediaSelectorSettings.fastSelectWebKind,
@@ -389,6 +358,37 @@ internal fun SettingsScope.MediaSelectionGroup(
                         title = { Text(stringResource(Lang.settings_media_max_wait_time)) },
                         description = { Text(stringResource(Lang.settings_media_max_wait_time_description)) },
                         enabled = mediaSelectorSettings.fastSelectWebKind,
+                    )
+
+                    HorizontalDividerItem()
+
+                    DropdownItem(
+                        selected = { videoResolverSettings.effectiveResourceExtractionTimeoutSeconds },
+                        values = { VideoResolverSettings.ResourceExtractionTimeoutSecondsOptions },
+                        itemText = { timeoutSeconds ->
+                            Text(
+                                when (timeoutSeconds) {
+                                    3 -> stringResource(Lang.settings_media_wait_time_3s)
+                                    5 -> stringResource(Lang.settings_media_wait_time_5s)
+                                    8 -> stringResource(Lang.settings_media_wait_time_8s)
+                                    10 -> stringResource(Lang.settings_media_wait_time_10s)
+                                    15 -> stringResource(Lang.settings_media_wait_time_15s)
+                                    20 -> stringResource(Lang.settings_media_wait_time_20s)
+                                    30 -> stringResource(Lang.settings_media_wait_time_30s)
+                                    else -> "${timeoutSeconds}s"
+                                },
+                            )
+                        },
+                        onSelect = {
+                            state.videoResolverSettingsState.update(
+                                videoResolverSettings.copy(
+                                    resourceExtractionTimeoutSeconds = it,
+                                ),
+                            )
+                            workflowDemo.onResolveTimeoutChanged(it)
+                        },
+                        title = { Text(stringResource(Lang.settings_media_video_link_resolve_timeout)) },
+                        description = { Text(stringResource(Lang.settings_media_video_link_resolve_timeout_description)) },
                     )
 
                     HorizontalDividerItem()

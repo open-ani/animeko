@@ -9,8 +9,10 @@
 
 package me.him188.ani.app.ui.settings.tabs.media
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -21,8 +23,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import me.him188.ani.app.ui.foundation.ifThen
+import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
+import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
 import me.him188.ani.utils.selectorworkflow.SelectorWorkflowAnimation
 import me.him188.ani.utils.selectorworkflow.SelectorWorkflowViewModel
@@ -110,12 +116,17 @@ fun SettingsScope.MediaSelectorWorkflowItem(
     state: MediaSelectorWorkflowDemoState,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier
-            .fillMaxWidth()
-            .padding(horizontal = SettingsScope.itemHorizontalPadding, vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-    ) {
-        SelectorWorkflowAnimation(state.viewModel, Modifier.padding(8.dp))
+    val isWidthCompact = currentWindowAdaptiveInfo1().isWidthCompact
+    Box(Modifier.fillMaxWidth()) {
+        Card(
+            modifier
+                .ifThen(isWidthCompact) { fillMaxWidth() }
+                .ifThen(!isWidthCompact) { widthIn(max = 450.dp) }
+                .padding(horizontal = SettingsScope.itemHorizontalPadding, vertical = 4.dp)
+                .align(Alignment.Center),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        ) {
+            SelectorWorkflowAnimation(state.viewModel, Modifier.padding(8.dp))
+        }
     }
 }
