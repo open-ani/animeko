@@ -50,6 +50,8 @@ data class WorkflowPalette(
     val success: Color,
     /** 失败 / 超时. */
     val error: Color,
+    /** 「刚动的设置项改的是这一步」那圈呼吸的高亮框. M3 基线里没有金色角. */
+    val highlight: Color,
 ) {
     fun source(index: Int): Color = sourceColors[index.mod(sourceColors.size)]
 
@@ -98,6 +100,10 @@ data class WorkflowPalette(
         /** M3 基线里没有 success 角, 用这个绿色补上. 与设计稿一致. */
         val DefaultSuccess = Color(0xFF5FD48F)
         val DefaultSuccessLight = Color(0xFF1E6F42)
+
+        /** 高亮框的金色. 浅色主题下要压暗, 不然满不透明时也看不清. */
+        val DefaultHighlight = Color(0xFFFFC24B)
+        val DefaultHighlightLight = Color(0xFF8A5A00)
     }
 }
 
@@ -111,9 +117,14 @@ fun rememberWorkflowPalette(
     } else {
         WorkflowPalette.DefaultSuccessLight
     },
+    highlight: Color = if (MaterialTheme.colorScheme.surface.luminanceIsDark()) {
+        WorkflowPalette.DefaultHighlight
+    } else {
+        WorkflowPalette.DefaultHighlightLight
+    },
 ): WorkflowPalette {
     val scheme = MaterialTheme.colorScheme
-    return remember(scheme, success) {
+    return remember(scheme, success, highlight) {
         WorkflowPalette(
             sourceColors = listOf(scheme.primary, scheme.secondary, scheme.tertiary),
             surfaceLow = scheme.surfaceContainerLow,
@@ -126,6 +137,7 @@ fun rememberWorkflowPalette(
             mark = scheme.surface,
             success = success,
             error = scheme.error,
+            highlight = highlight,
         )
     }
 }
@@ -147,6 +159,7 @@ fun workflowPaletteOf(
     secondaryContainer: Color,
     error: Color,
     success: Color = WorkflowPalette.DefaultSuccess,
+    highlight: Color = WorkflowPalette.DefaultHighlight,
 ): WorkflowPalette = WorkflowPalette(
     sourceColors = listOf(primary, secondary, tertiary),
     surfaceLow = surfaceContainerLow,
@@ -159,6 +172,7 @@ fun workflowPaletteOf(
     mark = surface,
     success = success,
     error = error,
+    highlight = highlight,
 )
 
 /**

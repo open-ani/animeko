@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.settings.tabs.media
 
+import me.him188.ani.utils.selectorworkflow.HighlightRegion
 import me.him188.ani.utils.selectorworkflow.ResolveOutcome
 import me.him188.ani.utils.selectorworkflow.SelectMode
 import kotlin.math.abs
@@ -33,6 +34,8 @@ class MediaSelectorWorkflowDemoStateTest {
         get() = viewModel.config.resolve.outcomes.contains(ResolveOutcome.Timeout)
     private val MediaSelectorWorkflowDemoState.playsCacheQuery
         get() = viewModel.config.cachedQuery
+    private val MediaSelectorWorkflowDemoState.highlight
+        get() = viewModel.config.highlights.singleOrNull()
 
     @Test
     fun `starts with the current fast select state and nothing else`() {
@@ -150,6 +153,46 @@ class MediaSelectorWorkflowDemoStateTest {
         val after = s.viewModel.player.playhead
         s.syncEagerSelect(false)   // 已经一致了, 什么都不该发生
         assertEquals(after, s.viewModel.player.playhead)
+    }
+
+    @Test
+    fun `each setting highlights the step it governs`() {
+        val s = state()
+        s.onWebSearchCacheTtlChanged(30.minutes)
+        assertEquals(HighlightRegion.Sources, s.highlight, "缓存管的是第一步")
+
+        s.onLowTierToleranceChanged(8.seconds)
+        assertEquals(HighlightRegion.Results, s.highlight, "高优先级等待管的是第二步")
+
+        s.onResolveTimeoutChanged(15)
+        assertEquals(HighlightRegion.Resolve, s.highlight, "解析超时管的是第三步")
+
+        s.onFastSelectWebKindChanged(true)
+        assertEquals(HighlightRegion.Results, s.highlight, "快速选择管的也是第二步")
+    }
+
+    @Test
+    fun `only one step is ever highlighted at a time`() {
+        // 抢先选源是常驻状态, 跟着它一直亮就成了背景板, 指不出"刚动的是哪个"
+        val s = state(eager = true)
+        s.onWebSearchCacheTtlChanged(30.minutes)
+        assertEquals(setOf(HighlightRegion.Sources), s.viewModel.config.highlights)
+        assertEquals(SelectMode.Eager, s.config.selection.mode, "抢先选源还开着, 但不该跟着亮")
+    }
+
+    @Test
+    fun `turning a setting off stops highlighting it`() {
+        val s = state()
+        s.onWebSearchCacheTtlChanged(30.minutes)
+        s.onWebSearchCacheTtlChanged(Duration.ZERO)
+        assertNull(s.highlight, "不缓存就没有可指的那一步")
+
+        s.onLowTierToleranceChanged(8.seconds)
+        s.onLowTierToleranceChanged(Duration.ZERO)
+        assertNull(s.highlight)
+
+        s.onFastSelectWebKindChanged(false)
+        assertNull(s.highlight)
     }
 
     @Test

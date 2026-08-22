@@ -159,6 +159,8 @@ class SelectorWorkflowViewModel(
      * @param priorityWaitSeconds 高优先级等待要演多少秒; `null` 表示不演这一段.
      * @param resolveBudgetSeconds 拦截超时要演多少秒; `null` 表示第三步只演成功、不出计时器.
      * @param cacheQuery 第一步走缓存, 瞬间出结果.
+     * @param highlight 给哪一步罩上高亮框, 即"刚动的那个设置项管的是这一步"; `null` 表示不罩.
+     * 这里要显式给, 不按开着哪些特性去推 —— 抢先选源是常驻状态, 跟着它一直亮就成了背景板.
      * @param restart 是否从头播放.
      */
     fun configure(
@@ -166,11 +168,13 @@ class SelectorWorkflowViewModel(
         priorityWaitSeconds: Int? = null,
         resolveBudgetSeconds: Int? = null,
         cacheQuery: Boolean = false,
+        highlight: HighlightRegion? = null,
         restart: Boolean = true,
     ): Boolean {
         val ok = updateConfig { current ->
             current.copy(
                 cachedQuery = cacheQuery,
+                highlights = setOfNotNull(highlight),
                 selection = current.selection.copy(
                     mode = if (eager) SelectMode.Eager else SelectMode.WaitAll,
                     priorityWait = priorityWaitSeconds?.seconds,
@@ -192,13 +196,15 @@ class SelectorWorkflowViewModel(
         return ok
     }
 
+    // 下面这几个是 playground 用的单项开关: 开几个亮几个, 高亮框跟着当前开着的特性走.
+
     /** 抢先选源. */
     fun setEagerSelect(enabled: Boolean) = updateConfig {
         it.copy(
             selection = it.selection.copy(
                 mode = if (enabled) SelectMode.Eager else SelectMode.WaitAll,
             ),
-        )
+        ).withFeatureHighlights()
     }
 
     /**
@@ -214,7 +220,7 @@ class SelectorWorkflowViewModel(
                 demoBothPriorityPaths = enabled,
                 lateLatency = null,
             ),
-        )
+        ).withFeatureHighlights()
     }
 
     fun setPriorityWaitSeconds(seconds: Int) = updateConfig {
@@ -223,7 +229,9 @@ class SelectorWorkflowViewModel(
     }
 
     /** 第一步走缓存: 数据源查询结果已缓存, 三条线瞬间画满并泛起涟漪. */
-    fun setCacheQuery(enabled: Boolean) = updateConfig { it.copy(cachedQuery = enabled) }
+    fun setCacheQuery(enabled: Boolean) = updateConfig {
+        it.copy(cachedQuery = enabled).withFeatureHighlights()
+    }
 
     /** 第三步: 连演成功 / 超时 / 换下一个候选再成功. */
     fun setResolveDemo(enabled: Boolean) = updateConfig {
@@ -235,7 +243,7 @@ class SelectorWorkflowViewModel(
                     listOf(ResolveOutcome.Hit)
                 },
             ),
-        )
+        ).withFeatureHighlights()
     }
 
     /**

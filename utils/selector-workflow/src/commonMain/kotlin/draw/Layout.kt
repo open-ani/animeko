@@ -13,6 +13,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import me.him188.ani.utils.selectorworkflow.HighlightRegion
 import me.him188.ani.utils.selectorworkflow.SelectorWorkflowConfig
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -76,6 +77,12 @@ data class WorkflowMetrics(
     /** 画在数据源节点里的那个菱形大一号 —— 节点比结果块大. */
     val priorityNodeMarkRadius: Float = 2.6f,
     val markGap: Float = 2f,
+    /**
+     * 高亮框离它罩住的东西多远.
+     *
+     * 得比 [outerPadding] 小 —— 框画在内容 **外面**, 留白不够就会被画布裁掉.
+     */
+    val highlightInset: Float = 3f,
     /** 画面四周留白. */
     val outerPadding: Float = 8f,
     /** 线宽. */
@@ -144,6 +151,37 @@ class WorkflowLayout internal constructor(
             readoutWidth = readoutW,
         )
     }
+    /**
+     * [region] 那一块的高亮框.
+     *
+     * 三块都是"罩在已有东西外面一圈", 所以圆角取被罩者的圆角加上外扩量, 两条弧才是同心的.
+     * 第一步没有现成的容器可罩, 就按节点列与连线自己围一个.
+     */
+    fun highlight(region: HighlightRegion): Highlight = with(metrics) {
+        when (region) {
+            HighlightRegion.Sources -> Highlight(
+                bounds = Rect(
+                    left = nodeCenters.minOf { it.x } - haloRadius - highlightInset,
+                    top = nodeCenters.minOf { it.y } - nodeRadius - highlightInset,
+                    // 连线一直画到容器边上, 所以右边也得顶到那儿, 不然线会从框里探出去一截
+                    right = container.left,
+                    bottom = nodeCenters.maxOf { it.y } + nodeRadius + highlightInset,
+                ),
+                cornerRadius = containerRadius + highlightInset,
+            )
+
+            HighlightRegion.Results -> Highlight(
+                bounds = container.inflate(highlightInset),
+                cornerRadius = containerRadius + highlightInset,
+            )
+
+            HighlightRegion.Resolve -> Highlight(
+                bounds = window.inflate(highlightInset),
+                cornerRadius = windowRadius + highlightInset,
+            )
+        }
+    }
+
     /** 第 [index] 行请求在 **未滚动** 时的行内基线 (行中心 y). */
     fun rowCenterY(index: Int): Float {
         val inset = (listViewport.height - config.resolve.visibleRows * metrics.rowHeight) / 2f
@@ -294,6 +332,12 @@ class WorkflowLayout internal constructor(
         private fun pseudoRandom(index: Int): Float = ((index * 37 + 11) % 23) / 22f
     }
 }
+
+/**
+ * 一圈高亮框的几何.
+ */
+@Immutable
+data class Highlight(val bounds: Rect, val cornerRadius: Float)
 
 /**
  * 一帧里第三步计时器浮层的几何.

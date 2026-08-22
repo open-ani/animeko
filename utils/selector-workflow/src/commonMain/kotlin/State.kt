@@ -59,6 +59,11 @@ data class SelectorWorkflowState(
     val requestRows: List<RequestRowState>,
     val scroll: ScrollState,
     val clocks: Map<ClockId, ClockState>,
+    /**
+     * 这一帧要给哪几块罩上高亮框. 整条时间线上是个常量 —— 它说的是"看这里", 不是演出的一部分.
+     * 框自己的呼吸由画笔按 [time] 取相位, 和数据源的光环一样不占轨道.
+     */
+    val highlights: Set<HighlightRegion> = emptySet(),
 ) {
     val progress: Float
         get() = if (duration <= Duration.ZERO) 0f

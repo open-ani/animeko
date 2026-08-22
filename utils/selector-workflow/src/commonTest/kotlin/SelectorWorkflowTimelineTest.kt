@@ -726,6 +726,74 @@ class SelectorWorkflowTimelineTest {
         }
     }
 
+    // ------------------------------------------------------------------ 高亮框
+
+    @Test
+    fun `nothing is highlighted unless someone asks for it`() {
+        // 高亮框是"看这里"的手指, 不是"这个特性开着"的指示灯 —— 数据层不去猜
+        val c = config(mode = SelectMode.Eager, outcomes = ALL_OUTCOMES).copy(cachedQuery = true)
+        assertEquals(emptySet(), c.highlights)
+        assertEquals(emptySet(), c.buildTimeline().sampleAt(Duration.ZERO).highlights)
+    }
+
+    @Test
+    fun `feature highlights follow whichever features are on`() {
+        val plain = config()
+        assertEquals(emptySet(), plain.featureHighlights)
+
+        assertEquals(
+            setOf(HighlightRegion.Sources),
+            plain.copy(cachedQuery = true).featureHighlights,
+        )
+        assertEquals(
+            setOf(HighlightRegion.Results),
+            config(mode = SelectMode.Eager).featureHighlights,
+        )
+        assertEquals(
+            setOf(HighlightRegion.Results),
+            config(priorityWait = 5.seconds, demoBothPaths = true).featureHighlights,
+        )
+        assertEquals(
+            setOf(HighlightRegion.Resolve),
+            config(outcomes = ALL_OUTCOMES).featureHighlights,
+        )
+        assertEquals(
+            setOf(HighlightRegion.Sources, HighlightRegion.Results, HighlightRegion.Resolve),
+            config(mode = SelectMode.Eager, outcomes = ALL_OUTCOMES).copy(cachedQuery = true)
+                .featureHighlights,
+        )
+    }
+
+    @Test
+    fun `the highlight stays put for the whole run`() {
+        // 它说的是"改的是这一步", 不是演出的一部分, 所以整条时间线上都该在
+        val timeline = config().copy(highlights = setOf(HighlightRegion.Resolve)).buildTimeline()
+        var t = Duration.ZERO
+        val step = timeline.duration / 200.0
+        while (t <= timeline.duration) {
+            assertEquals(setOf(HighlightRegion.Resolve), timeline.sampleAt(t).highlights, "在 $t 掉了")
+            t += step
+        }
+    }
+
+    @Test
+    fun `highlighting does not change the animation itself`() {
+        val plain = config(outcomes = ALL_OUTCOMES)
+        val lit = plain.copy(highlights = setOf(HighlightRegion.Resolve))
+        val a = plain.buildTimeline()
+        val b = lit.buildTimeline()
+        assertEquals(a.duration, b.duration)
+
+        var t = Duration.ZERO
+        val step = a.duration / 200.0
+        while (t <= a.duration) {
+            val x = a.sampleAt(t)
+            val y = b.sampleAt(t)
+            assertEquals(x.copy(highlights = y.highlights), y, "在 $t 有别的东西也跟着变了")
+            t += step
+        }
+    }
+
     // ------------------------------------------------------------------ 语义色的过渡
 
     @Test

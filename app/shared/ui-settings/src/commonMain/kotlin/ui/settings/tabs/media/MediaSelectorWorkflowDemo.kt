@@ -30,6 +30,7 @@ import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthCompact
 import me.him188.ani.app.ui.settings.framework.components.SettingsScope
+import me.him188.ani.utils.selectorworkflow.HighlightRegion
 import me.him188.ani.utils.selectorworkflow.SelectorWorkflowAnimation
 import me.him188.ani.utils.selectorworkflow.SelectorWorkflowViewModel
 import kotlin.time.Duration
@@ -39,13 +40,16 @@ import kotlin.time.Duration
  *
  * 规则是: **动哪个设置项, 就只演它对应的那一段**, 同时把另一段关掉 ——
  * 一次只演一件事, 注意力才落得到刚动的那个选项上. 每次都从头播放, 免得用户看到的是半截.
+ * 那一段对应的那一步还会罩上一圈呼吸的金色高亮框, 直接指出"改的是这里".
  *
  * 对应关系:
- * - 「快速选择在线数据源」开关 -> 抢先选源. 它是常驻状态, 不是"某一段", 所以切换它只是同步状态,
- *   并把其余几段都关掉 (回到最朴素的三步流程);
- * - 「最长等待时间」-> 高优先级等待那一段;
- * - 「视频链接解析超时」-> 第三步的拦截超时那一段;
- * - 「在线数据源搜索结果缓存时长」-> 第一步走缓存那一段.
+ * - 「快速选择在线数据源」开关 -> 抢先选源, 高亮第二步. 它是常驻状态, 不是"某一段",
+ *   所以切换它只是同步状态, 并把其余几段都关掉 (回到最朴素的三步流程);
+ * - 「最长等待时间」-> 高优先级等待那一段, 高亮第二步;
+ * - 「视频链接解析超时」-> 第三步的拦截超时那一段, 高亮第三步;
+ * - 「在线数据源搜索结果缓存时长」-> 第一步走缓存那一段, 高亮第一步.
+ *
+ * 高亮框显式指定, 不按"开着哪些特性"去推: 抢先选源一直开着, 跟着它常亮就成了背景板.
  */
 @Stable
 class MediaSelectorWorkflowDemoState(
@@ -63,7 +67,8 @@ class MediaSelectorWorkflowDemoState(
     /** 切换「快速选择在线数据源」: 同步抢先选源, 其余几段都收起来. */
     fun onFastSelectWebKindChanged(enabled: Boolean) {
         eagerSelect = enabled
-        viewModel.configure(eager = enabled)
+        // 它管的是第二步怎么选, 开着才有"抢先"这回事可指
+        viewModel.configure(eager = enabled, highlight = HighlightRegion.Results.takeIf { enabled })
     }
 
     /**
@@ -81,6 +86,7 @@ class MediaSelectorWorkflowDemoState(
             resolveBudgetSeconds = viewModel.config.resolve.budget.inWholeSeconds.toInt()
                 .takeIf { viewModel.config.showInterceptClock },
             cacheQuery = viewModel.config.cachedQuery,
+            highlight = viewModel.config.highlights.singleOrNull(),
             restart = false,
         )
     }
@@ -93,12 +99,20 @@ class MediaSelectorWorkflowDemoState(
      */
     fun onLowTierToleranceChanged(duration: Duration) {
         val seconds = duration.takeIf { it.isFinite() }?.inWholeSeconds?.toInt()?.takeIf { it > 0 }
-        viewModel.configure(eager = eagerSelect, priorityWaitSeconds = seconds)
+        viewModel.configure(
+            eager = eagerSelect,
+            priorityWaitSeconds = seconds,
+            highlight = HighlightRegion.Results.takeIf { seconds != null },
+        )
     }
 
     /** 选了「视频链接解析超时」: 演第三步的拦截超时. */
     fun onResolveTimeoutChanged(seconds: Int) {
-        viewModel.configure(eager = eagerSelect, resolveBudgetSeconds = seconds.coerceAtLeast(1))
+        viewModel.configure(
+            eager = eagerSelect,
+            resolveBudgetSeconds = seconds.coerceAtLeast(1),
+            highlight = HighlightRegion.Resolve,
+        )
     }
 
     /**
@@ -108,7 +122,12 @@ class MediaSelectorWorkflowDemoState(
      * 没有任何区别. 选「不缓存」就收回到朴素流程.
      */
     fun onWebSearchCacheTtlChanged(ttl: Duration) {
-        viewModel.configure(eager = eagerSelect, cacheQuery = ttl > Duration.ZERO)
+        val cached = ttl > Duration.ZERO
+        viewModel.configure(
+            eager = eagerSelect,
+            cacheQuery = cached,
+            highlight = HighlightRegion.Sources.takeIf { cached },
+        )
     }
 }
 

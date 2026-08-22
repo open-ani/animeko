@@ -241,6 +241,13 @@ data class SelectorWorkflowConfig(
      * 那条线于是不再是"瞬间"的. 上层保证一次只演一件事.
      */
     val cachedQuery: Boolean = false,
+    /**
+     * 罩着高亮框的那几块. 见 [HighlightRegion].
+     *
+     * 这是纯粹的展示输入, 不影响任何时间 —— 谁该亮由上层说了算. 设置页里一次只亮一块
+     * (刚动的那个选项管的那一步), playground 里则是开几个亮几个, 两种用法都只是往这里填不同的集合.
+     */
+    val highlights: Set<HighlightRegion> = emptySet(),
 ) {
     init {
         require(sources.isNotEmpty()) { "at least one source is required" }
@@ -290,6 +297,24 @@ data class SelectorWorkflowConfig(
     val effectiveLatencies: List<Duration> =
         if (cachedQuery) sources.map { pacing.unscaled(pacing.cacheDraw) } else sources.map { it.latency }
 
+    /**
+     * 按"当前开着哪些特性"推出来的高亮集合.
+     *
+     * 开几个亮几个 —— playground 那种把开关全打开的用法直接用它. 设置页不用: 那里「快速选择在线
+     * 数据源」是常驻状态, 跟着它一直亮就成了背景板, 起不到"看这里"的作用.
+     */
+    val featureHighlights: Set<HighlightRegion>
+        get() = buildSet {
+            if (cachedQuery) add(HighlightRegion.Sources)
+            if (selection.mode == SelectMode.Eager || selection.priorityWait != null) {
+                add(HighlightRegion.Results)
+            }
+            if (showInterceptClock) add(HighlightRegion.Resolve)
+        }
+
+    /** 把高亮框对齐到"当前开着哪些特性". */
+    fun withFeatureHighlights(): SelectorWorkflowConfig = copy(highlights = featureHighlights)
+
     /** [key] 在网格里的位置, 见 [results]. */
     fun cellOf(key: ResultKey): Int = results.indexOf(key)
 
@@ -306,6 +331,23 @@ data class SelectorWorkflowConfig(
 data class ResultKey(val source: Int, val indexInSource: Int) {
     fun isCandidate(config: SelectorWorkflowConfig): Boolean =
         indexInSource in config.sources[source].candidates
+}
+
+/**
+ * 高亮框罩在哪一块上.
+ *
+ * 它的用处只有一个: 告诉用户 **刚动的那个设置项改的是这一步**. 所以它不是"这个特性开着"的指示灯,
+ * 而是"看这里"的手指 —— 罩哪块由上层决定 ([SelectorWorkflowConfig.highlights]), 数据层不去猜.
+ */
+enum class HighlightRegion {
+    /** 第一步: 数据源节点与连线. */
+    Sources,
+
+    /** 第二步: 搜索结果容器. */
+    Results,
+
+    /** 第三步: 浏览器窗口. */
+    Resolve,
 }
 
 /**

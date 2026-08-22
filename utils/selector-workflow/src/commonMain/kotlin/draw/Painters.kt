@@ -472,6 +472,36 @@ private fun DrawScope.drawRequestRow(
     )
 }
 
+// ------------------------------------------------------------------ 高亮框
+
+/** 呼吸一轮用多久. 和光环一样直接由播放位置取相位, 不需要轨道. */
+private val BreathPeriod: Duration = Duration.parse("1.8s")
+
+/**
+ * 「刚动的那个设置项改的是这一步」的高亮框.
+ *
+ * 它是罩在内容之上的 overlay, 由 `drawSelectorWorkflow` 最后画, 直接压在图上.
+ * 在金色与全透明之间呼吸: 用余弦而不是三角波, 两端各停一会儿, 才像呼吸而不是闪烁.
+ */
+internal fun DrawScope.drawHighlight(
+    highlight: Highlight,
+    layout: WorkflowLayout,
+    palette: WorkflowPalette,
+    time: Duration,
+) {
+    val phase = (time.inWholeMilliseconds.toFloat() / BreathPeriod.inWholeMilliseconds) % 1f
+    val alpha = (1f - cos(phase * 2f * PI.toFloat())) / 2f
+    if (alpha <= 0.001f) return
+    drawRoundRect(
+        color = palette.highlight,
+        topLeft = highlight.bounds.topLeft,
+        size = highlight.bounds.size,
+        cornerRadius = CornerRadius(highlight.cornerRadius),
+        alpha = alpha,
+        style = Stroke(width = layout.metrics.strokeBold),
+    )
+}
+
 // ------------------------------------------------------------------ 静态部分
 
 internal fun DrawScope.drawResultContainer(layout: WorkflowLayout, palette: WorkflowPalette) {

@@ -52,6 +52,7 @@ class SelectorWorkflowTimeline internal constructor(
             requestRows = rows.map { it.sample(t) },
             scroll = ScrollState(scroll.valueAt(t)),
             clocks = clocks.mapValues { (_, tracks) -> tracks.sample(t) },
+            highlights = config.highlights,
         )
     }
 }

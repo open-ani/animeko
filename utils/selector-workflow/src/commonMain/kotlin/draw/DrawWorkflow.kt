@@ -50,7 +50,7 @@ fun DrawScope.drawSelectorWorkflow(
  * z 序: 底 → 顶.
  *
  * 连线画在结果容器之后, 这样线头压在容器边上而不是被容器盖住;
- * 数据源节点最后画, 光环才不会被连线切开.
+ * 数据源节点最后画, 光环才不会被连线切开; 高亮框是 overlay, 压在所有内容之上.
  */
 private fun DrawScope.drawContent(
     state: SelectorWorkflowState,
@@ -110,4 +110,7 @@ private fun DrawScope.drawContent(
         layout.priorityClockCenter, layout.priorityReadoutAnchor, layout, palette,
         textMeasurer, readoutStyle,
     )
+
+    // 高亮框是 overlay: 最后画, 直接压在内容上
+    state.highlights.forEach { drawHighlight(layout.highlight(it), layout, palette, state.time) }
 }

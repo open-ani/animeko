@@ -26,6 +26,67 @@ class WorkflowLayoutTest {
 
     private fun layoutOf(config: SelectorWorkflowConfig) = WorkflowLayout.of(config, metrics)
 
+    // ------------------------------------------------------------------ 高亮框
+
+    @Test
+    fun `each highlight box wraps the thing it points at`() {
+        val layout = layoutOf(SelectorWorkflowPresets.threeSources())
+
+        val results = layout.highlight(HighlightRegion.Results).bounds
+        assertTrue(results.contains(layout.container.topLeft), "第二步的框该罩在容器外面")
+        assertTrue(results.left < layout.container.left && results.right > layout.container.right)
+        assertTrue(results.top < layout.container.top && results.bottom > layout.container.bottom)
+
+        val resolve = layout.highlight(HighlightRegion.Resolve).bounds
+        assertTrue(resolve.left < layout.window.left && resolve.right > layout.window.right)
+        assertTrue(resolve.top < layout.window.top && resolve.bottom > layout.window.bottom)
+
+        val sources = layout.highlight(HighlightRegion.Sources).bounds
+        layout.nodeCenters.forEachIndexed { i, c ->
+            assertTrue(sources.contains(c), "第 $i 个源节点没被罩住")
+            assertTrue(c.x - metrics.haloRadius > sources.left, "第 $i 个源的光环探出框外了")
+        }
+        // 连线一路画到容器边上, 框也得顶到那儿
+        assertEquals(layout.container.left, sources.right, 1e-3f, "连线会从框里探出去一截")
+        layout.linkSegments.forEach { (from, to) ->
+            assertTrue(from.x >= sources.left && to.x <= sources.right, "连线没被完全罩住")
+        }
+    }
+
+    @Test
+    fun `no highlight box escapes the canvas`() {
+        // 框画在内容外面, highlightInset 比 outerPadding 大就会被画布裁掉
+        listOf(
+            SelectorWorkflowPresets.threeSources(),
+            SelectorWorkflowPresets.threeSources(priorityWait = 5.seconds),
+        ).forEach { config ->
+            val layout = layoutOf(config)
+            HighlightRegion.entries.forEach { region ->
+                val b = layout.highlight(region).bounds
+                assertTrue(b.left >= 0f, "$region 的框左边出画布了: ${b.left}")
+                assertTrue(b.top >= 0f, "$region 的框上边出画布了: ${b.top}")
+                assertTrue(b.right <= layout.canvasSize.width, "$region 的框右边出画布了")
+                assertTrue(b.bottom <= layout.canvasSize.height, "$region 的框下边出画布了")
+            }
+        }
+    }
+
+    @Test
+    fun `a highlight box is concentric with what it wraps`() {
+        // 圆角要跟着外扩量一起长, 两条弧才是同心的
+        val layout = layoutOf(SelectorWorkflowPresets.threeSources())
+        assertEquals(
+            metrics.containerRadius + metrics.highlightInset,
+            layout.highlight(HighlightRegion.Results).cornerRadius,
+            1e-3f,
+        )
+        assertEquals(
+            metrics.windowRadius + metrics.highlightInset,
+            layout.highlight(HighlightRegion.Resolve).cornerRadius,
+            1e-3f,
+        )
+    }
+
     @Test
     fun `grid holds exactly one cell per result and they do not overlap`() {
         val config = SelectorWorkflowPresets.threeSources()

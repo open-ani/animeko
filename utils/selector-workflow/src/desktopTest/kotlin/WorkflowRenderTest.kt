@@ -93,10 +93,11 @@ class WorkflowRenderTest {
                         priorityWait = if (prio) kotlin.time.Duration.parse("5s") else null,
                         resolveOutcomes = outcomes,
                     )
+                    // 顺带把高亮框也画上: 开着哪几个特性就亮哪几块
                     val config = base.copy(
                         selection = base.selection.copy(demoBothPriorityPaths = prio),
                         cachedQuery = cached,
-                    )
+                    ).withFeatureHighlights()
                     val timeline = config.buildTimeline()
                     var t = Duration.ZERO
                     val step = timeline.duration / 60.0
