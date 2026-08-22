@@ -11,6 +11,7 @@ package me.him188.ani.app.domain.episode
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,7 @@ import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
 import me.him188.ani.app.domain.media.hls.HlsPlaybackProxySession
 import me.him188.ani.app.domain.media.fetch.MediaFetchSession
 import me.him188.ani.app.domain.media.resolver.EpisodeMetadata
+import me.him188.ani.app.domain.media.resolver.JellyfinMediaDataProvider
 import me.him188.ani.app.domain.media.resolver.MediaResolutionException
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaSourceOpenException
@@ -33,6 +35,7 @@ import me.him188.ani.app.domain.player.VideoLoadingState
 import me.him188.ani.app.domain.settings.GetVideoScaffoldConfigUseCase
 import me.him188.ani.datasources.api.Media
 import me.him188.ani.datasources.api.source.MediaSourceKind
+import me.him188.ani.datasources.jellyfin.JellyfinPlaybackQuality
 import me.him188.ani.utils.logging.error
 import me.him188.ani.utils.logging.info
 import me.him188.ani.utils.logging.logger
@@ -65,6 +68,7 @@ class PlayerSession(
     private val getVideoScaffoldConfigUseCase: GetVideoScaffoldConfigUseCase by koin.inject()
 
     private var hlsPlaybackProxySession: HlsPlaybackProxySession? = null
+    private val jellyfinPlaybackController = JellyfinPlaybackController(player, mainDispatcher)
 
     private val _videoLoadingStateFlow: MutableStateFlow<VideoLoadingState> =
         MutableStateFlow(VideoLoadingState.Initial)
@@ -73,6 +77,8 @@ class PlayerSession(
      * 当前的视频加载状态.
      */
     val videoLoadingState: StateFlow<VideoLoadingState> get() = _videoLoadingStateFlow.asStateFlow()
+
+    val jellyfinPlaybackQualityState get() = jellyfinPlaybackController.qualityState
 
     /**
      * 解析 media 并开始播放这个 media.
@@ -86,6 +92,7 @@ class PlayerSession(
         }
 
         var preparedHlsPlaybackProxySession: HlsPlaybackProxySession? = null
+        var openedJellyfinProvider: JellyfinMediaDataProvider? = null
         try {
             _videoLoadingStateFlow.value = VideoLoadingState.ResolvingSource
             val source = mediaResolver.resolve(
@@ -97,6 +104,8 @@ class PlayerSession(
                 VideoLoadingState.DecodingData(isBt = media.kind == MediaSourceKind.BitTorrent),
             )
 
+            val jellyfinProvider = source as? JellyfinMediaDataProvider
+            openedJellyfinProvider = jellyfinProvider
             val data = source.open(scopeForCleanup = backgroundScope) // may throw MediaSourceOpenException
             val preparedData = prepareHlsPlaybackIfEnabled(data).also {
                 preparedHlsPlaybackProxySession = it.session
@@ -107,6 +116,8 @@ class PlayerSession(
             player.setMediaData(preparedData, playWhenReady = true)
             hlsPlaybackProxySession = preparedHlsPlaybackProxySession
             preparedHlsPlaybackProxySession = null
+            jellyfinProvider?.let(jellyfinPlaybackController::install)
+            openedJellyfinProvider = null
 
             _videoLoadingStateFlow.value = VideoLoadingState.Succeed(isBt = source is TorrentBackedMediaDataProvider)
         } catch (e: UnsupportedMediaException) {
@@ -152,18 +163,84 @@ class PlayerSession(
             _videoLoadingStateFlow.value = VideoLoadingState.UnknownError(e)
             stopPlayback()
         } finally {
-            preparedHlsPlaybackProxySession?.close()
+            try {
+                preparedHlsPlaybackProxySession?.close()
+            } finally {
+                openedJellyfinProvider?.let { provider ->
+                    withContext(NonCancellable) {
+                        jellyfinPlaybackController.discard(provider)
+                    }
+                }
+            }
         }
     }
 
+    suspend fun switchJellyfinPlaybackQuality(
+        quality: JellyfinPlaybackQuality,
+        beforeReplace: suspend (JellyfinPlaybackReplacementSnapshot) -> Unit = {},
+    ): Result<Unit> {
+        val owner = jellyfinPlaybackController.captureOwner()
+            ?: return Result.failure(IllegalStateException("The current media is not from Jellyfin"))
+
+        return jellyfinPlaybackController.switch(
+            owner = owner,
+            quality = quality,
+            prepareMediaData = { data ->
+                prepareHlsPlaybackIfEnabled(data).let {
+                    PreparedJellyfinMediaData(it.data, it.session)
+                }
+            },
+            replaceProxySession = { next ->
+                hlsPlaybackProxySession.also {
+                    hlsPlaybackProxySession = next
+                }
+            },
+            onReplacementFailure = ::stopAfterJellyfinReplacementFailureSafely,
+            beforeReplace = beforeReplace,
+        )
+    }
+
     suspend fun stopPlayback() {
-        stopPlayer()
-        closeHlsPlaybackProxySession()
+        if (!jellyfinPlaybackController.hasPlayback) {
+            stopPlayer()
+            closeHlsPlaybackProxySession()
+            return
+        }
+
+        val jellyfinPlayback = jellyfinPlaybackController.detach()
+        if (jellyfinPlayback.provider == null) {
+            stopPlayer()
+            closeHlsPlaybackProxySession()
+            return
+        }
+
+        var stopFailure: Throwable? = null
+        try {
+            stopPlayer()
+        } catch (e: Throwable) {
+            stopFailure = e
+        }
+        closeHlsPlaybackProxySessionSafely(hlsPlaybackProxySession)
+        hlsPlaybackProxySession = null
+        withContext(NonCancellable) {
+            jellyfinPlaybackController.stopEncoding(jellyfinPlayback)
+        }
+        stopFailure?.let { throw it }
     }
 
     fun close() {
         closeHlsPlaybackProxySession()
         player.close()
+    }
+
+    private suspend fun stopAfterJellyfinReplacementFailureSafely() {
+        try {
+            stopPlayer()
+        } catch (e: Throwable) {
+            logger.warn(e) { "Failed to stop the player after a Jellyfin quality switch error" }
+        }
+        closeHlsPlaybackProxySessionSafely(hlsPlaybackProxySession)
+        hlsPlaybackProxySession = null
     }
 
     private suspend fun stopPlayer() {
@@ -190,6 +267,15 @@ class PlayerSession(
     private fun closeHlsPlaybackProxySession() {
         hlsPlaybackProxySession?.close()
         hlsPlaybackProxySession = null
+    }
+
+    private fun closeHlsPlaybackProxySessionSafely(session: HlsPlaybackProxySession?) {
+        if (session == null) return
+        try {
+            session.close()
+        } catch (e: Throwable) {
+            logger.warn(e) { "Failed to close an HLS playback proxy session" }
+        }
     }
 
     companion object {
@@ -237,7 +323,6 @@ class PlayerSession(
 //
 //    override fun getKoin(): Koin = koin
 //}
-
 //interface SubjectEpisodeCollectionSession {
 //    val subjectId: Int
 //

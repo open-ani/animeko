@@ -38,6 +38,7 @@ import me.him188.ani.app.domain.media.hls.HlsPlaybackPreparer
 import me.him188.ani.app.domain.media.hls.PlatformHlsPlaybackPreparer
 import me.him188.ani.app.domain.media.resolver.AndroidWebMediaResolver
 import me.him188.ani.app.domain.media.resolver.HttpStreamingMediaResolver
+import me.him188.ani.app.domain.media.resolver.JellyfinMediaResolver
 import me.him188.ani.app.domain.media.resolver.LocalFileMediaResolver
 import me.him188.ani.app.domain.media.resolver.MediaResolver
 import me.him188.ani.app.domain.media.resolver.OfflineDownloadMediaResolver
@@ -237,6 +238,7 @@ fun getAndroidModules(
             listOf<MediaResolver>(OfflineDownloadMediaResolver(get(), fallback = btFallback))
                 .plus(torrentResolvers)
                 .plus(LocalFileMediaResolver())
+                .plus(JellyfinMediaResolver(get(), get()))
                 .plus(HttpStreamingMediaResolver())
                 .plus(
                     AndroidWebMediaResolver(
