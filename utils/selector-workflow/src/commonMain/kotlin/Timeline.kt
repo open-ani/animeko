@@ -59,8 +59,9 @@ internal class NodeTracks(
     private val index: Int,
     private val alpha: Track<Float>,
     private val pulsing: Track<Boolean>,
+    private val priority: Boolean,
 ) {
-    fun sample(t: Duration) = SourceNodeState(index, alpha.valueAt(t), pulsing.valueAt(t))
+    fun sample(t: Duration) = SourceNodeState(index, alpha.valueAt(t), pulsing.valueAt(t), priority)
 }
 
 internal class LineTracks(

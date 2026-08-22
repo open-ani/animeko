@@ -63,6 +63,8 @@ data class SourceNodeState(
     val alpha: Float,
     /** 是否正在搜索. Canvas 据此决定要不要画那圈自转的光环. */
     val pulsing: Boolean,
+    /** 是否画高优先级标记 (节点里那个菱形). 只有真开了高优先级等待才为 `true`. */
+    val priority: Boolean,
 )
 
 /**
@@ -97,7 +99,8 @@ enum class ChipTone {
  *
  * @param cell 在结果网格里的序号, Canvas 据此算坐标.
  * @param candidate 是否是候选结果 (画中心那个实心圆点).
- * @param priority 是否属于高优先级源 (画左端那个实心菱形).
+ * @param priority 是否画高优先级标记 (那个实心菱形). 只有真开了高优先级等待才为 `true` ——
+ * 见 [SelectorWorkflowConfig.showPriorityMarks].
  */
 @Immutable
 data class ResultChipState(

@@ -71,6 +71,8 @@ data class WorkflowMetrics(
     /** 候选圆点 / 高优先级菱形. */
     val candidateDotRadius: Float = 2f,
     val priorityMarkRadius: Float = 2.2f,
+    /** 画在数据源节点里的那个菱形大一号 —— 节点比结果块大. */
+    val priorityNodeMarkRadius: Float = 2.6f,
     val markGap: Float = 2f,
     /** 画面四周留白. */
     val outerPadding: Float = 8f,

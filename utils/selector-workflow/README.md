@@ -49,7 +49,11 @@ TimelinePlayer / ViewModel      ╲  drawSelectorWorkflow(state, layout, palette
 | 9 | `ScrollState` | 第三步 | `rowOffset` |
 
 结果容器边框、mac 三圆点、地址栏是静态装饰，不算可控制单元。
-候选圆点与高优先级菱形是结果块上的**静态标记**（`candidate` / `priority` 两个布尔），不单独成为单元。
+候选圆点与高优先级菱形是**静态标记**（`candidate` / `priority` 两个布尔），不单独成为单元。
+
+高优先级菱形画在源节点里和它每一条结果上，但**只有真开了高优先级等待才画**
+（`SelectorWorkflowConfig.showPriorityMarks`）——没开闸时这个源和别的源没有任何区别，
+标出来只会让人以为它有特殊待遇。候选圆点不受这个开关影响，它是选源规则的一部分。
 
 单元只暴露与画法无关的量：语义色用 `ChipTone` / `WindowTone` / `ClockTone` 这类枚举，
 由 Canvas 层映射到 M3 token；位置用 `cell` 序号，由 Canvas 层按网格算坐标。

@@ -214,6 +214,55 @@ class SelectorWorkflowTimelineTest {
         assertTrue(others.all { it.alpha < 0.99f }, "落选的结果应该暗下去")
     }
 
+    // ------------------------------------------------------------------ 高优先级标记
+
+    @Test
+    fun priority_marks_are_hidden_until_the_gate_is_switched_on() {
+        val off = config()                                   // 没开高优先级等待
+        val on = config(priorityWait = 5.seconds, demoBothPaths = true)
+        val prio = assertNotNull(off.priorityIndex, "预设里本来就有一个高优先级源")
+
+        assertTrue(off.sources[prio].priority, "源身上的配置还在")
+        assertTrue(!off.showPriorityMarks, "但没开闸就不该画标记")
+        assertTrue(on.showPriorityMarks)
+
+        val offState = off.buildTimeline().let { it.sampleAt(it.duration / 2.0) }
+        assertTrue(
+            offState.sourceNodes.none { it.priority },
+            "没开闸时数据源节点上不该有高优先级菱形",
+        )
+        assertTrue(
+            offState.results.none { it.priority },
+            "没开闸时结果上也不该有",
+        )
+
+        val onState = on.buildTimeline().let { it.sampleAt(it.duration / 2.0) }
+        assertEquals(
+            listOf(prio), onState.sourceNodes.filter { it.priority }.map { it.index },
+            "开闸后只有那一个源带标记",
+        )
+        assertEquals(
+            off.sources[prio].resultCount,
+            onState.results.count { it.priority },
+            "它的每一条结果都带标记",
+        )
+    }
+
+    @Test
+    fun candidate_marks_do_not_depend_on_the_gate() {
+        // 候选圆点是选源规则的一部分, 跟高优先级开关无关
+        val off = config()
+        val on = config(priorityWait = 5.seconds, demoBothPaths = true)
+        assertEquals(
+            off.candidates.size,
+            off.buildTimeline().let { it.sampleAt(it.duration / 2.0) }.results.count { it.candidate },
+        )
+        assertEquals(
+            on.candidates.size,
+            on.buildTimeline().let { it.sampleAt(it.duration / 2.0) }.results.count { it.candidate },
+        )
+    }
+
     // ------------------------------------------------------------------ 计时器
 
     @Test

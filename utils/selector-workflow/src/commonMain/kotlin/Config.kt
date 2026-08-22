@@ -247,6 +247,14 @@ data class SelectorWorkflowConfig(
 
     val priorityIndex: Int? = sources.indexOfFirst { it.priority }.takeIf { it >= 0 }
 
+    /**
+     * 要不要画高优先级标记 (源节点上和它结果上的那个菱形).
+     *
+     * 没开 [SelectionSpec.priorityWait] 时, 源身上的 [SourceSpec.priority] 只是一个没生效的配置 ——
+     * 这一轮里它和别的源没有任何区别, 标出来只会让人以为它有特殊待遇.
+     */
+    val showPriorityMarks: Boolean = selection.priorityWait != null && priorityIndex != null
+
     /** [key] 在网格里的位置, 见 [results]. */
     fun cellOf(key: ResultKey): Int = results.indexOf(key)
 

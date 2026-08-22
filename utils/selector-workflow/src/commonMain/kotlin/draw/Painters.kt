@@ -74,6 +74,9 @@ internal fun DrawScope.drawSourceNode(
         )
     }
     drawCircle(color = color, radius = m.nodeRadius, center = center, alpha = node.alpha)
+    if (node.priority) {
+        drawPath(diamondPath(center, m.priorityNodeMarkRadius), palette.mark, alpha = node.alpha)
+    }
 }
 
 private const val HALO_FROM = 0.55f

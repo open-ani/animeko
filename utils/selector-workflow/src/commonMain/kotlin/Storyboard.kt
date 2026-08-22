@@ -177,7 +177,7 @@ class Storyboard internal constructor(
         internal val scale = floatTrack(1f)
 
         val candidate: Boolean get() = key.isCandidate(config)
-        val priority: Boolean get() = config.sources[key.source].priority
+        val priority: Boolean get() = config.showPriorityMarks && config.sources[key.source].priority
 
         /** 淡入. */
         fun appear(over: Duration = pacing.fade) {
@@ -422,7 +422,12 @@ class Storyboard internal constructor(
         config = config,
         duration = high + pacing.loopGap,
         phase = phaseTrack.build(),
-        nodes = sources.map { NodeTracks(it.index, it.alpha.build(), it.pulsing.build()) },
+        nodes = sources.map {
+            NodeTracks(
+                it.index, it.alpha.build(), it.pulsing.build(),
+                priority = config.showPriorityMarks && config.sources[it.index].priority,
+            )
+        },
         links = sourceLinks.map { LineTracks(it.progress.build(), it.alpha.build()) },
         chips = chips.map {
             ChipTracks(
