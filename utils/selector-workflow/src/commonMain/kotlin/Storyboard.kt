@@ -179,9 +179,11 @@ class Storyboard internal constructor(
         val candidate: Boolean get() = key.isCandidate(config)
         val priority: Boolean get() = config.showPriorityMarks && config.sources[key.source].priority
 
-        /** 淡入. */
-        fun appear(over: Duration = pacing.fade) {
-            alpha.ramp(now, over, 1f)
+        /**
+         * 淡入. [target] 小于 1 时直接淡入到那个亮度 —— 用于"选定之后才到的结果", 它们一出场就是落选的.
+         */
+        fun appear(over: Duration = pacing.fade, target: Float = 1f) {
+            alpha.ramp(now, over, target)
             touch(now + over)
         }
 
@@ -461,7 +463,7 @@ class Storyboard internal constructor(
         },
     )
 
-    internal companion object {
+    companion object {
         /** 一个"立刻"的极短时长, 用来做硬切而不产生同时刻重复帧. */
         val SNAP: Duration = 20.milliseconds
         const val DIM_ALPHA = 0.35f

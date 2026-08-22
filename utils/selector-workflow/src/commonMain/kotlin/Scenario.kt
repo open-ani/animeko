@@ -104,20 +104,11 @@ private fun Storyboard.playPass(pass: Pass, isLast: Boolean) {
     val p = config.pacing
     val passStart = now
 
-    // ---------------- 第一步: 搜源 ----------------
-    phase("search")
     val finish = pass.latencies.map { passStart + p.scaled(it) }
-    config.sources.indices.forEach { i ->
-        sources[i].beginSearch()
-        linkOf(i).draw(over = p.scaled(pass.latencies[i]))
-        at(finish[i]) {
-            sources[i].settle()
-            linkOf(i).mute()
-            chipsOf(i).forEach { it.appear() }
-        }
-    }
 
-    // ---------------- 第二步: 选源 ----------------
+    // ---------------- 第二步: 先把选源排出来 ----------------
+    // 得先知道什么时候选定, 第一步才知道哪些结果是"选完之后才到的" —— 那些该直接以暗色淡入,
+    // 而不是到点了才被 mute 拽下去 (mute 走 ramp, ramp 会截断后面的关键帧, 把 appear 抹掉)
     val prio = config.priorityIndex
     val gateStart = passStart
     val gateStop: Duration?
@@ -165,6 +156,24 @@ private fun Storyboard.playPass(pass: Pass, isLast: Boolean) {
         }
     }
 
+    // ---------------- 第一步: 搜源 ----------------
+    // 选定之后才返回的源, 它的结果直接淡入到暗色 —— 各按各的节奏出现, 不受选定影响
+    val decidedAt = plan.winner?.let { plan.winnerAt }
+    at(passStart) { phase("search") }
+    config.sources.indices.forEach { i ->
+        at(passStart) {
+            sources[i].beginSearch()
+            linkOf(i).draw(over = p.scaled(pass.latencies[i]))
+        }
+        val late = decidedAt != null && finish[i] >= decidedAt
+        at(finish[i]) {
+            sources[i].settle()
+            linkOf(i).mute()
+            chipsOf(i).forEach { it.appear(target = if (late) Storyboard.MUTED_ALPHA else 1f) }
+        }
+    }
+
+    // ---------------- 第二步: cursor 与选中 ----------------
     plan.cursors.forEach { planned ->
         val handle = cursor(planned.id, planned.owner)
         at(planned.stops.first().time) { handle.enter(planned.stops.first().cell, planned.peakAlpha) }
@@ -188,7 +197,9 @@ private fun Storyboard.playPass(pass: Pass, isLast: Boolean) {
         val chosen = selected
         chipOf(chosen).select()
         rippleAt(config.cellOf(chosen)).pulse()
-        chips.filter { it.key != chosen }.forEach { it.mute() }
+        // 只压已经露面的; 还没到的那些自己会以暗色淡入
+        chips.filter { it.key != chosen && finish[it.key.source] < plan.winnerAt }
+            .forEach { it.mute() }
     }
     seekAfter(plan.winnerAt + config.pacing.pop)
 

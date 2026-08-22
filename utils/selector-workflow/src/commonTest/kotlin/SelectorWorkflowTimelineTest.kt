@@ -197,6 +197,37 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
+    fun results_that_arrive_after_the_selection_keep_their_own_pace() {
+        // 回归: 选定时 mute 所有落选结果, 而 mute 走 ramp、ramp 会截断后面的关键帧,
+        // 于是"还没返回的源"的结果被连累着在选定那一刻一股脑冒出来.
+        val c = config(mode = SelectMode.Eager)
+        val timeline = c.buildTimeline()
+        val ready = c.readyTimes()
+        val selectAt = SelectionEngine.plan(
+            c, SelectMode.Eager, ready, c.pacing.cursorStep, c.pacing.cursorStep,
+        ).winnerAt
+
+        // 选定之后才返回的源
+        val lateSource = c.sources.indices.first { ready[it] > selectAt }
+        val lateKeys = c.results.filter { it.source == lateSource }.toSet()
+        assertTrue(lateKeys.isNotEmpty())
+
+        // 选定的那一刻 (以及之后的一小会儿) 它们必须还没出现
+        val justAfter = timeline.sampleAt(selectAt + c.pacing.fade * 0.5)
+        justAfter.results.filter { it.key in lateKeys }.forEach {
+            assertTrue(it.alpha < 0.05f, "${it.key} 在选定后立刻就冒出来了: alpha=${it.alpha}")
+        }
+
+        // 到了它自己该出现的时候才出现, 而且一出场就是落选的暗色
+        val ownTime = ready[lateSource] + c.pacing.fade
+        val atOwnTime = timeline.sampleAt(ownTime)
+        atOwnTime.results.filter { it.key in lateKeys }.forEach {
+            assertTrue(it.alpha > 0.3f, "${it.key} 到点了却没出现: alpha=${it.alpha}")
+            assertTrue(it.alpha < 0.6f, "${it.key} 是选定之后才到的, 该以暗色出场: alpha=${it.alpha}")
+        }
+    }
+
+    @Test
     fun the_selected_chip_turns_green_and_the_others_dim() {
         val c = config()
         val timeline = c.buildTimeline()
