@@ -113,15 +113,33 @@ class WorkflowLayout internal constructor(
     /** 每条请求的横条宽度, 在 [listViewport] 里按行号取. */
     val rowBarWidths: List<Float>,
     val priorityClockCenter: Offset,
-    val interceptClockCenter: Offset,
-    /** 两个读数的锚点: 文字左端的竖直中心. */
+    /** 读数的锚点: 文字左端的竖直中心. */
     val priorityReadoutAnchor: Offset,
-    val interceptReadoutAnchor: Offset,
-    /** 第三步计时器那块浮层. 它压在请求列表上, 所以需要一层自己的底与描边. */
-    val interceptOverlay: Rect,
-    /** 浮层里读数占的宽度, 由配置的秒数有几位字符推出来. */
-    val interceptReadoutWidth: Float,
+    /** 第三步计时器浮层的右上角. 浮层贴着它长, 宽度随读数变, 所以只有这个角是定的. */
+    val interceptOverlayAnchor: Offset,
 ) {
+    /**
+     * 第三步计时器的浮层. 宽度按 **当前这一帧的读数** 算 —— 读数从 `0.0s` 数到 `12.0s`,
+     * 位数一变浮层就跟着变宽, 因为它贴的是右上角, 所以只往左长.
+     */
+    fun interceptOverlay(readoutSeconds: Float): ClockOverlay = with(metrics) {
+        val readoutW = readoutTextWidth(readoutSeconds, readoutHeight, readoutCharWidth)
+        val height = clockRadius * 2 + overlayPadding * 2
+        val width = overlayPadding * 2 + clockRadius * 2 + readoutGap + readoutW
+        val bounds = Rect(
+            interceptOverlayAnchor.x - width,
+            interceptOverlayAnchor.y,
+            interceptOverlayAnchor.x,
+            interceptOverlayAnchor.y + height,
+        )
+        val clockCenter = Offset(bounds.left + overlayPadding + clockRadius, bounds.center.y)
+        ClockOverlay(
+            bounds = bounds,
+            clockCenter = clockCenter,
+            readoutAnchor = Offset(clockCenter.x + clockRadius + readoutGap, bounds.center.y),
+            readoutWidth = readoutW,
+        )
+    }
     /** 第 [index] 行请求在 **未滚动** 时的行内基线 (行中心 y). */
     fun rowCenterY(index: Int): Float {
         val inset = (listViewport.height - config.resolve.visibleRows * metrics.rowHeight) / 2f
@@ -222,19 +240,11 @@ class WorkflowLayout internal constructor(
             )
 
             // 第三步的计时器做成浮层, 贴在内容区的右上角: [表][gap][读数].
-            // 宽度跟着读数走 —— 配 8 秒是 "8.0s", 配 120 秒是 "120.0s", 浮层自己变宽
-            val budgetSeconds = config.resolve.budget.inWholeMilliseconds / 1000f
-            val readoutW = readoutTextWidth(budgetSeconds, readoutHeight, readoutCharWidth)
-            val overlayHeight = clockRadius * 2 + overlayPadding * 2
-            val overlayWidth = overlayPadding * 2 + clockRadius * 2 + readoutGap + readoutW
-            val overlay = Rect(
-                listViewport.right - overlayInset - overlayWidth,
-                listViewport.top + overlayInset,
+            // 宽度不在这里定 —— 见 interceptOverlay(), 它按当前这一帧的读数算
+            val overlayAnchor = Offset(
                 listViewport.right - overlayInset,
-                listViewport.top + overlayInset + overlayHeight,
+                listViewport.top + overlayInset,
             )
-            val clockCenter = Offset(overlay.left + overlayPadding + clockRadius, overlay.center.y)
-            val readoutLeft = clockCenter.x + clockRadius + readoutGap
 
             val barSpan = listViewport.right - (listViewport.left + windowInset * 2f + rowIconRadius) - windowInset
             val rowBarWidths = List(config.resolve.requestCount) { i ->
@@ -256,21 +266,17 @@ class WorkflowLayout internal constructor(
                 listViewport = listViewport,
                 rowBarWidths = rowBarWidths,
                 priorityClockCenter = Offset(nodeColumnX, outerPadding),
-                interceptClockCenter = clockCenter,
                 priorityReadoutAnchor = Offset(nodeColumnX + clockRadius + readoutGap, outerPadding),
-                interceptReadoutAnchor = Offset(readoutLeft, overlay.center.y),
-                interceptOverlay = overlay,
-                interceptReadoutWidth = readoutW,
+                interceptOverlayAnchor = overlayAnchor,
             )
         }
 
         /**
-         * 读数最宽的时候占多宽. 读数从 0.0 数到配置的秒数, 所以最宽的就是配置值本身那一行.
+         * 这一行读数占多宽. 只有数字、小数点和 s, 字宽基本固定, 所以按字符数估就够准,
+         * 不必把 TextMeasurer 塞进布局层.
          */
-        internal fun readoutTextWidth(budgetSeconds: Float, height: Float, charWidth: Float): Float {
-            val chars = maxOf(formatSeconds(0f).length, formatSeconds(budgetSeconds).length)
-            return chars * height * charWidth
-        }
+        internal fun readoutTextWidth(seconds: Float, height: Float, charWidth: Float): Float =
+            formatSeconds(seconds).length * height * charWidth
 
         private const val CHROME_DOT_COUNT = 3
         private const val CHROME_DOT_GAP = 2f
@@ -284,3 +290,14 @@ class WorkflowLayout internal constructor(
         private fun pseudoRandom(index: Int): Float = ((index * 37 + 11) % 23) / 22f
     }
 }
+
+/**
+ * 一帧里第三步计时器浮层的几何.
+ */
+@Immutable
+data class ClockOverlay(
+    val bounds: Rect,
+    val clockCenter: Offset,
+    val readoutAnchor: Offset,
+    val readoutWidth: Float,
+)

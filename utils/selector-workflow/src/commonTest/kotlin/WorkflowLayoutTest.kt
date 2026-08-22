@@ -101,7 +101,7 @@ class WorkflowLayoutTest {
     @Test
     fun the_intercept_clock_floats_in_the_top_right_of_the_content_area() {
         val layout = layoutOf(SelectorWorkflowPresets.threeSources())
-        val overlay = layout.interceptOverlay
+        val overlay = layout.interceptOverlay(3.4f).bounds
         val list = layout.listViewport
         assertTrue(overlay.left > list.left && overlay.right < list.right, "浮层该整个在内容区里")
         assertTrue(overlay.top > list.top && overlay.bottom < list.bottom, "浮层该整个在内容区里")
@@ -110,48 +110,41 @@ class WorkflowLayoutTest {
             "浮层离右缘和离顶缘该一样远 —— 它贴的是右上角",
         )
         // 表在左、读数在右, 两个都在浮层里
-        assertTrue(
-            layout.interceptClockCenter.x - metrics.clockRadius >= overlay.left - 0.01f,
-            "表该在浮层里",
-        )
-        assertTrue(
-            layout.interceptReadoutAnchor.x >= layout.interceptClockCenter.x + metrics.clockRadius,
-            "读数该在表的右边",
-        )
-        assertTrue(
-            layout.interceptReadoutAnchor.x + layout.interceptReadoutWidth <= overlay.right + 0.01f,
-            "读数该在浮层里",
-        )
-        assertEquals(overlay.center.y, layout.interceptClockCenter.y, 0.01f)
-        assertEquals(overlay.center.y, layout.interceptReadoutAnchor.y, 0.01f)
+        val o = layout.interceptOverlay(3.4f)
+        assertTrue(o.clockCenter.x - metrics.clockRadius >= overlay.left - 0.01f, "表该在浮层里")
+        assertTrue(o.readoutAnchor.x >= o.clockCenter.x + metrics.clockRadius, "读数该在表的右边")
+        assertTrue(o.readoutAnchor.x + o.readoutWidth <= overlay.right + 0.01f, "读数该在浮层里")
+        assertEquals(overlay.center.y, o.clockCenter.y, 0.01f)
+        assertEquals(overlay.center.y, o.readoutAnchor.y, 0.01f)
     }
 
     @Test
-    fun the_overlay_width_follows_the_configured_seconds() {
-        fun overlayOf(seconds: Int) = layoutOf(
-            SelectorWorkflowPresets.threeSources(interceptBudget = seconds.seconds),
-        )
-
-        val short = overlayOf(8)     // "8.0s"
-        val long = overlayOf(120)    // "120.0s"
-        assertTrue(
-            long.interceptReadoutWidth > short.interceptReadoutWidth,
-            "读数位数多了浮层该变宽",
-        )
+    fun the_overlay_width_follows_the_readout_of_this_frame() {
+        val layout = layoutOf(SelectorWorkflowPresets.threeSources())
+        val short = layout.interceptOverlay(9.9f)    // "9.9s"
+        val long = layout.interceptOverlay(10.0f)    // "10.0s" —— 多一位
+        assertTrue(long.readoutWidth > short.readoutWidth, "读数多一位, 浮层该变宽")
         assertEquals(
-            long.interceptReadoutWidth - short.interceptReadoutWidth,
-            long.interceptOverlay.width - short.interceptOverlay.width,
+            long.readoutWidth - short.readoutWidth,
+            long.bounds.width - short.bounds.width,
             0.01f,
             "浮层只该按读数宽度那部分变宽",
         )
         assertEquals(
-            short.interceptOverlay.right, long.interceptOverlay.right, 0.01f,
+            short.bounds.right, long.bounds.right, 0.01f,
             "浮层贴的是右上角, 变宽只往左长",
         )
-        // 一位数和两位数的秒数读数一样宽 ("8.0s" 与 "12.0s" 差一位)
-        assertEquals(
-            overlayOf(9).interceptReadoutWidth, overlayOf(8).interceptReadoutWidth, 0.01f,
-        )
+        // 位数一样就一样宽 —— 不会因为数字不同抖动
+        assertEquals(layout.interceptOverlay(1.1f).bounds, layout.interceptOverlay(8.7f).bounds)
+    }
+
+    @Test
+    fun the_overlay_does_not_depend_on_the_configured_budget() {
+        // 宽度只看这一帧显示什么, 与配的秒数无关
+        val a = layoutOf(SelectorWorkflowPresets.threeSources(interceptBudget = 8.seconds))
+        val b = layoutOf(SelectorWorkflowPresets.threeSources(interceptBudget = 120.seconds))
+        assertEquals(a.interceptOverlay(3.4f).bounds, b.interceptOverlay(3.4f).bounds)
+        assertEquals(a.interceptOverlayAnchor, b.interceptOverlayAnchor)
     }
 
     @Test

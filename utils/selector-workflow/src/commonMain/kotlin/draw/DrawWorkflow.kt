@@ -61,12 +61,14 @@ private fun DrawScope.drawContent(
     // 第三步: 窗口与请求列表 (在最底下, 交棒线会压过来)
     drawBrowserWindow(state.window, layout, palette)
     drawRequestList(state.requestRows, state.scroll, layout, palette)
-    // 计时器浮在请求列表之上, 所以要在列表之后画, 而且自带一层底
+    // 计时器浮在请求列表之上, 所以要在列表之后画, 而且自带一层底.
+    // 浮层的宽度按这一帧的读数算, 读数位数一变它就跟着变宽
     val intercept = state.clocks.getValue(ClockId.InterceptBudget)
-    drawClockOverlay(intercept, layout, palette)
+    val overlay = layout.interceptOverlay(intercept.elapsedSeconds)
+    drawClockOverlay(intercept, overlay.bounds, layout, palette)
     drawClock(
         intercept,
-        layout.interceptClockCenter, layout.interceptReadoutAnchor, layout, palette,
+        overlay.clockCenter, overlay.readoutAnchor, layout, palette,
         textMeasurer, readoutStyle,
     )
 

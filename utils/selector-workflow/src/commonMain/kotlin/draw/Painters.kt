@@ -320,12 +320,12 @@ private const val TICK_INSET = 1.4f
  */
 internal fun DrawScope.drawClockOverlay(
     clock: ClockState,
+    rect: Rect,
     layout: WorkflowLayout,
     palette: WorkflowPalette,
 ) {
     if (clock.alpha <= 0.001f) return
     val m = layout.metrics
-    val rect = layout.interceptOverlay
     val radius = CornerRadius(m.overlayRadius)
     drawRoundRect(palette.surfaceHigh, rect.topLeft, rect.size, radius, alpha = clock.alpha)
     drawRoundRect(
