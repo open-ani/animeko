@@ -92,11 +92,12 @@ internal class ChipTracks(
 }
 
 internal class RippleTracks(
-    private val cell: Int,
+    private val target: RippleTarget,
+    private val index: Int,
     private val scale: Track<Float>,
     private val alpha: Track<Float>,
 ) {
-    fun sample(t: Duration) = RippleState(cell, scale.valueAt(t), alpha.valueAt(t))
+    fun sample(t: Duration) = RippleState(target, index, scale.valueAt(t), alpha.valueAt(t))
 }
 
 internal class CursorTracks(
@@ -113,8 +114,11 @@ internal class RowTracks(
     private val alpha: Track<Float>,
     private val icon: Track<RequestIcon>,
     private val tone: Track<RequestTone>,
+    private val iconScale: Track<Float>,
 ) {
-    fun sample(t: Duration) = RequestRowState(index, alpha.valueAt(t), icon.valueAt(t), tone.valueAt(t))
+    fun sample(t: Duration) = RequestRowState(
+        index, alpha.valueAt(t), icon.valueAt(t), tone.valueAt(t), iconScale.valueAt(t),
+    )
 }
 
 internal class ClockTracks(

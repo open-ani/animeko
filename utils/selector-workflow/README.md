@@ -41,11 +41,11 @@ TimelinePlayer / ViewModel      ╲  drawSelectorWorkflow(state, layout, palette
 | 1 | `SourceNodeState` | 第一步 | `alpha`、`pulsing` |
 | 2 | `LineState` | 第一步的连线 / 第二步末尾的交棒线 | `progress`、`alpha` |
 | 3 | `ResultChipState` | 第二步 | `alpha`、`tone`、`scale` |
-| 4 | `RippleState` | 第二步 | `scale`、`alpha` |
+| 4 | `RippleState` | 第二步选中 / 第三步命中 | `scale`、`alpha`（`target` 决定锚在结果块还是请求行） |
 | 5 | `CursorState` | 第二步 | `cell`（浮点，可插值）、`alpha` |
 | 6 | `ClockState` | 第一/二步、第三步各一个 | `sweep`、`alpha`、`tone`、`overlayAlpha` |
 | 7 | `WindowState` | 第三步 | `tone` |
-| 8 | `RequestRowState` | 第三步 | `alpha`、`icon`、`tone` |
+| 8 | `RequestRowState` | 第三步 | `alpha`、`icon`、`tone`、`iconScale` |
 | 9 | `ScrollState` | 第三步 | `rowOffset` |
 
 结果容器边框、mac 三圆点、地址栏是静态装饰，不算可控制单元。

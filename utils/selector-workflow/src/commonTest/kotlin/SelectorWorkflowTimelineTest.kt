@@ -514,6 +514,45 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
+    fun the_hit_row_gets_the_same_treatment_as_a_selected_result() {
+        // 第三步命中该和第二步选中一样: 变色 + 图标弹一下 + 扩一圈涟漪
+        val c = config()
+        val timeline = c.buildTimeline()
+        val hitAt = firstTimeWhen(timeline) { it.requestRows.any { r -> r.tone == RequestTone.Hit } }
+        assertNotNull(hitAt)
+
+        val popped = firstTimeWhen(timeline, from = hitAt - c.pacing.pop) { s ->
+            s.requestRows.any { it.index == c.resolve.hitRow && it.iconScale > 1.05f }
+        }
+        assertNotNull(popped, "命中的图标该弹一下")
+
+        val rippled = firstTimeWhen(timeline, from = hitAt - c.pacing.pop) { s ->
+            s.ripples.any { it.target == RippleTarget.RequestRow && it.alpha > 0.5f }
+        }
+        assertNotNull(rippled, "命中该扩一圈涟漪")
+
+        // 其它行不该跟着弹
+        val atPop = timeline.sampleAt(popped)
+        atPop.requestRows.filter { it.index != c.resolve.hitRow }.forEach {
+            assertEquals(1f, it.iconScale, 1e-3f, "第 ${it.index} 行不该跟着弹")
+        }
+    }
+
+    @Test
+    fun the_two_ripples_are_the_same_unit_anchored_differently() {
+        val timeline = config().buildTimeline()
+        val targets = buildSet {
+            var t = Duration.ZERO
+            val step = timeline.duration / 400.0
+            while (t <= timeline.duration) {
+                timeline.sampleAt(t).ripples.filter { it.alpha > 0.5f }.forEach { add(it.target) }
+                t += step
+            }
+        }
+        assertEquals(setOf(RippleTarget.Result, RippleTarget.RequestRow), targets)
+    }
+
+    @Test
     fun timeout_run_has_no_media_row_at_all() {
         val c = config(outcomes = ALL_OUTCOMES)
         val timeline = c.buildTimeline()

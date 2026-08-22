@@ -16,6 +16,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -170,14 +171,14 @@ private fun DrawScope.drawChipMarks(
 
 // ------------------------------------------------------------------ 单元 4: 涟漪
 
-internal fun DrawScope.drawRipple(
+internal fun DrawScope.drawResultRipple(
     ripple: RippleState,
     layout: WorkflowLayout,
     palette: WorkflowPalette,
 ) {
     if (ripple.alpha <= 0.001f) return
     val m = layout.metrics
-    val rect = layout.cells.getOrNull(ripple.cell) ?: return
+    val rect = layout.cells.getOrNull(ripple.index) ?: return
     scaleAbout(ripple.scale, rect.center) {
         drawRoundRect(
             color = palette.success,
@@ -188,6 +189,27 @@ internal fun DrawScope.drawRipple(
             style = Stroke(width = m.strokeMedium),
         )
     }
+}
+
+/**
+ * 命中那条请求的涟漪. 与结果块那圈是同一个动作, 只是锚在请求行的图标上 ——
+ * 行本身太宽, 按同样的倍数扩会整个冲出可视区.
+ */
+private fun DrawScope.drawRequestRipple(
+    ripple: RippleState,
+    layout: WorkflowLayout,
+    palette: WorkflowPalette,
+) {
+    if (ripple.alpha <= 0.001f) return
+    val m = layout.metrics
+    val center = Offset(layout.rowIconCenterX, layout.rowCenterY(ripple.index))
+    drawCircle(
+        color = palette.success,
+        radius = m.rowIconRadius * ripple.scale,
+        center = center,
+        alpha = ripple.alpha,
+        style = Stroke(width = m.strokeMedium),
+    )
 }
 
 // ------------------------------------------------------------------ 单元 5: 遍历 cursor
@@ -379,14 +401,17 @@ internal fun DrawScope.drawBrowserWindow(
 internal fun DrawScope.drawRequestList(
     rows: List<RequestRowState>,
     scroll: ScrollState,
+    ripples: List<RippleState>,
     layout: WorkflowLayout,
     palette: WorkflowPalette,
 ) {
     val m = layout.metrics
     val viewport = layout.listViewport
+    // 涟漪跟着列表一起滚, 所以画在同一个变换里
     clipRect(viewport.left, viewport.top, viewport.right, viewport.bottom) {
         translate(top = -scroll.rowOffset * m.rowHeight) {
             rows.forEach { row -> drawRequestRow(row, layout, palette) }
+            ripples.forEach { drawRequestRipple(it, layout, palette) }
         }
     }
 }
@@ -403,13 +428,17 @@ private fun DrawScope.drawRequestRow(
     val hit = row.tone == RequestTone.Hit
     val iconColor = if (hit) palette.success else palette.requestIcon
 
-    when (row.icon) {
-        RequestIcon.Request -> drawCircle(iconColor, m.rowIconRadius, iconCenter, alpha = row.alpha)
-        RequestIcon.Media -> drawPath(
-            path = playTrianglePath(iconCenter, m.rowIconRadius),
-            color = iconColor,
-            alpha = row.alpha,
-        )
+    scaleAbout(row.iconScale, iconCenter) {
+        when (row.icon) {
+            RequestIcon.Request -> drawCircle(iconColor, m.rowIconRadius, iconCenter, alpha = row.alpha)
+            RequestIcon.Media -> drawPlayTriangle(
+                center = iconCenter,
+                radius = m.rowIconRadius,
+                corner = m.rowIconCornerRadius,
+                color = iconColor,
+                alpha = row.alpha,
+            )
+        }
     }
     val barWidth = layout.rowBarWidths.getOrElse(row.index) { m.chipWidth }
     drawRoundRect(
@@ -450,9 +479,29 @@ private fun diamondPath(center: Offset, radius: Float): Path = Path().apply {
     close()
 }
 
-private fun playTrianglePath(center: Offset, radius: Float): Path = Path().apply {
-    moveTo(center.x - radius * 0.85f, center.y - radius)
-    lineTo(center.x + radius * 1.15f, center.y)
-    lineTo(center.x - radius * 0.85f, center.y + radius)
-    close()
+/**
+ * 圆角的播放三角.
+ *
+ * 先按 `radius - corner` 画一个小一圈的三角形填上, 再用宽度 `2 * corner`、圆角连接的描边把它撑回原尺寸 ——
+ * 描边的圆角 join 正好把三个尖角磨圆. 比手算三段圆弧简单, 结果一样.
+ */
+private fun DrawScope.drawPlayTriangle(
+    center: Offset,
+    radius: Float,
+    corner: Float,
+    color: Color,
+    alpha: Float,
+) {
+    val r = (radius - corner).coerceAtLeast(0.1f)
+    val path = Path().apply {
+        moveTo(center.x - r * 0.85f, center.y - r)
+        lineTo(center.x + r * 1.15f, center.y)
+        lineTo(center.x - r * 0.85f, center.y + r)
+        close()
+    }
+    drawPath(path, color, alpha = alpha)
+    drawPath(
+        path, color, alpha = alpha,
+        style = Stroke(width = corner * 2, cap = StrokeCap.Round, join = StrokeJoin.Round),
+    )
 }

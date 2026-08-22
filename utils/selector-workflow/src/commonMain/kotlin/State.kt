@@ -113,10 +113,22 @@ data class ResultChipState(
     val priority: Boolean,
 )
 
-/** 选中时从结果块上扩散出去的涟漪. */
+/** 涟漪锚在什么上. */
+enum class RippleTarget {
+    /** 第二步的结果块, [RippleState.index] 是格号. */
+    Result,
+
+    /** 第三步命中的那条请求, [RippleState.index] 是行号. */
+    RequestRow,
+}
+
+/**
+ * 选中 / 命中时扩散出去的涟漪. 第二步和第三步是同一个单元, 只是锚的东西不同.
+ */
 @Immutable
 data class RippleState(
-    val cell: Int,
+    val target: RippleTarget,
+    val index: Int,
     val scale: Float,
     val alpha: Float,
 )
@@ -218,6 +230,8 @@ data class RequestRowState(
     val alpha: Float,
     val icon: RequestIcon,
     val tone: RequestTone,
+    /** 命中那一下图标弹一弹, 与第二步选中结果块时是同一个动作. */
+    val iconScale: Float,
 )
 
 /**

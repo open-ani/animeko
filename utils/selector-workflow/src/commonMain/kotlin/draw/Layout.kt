@@ -51,6 +51,8 @@ data class WorkflowMetrics(
     /** 请求行. */
     val rowHeight: Float = 10f,
     val rowIconRadius: Float = 3.5f,
+    /** 播放三角的圆角. */
+    val rowIconCornerRadius: Float = 1.1f,
     val rowBarHeight: Float = 4f,
     /** 计时器. */
     val clockRadius: Float = 6f,

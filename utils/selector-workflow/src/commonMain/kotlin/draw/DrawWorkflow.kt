@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import me.him188.ani.utils.selectorworkflow.ClockId
+import me.him188.ani.utils.selectorworkflow.RippleTarget
 import me.him188.ani.utils.selectorworkflow.SelectorWorkflowState
 import kotlin.math.min
 
@@ -60,7 +61,11 @@ private fun DrawScope.drawContent(
 ) {
     // 第三步: 窗口与请求列表 (在最底下, 交棒线会压过来)
     drawBrowserWindow(state.window, layout, palette)
-    drawRequestList(state.requestRows, state.scroll, layout, palette)
+    drawRequestList(
+        state.requestRows, state.scroll,
+        state.ripples.filter { it.target == RippleTarget.RequestRow },
+        layout, palette,
+    )
     // 计时器浮在请求列表之上, 所以要在列表之后画, 而且自带一层底.
     // 浮层的宽度按这一帧的读数算, 读数位数一变它就跟着变宽
     val intercept = state.clocks.getValue(ClockId.InterceptBudget)
@@ -75,7 +80,8 @@ private fun DrawScope.drawContent(
     // 第二步: 结果容器、结果、涟漪、cursor
     drawResultContainer(layout, palette)
     state.results.forEach { drawResultChip(it, layout, palette) }
-    state.ripples.forEach { drawRipple(it, layout, palette) }
+    state.ripples.filter { it.target == RippleTarget.Result }
+        .forEach { drawResultRipple(it, layout, palette) }
     state.cursors.forEach { drawCursor(it, layout, palette) }
 
     // 交棒线

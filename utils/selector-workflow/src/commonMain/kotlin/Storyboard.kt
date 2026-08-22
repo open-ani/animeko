@@ -53,7 +53,12 @@ class Storyboard internal constructor(
     val sources: List<SourceHandle> = config.sources.indices.map { SourceHandle(it) }
     private val sourceLinks: List<LineHandle> = config.sources.indices.map { LineHandle() }
     val chips: List<ChipHandle> = config.results.mapIndexed { cell, key -> ChipHandle(key, cell) }
-    val ripples: List<RippleHandle> = config.candidates.map { RippleHandle(config.cellOf(it)) }
+    val ripples: List<RippleHandle> = config.candidates.map {
+        RippleHandle(RippleTarget.Result, config.cellOf(it))
+    }
+
+    /** 第三步命中那一行的涟漪. 与第二步选中时是同一个单元. */
+    val requestRipple = RippleHandle(RippleTarget.RequestRow, config.resolve.hitRow)
     val handoff = LineHandle()
     val window = WindowHandle()
     val requestList = RequestListHandle()
@@ -76,7 +81,7 @@ class Storyboard internal constructor(
 
     fun chipOf(key: ResultKey): ChipHandle = chips.first { it.key == key }
 
-    fun rippleAt(cell: Int): RippleHandle = ripples.first { it.cell == cell }
+    fun rippleAt(cell: Int): RippleHandle = ripples.first { it.index == cell }
 
     // ------------------------------------------------------------------ 时间控制
 
@@ -220,8 +225,8 @@ class Storyboard internal constructor(
 
     // ------------------------------------------------------------------ 单元 4: 涟漪
 
-    /** 选中涟漪. */
-    inner class RippleHandle internal constructor(val cell: Int) {
+    /** 选中 / 命中涟漪. */
+    inner class RippleHandle internal constructor(val target: RippleTarget, val index: Int) {
         internal val scale = floatTrack(RIPPLE_FROM)
         internal val alpha = floatTrack(0f)
 
@@ -369,6 +374,7 @@ class Storyboard internal constructor(
             stepTrack(if (index == config.resolve.hitRow) RequestIcon.Media else RequestIcon.Request)
         }
         internal val rowTone = List(config.resolve.requestCount) { stepTrack(RequestTone.Idle) }
+        internal val rowIconScale = List(config.resolve.requestCount) { floatTrack(1f) }
         internal val scroll = floatTrack(0f)
 
         /**
@@ -403,16 +409,23 @@ class Storyboard internal constructor(
             touch(now + over)
         }
 
-        /** 命中: 那一行转绿. */
+        /** 命中: 那一行转绿, 图标弹一下, 再扩一圈涟漪 —— 与第二步选中结果块是同一套动作. */
         fun hit(over: Duration = pacing.fade * 0.7) {
-            rowTone[config.resolve.hitRow].key(now + over, RequestTone.Hit)
-            touch(now + over)
+            val row = config.resolve.hitRow
+            rowTone[row].key(now + over, RequestTone.Hit)
+            val scale = rowIconScale[row]
+            scale.key(now, 1f, Easings.EmphasizedDecelerate)
+            scale.key(now + pacing.pop * 0.4, HIT_POP, Easings.EmphasizedDecelerate)
+            scale.key(now + pacing.pop, 1f)
+            requestRipple.pulse()
+            touch(now + pacing.pop)
         }
 
         /** 清空列表, 滚动位置归零. */
         fun clear(over: Duration = pacing.fade) {
             rowAlpha.forEach { it.ramp(now, over, 0f) }
             rowTone.forEach { it.key(now + over, RequestTone.Idle) }
+            rowIconScale.forEach { it.key(now + over, 1f) }
             scroll.ramp(now, over, 0f)
             touch(now + over)
         }
@@ -437,7 +450,9 @@ class Storyboard internal constructor(
                 it.alpha.build(), it.tone.build(), it.scale.build(),
             )
         },
-        ripples = ripples.map { RippleTracks(it.cell, it.scale.build(), it.alpha.build()) },
+        ripples = (ripples + requestRipple).map {
+            RippleTracks(it.target, it.index, it.scale.build(), it.alpha.build())
+        },
         cursors = cursorHandles.values.map {
             CursorTracks(it.id, it.owner, it.cell.build(), it.alpha.build())
         },
@@ -449,6 +464,7 @@ class Storyboard internal constructor(
                 requestList.rowAlpha[i].build(),
                 requestList.rowIcon[i].build(),
                 requestList.rowTone[i].build(),
+                requestList.rowIconScale[i].build(),
             )
         },
         scroll = requestList.scroll.build(),
@@ -469,6 +485,7 @@ class Storyboard internal constructor(
         const val DIM_ALPHA = 0.35f
         const val MUTED_ALPHA = 0.4f
         const val SELECT_POP = 1.16f
+        const val HIT_POP = 1.3f
         const val RIPPLE_FROM = 0.9f
         const val RIPPLE_TO = 1.9f
         const val RIPPLE_ALPHA = 0.9f
