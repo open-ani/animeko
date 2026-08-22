@@ -1146,6 +1146,7 @@
     <string name="exploration_search_filter_source">Source</string>
     <string name="exploration_search_filter_technology">Technology</string>
     <string name="exploration_search_filter_custom">Custom</string>
+    <string name="exploration_search_filter_all">All</string>
     <string name="settings_app_background_running">Background running</string>
     <string name="settings_app_background_running_description">Caching downloads require the app to keep running in the background</string>
     <string name="settings_app_ignore_battery_optimizations">Ignore battery optimizations</string>
