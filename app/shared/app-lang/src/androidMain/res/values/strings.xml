@@ -1153,6 +1153,8 @@
     <string name="settings_app_notification_settings">Notification settings</string>
     <string name="settings_app_open_settings">Open settings</string>
     <string name="settings_app_danmaku_refresh_rate">Danmaku refresh rate</string>
+    <string name="settings_player_exoplayer_preinit_effect_graph">Preload video enhancement shaders</string>
+    <string name="settings_player_exoplayer_preinit_effect_graph_desc">When enabled, video enhancement shaders are loaded even if video enhancement is disabled by default, allowing changes to video enhancement options to take effect immediately. Otherwise, you may need to restart playback for them to take effect.\nDisable this option if the screen turns black or system features (such as motion compensation) stop working.</string>
     <string name="settings_log_share_today_log_file">Share today\'s log file</string>
     <string name="settings_log_share_file">Share log file</string>
     <string name="settings_log_copy_today_log_content">Copy today\'s log content (large)</string>

@@ -12,20 +12,32 @@
 package me.him188.ani.app.videoplayer.videoenhancement
 
 import androidx.media3.exoplayer.ExoPlayer
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import me.him188.ani.app.data.models.preference.PlayerKernelConfig
 import org.openani.mediamp.MediampPlayer
 import kotlin.coroutines.CoroutineContext
 
 actual fun createVideoEnhancementController(
     player: MediampPlayer,
+    playerKernelConfig: Flow<PlayerKernelConfig>,
     parentCoroutineContext: CoroutineContext,
 ): VideoEnhancementController? {
     val exoPlayer = player.impl as? ExoPlayer ?: return null
-    return ExoPlayerVideoEnhancementController(player, exoPlayer, parentCoroutineContext)
+    return ExoPlayerVideoEnhancementController(
+        player,
+        exoPlayer,
+        playerKernelConfig.map { it.exoPlayerInitEffectGraphInAdvance },
+        parentCoroutineContext,
+    )
 }
 
 private class ExoPlayerVideoEnhancementController(
     player: MediampPlayer,
     private val exoPlayer: ExoPlayer,
+    preinitVideoEffects: Flow<Boolean>,
     parentCoroutineContext: CoroutineContext,
 ) : BaseVideoEnhancementController(player, parentCoroutineContext) {
     private var appliedMode = VideoEnhancementMode.OFF
@@ -36,7 +48,11 @@ private class ExoPlayerVideoEnhancementController(
     init {
         // Media3 requires the effect graph to exist before the first prepare in order to
         // support switching effects while playback is active.
-        exoPlayer.setVideoEffects(emptyList())
+        scope.launch {
+            if (preinitVideoEffects.first()) {
+                exoPlayer.setVideoEffects(emptyList())
+            }
+        }
         startObserving()
     }
 
