@@ -18,7 +18,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 
 @Stable
-internal class CacheSelectionState(
+class CacheSelectionState(
     initialInSelection: Boolean,
     initialSelectedIds: Set<String>,
 ) {
@@ -65,7 +65,7 @@ internal class CacheSelectionState(
 }
 
 @Composable
-internal fun rememberCacheSelectionState(
+fun rememberCacheSelectionState(
     initialInSelection: Boolean = false,
     initialSelectedIds: Set<String> = emptySet(),
 ): CacheSelectionState {

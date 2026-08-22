@@ -887,7 +887,7 @@
     <string name="cache_subject_manage_all">管理全部缓存</string>
     <string name="cache_unknown">未知</string>
     <string name="cache_management_select_item_for_details">选择一个条目查看具体缓存</string>
-    <string name="cache_management_selected_count">%1$d 个已选</string>
+    <string name="cache_management_selected_count">已选 %1$d</string>
     <string name="cache_management_exit_selection">退出选择</string>
     <string name="cache_management_select_all">选择所有</string>
     <string name="cache_management_delete_selected">删除所选</string>
@@ -899,6 +899,12 @@
     <string name="cache_management_delete_cache_confirmation">删除后不可恢复，确认删除吗？</string>
     <string name="cache_management_finished_count">%1$d/%2$d 已完成</string>
     <string name="cache_management_downloading_count">%1$d 个下载中</string>
+    <string name="cache_subject_pause_all">全部暂停</string>
+    <string name="cache_subject_resume_all">全部继续</string>
+    <string name="cache_management_selection_downloading_count">含 %1$d 个下载中</string>
+    <string name="cache_management_select_all_action">全选</string>
+    <string name="cache_management_deselect_all">取消全选</string>
+    <string name="cache_episode_status_paused">已暂停</string>
     <string name="cache_management_episode_label">第%1$d话 · %2$s</string>
     <string name="cache_management_more_actions">更多操作</string>
     <string name="cache_management_play">播放</string>

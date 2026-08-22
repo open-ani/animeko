@@ -74,9 +74,12 @@ val stabilityInputTaskNames = listOf(
     "compileTestKotlinDesktop",
 )
 tasks.matching {
-    it.name.endsWith("StabilityCheck") || it.name.endsWith("StabilityDump")
+    // 任务本名为小写开头的 "stabilityCheck" / "stabilityDump", 需要忽略大小写才能匹配到.
+    it.name.endsWith("stabilityCheck", ignoreCase = true) || it.name.endsWith("stabilityDump", ignoreCase = true)
 }.configureEach {
     stabilityInputTaskNames.forEach { taskName ->
-        dependsOn(tasks.matching { task -> task.name == taskName })
+        // 只约束顺序而不强制执行: 这些编译任务如果与 stabilityCheck 同图, 必须先运行
+        // (它们会写入 build/stability); 但 stabilityCheck 不应主动触发它们.
+        mustRunAfter(tasks.matching { task -> task.name == taskName })
     }
 }
