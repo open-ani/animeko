@@ -158,7 +158,12 @@ class SelectorWorkflowViewModel(
         )
     }
 
-    /** 最大等待高优先级源: 开关 + 秒数. */
+    /**
+     * 最大等待高优先级源: 开关 + 秒数.
+     *
+     * 秒数只决定计时器旁边那个读数数到几, 不改变动画长度 —— 指针转一圈的时长是
+     * [Pacing.clockSweep].
+     */
     fun setPriorityWait(enabled: Boolean, seconds: Int = DEFAULT_PRIORITY_WAIT_SECONDS) = updateConfig {
         it.copy(
             selection = it.selection.copy(
@@ -187,7 +192,11 @@ class SelectorWorkflowViewModel(
         )
     }
 
-    /** 拦截播放链接的最大等待时长 (秒). */
+    /**
+     * 拦截播放链接的最大等待时长 (秒).
+     *
+     * 同样只决定读数, 不改变动画长度.
+     */
     fun setInterceptBudgetSeconds(seconds: Int) = updateConfig {
         it.copy(resolve = it.resolve.copy(budget = seconds.seconds))
     }

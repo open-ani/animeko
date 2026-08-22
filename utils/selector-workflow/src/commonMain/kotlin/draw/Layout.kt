@@ -54,6 +54,10 @@ data class WorkflowMetrics(
     val rowBarHeight: Float = 4f,
     /** 计时器. */
     val clockRadius: Float = 6f,
+    /** 计时器旁边那个读数的字高与留白, 以及给它预留多宽. */
+    val readoutHeight: Float = 6f,
+    val readoutGap: Float = 3f,
+    val readoutWidth: Float = 22f,
     /** 遍历 cursor 框比结果块大出来的量. */
     val cursorInflate: Float = 2f,
     /** 候选圆点 / 高优先级菱形. */
@@ -102,6 +106,9 @@ class WorkflowLayout internal constructor(
     val rowBarWidths: List<Float>,
     val priorityClockCenter: Offset,
     val interceptClockCenter: Offset,
+    /** 两个读数的锚点: 文字左端的竖直中心. */
+    val priorityReadoutAnchor: Offset,
+    val interceptReadoutAnchor: Offset,
 ) {
     /** 第 [index] 行请求在 **未滚动** 时的行内基线 (行中心 y). */
     fun rowCenterY(index: Int): Float {
@@ -193,7 +200,10 @@ class WorkflowLayout internal constructor(
                     titleBarCenterY,
                 )
             }
-            val clockCenter = Offset(listViewport.right - clockRadius, titleBarCenterY)
+            // 标题栏右端排: [计时器][gap][读数], 读数右缘与内容区右缘对齐
+            val readoutRight = listViewport.right
+            val readoutLeft = readoutRight - readoutWidth
+            val clockCenter = Offset(readoutLeft - readoutGap - clockRadius, titleBarCenterY)
             val addressLeft = chromeDots.last().x + chromeDotRadius + ADDRESS_BAR_GAP
             val addressRight = clockCenter.x - clockRadius - ADDRESS_BAR_GAP
             val addressBar = Rect(
@@ -224,6 +234,8 @@ class WorkflowLayout internal constructor(
                 rowBarWidths = rowBarWidths,
                 priorityClockCenter = Offset(nodeColumnX, outerPadding),
                 interceptClockCenter = clockCenter,
+                priorityReadoutAnchor = Offset(nodeColumnX + clockRadius + readoutGap, outerPadding),
+                interceptReadoutAnchor = Offset(readoutLeft, titleBarCenterY),
             )
         }
 

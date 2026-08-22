@@ -16,6 +16,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 class SelectorWorkflowTimelineTest {
@@ -216,35 +217,112 @@ class SelectorWorkflowTimelineTest {
     // ------------------------------------------------------------------ 计时器
 
     @Test
-    fun intercept_clock_stop_position_is_derived_from_the_budget() {
+    fun intercept_clock_stop_position_is_derived_from_the_sweep_duration() {
         val base = config()
-        val long = base.copy(resolve = base.resolve.copy(budget = 16.seconds))
-        val short = base.copy(resolve = base.resolve.copy(budget = 8.seconds))
+        val slow = base.copy(pacing = base.pacing.copy(clockSweep = base.pacing.clockSweep * 2))
         assertTrue(
-            long.interceptStopFraction() < short.interceptStopFraction(),
-            "预算越长, 指针停得越靠前",
+            slow.interceptStopFraction() < base.interceptStopFraction(),
+            "指针转一圈越久, 拦到时停得越靠前",
         )
-        // 预算翻倍, 指针刚好停在一半的位置
-        assertTrue(abs(long.interceptStopFraction() * 2 - short.interceptStopFraction()) < 1e-3f)
+        // 一圈的时长翻倍, 指针刚好停在一半的位置
+        assertTrue(abs(slow.interceptStopFraction() * 2 - base.interceptStopFraction()) < 1e-3f)
     }
 
     @Test
-    fun budgetForInterceptStopFraction_round_trips() {
+    fun clockSweepForInterceptStop_round_trips() {
         val base = config()
         val target = 7.5f / 12f // 钟面 7 点半
         val sized = base.copy(
-            resolve = base.resolve.copy(budget = base.budgetForInterceptStopFraction(target)),
+            pacing = base.pacing.copy(clockSweep = base.clockSweepForInterceptStop(target)),
         )
         assertTrue(
             abs(sized.interceptStopFraction() - target) < 1e-3f,
-            "算出来的预算应该让指针恰好停在 7 点半, 实际 ${sized.interceptStopFraction()}",
+            "算出来的一圈时长应该让指针恰好停在 7 点半, 实际 ${sized.interceptStopFraction()}",
         )
+    }
+
+    // ------------------------------------------------------------------ 配置的秒数只影响读数
+
+    @Test
+    fun configured_seconds_do_not_change_the_animation_at_all() {
+        val base = config(priorityWait = 5.seconds, demoBothPaths = true, outcomes = ALL_OUTCOMES)
+        val other = base.copy(
+            selection = base.selection.copy(priorityWait = 30.seconds),
+            resolve = base.resolve.copy(budget = 45.seconds),
+        )
+        val a = base.buildTimeline()
+        val b = other.buildTimeline()
+        assertEquals(a.duration, b.duration, "改设置项不该让动画变长变短")
+
+        // 逐帧比对: 除了读数, 每个单元的取值必须一模一样
+        var t = Duration.ZERO
+        val step = a.duration / 300.0
+        while (t <= a.duration) {
+            val sa = a.sampleAt(t)
+            val sb = b.sampleAt(t)
+            assertEquals(sa.copy(clocks = emptyMap()), sb.copy(clocks = emptyMap()), "第 $t 帧不一致")
+            sa.clocks.forEach { (id, clock) ->
+                assertEquals(clock.sweep, sb.clocks.getValue(id).sweep, 1e-4f, "$id 的指针位置不该受设置项影响")
+            }
+            t += step
+        }
+    }
+
+    @Test
+    fun the_readout_counts_up_to_the_configured_seconds() {
+        val c = config(priorityWait = 20.seconds, demoBothPaths = true, outcomes = ALL_OUTCOMES)
+            .let { it.copy(resolve = it.resolve.copy(budget = 12.seconds)) }
+        val timeline = c.buildTimeline()
+
+        // 高优先级那条超时的路径: 指针走满一圈, 读数必须正好数到配置的秒数
+        val expired = firstStateWhen(timeline) { it.clocks.getValue(ClockId.PriorityWait).tone == ClockTone.Expired }
+        assertNotNull(expired)
+        val prio = expired.clocks.getValue(ClockId.PriorityWait)
+        assertEquals(20f, prio.budgetSeconds, 1e-3f)
+        assertTrue(abs(prio.elapsedSeconds - 20f) < 0.2f, "超时时读数该数到 20.0, 实际 ${prio.elapsedSeconds}")
+
+        // 拦截成功那次: 读数 = 配置秒数 × 指针走过的比例
+        val stopped = firstStateWhen(timeline) {
+            it.clocks.getValue(ClockId.InterceptBudget).tone == ClockTone.Stopped
+        }
+        assertNotNull(stopped)
+        val intercept = stopped.clocks.getValue(ClockId.InterceptBudget)
+        assertEquals(12f, intercept.budgetSeconds, 1e-3f)
+        assertEquals(intercept.sweep * 12f, intercept.elapsedSeconds, 1e-3f)
+        assertTrue(intercept.elapsedSeconds in 0.1f..11.9f)
+    }
+
+    @Test
+    fun the_two_clocks_read_out_the_two_different_settings() {
+        val c = config(priorityWait = 7.seconds, demoBothPaths = true)
+            .let { it.copy(resolve = it.resolve.copy(budget = 19.seconds)) }
+        val timeline = c.buildTimeline()
+        val s = timeline.sampleAt(timeline.duration / 2.0)
+        assertEquals(7f, s.clocks.getValue(ClockId.PriorityWait).budgetSeconds, 1e-3f)
+        assertEquals(19f, s.clocks.getValue(ClockId.InterceptBudget).budgetSeconds, 1e-3f)
+    }
+
+    @Test
+    fun the_readout_starts_at_zero_and_never_exceeds_the_budget() {
+        val c = config(priorityWait = 9.seconds, demoBothPaths = true, outcomes = ALL_OUTCOMES)
+        val timeline = c.buildTimeline()
+        var t = Duration.ZERO
+        val step = timeline.duration / 500.0
+        while (t <= timeline.duration) {
+            timeline.sampleAt(t).clocks.values.forEach {
+                assertTrue(
+                    it.elapsedSeconds >= -1e-3f && it.elapsedSeconds <= it.budgetSeconds + 1e-3f,
+                    "$t 的 ${it.id} 读数越界: ${it.elapsedSeconds} / ${it.budgetSeconds}",
+                )
+            }
+            t += step
+        }
     }
 
     @Test
     fun hit_stops_the_clock_while_timeout_completes_the_sweep() {
         val c = config(outcomes = ALL_OUTCOMES)
-            .let { it.copy(resolve = it.resolve.copy(budget = it.budgetForInterceptStopFraction(0.625f))) }
+            .let { it.copy(pacing = it.pacing.copy(clockSweep = it.clockSweepForInterceptStop(0.625f))) }
         val timeline = c.buildTimeline()
         val stopped = firstStateWhen(timeline) { s ->
             s.clocks.getValue(ClockId.InterceptBudget).tone == ClockTone.Stopped
@@ -261,12 +339,12 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun too_small_a_budget_is_rejected_with_an_actionable_message() {
+    fun too_short_a_sweep_is_rejected_with_an_actionable_message() {
         val base = config()
-        val broken = base.copy(resolve = base.resolve.copy(budget = 1.seconds))
+        val broken = base.copy(pacing = base.pacing.copy(clockSweep = 100.milliseconds))
         val error = runCatching { broken.buildTimeline() }.exceptionOrNull()
         assertNotNull(error)
-        assertTrue(error.message.orEmpty().contains("budgetForInterceptStopFraction"))
+        assertTrue(error.message.orEmpty().contains("clockSweepForInterceptStop"))
     }
 
     // ------------------------------------------------------------------ 高优先级门

@@ -21,6 +21,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import me.him188.ani.utils.selectorworkflow.ClockState
 import me.him188.ani.utils.selectorworkflow.CursorState
 import me.him188.ani.utils.selectorworkflow.LineState
@@ -207,11 +212,19 @@ private const val FOCUS_LAYER_ALPHA = 0.08f
 
 // ------------------------------------------------------------------ 单元 6: 计时器
 
+/**
+ * 计时器 + 旁边的读数.
+ *
+ * 指针转多快由时间线定; 读数是把指针走过的比例映射回设置项配的秒数 —— 于是读数就是
+ * "这个表在数哪个设置项"的标识. [textMeasurer] 为 `null` 时不画读数.
+ */
 internal fun DrawScope.drawClock(
     clock: ClockState,
     center: Offset,
+    readoutAnchor: Offset,
     layout: WorkflowLayout,
     palette: WorkflowPalette,
+    textMeasurer: TextMeasurer?,
 ) {
     if (clock.alpha <= 0.001f) return
     val m = layout.metrics
@@ -239,7 +252,52 @@ internal fun DrawScope.drawClock(
         cap = StrokeCap.Round,
         alpha = clock.alpha,
     )
+
+    if (textMeasurer != null && clock.hasReadout) {
+        drawScaledText(
+            textMeasurer = textMeasurer,
+            text = formatSeconds(clock.elapsedSeconds),
+            anchor = readoutAnchor,
+            targetHeight = m.readoutHeight,
+            color = palette.clockHand(clock.tone),
+            alpha = clock.alpha,
+        )
+    }
 }
+
+/** 读数格式: 一位小数 + 秒. */
+internal fun formatSeconds(seconds: Float): String {
+    val tenths = (seconds * 10f + 0.5f).toInt().coerceAtLeast(0)
+    return "${tenths / 10}.${tenths % 10}s"
+}
+
+/**
+ * 在虚拟坐标里画一行文字.
+ *
+ * 文字先按固定字号排版, 再缩放到 [targetHeight] 这个虚拟单位的高度 ——
+ * 这样不管 composition 的 density 是多少, 文字在图里的相对大小都一样.
+ * [anchor] 是文字左端的竖直中心.
+ */
+private fun DrawScope.drawScaledText(
+    textMeasurer: TextMeasurer,
+    text: String,
+    anchor: Offset,
+    targetHeight: Float,
+    color: Color,
+    alpha: Float,
+) {
+    val measured = textMeasurer.measure(text, ReadoutStyle)
+    val height = measured.size.height.toFloat()
+    if (height <= 0f) return
+    val k = targetHeight / height
+    translate(anchor.x, anchor.y - targetHeight / 2f) {
+        scale(k, k, pivot = Offset.Zero) {
+            drawText(measured, color = color, alpha = alpha)
+        }
+    }
+}
+
+private val ReadoutStyle = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Medium)
 
 private const val TICK_RADIUS = 0.8f
 private const val TICK_INSET = 1.4f

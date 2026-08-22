@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.Modifier
 import me.him188.ani.utils.selectorworkflow.draw.WorkflowLayout
 import me.him188.ani.utils.selectorworkflow.draw.WorkflowMetrics
@@ -64,11 +65,12 @@ fun SelectorWorkflowAnimation(
     metrics: WorkflowMetrics = WorkflowMetrics.Default,
 ) {
     val layout = remember(config, metrics) { WorkflowLayout.of(config, metrics) }
+    val textMeasurer = rememberTextMeasurer()
     Canvas(
         modifier
             .fillMaxWidth()
             .aspectRatio(layout.canvasSize.width / layout.canvasSize.height),
     ) {
-        drawSelectorWorkflow(state, layout, palette)
+        drawSelectorWorkflow(state, layout, palette, textMeasurer)
     }
 }

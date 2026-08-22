@@ -81,16 +81,22 @@ chipsOf(0).forEach { it.appear() }
 于是「谁先走到候选」就是唯一的胜负判据——赢家是**算出来的**，不是写死的。
 高优先级门是这两条之上的一层闸：门开之前所有 cursor 都不许起步。
 
-## 没有硬编码的时间
+## 两个计时器：转多久 与 数到几 是两件事
 
-两个计时器的表盘一整圈就是配置里填的预算，指针停在哪由 `已用 / 预算` 得出：
+**转多久**是演出参数 `Pacing.clockSweep`，两个表共用；改它才会改变动画长度。
+
+**数到几**是设置项配的秒数（`SelectionSpec.priorityWait` / `ResolveSpec.budget`），
+只决定表旁边那个读数从 0 数到几，一位小数。于是「最大等待 20 秒」和「5 秒」放出来一样长，
+差别只在读数最后停在 20.0 还是 5.0——读数因此也成了辨认「这个表在数哪个设置项」的标识。
+
+指针停在哪由 `已用 / 一圈` 得出，全是动画时间：
 
 ```kotlin
-config.interceptStopFraction()                       // 拦截成功时指针停在哪 (0..1)
-config.budgetForInterceptStopFraction(7.5f / 12f)    // 想停在钟面 7 点半, 预算该填多少
+config.interceptStopFraction()                    // 拦截成功时指针停在哪 (0..1)
+config.clockSweepForInterceptStop(7.5f / 12f)     // 想停在钟面 7 点半, 一圈该多长
 ```
 
-高优先级计时器同理，停的位置直接由高优先级源的 `latency` 决定。
+读数 = `sweep × budgetSeconds`，所以指针和读数永远是同一个比例的两种说法。
 
 ## 三个开关
 
@@ -99,6 +105,8 @@ config.budgetForInterceptStopFraction(7.5f / 12f)    // 想停在钟面 7 点半
 | 抢先选源 | `setEagerSelect()` | 第二步：一个全局 cursor ↔ 每个源各起一个 |
 | 最大等待高优先级源的时长 | `setPriorityWait()` / `setPriorityWaitSeconds()` | 第一/二步：加一道闸 + 连演「等到了」「等超时」两条路径 |
 | 拦截播放链接的特殊动画 | `setResolveDemo()` / `setInterceptBudgetSeconds()` | 第三步：只演成功 ↔ 连演成功 / 超时 / 换下一个候选再成功 |
+
+两个 `setXxxSeconds` 只改读数，不改动画长度。
 
 三个开关组合出的八条路径不是八份脚本——它们是同一份剧本在不同配置下编译出的八条时间线。
 

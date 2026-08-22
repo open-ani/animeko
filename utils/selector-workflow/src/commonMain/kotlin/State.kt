@@ -147,8 +147,15 @@ enum class ClockTone {
 /**
  * 计时器.
  *
- * @param sweep 指针已经扫过的比例, 0..1. 表盘一整圈就是配置里填的那个时长,
- * 所以"指针停在哪"完全由 `已用时间 / 预算` 决定, 不需要在任何地方硬编码角度.
+ * ## 转多久 与 数到几 是两件事
+ *
+ * 指针转满一圈花多久由演出参数 [Pacing.clockSweep] 定, 与设置项里配的秒数无关;
+ * 设置项配的秒数只决定 **旁边那个读数数到几** ([budgetSeconds]).
+ * 于是"最大等待 20 秒"和"最大等待 5 秒"放出来一样长, 差别只在读数从 0 数到 20.0 还是 5.0 ——
+ * 读数也就成了辨认"这个表在数哪个设置项"的标识.
+ *
+ * @param sweep 指针已经扫过的比例, 0..1.
+ * @param budgetSeconds 这个表数的是设置里配的多少秒. 0 表示没配, 不显示读数.
  * @param overlayAlpha 超时后罩在表盘上那层底色的不透明度.
  */
 @Immutable
@@ -158,12 +165,21 @@ data class ClockState(
     val sweep: Float,
     val tone: ClockTone,
     val overlayAlpha: Float,
+    val budgetSeconds: Float,
 ) {
     /** 指针角度, 12 点为 0°, 顺时针. */
     val handDegrees: Float get() = sweep * 360f
 
+    /** 旁边显示的读数: 把指针走过的比例线性映射回配置的秒数. */
+    val elapsedSeconds: Float get() = sweep * budgetSeconds
+
+    /** 有没有读数可显示. */
+    val hasReadout: Boolean get() = budgetSeconds > 0f
+
     companion object {
-        fun hidden(id: ClockId) = ClockState(id, alpha = 0f, sweep = 0f, tone = ClockTone.Running, overlayAlpha = 0f)
+        fun hidden(id: ClockId) = ClockState(
+            id, alpha = 0f, sweep = 0f, tone = ClockTone.Running, overlayAlpha = 0f, budgetSeconds = 0f,
+        )
     }
 }
 

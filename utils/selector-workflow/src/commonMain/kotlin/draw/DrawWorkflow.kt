@@ -12,6 +12,7 @@ package me.him188.ani.utils.selectorworkflow.draw
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.text.TextMeasurer
 import me.him188.ani.utils.selectorworkflow.ClockId
 import me.him188.ani.utils.selectorworkflow.SelectorWorkflowState
 import kotlin.math.min
@@ -26,6 +27,8 @@ fun DrawScope.drawSelectorWorkflow(
     state: SelectorWorkflowState,
     layout: WorkflowLayout,
     palette: WorkflowPalette,
+    /** 画计时器旁边那个读数用. 传 `null` 就不画读数 (例如脱离 composition 的截图测试). */
+    textMeasurer: TextMeasurer? = null,
 ) {
     val factor = min(size.width / layout.canvasSize.width, size.height / layout.canvasSize.height)
     if (factor <= 0f) return
@@ -34,7 +37,7 @@ fun DrawScope.drawSelectorWorkflow(
 
     translate(dx, dy) {
         scale(factor, factor, pivot = androidx.compose.ui.geometry.Offset.Zero) {
-            drawContent(state, layout, palette)
+            drawContent(state, layout, palette, textMeasurer)
         }
     }
 }
@@ -49,11 +52,15 @@ private fun DrawScope.drawContent(
     state: SelectorWorkflowState,
     layout: WorkflowLayout,
     palette: WorkflowPalette,
+    textMeasurer: TextMeasurer?,
 ) {
     // 第三步: 窗口与请求列表 (在最底下, 交棒线会压过来)
     drawBrowserWindow(state.window, layout, palette)
     drawRequestList(state.requestRows, state.scroll, layout, palette)
-    drawClock(state.clocks.getValue(ClockId.InterceptBudget), layout.interceptClockCenter, layout, palette)
+    drawClock(
+        state.clocks.getValue(ClockId.InterceptBudget),
+        layout.interceptClockCenter, layout.interceptReadoutAnchor, layout, palette, textMeasurer,
+    )
 
     // 第二步: 结果容器、结果、涟漪、cursor
     drawResultContainer(layout, palette)
@@ -79,5 +86,8 @@ private fun DrawScope.drawContent(
         drawProgressLine(line, from, to, palette.source(index), layout, palette)
     }
     state.sourceNodes.forEach { drawSourceNode(it, layout, palette, state.time) }
-    drawClock(state.clocks.getValue(ClockId.PriorityWait), layout.priorityClockCenter, layout, palette)
+    drawClock(
+        state.clocks.getValue(ClockId.PriorityWait),
+        layout.priorityClockCenter, layout.priorityReadoutAnchor, layout, palette, textMeasurer,
+    )
 }

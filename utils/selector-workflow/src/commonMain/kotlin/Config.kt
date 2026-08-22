@@ -63,14 +63,20 @@ enum class SelectMode {
  * @param priorityWait 最大等待高优先级源的时长. 非空时启用高优先级门:
  * 这段时间内无论其他源有没有候选都不选, 只等高优先级源;
  * 它带着候选回来就直接用它的候选, 超时才放闸回到 [mode] 的普通规则.
+ *
+ * 这个值 **只决定计时器旁边那个读数数到几**, 不决定这道闸在动画里开多久 ——
+ * 闸的时长就是指针转一圈的时长 [Pacing.clockSweep].
  */
 @Immutable
 data class SelectionSpec(
     val mode: SelectMode = SelectMode.WaitAll,
     val priorityWait: Duration? = null,
     /**
-     * 把"等到了"和"等超时"两条路径连着演一遍. 关闭时只按 [SourceSpec.latency] 演一条 ——
-     * 高优先级源赶没赶上由它自己的耗时决定.
+     * 把"等到了"和"等超时"两条路径连着演一遍.
+     *
+     * 打开时高优先级源两条路径里的耗时都是编出来的 (一条稳稳赶上闸, 一条稳稳错过),
+     * 它自己的 [SourceSpec.latency] 不参与; 关闭时才按 [SourceSpec.latency] 演一条,
+     * 赶没赶上由它自己的耗时决定.
      */
     val demoBothPriorityPaths: Boolean = false,
     /**
@@ -86,9 +92,9 @@ data class SelectionSpec(
         }
     }
 
-    /** 演"等超时"那条路径时高优先级源的耗时. */
-    fun effectiveLateLatency(): Duration =
-        lateLatency ?: (checkNotNull(priorityWait) { "priorityWait is null" } * 1.5)
+    /** 演"等超时"那条路径时高优先级源的耗时 (被演示的时间). */
+    fun effectiveLateLatency(pacing: Pacing): Duration =
+        lateLatency ?: pacing.unscaled(pacing.clockSweep * 1.5)
 }
 
 /**
@@ -111,7 +117,8 @@ enum class ResolveOutcome {
  * @param requestCount WebView 里一共会看到几条请求.
  * @param visibleRows 请求列表的可视行数, 超出的靠滚动露出.
  * @param hitRow 命中的那条请求在列表里的下标.
- * @param budget 拦截播放链接的最大等待时长, 也就是表盘转满一圈代表的时间.
+ * @param budget 拦截播放链接的最大等待时长. **只决定计时器旁边那个读数数到几**,
+ * 不决定动画放多久 —— 指针转一圈的时长由 [Pacing.clockSweep] 定.
  * @param outcomes 这一轮要依次演哪几种结局.
  */
 @Immutable
@@ -141,9 +148,17 @@ data class ResolveSpec(
 @Immutable
 data class Pacing(
     /**
-     * 把"被演示的秒"换算成"动画的秒"的比例. 0.3 表示演示里的 1 秒在动画里只占 0.3 秒.
+     * 把数据源的 [SourceSpec.latency] 这类"被演示的秒"换算成"动画的秒"的比例.
+     * 0.3 表示演示里的 1 秒在动画里只占 0.3 秒.
      */
     val timeScale: Float = 0.3f,
+    /**
+     * **指针转满一圈用多久 (动画时间).** 两个计时器共用.
+     *
+     * 这是纯粹的演出参数, 与设置项里配的秒数无关 —— 配 20 秒还是 5 秒, 指针都是花这么久转一圈,
+     * 变的只是旁边那个读数最后数到几. 换句话说, 改设置项不会让动画变长变短.
+     */
+    val clockSweep: Duration = 3.seconds + 500.milliseconds,
     /** 结果淡入 / 淡出的时长. */
     val fade: Duration = 240.milliseconds,
     /** 遍历 cursor 从一格走到下一格的时长. */
@@ -175,12 +190,18 @@ data class Pacing(
 ) {
     init {
         require(timeScale > 0f) { "timeScale must be positive" }
+        require(clockSweep > Duration.ZERO) { "clockSweep must be positive" }
     }
 
     /**
      * 把"被演示的时间"换算成动画时长.
      */
     fun scaled(demoTime: Duration): Duration = demoTime * timeScale.toDouble()
+
+    /**
+     * [scaled] 的反函数: 想在动画里占 [animationTime] 这么久, 对应"被演示的时间"是多少.
+     */
+    fun unscaled(animationTime: Duration): Duration = animationTime / timeScale.toDouble()
 }
 
 /**

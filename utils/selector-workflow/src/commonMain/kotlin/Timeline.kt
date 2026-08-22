@@ -122,6 +122,8 @@ internal class ClockTracks(
     private val sweep: Track<Float>,
     private val tone: Track<ClockTone>,
     private val overlay: Track<Float>,
+    /** 这个表数的是设置里配的多少秒. 整条时间线上是个常量, 不需要轨道. */
+    private val budgetSeconds: Float,
 ) {
     fun sample(t: Duration) = ClockState(
         id = id,
@@ -129,5 +131,6 @@ internal class ClockTracks(
         sweep = sweep.valueAt(t),
         tone = tone.valueAt(t),
         overlayAlpha = overlay.valueAt(t),
+        budgetSeconds = budgetSeconds,
     )
 }

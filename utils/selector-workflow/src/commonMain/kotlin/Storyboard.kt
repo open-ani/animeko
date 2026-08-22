@@ -280,14 +280,13 @@ class Storyboard internal constructor(
         private var window: Duration = Duration.ZERO
 
         /**
-         * 起转. [budget] 用"被演示的时间"表示, 内部按 [Pacing.timeScale] 折算成动画时长.
+         * 起转. 转满一圈固定用 [Pacing.clockSweep] —— 与设置项配的秒数无关.
          *
          * 起转时先按 **走满一圈** 排好后续帧; 真提前停下时由 [stop] 截断覆写.
          */
-        fun start(budget: Duration) {
-            require(budget > Duration.ZERO) { "clock budget must be positive" }
+        fun start() {
             startedAt = now
-            window = pacing.scaled(budget)
+            window = pacing.clockSweep
             tone.key(now, ClockTone.Running)
             overlay.key(now, 0f)
             alpha.key(now, 0f)
@@ -447,7 +446,13 @@ class Storyboard internal constructor(
         },
         scroll = requestList.scroll.build(),
         clocks = clocks.mapValues { (id, h) ->
-            ClockTracks(id, h.alpha.build(), h.sweep.build(), h.tone.build(), h.overlay.build())
+            ClockTracks(
+                id, h.alpha.build(), h.sweep.build(), h.tone.build(), h.overlay.build(),
+                budgetSeconds = when (id) {
+                    ClockId.PriorityWait -> config.selection.priorityWait
+                    ClockId.InterceptBudget -> config.resolve.budget
+                }?.let { (it.inWholeMilliseconds / 1000.0).toFloat() } ?: 0f,
+            )
         },
     )
 

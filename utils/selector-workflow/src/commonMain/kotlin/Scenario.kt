@@ -19,8 +19,9 @@ import kotlin.time.Duration
  */
 fun SelectorWorkflowConfig.buildTimeline(): SelectorWorkflowTimeline {
     require(interceptStopFraction() < 1f) {
-        "resolve.budget (${resolve.budget}) is too short: the intercept would time out before the " +
-                "request list finishes streaming. Use budgetForInterceptStopFraction() to size it."
+        "pacing.clockSweep (${pacing.clockSweep}) is too short: the intercept would time out before " +
+                "the request list finishes streaming (needs > ${interceptElapsed()}). " +
+                "Use clockSweepForInterceptStop() to size it."
     }
     val storyboard = Storyboard(this)
     val passes = buildPasses()
@@ -43,21 +44,24 @@ fun SelectorWorkflowConfig.interceptElapsed(): Duration {
 /**
  * 拦截成功时表盘指针会停在哪 (0..1).
  *
- * 完全由 `已用 / 预算` 算出来 —— 想让指针停在钟面 7 点半, 把 [ResolveSpec.budget] 设成
- * [budgetForInterceptStopFraction] `(7.5f / 12f)` 的返回值即可, 不需要在任何地方写角度.
+ * 由 `拦到用了多久 / 指针转一圈用多久` 算出来, 两者都是动画时间 ——
+ * 与 [ResolveSpec.budget] 无关, 改设置项不会挪动指针停的位置.
+ *
+ * 想让指针停在钟面 7 点半, 把 [Pacing.clockSweep] 设成
+ * [clockSweepForInterceptStop] `(7.5f / 12f)` 的返回值即可, 不需要在任何地方写角度.
  */
 fun SelectorWorkflowConfig.interceptStopFraction(): Float {
-    val full = pacing.scaled(resolve.budget)
+    val full = pacing.clockSweep
     if (full <= Duration.ZERO) return 1f
     return (interceptElapsed().inWholeMicroseconds.toFloat() / full.inWholeMicroseconds).coerceIn(0f, 1f)
 }
 
 /**
- * 想让拦截成功时指针停在 [fraction] 处, [ResolveSpec.budget] 该填多少.
+ * 想让拦截成功时指针停在 [fraction] 处, [Pacing.clockSweep] 该填多少.
  */
-fun SelectorWorkflowConfig.budgetForInterceptStopFraction(fraction: Float): Duration {
+fun SelectorWorkflowConfig.clockSweepForInterceptStop(fraction: Float): Duration {
     require(fraction in 0.05f..1f) { "fraction must be in 0.05..1" }
-    return interceptElapsed() / (fraction.toDouble() * pacing.timeScale.toDouble())
+    return interceptElapsed() / fraction.toDouble()
 }
 
 /**
@@ -74,17 +78,24 @@ internal data class Pass(
 
 internal fun SelectorWorkflowConfig.buildPasses(): List<Pass> {
     val base = sources.map { it.latency }
-    val wait = selection.priorityWait ?: return listOf(Pass(base, gate = null))
+    if (selection.priorityWait == null) return listOf(Pass(base, gate = null))
     val prio = checkNotNull(priorityIndex) { "priorityWait requires a priority source" }
+    // 闸开多久 = 指针转一圈的时长 (动画时间), 与 priorityWait 配的秒数无关
+    val gateWindow = pacing.clockSweep
 
     if (!selection.demoBothPriorityPaths) {
-        val gate = if (base[prio] <= wait) Pass.Gate.Hit else Pass.Gate.Timeout
+        val gate = if (pacing.scaled(base[prio]) <= gateWindow) Pass.Gate.Hit else Pass.Gate.Timeout
         return listOf(Pass(base, gate))
     }
-    val fast = base.toMutableList().also { it[prio] = minOf(it[prio], wait * 0.7) }
-    val slow = base.toMutableList().also { it[prio] = selection.effectiveLateLatency() }
+    // 连演两条路径时高优先级源的耗时是编出来的: 一条稳稳赶上, 一条稳稳错过.
+    // 两边都不看 SourceSpec.latency, 免得"赶上"那条的指针位置随配置乱跑.
+    val fast = base.toMutableList().also { it[prio] = pacing.unscaled(gateWindow * PRIORITY_HIT_FRACTION) }
+    val slow = base.toMutableList().also { it[prio] = selection.effectiveLateLatency(pacing) }
     return listOf(Pass(fast, Pass.Gate.Hit), Pass(slow, Pass.Gate.Timeout))
 }
+
+/** 演"等到了"那条路径时, 高优先级源在闸的百分之多少处回来. */
+private const val PRIORITY_HIT_FRACTION = 0.7
 
 /**
  * 演一段: 第一步搜源 → 第二步选源 → 第三步解析 (可能连演多种结局).
@@ -133,8 +144,7 @@ private fun Storyboard.playPass(pass: Pass, isLast: Boolean) {
 
         Pass.Gate.Timeout -> {
             // 等超时才放闸, 只遍历此刻已经回来的源
-            val wait = checkNotNull(config.selection.priorityWait)
-            val open = passStart + p.scaled(wait)
+            val open = passStart + p.clockSweep
             gateStop = open
             plan = SelectionEngine.plan(
                 config = config,
@@ -148,7 +158,7 @@ private fun Storyboard.playPass(pass: Pass, isLast: Boolean) {
 
     if (pass.gate != null) {
         val clock = clocks.getValue(ClockId.PriorityWait)
-        at(gateStart) { clock.start(checkNotNull(config.selection.priorityWait)) }
+        at(gateStart) { clock.start() }
         at(checkNotNull(gateStop)) {
             phase(if (pass.gate == Pass.Gate.Hit) "priority-hit" else "priority-timeout")
             if (pass.gate == Pass.Gate.Hit) clock.stop() else clock.expire()
@@ -246,7 +256,7 @@ private fun Storyboard.playResolve(
         window.open()
     }
     val clockStart = now
-    clock.start(config.resolve.budget)
+    clock.start()
     advance(p.windowOpen)
 
     phase(if (outcome == ResolveOutcome.Timeout) "resolve-timeout" else "resolve-hit")
@@ -272,8 +282,8 @@ private fun Storyboard.playResolve(
             requestList.hit()
             val stopped = clock.stop()
             check(stopped < 1f) {
-                "intercept budget ${config.resolve.budget} is too short for the choreography; " +
-                        "use budgetForInterceptStopFraction() to size it"
+                "pacing.clockSweep ${p.clockSweep} is too short for the choreography; " +
+                        "use clockSweepForInterceptStop() to size it"
             }
             advance(p.fade)
         }
