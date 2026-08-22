@@ -392,7 +392,7 @@ class Storyboard internal constructor(
         fun scrollTo(row: Int, over: Duration = pacing.scroll) {
             val maxOffset = (config.resolve.requestCount - config.resolve.visibleRows).coerceAtLeast(0)
             val target = (row - config.resolve.visibleRows / 2).coerceIn(0, maxOffset)
-            scroll.key(now, scroll.valueAt(now), Easings.Emphasized)
+            scroll.key(now, scroll.valueAt(now), Easings.Standard)
             scroll.key(now + over, target.toFloat())
             touch(now + over)
         }

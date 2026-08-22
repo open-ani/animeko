@@ -9,6 +9,7 @@
 
 package me.him188.ani.utils.selectorworkflow.anim
 
+import androidx.compose.animation.core.Easing
 import androidx.compose.runtime.Immutable
 import kotlin.time.Duration
 
