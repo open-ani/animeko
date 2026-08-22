@@ -311,13 +311,17 @@ internal fun DrawScope.drawClockOverlay(
     palette: WorkflowPalette,
 ) {
     if (clock.alpha <= 0.001f) return
+    val m = layout.metrics
     val rect = layout.interceptOverlay
+    val radius = CornerRadius(m.overlayRadius)
+    drawRoundRect(palette.surfaceHigh, rect.topLeft, rect.size, radius, alpha = clock.alpha)
     drawRoundRect(
-        color = palette.surfaceHigh,
+        color = palette.outlineVariant,
         topLeft = rect.topLeft,
         size = rect.size,
-        cornerRadius = CornerRadius(rect.height / 2f),
+        cornerRadius = radius,
         alpha = clock.alpha,
+        style = Stroke(width = m.hairline),
     )
 }
 

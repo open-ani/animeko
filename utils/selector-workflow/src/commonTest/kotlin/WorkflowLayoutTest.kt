@@ -109,20 +109,49 @@ class WorkflowLayoutTest {
             list.right - overlay.right, overlay.top - list.top, 0.01f,
             "浮层离右缘和离顶缘该一样远 —— 它贴的是右上角",
         )
-        // 表和读数都在浮层里
+        // 表在左、读数在右, 两个都在浮层里
         assertTrue(
-            layout.interceptClockCenter.x + metrics.clockRadius <= overlay.right + 0.01f &&
-                    layout.interceptClockCenter.x - metrics.clockRadius >= overlay.left - 0.01f,
+            layout.interceptClockCenter.x - metrics.clockRadius >= overlay.left - 0.01f,
             "表该在浮层里",
         )
         assertTrue(
-            layout.interceptReadoutAnchor.x >= overlay.left - 0.01f &&
-                    layout.interceptReadoutAnchor.x + metrics.readoutWidth <=
-                    layout.interceptClockCenter.x - metrics.clockRadius + 0.01f,
-            "读数该在浮层里、表的左边",
+            layout.interceptReadoutAnchor.x >= layout.interceptClockCenter.x + metrics.clockRadius,
+            "读数该在表的右边",
+        )
+        assertTrue(
+            layout.interceptReadoutAnchor.x + layout.interceptReadoutWidth <= overlay.right + 0.01f,
+            "读数该在浮层里",
         )
         assertEquals(overlay.center.y, layout.interceptClockCenter.y, 0.01f)
         assertEquals(overlay.center.y, layout.interceptReadoutAnchor.y, 0.01f)
+    }
+
+    @Test
+    fun the_overlay_width_follows_the_configured_seconds() {
+        fun overlayOf(seconds: Int) = layoutOf(
+            SelectorWorkflowPresets.threeSources(interceptBudget = seconds.seconds),
+        )
+
+        val short = overlayOf(8)     // "8.0s"
+        val long = overlayOf(120)    // "120.0s"
+        assertTrue(
+            long.interceptReadoutWidth > short.interceptReadoutWidth,
+            "读数位数多了浮层该变宽",
+        )
+        assertEquals(
+            long.interceptReadoutWidth - short.interceptReadoutWidth,
+            long.interceptOverlay.width - short.interceptOverlay.width,
+            0.01f,
+            "浮层只该按读数宽度那部分变宽",
+        )
+        assertEquals(
+            short.interceptOverlay.right, long.interceptOverlay.right, 0.01f,
+            "浮层贴的是右上角, 变宽只往左长",
+        )
+        // 一位数和两位数的秒数读数一样宽 ("8.0s" 与 "12.0s" 差一位)
+        assertEquals(
+            overlayOf(9).interceptReadoutWidth, overlayOf(8).interceptReadoutWidth, 0.01f,
+        )
     }
 
     @Test

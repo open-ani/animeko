@@ -54,13 +54,18 @@ data class WorkflowMetrics(
     val rowBarHeight: Float = 4f,
     /** 计时器. */
     val clockRadius: Float = 6f,
-    /** 计时器旁边那个读数的字高与留白, 以及给它预留多宽. */
+    /** 计时器旁边那个读数的字高与它跟表之间的留白. */
     val readoutHeight: Float = 6f,
     val readoutGap: Float = 3f,
-    val readoutWidth: Float = 18f,
-    /** 第三步的计时器浮在内容区上, 这是它离内容区边缘的距离与自身的内边距. */
+    /**
+     * 单个字符占多宽, 按字高的比例给. 读数只有数字、小数点和 s, 宽度基本固定,
+     * 所以不用真去量文字就能把浮层的宽度算准.
+     */
+    val readoutCharWidth: Float = 0.52f,
+    /** 第三步的计时器浮在内容区上: 离内容区边缘多远、自身内边距、圆角. */
     val overlayInset: Float = 3f,
     val overlayPadding: Float = 2.5f,
+    val overlayRadius: Float = 4f,
     /** 遍历 cursor 框比结果块大出来的量. */
     val cursorInflate: Float = 2f,
     /** 候选圆点 / 高优先级菱形. */
@@ -112,8 +117,10 @@ class WorkflowLayout internal constructor(
     /** 两个读数的锚点: 文字左端的竖直中心. */
     val priorityReadoutAnchor: Offset,
     val interceptReadoutAnchor: Offset,
-    /** 第三步计时器那块浮层的底. 它压在请求列表上, 所以需要一层自己的底色. */
+    /** 第三步计时器那块浮层. 它压在请求列表上, 所以需要一层自己的底与描边. */
     val interceptOverlay: Rect,
+    /** 浮层里读数占的宽度, 由配置的秒数有几位字符推出来. */
+    val interceptReadoutWidth: Float,
 ) {
     /** 第 [index] 行请求在 **未滚动** 时的行内基线 (行中心 y). */
     fun rowCenterY(index: Int): Float {
@@ -214,17 +221,20 @@ class WorkflowLayout internal constructor(
                 titleBarCenterY + chromeDotRadius,
             )
 
-            // 第三步的计时器做成浮层, 贴在内容区的右上角: [读数][gap][表]
+            // 第三步的计时器做成浮层, 贴在内容区的右上角: [表][gap][读数].
+            // 宽度跟着读数走 —— 配 8 秒是 "8.0s", 配 120 秒是 "120.0s", 浮层自己变宽
+            val budgetSeconds = config.resolve.budget.inWholeMilliseconds / 1000f
+            val readoutW = readoutTextWidth(budgetSeconds, readoutHeight, readoutCharWidth)
             val overlayHeight = clockRadius * 2 + overlayPadding * 2
-            val overlayWidth = overlayPadding * 2 + readoutWidth + readoutGap + clockRadius * 2
+            val overlayWidth = overlayPadding * 2 + clockRadius * 2 + readoutGap + readoutW
             val overlay = Rect(
                 listViewport.right - overlayInset - overlayWidth,
                 listViewport.top + overlayInset,
                 listViewport.right - overlayInset,
                 listViewport.top + overlayInset + overlayHeight,
             )
-            val clockCenter = Offset(overlay.right - overlayPadding - clockRadius, overlay.center.y)
-            val readoutLeft = overlay.left + overlayPadding
+            val clockCenter = Offset(overlay.left + overlayPadding + clockRadius, overlay.center.y)
+            val readoutLeft = clockCenter.x + clockRadius + readoutGap
 
             val barSpan = listViewport.right - (listViewport.left + windowInset * 2f + rowIconRadius) - windowInset
             val rowBarWidths = List(config.resolve.requestCount) { i ->
@@ -250,7 +260,16 @@ class WorkflowLayout internal constructor(
                 priorityReadoutAnchor = Offset(nodeColumnX + clockRadius + readoutGap, outerPadding),
                 interceptReadoutAnchor = Offset(readoutLeft, overlay.center.y),
                 interceptOverlay = overlay,
+                interceptReadoutWidth = readoutW,
             )
+        }
+
+        /**
+         * 读数最宽的时候占多宽. 读数从 0.0 数到配置的秒数, 所以最宽的就是配置值本身那一行.
+         */
+        internal fun readoutTextWidth(budgetSeconds: Float, height: Float, charWidth: Float): Float {
+            val chars = maxOf(formatSeconds(0f).length, formatSeconds(budgetSeconds).length)
+            return chars * height * charWidth
         }
 
         private const val CHROME_DOT_COUNT = 3
