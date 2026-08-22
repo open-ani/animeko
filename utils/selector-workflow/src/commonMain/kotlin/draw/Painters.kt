@@ -302,6 +302,25 @@ private val ReadoutStyle = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.M
 private const val TICK_RADIUS = 0.8f
 private const val TICK_INSET = 1.4f
 
+/**
+ * 第三步计时器那块浮层的底. 它压在请求列表上, 得先把身下的横条挡掉, 不然读数没法看.
+ */
+internal fun DrawScope.drawClockOverlay(
+    clock: ClockState,
+    layout: WorkflowLayout,
+    palette: WorkflowPalette,
+) {
+    if (clock.alpha <= 0.001f) return
+    val rect = layout.interceptOverlay
+    drawRoundRect(
+        color = palette.surfaceHigh,
+        topLeft = rect.topLeft,
+        size = rect.size,
+        cornerRadius = CornerRadius(rect.height / 2f),
+        alpha = clock.alpha,
+    )
+}
+
 // ------------------------------------------------------------------ 单元 7: 窗口
 
 internal fun DrawScope.drawBrowserWindow(

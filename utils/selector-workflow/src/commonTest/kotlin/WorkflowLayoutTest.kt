@@ -81,25 +81,48 @@ class WorkflowLayoutTest {
     }
 
     @Test
-    fun title_bar_fits_chrome_dots_address_bar_and_clock_without_overlap() {
+    fun the_address_bar_fills_the_rest_of_the_title_bar() {
         val layout = layoutOf(SelectorWorkflowPresets.threeSources())
         val lastDot = layout.chromeDots.last()
         assertTrue(
             layout.addressBar.left > lastDot.x + metrics.chromeDotRadius,
             "地址栏压到 caption button 上了",
         )
-        assertTrue(
-            layout.addressBar.right <= layout.interceptClockCenter.x - metrics.clockRadius + 0.01f,
-            "地址栏压到计时器上了",
-        )
-        assertTrue(
-            layout.interceptClockCenter.x + metrics.clockRadius <= layout.listViewport.right + 0.01f,
-            "计时器该和内容区右缘对齐, 不该探出窗口",
+        assertEquals(
+            layout.listViewport.right, layout.addressBar.right, 0.01f,
+            "计时器挪走之后地址栏该占满剩下的宽度, 右缘与内容区对齐",
         )
         assertEquals(
             layout.listViewport.left, layout.chromeDots.first().x - metrics.chromeDotRadius, 0.01f,
             "caption button 左缘该和内容区左缘对齐",
         )
+    }
+
+    @Test
+    fun the_intercept_clock_floats_in_the_top_right_of_the_content_area() {
+        val layout = layoutOf(SelectorWorkflowPresets.threeSources())
+        val overlay = layout.interceptOverlay
+        val list = layout.listViewport
+        assertTrue(overlay.left > list.left && overlay.right < list.right, "浮层该整个在内容区里")
+        assertTrue(overlay.top > list.top && overlay.bottom < list.bottom, "浮层该整个在内容区里")
+        assertEquals(
+            list.right - overlay.right, overlay.top - list.top, 0.01f,
+            "浮层离右缘和离顶缘该一样远 —— 它贴的是右上角",
+        )
+        // 表和读数都在浮层里
+        assertTrue(
+            layout.interceptClockCenter.x + metrics.clockRadius <= overlay.right + 0.01f &&
+                    layout.interceptClockCenter.x - metrics.clockRadius >= overlay.left - 0.01f,
+            "表该在浮层里",
+        )
+        assertTrue(
+            layout.interceptReadoutAnchor.x >= overlay.left - 0.01f &&
+                    layout.interceptReadoutAnchor.x + metrics.readoutWidth <=
+                    layout.interceptClockCenter.x - metrics.clockRadius + 0.01f,
+            "读数该在浮层里、表的左边",
+        )
+        assertEquals(overlay.center.y, layout.interceptClockCenter.y, 0.01f)
+        assertEquals(overlay.center.y, layout.interceptReadoutAnchor.y, 0.01f)
     }
 
     @Test

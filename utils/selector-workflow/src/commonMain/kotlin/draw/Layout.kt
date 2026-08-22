@@ -57,7 +57,10 @@ data class WorkflowMetrics(
     /** 计时器旁边那个读数的字高与留白, 以及给它预留多宽. */
     val readoutHeight: Float = 6f,
     val readoutGap: Float = 3f,
-    val readoutWidth: Float = 22f,
+    val readoutWidth: Float = 18f,
+    /** 第三步的计时器浮在内容区上, 这是它离内容区边缘的距离与自身的内边距. */
+    val overlayInset: Float = 3f,
+    val overlayPadding: Float = 2.5f,
     /** 遍历 cursor 框比结果块大出来的量. */
     val cursorInflate: Float = 2f,
     /** 候选圆点 / 高优先级菱形. */
@@ -109,6 +112,8 @@ class WorkflowLayout internal constructor(
     /** 两个读数的锚点: 文字左端的竖直中心. */
     val priorityReadoutAnchor: Offset,
     val interceptReadoutAnchor: Offset,
+    /** 第三步计时器那块浮层的底. 它压在请求列表上, 所以需要一层自己的底色. */
+    val interceptOverlay: Rect,
 ) {
     /** 第 [index] 行请求在 **未滚动** 时的行内基线 (行中心 y). */
     fun rowCenterY(index: Int): Float {
@@ -200,18 +205,26 @@ class WorkflowLayout internal constructor(
                     titleBarCenterY,
                 )
             }
-            // 标题栏右端排: [计时器][gap][读数], 读数右缘与内容区右缘对齐
-            val readoutRight = listViewport.right
-            val readoutLeft = readoutRight - readoutWidth
-            val clockCenter = Offset(readoutLeft - readoutGap - clockRadius, titleBarCenterY)
+            // 地址栏占满标题栏剩下的宽度 —— 计时器不在这一行, 它浮在内容区上
             val addressLeft = chromeDots.last().x + chromeDotRadius + ADDRESS_BAR_GAP
-            val addressRight = clockCenter.x - clockRadius - ADDRESS_BAR_GAP
             val addressBar = Rect(
                 addressLeft,
                 titleBarCenterY - chromeDotRadius,
-                max(addressRight, addressLeft + chromeDotRadius * 2),
+                max(listViewport.right, addressLeft + chromeDotRadius * 2),
                 titleBarCenterY + chromeDotRadius,
             )
+
+            // 第三步的计时器做成浮层, 贴在内容区的右上角: [读数][gap][表]
+            val overlayHeight = clockRadius * 2 + overlayPadding * 2
+            val overlayWidth = overlayPadding * 2 + readoutWidth + readoutGap + clockRadius * 2
+            val overlay = Rect(
+                listViewport.right - overlayInset - overlayWidth,
+                listViewport.top + overlayInset,
+                listViewport.right - overlayInset,
+                listViewport.top + overlayInset + overlayHeight,
+            )
+            val clockCenter = Offset(overlay.right - overlayPadding - clockRadius, overlay.center.y)
+            val readoutLeft = overlay.left + overlayPadding
 
             val barSpan = listViewport.right - (listViewport.left + windowInset * 2f + rowIconRadius) - windowInset
             val rowBarWidths = List(config.resolve.requestCount) { i ->
@@ -235,7 +248,8 @@ class WorkflowLayout internal constructor(
                 priorityClockCenter = Offset(nodeColumnX, outerPadding),
                 interceptClockCenter = clockCenter,
                 priorityReadoutAnchor = Offset(nodeColumnX + clockRadius + readoutGap, outerPadding),
-                interceptReadoutAnchor = Offset(readoutLeft, titleBarCenterY),
+                interceptReadoutAnchor = Offset(readoutLeft, overlay.center.y),
+                interceptOverlay = overlay,
             )
         }
 
