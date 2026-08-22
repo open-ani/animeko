@@ -27,6 +27,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -54,8 +55,6 @@ import me.him188.ani.app.ui.lang.cache_filter_collection_state
 import me.him188.ani.app.ui.lang.cache_filter_collection_wish
 import me.him188.ani.app.ui.lang.cache_filter_download_status
 import me.him188.ani.app.ui.lang.cache_filter_sort
-import me.him188.ani.app.ui.lang.cache_filter_sort_episode_asc
-import me.him188.ani.app.ui.lang.cache_filter_sort_episode_desc
 import me.him188.ani.app.ui.lang.cache_filter_sort_newest
 import me.him188.ani.app.ui.lang.cache_filter_sort_oldest
 import me.him188.ani.app.ui.lang.cache_filter_sort_subject_asc
@@ -72,26 +71,42 @@ internal class CacheFilterAndSortState {
     var selectedStatus by mutableStateOf<CacheStatusFilter?>(null)
     var sortOption by mutableStateOf(CacheSortOption.Newest)
 
+    private fun matchesFilters(entry: CacheEpisodeState): Boolean {
+        return (selectedCollectionType == null || (entry.subjectCollectionType
+            ?: UnifiedCollectionType.NOT_COLLECTED) == selectedCollectionType) &&
+                (selectedEngineKey == null || entry.engineKey == selectedEngineKey) &&
+                (selectedStatus == null || entry.status == selectedStatus)
+    }
+
+    /**
+     * 设计稿: 筛选先过滤剧集再重组分组.
+     *
+     * 过滤各分组中不符合条件的剧集, 移除空分组, 再按 [sortOption] 排序分组.
+     */
     @Composable
-    fun applyFilterAndSort(list: List<CacheEpisodeState>): List<CacheEpisodeState> {
-        val result by remember(list) {
+    fun applyFilterAndSortGrouped(groups: List<CacheGroupState>): List<CacheGroupState> {
+        val result by remember(groups) {
             derivedStateOf {
-                val filtered = list.filter { entry ->
-                    (selectedCollectionType == null || (entry.subjectCollectionType
-                        ?: UnifiedCollectionType.NOT_COLLECTED) == selectedCollectionType) &&
-                            (selectedEngineKey == null || entry.engineKey == selectedEngineKey) &&
-                            (selectedStatus == null || entry.status == selectedStatus)
+                val filtered = groups.mapNotNull { group ->
+                    val entries = group.entries.filter { matchesFilters(it) }
+                    when {
+                        entries.isEmpty() -> null
+                        entries.size == group.entries.size -> group
+                        else -> group.copy(entries = entries)
+                    }
                 }
 
                 when (sortOption) {
-                    CacheSortOption.Newest -> filtered.sortedByDescending { it.creationTime ?: Long.MIN_VALUE }
-                    CacheSortOption.Oldest -> filtered.sortedBy { it.creationTime ?: Long.MIN_VALUE }
-                    CacheSortOption.SubjectAsc -> filtered.sortedBy { it.displayName }
-                    CacheSortOption.SubjectDesc -> filtered.sortedByDescending { it.displayName }
-                    CacheSortOption.EpisodeAsc -> filtered.sortedWith(compareBy({ it.groupId }, { it.sort }))
-                    CacheSortOption.EpisodeDesc -> filtered.sortedWith(
-                        compareBy<CacheEpisodeState>({ it.groupId }, { it.sort }).reversed(),
-                    )
+                    CacheSortOption.Newest -> filtered.sortedByDescending { group ->
+                        group.entries.maxOfOrNull { it.creationTime ?: Long.MIN_VALUE } ?: Long.MIN_VALUE
+                    }
+
+                    CacheSortOption.Oldest -> filtered.sortedBy { group ->
+                        group.entries.minOfOrNull { it.creationTime ?: Long.MAX_VALUE } ?: Long.MAX_VALUE
+                    }
+
+                    CacheSortOption.SubjectAsc -> filtered.sortedBy { it.subjectName }
+                    CacheSortOption.SubjectDesc -> filtered.sortedByDescending { it.subjectName }
                 }
             }
         }
@@ -304,7 +319,8 @@ private fun FilterPill(
                     Icon(Icons.Default.FilterList, null)
                 }
             } else null,
-            shape = CircleShape,
+            // 设计稿: 圆角矩形 (8dp) 而非全圆角.
+            shape = MaterialTheme.shapes.small,
             colors = FilterChipDefaults.filterChipColors(),
             enabled = enabled,
         )
@@ -353,13 +369,12 @@ enum class CacheStatusFilter {
     Finished,
 }
 
+// 分组卡片布局下按剧集排序无意义, 4.13 移除了剧集升序/降序.
 internal enum class CacheSortOption {
     Newest,
     Oldest,
     SubjectAsc,
     SubjectDesc,
-    EpisodeAsc,
-    EpisodeDesc,
 }
 
 @Composable
@@ -377,8 +392,6 @@ private fun renderSortOption(option: CacheSortOption): String {
         CacheSortOption.Oldest -> stringResource(Lang.cache_filter_sort_oldest)
         CacheSortOption.SubjectAsc -> stringResource(Lang.cache_filter_sort_subject_asc)
         CacheSortOption.SubjectDesc -> stringResource(Lang.cache_filter_sort_subject_desc)
-        CacheSortOption.EpisodeAsc -> stringResource(Lang.cache_filter_sort_episode_asc)
-        CacheSortOption.EpisodeDesc -> stringResource(Lang.cache_filter_sort_episode_desc)
     }
 }
 
