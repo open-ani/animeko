@@ -724,7 +724,9 @@ class DefaultMediaSelector(
 
     override suspend fun trySelectDefault(): Media? {
         if (selected.value != null) return null
-        val candidates = preferredCandidates.first()
+        // preferredCandidates is shared with replay for UI observation. When its upstream has stopped,
+        // replay may still contain an older empty snapshot, so selection must recompute from current inputs.
+        val candidates = preferredCandidatesNotCached.first()
         if (candidates.none { it is MaybeExcludedMedia.Included }) return null
         val mergedPreference = newPreferences.first()
         return findUsingPreferenceFromCandidates(
