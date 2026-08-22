@@ -27,7 +27,7 @@ class WorkflowLayoutTest {
     private fun layoutOf(config: SelectorWorkflowConfig) = WorkflowLayout.of(config, metrics)
 
     @Test
-    fun grid_holds_exactly_one_cell_per_result_and_they_do_not_overlap() {
+    fun `grid holds exactly one cell per result and they do not overlap`() {
         val config = SelectorWorkflowPresets.threeSources()
         val layout = layoutOf(config)
         assertEquals(config.results.size, layout.cells.size)
@@ -41,7 +41,7 @@ class WorkflowLayoutTest {
     }
 
     @Test
-    fun more_results_grow_the_container_downwards_not_the_chips() {
+    fun `more results grow the container downwards not the chips`() {
         val small = layoutOf(SelectorWorkflowPresets.threeSources())
         val big = layoutOf(
             SelectorWorkflowConfig(
@@ -55,7 +55,7 @@ class WorkflowLayoutTest {
     }
 
     @Test
-    fun source_links_land_on_the_straight_part_of_the_container_edge() {
+    fun `source links land on the straight part of the container edge`() {
         // 源很多时, 首尾两个节点会超出容器的竖直范围; 连线终点必须夹到直边上, 不能落在圆角里
         val config = SelectorWorkflowConfig(
             sources = List(7) { SourceSpec("源 $it", (it + 1).seconds, resultCount = 1, candidates = setOf(0)) },
@@ -71,7 +71,7 @@ class WorkflowLayoutTest {
     }
 
     @Test
-    fun source_nodes_are_centred_on_the_container_axis() {
+    fun `source nodes are centred on the container axis`() {
         val layout = layoutOf(SelectorWorkflowPresets.threeSources())
         val mid = layout.nodeCenters.sumOf { it.y.toDouble() } / layout.nodeCenters.size
         assertTrue(
@@ -81,7 +81,7 @@ class WorkflowLayoutTest {
     }
 
     @Test
-    fun the_address_bar_fills_the_rest_of_the_title_bar() {
+    fun `the address bar fills the rest of the title bar`() {
         val layout = layoutOf(SelectorWorkflowPresets.threeSources())
         val lastDot = layout.chromeDots.last()
         assertTrue(
@@ -99,7 +99,7 @@ class WorkflowLayoutTest {
     }
 
     @Test
-    fun the_intercept_clock_floats_in_the_top_right_of_the_content_area() {
+    fun `the intercept clock floats in the top right of the content area`() {
         val layout = layoutOf(SelectorWorkflowPresets.threeSources())
         val overlay = layout.interceptOverlay(3.4f).bounds
         val list = layout.listViewport
@@ -119,7 +119,7 @@ class WorkflowLayoutTest {
     }
 
     @Test
-    fun the_overlay_width_follows_the_readout_of_this_frame() {
+    fun `the overlay width follows the readout of this frame`() {
         val layout = layoutOf(SelectorWorkflowPresets.threeSources())
         val short = layout.interceptOverlay(9.9f)    // "9.9s"
         val long = layout.interceptOverlay(10.0f)    // "10.0s" —— 多一位
@@ -139,7 +139,7 @@ class WorkflowLayoutTest {
     }
 
     @Test
-    fun the_overlay_does_not_depend_on_the_configured_budget() {
+    fun `the overlay does not depend on the configured budget`() {
         // 宽度只看这一帧显示什么, 与配的秒数无关
         val a = layoutOf(SelectorWorkflowPresets.threeSources(interceptBudget = 8.seconds))
         val b = layoutOf(SelectorWorkflowPresets.threeSources(interceptBudget = 120.seconds))
@@ -148,7 +148,7 @@ class WorkflowLayoutTest {
     }
 
     @Test
-    fun visible_rows_exactly_fill_the_list_viewport() {
+    fun `visible rows exactly fill the list viewport`() {
         val config = SelectorWorkflowPresets.threeSources()
         val layout = layoutOf(config)
         val first = layout.rowCenterY(0)
@@ -161,7 +161,7 @@ class WorkflowLayoutTest {
     }
 
     @Test
-    fun cell_centre_interpolates_between_two_cells() {
+    fun `cell centre interpolates between two cells`() {
         val layout = layoutOf(SelectorWorkflowPresets.threeSources())
         val a = layout.cellCenter(0f)
         val b = layout.cellCenter(1f)
@@ -171,7 +171,7 @@ class WorkflowLayoutTest {
     }
 
     @Test
-    fun bar_widths_are_stable_and_stay_inside_the_viewport() {
+    fun `bar widths are stable and stay inside the viewport`() {
         val config = SelectorWorkflowPresets.threeSources()
         val layout = layoutOf(config)
         val again = layoutOf(config)
@@ -186,7 +186,7 @@ class WorkflowLayoutTest {
     }
 
     @Test
-    fun metrics_drive_the_picture_not_hard_coded_numbers() {
+    fun `metrics drive the picture not hard coded numbers`() {
         val config = SelectorWorkflowPresets.threeSources()
         val wide = WorkflowLayout.of(config, metrics.copy(chipWidth = metrics.chipWidth * 2))
         val base = layoutOf(config)

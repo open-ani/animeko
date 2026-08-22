@@ -74,7 +74,7 @@ class WorkflowRenderTest {
     private fun IntArray.toHashSet(): HashSet<Int> = HashSet<Int>(size).also { set -> forEach { set.add(it) } }
 
     @Test
-    fun every_frame_of_every_switch_combination_renders_without_throwing() {
+    fun `every frame of every switch combination renders without throwing`() {
         val combinations = listOf(
             SelectMode.WaitAll to false,
             SelectMode.Eager to false,
@@ -107,7 +107,7 @@ class WorkflowRenderTest {
     }
 
     @Test
-    fun the_picture_is_not_blank_at_any_stage() {
+    fun `the picture is not blank at any stage`() {
         val config = SelectorWorkflowPresets.threeSources(
             resolveOutcomes = listOf(ResolveOutcome.Hit, ResolveOutcome.Timeout, ResolveOutcome.HitAfterFallback),
         )
@@ -124,7 +124,7 @@ class WorkflowRenderTest {
     }
 
     @Test
-    fun scaling_to_a_different_size_keeps_the_picture_proportional() {
+    fun `scaling to a different size keeps the picture proportional`() {
         val timeline = SelectorWorkflowPresets.threeSources().buildTimeline()
         val at = timeline.duration * 0.5
         val small = render(timeline, at, width = 254, height = 86)

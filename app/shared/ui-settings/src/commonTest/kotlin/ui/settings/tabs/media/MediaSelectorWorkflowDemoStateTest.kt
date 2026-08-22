@@ -31,7 +31,7 @@ class MediaSelectorWorkflowDemoStateTest {
         get() = viewModel.config.resolve.outcomes.contains(ResolveOutcome.Timeout)
 
     @Test
-    fun starts_with_the_current_fast_select_state_and_nothing_else() {
+    fun `starts with the current fast select state and nothing else`() {
         val on = state(eager = true)
         assertEquals(SelectMode.Eager, on.config.selection.mode)
         assertNull(on.config.selection.priorityWait, "刚进来不该演高优先级那一段")
@@ -41,7 +41,7 @@ class MediaSelectorWorkflowDemoStateTest {
     }
 
     @Test
-    fun picking_the_max_wait_time_plays_only_the_priority_segment() {
+    fun `picking the max wait time plays only the priority segment`() {
         val s = state()
         s.onLowTierToleranceChanged(8.seconds)
         assertEquals(8.seconds, s.config.selection.priorityWait)
@@ -50,7 +50,7 @@ class MediaSelectorWorkflowDemoStateTest {
     }
 
     @Test
-    fun picking_the_resolve_timeout_plays_only_the_resolve_segment() {
+    fun `picking the resolve timeout plays only the resolve segment`() {
         val s = state()
         s.onLowTierToleranceChanged(8.seconds)      // 先演高优先级
         s.onResolveTimeoutChanged(15)               // 再动第三步
@@ -61,7 +61,7 @@ class MediaSelectorWorkflowDemoStateTest {
     }
 
     @Test
-    fun toggling_fast_select_puts_both_segments_away() {
+    fun `toggling fast select puts both segments away`() {
         val s = state(eager = true)
         s.onResolveTimeoutChanged(15)
         assertTrue(s.playsResolveDemo)
@@ -76,7 +76,7 @@ class MediaSelectorWorkflowDemoStateTest {
     }
 
     @Test
-    fun the_fast_select_state_survives_the_other_two_settings() {
+    fun `the fast select state survives the other two settings`() {
         val s = state(eager = false)
         s.onLowTierToleranceChanged(8.seconds)
         assertEquals(SelectMode.WaitAll, s.config.selection.mode, "演别的段不该把抢先选源打开")
@@ -85,7 +85,7 @@ class MediaSelectorWorkflowDemoStateTest {
     }
 
     @Test
-    fun degenerate_wait_times_fall_back_to_the_plain_flow() {
+    fun `degenerate wait times fall back to the plain flow`() {
         // "不等待" 压根没有这道闸; "无限制" 永远不会到点, 计时器数不出东西来
         val s = state()
         s.onLowTierToleranceChanged(8.seconds)
@@ -98,7 +98,7 @@ class MediaSelectorWorkflowDemoStateTest {
     }
 
     @Test
-    fun syncing_the_loaded_setting_does_not_restart_or_disturb_the_current_segment() {
+    fun `syncing the loaded setting does not restart or disturb the current segment`() {
         // 设置是异步读出来的: 占位值先到, 真值后到. 真值到了只该悄悄对齐
         val s = state(eager = true)
         s.onLowTierToleranceChanged(8.seconds)
@@ -121,7 +121,7 @@ class MediaSelectorWorkflowDemoStateTest {
     }
 
     @Test
-    fun every_change_restarts_the_animation_from_the_beginning() {
+    fun `every change restarts the animation from the beginning`() {
         val s = state()
         fun advanceABit() = s.viewModel.player.advance(1.seconds)
 

@@ -37,7 +37,7 @@ class SelectorWorkflowTimelineTest {
     // ------------------------------------------------------------------ 选源规则
 
     @Test
-    fun wait_all_picks_the_first_candidate_in_grid_order() {
+    fun `wait all picks the first candidate in grid order`() {
         val c = config(mode = SelectMode.WaitAll)
         val plan = SelectionEngine.plan(
             config = c,
@@ -53,7 +53,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun eager_picks_the_same_candidate_but_earlier() {
+    fun `eager picks the same candidate but earlier`() {
         val c = config(mode = SelectMode.Eager)
         val ready = c.readyTimes()
         val waitAll = SelectionEngine.plan(c, SelectMode.WaitAll, ready, c.pacing.cursorStep, c.pacing.cursorStep)
@@ -63,7 +63,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun eager_cancels_the_cursor_that_has_not_reached_a_candidate() {
+    fun `eager cancels the cursor that has not reached a candidate`() {
         val c = config(mode = SelectMode.Eager)
         val plan = SelectionEngine.plan(
             c, SelectMode.Eager, c.readyTimes(),
@@ -75,7 +75,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun a_source_without_candidates_never_wins() {
+    fun `a source without candidates never wins`() {
         val c = SelectorWorkflowConfig(
             sources = listOf(
                 SourceSpec("A", 1.seconds, resultCount = 3),
@@ -90,7 +90,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun no_candidate_at_all_yields_no_winner() {
+    fun `no candidate at all yields no winner`() {
         val c = SelectorWorkflowConfig(sources = listOf(SourceSpec("A", 1.seconds, resultCount = 2)))
         val plan = SelectionEngine.plan(
             c, SelectMode.WaitAll, c.readyTimes(),
@@ -100,7 +100,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun fallback_goes_to_the_next_candidate_and_wraps_around() {
+    fun `fallback goes to the next candidate and wraps around`() {
         val c = config()
         val first = c.candidates[0]
         val second = c.candidates[1]
@@ -111,7 +111,7 @@ class SelectorWorkflowTimelineTest {
     // ------------------------------------------------------------------ 时间线
 
     @Test
-    fun timeline_is_sampleable_and_deterministic() {
+    fun `timeline is sampleable and deterministic`() {
         val timeline = config().buildTimeline()
         assertTrue(timeline.duration > Duration.ZERO)
         val a = timeline.sampleAt(timeline.duration / 2.0)
@@ -120,7 +120,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun every_unit_stays_within_its_declared_range_across_the_whole_timeline() {
+    fun `every unit stays within its declared range across the whole timeline`() {
         val timeline = config(outcomes = ALL_OUTCOMES).buildTimeline()
         var t = Duration.ZERO
         val step = timeline.duration / 400.0
@@ -153,7 +153,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun lines_that_have_been_drawn_stay_drawn_until_the_pass_resets() {
+    fun `lines that have been drawn stay drawn until the pass resets`() {
         // 回归: 收线/重画的关键帧如果直接写在远期时刻, 轨道会从"画满那一帧"一路插值下来,
         // 于是整段演出里那条线都在慢慢缩回去 —— 取值始终在 0..1 之内, 范围检查发现不了.
         val timeline = config(outcomes = ALL_OUTCOMES).buildTimeline()
@@ -178,7 +178,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun the_request_list_scrolls_all_the_way_to_the_target_row() {
+    fun `the request list scrolls all the way to the target row`() {
         val c = config(outcomes = ALL_OUTCOMES)
         val timeline = c.buildTimeline()
         val expected = (c.resolve.hitRow - c.resolve.visibleRows / 2)
@@ -197,7 +197,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun results_that_arrive_after_the_selection_keep_their_own_pace() {
+    fun `results that arrive after the selection keep their own pace`() {
         // 回归: 选定时 mute 所有落选结果, 而 mute 走 ramp、ramp 会截断后面的关键帧,
         // 于是"还没返回的源"的结果被连累着在选定那一刻一股脑冒出来.
         val c = config(mode = SelectMode.Eager)
@@ -228,7 +228,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun the_selected_chip_turns_green_and_the_others_dim() {
+    fun `the selected chip turns green and the others dim`() {
         val c = config()
         val timeline = c.buildTimeline()
         val winner = SelectionEngine.plan(
@@ -248,7 +248,7 @@ class SelectorWorkflowTimelineTest {
     // ------------------------------------------------------------------ 高优先级标记
 
     @Test
-    fun priority_marks_are_hidden_until_the_gate_is_switched_on() {
+    fun `priority marks are hidden until the gate is switched on`() {
         val off = config()                                   // 没开高优先级等待
         val on = config(priorityWait = 5.seconds, demoBothPaths = true)
         val prio = assertNotNull(off.priorityIndex, "预设里本来就有一个高优先级源")
@@ -280,7 +280,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun candidate_marks_do_not_depend_on_the_gate() {
+    fun `candidate marks do not depend on the gate`() {
         // 候选圆点是选源规则的一部分, 跟高优先级开关无关
         val off = config()
         val on = config(priorityWait = 5.seconds, demoBothPaths = true)
@@ -297,7 +297,7 @@ class SelectorWorkflowTimelineTest {
     // ------------------------------------------------------------------ 计时器
 
     @Test
-    fun intercept_clock_stop_position_is_derived_from_the_sweep_duration() {
+    fun `intercept clock stop position is derived from the sweep duration`() {
         val base = config()
         val slow = base.copy(pacing = base.pacing.copy(clockSweep = base.pacing.clockSweep * 2))
         assertTrue(
@@ -309,7 +309,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun clockSweepForInterceptStop_round_trips() {
+    fun `clockSweepForInterceptStop round trips`() {
         val base = config()
         val target = 7.5f / 12f // 钟面 7 点半
         val sized = base.copy(
@@ -324,7 +324,7 @@ class SelectorWorkflowTimelineTest {
     // ------------------------------------------------------------------ 配置的秒数只影响读数
 
     @Test
-    fun configured_seconds_do_not_change_the_animation_at_all() {
+    fun `configured seconds do not change the animation at all`() {
         val base = config(priorityWait = 5.seconds, demoBothPaths = true, outcomes = ALL_OUTCOMES)
         val other = base.copy(
             selection = base.selection.copy(priorityWait = 30.seconds),
@@ -349,7 +349,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun the_readout_counts_up_to_the_configured_seconds() {
+    fun `the readout counts up to the configured seconds`() {
         val c = config(priorityWait = 20.seconds, demoBothPaths = true, outcomes = ALL_OUTCOMES)
             .let { it.copy(resolve = it.resolve.copy(budget = 12.seconds)) }
         val timeline = c.buildTimeline()
@@ -373,7 +373,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun the_two_clocks_read_out_the_two_different_settings() {
+    fun `the two clocks read out the two different settings`() {
         val c = config(priorityWait = 7.seconds, demoBothPaths = true)
             .let { it.copy(resolve = it.resolve.copy(budget = 19.seconds)) }
         val timeline = c.buildTimeline()
@@ -383,7 +383,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun the_readout_starts_at_zero_and_never_exceeds_the_budget() {
+    fun `the readout starts at zero and never exceeds the budget`() {
         val c = config(priorityWait = 9.seconds, demoBothPaths = true, outcomes = ALL_OUTCOMES)
         val timeline = c.buildTimeline()
         var t = Duration.ZERO
@@ -400,7 +400,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun hit_stops_the_clock_while_timeout_completes_the_sweep() {
+    fun `hit stops the clock while timeout completes the sweep`() {
         val c = config(outcomes = ALL_OUTCOMES)
             .let { it.copy(pacing = it.pacing.copy(clockSweep = it.clockSweepForInterceptStop(0.625f))) }
         val timeline = c.buildTimeline()
@@ -419,7 +419,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun too_short_a_sweep_is_rejected_with_an_actionable_message() {
+    fun `too short a sweep is rejected with an actionable message`() {
         // 只在真有计时器时才管 —— 不演超时的话一圈多长根本无所谓
         val base = config(outcomes = ALL_OUTCOMES)
         val broken = base.copy(pacing = base.pacing.copy(clockSweep = 100.milliseconds))
@@ -435,7 +435,7 @@ class SelectorWorkflowTimelineTest {
     // ------------------------------------------------------------------ 高优先级门
 
     @Test
-    fun priority_gate_demo_plays_both_paths_and_they_select_different_candidates() {
+    fun `priority gate demo plays both paths and they select different candidates`() {
         val c = config(priorityWait = 5.seconds, demoBothPaths = true)
         val passes = c.buildPasses()
         assertEquals(2, passes.size)
@@ -458,7 +458,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun nothing_is_selected_while_the_priority_gate_is_still_open() {
+    fun `nothing is selected while the priority gate is still open`() {
         val c = config(priorityWait = 5.seconds, demoBothPaths = true)
         val timeline = c.buildTimeline()
         val gateEnd = c.pacing.scaled(c.selection.priorityWait!!)
@@ -475,7 +475,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun priority_clock_stop_position_follows_the_priority_source_latency() {
+    fun `priority clock stop position follows the priority source latency`() {
         val wait = 5.seconds
         val c = config(priorityWait = wait, demoBothPaths = true)
         val timeline = c.buildTimeline()
@@ -493,7 +493,7 @@ class SelectorWorkflowTimelineTest {
     // ------------------------------------------------------------------ 第三步三种结局
 
     @Test
-    fun resolve_demo_plays_hit_then_timeout_then_a_fallback_hit() {
+    fun `resolve demo plays hit then timeout then a fallback hit`() {
         val c = config(outcomes = ALL_OUTCOMES)
         val timeline = c.buildTimeline()
 
@@ -514,7 +514,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun the_hit_row_gets_the_same_treatment_as_a_selected_result() {
+    fun `the hit row gets the same treatment as a selected result`() {
         // 第三步命中该和第二步选中一样: 变色 + 图标弹一下 + 扩一圈涟漪
         val c = config()
         val timeline = c.buildTimeline()
@@ -539,7 +539,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun the_two_ripples_are_the_same_unit_anchored_differently() {
+    fun `the two ripples are the same unit anchored differently`() {
         val timeline = config().buildTimeline()
         val targets = buildSet {
             var t = Duration.ZERO
@@ -553,7 +553,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun timeout_run_has_no_media_row_at_all() {
+    fun `timeout run has no media row at all`() {
         val c = config(outcomes = ALL_OUTCOMES)
         val timeline = c.buildTimeline()
         val expiredAt = firstTimeWhen(timeline) {
@@ -568,7 +568,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun single_outcome_keeps_the_intercept_clock_hidden() {
+    fun `single outcome keeps the intercept clock hidden`() {
         val c = config(outcomes = listOf(ResolveOutcome.Hit))
         assertTrue(!c.showInterceptClock, "只演成功那一种时不该有计时器")
         val timeline = c.buildTimeline()
@@ -582,7 +582,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun the_intercept_clock_shows_up_once_the_demo_is_switched_on() {
+    fun `the intercept clock shows up once the demo is switched on`() {
         val c = config(outcomes = ALL_OUTCOMES)
         assertTrue(c.showInterceptClock)
         val timeline = c.buildTimeline()
@@ -597,7 +597,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun a_hit_only_run_still_plays_the_whole_third_step() {
+    fun `a hit only run still plays the whole third step`() {
         // 没有表不代表第三步缩水: 请求照样进场、照样滚动、照样命中
         val timeline = config(outcomes = listOf(ResolveOutcome.Hit)).buildTimeline()
         assertNotNull(
@@ -617,7 +617,7 @@ class SelectorWorkflowTimelineTest {
     // ------------------------------------------------------------------ 可配置性
 
     @Test
-    fun changing_the_number_of_sources_changes_the_grid_without_touching_the_script() {
+    fun `changing the number of sources changes the grid without touching the script`() {
         val five = SelectorWorkflowConfig(
             sources = List(5) { i ->
                 SourceSpec("源 $i", (i + 1).seconds, resultCount = 2, candidates = if (i == 3) setOf(0) else emptySet())
@@ -635,7 +635,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun slower_sources_push_the_selection_later() {
+    fun `slower sources push the selection later`() {
         val fast = config()
         val slow = fast.copy(sources = fast.sources.map { it.copy(latency = it.latency * 2) })
         assertTrue(slow.buildTimeline().duration > fast.buildTimeline().duration)
@@ -644,7 +644,7 @@ class SelectorWorkflowTimelineTest {
     // ------------------------------------------------------------------ 语义色的过渡
 
     @Test
-    fun a_visible_tone_never_snaps_it_always_eases_in() {
+    fun `a visible tone never snaps it always eases in`() {
         // 语义色一变, 过渡进度就得是从头起步的; 要是变的那一帧 blend 已经满了, 颜色就"啪"地跳了一下
         val timeline = config(
             mode = SelectMode.Eager, priorityWait = 6.seconds,
@@ -680,7 +680,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun the_hit_row_starts_turning_green_the_moment_its_ripple_appears() {
+    fun `the hit row starts turning green the moment its ripple appears`() {
         // 涟漪那圈绿环正好套在图标上, 转绿要是晚一步, 看起来就成了"图标先绿、横条后绿"
         val timeline = config(outcomes = ALL_OUTCOMES).buildTimeline()
         val hitRow = timeline.config.resolve.hitRow
@@ -698,7 +698,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun the_icon_and_the_bar_of_a_row_always_read_the_same_tone() {
+    fun `the icon and the bar of a row always read the same tone`() {
         // 两者共用一路 tone —— 这条一破, 就会出现一半绿一半灰
         val timeline = config(outcomes = ALL_OUTCOMES).buildTimeline()
         val hit = firstStateWhen(timeline) { it.requestRows.any { row -> row.tone == RequestTone.Hit } }
@@ -709,7 +709,7 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
-    fun a_clock_fades_into_its_verdict_colour() {
+    fun `a clock fades into its verdict colour`() {
         val timeline = config(outcomes = ALL_OUTCOMES).buildTimeline()
         val blends = mutableListOf<Float>()
         var t = Duration.ZERO
