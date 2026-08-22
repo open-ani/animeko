@@ -149,6 +149,46 @@ class SelectorWorkflowViewModel(
 
     // ---------------------------------------------------------------- 界面上的开关
 
+    /**
+     * 一次把三个开关都定下来, 只重编一次时间线.
+     *
+     * 接进设置页时很有用: 那里的规则是"动一个设置项就只演它对应的那段", 所以每次都要同时
+     * 打开一个、关掉另一个.
+     *
+     * @param eager 抢先选源.
+     * @param priorityWaitSeconds 高优先级等待要演多少秒; `null` 表示不演这一段.
+     * @param resolveBudgetSeconds 拦截超时要演多少秒; `null` 表示第三步只演成功、不出计时器.
+     * @param restart 是否从头播放.
+     */
+    fun configure(
+        eager: Boolean,
+        priorityWaitSeconds: Int? = null,
+        resolveBudgetSeconds: Int? = null,
+        restart: Boolean = true,
+    ): Boolean {
+        val ok = updateConfig { current ->
+            current.copy(
+                selection = current.selection.copy(
+                    mode = if (eager) SelectMode.Eager else SelectMode.WaitAll,
+                    priorityWait = priorityWaitSeconds?.seconds,
+                    demoBothPriorityPaths = priorityWaitSeconds != null,
+                    lateLatency = null,
+                ),
+                resolve = current.resolve.copy(
+                    budget = (resolveBudgetSeconds ?: current.resolve.budget.inWholeSeconds.toInt())
+                        .coerceAtLeast(1).seconds,
+                    outcomes = if (resolveBudgetSeconds != null) {
+                        listOf(ResolveOutcome.Hit, ResolveOutcome.Timeout, ResolveOutcome.HitAfterFallback)
+                    } else {
+                        listOf(ResolveOutcome.Hit)
+                    },
+                ),
+            )
+        }
+        if (ok && restart) player.restart()
+        return ok
+    }
+
     /** 抢先选源. */
     fun setEagerSelect(enabled: Boolean) = updateConfig {
         it.copy(

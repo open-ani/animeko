@@ -297,6 +297,12 @@ internal fun SettingsScope.MediaSelectionGroup(
 
             HorizontalDividerItem()
 
+            // 只在偏好在线源时才有意义 —— 整段动画讲的就是 web 源的搜/选/解析
+            val workflowDemo = rememberMediaSelectorWorkflowDemoState(mediaSelectorSettings.fastSelectWebKind)
+            AniAnimatedVisibility(mediaSelectorSettings.preferKind == MediaSourceKind.WEB) {
+                MediaSelectorWorkflowItem(workflowDemo)
+            }
+
             AniAnimatedVisibility(mediaSelectorSettings.preferKind == MediaSourceKind.WEB) {
                 SubGroup {
 
@@ -323,6 +329,7 @@ internal fun SettingsScope.MediaSelectionGroup(
                                     resourceExtractionTimeoutSeconds = it,
                                 ),
                             )
+                            workflowDemo.onResolveTimeoutChanged(it)
                         },
                         title = { Text(stringResource(Lang.settings_media_video_link_resolve_timeout)) },
                         description = { Text(stringResource(Lang.settings_media_video_link_resolve_timeout_description)) },
@@ -336,6 +343,7 @@ internal fun SettingsScope.MediaSelectionGroup(
                             state.mediaSelectorSettingsState.update(
                                 mediaSelectorSettings.copy(fastSelectWebKind = it),
                             )
+                            workflowDemo.onFastSelectWebKindChanged(it)
                         },
                         title = { Text(stringResource(Lang.settings_media_fast_select_web)) },
                         description = { Text(stringResource(Lang.settings_media_fast_select_web_description)) },
@@ -376,6 +384,7 @@ internal fun SettingsScope.MediaSelectionGroup(
                                     fastSelectWebLowTierToleranceDuration = it,
                                 ),
                             )
+                            workflowDemo.onLowTierToleranceChanged(it)
                         },
                         title = { Text(stringResource(Lang.settings_media_max_wait_time)) },
                         description = { Text(stringResource(Lang.settings_media_max_wait_time_description)) },
