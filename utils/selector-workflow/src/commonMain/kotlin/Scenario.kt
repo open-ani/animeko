@@ -208,6 +208,7 @@ private fun Storyboard.fallbackToNextCandidate(current: ResultKey): ResultKey? {
     val next = SelectionEngine.nextCandidateAfter(config, current) ?: return null
     phase("fallback")
     chipOf(current).fail()
+    handoff.retract(p.fade)     // 这条不行了, 交棒线先收回去, 待会儿重新画
     advance(p.fade * 1.6)
 
     val handle = cursor("fallback", next.source)

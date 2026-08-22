@@ -31,6 +31,10 @@ import kotlin.time.Duration.Companion.milliseconds
  *
  * 轨道写入是 **截断覆盖** 的 (见 `TrackBuilder`), 所以"先安排好将来的动作, 到时候再中途叫停"
  * 可以直接写出来, 计时器和被取消的 cursor 都靠这一点.
+ *
+ * 一条规矩: 凡是"用一段时间过渡到某个值"的动作, 一律走 `TrackBuilder.ramp`, 不要直接
+ * `key(now + over, x)` —— 后者会让轨道从 **上一帧** 一路插值到这个远期目标, 于是那条线在
+ * 整段演出里都在慢慢缩回去, 而取值又始终落在合法区间里, 单看数值发现不了.
  */
 class Storyboard internal constructor(
     val config: SelectorWorkflowConfig,
@@ -140,13 +144,14 @@ class Storyboard internal constructor(
         internal val progress = floatTrack(0f)
         internal val alpha = floatTrack(0f)
 
-        /** 用 [over] 把线画满. */
+        /** 用 [over] 把线画满. 上一次画的还留着的话先瞬间抹掉, 不会从上一帧一路插值回 0. */
         fun draw(over: Duration) {
-            progress.key(now, 0f, Easings.Linear)
+            progress.key(now, progress.valueAt(now))
+            progress.key(now + SNAP, 0f, Easings.Linear)
             alpha.key(now, 0f)
             alpha.ramp(now, SNAP, 1f)
-            progress.key(now + over, 1f)
-            touch(now + over)
+            progress.key(now + SNAP + over, 1f)
+            touch(now + SNAP + over)
         }
 
         /** 画完之后退成背景线. */
@@ -158,7 +163,7 @@ class Storyboard internal constructor(
         /** 收回去, 回到没画的状态. */
         fun retract(over: Duration = pacing.reset) {
             alpha.ramp(now, over, 0f)
-            progress.key(now + over, 0f)
+            progress.ramp(now, over, 0f)
             touch(now + over)
         }
     }
@@ -206,7 +211,7 @@ class Storyboard internal constructor(
         fun reset(over: Duration = pacing.reset) {
             alpha.ramp(now, over, 0f)
             tone.key(now + over, ChipTone.Source)
-            scale.key(now + over, 1f)
+            scale.ramp(now, over, 1f)
             touch(now + over)
         }
     }
@@ -407,7 +412,7 @@ class Storyboard internal constructor(
         fun clear(over: Duration = pacing.fade) {
             rowAlpha.forEach { it.ramp(now, over, 0f) }
             rowTone.forEach { it.key(now + over, RequestTone.Idle) }
-            scroll.key(now + over, 0f)
+            scroll.ramp(now, over, 0f)
             touch(now + over)
         }
     }

@@ -19,4 +19,8 @@ kotlin {
         api(libs.compose.lifecycle.viewmodel)
         implementation(libs.kotlinx.collections.immutable)
     }
+    // 渲染冒烟测试要真的落到 Skia 上, 需要当前平台的 skiko native
+    sourceSets.getByName("desktopTest").dependencies {
+        implementation(compose.desktop.currentOs)
+    }
 }

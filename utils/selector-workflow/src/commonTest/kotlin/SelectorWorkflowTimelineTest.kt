@@ -152,6 +152,50 @@ class SelectorWorkflowTimelineTest {
     }
 
     @Test
+    fun `lines that have been drawn stay drawn until the pass resets`() {
+        // 回归: 收线/重画的关键帧如果直接写在远期时刻, 轨道会从"画满那一帧"一路插值下来,
+        // 于是整段演出里那条线都在慢慢缩回去 —— 取值始终在 0..1 之内, 范围检查发现不了.
+        val timeline = config(outcomes = ALL_OUTCOMES).buildTimeline()
+        var t = Duration.ZERO
+        val step = timeline.duration / 600.0
+        var checked = 0
+        while (t <= timeline.duration) {
+            val s = timeline.sampleAt(t)
+            if (s.phase.startsWith("resolve")) {
+                checked++
+                s.sourceLinks.forEachIndexed { i, line ->
+                    assertTrue(line.progress > 0.999f, "第 $i 条连线在 $t (${s.phase}) 缩回去了: ${line.progress}")
+                }
+                assertTrue(
+                    s.handoff.progress > 0.999f,
+                    "交棒线在 $t (${s.phase}) 缩回去了: ${s.handoff.progress}",
+                )
+            }
+            t += step
+        }
+        assertTrue(checked > 20, "没采到几帧解析阶段, 这个用例白跑了")
+    }
+
+    @Test
+    fun `the request list scrolls all the way to the target row`() {
+        val c = config(outcomes = ALL_OUTCOMES)
+        val timeline = c.buildTimeline()
+        val expected = (c.resolve.hitRow - c.resolve.visibleRows / 2)
+            .coerceIn(0, c.resolve.requestCount - c.resolve.visibleRows)
+        var maxOffset = 0f
+        var t = Duration.ZERO
+        val step = timeline.duration / 800.0
+        while (t <= timeline.duration) {
+            maxOffset = maxOf(maxOffset, timeline.sampleAt(t).scroll.rowOffset)
+            t += step
+        }
+        assertTrue(
+            abs(maxOffset - expected) < 0.05f,
+            "列表该滚到第 $expected 行, 实际最多滚到 $maxOffset",
+        )
+    }
+
+    @Test
     fun `the selected chip turns green and the others dim`() {
         val c = config()
         val timeline = c.buildTimeline()
