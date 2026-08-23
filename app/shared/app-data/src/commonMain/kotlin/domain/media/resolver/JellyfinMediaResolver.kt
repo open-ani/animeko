@@ -12,9 +12,6 @@ package me.him188.ani.app.domain.media.resolver
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import me.him188.ani.app.data.repository.player.JellyfinPlaybackQualityRepository
@@ -54,7 +51,6 @@ class JellyfinMediaResolver(
         return JellyfinMediaDataProvider(
             source = source,
             itemId = media.mediaId,
-            originalTitle = media.originalTitle,
             extraFiles = media.extraFiles.toMediampMediaExtraFiles(),
             qualityRepository = qualityRepository,
         )
@@ -97,57 +93,55 @@ data class JellyfinPlaybackQualityState(
     val isSwitching: Boolean = false,
 )
 
-internal data class PreparedJellyfinPlayback(
+internal data class OpenedJellyfinPlayback(
     val data: UriMediaData,
     val plan: JellyfinPlaybackPlan,
     val state: JellyfinPlaybackQualityState,
 )
 
+/**
+ * Stateless description of one Jellyfin item. Active plans returned by [openInitialPlayback] or
+ * [openPlayback] are owned by `JellyfinPlaybackController`, not by this provider.
+ */
 class JellyfinMediaDataProvider internal constructor(
     private val source: JellyfinMediaSource,
     private val itemId: String,
-    val originalTitle: String,
     override val extraFiles: MediaExtraFiles,
     private val qualityRepository: JellyfinPlaybackQualityRepository,
 ) : MediaDataProvider<UriMediaData> {
-    private val _qualityState = MutableStateFlow<JellyfinPlaybackQualityState?>(null)
-    val qualityState: StateFlow<JellyfinPlaybackQualityState?> = _qualityState.asStateFlow()
-
-    private var currentPlan: JellyfinPlaybackPlan? = null
-
     override suspend fun open(scopeForCleanup: CoroutineScope): UriMediaData {
+        return openInitialPlayback().data
+    }
+
+    internal suspend fun openInitialPlayback(): OpenedJellyfinPlayback {
         val quality = qualityRepository.get(source.mediaSourceId)
-        val prepared = try {
-            prepare(quality, startPositionMillis = 0)
+        return try {
+            openPlayback(quality)
         } catch (e: JellyfinPlaybackUnavailableException) {
             if (quality == JellyfinPlaybackQuality.Original) throw e
             logger.warn(e) {
                 "Stored Jellyfin playback quality is unavailable; falling back to Original"
             }
-            prepare(JellyfinPlaybackQuality.Original, startPositionMillis = 0).also {
+            openPlayback(JellyfinPlaybackQuality.Original).also {
                 rememberQuality(it.plan.quality)
             }
         }
-        currentPlan = prepared.plan
-        _qualityState.value = prepared.state
-        return prepared.data
     }
 
-    internal suspend fun prepare(
+    internal suspend fun openPlayback(
         quality: JellyfinPlaybackQuality,
-        startPositionMillis: Long,
+        requestedMediaSourceId: String? = null,
+        startPositionMillis: Long = 0,
         forceAutoDetection: Boolean = false,
-        audioStreamIndex: Int? = null,
-    ): PreparedJellyfinPlayback {
+    ): OpenedJellyfinPlayback {
         val plan = source.createPlaybackPlan(
             itemId = itemId,
             quality = quality,
-            mediaSourceId = currentPlan?.mediaSourceId,
+            mediaSourceId = requestedMediaSourceId,
             startPositionMillis = startPositionMillis,
             forceAutoDetection = forceAutoDetection,
-            audioStreamIndex = audioStreamIndex,
         )
-        return PreparedJellyfinPlayback(
+        return OpenedJellyfinPlayback(
             data = UriMediaData(plan.uri, emptyMap(), extraFiles),
             plan = plan,
             state = JellyfinPlaybackQualityState(
@@ -159,15 +153,7 @@ class JellyfinMediaDataProvider internal constructor(
         )
     }
 
-    internal suspend fun commit(prepared: PreparedJellyfinPlayback): JellyfinPlaybackPlan? {
-        val previous = currentPlan
-        currentPlan = prepared.plan
-        _qualityState.value = prepared.state
-        rememberQuality(prepared.plan.quality)
-        return previous
-    }
-
-    private suspend fun rememberQuality(quality: JellyfinPlaybackQuality) {
+    internal suspend fun rememberQuality(quality: JellyfinPlaybackQuality) {
         withContext(NonCancellable) {
             try {
                 qualityRepository.set(source.mediaSourceId, quality)
@@ -175,31 +161,6 @@ class JellyfinMediaDataProvider internal constructor(
                 logger.warn(e) { "Failed to remember Jellyfin playback quality" }
             }
         }
-    }
-
-    internal fun setSwitching(isSwitching: Boolean) {
-        _qualityState.value = _qualityState.value?.copy(isSwitching = isSwitching)
-    }
-
-    internal fun audioStreamIndexForQualitySwitch(
-        playerAudioTrackCount: Int?,
-        selectedPlayerAudioTrackIndex: Int?,
-    ): Int? {
-        val plan = checkNotNull(currentPlan) { "Jellyfin playback has not been opened" }
-        if (plan.isTranscoding || playerAudioTrackCount == null || selectedPlayerAudioTrackIndex == null) {
-            return plan.selectedAudioStreamIndex
-        }
-        if (playerAudioTrackCount != plan.audioStreamIndices.size) {
-            logger.warn {
-                "Cannot map the selected player audio track to Jellyfin by ordinal: " +
-                        "playerTracks=$playerAudioTrackCount, " +
-                        "jellyfinStreams=${plan.audioStreamIndices.size}; " +
-                        "retaining serverSelectedStream=${plan.selectedAudioStreamIndex}"
-            }
-            return plan.selectedAudioStreamIndex
-        }
-        return plan.audioStreamIndices.getOrNull(selectedPlayerAudioTrackIndex)
-            ?: error("The selected player audio track index is out of bounds")
     }
 
     internal suspend fun stopEncoding(plan: JellyfinPlaybackPlan?) {
@@ -212,17 +173,6 @@ class JellyfinMediaDataProvider internal constructor(
         } catch (e: Throwable) {
             logger.warn(e) { "Failed to stop a previous Jellyfin transcoding session" }
         }
-    }
-
-    internal suspend fun stopCurrentEncoding() {
-        stopEncoding(takeCurrentPlan())
-    }
-
-    internal fun takeCurrentPlan(): JellyfinPlaybackPlan? {
-        val plan = currentPlan
-        currentPlan = null
-        _qualityState.value = null
-        return plan
     }
 
     private companion object {

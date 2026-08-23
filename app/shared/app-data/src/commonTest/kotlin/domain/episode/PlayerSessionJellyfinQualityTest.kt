@@ -29,7 +29,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -64,15 +63,7 @@ import org.koin.dsl.module
 import org.openani.mediamp.InternalForInheritanceMediampApi
 import org.openani.mediamp.InternalMediampApi
 import org.openani.mediamp.MediampPlayer
-import org.openani.mediamp.features.MediaMetadata
-import org.openani.mediamp.features.PlayerFeatures
-import org.openani.mediamp.features.buildPlayerFeatures
-import org.openani.mediamp.metadata.AudioTrack
-import org.openani.mediamp.metadata.Chapter
 import org.openani.mediamp.metadata.MediaProperties
-import org.openani.mediamp.metadata.SubtitleTrack
-import org.openani.mediamp.metadata.TrackGroup
-import org.openani.mediamp.metadata.emptyTrackGroup
 import org.openani.mediamp.test.TestMediampPlayer
 import org.openani.mediamp.source.MediaData
 import org.openani.mediamp.source.MediaExtraFiles
@@ -123,9 +114,10 @@ class PlayerSessionJellyfinQualityTest {
     }
 
     @Test
-    fun `preserves playback intent while switching bitrate`() = runTest {
+    fun `quality change stops and reloads from the requested position`() = runTest {
         var playbackInfoCount = 0
         val startTimeTicks = mutableListOf<Long>()
+        val requestedMediaSourceIds = mutableListOf<String?>()
         val stoppedSessions = mutableListOf<String>()
         val source = JellyfinMediaSource(
             config = MediaSourceConfig(
@@ -140,9 +132,11 @@ class PlayerSessionJellyfinQualityTest {
                     when {
                         request.url.encodedPath == "/Items/episode-1/PlaybackInfo" -> {
                             playbackInfoCount++
-                            startTimeTicks += Json.parseToJsonElement(
+                            val body = Json.parseToJsonElement(
                                 (request.body as OutgoingContent.ByteArrayContent).bytes().decodeToString(),
-                            ).jsonObject.getValue("StartTimeTicks").jsonPrimitive.content.toLong()
+                            ).jsonObject
+                            startTimeTicks += body.getValue("StartTimeTicks").jsonPrimitive.content.toLong()
+                            requestedMediaSourceIds += body["MediaSourceId"]?.jsonPrimitive?.content
                             val isOriginal = playbackInfoCount == 1
                             respond(
                                 content = if (isOriginal) {
@@ -186,7 +180,6 @@ class PlayerSessionJellyfinQualityTest {
         val provider = JellyfinMediaDataProvider(
             source = source,
             itemId = "episode-1",
-            originalTitle = "Episode 1",
             extraFiles = MediaExtraFiles.EMPTY,
             qualityRepository = repository,
         )
@@ -205,19 +198,11 @@ class PlayerSessionJellyfinQualityTest {
         backingPlayer.injectPosition(42_000L)
         runCurrent()
 
-        var snapshot: JellyfinPlaybackReplacementSnapshot? = null
         assertTrue(
-            session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(8_000_000)) {
-                snapshot = it
-            }.isSuccess,
-        )
-        assertEquals(
-            JellyfinPlaybackReplacementSnapshot(
-                positionMillis = 42_000L,
-                durationMillis = 1_000_000L,
-                playWhenReady = true,
-            ),
-            snapshot,
+            session.reloadJellyfinPlaybackQuality(
+                JellyfinPlaybackQuality.fixed(8_000_000),
+                startPositionMillis = 42_000L,
+            ).isSuccess,
         )
         assertEquals(42_000L, backingPlayer.currentPositionMillis.value)
         assertTrue(backingPlayer.state.value.playWhenReady)
@@ -225,9 +210,14 @@ class PlayerSessionJellyfinQualityTest {
         assertEquals(emptyList(), stoppedSessions)
 
         player.pause()
-        assertTrue(session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(4_000_000)).isSuccess)
+        assertTrue(
+            session.reloadJellyfinPlaybackQuality(
+                JellyfinPlaybackQuality.fixed(4_000_000),
+                startPositionMillis = 42_000L,
+            ).isSuccess,
+        )
         assertEquals(42_000L, backingPlayer.currentPositionMillis.value)
-        assertFalse(backingPlayer.state.value.playWhenReady)
+        assertTrue(backingPlayer.state.value.playWhenReady)
         assertEquals(listOf("transcode-1"), stoppedSessions)
         assertEquals(JellyfinPlaybackQuality.fixed(4_000_000), repository.quality)
 
@@ -235,10 +225,122 @@ class PlayerSessionJellyfinQualityTest {
 
         assertEquals(listOf("transcode-1", "transcode-2"), stoppedSessions)
         assertEquals(listOf(0L, 0L, 0L), startTimeTicks)
+        assertEquals(listOf(null, "physical-version-1", "physical-version-1"), requestedMediaSourceIds)
     }
 
     @Test
-    fun `a selected media reload waits for the current Jellyfin quality switch and wins`() = runTest {
+    fun `failed quality reload stays stopped without changing physical versions`() = runTest {
+        var playbackInfoCount = 0
+        val stoppedSessions = mutableListOf<String>()
+        val provider = provider(
+            source = source { request ->
+                when (request.url.encodedPath) {
+                    "/Items/episode-1/PlaybackInfo" -> {
+                        playbackInfoCount++
+                        if (playbackInfoCount == 1) {
+                            respondJson(
+                                playbackInfo(
+                                    "old-transcode",
+                                    false,
+                                    "/Videos/episode-1/old.m3u8?api_key=test-api-key",
+                                ),
+                            )
+                        } else {
+                            respondJson(
+                                """
+                                {
+                                  "PlaySessionId": "different-version",
+                                  "MediaSources": [{
+                                    "Id": "physical-version-2",
+                                    "Bitrate": 12000000,
+                                    "SupportsDirectPlay": true,
+                                    "SupportsDirectStream": true,
+                                    "SupportsTranscoding": true
+                                  }]
+                                }
+                                """.trimIndent(),
+                            )
+                        }
+                    }
+
+                    "/Videos/ActiveEncodings" -> {
+                        stoppedSessions += checkNotNull(request.url.parameters["playSessionId"])
+                        respond("")
+                    }
+
+                    else -> error("Unexpected request: ${request.url}")
+                }
+            },
+            itemId = "episode-1",
+            quality = JellyfinPlaybackQuality.Original,
+        )
+        val backingPlayer = TestMediampPlayer(StandardTestDispatcher(testScheduler))
+        val player = ResumeBeforeSeekPlayer(backingPlayer)
+        val session = PlayerSession(player, koin(provider.mediaDataProvider), EmptyCoroutineContext)
+
+        session.loadMedia(TestMediaList.first(), episodeMetadata(1))
+        val result = session.reloadJellyfinPlaybackQuality(
+            JellyfinPlaybackQuality.fixed(8_000_000),
+            startPositionMillis = 42_000L,
+        )
+
+        assertTrue(result.isFailure)
+        assertFalse(backingPlayer.state.value.playWhenReady)
+        assertNull(session.jellyfinPlaybackQualityState.value)
+        assertEquals(listOf("old-transcode"), stoppedSessions)
+        assertEquals(
+            listOf("$TEST_BASE_URL/Videos/episode-1/old.m3u8?api_key=test-api-key"),
+            player.mediaUris,
+        )
+    }
+
+    @Test
+    fun `player rejection after negotiation stops the replacement transcode`() = runTest {
+        var playbackInfoCount = 0
+        val stoppedSessions = mutableListOf<String>()
+        val provider = provider(
+            source = source { request ->
+                when (request.url.encodedPath) {
+                    "/Items/episode-1/PlaybackInfo" -> {
+                        playbackInfoCount++
+                        respondJson(
+                            playbackInfo(
+                                "transcode-$playbackInfoCount",
+                                false,
+                                "/Videos/episode-1/stream-$playbackInfoCount.m3u8?api_key=test-api-key",
+                            ),
+                        )
+                    }
+
+                    "/Videos/ActiveEncodings" -> {
+                        stoppedSessions += checkNotNull(request.url.parameters["playSessionId"])
+                        respond("")
+                    }
+
+                    else -> error("Unexpected request: ${request.url}")
+                }
+            },
+            itemId = "episode-1",
+            quality = JellyfinPlaybackQuality.Original,
+        )
+        val backingPlayer = TestMediampPlayer(StandardTestDispatcher(testScheduler))
+        val player = ResumeBeforeSeekPlayer(backingPlayer, failOnMediaNumber = 2)
+        val session = PlayerSession(player, koin(provider.mediaDataProvider), EmptyCoroutineContext)
+
+        session.loadMedia(TestMediaList.first(), episodeMetadata(1))
+        val result = session.reloadJellyfinPlaybackQuality(
+            JellyfinPlaybackQuality.fixed(8_000_000),
+            startPositionMillis = 42_000L,
+        )
+
+        assertTrue(result.isFailure)
+        assertFalse(backingPlayer.state.value.playWhenReady)
+        assertNull(session.jellyfinPlaybackQualityState.value)
+        assertEquals(listOf("transcode-1", "transcode-2"), stoppedSessions)
+    }
+
+    @Test
+    fun `a selected media reload waits for the current Jellyfin quality reload and wins`() = runTest {
         val oldSwitchStarted = CompletableDeferred<Unit>()
         val releaseOldSwitch = CompletableDeferred<Unit>()
         val stoppedSessions = mutableListOf<String>()
@@ -300,7 +402,10 @@ class PlayerSessionJellyfinQualityTest {
 
         session.loadMedia(oldMedia, episodeMetadata(1))
         val switching = async {
-            session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(8_000_000))
+            session.reloadJellyfinPlaybackQuality(
+                JellyfinPlaybackQuality.fixed(8_000_000),
+                startPositionMillis = 0L,
+            )
         }
         oldSwitchStarted.await()
 
@@ -332,162 +437,6 @@ class PlayerSessionJellyfinQualityTest {
     }
 
 
-
-    @Test
-    fun `selected player audio track maps to Jellyfin stream index`() = runTest {
-        var playbackInfoCount = 0
-        val requestedAudioStreamIndices = mutableListOf<Int?>()
-        val provider = provider(
-            source = source { request ->
-                when (request.url.encodedPath) {
-                    "/Items/episode-1/PlaybackInfo" -> {
-                        playbackInfoCount++
-                        val body = Json.parseToJsonElement(
-                            (request.body as OutgoingContent.ByteArrayContent).bytes().decodeToString(),
-                        ).jsonObject
-                        requestedAudioStreamIndices += body["AudioStreamIndex"]?.jsonPrimitive?.content?.toInt()
-                        respondJson(
-                            audioPlaybackInfo(
-                                playSessionId = "session-$playbackInfoCount",
-                                supportsDirectPlay = playbackInfoCount == 1,
-                                transcodingUrl = if (playbackInfoCount == 1) {
-                                    null
-                                } else {
-                                    "/Videos/episode-1/master.m3u8?api_key=test-api-key"
-                                },
-                            ),
-                        )
-                    }
-
-                    "/Videos/ActiveEncodings" -> respond("")
-                    else -> error("Unexpected request: ${request.url}")
-                }
-            },
-            itemId = "episode-1",
-        )
-        val backingPlayer = TestMediampPlayer(StandardTestDispatcher(testScheduler))
-        val player = ResumeBeforeSeekPlayer(
-            delegate = backingPlayer,
-            audioTracks = listOf(
-                AudioTrack("exo-group-0", "exo-group", "English", emptyList()),
-                AudioTrack("audio-99", "mpv-aid-99", "Japanese", emptyList()),
-            ),
-            selectedAudioTrackIndex = 1,
-        )
-        val session = PlayerSession(player, koin(provider.mediaDataProvider), EmptyCoroutineContext)
-
-        session.loadMedia(TestMediaList.first(), episodeMetadata(1))
-        assertTrue(session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(8_000_000)).isSuccess)
-
-        assertEquals(listOf(null, 3), requestedAudioStreamIndices)
-    }
-
-    @Test
-    fun `selected Jellyfin audio stream is restored when switching from transcode to direct play`() = runTest {
-        var playbackInfoCount = 0
-        val requestedAudioStreamIndices = mutableListOf<Int?>()
-        val provider = provider(
-            source = source { request ->
-                when (request.url.encodedPath) {
-                    "/Items/episode-1/PlaybackInfo" -> {
-                        playbackInfoCount++
-                        val body = Json.parseToJsonElement(
-                            (request.body as OutgoingContent.ByteArrayContent).bytes().decodeToString(),
-                        ).jsonObject
-                        requestedAudioStreamIndices += body["AudioStreamIndex"]?.jsonPrimitive?.content?.toInt()
-                        respondJson(
-                            audioPlaybackInfo(
-                                playSessionId = "session-$playbackInfoCount",
-                                supportsDirectPlay = playbackInfoCount != 2,
-                                transcodingUrl = if (playbackInfoCount == 2) {
-                                    "/Videos/episode-1/master.m3u8?api_key=test-api-key"
-                                } else {
-                                    null
-                                },
-                            ),
-                        )
-                    }
-
-                    "/Videos/ActiveEncodings" -> respond("")
-                    else -> error("Unexpected request: ${request.url}")
-                }
-            },
-            itemId = "episode-1",
-        )
-        val initialTracks = listOf(
-            AudioTrack("raw-default", "raw-default", "English", emptyList()),
-            AudioTrack("raw-selected", "raw-selected", "Japanese", emptyList()),
-        )
-        val transcodedTrack = AudioTrack("hls-audio", "hls-audio", "Japanese", emptyList())
-        val restoredTracks = listOf(
-            AudioTrack("new-raw-default", "new-raw-default", "English", emptyList()),
-            AudioTrack("new-raw-selected", "new-raw-selected", "Japanese", emptyList()),
-        )
-        val backingPlayer = TestMediampPlayer(StandardTestDispatcher(testScheduler))
-        val player = ResumeBeforeSeekPlayer(
-            delegate = backingPlayer,
-            audioTracks = initialTracks,
-            selectedAudioTrackIndex = 1,
-        )
-        val session = PlayerSession(player, koin(provider.mediaDataProvider), EmptyCoroutineContext)
-
-        session.loadMedia(TestMediaList.first(), episodeMetadata(1))
-        player.replaceAudioTracksOnNextMedia(listOf(transcodedTrack), selectedAudioTrackIndex = 0)
-        assertTrue(session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(8_000_000)).isSuccess)
-
-        player.replaceAudioTracksOnNextMedia(restoredTracks, selectedAudioTrackIndex = 0)
-        assertTrue(session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.Original).isSuccess)
-
-        assertEquals(listOf(null, 3, 3), requestedAudioStreamIndices)
-        assertEquals(restoredTracks[1], player.selectedAudioTrack)
-    }
-
-    @Test
-    fun `audio track count mismatch retains server audio stream and does not block quality switch`() = runTest {
-        var playbackInfoCount = 0
-        val requestedAudioStreamIndices = mutableListOf<Int?>()
-        val provider = provider(
-            source = source { request ->
-                when (request.url.encodedPath) {
-                    "/Items/episode-1/PlaybackInfo" -> {
-                        playbackInfoCount++
-                        val body = Json.parseToJsonElement(
-                            (request.body as OutgoingContent.ByteArrayContent).bytes().decodeToString(),
-                        ).jsonObject
-                        requestedAudioStreamIndices += body["AudioStreamIndex"]
-                            ?.jsonPrimitive
-                            ?.content
-                            ?.toInt()
-                        respondJson(audioPlaybackInfo("session-$playbackInfoCount", true, null))
-                    }
-
-                    else -> error("Unexpected request: ${request.url}")
-                }
-            },
-            itemId = "episode-1",
-        )
-        val playerTracks = listOf(
-            AudioTrack("player-audio-1", "player-audio-1", "Japanese", emptyList()),
-            AudioTrack("player-audio-2", "player-audio-2", "English", emptyList()),
-            AudioTrack("player-audio-3", "player-audio-3", "Commentary", emptyList()),
-        )
-        val backingPlayer = TestMediampPlayer(StandardTestDispatcher(testScheduler))
-        val player = ResumeBeforeSeekPlayer(
-            delegate = backingPlayer,
-            audioTracks = playerTracks,
-            selectedAudioTrackIndex = 0,
-        )
-        val session = PlayerSession(player, koin(provider.mediaDataProvider), EmptyCoroutineContext)
-
-        session.loadMedia(TestMediaList.first(), episodeMetadata(1))
-        val originalUri = (player.mediaData.first() as UriMediaData).uri
-        val result = session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(8_000_000))
-
-        assertTrue(result.isSuccess)
-        assertEquals(2, playbackInfoCount)
-        assertEquals(listOf(null, 1), requestedAudioStreamIndices)
-        assertEquals(originalUri, (player.mediaData.first() as UriMediaData).uri)
-    }
 
     @Test
     fun `stopPlayback stops the active Jellyfin transcode`() = runTest {
@@ -524,7 +473,42 @@ class PlayerSessionJellyfinQualityTest {
     }
 
     @Test
-    fun `proxy close failure after commit does not roll back or skip previous transcode cleanup`() = runTest {
+    fun `stopPlayback bounds a stalled Jellyfin transcode cleanup`() = runTest {
+        val deleteStarted = CompletableDeferred<Unit>()
+        val provider = provider(
+            source = source { request ->
+                when (request.url.encodedPath) {
+                    "/Items/episode-1/PlaybackInfo" -> respondJson(
+                        playbackInfo(
+                            "active-transcode",
+                            false,
+                            "/Videos/episode-1/master.m3u8?api_key=test-api-key",
+                        ),
+                    )
+
+                    "/Videos/ActiveEncodings" -> {
+                        deleteStarted.complete(Unit)
+                        awaitCancellation()
+                    }
+
+                    else -> error("Unexpected request: ${request.url}")
+                }
+            },
+            itemId = "episode-1",
+            quality = JellyfinPlaybackQuality.fixed(8_000_000),
+        )
+        val player = ResumeBeforeSeekPlayer(TestMediampPlayer(StandardTestDispatcher(testScheduler)))
+        val session = PlayerSession(player, koin(provider.mediaDataProvider), EmptyCoroutineContext)
+
+        session.loadMedia(TestMediaList.first(), episodeMetadata(1))
+        val stopping = async { session.stopPlayback() }
+        deleteStarted.await()
+        stopping.await()
+        assertTrue(stopping.isCompleted)
+    }
+
+    @Test
+    fun `old proxy close failure does not block stop-then-reload`() = runTest {
         var playbackInfoCount = 0
         val stoppedSessions = mutableListOf<String>()
         val provider = provider(
@@ -566,7 +550,10 @@ class PlayerSessionJellyfinQualityTest {
         )
 
         session.loadMedia(TestMediaList.first(), episodeMetadata(1))
-        val result = session.switchJellyfinPlaybackQuality(JellyfinPlaybackQuality.fixed(4_000_000))
+        val result = session.reloadJellyfinPlaybackQuality(
+            JellyfinPlaybackQuality.fixed(4_000_000),
+            startPositionMillis = 0L,
+        )
 
         assertTrue(result.isSuccess)
         assertEquals(JellyfinPlaybackQuality.fixed(4_000_000), provider.qualityRepository.quality)
@@ -586,43 +573,13 @@ class PlayerSessionJellyfinQualityTest {
 
     private class ResumeBeforeSeekPlayer(
         private val delegate: TestMediampPlayer,
-        audioTracks: List<AudioTrack>? = null,
-        selectedAudioTrackIndex: Int? = null,
+        private val failOnMediaNumber: Int? = null,
     ) : MediampPlayer by delegate {
-        private val audioTrackGroup = audioTracks?.let { tracks ->
-            TestTrackGroup(
-                candidates = tracks,
-                selected = selectedAudioTrackIndex?.let(tracks::get),
-            )
-        }
-        private var nextAudioTracks: Pair<List<AudioTrack>, Int?>? = null
         val mediaUris = mutableListOf<String>()
-        val selectedAudioTrack: AudioTrack? get() = audioTrackGroup?.selected?.value
+        private var mediaNumber = 0
 
         init {
             delegate.defaultMediaProperties = MediaProperties(durationMillis = 1_000_000L)
-        }
-
-        override val features: PlayerFeatures = if (audioTrackGroup == null) {
-            delegate.features
-        } else {
-            buildPlayerFeatures {
-                add(
-                    MediaMetadata.Key,
-                    object : MediaMetadata {
-                        override val audioTracks: TrackGroup<AudioTrack> = audioTrackGroup
-                        override val subtitleTracks: TrackGroup<SubtitleTrack> = emptyTrackGroup()
-                        override val chapters: Flow<List<Chapter>> = flowOf(emptyList())
-                    },
-                )
-            }
-        }
-
-        fun replaceAudioTracksOnNextMedia(
-            tracks: List<AudioTrack>,
-            selectedAudioTrackIndex: Int?,
-        ) {
-            nextAudioTracks = tracks to selectedAudioTrackIndex
         }
 
         override suspend fun setMediaData(
@@ -630,34 +587,12 @@ class PlayerSessionJellyfinQualityTest {
             playWhenReady: Boolean,
             startPositionMillis: Long,
         ) {
+            mediaNumber++
             (data as? UriMediaData)?.uri?.let(mediaUris::add)
-            nextAudioTracks?.let { (tracks, selectedIndex) ->
-                checkNotNull(audioTrackGroup).replace(
-                    candidates = tracks,
-                    selected = selectedIndex?.let(tracks::get),
-                )
-                nextAudioTracks = null
+            if (mediaNumber == failOnMediaNumber) {
+                error("simulated player rejection")
             }
             delegate.setMediaData(data, playWhenReady, startPositionMillis)
-        }
-    }
-
-    private class TestTrackGroup<T>(
-        candidates: List<T>,
-        selected: T?,
-    ) : TrackGroup<T> {
-        override val selected = MutableStateFlow(selected)
-        override val candidates = MutableStateFlow(candidates)
-
-        override fun select(track: T?): Boolean {
-            if (track != null && track !in candidates.value) return false
-            selected.value = track
-            return true
-        }
-
-        fun replace(candidates: List<T>, selected: T?) {
-            this.candidates.value = candidates
-            this.selected.value = selected
         }
     }
 
@@ -752,7 +687,6 @@ class PlayerSessionJellyfinQualityTest {
             mediaDataProvider = JellyfinMediaDataProvider(
                 source = source,
                 itemId = itemId,
-                originalTitle = itemId,
                 extraFiles = MediaExtraFiles.EMPTY,
                 qualityRepository = repository,
             ),
@@ -835,35 +769,6 @@ class PlayerSessionJellyfinQualityTest {
                     "SupportsDirectPlay": $supportsDirectPlay,
                     "SupportsDirectStream": false,
                     "SupportsTranscoding": true
-                    $transcodingProperty
-                  }]
-                }
-            """.trimIndent()
-        }
-
-        fun audioPlaybackInfo(
-            playSessionId: String,
-            supportsDirectPlay: Boolean,
-            transcodingUrl: String?,
-        ): String {
-            val transcodingProperty = transcodingUrl
-                ?.let { ""","TranscodingUrl":"$it"""" }
-                .orEmpty()
-            return """
-                {
-                  "PlaySessionId": "$playSessionId",
-                  "MediaSources": [{
-                    "Id": "physical-version-1",
-                    "Bitrate": 24000000,
-                    "SupportsDirectPlay": $supportsDirectPlay,
-                    "SupportsDirectStream": false,
-                    "SupportsTranscoding": true,
-                    "DefaultAudioStreamIndex": 1,
-                    "MediaStreams": [
-                      { "Index": 0, "Type": "Video", "Codec": "h264", "BitRate": 22000000 },
-                      { "Index": 1, "Type": "Audio", "Codec": "aac", "BitRate": 1000000 },
-                      { "Index": 3, "Type": "Audio", "Codec": "aac", "BitRate": 1000000 }
-                    ]
                     $transcodingProperty
                   }]
                 }

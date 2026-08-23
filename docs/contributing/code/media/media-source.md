@@ -36,6 +36,9 @@ interface MediaSource {
 `JellyfinMediaResolver` 和 Jellyfin 专属播放控制器使用；
 其他数据源仍走通用 Resolver 和播放器生命周期。
 
+`JellyfinMediaDataProvider` 本身只保存打开资源所需的位置和服务信息；每次打开返回的
+`JellyfinPlaybackPlan` 由当前 Jellyfin 播放句柄持有，不存放在通用 `MediaDataProvider` 中。
+
 ### `SelectorMediaSource`
 
 `SelectorMediaSource` 会根据配置，使用 [CSS Selector][CSS Selector] 和正则表达式，从 HTML

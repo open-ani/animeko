@@ -141,20 +141,19 @@ class JellyfinMediaResolverTest {
         val provider = JellyfinMediaDataProvider(
             source = source,
             itemId = "episode-1",
-            originalTitle = "Episode 1",
             extraFiles = MediampMediaExtraFiles.EMPTY,
             qualityRepository = repository,
         )
 
-        val data = provider.open(this)
+        val opened = provider.openInitialPlayback()
 
         assertEquals(
             "https://jellyfin.example.test/Items/episode-1/Download?ApiKey=test-key",
-            data.uri,
+            opened.data.uri,
         )
         assertEquals(2, playbackInfoRequests)
         assertEquals(JellyfinPlaybackQuality.Original, repository.quality)
-        assertEquals(JellyfinPlaybackQuality.Original, provider.qualityState.value?.selected)
+        assertEquals(JellyfinPlaybackQuality.Original, opened.state.selected)
     }
 
     private fun source(instanceId: String): JellyfinMediaSource {

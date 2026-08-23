@@ -118,8 +118,13 @@ Jellyfin 码率切换使用以下调用链：
    提交 `PlaybackInfo`、`DeviceProfile` 和目标总码率；
 4. Jellyfin 返回 Direct Play 或 HLS 转码方案；
 5. `JellyfinPlaybackController`
-   负责 Jellyfin 流替换、音轨映射、HLS 代理交换和旧转码清理；
+   持有当前 Jellyfin 播放计划，并串行处理停止、重新协商和旧转码清理；
 6. `PlayerSession` 只保留安装、切换和卸载 Jellyfin provider 的条件式接入。
+
+切换码率时会先保存当前位置并停止当前播放，再固定原播放计划的物理
+`MediaSourceId` 重新请求 `PlaybackInfo`，最后通过普通 HLS 准备和
+`setMediaData(...)` 流程从原位置附近继续播放。切换不保留暂停状态、音轨或字幕，
+新流打开失败时也不会回退旧流。
 
 这条链路不改变通用 `MediaSource.fetch(...)`、`MediaSelector`
 或非 Jellyfin 播放源的生命周期。`PlaybackInfo` 不应进入资源查询和选择阶段。

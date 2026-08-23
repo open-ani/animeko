@@ -671,6 +671,7 @@ class EpisodeVideoControllerTest {
         waitUntil(timeoutMillis = WAIT_TIMEOUT) {
             onNodeWithTag(TAG_EPISODE_VIDEO_MORE).exists()
         }
+        assertTrue(onNodeWithTag(TAG_JELLYFIN_QUALITY_TEXT_BUTTON).doesNotExist())
         onNodeWithTag(TAG_EPISODE_VIDEO_MORE).performClick()
         waitUntil(timeoutMillis = WAIT_TIMEOUT) {
             onNodeWithTag(TAG_JELLYFIN_QUALITY_MORE_ITEM).exists()

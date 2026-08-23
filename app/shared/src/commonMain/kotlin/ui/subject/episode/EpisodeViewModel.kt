@@ -360,7 +360,7 @@ class EpisodeViewModel(
     )
 
     val mediaResolver: MediaResolver get() = fetchPlayState.playerSession.mediaResolver
-    val jellyfinPlaybackQualityState get() = fetchPlayState.playerSession.jellyfinPlaybackQualityState
+    val jellyfinPlaybackQualityState get() = fetchPlayState.jellyfinPlaybackQualityState
 
     suspend fun switchJellyfinPlaybackQuality(quality: JellyfinPlaybackQuality): Result<Unit> {
         return fetchPlayState.switchJellyfinPlaybackQuality(quality)

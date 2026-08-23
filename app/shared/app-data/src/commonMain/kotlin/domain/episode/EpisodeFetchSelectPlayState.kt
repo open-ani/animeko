@@ -114,27 +114,43 @@ class EpisodeFetchSelectPlayState(
         mainDispatcher,
     )
 
-    /**
-     * Replaces only the current Jellyfin playback stream. The work is launched in the current
-     * [EpisodeSession], so switching episodes cancels it before the new episode can take over.
-     */
+    val jellyfinPlaybackQualityState get() = playerSession.jellyfinPlaybackQualityState
+
+    /** Reloads only the current Jellyfin playback in the current [EpisodeSession]. */
     suspend fun switchJellyfinPlaybackQuality(quality: JellyfinPlaybackQuality): Result<Unit> {
         val episodeSession = episodeSessionFlow.value
         return episodeSession.sessionScope.async(
             CoroutineName("JellyfinPlaybackQualitySwitch"),
             start = CoroutineStart.UNDISPATCHED,
         ) {
-            playerSession.switchJellyfinPlaybackQuality(quality) { snapshot ->
-                saveProgressBeforeJellyfinReplacement(episodeSession, snapshot)
+            try {
+                val (positionMillis, durationMillis) = withContext(mainDispatcher) {
+                    val duration = player.mediaProperties.value?.durationMillis
+                    check(duration != null && duration > 0L) {
+                        "Cannot reload Jellyfin quality before the media duration is available"
+                    }
+                    player.currentPositionMillis.value.coerceIn(0L, duration) to duration
+                }
+                saveProgressBeforeJellyfinReload(
+                    episodeSession = episodeSession,
+                    positionMillis = positionMillis,
+                    durationMillis = durationMillis,
+                )
+                playerSession.reloadJellyfinPlaybackQuality(quality, positionMillis)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                Result.failure(e)
             }
         }.await()
     }
 
-    private suspend fun saveProgressBeforeJellyfinReplacement(
+    private suspend fun saveProgressBeforeJellyfinReload(
         episodeSession: EpisodeSession,
-        snapshot: JellyfinPlaybackReplacementSnapshot,
+        positionMillis: Long,
+        durationMillis: Long,
     ) {
-        if (snapshot.durationMillis - snapshot.positionMillis < 5_000L) {
+        if (durationMillis - positionMillis < 5_000L) {
             playProgressRepository.remove(episodeSession.episodeId)
             return
         }
@@ -142,13 +158,13 @@ class EpisodeFetchSelectPlayState(
         val info = episodeSession.infoBundleFlow.filterNotNull().first()
         playProgressRepository.saveOrUpdate(
             episodeId = episodeSession.episodeId,
-            positionMillis = snapshot.positionMillis,
+            positionMillis = positionMillis,
             subjectId = info.subjectId,
             episodeSort = info.episodeInfo.sort.number,
             subjectName = info.subjectInfo.displayName,
             subjectImageUrl = info.subjectInfo.imageLarge,
             episodeName = info.episodeInfo.displayName,
-            durationMillis = snapshot.durationMillis,
+            durationMillis = durationMillis,
         )
     }
 

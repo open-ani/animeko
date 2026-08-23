@@ -105,10 +105,44 @@ class JellyfinPlaybackTest {
         )
         assertEquals(8_000_000, plan.effectiveMaxBitrate)
         assertEquals(24_000_000, plan.sourceBitrate)
-        assertEquals("hevc", plan.sourceVideoCodec)
         assertEquals("physical-version-1", plan.mediaSourceId)
         assertEquals("play-session-1", plan.playSessionId)
         assertTrue(plan.isTranscoding)
+    }
+
+    @Test
+    fun `requested physical media source is not silently replaced`() = runTest {
+        val source = source { request ->
+            val body = request.jsonBody()
+            assertEquals(
+                "physical-version-1",
+                body.getValue("MediaSourceId").jsonPrimitive.content,
+            )
+            respondJson(
+                """
+                {
+                  "PlaySessionId": "different-version-session",
+                  "MediaSources": [{
+                    "Id": "physical-version-2",
+                    "Bitrate": 12000000,
+                    "SupportsDirectPlay": true,
+                    "SupportsDirectStream": true,
+                    "SupportsTranscoding": true
+                  }]
+                }
+                """.trimIndent(),
+            )
+        }
+
+        val exception = assertFailsWith<IllegalStateException> {
+            source.createPlaybackPlan(
+                itemId = "episode-1",
+                quality = JellyfinPlaybackQuality.fixed(8_000_000),
+                mediaSourceId = "physical-version-1",
+            )
+        }
+
+        assertTrue(exception.message.orEmpty().contains("physical-version-1"))
     }
 
     @Test
@@ -147,49 +181,6 @@ class JellyfinPlaybackTest {
                 quality = JellyfinPlaybackQuality.fixed(8_000_000),
             )
         }
-    }
-
-    @Test
-    fun `selected audio stream is retained across PlaybackInfo renegotiation`() = runTest {
-        var playbackInfoCount = 0
-        val source = source { request ->
-            assertEquals("/Items/movie-1/PlaybackInfo", request.url.encodedPath)
-            playbackInfoCount++
-            val body = request.jsonBody()
-            assertEquals("3", body.getValue("AudioStreamIndex").jsonPrimitive.content)
-
-            respondJson(
-                """
-                {
-                  "PlaySessionId": "play-session-$playbackInfoCount",
-                  "MediaSources": [{
-                    "Id": "physical-version-1",
-                    "Bitrate": 24000000,
-                    "SupportsDirectPlay": false,
-                    "SupportsDirectStream": false,
-                    "SupportsTranscoding": true,
-                    "DefaultAudioStreamIndex": 1,
-                    "TranscodingUrl": "/Videos/movie-1/master.m3u8?AudioStreamIndex=3",
-                    "MediaStreams": [
-                      { "Index": 0, "Type": "Video", "Codec": "hevc", "BitRate": 22000000 },
-                      { "Index": 1, "Type": "Audio", "Codec": "aac", "BitRate": 1000000 },
-                      { "Index": 3, "Type": "Audio", "Codec": "aac", "BitRate": 1000000 }
-                    ]
-                  }]
-                }
-                """.trimIndent(),
-            )
-        }
-
-        val plan = source.createPlaybackPlan(
-            itemId = "movie-1",
-            quality = JellyfinPlaybackQuality.Original,
-            audioStreamIndex = 3,
-        )
-
-        assertEquals(2, playbackInfoCount)
-        assertEquals(listOf(1, 3), plan.audioStreamIndices)
-        assertEquals(3, plan.selectedAudioStreamIndex)
     }
 
     @Test

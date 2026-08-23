@@ -12,6 +12,7 @@ package me.him188.ani.datasources.jellyfin
 import io.ktor.client.call.body
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
@@ -105,7 +106,6 @@ abstract class BaseJellyfinMediaSource(
         mediaSourceId: String? = null,
         startPositionMillis: Long = 0,
         forceAutoDetection: Boolean = false,
-        audioStreamIndex: Int? = null,
     ): JellyfinPlaybackPlan {
         val effectiveMaxBitrate = when (quality.mode) {
             JellyfinPlaybackQualityMode.AUTO -> detectMaxStreamingBitrate(forceAutoDetection)
@@ -153,14 +153,18 @@ abstract class BaseJellyfinMediaSource(
             check(response.errorCode == null) {
                 "Jellyfin could not create playback info: ${response.errorCode}"
             }
-            return requestedMediaSourceId
-                ?.let { requested -> response.mediaSources.firstOrNull { it.id == requested } }
-                ?: response.mediaSources.firstOrNull()
+            if (requestedMediaSourceId != null) {
+                return response.mediaSources.firstOrNull { it.id == requestedMediaSourceId }
+                    ?: error(
+                        "Jellyfin PlaybackInfo did not include requested media source $requestedMediaSourceId",
+                    )
+            }
+            return response.mediaSources.firstOrNull()
                 ?: error("Jellyfin PlaybackInfo did not include a media source")
         }
 
         var negotiatedMaxBitrate = effectiveMaxBitrate
-        var negotiatedAudioStreamIndex = audioStreamIndex
+        var negotiatedAudioStreamIndex: Int? = null
         var playbackResult = requestPlaybackInfo(
             requestedMediaSourceId = mediaSourceId,
             maxStreamingBitrate = negotiatedMaxBitrate,
@@ -277,12 +281,9 @@ abstract class BaseJellyfinMediaSource(
             effectiveMaxBitrate = negotiatedMaxBitrate
                 .takeUnless { quality.mode == JellyfinPlaybackQualityMode.ORIGINAL },
             sourceBitrate = source.totalBitrate(),
-            sourceVideoCodec = videoStream?.codec,
             mediaSourceId = source.id,
             playSessionId = response.playSessionId,
             isTranscoding = isTranscoding,
-            audioStreamIndices = audioStreamIndices,
-            selectedAudioStreamIndex = selectedAudioStreamIndex,
         )
     }
 
@@ -295,6 +296,11 @@ abstract class BaseJellyfinMediaSource(
                 header(HttpHeaders.Authorization, authorization.headerValue)
                 parameter("deviceId", playbackDeviceId)
                 parameter("playSessionId", playSessionId)
+                timeout {
+                    requestTimeoutMillis = STOP_ACTIVE_ENCODING_TIMEOUT_MILLIS
+                    connectTimeoutMillis = STOP_ACTIVE_ENCODING_TIMEOUT_MILLIS
+                    socketTimeoutMillis = STOP_ACTIVE_ENCODING_TIMEOUT_MILLIS
+                }
             }
             if (response.status == HttpStatusCode.Unauthorized) {
                 throw JellyfinAuthorizationException()
@@ -976,6 +982,7 @@ abstract class BaseJellyfinMediaSource(
 
     private companion object {
         const val TICKS_PER_MILLISECOND = 10_000L
+        const val STOP_ACTIVE_ENCODING_TIMEOUT_MILLIS = 5_000L
         const val DISABLED_SUBTITLE_STREAM_INDEX = -1
         const val BITRATE_SAFETY_FACTOR = 0.7
         const val DEFAULT_AUTO_BITRATE = 8_000_000
