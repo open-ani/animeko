@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -68,6 +69,8 @@ import org.jetbrains.compose.resources.painterResource
 fun RichText(
     elements: List<UIRichElement>,
     modifier: Modifier = Modifier,
+    color: Color = LocalContentColor.current,
+    style: TextStyle = LocalTextStyle.current,
     onClickUrl: (String) -> Unit = { },
     onClickImage: (String) -> Unit = { }
 ) {
@@ -77,12 +80,14 @@ fun RichText(
         modifier = modifier,
         horizontalAlignment = Alignment.Start,
     ) {
-        elements.toLayout(onClickUrl, onClickImage)
+        elements.toLayout(color, style, onClickUrl, onClickImage)
     }
 }
 
 @Composable
 fun List<UIRichElement>.toLayout(
+    color: Color,
+    style: TextStyle,
     onClickUrl: (String) -> Unit,
     onClickImage: (String) -> Unit
 ) = forEach { e ->
@@ -93,6 +98,8 @@ fun List<UIRichElement>.toLayout(
                 slice = e.slice,
                 maskState = maskState,
                 modifier = Modifier,
+                color = color,
+                style = style,
                 maxLine = e.maxLine,
                 onClick = { it.url?.let(onClickUrl) },
             )
@@ -107,6 +114,8 @@ fun List<UIRichElement>.toLayout(
         is UIRichElement.Quote -> RichTextDefaults.Quote(
             elements = e.content,
             modifier = Modifier,
+            color = color,
+            style = style,
             onClickUrl = onClickUrl,
         )
     }
@@ -196,6 +205,8 @@ object RichTextDefaults {
         slice: List<UIRichElement.Annotated>,
         maskState: AnnotatedMaskState,
         modifier: Modifier = Modifier,
+        color: Color = LocalContentColor.current,
+        style: TextStyle = LocalTextStyle.current,
         maxLine: Int? = null,
         onClick: (UIRichElement.Annotated) -> Unit
     ) {
@@ -205,7 +216,6 @@ object RichTextDefaults {
         val colorScheme = MaterialTheme.colorScheme
 
         val currentOnClick by rememberUpdatedState(onClick)
-        val contentColor = LocalContentColor.current
 
         val content = buildAnnotatedString {
             var currentLength = 0
@@ -244,7 +254,7 @@ object RichTextDefaults {
                                 colorScheme.onPrimaryContainer.copy(0.12f)
                                     .compositeOver(colorScheme.surfaceContainerHigh)
                             } else {
-                                e.color.takeOrElse { contentColor }
+                                e.color.takeOrElse { color }
                             },
                         )
 
@@ -252,8 +262,8 @@ object RichTextDefaults {
                             style = SpanStyle(
                                 color = textColor,
                                 fontSize = if (e.size != bodyLarge) e.size.sp else 15.5.sp,
-                                fontWeight = if (e.bold) FontWeight.Bold else null,
-                                fontStyle = if (e.italic) FontStyle.Italic else null,
+                                fontWeight = if (e.bold) FontWeight.Bold else style.fontWeight,
+                                fontStyle = if (e.italic) FontStyle.Italic else style.fontStyle,
                                 textDecoration = if (!e.underline && !e.strikethrough) null
                                 else TextDecoration.combine(
                                     buildList {
@@ -262,7 +272,7 @@ object RichTextDefaults {
                                     },
                                 ),
                                 background = background,
-                                fontFamily = if (e.code) FontFamily.Monospace else null,
+                                fontFamily = if (e.code) FontFamily.Monospace else style.fontFamily,
                             ),
                             start = currentLength,
                             end = currentLength + elementLength,
@@ -393,6 +403,8 @@ object RichTextDefaults {
     fun Quote(
         elements: List<UIRichElement>,
         modifier: Modifier = Modifier,
+        color: Color = LocalContentColor.current,
+        style: TextStyle = LocalTextStyle.current,
         onClickUrl: (String) -> Unit,
     ) {
         Surface(
@@ -404,7 +416,7 @@ object RichTextDefaults {
                 CompositionLocalProvider(
                     LocalContentColor provides MaterialTheme.colorScheme.onSurfaceVariant,
                 ) {
-                    elements.toLayout(onClickUrl, { })
+                    elements.toLayout(color, style, onClickUrl) { }
                 }
             }
         }
