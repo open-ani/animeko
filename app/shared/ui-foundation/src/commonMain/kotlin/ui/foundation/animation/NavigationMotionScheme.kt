@@ -14,6 +14,8 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
@@ -33,13 +35,9 @@ data class NavigationMotionScheme(
     val exitTransition: ExitTransition,
     val popEnterTransition: EnterTransition,
     val popExitTransition: ExitTransition,
-    /**
-     * 全屏页面导航 (`NavDisplay`) 使用的动画.
-     *
-     * 在支持 predictive back 的平台上, **返回**方向换成 [PredictiveBackMotion] 的参数, 前进方向与
-     * 上面的一致; 其他平台上它就是上面四个动画.
-     */
-    val predictiveBack: PredictiveBackNavigationMotionScheme,
+    val predictivePopEnterTransition: EnterTransition,
+    val predictivePopExitTransition: ExitTransition,
+    val predictiveSharedContainer: PredictiveBackSharedTransitionMotionScheme
 ) {
     companion object {
         inline val current
@@ -49,13 +47,7 @@ data class NavigationMotionScheme(
         private const val enterDuration = EasingDurations.emphasizedDecelerate
         private const val exitDuration = EasingDurations.emphasizedAccelerate
 
-        /**
-         * 一次页面导航动画的总时长: 旧页面先退出, 新页面延迟同样长的时间再进入.
-         *
-         * [PredictiveBackMotion] 和 [SubjectContainerTransform] 都按它取比例, 保证同一次导航里所有动画
-         * 的进度是对齐的 (predictive back 手势会把整段动画 seek 到手势进度上).
-         */
-        const val TotalDurationMillis = exitDuration + enterDuration
+        const val PredictiveTotalDurationMillis = EasingDurations.emphasizedDecelerate
 
         // https://m3.material.io/styles/motion/easing-and-duration/applying-easing-and-duration#26a169fb-caf3-445e-8267-4f1254e3e8bb
         // https://developer.android.com/develop/ui/compose/animation/shared-elements
@@ -64,58 +56,48 @@ data class NavigationMotionScheme(
 
         /**
          * @param useSlide 是否使用水平滑动. 窄屏才滑动, 宽屏只淡入淡出.
-         * @param usePredictiveBack 页面导航 ([NavigationMotionScheme.predictiveBack]) 是否使用 predictive back
-         * 动效参数. 见 [isPlatformSupportPredictiveBack].
          */
-        fun calculate(
-            useSlide: Boolean,
-            usePredictiveBack: Boolean,
-        ): NavigationMotionScheme {
+        fun calculate(useSlide: Boolean): NavigationMotionScheme {
             val slideInMargin = 1f / 16
             val slideOutMargin = 1f / 16
 
-            val enterTransition: EnterTransition = run {
-                if (useSlide) {
+            val predictiveFadeOutDuration = PredictiveBackMotion.FadeOutDurationMillis
+            val predictiveFadeInDuration = PredictiveTotalDurationMillis - predictiveFadeOutDuration
+
+            val predictiveSharedContainerFadeOutDuration =
+                EasingDurations.emphasized - EasingDurations.emphasizedDecelerate
+
+            val fadeIn = fadeIn(tween(enterDuration, delayMillis = exitDuration, easing = enterEasing))
+            val fadeOut = fadeOut(tween(exitDuration, easing = exitEasing))
+
+            return NavigationMotionScheme(
+                enterTransition = if (useSlide) {
                     val delay = exitDuration
                     val slideIn = slideInHorizontally(
                         tween(enterDuration, delayMillis = delay, easing = enterEasing),
                         initialOffsetX = { (it * slideInMargin).roundToInt() },
                     )
-                    val fadeIn = fadeIn(tween(enterDuration, delayMillis = exitDuration, easing = enterEasing))
                     slideIn.plus(fadeIn)
                 } else {
-                    fadeIn(tween(enterDuration, delayMillis = exitDuration, easing = enterEasing))
-                }
-            }
-
-            val exitTransition: ExitTransition = kotlin.run {
-                val fadeOut = fadeOut(tween(exitDuration, easing = exitEasing))
-                if (useSlide) {
+                    fadeIn
+                },
+                exitTransition = if (useSlide) {
                     slideOutHorizontally(
                         tween(exitDuration, easing = exitEasing),
                         targetOffsetX = { -(it * slideOutMargin).roundToInt() },
                     ).plus(fadeOut)
                 } else {
                     fadeOut
-                }
-            }
-
-            val popEnterTransition = run {
-                val fadeIn = fadeIn(tween(enterDuration, delayMillis = exitDuration, easing = enterEasing))
-                if (useSlide) {
+                },
+                popEnterTransition = if (useSlide) {
                     slideInHorizontally(
                         tween(enterDuration, delayMillis = exitDuration, easing = enterEasing),
                         initialOffsetX = { -(it * slideInMargin).roundToInt() },
                     ) + fadeIn
                 } else {
                     fadeIn // clean fade
-                }
-            }
-
-            // 从页面 A 回到上一个页面 B, 切走页面 A 的动画
-            val popExitTransition: ExitTransition = run {
-                val fadeOut = fadeOut(tween(exitDuration, easing = exitEasing))
-                if (useSlide) {
+                },
+                popExitTransition = if (useSlide) {
                     val slide = slideOutHorizontally(
                         tween(exitDuration, easing = exitEasing),
                         targetOffsetX = { (it * slideOutMargin).roundToInt() },
@@ -123,46 +105,61 @@ data class NavigationMotionScheme(
                     slide.plus(fadeOut)
                 } else {
                     fadeOut
-                }
-            }
-
-            return NavigationMotionScheme(
-                enterTransition = enterTransition,
-                exitTransition = exitTransition,
-                popEnterTransition = popEnterTransition,
-                popExitTransition = popExitTransition,
-                predictiveBack = if (usePredictiveBack) {
-                    calculatePredictiveBackScreenScheme()
-                } else {
-                    PredictiveBackNavigationMotionScheme(
-                        popEnterTransition = popEnterTransition,
-                        popExitTransition = popExitTransition,
-                    )
                 },
+                predictivePopEnterTransition = scaleIn(
+                    tween(PredictiveTotalDurationMillis, easing = PredictiveBackMotion.ProgressEasing),
+                    initialScale = PredictiveBackMotion.EnterScale,
+                ) + fadeIn(
+                    // alpha 从 35% 处才开始
+                    tween(
+                        predictiveFadeInDuration,
+                        delayMillis = predictiveFadeOutDuration,
+                        easing = StandardDecelerateEasing,
+                    ),
+                ),
+                predictivePopExitTransition = scaleOut(
+                    tween(PredictiveTotalDurationMillis, easing = PredictiveBackMotion.ProgressEasing),
+                    targetScale = PredictiveBackMotion.ExitScale,
+                ) + fadeOut(
+                    // alpha 在 35% 处结束
+                    tween(predictiveFadeOutDuration, easing = StandardAccelerateEasing),
+                ),
+                predictiveSharedContainer = PredictiveBackSharedTransitionMotionScheme(
+                    enterTransition = EnterTransition.None, // 由 containerEnterTransition 决定
+                    exitTransition = scaleOut(
+                        tween(PredictiveTotalDurationMillis, easing = PredictiveBackMotion.ProgressEasing),
+                        targetScale = PredictiveBackMotion.ExitScale,
+                    ),
+                    popEnterTransition = scaleIn(
+                        tween(PredictiveTotalDurationMillis, easing = PredictiveBackMotion.ProgressEasing),
+                        initialScale = PredictiveBackMotion.ExitScale,
+                    ),
+                    popExitTransition = ExitTransition.None, // 由 containerPopExitTransition 决定
+                    containerEnterTransition = fadeIn(
+                        tween(
+                            EasingDurations.emphasizedDecelerate,
+                            delayMillis = predictiveSharedContainerFadeOutDuration,
+                            easing = StandardDecelerateEasing,
+                        ),
+                    ),
+                    containerExitTransition = fadeOut(
+                        tween(predictiveSharedContainerFadeOutDuration, easing = StandardAccelerateEasing),
+                    ),
+                ),
             )
         }
     }
 }
 
-/**
- * 全屏页面导航 (`NavDisplay`) 的动画方案.
- *
- * @see NavigationMotionScheme.predictiveBack
- */
 @Stable
 @Immutable
-class PredictiveBackNavigationMotionScheme(
-    /**
-     * 返回上一个页面时, 上一个页面的进入动画.
-     */
+class PredictiveBackSharedTransitionMotionScheme(
+    val enterTransition: EnterTransition,
+    val exitTransition: ExitTransition,
     val popEnterTransition: EnterTransition,
-    /**
-     * 返回上一个页面时, 当前页面的退出动画.
-     *
-     * 手势返回时这套动画会被手势进度 `seekTo`, 所以里面的时长不是"用户必须拖这么久", 而是一条可 seek
-     * 的 timeline.
-     */
     val popExitTransition: ExitTransition,
+    val containerEnterTransition: EnterTransition,
+    val containerExitTransition: ExitTransition,
 )
 
 @Stable

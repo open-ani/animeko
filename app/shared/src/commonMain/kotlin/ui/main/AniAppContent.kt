@@ -71,7 +71,6 @@ import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
 import me.him188.ani.app.ui.foundation.animation.LocalSharedTransitionScope
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLocals
-import me.him188.ani.app.ui.foundation.animation.SharedTransitionNavTransition
 import me.him188.ani.app.ui.foundation.animation.subjectContainerTransform
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
@@ -217,7 +216,7 @@ private fun AniAppContentImplNavDisplay(
             navMotionScheme.popEnterTransition togetherWith navMotionScheme.popExitTransition
         },
         predictivePopTransitionSpec = {
-            navMotionScheme.predictiveBack.popEnterTransition togetherWith navMotionScheme.predictiveBack.popExitTransition
+            navMotionScheme.predictivePopEnterTransition togetherWith navMotionScheme.predictivePopExitTransition
         },
         entryProvider = entryProvider {
             entry<NavRoutes.Welcome> {
@@ -377,9 +376,18 @@ private fun AniAppContentImplNavDisplay(
             entry<NavRoutes.SubjectDetail>(
                 // 条目详情页和列表卡片之间是 container transform, 页面级动画不能再叠加 predictive back
                 // 的全屏缩放, 否则会双重缩放. 见 SharedTransitionNavTransition.
-                metadata = NavDisplay.transitionSpec { SharedTransitionNavTransition } +
-                        NavDisplay.popTransitionSpec { SharedTransitionNavTransition } +
-                        NavDisplay.predictivePopTransitionSpec { SharedTransitionNavTransition },
+                metadata = NavDisplay.transitionSpec {
+                    navMotionScheme.predictiveSharedContainer.enterTransition togetherWith
+                            navMotionScheme.predictiveSharedContainer.exitTransition
+                } +
+                        NavDisplay.popTransitionSpec {
+                            navMotionScheme.predictiveSharedContainer.popEnterTransition togetherWith
+                                    navMotionScheme.predictiveSharedContainer.popExitTransition
+                        } +
+                        NavDisplay.predictivePopTransitionSpec {
+                            navMotionScheme.predictiveSharedContainer.popEnterTransition togetherWith
+                                    navMotionScheme.predictiveSharedContainer.popExitTransition
+                        },
             ) { route ->
                 val vm = viewModel<SubjectDetailsViewModel>(key = route.subjectId.toString()) {
                     val placeholder = route.placeholder?.run {

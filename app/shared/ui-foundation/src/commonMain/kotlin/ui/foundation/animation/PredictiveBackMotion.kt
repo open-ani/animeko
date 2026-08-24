@@ -11,11 +11,6 @@ package me.him188.ani.app.ui.foundation.animation
 
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.Stable
 import me.him188.ani.app.ui.foundation.animation.PredictiveBackMotion.FadeThroughThreshold
 import kotlin.math.roundToInt
@@ -37,15 +32,10 @@ import kotlin.math.roundToInt
  * 两个缩放都由同一条 eased progress 驱动 (`lerp(1f, 0.9f, p)` / `lerp(1.1f, 1f, p)`), 只有 alpha
  * 有 35% 的 fade through 分界点.
  *
- * 只在支持 predictive back 手势的平台 (Android 13+ 与 iOS) 上使用, 见 [isPlatformSupportPredictiveBack];
- * 其他平台 (Desktop, Android 13 以下) 继续使用 [NavigationMotionScheme] 里旧的滑动 + 淡入淡出动画.
- * 而且只有**返回**方向用这里的参数, 前进方向沿用原来的动画.
- *
  * ### 不适用于 shared element / container transform
  *
  * 参与 [subjectContainerTransform] 的页面**不能**再叠加这里的全屏 0.9 缩放, 否则会和 shared bounds
- * 自己的缩放叠成"双重缩放". 那些页面用 [SharedTransitionNavTransition], 位移和缩放全部交给
- * shared element 完成.
+ * 自己的缩放叠成"双重缩放". 那些页面用 M3 fade, 位移和缩放全部交给 shared element 完成.
  *
  * 另外指南里 `((width / 20) - 8) dp` 的边缘位移属于**手动实现** shared surface predictive back 的那套
  * 参数 (progress easing 是 `cubic-bezier(0, 0, 0, 1)`), 和这里的全屏参数不是一套, 不要混用.
@@ -72,7 +62,7 @@ object PredictiveBackMotion {
      * Fade through 分界点: 到 35% 时旧页面已经完全透明, 新页面此时才开始出现.
      *
      * 这不是手势的 commit threshold, 只是视觉转场的分界点. 它是按**手势进度**算的, 所以淡出时长要按
-     * 整个导航动画的总时长 ([NavigationMotionScheme.TotalDurationMillis]) 取比例.
+     * 整个导航动画的总时长 ([NavigationMotionScheme.PredictiveTotalDurationMillis]) 取比例.
      */
     const val FadeThroughThreshold = 0.35f
 
@@ -80,45 +70,5 @@ object PredictiveBackMotion {
      * 旧页面淡出所占的时长, 对应 [FadeThroughThreshold] 的手势进度.
      */
     val FadeOutDurationMillis =
-        (NavigationMotionScheme.TotalDurationMillis * FadeThroughThreshold).roundToInt()
-}
-
-/**
- * 按 [PredictiveBackMotion] 的参数构造全屏页面导航动画.
- *
- * 只有返回方向用指南的参数; 前进方向直接沿用调用方传进来的原有动画.
- *
- * 手势过程中整段动画会被 `seekTo(progress)`, 所以这里的时长不是"用户必须拖这么久", 而是一条可以按
- * 手势进度 seek 的 timeline; 松手取消时 AndroidX 会按剩余 fraction 回弹.
- *
- * @param enterTransition 前进时新页面的进入动画, 保持原样
- * @param exitTransition 前进时旧页面的退出动画, 保持原样
- */
-internal fun calculatePredictiveBackScreenScheme(): PredictiveBackNavigationMotionScheme {
-    val totalDuration = NavigationMotionScheme.TotalDurationMillis
-    val fadeOutDuration = PredictiveBackMotion.FadeOutDurationMillis
-    val fadeInDuration = totalDuration - fadeOutDuration
-
-    // 两个缩放都贯穿整个手势, 用同一条 progress easing
-    val popEnterTransition = scaleIn(
-        tween(totalDuration, easing = PredictiveBackMotion.ProgressEasing),
-        initialScale = PredictiveBackMotion.EnterScale,
-    ) + fadeIn(
-        // alpha 从 35% 处才开始
-        tween(fadeInDuration, delayMillis = fadeOutDuration, easing = StandardDecelerateEasing),
-    )
-
-    val popExitTransition = scaleOut(
-        tween(totalDuration, easing = PredictiveBackMotion.ProgressEasing),
-        targetScale = PredictiveBackMotion.ExitScale,
-    ) + fadeOut(
-        // alpha 在 35% 处结束
-        tween(fadeOutDuration, easing = StandardAccelerateEasing),
-    )
-
-    return PredictiveBackNavigationMotionScheme(
-        // 返回方向用指南的参数
-        popEnterTransition = popEnterTransition,
-        popExitTransition = popExitTransition,
-    )
+        (NavigationMotionScheme.PredictiveTotalDurationMillis * FadeThroughThreshold).roundToInt()
 }

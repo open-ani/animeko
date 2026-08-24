@@ -162,7 +162,7 @@ data class SubjectDetailImageSharedElementKey(
     val subjectId: Int,
     val from: String,
 ) {
-    companion object {
+    companion object Enum {
         const val FromTrendingCarouselItem = "trendingCarouselItem"
         const val FromFellowSubject = "fellowSubject"
         const val FromRecommendationItem = "recommendationItem"
