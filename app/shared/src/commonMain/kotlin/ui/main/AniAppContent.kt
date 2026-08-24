@@ -179,13 +179,13 @@ private fun AniAppContentImpl(
             rememberViewModelStoreNavEntryDecorator(),
         ),
         transitionSpec = {
-            navMotionScheme.enterTransition togetherWith navMotionScheme.exitTransition
+            navMotionScheme.screen.enterTransition togetherWith navMotionScheme.screen.exitTransition
         },
         popTransitionSpec = {
-            navMotionScheme.popEnterTransition togetherWith navMotionScheme.popExitTransition
+            navMotionScheme.screen.popEnterTransition togetherWith navMotionScheme.screen.popExitTransition
         },
-        predictivePopTransitionSpec = {
-            navMotionScheme.popEnterTransition togetherWith navMotionScheme.popExitTransition
+        predictivePopTransitionSpec = { swipeEdge ->
+            navMotionScheme.screen.predictivePopTransition(swipeEdge)
         },
         entryProvider = entryProvider {
             entry<NavRoutes.Welcome> {

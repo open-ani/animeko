@@ -9,6 +9,7 @@
 
 package me.him188.ani.app.ui.foundation.animation
 
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
@@ -16,10 +17,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.unit.Density
+import androidx.navigationevent.NavigationEvent
 import me.him188.ani.app.ui.foundation.theme.EasingDurations
 import kotlin.math.roundToInt
 
@@ -33,6 +37,13 @@ data class NavigationMotionScheme(
     val exitTransition: ExitTransition,
     val popEnterTransition: EnterTransition,
     val popExitTransition: ExitTransition,
+    /**
+     * 全屏页面导航 (`NavDisplay`) 使用的动画.
+     *
+     * 在支持 predictive back 的平台上它是 [PredictiveBackMotion] 的动效参数, 与上面四个动画不同;
+     * 其他平台上它就是上面四个动画.
+     */
+    val screen: ScreenNavigationMotionScheme,
 ) {
     companion object {
         inline val current
@@ -47,7 +58,16 @@ data class NavigationMotionScheme(
         private val enterEasing = EmphasizedDecelerateEasing
         private val exitEasing = EmphasizedAccelerateEasing
 
-        fun calculate(useSlide: Boolean): NavigationMotionScheme {
+        /**
+         * @param useSlide 是否使用水平滑动. 窄屏才滑动, 宽屏只淡入淡出.
+         * @param usePredictiveBack 页面导航 ([NavigationMotionScheme.screen]) 是否使用 predictive back
+         * 动效参数. 见 [isPlatformSupportPredictiveBack].
+         */
+        fun calculate(
+            useSlide: Boolean,
+            usePredictiveBack: Boolean,
+            density: Density,
+        ): NavigationMotionScheme {
             val slideInMargin = 1f / 16
             val slideOutMargin = 1f / 16
 
@@ -108,10 +128,54 @@ data class NavigationMotionScheme(
                 exitTransition = exitTransition,
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
+                screen = if (usePredictiveBack) {
+                    calculatePredictiveBackScreenScheme(density)
+                } else {
+                    ScreenNavigationMotionScheme(
+                        enterTransition = enterTransition,
+                        exitTransition = exitTransition,
+                        popEnterTransition = popEnterTransition,
+                        popExitTransition = popExitTransition,
+                        predictivePopTransition = { popEnterTransition togetherWith popExitTransition },
+                    )
+                },
             )
         }
     }
 }
+
+/**
+ * 全屏页面导航 (`NavDisplay`) 的动画方案.
+ *
+ * @see NavigationMotionScheme.screen
+ */
+@Stable
+@Immutable
+class ScreenNavigationMotionScheme(
+    /**
+     * 前进到新页面时, 新页面的进入动画.
+     */
+    val enterTransition: EnterTransition,
+    /**
+     * 前进到新页面时, 旧页面的退出动画.
+     */
+    val exitTransition: ExitTransition,
+    /**
+     * 返回上一个页面时, 上一个页面的进入动画.
+     */
+    val popEnterTransition: EnterTransition,
+    /**
+     * 返回上一个页面时, 当前页面的退出动画.
+     */
+    val popExitTransition: ExitTransition,
+    /**
+     * 手势驱动的返回动画. 动画会被手势进度 seek, 所以时长只影响松手之后的收尾.
+     *
+     * @param swipeEdge 手势从哪条边缘划入, 取值为 [NavigationEvent.EDGE_LEFT],
+     * [NavigationEvent.EDGE_RIGHT] 或 [NavigationEvent.EDGE_NONE].
+     */
+    val predictivePopTransition: (swipeEdge: Int) -> ContentTransform,
+)
 
 @Stable
 val LocalNavigationMotionScheme = staticCompositionLocalOf<NavigationMotionScheme> {

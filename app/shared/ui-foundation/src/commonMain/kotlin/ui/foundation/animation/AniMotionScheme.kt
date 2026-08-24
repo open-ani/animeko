@@ -304,9 +304,14 @@ fun ProvideAniMotionCompositionLocals(
             windowSizeClass.isWidthCompact // reduce recompositions
         }
     }
+    val usePredictiveBack = remember { isPlatformSupportPredictiveBack() }
     val navigationMotionScheme by remember {
         derivedStateOf {
-            NavigationMotionScheme.calculate(useSlide = isWidthCompact)
+            NavigationMotionScheme.calculate(
+                useSlide = isWidthCompact,
+                usePredictiveBack = usePredictiveBack,
+                density = density,
+            )
         }
     }
     val aniMotionScheme by remember {

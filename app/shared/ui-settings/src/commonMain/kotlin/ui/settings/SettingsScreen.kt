@@ -79,6 +79,7 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -661,19 +662,21 @@ internal fun SettingsPageLayout(
 
                 NavDisplay(
                     backStack = detailPaneBackStack,
+                    // predictive back 的缩放动画会让页面短暂超出 pane 的范围, 双栏时会盖到左边的列表上
+                    modifier = Modifier.clipToBounds(),
                     onBack = navigateUp,
                     entryDecorators = listOf(
                         rememberSaveableStateHolderNavEntryDecorator(),
                         rememberViewModelStoreNavEntryDecorator(),
                     ),
                     transitionSpec = {
-                        navMotionScheme.enterTransition togetherWith navMotionScheme.exitTransition
+                        navMotionScheme.screen.enterTransition togetherWith navMotionScheme.screen.exitTransition
                     },
                     popTransitionSpec = {
-                        navMotionScheme.popEnterTransition togetherWith navMotionScheme.popExitTransition
+                        navMotionScheme.screen.popEnterTransition togetherWith navMotionScheme.screen.popExitTransition
                     },
-                    predictivePopTransitionSpec = {
-                        navMotionScheme.popEnterTransition togetherWith navMotionScheme.popExitTransition
+                    predictivePopTransitionSpec = { swipeEdge ->
+                        navMotionScheme.screen.predictivePopTransition(swipeEdge)
                     },
                     entryProvider = entryProvider {
                     entry<DetailPaneRoutes.Main> {
