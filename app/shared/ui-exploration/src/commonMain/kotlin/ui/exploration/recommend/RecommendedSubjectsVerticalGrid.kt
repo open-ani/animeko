@@ -34,6 +34,7 @@ import me.him188.ani.app.data.models.recommend.type
 import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
+import me.him188.ani.app.ui.foundation.animation.subjectContainerTransform
 import me.him188.ani.app.ui.foundation.layout.CarouselItemDefaults
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.minimumHairlineSize
@@ -80,10 +81,13 @@ fun LazyGridScope.recommendationItems(
                         fadeOutSpec = aniMotionScheme.feedItemFadeOutSpec,
                         placementSpec = aniMotionScheme.feedItemPlacementSpec,
                     )
+                // 点进条目详情页时, 卡片形变成详情页 (container transform)
+                val containerTransform =
+                    if (item == null) Modifier else Modifier.subjectContainerTransform(item.bangumiId)
                 RecommendedSubjectCard(
                     item = item,
                     onClick = { item?.let { onClick(it) } },
-                    modifier = animateItem,
+                    modifier = animateItem.then(containerTransform),
                     shape = layoutParams.cardShape,
                 )
             }

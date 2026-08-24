@@ -67,6 +67,7 @@ import me.him188.ani.app.domain.foundation.LoadError
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.ProvideCompositionLocalsForPreview
 import me.him188.ani.app.ui.foundation.animation.LocalAniMotionScheme
+import me.him188.ani.app.ui.foundation.animation.subjectContainerTransform
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.isWidthCompact
@@ -181,7 +182,10 @@ fun SubjectCollectionItem(
 ) {
     Card(
         onClick,
-        modifier.clip(shape).fillMaxWidth().height(height),
+        // 点进条目详情页时, 卡片形变成详情页 (container transform).
+        // sharedBounds 要求裁剪放在它后面, 否则形变过程中会丢失圆角.
+        modifier.subjectContainerTransform(item.subjectId)
+            .clip(shape).fillMaxWidth().height(height),
         shape = shape,
         colors = colors,
     ) {

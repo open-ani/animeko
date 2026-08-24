@@ -9,6 +9,8 @@
 
 package me.him188.ani.app.ui.main
 
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -66,8 +68,10 @@ import me.him188.ani.app.ui.cache.subject.SubjectCacheScreen
 import me.him188.ani.app.ui.cache.subject.SubjectCacheViewModelImpl
 import me.him188.ani.app.ui.exploration.schedule.ScheduleScreen
 import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
+import me.him188.ani.app.ui.foundation.animation.LocalSharedTransitionScope
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLocals
+import me.him188.ani.app.ui.foundation.animation.subjectContainerTransform
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
 import me.him188.ani.app.ui.foundation.widgets.BackNavigationIconButton
@@ -155,6 +159,7 @@ fun AniAppContent(aniNavigator: AniNavigator) {
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun AniAppContentImpl(
     aniNavigator: AniNavigator,
@@ -169,9 +174,35 @@ private fun AniAppContentImpl(
     val navMotionScheme by rememberUpdatedState(NavigationMotionScheme.current)
     val emailLoginViewModel = viewModel<EmailLoginViewModel> { EmailLoginViewModel() }
 
+    // 提供给 Modifier.subjectContainerTransform: 条目卡片 -> 条目详情页的 container transform
+    SharedTransitionLayout(modifier) {
+        CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+            AniNavDisplay(
+                aniNavigator = aniNavigator,
+                backStack = backStack,
+                mainSceneInitialPage = mainSceneInitialPage,
+                navMotionScheme = navMotionScheme,
+                emailLoginViewModel = emailLoginViewModel,
+                windowInsets = windowInsets,
+                windowInsetsWithoutTitleBar = windowInsetsWithoutTitleBar,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AniNavDisplay(
+    aniNavigator: AniNavigator,
+    backStack: List<NavRoutes>,
+    mainSceneInitialPage: MainScreenPage,
+    navMotionScheme: NavigationMotionScheme,
+    emailLoginViewModel: EmailLoginViewModel,
+    windowInsets: WindowInsets,
+    windowInsetsWithoutTitleBar: WindowInsets,
+) {
     NavDisplay(
         backStack = backStack,
-        modifier = modifier,
+        modifier = Modifier.fillMaxSize(),
         onBack = { aniNavigator.popBackStack() },
         entryDecorators = listOf(
             // 让每个页面各自持有 rememberSaveable 状态和 ViewModel, 出栈时一并销毁
@@ -356,6 +387,8 @@ private fun AniAppContentImpl(
                     onClickTag = {
                         aniNavigator.navigateSubjectSearch(NavRoutes.SubjectSearch(tags = listOf(it.name)))
                     },
+                    // 与列表里的条目卡片连成 container transform
+                    modifier = Modifier.subjectContainerTransform(route.subjectId),
                     windowInsets = windowInsets,
                     navigationIcon = {
                         Row {

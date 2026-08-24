@@ -9,13 +9,12 @@
 
 package me.him188.ani.app.ui.foundation.animation
 
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -23,7 +22,6 @@ import androidx.compose.runtime.Stable
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.navigationevent.NavigationEvent
-import me.him188.ani.app.ui.foundation.theme.EasingDurations
 import kotlin.math.roundToInt
 
 /**
@@ -33,6 +31,8 @@ import kotlin.math.roundToInt
  *
  * 只在支持 predictive back 手势的平台 (Android 13+ 与 iOS) 上使用, 见 [isPlatformSupportPredictiveBack].
  * 其他平台 (Desktop, Android 13 以下) 继续使用 [NavigationMotionScheme] 里旧的滑动 + 淡入淡出动画.
+ *
+ * 注意只有**页面退出**动画用这里的参数, 页面进入动画仍然沿用 [NavigationMotionScheme] 原来的滑动 + 淡入.
  */
 @Stable
 object PredictiveBackMotion {
@@ -45,18 +45,21 @@ object PredictiveBackMotion {
     val SurfaceEasing: Easing = CubicBezierEasing(0.1f, 0.1f, 0f, 1f)
 
     /**
-     * 退出页面缩小到的比例. 指南 "Exit Scale: 100% -> 90%".
+     * 返回时旧页面缩小到的比例. 指南 "Exit Scale: 100% -> 90%".
      */
     const val ExitScale = 0.9f
 
     /**
-     * 进入页面的起始比例. 指南 "Enter Scale: 110% -> 100%".
+     * 前进时旧页面放大到的比例. 指南 "Enter Scale: 110% -> 100%" 的镜像.
      */
     const val EnterScale = 1.1f
 
     /**
      * Fade through 阈值. 指南 *"the exiting screen fully fades out and the entering screen starts to
      * fade in [...] At the 35% mark, neither screen is showing"*.
+     *
+     * 阈值是按**手势进度**算的, 所以退出动画的淡出时长要按整个导航动画的总时长
+     * ([NavigationMotionScheme.TotalDurationMillis]) 取比例, 而不是自己定一个时长.
      */
     const val FadeThroughThreshold = 0.35f
 
@@ -66,60 +69,41 @@ object PredictiveBackMotion {
     val MinEdgeGap = 8.dp
 
     /**
-     * 一次完整导航动画的总时长.
-     *
-     * 手势过程中这个值不影响观感 (动画是被手势进度 seek 的), 它决定的是:
-     * 1. 松手之后剩余进度的收尾时长 (`(1 - progress) * DurationMillis`);
-     * 2. 非手势导航 (点返回按钮/前进) 的时长.
-     */
-    const val DurationMillis = EasingDurations.emphasized
-
-    /**
      * 旧页面淡出所占的时长, 对应 [FadeThroughThreshold] 的手势进度.
      */
-    val FadeOutDurationMillis = (DurationMillis * FadeThroughThreshold).roundToInt()
-
-    /**
-     * 新页面淡入所占的时长, 从 [FadeThroughThreshold] 开始直到手势完成.
-     */
-    val FadeInDurationMillis = DurationMillis - FadeOutDurationMillis
+    val FadeOutDurationMillis =
+        (NavigationMotionScheme.TotalDurationMillis * FadeThroughThreshold).roundToInt()
 }
 
 /**
  * 按 [PredictiveBackMotion] 的参数构造全屏页面导航动画.
  *
- * 返回动画 (pop) 直接对应指南给出的 motion spec; 前进动画 (push) 采用它的镜像 (页面放大离开 / 从小放大进入),
- * 保证同一个页面进出的方向一致.
+ * 只有退出动画 (旧页面离开) 用指南的参数; 进入动画直接沿用调用方传进来的原有动画.
+ *
+ * @param enterTransition 前进时新页面的进入动画, 保持原样
+ * @param popEnterTransition 返回时上一个页面的进入动画, 保持原样
  */
-internal fun calculatePredictiveBackScreenScheme(density: Density): ScreenNavigationMotionScheme {
-    val fadeOutDuration = PredictiveBackMotion.FadeOutDurationMillis
-    val fadeInDuration = PredictiveBackMotion.FadeInDurationMillis
-
-    // 新页面在 fade through 阈值之后才开始出现, 所以缩放和淡入都延迟到那时候
-    fun enterTransition(initialScale: Float) = scaleIn(
-        tween(fadeInDuration, delayMillis = fadeOutDuration, easing = EmphasizedDecelerateEasing),
-        initialScale = initialScale,
-    ) + fadeIn(
-        tween(fadeInDuration, delayMillis = fadeOutDuration, easing = EmphasizedDecelerateEasing),
-    )
-
-    // 旧页面的缩放贯穿整个手势 (立刻响应手势), 但内容在阈值处就已经完全淡出
+internal fun calculatePredictiveBackScreenScheme(
+    density: Density,
+    enterTransition: EnterTransition,
+    popEnterTransition: EnterTransition,
+): ScreenNavigationMotionScheme {
+    // 旧页面的缩放贯穿整个手势 (立刻响应手势), 但内容在 fade through 阈值处就已经完全淡出
     fun exitTransition(targetScale: Float) = scaleOut(
-        tween(PredictiveBackMotion.DurationMillis, easing = PredictiveBackMotion.SurfaceEasing),
+        tween(NavigationMotionScheme.TotalDurationMillis, easing = PredictiveBackMotion.SurfaceEasing),
         targetScale = targetScale,
     ) + fadeOut(
-        tween(fadeOutDuration, easing = StandardAccelerateEasing),
+        tween(PredictiveBackMotion.FadeOutDurationMillis, easing = StandardAccelerateEasing),
     )
 
-    val popEnterTransition = enterTransition(PredictiveBackMotion.EnterScale)
     val popExitTransition = exitTransition(PredictiveBackMotion.ExitScale)
 
     return ScreenNavigationMotionScheme(
-        // 前进: 旧页面放大离开, 新页面从 90% 放大进入
-        enterTransition = enterTransition(PredictiveBackMotion.ExitScale),
+        enterTransition = enterTransition,
+        // 前进: 旧页面放大离开
         exitTransition = exitTransition(PredictiveBackMotion.EnterScale),
-        // 返回: 旧页面缩小离开, 新页面从 110% 缩小进入
         popEnterTransition = popEnterTransition,
+        // 返回: 旧页面缩小离开
         popExitTransition = popExitTransition,
         predictivePopTransition = { swipeEdge ->
             popEnterTransition togetherWith
@@ -146,7 +130,7 @@ private fun surfaceShift(
     }
     val minEdgeGapPx = with(density) { PredictiveBackMotion.MinEdgeGap.toPx() }
     return slideOutHorizontally(
-        tween(PredictiveBackMotion.DurationMillis, easing = PredictiveBackMotion.SurfaceEasing),
+        tween(NavigationMotionScheme.TotalDurationMillis, easing = PredictiveBackMotion.SurfaceEasing),
     ) { fullWidth ->
         val maxShift = (fullWidth * (1f - PredictiveBackMotion.ExitScale) / 2f - minEdgeGapPx)
             .coerceAtLeast(0f)

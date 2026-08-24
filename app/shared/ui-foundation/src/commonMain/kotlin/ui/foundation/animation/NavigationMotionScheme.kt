@@ -40,8 +40,8 @@ data class NavigationMotionScheme(
     /**
      * 全屏页面导航 (`NavDisplay`) 使用的动画.
      *
-     * 在支持 predictive back 的平台上它是 [PredictiveBackMotion] 的动效参数, 与上面四个动画不同;
-     * 其他平台上它就是上面四个动画.
+     * 在支持 predictive back 的平台上, 页面**退出**动画换成 [PredictiveBackMotion] 的参数, 进入动画
+     * 与上面的一致; 其他平台上它就是上面四个动画.
      */
     val screen: ScreenNavigationMotionScheme,
 ) {
@@ -52,6 +52,14 @@ data class NavigationMotionScheme(
         // https://m3.material.io/styles/motion/easing-and-duration/applying-easing-and-duration#e5b958f0-435d-4e84-aed4-8d1ea395fa5c
         private const val enterDuration = EasingDurations.emphasizedDecelerate
         private const val exitDuration = EasingDurations.emphasizedAccelerate
+
+        /**
+         * 一次页面导航动画的总时长: 旧页面先退出, 新页面延迟同样长的时间再进入.
+         *
+         * [PredictiveBackMotion] 和 [SubjectContainerTransform] 都按它取比例, 保证同一次导航里所有动画
+         * 的进度是对齐的 (predictive back 手势会把整段动画 seek 到手势进度上).
+         */
+        const val TotalDurationMillis = exitDuration + enterDuration
 
         // https://m3.material.io/styles/motion/easing-and-duration/applying-easing-and-duration#26a169fb-caf3-445e-8267-4f1254e3e8bb
         // https://developer.android.com/develop/ui/compose/animation/shared-elements
@@ -129,7 +137,11 @@ data class NavigationMotionScheme(
                 popEnterTransition = popEnterTransition,
                 popExitTransition = popExitTransition,
                 screen = if (usePredictiveBack) {
-                    calculatePredictiveBackScreenScheme(density)
+                    calculatePredictiveBackScreenScheme(
+                        density,
+                        enterTransition = enterTransition,
+                        popEnterTransition = popEnterTransition,
+                    )
                 } else {
                     ScreenNavigationMotionScheme(
                         enterTransition = enterTransition,
