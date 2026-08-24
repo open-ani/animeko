@@ -74,6 +74,7 @@ import me.him188.ani.app.ui.external.placeholder.placeholder
 import me.him188.ani.app.ui.foundation.AniImageLoadSuccess
 import me.him188.ani.app.ui.foundation.AsyncImage
 import me.him188.ani.app.ui.foundation.animation.AniAnimatedVisibility
+import me.him188.ani.app.ui.foundation.animation.boundOffsetAlignment
 import me.him188.ani.app.ui.foundation.ifThen
 import me.him188.ani.app.ui.foundation.text.ProvideContentColor
 import me.him188.ani.app.ui.foundation.theme.AniThemeDefaults
@@ -491,7 +492,9 @@ private fun SubjectSidebar(
                 .aspectRatio(COVER_WIDTH_TO_HEIGHT_RATIO)
                 .clip(RoundedCornerShape(16.dp))
                 .ifThen(onClickCover != null) { clickable(onClick = checkNotNull(onClickCover)) }
-                .testTag(SUBJECT_COVER_IMAGE_TEST_TAG),
+                .testTag(SUBJECT_COVER_IMAGE_TEST_TAG)
+                // container transform 从这里开始向外扩
+                .boundOffsetAlignment(),
             contentScale = ContentScale.Crop,
             onSuccess = onCoverImageSuccess,
         )

@@ -25,6 +25,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import me.him188.ani.app.navigation.SubjectDetailImageSharedElementKey
@@ -40,13 +41,27 @@ import me.him188.ani.app.navigation.SubjectDetailImageSharedElementKey
 val LocalSharedTransitionScope: ProvidableCompositionLocal<SharedTransitionScope?> =
     staticCompositionLocalOf { null }
 
+/**
+ * @param alignmentState 形变从内容的哪一点向外扩. 传 `null` 时从页面顶部中间开始扩.
+ * 详情页那一侧传 [rememberBoundOffsetAlignment] 建的 state, 让它跟着条目封面走;
+ * 列表卡片那一侧不需要 —— 窗口涨大时卡片内容早就淡出了, 摆哪儿都看不出来.
+ */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun Modifier.subjectContainerTransform(
     key: SubjectDetailImageSharedElementKey,
+    alignmentState: BoundOffsetAlignmentState? = null,
     enter: EnterTransition = LocalNavigationMotionScheme.current.predictiveSharedContainer.containerEnterTransition,
     exit: ExitTransition = LocalNavigationMotionScheme.current.predictiveSharedContainer.containerExitTransition,
 ): Modifier {
+    val alignment: Alignment = alignmentState?.alignment ?: Alignment.TopCenter
+    // 自定义 alignment 不会走 ScaleToBoundsCached 的缓存 (它只按 identity 认那 9 个标准 Alignment),
+    // 而 ScaleToBoundsImpl 没有 equals, SkipToLookaheadSizeElement 是引用比较. 不 remember 的话每次
+    // 重组都会判定为变化并重新测量.
+    val resizeMode = remember(alignment) {
+        SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.None, alignment)
+    }
+
     val sharedTransitionScope = LocalSharedTransitionScope.current ?: return this
     val animatedContentScope = LocalNavAnimatedContentScope.current
 
@@ -66,10 +81,16 @@ fun Modifier.subjectContainerTransform(
             .sharedBounds(
                 rememberSharedContentState(key),
                 animatedVisibilityScope = animatedContentScope,
-                resizeMode = SharedTransitionScope.ResizeMode.scaleToBounds(ContentScale.None, Alignment.TopCenter),
+                resizeMode = resizeMode,
                 clipInOverlayDuringTransition = overlayClip,
                 enter = enter,
                 exit = exit,
+            )
+            // 必须挂在内层 sharedBounds 之后: 这样才落在它的 SkipToLookaheadSizeNode 子树内,
+            // 量到的是最终尺寸.
+            .then(
+                if (alignmentState == null) Modifier
+                else Modifier.onPlaced { alignmentState.onContainerPlaced(it) },
             )
     }
 }
