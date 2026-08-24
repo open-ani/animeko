@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -110,11 +111,13 @@ fun SubjectDetailsDefaults.SubjectCommentColumn(
 @Composable
 private fun PreviewSubjectCommentColumn() {
     ProvideCompositionLocalsForPreview {
-        SubjectDetailsDefaults.SubjectCommentColumn(
-            state = rememberTestCommentState(generateUiComment(4)),
-            onClickUrl = { },
-            onClickImage = {},
-            connectedScrollState = rememberConnectedScrollState(),
-        )
+        Surface {
+            SubjectDetailsDefaults.SubjectCommentColumn(
+                state = rememberTestCommentState(generateUiComment(4)),
+                onClickUrl = { },
+                onClickImage = {},
+                connectedScrollState = rememberConnectedScrollState(),
+            )
+        }
     }
 }

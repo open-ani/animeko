@@ -7,7 +7,7 @@
  * https://github.com/open-ani/ani/blob/main/LICENSE
  */
 
-// Generated from /Users/general_k1ng/Documents/project/animeko/utils/bbcode/BBCode.g4 by ANTLR 4.13.1
+// Generated from /Users/stageguard/Projects/animeko/utils/bbcode/BBCode.g4 by ANTLR 4.13.1
 package me.him188.ani.utils.bbcode
 
 import org.antlr.v4.kotlinruntime.tree.AbstractParseTreeVisitor
@@ -97,6 +97,24 @@ public abstract class BBCodeBaseVisitor<T> : AbstractParseTreeVisitor<T>(), BBCo
      * The default implementation returns the result of calling [visitChildren] on [ctx].
      */
     override fun visitColor(ctx: BBCodeParser.ColorContext): T {
+        return this.visitChildren(ctx)
+    }
+    /**
+     * The default implementation returns the result of calling [visitChildren] on [ctx].
+     */
+    override fun visitCenter(ctx: BBCodeParser.CenterContext): T {
+        return this.visitChildren(ctx)
+    }
+    /**
+     * The default implementation returns the result of calling [visitChildren] on [ctx].
+     */
+    override fun visitLeft(ctx: BBCodeParser.LeftContext): T {
+        return this.visitChildren(ctx)
+    }
+    /**
+     * The default implementation returns the result of calling [visitChildren] on [ctx].
+     */
+    override fun visitRight(ctx: BBCodeParser.RightContext): T {
         return this.visitChildren(ctx)
     }
     /**
