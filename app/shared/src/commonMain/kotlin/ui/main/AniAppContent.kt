@@ -71,6 +71,7 @@ import me.him188.ani.app.ui.exploration.schedule.ScheduleViewModel
 import me.him188.ani.app.ui.foundation.animation.LocalSharedTransitionScope
 import me.him188.ani.app.ui.foundation.animation.NavigationMotionScheme
 import me.him188.ani.app.ui.foundation.animation.ProvideAniMotionCompositionLocals
+import me.him188.ani.app.ui.foundation.animation.SharedTransitionNavTransition
 import me.him188.ani.app.ui.foundation.animation.subjectContainerTransform
 import me.him188.ani.app.ui.foundation.layout.currentWindowAdaptiveInfo1
 import me.him188.ani.app.ui.foundation.layout.desktopTitleBar
@@ -215,8 +216,8 @@ private fun AniNavDisplay(
         popTransitionSpec = {
             navMotionScheme.screen.popEnterTransition togetherWith navMotionScheme.screen.popExitTransition
         },
-        predictivePopTransitionSpec = { swipeEdge ->
-            navMotionScheme.screen.predictivePopTransition(swipeEdge)
+        predictivePopTransitionSpec = {
+            navMotionScheme.screen.popEnterTransition togetherWith navMotionScheme.screen.popExitTransition
         },
         entryProvider = entryProvider {
             entry<NavRoutes.Welcome> {
@@ -373,7 +374,13 @@ private fun AniNavDisplay(
                     windowInsets = windowInsets,
                 )
             }
-            entry<NavRoutes.SubjectDetail> { route ->
+            entry<NavRoutes.SubjectDetail>(
+                // 条目详情页和列表卡片之间是 container transform, 页面级动画不能再叠加 predictive back
+                // 的全屏缩放, 否则会双重缩放. 见 SharedTransitionNavTransition.
+                metadata = NavDisplay.transitionSpec { SharedTransitionNavTransition } +
+                        NavDisplay.popTransitionSpec { SharedTransitionNavTransition } +
+                        NavDisplay.predictivePopTransitionSpec { SharedTransitionNavTransition },
+            ) { route ->
                 val vm = viewModel<SubjectDetailsViewModel>(key = route.subjectId.toString()) {
                     val placeholder = route.placeholder?.run {
                         SubjectInfo.createPlaceholder(id, name, coverUrl, nameCN)

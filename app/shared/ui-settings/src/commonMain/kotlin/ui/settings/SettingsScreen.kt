@@ -675,8 +675,8 @@ internal fun SettingsPageLayout(
                     popTransitionSpec = {
                         navMotionScheme.screen.popEnterTransition togetherWith navMotionScheme.screen.popExitTransition
                     },
-                    predictivePopTransitionSpec = { swipeEdge ->
-                        navMotionScheme.screen.predictivePopTransition(swipeEdge)
+                    predictivePopTransitionSpec = {
+                        navMotionScheme.screen.popEnterTransition togetherWith navMotionScheme.screen.popExitTransition
                     },
                     entryProvider = entryProvider {
                     entry<DetailPaneRoutes.Main> {

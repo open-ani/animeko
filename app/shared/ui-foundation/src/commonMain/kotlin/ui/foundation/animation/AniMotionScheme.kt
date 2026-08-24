@@ -310,7 +310,6 @@ fun ProvideAniMotionCompositionLocals(
             NavigationMotionScheme.calculate(
                 useSlide = isWidthCompact,
                 usePredictiveBack = usePredictiveBack,
-                density = density,
             )
         }
     }

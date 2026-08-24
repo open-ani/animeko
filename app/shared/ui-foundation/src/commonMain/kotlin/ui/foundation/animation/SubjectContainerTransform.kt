@@ -9,15 +9,13 @@
 
 package me.him188.ani.app.ui.foundation.animation
 
-import androidx.compose.animation.BoundsTransform
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ProvidableCompositionLocal
@@ -39,39 +37,19 @@ val LocalSharedTransitionScope: ProvidableCompositionLocal<SharedTransitionScope
     staticCompositionLocalOf { null }
 
 /**
- * 条目卡片 <-> 条目详情页的 Material container transform 动效参数.
+ * 有 shared element / container transform 参与的页面, 页面级导航动画.
  *
- * 时长与页面导航动画 ([NavigationMotionScheme.TotalDurationMillis]) 对齐, 这样 predictive back 手势
- * 把整段动画 seek 到手势进度时, 容器形变也会跟着手指走.
+ * **不要**在这些页面上再叠加 [PredictiveBackMotion] 的全屏 `0.9` 缩放: shared bounds 自己已经在做
+ * 缩放和位移, 两层叠起来会让 shared element 的路径、尺寸和落点都有"双重缩放"的感觉. 指南在
+ * shared element 场景下也是要求让 shared element 本身完成返回运动.
+ *
+ * 所以这里只留一层淡入淡出, 而且用的是 Compose shared transition 那一套参数体系 —— `fadeIn()` /
+ * `fadeOut()` 默认就是 `spring(stiffness = Spring.StiffnessMediumLow)`, 和 `sharedBounds` 默认的
+ * 内容淡入淡出、以及默认 `BoundsTransform` 的 `spring(stiffness = 400f, dampingRatio = 1f)` 同族,
+ * 不会互相拖节奏.
  */
-@Stable
-object SubjectContainerTransform {
-    /**
-     * 新内容 (详情页) 在形变的容器里淡入, 与页面导航一样在 fade through 阈值之后才开始.
-     */
-    val ContentEnter: EnterTransition = fadeIn(
-        tween(
-            NavigationMotionScheme.TotalDurationMillis - PredictiveBackMotion.FadeOutDurationMillis,
-            delayMillis = PredictiveBackMotion.FadeOutDurationMillis,
-            easing = StandardDecelerateEasing,
-        ),
-    )
-
-    /**
-     * 旧内容 (卡片) 在形变的容器里淡出.
-     */
-    val ContentExit: ExitTransition = fadeOut(
-        tween(PredictiveBackMotion.FadeOutDurationMillis, easing = StandardAccelerateEasing),
-    )
-
-    /**
-     * 容器边界的形变动画. 用 tween 而不是默认的 spring, 才能被返回手势 seek.
-     */
-    @OptIn(ExperimentalSharedTransitionApi::class)
-    val Bounds: BoundsTransform = BoundsTransform { _, _ ->
-        tween(NavigationMotionScheme.TotalDurationMillis, easing = EmphasizedEasing)
-    }
-}
+val SharedTransitionNavTransition: ContentTransform
+    get() = fadeIn() togetherWith fadeOut()
 
 @Immutable
 private data class SubjectContainerTransformKey(val subjectId: Int)
@@ -82,8 +60,16 @@ private data class SubjectContainerTransformKey(val subjectId: Int)
  * 列表里的条目卡片和条目详情页各打一次, 两边就会在导航时连成一个 Material container transform:
  * 卡片的边界形变成详情页的边界, 卡片内容淡出、详情页内容淡入. 只共享容器, 不共享封面图.
  *
+ * 动效参数全部用 Compose `sharedBounds` 的默认值, 也就是 shared transition 自己那套体系:
+ * - bounds: `spring(stiffness = 400f, dampingRatio = 1f)`, 没有固定时长
+ * - 内容淡入淡出: 同样是 `spring(stiffness = 400f)`
+ * - resize: `ScaleToBounds(ContentScale.FillWidth, Alignment.Center)`
+ * - `renderInOverlayDuringTransition = true`, 所以不会被父页面的 fade / clip 影响
+ *
+ * 页面级动画要配合 [SharedTransitionNavTransition] 使用, 不能用 predictive back 的全屏缩放.
+ *
  * 找不到配对 (卡片被滚出可组合范围、或者从搜索页之类没打标记的地方进入详情页) 时, 这个 modifier 不做
- * 任何事, 导航退回到 [NavigationMotionScheme.screen] 的普通页面动画.
+ * 任何事.
  *
  * 注意按 `sharedBounds` 的要求, 裁剪要放在这个 modifier **之后**, 否则形变时的裁剪会丢失.
  */
@@ -99,9 +85,6 @@ fun Modifier.subjectContainerTransform(subjectId: Int): Modifier {
         this@subjectContainerTransform.sharedBounds(
             rememberSharedContentState(key),
             animatedVisibilityScope = animatedContentScope,
-            enter = SubjectContainerTransform.ContentEnter,
-            exit = SubjectContainerTransform.ContentExit,
-            boundsTransform = SubjectContainerTransform.Bounds,
         )
     }
 }
